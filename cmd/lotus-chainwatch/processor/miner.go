@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
+	"github.com/filecoin-project/lotus/lib/parmap"
 )
 
 func (p *Processor) setupMiners() error {
@@ -167,69 +167,53 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 	}()
 
 	var out []minerActorInfo
-	grp, _ := errgroup.WithContext(ctx)
 	var lk sync.Mutex
+	parmap.Par(50, parmap.KVMapArr(minerTips), func(f func() (types.TipSetKey, []actorInfo)) {
+		tipset, miners := f()
 
-	for tipset, miners := range minerTips {
-		tipset := tipset
-		miners := miners
+		// get the power actors claims map
+		minersClaims, err := getPowerActorClaimsMap(ctx, p.node, tipset)
+		if err != nil {
+			//return nil, err
+			return
+		}
 
-		grp.Go(func() error {
-			// get the power actors claims map
-			minersClaims, err := getPowerActorClaimsMap(ctx, p.node, tipset)
+		// Get miner raw and quality power
+		for _, act := range miners {
+			var mi minerActorInfo
+			mi.common = act
+
+			var claim power.Claim
+			// get miner claim from power actors claim map and store if found, else the miner had no claim at
+			// this tipset
+			found, err := minersClaims.Get(abi.AddrKey(act.addr), &claim)
 			if err != nil {
 				//return nil, err
-				return err
+				return
+			}
+			if found {
+				mi.qalPower = claim.QualityAdjPower
+				mi.rawPower = claim.RawBytePower
 			}
 
-			innerGrp, _ := errgroup.WithContext(ctx)
-			// Get miner raw and quality power
-			for _, act := range miners {
-				act := act
-
-				innerGrp.Go(func() error {
-					var mi minerActorInfo
-					mi.common = act
-
-					var claim power.Claim
-					// get miner claim from power actors claim map and store if found, else the miner had no claim at
-					// this tipset
-					found, err := minersClaims.Get(abi.AddrKey(act.addr), &claim)
-					if err != nil {
-						//return nil, err
-						return err
-					}
-					if found {
-						mi.qalPower = claim.QualityAdjPower
-						mi.rawPower = claim.RawBytePower
-					}
-
-					// Get the miner state info
-					astb, err := p.node.ChainReadObj(ctx, act.act.Head)
-					if err != nil {
-						log.Warnw("failed to find miner actor state", "address", act.addr, "error", err)
-						//continue
-						return nil
-					}
-					if err := mi.state.UnmarshalCBOR(bytes.NewReader(astb)); err != nil {
-						//return nil, err
-						return err
-					}
-
-					lk.Lock()
-					out = append(out, mi)
-					lk.Unlock()
-
-					return nil
-				})
+			// Get the miner state info
+			astb, err := p.node.ChainReadObj(ctx, act.act.Head)
+			if err != nil {
+				log.Warnw("failed to find miner actor state", "address", act.addr, "error", err)
+				continue
+			}
+			if err := mi.state.UnmarshalCBOR(bytes.NewReader(astb)); err != nil {
+				//return nil, err
+				return
 			}
 
-			return innerGrp.Wait()
-		})
-	}
+			lk.Lock()
+			out = append(out, mi)
+			lk.Unlock()
+		}
+	})
 
-	//return out, nil
-	return out, grp.Wait()
+	return out, nil
 }
 
 func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) error {
@@ -294,30 +278,27 @@ type minerInfo struct {
 	api.MinerInfo
 }
 
-func (p *Processor) fetchMinerInfos(ctx context.Context, miners []minerActorInfo) ([]minerInfo, error) {
+func (p *Processor) fetchMinerInfos(ctx context.Context, miners []minerActorInfo) []minerInfo {
 	var lk sync.Mutex
 	var minerInfos []minerInfo
 
-	grp, _ := errgroup.WithContext(ctx)
-	for _, m := range miners {
-		m := m
+	parmap.Par(50, miners, func(m minerActorInfo) {
+		mi, err := p.node.StateMinerInfo(ctx, m.common.addr, m.common.tsKey)
+		if err != nil {
+			//if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
+			//	continue
+			//} else {
+			//	return err
+			//}
+			return
+		}
 
-		grp.Go(func() error {
-			mi, err := p.node.StateMinerInfo(ctx, m.common.addr, m.common.tsKey)
-			if err != nil {
-				if !strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
-					return err
-				}
-			} else {
-				lk.Lock()
-				minerInfos = append(minerInfos, minerInfo{m, mi})
-				lk.Unlock()
-			}
-			return nil
-		})
-	}
+		lk.Lock()
+		minerInfos = append(minerInfos, minerInfo{m, mi})
+		lk.Unlock()
+	})
 
-	return minerInfos, grp.Wait()
+	return minerInfos
 }
 
 func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []minerActorInfo) error {
@@ -326,11 +307,7 @@ func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []mine
 		log.Debugw("Stored Miners Actor State", "duration", time.Since(start).String())
 	}()
 
-	mis, err := p.fetchMinerInfos(ctx, miners)
-	if err != nil {
-		return err
-	}
-
+	mis := p.fetchMinerInfos(ctx, miners)
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
