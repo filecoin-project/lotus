@@ -249,14 +249,24 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 
 		ss := state.ActiveSyncs[working]
 
+		var baseHeight abi.ChainEpoch
 		var target []cid.Cid
 		var theight abi.ChainEpoch
+		var heightDiff int64
+
+		if ss.Base != nil {
+			baseHeight = ss.Base.Height()
+			heightDiff = int64(ss.Base.Height())
+		}
 		if ss.Target != nil {
 			target = ss.Target.Cids()
 			theight = ss.Target.Height()
+			heightDiff = int64(ss.Target.Height()) - heightDiff
+		} else {
+			heightDiff = 0
 		}
 
-		fmt.Printf("\r\x1b[2KWorker %d: Target Height: %d\tTarget: %s\tState: %s\tHeight: %d", working, theight, target, ss.Stage, ss.Height)
+		fmt.Printf("\r\x1b[2KWorker %d: Base Height: %d\tTarget Height: %d\t Height diff: %d\tTarget: %s\tState: %s\tHeight: %d", working, baseHeight, theight, heightDiff, target, ss.Stage, ss.Height)
 
 		if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
 			fmt.Println("\nDone!")
