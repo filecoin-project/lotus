@@ -16,6 +16,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/bloom"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -33,6 +35,7 @@ import (
 	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
+	pebbleds "github.com/ipfs/go-ds-pebble"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -123,14 +126,33 @@ var importBenchCmd = &cli.Command{
 		bdgOpt.Options.Truncate = true
 		bdgOpt.Options.DetectConflicts = false
 
-		bds, err := badger.NewDatastore(tdir, &bdgOpt)
+		cache := 512
+		bds, err := pebbleds.NewDatastore(tdir, &pebble.Options{
+			// Pebble has a single combined cache area and the write
+			// buffers are taken from this too. Assign all available
+			// memory allowance for cache.
+			Cache: pebble.NewCache(int64(cache * 1024 * 1024)),
+			// The size of memory table(as well as the write buffer).
+			// Note, there may have more than two memory tables in the system.
+			// MemTableStopWritesThreshold can be configured to avoid the memory abuse.
+			MemTableSize: cache * 1024 * 1024 / 4,
+			// The default compaction concurrency(1 thread),
+			// Here use all available CPUs for faster compaction.
+			MaxConcurrentCompactions: runtime.NumCPU(),
+			// Per-level options. Options for at least one level must be specified. The
+			// options for the last level are used for all subsequent levels.
+			Levels: []pebble.LevelOptions{
+				{TargetFileSize: 2 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
+			},
+			Logger: log,
+		})
 		if err != nil {
 			return err
 		}
 
 		if cctx.Bool("only-gc") {
 			log.Info("calling CollectGarbage on main ds")
-			bds.CollectGarbage()
+			//bds.CollectGarbage()
 			log.Info("done calling CollectGarbage on main ds")
 		}
 		bs := blockstore.NewBlockstore(bds)
