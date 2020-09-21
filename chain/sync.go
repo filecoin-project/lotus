@@ -1486,11 +1486,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 
 		batchSize := concurrentSyncRequests * syncRequestBatchSize
 		if i < batchSize {
-			if i == 0 {
-				batchSize = 1
-			} else {
-				batchSize = i
-			}
+			batchSize = i + 1
 		}
 
 		ss.SetStage(api.StageFetchingMessages)
