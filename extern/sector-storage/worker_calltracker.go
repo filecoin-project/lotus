@@ -29,9 +29,9 @@ type Call struct {
 
 func (wt *workerCallTracker) onStart(ci storiface.CallID, rt ReturnType) error {
 	return wt.st.Begin(ci, &Call{
-		ID: ci,
-		RetType:rt,
-		State: CallStarted,
+		ID:      ci,
+		RetType: rt,
+		State:   CallStarted,
 	})
 }
 

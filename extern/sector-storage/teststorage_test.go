@@ -15,7 +15,7 @@ import (
 )
 
 type apres struct {
-	pi abi.PieceInfo
+	pi  abi.PieceInfo
 	err error
 }
 

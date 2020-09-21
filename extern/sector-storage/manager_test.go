@@ -338,4 +338,9 @@ func TestRestartWorker(t *testing.T) {
 	require.NoError(t, err)
 
 	<-apDone
+
+	time.Sleep(12 * time.Millisecond)
+	uf, err := w.ct.unfinished()
+	require.NoError(t, err)
+	require.Empty(t, uf)
 }

@@ -65,7 +65,7 @@ func newLocalWorker(executor func() (ffiwrapper.Storage, error), wcfg WorkerConf
 			st: cst,
 		},
 		acceptTasks: acceptTasks,
-		executor: executor,
+		executor:    executor,
 
 		closing: make(chan struct{}),
 	}
@@ -86,10 +86,14 @@ func newLocalWorker(executor func() (ffiwrapper.Storage, error), wcfg WorkerConf
 
 			if err := returnFunc[call.RetType](context.TODO(), call.ID, ret, nil, err); err != nil {
 				log.Errorf("return error: %s: %+v", call.RetType, err)
+				continue
+			}
+
+			if err := w.ct.onReturned(call.ID); err != nil {
+				log.Errorf("marking call as returned failed: %s: %+v", call.RetType, err)
 			}
 		}
 	}()
-
 
 	return w
 }
