@@ -55,3 +55,20 @@ func AsArray(store Store, root cid.Cid, version network.Version) (Array, error) 
 	}
 	return nil, xerrors.Errorf("unknown network version: %d", version)
 }
+
+type ROnlyArray interface {
+	Get(idx uint64, v cbor.Unmarshaler) (bool, error)
+	ForEach(v cbor.Unmarshaler, fn func(idx int64) error) error
+}
+
+type ProxyArray struct {
+	GetFunc     func(idx uint64, v cbor.Unmarshaler) (bool, error)
+	ForEachFunc func(v cbor.Unmarshaler, fn func(idx int64) error) error
+}
+
+func (a *ProxyArray) Get(idx uint64, v cbor.Unmarshaler) (bool, error) {
+	return a.GetFunc(idx, v)
+}
+func (a *ProxyArray) ForEach(v cbor.Unmarshaler, fn func(idx int64) error) error {
+	return a.ForEachFunc(v, fn)
+}

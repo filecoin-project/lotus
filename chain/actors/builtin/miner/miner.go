@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/dline"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
@@ -47,7 +47,7 @@ type State interface {
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
 	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
-	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Array, error)
+	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.ROnlyArray, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
 
 	LoadDeadline(idx uint64) (Deadline, error)

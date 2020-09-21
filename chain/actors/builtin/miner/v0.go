@@ -4,17 +4,19 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/dline"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state0)(nil)
@@ -161,56 +163,55 @@ func (s *state0) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 	return &ret, nil
 }
 
-func (s *state0) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.Array, error) {
+func (s *state0) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.ROnlyArray, error) {
 	a, err := adt0.AsArray(s.store, s.State.Sectors)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := adt0.MakeEmptyArray(s.store)
-	var v cbg.Deferred
-	if err := a.ForEach(&v, func(i int64) error {
+	incl := func(i uint64) (bool, error) {
 		include := true
 		if filter != nil {
-			set, err := filter.IsSet(uint64(i))
+			set, err := filter.IsSet(i)
 			if err != nil {
-				return xerrors.Errorf("filter check error: %w", err)
+				return false, xerrors.Errorf("filter check error: %w", err)
 			}
 			if set == filterOut {
 				include = false
 			}
 		}
-
-		if include {
-			var oci miner0.SectorOnChainInfo
-			if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
-				return err
-			}
-
-			noci := SectorOnChainInfo{
-				SectorNumber:          oci.SectorNumber,
-				SealProof:             oci.SealProof,
-				SealedCID:             oci.SealedCID,
-				DealIDs:               oci.DealIDs,
-				Activation:            oci.Activation,
-				Expiration:            oci.Expiration,
-				DealWeight:            oci.DealWeight,
-				VerifiedDealWeight:    oci.VerifiedDealWeight,
-				InitialPledge:         oci.InitialPledge,
-				ExpectedDayReward:     oci.ExpectedDayReward,
-				ExpectedStoragePledge: oci.ExpectedStoragePledge,
-			}
-
-			if err := ret.Set(uint64(i), &noci); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, err
+		return include, nil
 	}
 
-	return ret, nil
+	return &adt.ProxyArray{
+		GetFunc: func(idx uint64, v cbor.Unmarshaler) (bool, error) {
+			i, err := incl(idx)
+			if err != nil {
+				return false, err
+			}
+			if !i {
+				return false, nil
+			}
+
+			// TODO: ActorUpgrade potentially convert
+
+			return a.Get(idx, v)
+		},
+		ForEachFunc: func(v cbor.Unmarshaler, fn func(int64) error) error {
+			// TODO: ActorUpgrade potentially convert the output
+			return a.ForEach(v, func(i int64) error {
+				include, err := incl(uint64(i))
+				if err != nil {
+					return err
+				}
+				if !include {
+					return nil
+				}
+
+				return fn(i)
+			})
+		},
+	}, nil
 }
 
 func (s *state0) LoadPreCommittedSectors() (adt.Map, error) {
