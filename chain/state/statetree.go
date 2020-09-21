@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -390,4 +392,45 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 
 		return f(addr, &act)
 	})
+}
+
+func Diff(oldTree, newTree *StateTree) (map[string]types.Actor, error) {
+	out := map[string]types.Actor{}
+
+	var (
+		ncval, ocval cbg.Deferred
+		buf          = bytes.NewReader(nil)
+	)
+	if err := newTree.root.ForEach(&ncval, func(k string) error {
+		var act types.Actor
+
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("address in state tree was not valid: %w", err)
+		}
+
+		found, err := oldTree.root.Get(abi.AddrKey(addr), &ocval)
+		if err != nil {
+			return err
+		}
+
+		if found && bytes.Equal(ocval.Raw, ncval.Raw) {
+			return nil // not changed
+		}
+
+		buf.Reset(ncval.Raw)
+		err = act.UnmarshalCBOR(buf)
+		buf.Reset(nil)
+
+		if err != nil {
+			return err
+		}
+
+		out[addr.String()] = act
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

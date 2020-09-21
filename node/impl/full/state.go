@@ -16,7 +16,6 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -618,58 +616,19 @@ func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID
 }
 
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
-	store := adt.WrapStore(ctx, cbor.NewCborStore(a.Chain.Blockstore()))
+	store := a.Chain.Store(ctx)
 
-	nh, err := adt.AsMap(store, new)
+	oldTree, err := state.LoadStateTree(store, old)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to load old state tree: %w", err)
 	}
 
-	oh, err := adt.AsMap(store, old)
+	newTree, err := state.LoadStateTree(store, new)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to load new state tree: %w", err)
 	}
 
-	out := map[string]types.Actor{}
-
-	var (
-		ncval, ocval cbg.Deferred
-		buf          = bytes.NewReader(nil)
-	)
-	err = nh.ForEach(&ncval, func(k string) error {
-		var act types.Actor
-
-		addr, err := address.NewFromBytes([]byte(k))
-		if err != nil {
-			return xerrors.Errorf("address in state tree was not valid: %w", err)
-		}
-
-		found, err := oh.Get(abi.AddrKey(addr), &ocval)
-		if err != nil {
-			return err
-		}
-
-		if found && bytes.Equal(ocval.Raw, ncval.Raw) {
-			return nil // not changed
-		}
-
-		buf.Reset(ncval.Raw)
-		err = act.UnmarshalCBOR(buf)
-		buf.Reset(nil)
-
-		if err != nil {
-			return err
-		}
-
-		out[addr.String()] = act
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
+	state.Diff(oldTree, newTree)
 }
 
 func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
