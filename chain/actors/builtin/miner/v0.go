@@ -165,26 +165,50 @@ func (s *state0) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (
 		return nil, err
 	}
 
-	if filter != nil {
-		var v cbg.Deferred
-		if err := a.ForEach(&v, func(i int64) error {
+	ret := adt0.MakeEmptyArray(s.store)
+	var v cbg.Deferred
+	if err := a.ForEach(&v, func(i int64) error {
+		include := true
+		if filter != nil {
 			set, err := filter.IsSet(uint64(i))
 			if err != nil {
 				return xerrors.Errorf("filter check error: %w", err)
 			}
 			if set == filterOut {
-				err = a.Delete(uint64(i))
-				if err != nil {
-					return xerrors.Errorf("filtering error: %w", err)
-				}
+				include = false
 			}
-			return nil
-		}); err != nil {
-			return nil, err
 		}
+
+		if include {
+			var oci miner0.SectorOnChainInfo
+			if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
+				return err
+			}
+
+			noci := SectorOnChainInfo{
+				SectorNumber:          oci.SectorNumber,
+				SealProof:             oci.SealProof,
+				SealedCID:             oci.SealedCID,
+				DealIDs:               oci.DealIDs,
+				Activation:            oci.Activation,
+				Expiration:            oci.Expiration,
+				DealWeight:            oci.DealWeight,
+				VerifiedDealWeight:    oci.VerifiedDealWeight,
+				InitialPledge:         oci.InitialPledge,
+				ExpectedDayReward:     oci.ExpectedDayReward,
+				ExpectedStoragePledge: oci.ExpectedStoragePledge,
+			}
+
+			if err := ret.Set(uint64(i), &noci); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
-	return a, nil
+	return ret, nil
 }
 
 func (s *state0) LoadPreCommittedSectors() (adt.Map, error) {

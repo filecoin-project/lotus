@@ -169,7 +169,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	var sset []*miner.ChainSectorInfo
 	var v cbg.Deferred
 	if err := sectors.ForEach(&v, func(i int64) error {
-		var oci miner0.SectorOnChainInfo
+		var oci miner.SectorOnChainInfo
 		if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
 			return err
 		}
