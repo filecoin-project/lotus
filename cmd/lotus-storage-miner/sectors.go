@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"os"
 	"sort"
 	"strconv"
@@ -19,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 var sectorsCmd = &cli.Command{
@@ -139,8 +139,8 @@ var sectorsListCmd = &cli.Command{
 	Usage: "List sectors",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "hide-removed",
-			Usage: "to hide Removed sectors",
+			Name:  "show-removed",
+			Usage: "show removed sectors",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -199,11 +199,11 @@ var sectorsListCmd = &cli.Command{
 				continue
 			}
 
-			if !cctx.Bool("hide-removed") || st.State != api.SectorState(sealing.Removed) {
+			if cctx.Bool("show-removed") || st.State != api.SectorState(sealing.Removed) {
 				_, inSSet := commitedIDs[s]
 				_, inASet := activeIDs[s]
 
-				fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
+				_, _ = fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
 					s,
 					st.State,
 					yesno(inSSet),
