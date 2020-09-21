@@ -7,8 +7,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
-
-	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 //go:generate go run ./gen
@@ -31,10 +29,14 @@ type Actor struct{}
 type CallerValidationBranch int64
 
 const (
+	// CallerValidationBranchNone causes no caller validation to take place.
 	CallerValidationBranchNone CallerValidationBranch = iota
+	// CallerValidationBranchTwice causes Runtime.ValidateImmediateCallerAcceptAny to be called twice.
 	CallerValidationBranchTwice
-	CallerValidationBranchAddrNilSet
-	CallerValidationBranchTypeNilSet
+	// CallerValidationBranchIsAddress causes caller validation against CallerValidationArgs.Addrs.
+	CallerValidationBranchIsAddress
+	// CallerValidationBranchIsType causes caller validation against CallerValidationArgs.Types.
+	CallerValidationBranchIsType
 )
 
 // MutateStateBranch is an enum used to select the type of state mutation to attempt.
@@ -123,23 +125,29 @@ func (a Actor) Constructor(_ runtime.Runtime, _ *abi.EmptyValue) *abi.EmptyValue
 	panic("constructor should not be called; the Chaos actor is a singleton actor")
 }
 
+// CallerValidationArgs are the arguments to Actor.CallerValidation.
+type CallerValidationArgs struct {
+	Branch CallerValidationBranch
+	Addrs  []address.Address
+	Types  []cid.Cid
+}
+
 // CallerValidation violates VM call validation constraints.
 //
 //  CallerValidationBranchNone performs no validation.
 //  CallerValidationBranchTwice validates twice.
-//  CallerValidationBranchAddrNilSet validates against an empty caller
-//  address set.
-//  CallerValidationBranchTypeNilSet validates against an empty caller type set.
-func (a Actor) CallerValidation(rt runtime.Runtime, branch *typegen.CborInt) *abi.EmptyValue {
-	switch CallerValidationBranch(*branch) {
+//  CallerValidationBranchIsAddress validates caller against CallerValidationArgs.Addrs.
+//  CallerValidationBranchIsType validates caller against CallerValidationArgs.Types.
+func (a Actor) CallerValidation(rt runtime.Runtime, args *CallerValidationArgs) *abi.EmptyValue {
+	switch args.Branch {
 	case CallerValidationBranchNone:
 	case CallerValidationBranchTwice:
 		rt.ValidateImmediateCallerAcceptAny()
 		rt.ValidateImmediateCallerAcceptAny()
-	case CallerValidationBranchAddrNilSet:
-		rt.ValidateImmediateCallerIs()
-	case CallerValidationBranchTypeNilSet:
-		rt.ValidateImmediateCallerType()
+	case CallerValidationBranchIsAddress:
+		rt.ValidateImmediateCallerIs(args.Addrs...)
+	case CallerValidationBranchIsType:
+		rt.ValidateImmediateCallerType(args.Types...)
 	default:
 		panic("invalid branch passed to CallerValidation")
 	}

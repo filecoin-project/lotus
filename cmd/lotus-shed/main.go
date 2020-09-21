@@ -35,6 +35,7 @@ func main() {
 		mathCmd,
 		mpoolStatsCmd,
 		exportChainCmd,
+		consensusCmd,
 	}
 
 	app := &cli.App{
@@ -49,6 +50,13 @@ func main() {
 				Hidden:  true,
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
+			&cli.StringFlag{
+				Name:  "log-level",
+				Value: "info",
+			},
+		},
+		Before: func(cctx *cli.Context) error {
+			return logging.SetLogLevel("lotus-shed", cctx.String("log-level"))
 		},
 	}
 
