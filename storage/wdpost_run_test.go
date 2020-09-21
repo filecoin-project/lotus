@@ -5,18 +5,16 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/dline"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -24,7 +22,9 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type mockStorageMinerAPI struct {
@@ -39,7 +39,10 @@ func newMockStorageMinerAPI() *mockStorageMinerAPI {
 }
 
 func (m *mockStorageMinerAPI) StateMinerInfo(ctx context.Context, a address.Address, key types.TipSetKey) (miner.MinerInfo, error) {
-	panic("implement me")
+	return miner.MinerInfo{
+		Worker: tutils.NewIDAddr(nil, 101),
+		Owner:  tutils.NewIDAddr(nil, 101),
+	}, nil
 }
 
 func (m *mockStorageMinerAPI) StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error) {
@@ -167,7 +170,13 @@ func TestWDPostDoPost(t *testing.T) {
 		worker:       workerAct,
 	}
 
-	di := &dline.Info{}
+	di := &dline.Info{
+		WPoStPeriodDeadlines:   miner0.WPoStPeriodDeadlines,
+		WPoStProvingPeriod:     miner0.WPoStProvingPeriod,
+		WPoStChallengeWindow:   miner0.WPoStChallengeWindow,
+		WPoStChallengeLookback: miner0.WPoStChallengeLookback,
+		FaultDeclarationCutoff: miner0.FaultDeclarationCutoff,
+	}
 	ts := mockTipSet(t)
 	scheduler.doPost(ctx, di, ts)
 
@@ -232,7 +241,20 @@ func (m *mockStorageMinerAPI) StateSectorPartition(ctx context.Context, maddr ad
 }
 
 func (m *mockStorageMinerAPI) StateMinerProvingDeadline(ctx context.Context, address address.Address, key types.TipSetKey) (*dline.Info, error) {
-	panic("implement me")
+	return &dline.Info{
+		CurrentEpoch:           0,
+		PeriodStart:            0,
+		Index:                  0,
+		Open:                   0,
+		Close:                  0,
+		Challenge:              0,
+		FaultCutoff:            0,
+		WPoStPeriodDeadlines:   miner0.WPoStPeriodDeadlines,
+		WPoStProvingPeriod:     miner0.WPoStProvingPeriod,
+		WPoStChallengeWindow:   miner0.WPoStChallengeWindow,
+		WPoStChallengeLookback: miner0.WPoStChallengeLookback,
+		FaultDeclarationCutoff: miner0.FaultDeclarationCutoff,
+	}, nil
 }
 
 func (m *mockStorageMinerAPI) StateMinerPreCommitDepositForPower(ctx context.Context, address address.Address, info miner.SectorPreCommitInfo, key types.TipSetKey) (types.BigInt, error) {
@@ -270,11 +292,15 @@ func (m *mockStorageMinerAPI) StateMinerRecoveries(ctx context.Context, address 
 }
 
 func (m *mockStorageMinerAPI) StateAccountKey(ctx context.Context, address address.Address, key types.TipSetKey) (address.Address, error) {
-	panic("implement me")
+	return address, nil
 }
 
 func (m *mockStorageMinerAPI) GasEstimateMessageGas(ctx context.Context, message *types.Message, spec *api.MessageSendSpec, key types.TipSetKey) (*types.Message, error) {
-	panic("implement me")
+	msg := *message
+	msg.GasFeeCap = big.NewInt(1)
+	msg.GasPremium = big.NewInt(1)
+	msg.GasLimit = 2
+	return &msg, nil
 }
 
 func (m *mockStorageMinerAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
@@ -306,15 +332,15 @@ func (m *mockStorageMinerAPI) ChainGetTipSet(ctx context.Context, key types.TipS
 }
 
 func (m *mockStorageMinerAPI) WalletSign(ctx context.Context, address address.Address, bytes []byte) (*crypto.Signature, error) {
-	panic("implement me")
+	return nil, nil
 }
 
 func (m *mockStorageMinerAPI) WalletBalance(ctx context.Context, address address.Address) (types.BigInt, error) {
-	panic("implement me")
+	return big.NewInt(333), nil
 }
 
 func (m *mockStorageMinerAPI) WalletHas(ctx context.Context, address address.Address) (bool, error) {
-	panic("implement me")
+	return true, nil
 }
 
 var _ storageMinerApi = &mockStorageMinerAPI{}
