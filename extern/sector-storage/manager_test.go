@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
@@ -203,6 +204,7 @@ func TestRedoPC1(t *testing.T) {
 	require.Equal(t, 2, tw.pc1s)
 }
 
+// Manager restarts in the middle of a task, restarts it, it completes
 func TestRestartManager(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
@@ -262,6 +264,8 @@ func TestRestartManager(t *testing.T) {
 
 	m, lstor, _, _ = newTestMgr(ctx, t, ds)
 	tw.ret = m // simulate jsonrpc auto-reconnect
+	err = m.AddWorker(ctx, tw)
+	require.NoError(t, err)
 
 	tw.pc1lk.Unlock()
 
@@ -269,4 +273,69 @@ func TestRestartManager(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, tw.pc1s)
+}
+
+// Worker restarts in the middle of a task, task fails after restart
+func TestRestartWorker(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelDebug)
+
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+
+	ds := datastore.NewMapDatastore()
+
+	m, lstor, stor, idx := newTestMgr(ctx, t, ds)
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+	}
+
+	wds := datastore.NewMapDatastore()
+
+	arch := make(chan chan apres)
+	w := newLocalWorker(func() (ffiwrapper.Storage, error) {
+		return &testExec{apch: arch}, nil
+	}, WorkerConfig{
+		SealProof: 0,
+		TaskTypes: localTasks,
+	}, stor, lstor, idx, m, statestore.New(wds))
+
+	err := m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	sid := abi.SectorID{Miner: 1000, Number: 1}
+
+	apDone := make(chan struct{})
+
+	go func() {
+		defer close(apDone)
+
+		_, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+		require.Error(t, err)
+	}()
+
+	// kill the worker
+	<-arch
+	require.NoError(t, w.Close())
+
+	for {
+		if len(m.WorkerStats()) == 0 {
+			break
+		}
+
+		time.Sleep(time.Millisecond * 3)
+	}
+
+	// restart the worker
+	w = newLocalWorker(func() (ffiwrapper.Storage, error) {
+		return &testExec{apch: arch}, nil
+	}, WorkerConfig{
+		SealProof: 0,
+		TaskTypes: localTasks,
+	}, stor, lstor, idx, m, statestore.New(wds))
+
+	err = m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	<-apDone
 }

@@ -17,11 +17,50 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{162}); err != nil {
+	if _, err := w.Write([]byte{164}); err != nil {
 		return err
 	}
 
 	scratch := make([]byte, 9)
+
+	// t.ID (storiface.CallID) (struct)
+	if len("ID") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"ID\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("ID"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("ID")); err != nil {
+		return err
+	}
+
+	if err := t.ID.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.RetType (sectorstorage.ReturnType) (string)
+	if len("RetType") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RetType\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("RetType"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RetType")); err != nil {
+		return err
+	}
+
+	if len(t.RetType) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.RetType was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.RetType))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.RetType)); err != nil {
+		return err
+	}
 
 	// t.State (sectorstorage.CallState) (uint64)
 	if len("State") > cbg.MaxLength {
@@ -98,7 +137,28 @@ func (t *Call) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.State (sectorstorage.CallState) (uint64)
+		// t.ID (storiface.CallID) (struct)
+		case "ID":
+
+			{
+
+				if err := t.ID.UnmarshalCBOR(br); err != nil {
+					return xerrors.Errorf("unmarshaling t.ID: %w", err)
+				}
+
+			}
+			// t.RetType (sectorstorage.ReturnType) (string)
+		case "RetType":
+
+			{
+				sval, err := cbg.ReadStringBuf(br, scratch)
+				if err != nil {
+					return err
+				}
+
+				t.RetType = ReturnType(sval)
+			}
+			// t.State (sectorstorage.CallState) (uint64)
 		case "State":
 
 			{
