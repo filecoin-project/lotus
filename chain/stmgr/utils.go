@@ -9,11 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
 
 	saruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
@@ -28,11 +24,14 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
@@ -89,7 +88,8 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 }
 
 func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, bool, error) {
-	act, err := sm.LoadActorRaw(ctx, builtin.StoragePowerActorAddr, st)
+	// TODO: ActorUpgrade
+	act, err := sm.LoadActorRaw(ctx, builtin0.StoragePowerActorAddr, st)
 	if err != nil {
 		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
@@ -308,7 +308,8 @@ func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
-	act, err := sm.LoadActor(ctx, builtin.StoragePowerActorAddr, ts)
+	// TODO: ActorUpgrade
+	act, err := sm.LoadActor(ctx, builtin0.StoragePowerActorAddr, ts)
 	if err != nil {
 		return false, xerrors.Errorf("failed to load power actor: %w", err)
 	}
@@ -331,7 +332,8 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 }
 
 func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
-	act, err := sm.LoadActor(ctx, builtin.StorageMarketActorAddr, ts)
+	// TODO: ActorUpgrade
+	act, err := sm.LoadActor(ctx, builtin0.StorageMarketActorAddr, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load market actor: %w", err)
 	}
@@ -375,7 +377,8 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 }
 
 func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([]address.Address, error) {
-	act, err := sm.LoadActor(ctx, builtin.StoragePowerActorAddr, ts)
+	// TODO: ActorUpgrade
+	act, err := sm.LoadActor(ctx, builtin0.StoragePowerActorAddr, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load power actor: %w", err)
 	}
@@ -565,16 +568,16 @@ var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 func init() {
 	cidToMethods := map[cid.Cid][2]interface{}{
 		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
-		builtin.InitActorCodeID:             {builtin.MethodsInit, init0.Actor{}},
-		builtin.CronActorCodeID:             {builtin.MethodsCron, cron.Actor{}},
-		builtin.AccountActorCodeID:          {builtin.MethodsAccount, account.Actor{}},
-		builtin.StoragePowerActorCodeID:     {builtin.MethodsPower, power0.Actor{}},
-		builtin.StorageMinerActorCodeID:     {builtin.MethodsMiner, miner0.Actor{}},
-		builtin.StorageMarketActorCodeID:    {builtin.MethodsMarket, market0.Actor{}},
-		builtin.PaymentChannelActorCodeID:   {builtin.MethodsPaych, paych.Actor{}},
-		builtin.MultisigActorCodeID:         {builtin.MethodsMultisig, msig0.Actor{}},
-		builtin.RewardActorCodeID:           {builtin.MethodsReward, reward0.Actor{}},
-		builtin.VerifiedRegistryActorCodeID: {builtin.MethodsVerifiedRegistry, verifreg0.Actor{}},
+		builtin0.InitActorCodeID:             {builtin0.MethodsInit, init0.Actor{}},
+		builtin0.CronActorCodeID:             {builtin0.MethodsCron, cron.Actor{}},
+		builtin0.AccountActorCodeID:          {builtin0.MethodsAccount, account0.Actor{}},
+		builtin0.StoragePowerActorCodeID:     {builtin0.MethodsPower, power0.Actor{}},
+		builtin0.StorageMinerActorCodeID:     {builtin0.MethodsMiner, miner0.Actor{}},
+		builtin0.StorageMarketActorCodeID:    {builtin0.MethodsMarket, market0.Actor{}},
+		builtin0.PaymentChannelActorCodeID:   {builtin0.MethodsPaych, paych0.Actor{}},
+		builtin0.MultisigActorCodeID:         {builtin0.MethodsMultisig, msig0.Actor{}},
+		builtin0.RewardActorCodeID:           {builtin0.MethodsReward, reward0.Actor{}},
+		builtin0.VerifiedRegistryActorCodeID: {builtin0.MethodsVerifiedRegistry, verifreg0.Actor{}},
 	}
 
 	for c, m := range cidToMethods {
@@ -582,7 +585,7 @@ func init() {
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
 		// Explicitly add send, it's special.
-		methods[builtin.MethodSend] = MethodMeta{
+		methods[builtin0.MethodSend] = MethodMeta{
 			Name:   "Send",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
 			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
@@ -622,9 +625,9 @@ func init() {
 			}
 
 			switch abi.MethodNum(number) {
-			case builtin.MethodSend:
+			case builtin0.MethodSend:
 				panic("method 0 is reserved for Send")
-			case builtin.MethodConstructor:
+			case builtin0.MethodConstructor:
 				if fnName != "Constructor" {
 					panic("method 1 is reserved for Constructor")
 				}
@@ -654,7 +657,8 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 }
 
 func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
-	pact, err := sm.LoadActor(ctx, builtin.StoragePowerActorAddr, ts)
+	// TODO: ActorUpgrade
+	pact, err := sm.LoadActor(ctx, builtin0.StoragePowerActorAddr, ts)
 	if err != nil {
 		return false, xerrors.Errorf("loading power actor state: %w", err)
 	}
