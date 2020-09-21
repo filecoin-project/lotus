@@ -371,7 +371,7 @@ var storageFindCmd = &cli.Command{
 			}
 
 			fmt.Printf("In %s (%s)\n", info.id, types[:len(types)-2])
-			fmt.Printf("\tSealing: %t; Storage: %t\n", info.store.CanSeal, info.store.CanSeal)
+			fmt.Printf("\tSealing: %t; Storage: %t\n", info.store.CanSeal, info.store.CanStore)
 			if localPath, ok := local[info.id]; ok {
 				fmt.Printf("\tLocal (%s)\n", localPath)
 			} else {

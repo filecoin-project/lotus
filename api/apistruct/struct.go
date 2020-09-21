@@ -183,6 +183,7 @@ type FullNodeStruct struct {
 		StateReplay                        func(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)                                           `perm:"read"`
 		StateGetActor                      func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)                                       `perm:"read"`
 		StateReadState                     func(context.Context, address.Address, types.TipSetKey) (*api.ActorState, error)                                    `perm:"read"`
+		StateMsgGasCost                    func(context.Context, cid.Cid, types.TipSetKey) (*api.MsgGasCost, error)                                            `perm:"read"`
 		StateWaitMsg                       func(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)                                   `perm:"read"`
 		StateSearchMsg                     func(context.Context, cid.Cid) (*api.MsgLookup, error)                                                              `perm:"read"`
 		StateListMiners                    func(context.Context, types.TipSetKey) ([]address.Address, error)                                                   `perm:"read"`
@@ -825,6 +826,10 @@ func (c *FullNodeStruct) StateGetActor(ctx context.Context, actor address.Addres
 
 func (c *FullNodeStruct) StateReadState(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	return c.Internal.StateReadState(ctx, addr, tsk)
+}
+
+func (c *FullNodeStruct) StateMsgGasCost(ctx context.Context, msgc cid.Cid, tsk types.TipSetKey) (*api.MsgGasCost, error) {
+	return c.Internal.StateMsgGasCost(ctx, msgc, tsk)
 }
 
 func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid, confidence uint64) (*api.MsgLookup, error) {
