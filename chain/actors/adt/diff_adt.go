@@ -27,6 +27,7 @@ type AdtArrayDiff interface {
 // - All values that exist in preArr and in curArr are passed to AdtArrayDiff.Modify()
 //  - It is the responsibility of AdtArrayDiff.Modify() to determine if the values it was passed have been modified.
 func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
+	notNew := make(map[int64]struct{}, curArr.Length())
 	prevVal := new(typegen.Deferred)
 	if err := preArr.ForEach(prevVal, func(i int64) error {
 		curVal := new(typegen.Deferred)
@@ -47,14 +48,17 @@ func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
 				return err
 			}
 		}
-
-		return curArr.Delete(uint64(i))
+		notNew[i] = struct{}{}
+		return nil
 	}); err != nil {
 		return err
 	}
 
 	curVal := new(typegen.Deferred)
 	return curArr.ForEach(curVal, func(i int64) error {
+		if _, ok := notNew[i]; ok {
+			return nil
+		}
 		return out.Add(uint64(i), curVal)
 	})
 }
@@ -76,6 +80,7 @@ type AdtMapDiff interface {
 }
 
 func DiffAdtMap(preMap, curMap Map, out AdtMapDiff) error {
+	notNew := make(map[string]struct{})
 	prevVal := new(typegen.Deferred)
 	if err := preMap.ForEach(prevVal, func(key string) error {
 		curVal := new(typegen.Deferred)
@@ -101,14 +106,17 @@ func DiffAdtMap(preMap, curMap Map, out AdtMapDiff) error {
 				return err
 			}
 		}
-
-		return curMap.Delete(k)
+		notNew[key] = struct{}{}
+		return nil
 	}); err != nil {
 		return err
 	}
 
 	curVal := new(typegen.Deferred)
 	return curMap.ForEach(curVal, func(key string) error {
+		if _, ok := notNew[key]; ok {
+			return nil
+		}
 		return out.Add(key, curVal)
 	})
 }
