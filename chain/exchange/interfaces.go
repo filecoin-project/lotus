@@ -32,10 +32,9 @@ type Client interface {
 	// or less.
 	GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error)
 
-	// GetChainMessages fetches messages from the network, from the provided
-	// tipset *backwards*, returning the messages from as many tipsets as the
-	// count parameter, or less.
-	GetChainMessages(ctx context.Context, head *types.TipSet, length uint64) ([]*CompactedMessages, error)
+	// GetChainMessages fetches messages from the network, starting from the first provided tipset
+	// and returning messages from as many tipsets as requested or less.
+	GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*CompactedMessages, error)
 
 	// GetFullTipSet fetches a full tipset from a given peer. If successful,
 	// the fetched object contains block headers and all messages in full form.

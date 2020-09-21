@@ -1555,7 +1555,7 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 			failed := false
 			for offset := 0; !failed && offset < nreq; {
 				nextI := j + offset
-				nextHeader := headers[nextI]
+				lastI := j + nreq
 
 				var requestErr error
 				var requestResult []*exchange.CompactedMessages
@@ -1566,7 +1566,7 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 						log.Infof("fetching messages at %d", startOffset+nextI)
 					}
 
-					result, err := syncer.Exchange.GetChainMessages(ctx, nextHeader, uint64(nreq-offset))
+					result, err := syncer.Exchange.GetChainMessages(ctx, headers[nextI:lastI])
 					if err != nil {
 						requestErr = multierror.Append(requestErr, err)
 					} else {

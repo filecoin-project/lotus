@@ -217,6 +217,7 @@ func (c *client) processResponse(req *Request, res *Response) (*validatedRespons
 		}
 
 		if options.ValidateMessages {
+			// if the request includes target tipsets, validate against them
 			chain := make([]*BSTipSet, 0, resLength)
 			for i, resChain := range res.Chain {
 				next := &BSTipSet{
@@ -318,7 +319,10 @@ func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk types.TipS
 }
 
 // GetChainMessages implements Client.GetChainMessages(). Refer to the godocs there.
-func (c *client) GetChainMessages(ctx context.Context, head *types.TipSet, length uint64) ([]*CompactedMessages, error) {
+func (c *client) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*CompactedMessages, error) {
+	head := tipsets[0]
+	length := uint64(len(tipsets))
+
 	ctx, span := trace.StartSpan(ctx, "GetChainMessages")
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
@@ -331,7 +335,8 @@ func (c *client) GetChainMessages(ctx context.Context, head *types.TipSet, lengt
 	req := &Request{
 		Head:    head.Cids(),
 		Length:  length,
-		Options: Messages,
+		Options: Messages | Validate,
+		TipSets: tipsets,
 	}
 
 	validRes, err := c.doRequest(ctx, req, nil)
