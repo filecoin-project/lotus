@@ -176,16 +176,16 @@ var sectorsListCmd = &cli.Command{
 		}
 		activeIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 		for _, info := range activeSet {
-			activeIDs[info.ID] = struct{}{}
+			activeIDs[info.SectorNumber] = struct{}{}
 		}
 
-		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, true, types.EmptyTSK)
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 		commitedIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 		for _, info := range sset {
-			commitedIDs[info.ID] = struct{}{}
+			commitedIDs[info.SectorNumber] = struct{}{}
 		}
 
 		sort.Slice(list, func(i, j int) bool {

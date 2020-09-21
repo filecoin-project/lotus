@@ -594,7 +594,7 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition) ([][]a
 }
 
 func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, allSectors bitfield.BitField, ts *types.TipSet) ([]proof.SectorInfo, error) {
-	sset, err := s.api.StateMinerSectors(ctx, s.actor, &goodSectors, false, ts.Key())
+	sset, err := s.api.StateMinerSectors(ctx, s.actor, &goodSectors, ts.Key())
 	if err != nil {
 		return nil, err
 	}
@@ -604,17 +604,17 @@ func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, 
 	}
 
 	substitute := proof.SectorInfo{
-		SectorNumber: sset[0].ID,
-		SealedCID:    sset[0].Info.SealedCID,
-		SealProof:    sset[0].Info.SealProof,
+		SectorNumber: sset[0].SectorNumber,
+		SealedCID:    sset[0].SealedCID,
+		SealProof:    sset[0].SealProof,
 	}
 
 	sectorByID := make(map[uint64]proof.SectorInfo, len(sset))
 	for _, sector := range sset {
-		sectorByID[uint64(sector.ID)] = proof.SectorInfo{
-			SectorNumber: sector.ID,
-			SealedCID:    sector.Info.SealedCID,
-			SealProof:    sector.Info.SealProof,
+		sectorByID[uint64(sector.SectorNumber)] = proof.SectorInfo{
+			SectorNumber: sector.SectorNumber,
+			SealedCID:    sector.SealedCID,
+			SealProof:    sector.SealProof,
 		}
 	}
 

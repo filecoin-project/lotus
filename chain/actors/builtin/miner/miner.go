@@ -47,7 +47,7 @@ type State interface {
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
 	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
-	LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.ROnlyArray, error)
+	LoadSectors(sectorNos *bitfield.BitField) ([]*SectorOnChainInfo, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
 
 	LoadDeadline(idx uint64) (Deadline, error)
@@ -127,11 +127,6 @@ type MinerInfo struct {
 	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
-}
-
-type ChainSectorInfo struct {
-	Info SectorOnChainInfo
-	ID   abi.SectorNumber
 }
 
 type SectorExpiration struct {

@@ -3714,8 +3714,6 @@ Response:
 
 ### StateMinerSectors
 StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-If the filterOut boolean is set to true, any sectors in the filter are excluded.
-If false, only those sectors in the filter are included.
 
 
 Perms: read
@@ -3727,7 +3725,6 @@ Inputs:
   [
     0
   ],
-  true,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

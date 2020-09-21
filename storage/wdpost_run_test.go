@@ -65,14 +65,14 @@ func (m *mockStorageMinerAPI) StateMinerPartitions(ctx context.Context, a addres
 	return m.partitions, nil
 }
 
-func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address address.Address, field *bitfield.BitField, b bool, key types.TipSetKey) ([]*miner.ChainSectorInfo, error) {
-	var sis []*miner.ChainSectorInfo
-	_ = field.ForEach(func(i uint64) error {
-		sis = append(sis, &miner.ChainSectorInfo{
-			Info: miner.SectorOnChainInfo{
-				SectorNumber: abi.SectorNumber(i),
-			},
-			ID: abi.SectorNumber(i),
+func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address address.Address, snos *bitfield.BitField, key types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+	var sis []*miner.SectorOnChainInfo
+	if snos == nil {
+		panic("unsupported")
+	}
+	_ = snos.ForEach(func(i uint64) error {
+		sis = append(sis, &miner.SectorOnChainInfo{
+			SectorNumber: abi.SectorNumber(i),
 		})
 		return nil
 	})

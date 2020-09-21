@@ -6,12 +6,10 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -163,59 +161,37 @@ func (s *state0) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 	return &ret, nil
 }
 
-func (s *state0) LoadSectorsFromSet(filter *bitfield.BitField, filterOut bool) (adt.ROnlyArray, error) {
-	a, err := adt0.AsArray(s.store, s.State.Sectors)
+func (s *state0) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, error) {
+	sectors, err := miner0.LoadSectors(s.store, s.State.Sectors)
 	if err != nil {
 		return nil, err
 	}
 
-	incl := func(i uint64) (bool, error) {
-		include := true
-		if filter != nil {
-			set, err := filter.IsSet(i)
-			if err != nil {
-				return false, xerrors.Errorf("filter check error: %w", err)
-			}
-			if set == filterOut {
-				include = false
-			}
+	// If no sector numbers are specified, load all.
+	if snos == nil {
+		infos := make([]*SectorOnChainInfo, 0, sectors.Length())
+		var info0 miner0.SectorOnChainInfo
+		if err := sectors.ForEach(&info0, func(i int64) error {
+			info := fromV0SectorOnChainInfo(info0)
+			infos[i] = &info
+			return nil
+		}); err != nil {
+			return nil, err
 		}
-		return include, nil
+		return infos, nil
 	}
 
-	return &adt.ProxyArray{
-		GetFunc: func(idx uint64, v cbor.Unmarshaler) (bool, error) {
-			i, err := incl(idx)
-			if err != nil {
-				return false, err
-			}
-			if !i {
-				return false, nil
-			}
-
-			// TODO: ActorUpgrade potentially convert
-
-			return a.Get(idx, v)
-		},
-		ForEachFunc: func(v cbor.Unmarshaler, fn func(int64) error) error {
-			// TODO: ActorUpgrade potentially convert the output
-			return a.ForEach(v, func(i int64) error {
-				include, err := incl(uint64(i))
-				if err != nil {
-					return err
-				}
-				if !include {
-					return nil
-				}
-
-				return fn(i)
-			})
-		},
-	}, nil
-}
-
-func (s *state0) LoadPreCommittedSectors() (adt.Map, error) {
-	return adt0.AsMap(s.store, s.State.PreCommittedSectors)
+	// Otherwise, load selected.
+	infos0, err := sectors.Load(*snos)
+	if err != nil {
+		return nil, err
+	}
+	infos := make([]*SectorOnChainInfo, len(infos0))
+	for i, info0 := range infos0 {
+		info := fromV0SectorOnChainInfo(*info0)
+		infos[i] = &info
+	}
+	return infos, nil
 }
 
 func (s *state0) IsAllocated(num abi.SectorNumber) (bool, error) {

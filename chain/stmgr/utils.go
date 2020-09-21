@@ -150,7 +150,7 @@ func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Addres
 	return mas.GetSector(sid)
 }
 
-func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, filter *bitfield.BitField, filterOut bool) ([]*miner.ChainSectorInfo, error) {
+func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, snos *bitfield.BitField) ([]*miner.SectorOnChainInfo, error) {
 	act, err := sm.LoadActor(ctx, maddr, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
@@ -161,29 +161,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	sectors, err := mas.LoadSectorsFromSet(filter, filterOut)
-	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load sectors: %w", err)
-	}
-
-	var sset []*miner.ChainSectorInfo
-	var v cbg.Deferred
-	if err := sectors.ForEach(&v, func(i int64) error {
-		var oci miner.SectorOnChainInfo
-		if err := oci.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
-			return err
-		}
-		sset = append(sset, &miner.ChainSectorInfo{
-			Info: oci,
-			ID:   abi.SectorNumber(i),
-		})
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return sset, nil
+	return mas.LoadSectors(snos)
 }
 
 func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
@@ -249,35 +227,30 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
 	}
 
-	// we don't need to filter here (and it's **very** slow)
-	sectors, err := mas.LoadSectorsFromSet(nil, false)
+	iter, err := provingSectors.BitIterator()
+	if err != nil {
+		return nil, xerrors.Errorf("iterating over proving sectors: %w", err)
+	}
+
+	// Select winning sectors by _index_ in the all-sectors bitfield.
+	selectedSectors := bitfield.New()
+	prev := uint64(0)
+	for _, n := range ids {
+		sno, err := iter.Nth(n - prev)
+		if err != nil {
+			return nil, xerrors.Errorf("iterating over proving sectors: %w", err)
+		}
+		selectedSectors.Set(sno)
+		prev = n
+	}
+
+	sectors, err := mas.LoadSectors(&selectedSectors)
 	if err != nil {
 		return nil, xerrors.Errorf("loading proving sectors: %w", err)
 	}
 
-	out := make([]proof.SectorInfo, len(ids))
-	for i, n := range ids {
-		sb, err := provingSectors.Slice(n, 1)
-		if err != nil {
-			return nil, err
-		}
-
-		sid, err := sb.First()
-		if err != nil {
-			return nil, err
-		}
-
-		var sinfo miner.SectorOnChainInfo
-		found, err := sectors.Get(sid, &sinfo)
-
-		if err != nil {
-			return nil, xerrors.Errorf("loading sector info: %w", err)
-		}
-
-		if !found {
-			return nil, xerrors.Errorf("didn't find sector info for sector %d", n)
-		}
-
+	out := make([]proof.SectorInfo, len(sectors))
+	for i, sinfo := range sectors {
 		out[i] = proof.SectorInfo{
 			SealProof:    spt,
 			SectorNumber: sinfo.SectorNumber,
