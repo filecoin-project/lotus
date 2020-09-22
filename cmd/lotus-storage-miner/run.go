@@ -33,7 +33,7 @@ var runCmd = &cli.Command{
 	Usage: "Start a lotus miner process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "api",
+			Name:  "port",
 			Usage: "2345",
 		},
 		&cli.BoolFlag{
@@ -112,9 +112,9 @@ var runCmd = &cli.Command{
 			node.Online(),
 			node.Repo(r),
 
-			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("port") },
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
-					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
+					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("port"))
 				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
