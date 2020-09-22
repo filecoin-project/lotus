@@ -363,7 +363,9 @@ func (s *Syncer) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool, tim
 	log.Debugw("Storing Headers", "count", len(bhs))
 
 	start := time.Now()
-	defer log.Debugw("Stored Headers", "duration", time.Since(start).String())
+	defer func() {
+		log.Debugw("Stored Headers", "duration", time.Since(start).String())
+	}()
 
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -371,15 +373,12 @@ func (s *Syncer) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool, tim
 	}
 
 	if _, err := tx.Exec(`
-
 create temp table bc (like block_cids excluding constraints) on commit drop;
 create temp table de (like drand_entries excluding constraints) on commit drop;
 create temp table bde (like block_drand_entries excluding constraints) on commit drop;
 create temp table tbp (like block_parents excluding constraints) on commit drop;
 create temp table bs (like blocks_synced excluding constraints) on commit drop;
 create temp table b (like blocks excluding constraints) on commit drop;
-
-
 `); err != nil {
 		return xerrors.Errorf("prep temp: %w", err)
 	}

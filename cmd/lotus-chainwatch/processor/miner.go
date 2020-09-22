@@ -146,7 +146,9 @@ type minerActorInfo struct {
 
 func (p *Processor) HandleMinerChanges(ctx context.Context, minerTips ActorTips) error {
 	start := time.Now()
-	defer log.Debugw("Handle Miner Changes", "duration", time.Since(start).String())
+	defer func() {
+		log.Debugw("Handle Miner Changes", "duration", time.Since(start).String())
+	}()
 
 	minerChanges, err := p.processMiners(ctx, minerTips)
 	if err != nil {

@@ -65,7 +65,9 @@ create table if not exists chain_reward
 
 func (p *Processor) HandleRewardChanges(ctx context.Context, rewardTips ActorTips, nullRounds []types.TipSetKey) error {
 	start := time.Now()
-	defer log.Debugw("Handle Reward Changes", "duration", time.Since(start).String())
+	defer func() {
+		log.Debugw("Handle Reward Changes", "duration", time.Since(start).String())
+	}()
 
 	rewardChanges, err := p.processRewardActors(ctx, rewardTips, nullRounds)
 	if err != nil {

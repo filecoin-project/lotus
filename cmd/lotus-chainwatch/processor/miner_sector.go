@@ -59,7 +59,9 @@ type PartitionStatus struct {
 
 func (p *Processor) storePreCommitDealInfo(ctx context.Context, dealEvents <-chan *SectorDealEvent) error {
 	start := time.Now()
-	defer log.Debugw("Stored PreCommit Deal Info", "duration", time.Since(start).String())
+	defer func() {
+		log.Debugw("Stored PreCommit Deal Info", "duration", time.Since(start).String())
+	}()
 
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -113,7 +115,9 @@ func (p *Processor) storePreCommitDealInfo(ctx context.Context, dealEvents <-cha
 
 func (p *Processor) storeMinerSectorEvents(ctx context.Context, sectorEvents, preCommitEvents, partitionEvents <-chan *MinerSectorsEvent) error {
 	start := time.Now()
-	defer log.Debugw("Stored Miner Sector Events", "duration", time.Since(start).String())
+	defer func() {
+		log.Debugw("Stored Miner Sector Events", "duration", time.Since(start).String())
+	}()
 
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -213,7 +217,9 @@ func (p *Processor) storeMinerSectorEvents(ctx context.Context, sectorEvents, pr
 
 func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerActorInfo, sectorEvents chan<- *MinerSectorsEvent, sectorDeals chan<- *SectorDealEvent) error {
 	start := time.Now()
-	defer log.Debugw("Stored Miner PreCommit Info", "duration", time.Since(start).String())
+	defer func() {
+		log.Debugw("Stored Miner PreCommit Info", "duration", time.Since(start).String())
+	}()
 
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -350,7 +356,9 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 
 func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActorInfo, events chan<- *MinerSectorsEvent) error {
 	start := time.Now()
-	defer log.Debugw("Stored Miner Sector Info", "duration", time.Since(start).String())
+	defer func() {
+		log.Debugw("Stored Miner Sector Info", "duration", time.Since(start).String())
+	}()
 
 	tx, err := p.db.Begin()
 	if err != nil {
@@ -454,7 +462,9 @@ func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActo
 
 func (p *Processor) getMinerPartitionsDifferences(ctx context.Context, miners []minerActorInfo, events chan<- *MinerSectorsEvent) error {
 	start := time.Now()
-	defer log.Debugw("Got Miner Partitions Differences", "duration", time.Since(start).String())
+	defer func() {
+		log.Debugw("Got Miner Partitions Differences", "duration", time.Since(start).String())
+	}()
 
 	grp, ctx := errgroup.WithContext(ctx)
 	for _, m := range miners {
