@@ -92,6 +92,11 @@ func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.C
 		return nil, err
 	}
 
+	if len(bcs) == 0 {
+		log.Debugw("Gathered Blocks to Process", "count", 0)
+		return nil, nil
+	}
+
 	out, minBlock, maxBlock := p.fetchBlocks(ctx, bcs)
 	if minBlock <= maxBlock {
 		log.Infow("Gathered Blocks to Process", "start", minBlock, "end", maxBlock)
