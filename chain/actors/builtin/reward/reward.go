@@ -2,6 +2,7 @@ package reward
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -45,3 +46,5 @@ type State interface {
 	InitialPledgeForPower(abi.StoragePower, abi.TokenAmount, *builtin.FilterEstimate, abi.TokenAmount) (abi.TokenAmount, error)
 	PreCommitDepositForPower(builtin.FilterEstimate, abi.StoragePower) (abi.TokenAmount, error)
 }
+
+type AwardBlockRewardParams = reward0.AwardBlockRewardParams

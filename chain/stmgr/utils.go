@@ -88,8 +88,7 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 }
 
 func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, bool, error) {
-	// TODO: ActorUpgrade
-	act, err := sm.LoadActorRaw(ctx, builtin0.StoragePowerActorAddr, st)
+	act, err := sm.LoadActorRaw(ctx, power.Address, st)
 	if err != nil {
 		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
@@ -281,8 +280,7 @@ func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
-	// TODO: ActorUpgrade
-	act, err := sm.LoadActor(ctx, builtin0.StoragePowerActorAddr, ts)
+	act, err := sm.LoadActor(ctx, power.Address, ts)
 	if err != nil {
 		return false, xerrors.Errorf("failed to load power actor: %w", err)
 	}
@@ -305,8 +303,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 }
 
 func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
-	// TODO: ActorUpgrade
-	act, err := sm.LoadActor(ctx, builtin0.StorageMarketActorAddr, ts)
+	act, err := sm.LoadActor(ctx, market.Address, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load market actor: %w", err)
 	}
@@ -350,8 +347,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 }
 
 func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([]address.Address, error) {
-	// TODO: ActorUpgrade
-	act, err := sm.LoadActor(ctx, builtin0.StoragePowerActorAddr, ts)
+	act, err := sm.LoadActor(ctx, power.Address, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load power actor: %w", err)
 	}
@@ -630,8 +626,7 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 }
 
 func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
-	// TODO: ActorUpgrade
-	pact, err := sm.LoadActor(ctx, builtin0.StoragePowerActorAddr, ts)
+	pact, err := sm.LoadActor(ctx, power.Address, ts)
 	if err != nil {
 		return false, xerrors.Errorf("loading power actor state: %w", err)
 	}

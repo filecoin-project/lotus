@@ -22,8 +22,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -169,20 +168,20 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 
 	runCron := func() error {
 		// TODO: this nonce-getting is a tiny bit ugly
-		ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
+		ca, err := vmi.StateTree().GetActor(builtin0.SystemActorAddr)
 		if err != nil {
 			return err
 		}
 
 		cronMsg := &types.Message{
-			To:         builtin.CronActorAddr,
-			From:       builtin.SystemActorAddr,
+			To:         builtin0.CronActorAddr,
+			From:       builtin0.SystemActorAddr,
 			Nonce:      ca.Nonce,
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
 			GasLimit:   build.BlockGasLimit * 10000, // Make super sure this is never too little
-			Method:     builtin.MethodsCron.EpochTick,
+			Method:     builtin0.MethodsCron.EpochTick,
 			Params:     nil,
 		}
 		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
@@ -247,42 +246,34 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			processedMsgs[m.Cid()] = true
 		}
 
-		var params []byte
-
-		nv := sm.GetNtwkVersion(ctx, epoch)
-		if nv < build.ActorUpgradeNetworkVersion {
-			params, err = actors.SerializeParams(&reward0.AwardBlockRewardParams{
-				Miner:     b.Miner,
-				Penalty:   penalty,
-				GasReward: gasReward,
-				WinCount:  b.WinCount,
-			})
-			if err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
-			}
-		} else {
-			// TODO: ActorUpgrade
-			params = nil
+		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
+			Miner:     b.Miner,
+			Penalty:   penalty,
+			GasReward: gasReward,
+			WinCount:  b.WinCount,
+		})
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
 		}
 
-		sysAct, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
-		if err != nil {
+		sysAct, actErr := vmi.StateTree().GetActor(builtin0.SystemActorAddr)
+		if actErr != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
 		}
 
 		rwMsg := &types.Message{
-			From:       builtin.SystemActorAddr,
-			To:         builtin.RewardActorAddr,
+			From:       builtin0.SystemActorAddr,
+			To:         reward.Address,
 			Nonce:      sysAct.Nonce,
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
 			GasLimit:   1 << 30,
-			Method:     builtin.MethodsReward.AwardBlockReward,
+			Method:     builtin0.MethodsReward.AwardBlockReward,
 			Params:     params,
 		}
-		ret, err := vmi.ApplyImplicitMessage(ctx, rwMsg)
-		if err != nil {
+		ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
+		if actErr != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, err)
 		}
 		if cb != nil {
@@ -725,7 +716,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 
-	act, err := st.GetActor(builtin.StorageMarketActorAddr)
+	act, err := st.GetActor(market.Address)
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
@@ -853,7 +844,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 	var act types.Actor
 	err = r.ForEach(&act, func(k string) error {
-		if act.Code == builtin.MultisigActorCodeID {
+		if act.Code == builtin0.MultisigActorCodeID {
 			var s multisig.State
 			err := sm.cs.Store(ctx).Get(ctx, act.Head, &s)
 			if err != nil {
@@ -871,7 +862,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				totalsByEpoch[s.UnlockDuration()] = s.InitialBalance()
 			}
 
-		} else if act.Code == builtin.AccountActorCodeID {
+		} else if act.Code == builtin0.AccountActorCodeID {
 			// should exclude burnt funds actor and "remainder account actor"
 			// should only ever be "faucet" accounts in testnets
 			kaddr, err := address.NewFromBytes([]byte(k))
@@ -879,7 +870,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				return xerrors.Errorf("decoding address: %w", err)
 			}
 
-			if kaddr != builtin.BurntFundsActorAddr {
+			if kaddr != builtin0.BurntFundsActorAddr {
 				kid, err := sTree.LookupID(kaddr)
 				if err != nil {
 					return xerrors.Errorf("resolving address: %w", err)
@@ -954,24 +945,24 @@ func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
+	sixMonths := abi.ChainEpoch(183 * builtin0.EpochsInDay)
 	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
 	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
 
 	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
+	oneYear := abi.ChainEpoch(365 * builtin0.EpochsInDay)
 	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
 
 	// 2 years
-	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
+	twoYears := abi.ChainEpoch(2 * 365 * builtin0.EpochsInDay)
 	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
 
 	// 3 years
-	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
+	threeYears := abi.ChainEpoch(3 * 365 * builtin0.EpochsInDay)
 	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
 
 	// 6 years
-	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
+	sixYears := abi.ChainEpoch(6 * 365 * builtin0.EpochsInDay)
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
@@ -1020,7 +1011,7 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch,
 }
 
 func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	ractor, err := st.GetActor(builtin.RewardActorAddr)
+	ractor, err := st.GetActor(reward.Address)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %w", err)
 	}
@@ -1034,7 +1025,7 @@ func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 }
 
 func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	act, err := st.GetActor(builtin.StorageMarketActorAddr)
+	act, err := st.GetActor(market.Address)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
 	}
@@ -1048,7 +1039,7 @@ func getFilMarketLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmou
 }
 
 func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	pactor, err := st.GetActor(builtin.StoragePowerActorAddr)
+	pactor, err := st.GetActor(power.Address)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
 	}
@@ -1077,7 +1068,7 @@ func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (
 }
 
 func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	burnt, err := st.GetActor(builtin.BurntFundsActorAddr)
+	burnt, err := st.GetActor(builtin0.BurntFundsActorAddr)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %w", err)
 	}

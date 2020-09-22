@@ -3,6 +3,9 @@ package builtin
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -29,4 +32,9 @@ type FilterEstimate = smoothing0.FilterEstimate
 
 func FromV0FilterEstimate(v0 smoothing0.FilterEstimate) FilterEstimate {
 	return (FilterEstimate)(v0)
+}
+
+// Doesn't change between actors v0 and v1
+func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
+	return miner0.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }

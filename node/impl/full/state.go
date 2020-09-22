@@ -5,11 +5,10 @@ import (
 	"context"
 	"strconv"
 
-	builtin2 "github.com/filecoin-project/lotus/chain/actors/builtin"
+	lotusbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 
@@ -871,7 +870,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 
 	var sectorWeight abi.StoragePower
 	if act, err := state.GetActor(market.Address); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading miner actor %s: %w", maddr, err)
+		return types.EmptyInt, xerrors.Errorf("loading market actor %s: %w", maddr, err)
 	} else if s, err := market.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
 	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
@@ -879,14 +878,12 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - ts.Height()
-
-		// TODO: ActorUpgrade
-		sectorWeight = miner0.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = lotusbuiltin.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
-	var powerSmoothed builtin2.FilterEstimate
+	var powerSmoothed lotusbuiltin.FilterEstimate
 	if act, err := state.GetActor(power.Address); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
+		return types.EmptyInt, xerrors.Errorf("loading power actor: %w", err)
 	} else if s, err := power.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading power actor state: %w", err)
 	} else if p, err := s.TotalPowerSmoothed(); err != nil {
@@ -942,13 +939,11 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - ts.Height()
-
-		// TODO: ActorUpgrade
-		sectorWeight = miner0.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = lotusbuiltin.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
 	var (
-		powerSmoothed    builtin2.FilterEstimate
+		powerSmoothed    lotusbuiltin.FilterEstimate
 		pledgeCollateral abi.TokenAmount
 	)
 	if act, err := state.GetActor(power.Address); err != nil {
