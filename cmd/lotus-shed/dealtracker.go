@@ -79,7 +79,7 @@ func (dss *dealStatsServer) handleStorageDealCount(w http.ResponseWriter, r *htt
 }
 
 type dealAverageResp struct {
-	AverageSize int64 `json:"averageSize"`
+	AverageSize int64 `json:"average_size"`
 	Epoch       int64 `json:"epoch"`
 }
 
@@ -118,7 +118,42 @@ func (dss *dealStatsServer) handleStorageDealAverageSize(w http.ResponseWriter, 
 	}
 }
 
+type dealTotalResp struct {
+	TotalBytes int64 `json:"total_size"`
+	Epoch      int64 `json:"epoch"`
+}
+
 func (dss *dealStatsServer) handleStorageDealTotalReal(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	head, err := dss.api.ChainHead(ctx)
+	if err != nil {
+		log.Warnf("failed to get chain head: %s", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	deals, err := dss.api.StateMarketDeals(ctx, head.Key())
+	if err != nil {
+		log.Warnf("failed to get market deals: %s", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	var totalBytes int64
+	for _, d := range deals {
+		if !filteredClients[d.Proposal.Client] {
+			totalBytes += int64(d.Proposal.PieceSize.Unpadded())
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(&dealTotalResp{
+		TotalBytes: totalBytes,
+		Epoch:      int64(head.Height()),
+	}); err != nil {
+		log.Warnf("failed to write back deal average response: %s", err)
+		return
+	}
 
 }
 
