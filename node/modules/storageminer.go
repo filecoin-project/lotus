@@ -337,14 +337,17 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter) (*miner.Miner, error) {
+func NewMiner(ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
 	m := miner.NewMiner(api, epp, minerAddr, sf)
+	return m, nil
+}
 
+func BlockProducer(lc fx.Lifecycle, m *miner.Miner) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if err := m.Start(ctx); err != nil {
@@ -356,8 +359,6 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 			return m.Stop(ctx)
 		},
 	})
-
-	return m, nil
 }
 
 func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.MetadataDS, minerAddress dtypes.MinerAddress, spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {

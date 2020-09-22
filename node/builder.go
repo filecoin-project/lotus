@@ -128,6 +128,7 @@ const (
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
+	BlockProducerKey
 
 	// daemon
 	ExtractApiKey
@@ -346,7 +347,8 @@ func Online() Option {
 			Override(GetParamsKey, modules.GetParams),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
-			Override(new(*miner.Miner), modules.SetupBlockProducer),
+			Override(new(*miner.Miner), modules.NewMiner),
+			Override(BlockProducerKey, modules.BlockProducer),
 
 			Override(new(dtypes.ConsiderOnlineStorageDealsConfigFunc), modules.NewConsiderOnlineStorageDealsConfigFunc),
 			Override(new(dtypes.SetConsiderOnlineStorageDealsConfigFunc), modules.NewSetConsideringOnlineStorageDealsFunc),
