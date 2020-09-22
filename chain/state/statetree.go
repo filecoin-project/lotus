@@ -385,6 +385,7 @@ func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) erro
 func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error {
 	var act types.Actor
 	return st.root.ForEach(&act, func(k string) error {
+		act := act // copy
 		addr, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return xerrors.Errorf("invalid address (%x) found in state tree key: %w", []byte(k), err)
