@@ -177,6 +177,8 @@ func (dss *dealStatsServer) handleStorageClientStats(w http.ResponseWriter, r *h
 	for _, cso := range stats {
 		cso.NumCids = len(cso.cids)
 		cso.NumMiners = len(cso.providers)
+
+		out = append(out, cso)
 	}
 
 	if err := json.NewEncoder(w).Encode(out); err != nil {
