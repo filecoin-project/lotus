@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -197,8 +196,6 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.Version{APIVersion: build.MinerAPIVersion})
 		}
 		log.Infof("Remote version %s", v)
-
-		watchMinerConn(ctx, cctx, nodeApi)
 
 		// Check params
 
@@ -422,66 +419,41 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		log.Info("Waiting for tasks")
-
 		go func() {
-			if err := nodeApi.WorkerConnect(ctx, "ws://"+address+"/rpc/v0"); err != nil {
-				log.Errorf("Registering worker failed: %+v", err)
-				cancel()
-				return
+			for {
+				log.Info("Making sure no local tasks are running")
+
+				// TODO: we could get rid of this, but that requires tracking resources for restarted tasks correctly
+				workerApi.LocalWorker.WaitQuiet()
+
+				if err := nodeApi.WorkerConnect(ctx, "ws://"+address+"/rpc/v0"); err != nil {
+					log.Errorf("Registering worker failed: %+v", err)
+					cancel()
+					return
+				}
+
+				log.Info("Worker registered successfully, waiting for tasks")
+
+				closing, err := nodeApi.Closing(ctx)
+				if err != nil {
+					log.Errorf("failed to get remote closing channel: %+v", err)
+				}
+
+				select {
+				case <-closing:
+				case <-ctx.Done():
+				}
+
+				if ctx.Err() != nil {
+					return // graceful shutdown
+				}
+
+				log.Errorf("LOTUS-MINER CONNECTION LOST")
 			}
 		}()
 
 		return srv.Serve(nl)
 	},
-}
-
-func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageMiner) {
-	go func() {
-		closing, err := nodeApi.Closing(ctx)
-		if err != nil {
-			log.Errorf("failed to get remote closing channel: %+v", err)
-		}
-
-		select {
-		case <-closing:
-		case <-ctx.Done():
-		}
-
-		if ctx.Err() != nil {
-			return // graceful shutdown
-		}
-
-		log.Warnf("Connection with miner node lost, restarting")
-
-		exe, err := os.Executable()
-		if err != nil {
-			log.Errorf("getting executable for auto-restart: %+v", err)
-		}
-
-		_ = log.Sync()
-
-		// TODO: there are probably cleaner/more graceful ways to restart,
-		//  but this is good enough for now (FSM can recover from the mess this creates)
-		//nolint:gosec
-		if err := syscall.Exec(exe, []string{exe,
-			fmt.Sprintf("--worker-repo=%s", cctx.String("worker-repo")),
-			fmt.Sprintf("--miner-repo=%s", cctx.String("miner-repo")),
-			fmt.Sprintf("--enable-gpu-proving=%t", cctx.Bool("enable-gpu-proving")),
-			"run",
-			fmt.Sprintf("--listen=%s", cctx.String("listen")),
-			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
-			fmt.Sprintf("--addpiece=%t", cctx.Bool("addpiece")),
-			fmt.Sprintf("--precommit1=%t", cctx.Bool("precommit1")),
-			fmt.Sprintf("--unseal=%t", cctx.Bool("unseal")),
-			fmt.Sprintf("--precommit2=%t", cctx.Bool("precommit2")),
-			fmt.Sprintf("--commit=%t", cctx.Bool("commit")),
-			fmt.Sprintf("--parallel-fetch-limit=%d", cctx.Int("parallel-fetch-limit")),
-			fmt.Sprintf("--timeout=%s", cctx.String("timeout")),
-		}, os.Environ()); err != nil {
-			fmt.Println(err)
-		}
-	}()
 }
 
 func extractRoutableIP(timeout time.Duration) (string, error) {

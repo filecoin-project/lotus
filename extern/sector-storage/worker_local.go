@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"sync"
 
 	"github.com/elastic/go-sysinfo"
 	"github.com/google/uuid"
@@ -42,6 +43,7 @@ type LocalWorker struct {
 
 	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
+	running     sync.WaitGroup
 
 	closing chan struct{}
 }
@@ -202,7 +204,11 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector abi.SectorID, rt Ret
 		log.Errorf("tracking call (start): %+v", err)
 	}
 
+	l.running.Add(1)
+
 	go func() {
+		defer l.running.Done()
+
 		res, err := work(ci)
 
 		{
@@ -453,6 +459,11 @@ func (l *LocalWorker) Closing(ctx context.Context) (<-chan struct{}, error) {
 func (l *LocalWorker) Close() error {
 	close(l.closing)
 	return nil
+}
+
+// WaitQuiet blocks as long as there are tasks running
+func (l *LocalWorker) WaitQuiet() {
+	l.running.Wait()
 }
 
 var _ Worker = &LocalWorker{}
