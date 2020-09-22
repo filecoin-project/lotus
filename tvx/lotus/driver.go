@@ -4,13 +4,13 @@ import (
 	"context"
 	"log"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/conformance/chaos"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/puppet"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -56,9 +56,9 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 	if err != nil {
 		return nil, cid.Undef, err
 	}
-	// need to modify the VM invoker to add the puppet actor
+	// need to modify the VM invoker to add the chaos actor
 	chainValInvoker := vm.NewInvoker()
-	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
+	chainValInvoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
 	lvm.SetInvoker(chainValInvoker)
 	if err != nil {
 		return nil, cid.Undef, err

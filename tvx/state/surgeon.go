@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -167,7 +168,7 @@ func (sg *Surgeon) pluckActorStates(stateRoot cid.Cid, pluck []address.Address, 
 			//return fmt.Errorf("get actor %s failed: %w", a, err)
 		}
 
-		err = stateMap.Put(adt.AddrKey(a), actor)
+		err = stateMap.Put(abi.AddrKey(a), actor)
 		if err != nil {
 			return err
 		}
@@ -210,7 +211,7 @@ func (sg *Surgeon) saveInitActor(initState *init_.State, stateMap *adt.Map) erro
 		Head: cid,
 	}
 
-	err = stateMap.Put(adt.AddrKey(builtin.InitActorAddr), actor)
+	err = stateMap.Put(abi.AddrKey(builtin.InitActorAddr), actor)
 	if err != nil {
 		return err
 	}
@@ -233,11 +234,11 @@ func (sg *Surgeon) retainInitEntries(oldState *init_.State, retain []address.Add
 	newAddrs := adt.MakeEmptyMap(sg.stores.ADTStore)
 	for _, r := range retain {
 		var d cbg.Deferred
-		if _, err := oldAddrs.Get(adt.AddrKey(r), &d); err != nil {
+		if _, err := oldAddrs.Get(abi.AddrKey(r), &d); err != nil {
 			return nil, err
 		}
 		if d.Raw != nil {
-			if err := newAddrs.Put(adt.AddrKey(r), &d); err != nil {
+			if err := newAddrs.Put(abi.AddrKey(r), &d); err != nil {
 				return nil, err
 			}
 		}
