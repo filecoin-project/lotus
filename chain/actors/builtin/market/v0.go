@@ -126,6 +126,13 @@ func (s *dealStates0) Get(dealID abi.DealID) (*DealState, bool, error) {
 	return &deal, true, nil
 }
 
+func (s *dealStates0) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
+	var ds0 market.DealState
+	return s.Array.ForEach(&ds0, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV0DealState(ds0))
+	})
+}
+
 func (s *dealStates0) decode(val *cbg.Deferred) (*DealState, error) {
 	var ds0 market.DealState
 	if err := ds0.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {

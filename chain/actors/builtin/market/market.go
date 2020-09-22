@@ -50,6 +50,7 @@ type BalanceTable interface {
 }
 
 type DealStates interface {
+	ForEach(cb func(id abi.DealID, ds DealState) error) error
 	Get(id abi.DealID) (*DealState, bool, error)
 
 	array() adt.Array
