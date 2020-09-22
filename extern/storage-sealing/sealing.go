@@ -8,9 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -421,18 +418,4 @@ func getDealPerSectorLimit(size abi.SectorSize) uint64 {
 		return 256
 	}
 	return 512
-}
-
-func (m *Sealing) getPreCommitChallengeDelay(ctx context.Context, tok TipSetToken) (abi.ChainEpoch, error) {
-	nv, err := m.api.StateNetworkVersion(ctx, tok)
-	if err != nil {
-		return -1, xerrors.Errorf("failed to get network version: %w", err)
-	}
-
-	if nv < build.ActorUpgradeNetworkVersion {
-		return miner0.PreCommitChallengeDelay, nil
-	}
-
-	// TODO: ActorUpgrade
-	return -1, nil
 }

@@ -3,11 +3,11 @@ package sealing
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 type PreCommitPolicy interface {
@@ -52,7 +52,7 @@ func NewBasicPreCommitPolicy(api Chain, duration abi.ChainEpoch, provingBoundary
 // Expiration produces the pre-commit sector expiration epoch for an encoded
 // replica containing the provided enumeration of pieces and deals.
 func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi.ChainEpoch, error) {
-	tok, epoch, err := p.api.ChainHead(ctx)
+	_, epoch, err := p.api.ChainHead(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -80,20 +80,7 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 		end = &tmp
 	}
 
-	nv, err := p.api.StateNetworkVersion(ctx, tok)
-	if err != nil {
-		return 0, err
-	}
-
-	var wpp abi.ChainEpoch
-	if nv < build.ActorUpgradeNetworkVersion {
-		wpp = miner0.WPoStProvingPeriod
-	} else {
-		// TODO: ActorUpgrade
-		wpp = 0
-	}
-
-	*end += wpp - (*end % wpp) + p.provingBoundary - 1
+	*end += miner.WPoStProvingPeriod - (*end % miner.WPoStProvingPeriod) + p.provingBoundary - 1
 
 	return *end, nil
 }

@@ -396,24 +396,13 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 
 			var sn abi.SectorNumber
 
-			nv, err := r.api.StateNetworkVersion(ctx, tipset.Key())
-			if err != nil {
-				log.Warnw("failed to get network version")
+			var proveCommitSector miner0.ProveCommitSectorParams
+			if err := proveCommitSector.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
+				log.Warnw("failed to decode provecommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
 				continue
 			}
 
-			if nv < build.ActorUpgradeNetworkVersion {
-				var proveCommitSector miner0.ProveCommitSectorParams
-				if err := proveCommitSector.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
-					log.Warnw("failed to decode provecommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
-					continue
-				}
-
-				sn = proveCommitSector.SectorNumber
-			} else {
-				// TODO: ActorUpgrade
-				sn = 0
-			}
+			sn = proveCommitSector.SectorNumber
 
 			// We use the parent tipset key because precommit information is removed when ProveCommitSector is executed
 			precommitChainInfo, err := r.api.StateSectorPreCommitInfo(ctx, m.To, sn, tipset.Parents())

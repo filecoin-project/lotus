@@ -189,17 +189,14 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	var msd abi.ChainEpoch
-	var mse abi.ChainEpoch
 	if nv < build.ActorUpgradeNetworkVersion {
 		msd = miner0.MaxSealDuration[sector.SectorType]
-		mse = miner0.MinSectorExpiration
 	} else {
-		// TODO: ActorUpgrade
+		// TODO: ActorUpgrade(use MaxProveCommitDuration)
 		msd = 0
-		mse = 0
 	}
 
-	if minExpiration := height + msd + mse + 10; expiration < minExpiration {
+	if minExpiration := height + msd + miner.MinSectorExpiration + 10; expiration < minExpiration {
 		expiration = minExpiration
 	}
 	// TODO: enforce a reasonable _maximum_ sector lifetime?
@@ -284,12 +281,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		return ctx.Send(SectorChainPreCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
 	}
 
-	pccd, err := m.getPreCommitChallengeDelay(ctx.Context(), tok)
-	if err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("failed to get precommit challenge delay: %w", err)})
-	}
-
-	randHeight := pci.PreCommitEpoch + pccd
+	randHeight := pci.PreCommitEpoch + miner.PreCommitChallengeDelay
 
 	err = m.events.ChainAt(func(ectx context.Context, _ TipSetToken, curH abi.ChainEpoch) error {
 		// in case of null blocks the randomness can land after the tipset we
@@ -380,24 +372,14 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 	}
 
-	nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
-	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("failed to get network version: %w", err)})
+	enc := new(bytes.Buffer)
+	params := &miner.ProveCommitSectorParams{
+		SectorNumber: sector.SectorNumber,
+		Proof:        sector.Proof,
 	}
 
-	enc := new(bytes.Buffer)
-	if nv < build.ActorUpgradeNetworkVersion {
-		params := &miner0.ProveCommitSectorParams{
-			SectorNumber: sector.SectorNumber,
-			Proof:        sector.Proof,
-		}
-
-		if err := params.MarshalCBOR(enc); err != nil {
-			return ctx.Send(SectorCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", err)})
-		}
-	} else {
-		// TODO: ActorUpgrade
-		enc = nil
+	if err := params.MarshalCBOR(enc); err != nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", err)})
 	}
 
 	waddr, err := m.api.StateMinerWorkerAddress(ctx.Context(), m.maddr, tok)

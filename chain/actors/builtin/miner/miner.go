@@ -18,6 +18,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// Unchanged between v0 and v1 actors
+var PreCommitChallengeDelay = miner0.PreCommitChallengeDelay
+var WPoStProvingPeriod = miner0.WPoStProvingPeriod
+
+const MinSectorExpiration = miner0.MinSectorExpiration
+
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.StorageMinerActorCodeID:

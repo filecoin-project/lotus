@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/build"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
@@ -104,7 +106,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 	if nv < build.ActorUpgradeNetworkVersion {
 		msd = miner0.MaxSealDuration[si.SectorType]
 	} else {
-		// TODO: ActorUpgrade
+		// TODO: ActorUpgrade(use MaxProveCommitDuration)
 		msd = 0
 	}
 
@@ -154,13 +156,8 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
 	}
 
-	pccd, err := m.getPreCommitChallengeDelay(ctx, tok)
-	if err != nil {
-		return xerrors.Errorf("failed to get precommit challenge delay: %w", err)
-	}
-
-	if pci.PreCommitEpoch+pccd != si.SeedEpoch {
-		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+pccd, si.SeedEpoch)}
+	if pci.PreCommitEpoch+miner.PreCommitChallengeDelay != si.SeedEpoch {
+		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+miner.PreCommitChallengeDelay, si.SeedEpoch)}
 	}
 
 	buf := new(bytes.Buffer)
