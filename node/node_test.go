@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	builder "github.com/filecoin-project/lotus/node/test"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -68,6 +70,8 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
+	// TODO: Do this better.
+	miner.PreCommitChallengeDelay = 5
 	miner0.PreCommitChallengeDelay = 5
 
 	t.Run("basic", func(t *testing.T) {
