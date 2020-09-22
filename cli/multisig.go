@@ -16,7 +16,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
@@ -330,7 +329,7 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("failed to look up multisig %s: %w", msig, err)
 		}
 
-		if act.Code != builtin.MultisigActorCodeID {
+		if !act.IsMultisigActor() {
 			return fmt.Errorf("actor %s is not a multisig actor", msig)
 		}
 
