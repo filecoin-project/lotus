@@ -65,7 +65,15 @@ func NewClient(lc fx.Lifecycle, host host.Host, pmgr peermgr.MaybePeerMgr) Clien
 // request options without disrupting external calls. In the future the
 // consumers should be forced to use a more standardized service and
 // adhere to a single API derived from this function.
-func (c *client) doRequest(ctx context.Context, req *Request, singlePeer *peer.ID) (*validatedResponse, error) {
+func (c *client) doRequest(
+	ctx context.Context,
+	req *Request,
+	singlePeer *peer.ID,
+	// In the `GetChainMessages` case, we won't request the headers but we still
+	// need them to check the integrity of the `CompactedMessages` in the response
+	// so the tipset blocks need to be provided by the caller.
+	tipsets []*types.TipSet,
+) (*validatedResponse, error) {
 	// Validate request.
 	if req.Length == 0 {
 		return nil, xerrors.Errorf("invalid request of length 0")
@@ -116,7 +124,7 @@ func (c *client) doRequest(ctx context.Context, req *Request, singlePeer *peer.I
 		}
 
 		// Process and validate response.
-		validRes, err := c.processResponse(req, res)
+		validRes, err := c.processResponse(req, res, tipsets)
 		if err != nil {
 			log.Warnf("processing peer %s response failed: %s",
 				peer.String(), err)
@@ -144,7 +152,7 @@ func (c *client) doRequest(ctx context.Context, req *Request, singlePeer *peer.I
 // errors. Peer penalization should happen here then, before returning, so
 // we can apply the correct penalties depending on the cause of the error.
 // FIXME: Add the `peer` as argument once we implement penalties.
-func (c *client) processResponse(req *Request, res *Response) (*validatedResponse, error) {
+func (c *client) processResponse(req *Request, res *Response, tipsets []*types.TipSet) (*validatedResponse, error) {
 	err := res.statusToError()
 	if err != nil {
 		return nil, xerrors.Errorf("status error: %s", err)
@@ -176,6 +184,16 @@ func (c *client) processResponse(req *Request, res *Response) (*validatedRespons
 		// Check for valid block sets and extract them into `TipSet`s.
 		validRes.tipsets = make([]*types.TipSet, resLength)
 		for i := 0; i < resLength; i++ {
+			if res.Chain[i] == nil {
+				return nil, xerrors.Errorf("response with nil tipset in pos %d", i)
+			}
+			for blockIdx, block := range res.Chain[i].Blocks {
+				if block == nil {
+					return nil, xerrors.Errorf("tipset with nil block in pos %d", blockIdx)
+					// FIXME: Maybe we should move this check to `NewTipSet`.
+				}
+			}
+
 			validRes.tipsets[i], err = types.NewTipSet(res.Chain[i].Blocks)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid tipset blocks at height (head - %d): %w", i, err)
@@ -214,14 +232,16 @@ func (c *client) processResponse(req *Request, res *Response) (*validatedRespons
 			if err != nil {
 				return nil, err
 			}
-		}
-
-		if options.ValidateMessages {
-			// if the request includes target tipsets, validate against them
+		} else {
+			// If we didn't request the headers they should have been provided
+			// by the caller.
+			if len(tipsets) < len(res.Chain) {
+				return nil, xerrors.Errorf("not enought tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
+			}
 			chain := make([]*BSTipSet, 0, resLength)
 			for i, resChain := range res.Chain {
 				next := &BSTipSet{
-					Blocks:   req.TipSets[i].Blocks(),
+					Blocks:   tipsets[i].Blocks(),
 					Messages: resChain.Messages,
 				}
 				chain = append(chain, next)
@@ -290,7 +310,7 @@ func (c *client) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) 
 		Options: Headers,
 	}
 
-	validRes, err := c.doRequest(ctx, req, nil)
+	validRes, err := c.doRequest(ctx, req, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +328,7 @@ func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk types.TipS
 		Options: Headers | Messages,
 	}
 
-	validRes, err := c.doRequest(ctx, req, &peer)
+	validRes, err := c.doRequest(ctx, req, &peer, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -335,11 +355,10 @@ func (c *client) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) 
 	req := &Request{
 		Head:    head.Cids(),
 		Length:  length,
-		Options: Messages | Validate,
-		TipSets: tipsets,
+		Options: Messages,
 	}
 
-	validRes, err := c.doRequest(ctx, req, nil)
+	validRes, err := c.doRequest(ctx, req, nil, tipsets)
 	if err != nil {
 		return nil, err
 	}
