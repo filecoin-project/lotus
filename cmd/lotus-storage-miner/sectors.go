@@ -404,8 +404,9 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 }
 
 var sectorsUpdateCmd = &cli.Command{
-	Name:  "update-state",
-	Usage: "ADVANCED: manually update the state of a sector, this may aid in error recovery",
+	Name:      "update-state",
+	Usage:     "ADVANCED: manually update the state of a sector, this may aid in error recovery",
+	ArgsUsage: "<sectorNum> <newState>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "really-do-it",
@@ -431,8 +432,13 @@ var sectorsUpdateCmd = &cli.Command{
 			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
-		if _, ok := sealing.ExistSectorStateList[sealing.SectorState(cctx.Args().Get(1))]; !ok {
-			return xerrors.Errorf("Not existing sector state")
+		newState := cctx.Args().Get(1)
+		if _, ok := sealing.ExistSectorStateList[sealing.SectorState(newState)]; !ok {
+			fmt.Printf(" \"%s\" is not a valid state. Possible states for sectors are: \n", newState)
+			for state := range sealing.ExistSectorStateList {
+				fmt.Printf("%s\n", string(state))
+			}
+			return nil
 		}
 
 		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
