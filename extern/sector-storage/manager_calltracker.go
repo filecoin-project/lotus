@@ -3,6 +3,7 @@ package sectorstorage
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,7 +48,7 @@ func newWorkID(method string, params ...interface{}) (WorkID, error) {
 
 	if len(pb) > 256 {
 		s := sha256.Sum256(pb)
-		pb = s[:]
+		pb = []byte(hex.EncodeToString(s[:]))
 	}
 
 	return WorkID{
