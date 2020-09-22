@@ -55,3 +55,11 @@ func AsArray(store Store, root cid.Cid, version network.Version) (Array, error) 
 	}
 	return nil, xerrors.Errorf("unknown network version: %d", version)
 }
+
+func NewArray(store Store, version builtin.Version) (Array, error) {
+	switch version {
+	case builtin.Version0:
+		return adt0.MakeEmptyArray(store), nil
+	}
+	return nil, xerrors.Errorf("unknown network version: %d", version)
+}

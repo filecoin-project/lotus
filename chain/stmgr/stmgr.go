@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -22,15 +19,17 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -291,7 +290,11 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
-	rectarr := adt.MakeEmptyArray(sm.cs.Store(ctx))
+	// XXX: Is the height correct? Or should it be epoch-1?
+	rectarr, err := adt.NewArray(sm.cs.Store(ctx), builtin.VersionForNetwork(sm.GetNtwkVersion(ctx, epoch)))
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("failed to create receipts amt: %w", err)
+	}
 	for i, receipt := range receipts {
 		if err := rectarr.Set(uint64(i), receipt); err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
@@ -689,17 +692,13 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 		return nil, err
 	}
 
-	r, err := adt.AsMap(sm.cs.Store(ctx), st)
+	stateTree, err := sm.StateTree(st)
 	if err != nil {
 		return nil, err
 	}
 
 	var out []address.Address
-	err = r.ForEach(nil, func(k string) error {
-		addr, err := address.NewFromBytes([]byte(k))
-		if err != nil {
-			return xerrors.Errorf("address in state tree was not valid: %w", err)
-		}
+	err = stateTree.ForEach(func(addr address.Address, act *types.Actor) error {
 		out = append(out, addr)
 		return nil
 	})
@@ -836,17 +835,10 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		return xerrors.Errorf("setting up genesis pledge: %w", err)
 	}
 
-	r, err := adt.AsMap(sm.cs.Store(ctx), st)
-	if err != nil {
-		return xerrors.Errorf("getting genesis actors: %w", err)
-	}
-
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
-	var act types.Actor
-	err = r.ForEach(&act, func(k string) error {
-		if act.Code == builtin0.MultisigActorCodeID {
-			var s multisig.State
-			err := sm.cs.Store(ctx).Get(ctx, act.Head, &s)
+	err = sTree.ForEach(func(kaddr address.Address, act *types.Actor) error {
+		if act.IsMultisigActor() {
+			s, err := multisig.Load(sm.cs.Store(ctx), act)
 			if err != nil {
 				return err
 			}
@@ -862,25 +854,22 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				totalsByEpoch[s.UnlockDuration()] = s.InitialBalance()
 			}
 
-		} else if act.Code == builtin0.AccountActorCodeID {
+		} else if act.IsAccountActor() {
 			// should exclude burnt funds actor and "remainder account actor"
 			// should only ever be "faucet" accounts in testnets
-			kaddr, err := address.NewFromBytes([]byte(k))
+			if kaddr == builtin0.BurntFundsActorAddr {
+				return nil
+			}
+
+			kid, err := sTree.LookupID(kaddr)
 			if err != nil {
-				return xerrors.Errorf("decoding address: %w", err)
+				return xerrors.Errorf("resolving address: %w", err)
 			}
 
-			if kaddr != builtin0.BurntFundsActorAddr {
-				kid, err := sTree.LookupID(kaddr)
-				if err != nil {
-					return xerrors.Errorf("resolving address: %w", err)
-				}
-
-				gi.genesisActors = append(gi.genesisActors, genesisActor{
-					addr:    kid,
-					initBal: act.Balance,
-				})
-			}
+			gi.genesisActors = append(gi.genesisActors, genesisActor{
+				addr:    kid,
+				initBal: act.Balance,
+			})
 		}
 		return nil
 	})
@@ -889,6 +878,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		return xerrors.Errorf("error setting up genesis infos: %w", err)
 	}
 
+	// TODO: use network upgrade abstractions or always start at actors v0?
 	gi.genesisMsigs = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
