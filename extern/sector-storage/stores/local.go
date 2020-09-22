@@ -30,10 +30,15 @@ type StoragePath struct {
 
 // LocalStorageMeta [path]/sectorstore.json
 type LocalStorageMeta struct {
-	ID     ID
+	ID ID
+
+	// A height wait means data is more likely to be stored here
 	Weight uint64 // 0 = readonly
 
-	CanSeal  bool
+	// Intermittment data for the sealing process will be stored here
+	CanSeal bool
+
+	// Finalized sectors that will be proved over will be stored here
 	CanStore bool
 }
 

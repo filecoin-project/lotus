@@ -31,6 +31,9 @@ const metaFile = "sectorstore.json"
 var storageCmd = &cli.Command{
 	Name:  "storage",
 	Usage: "manage sector storage",
+	Description: `Sectors can be stored across many filesystem paths. These commands provide ways to
+   manage the storage the miner will used to store sectors long term for proving (refernces as 'store')
+   as well as how sectors will be stored while moving through the sealing pipeline (references as 'seal').`,
 	Subcommands: []*cli.Command{
 		storageAttachCmd,
 		storageListCmd,
@@ -41,6 +44,22 @@ var storageCmd = &cli.Command{
 var storageAttachCmd = &cli.Command{
 	Name:  "attach",
 	Usage: "attach local storage path",
+	Description: `Storage can be attach to the miner using this command. The storage volume list is stored local
+   to the miner in $LOTUS_MINER_PATH/storage.json. We do not recommend modifying this value without further
+   understanding of the storage system.
+
+   Each storage volume contains a configuration file which descripbes the capabilities of the volume. When the
+   '--init' flag is provided, this file will be created using the additional flags.
+
+   Weight
+   A high weight value means data will be more likely to be stored
+
+   Seal
+   Intermittment data for the sealing process will be stored here
+
+   Store
+   Finalized sectors that will be proved over will be stored here
+   `,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "init",
