@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -221,6 +223,67 @@ func (a *MpoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Mess
 		smsgs = append(smsgs, smsg)
 	}
 	return smsgs, nil
+}
+
+func (a *MpoolAPI) MpoolReplaceMessage(ctx context.Context, from address.Address, nonce uint64, gasLimit int64, gasFeeCap abi.TokenAmount, gasPremium abi.TokenAmount) (*types.SignedMessage, error) {
+
+	pendingMpool, _ := a.Mpool.Pending()
+
+	var currentSignedMessage *types.SignedMessage
+	for _, pendingMessage := range pendingMpool {
+		if pendingMessage.Message.From == from && pendingMessage.Message.Nonce == nonce {
+			currentSignedMessage = pendingMessage
+			break
+		}
+	}
+
+	if currentSignedMessage == nil {
+		return nil, xerrors.Errorf("mpool replace message: no pending message found from %s with nonce %d.", from, nonce)
+	}
+
+	newMessage := currentSignedMessage.Message
+
+	if gasLimit == 0 {
+		gasLimitEst, err := a.GasEstimateGasLimit(ctx, &newMessage, types.TipSetKey{})
+		if err != nil {
+			return nil, xerrors.Errorf("mpool replace message failed to re-estimate gas limit: %w", err)
+		}
+		newMessage.GasLimit = gasLimitEst
+	} else {
+		newMessage.GasLimit = gasLimit
+	}
+
+	if gasPremium.IsZero() {
+		gasPremiumEst, err := a.GasEstimateGasPremium(ctx, 2, from, newMessage.GasLimit, types.TipSetKey{})
+		if err != nil {
+			return nil, xerrors.Errorf("mpool replace message failed to re-estimate gas price: %w", err)
+		}
+		newMessage.GasPremium = gasPremiumEst
+	} else {
+		newMessage.GasPremium = gasPremium
+	}
+
+	if gasFeeCap.IsZero() {
+		gasFeeCapEst, err := a.GasEstimateFeeCap(ctx, &newMessage, 20, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("mpool replace message failed to re-estimate gas fee cap: %w", err)
+		}
+		newMessage.GasFeeCap = gasFeeCapEst
+	} else {
+		newMessage.GasFeeCap = gasFeeCap
+	}
+
+	signedNewMessage, err := a.WalletSignMessage(ctx, newMessage.From, &newMessage)
+	if err != nil {
+		return nil, xerrors.Errorf("mpool replace message failed to sign message: %w", err)
+	}
+
+	_, err = a.Mpool.Push(signedNewMessage)
+	if err != nil {
+		return nil, xerrors.Errorf("mpool replace message failed to push message: %w", err)
+	}
+
+	return signedNewMessage, err
 }
 
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
