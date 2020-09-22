@@ -33,12 +33,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	blst "github.com/supranational/blst/bindings/go"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/exchange"
@@ -343,8 +343,10 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 
 	bs := cbor.NewCborStore(blockstore)
 
+	aVersion := builtin.VersionForNetwork(syncer.sm.GetNtwkVersion(context.TODO(), fblk.Header.Height))
+
 	// Compute the root CID of the combined message trie.
-	smroot, err := computeMsgMeta(bs, bcids, scids)
+	smroot, err := computeMsgMeta(bs, bcids, scids, aVersion)
 	if err != nil {
 		return xerrors.Errorf("validating msgmeta, compute failed: %w", err)
 	}
@@ -411,7 +413,7 @@ func copyBlockstore(from, to bstore.Blockstore) error {
 // either validate it here, or ensure that its validated elsewhere (maybe make
 // sure the blocksync code checks it?)
 // maybe this code should actually live in blocksync??
-func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
+func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64, aVersion builtin.Version) (*store.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}
@@ -436,7 +438,7 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 			bmsgCids = append(bmsgCids, allbmsgs[m].Cid())
 		}
 
-		mrcid, err := computeMsgMeta(bs, bmsgCids, smsgCids)
+		mrcid, err := computeMsgMeta(bs, bmsgCids, smsgCids, aVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -459,10 +461,16 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 
 // computeMsgMeta computes the root CID of the combined arrays of message CIDs
 // of both types (BLS and Secpk).
-func computeMsgMeta(bs cbor.IpldStore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
+func computeMsgMeta(bs cbor.IpldStore, bmsgCids, smsgCids []cid.Cid, aVersion builtin.Version) (cid.Cid, error) {
 	store := adt.WrapStore(context.TODO(), bs)
-	bmArr := adt.MakeEmptyArray(store)
-	smArr := adt.MakeEmptyArray(store)
+	bmArr, err := adt.NewArray(store, aVersion)
+	if err != nil {
+		return cid.Undef, err
+	}
+	smArr, err := adt.NewArray(store, aVersion)
+	if err != nil {
+		return cid.Undef, err
+	}
 
 	for i, m := range bmsgCids {
 		c := cbg.CborCid(m)
@@ -640,7 +648,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 }
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
-	act, err := syncer.sm.LoadActor(ctx, builtin.StoragePowerActorAddr, baseTs)
+	act, err := syncer.sm.LoadActor(ctx, power.Address, baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to load power actor: %w", err)
 	}
@@ -1021,6 +1029,11 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 	return nil
 }
 
+func (syncer *Syncer) newArray(ctx context.Context, height abi.ChainEpoch) (adt.Array, error) {
+	aVersion := builtin.VersionForNetwork(syncer.sm.GetNtwkVersion(ctx, height))
+	return adt.NewArray(syncer.store.Store(ctx), aVersion)
+}
+
 // TODO: We should extract this somewhere else and make the message pool and miner use the same logic
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	{
@@ -1097,9 +1110,10 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return nil
 	}
 
-	store := adt.WrapStore(ctx, cst)
-
-	bmArr := adt.MakeEmptyArray(store)
+	bmArr, err := syncer.newArray(ctx, b.Header.Height)
+	if err != nil {
+		return xerrors.Errorf("failed to construct bls array: %w", err)
+	}
 	for i, m := range b.BlsMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
@@ -1111,7 +1125,10 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 	}
 
-	smArr := adt.MakeEmptyArray(store)
+	smArr, err := syncer.newArray(ctx, b.Header.Height)
+	if err != nil {
+		return xerrors.Errorf("failed to construct secpk array: %w", err)
+	}
 	for i, m := range b.SecpkMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
@@ -1533,7 +1550,8 @@ mainLoop:
 
 			this := headers[i-bsi]
 			bstip := bstout[len(bstout)-(bsi+1)]
-			fts, err := zipTipSetAndMessages(blks, this, bstip.Bls, bstip.Secpk, bstip.BlsIncludes, bstip.SecpkIncludes)
+			aVersion := builtin.VersionForNetwork(syncer.sm.GetNtwkVersion(ctx, this.Height()))
+			fts, err := zipTipSetAndMessages(blks, this, bstip.Bls, bstip.Secpk, bstip.BlsIncludes, bstip.SecpkIncludes, aVersion)
 			if err != nil {
 				log.Warnw("zipping failed", "error", err, "bsi", bsi, "i", i,
 					"height", this.Height(),
