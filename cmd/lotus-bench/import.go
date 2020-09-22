@@ -130,7 +130,7 @@ var importBenchCmd = &cli.Command{
 		bdgOpt.Options.DetectConflicts = false
 
 		var bds datastore.Batching
-		if true {
+		if false {
 			cache := 512
 			bds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
 				// Pebble has a single combined cache area and the write
