@@ -34,7 +34,7 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "port",
-			Usage: "2345",
+			Value: "2345",
 		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
