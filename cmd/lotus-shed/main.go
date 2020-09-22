@@ -36,6 +36,7 @@ func main() {
 		mpoolStatsCmd,
 		exportChainCmd,
 		consensusCmd,
+		serveDealStatsCmd,
 	}
 
 	app := &cli.App{
