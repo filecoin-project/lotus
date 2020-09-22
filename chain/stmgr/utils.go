@@ -9,11 +9,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-
-	saruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -22,10 +17,10 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
+	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -34,17 +29,20 @@ import (
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -163,7 +161,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return mas.LoadSectors(snos)
 }
 
-func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
+func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof0.SectorInfo, error) {
 	act, err := sm.LoadActorRaw(ctx, maddr, st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -248,9 +246,9 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("loading proving sectors: %w", err)
 	}
 
-	out := make([]proof.SectorInfo, len(sectors))
+	out := make([]proof0.SectorInfo, len(sectors))
 	for i, sinfo := range sectors {
-		out[i] = proof.SectorInfo{
+		out[i] = proof0.SectorInfo{
 			SealProof:    spt,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,
@@ -538,7 +536,7 @@ func init() {
 	cidToMethods := map[cid.Cid][2]interface{}{
 		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
 		builtin0.InitActorCodeID:             {builtin0.MethodsInit, init0.Actor{}},
-		builtin0.CronActorCodeID:             {builtin0.MethodsCron, cron.Actor{}},
+		builtin0.CronActorCodeID:             {builtin0.MethodsCron, cron0.Actor{}},
 		builtin0.AccountActorCodeID:          {builtin0.MethodsAccount, account0.Actor{}},
 		builtin0.StoragePowerActorCodeID:     {builtin0.MethodsPower, power0.Actor{}},
 		builtin0.StorageMinerActorCodeID:     {builtin0.MethodsMiner, miner0.Actor{}},
@@ -550,7 +548,7 @@ func init() {
 	}
 
 	for c, m := range cidToMethods {
-		exports := m[1].(saruntime.Invokee).Exports()
+		exports := m[1].(vm.Invokee).Exports()
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
 		// Explicitly add send, it's special.

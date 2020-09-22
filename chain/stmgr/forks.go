@@ -6,12 +6,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
@@ -221,7 +223,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 				return xerrors.Errorf("failed to get miner info: %w", err)
 			}
 
-			sectorsArr, err := adt.AsArray(sm.ChainStore().Store(ctx), st.Sectors)
+			sectorsArr, err := adt0.AsArray(sm.ChainStore().Store(ctx), st.Sectors)
 			if err != nil {
 				return xerrors.Errorf("failed to load sectors array: %w", err)
 			}
@@ -245,7 +247,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 					return xerrors.Errorf("failed to load miner state: %w", err)
 				}
 
-				lbsectors, err := adt.AsArray(sm.ChainStore().Store(ctx), lbst.Sectors)
+				lbsectors, err := adt0.AsArray(sm.ChainStore().Store(ctx), lbst.Sectors)
 				if err != nil {
 					return xerrors.Errorf("failed to load lb sectors array: %w", err)
 				}
