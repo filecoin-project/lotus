@@ -303,7 +303,7 @@ func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorSta
 		if err != nil {
 			return false, nil, err
 		}
-		return diffInitActorState(ctx, &oldState, &newState)
+		return diffInitActorState(ctx, oldState, newState)
 	})
 
 }
@@ -405,7 +405,7 @@ type AddressChange struct {
 	To   AddressPair
 }
 
-type DiffInitActorStateFunc func(ctx context.Context, oldState *init_.State, newState *init_.State) (changed bool, user UserData, err error)
+type DiffInitActorStateFunc func(ctx context.Context, oldState init_.State, newState init_.State) (changed bool, user UserData, err error)
 
 func (i *InitActorAddressChanges) AsKey(key string) (abi.Keyer, error) {
 	addr, err := address.NewFromBytes([]byte(key))
@@ -493,7 +493,7 @@ func (i *InitActorAddressChanges) Remove(key string, val *typegen.Deferred) erro
 }
 
 func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
-	return func(ctx context.Context, oldState, newState *init_.State) (changed bool, user UserData, err error) {
+	return func(ctx context.Context, oldState, newState init_.State) (changed bool, user UserData, err error) {
 		/*ctxStore := &contextStore{
 			ctx: ctx,
 			cst: sp.cst,
