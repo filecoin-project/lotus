@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 
 	"github.com/filecoin-project/go-address"
@@ -200,11 +201,28 @@ var serveDealStatsCmd = &cli.Command{
 
 		dss := &dealStatsServer{api}
 
-		http.HandleFunc("/api/storagedeal/count", dss.handleStorageDealCount)
-		http.HandleFunc("/api/storagedeal/averagesize", dss.handleStorageDealAverageSize)
-		http.HandleFunc("/api/storagedeal/totalreal", dss.handleStorageDealTotalReal)
-		http.HandleFunc("/api/storagedeal/clientstats", dss.handleStorageClientStats)
+		mux := &http.ServeMux{}
+		mux.HandleFunc("/api/storagedeal/count", dss.handleStorageDealCount)
+		mux.HandleFunc("/api/storagedeal/averagesize", dss.handleStorageDealAverageSize)
+		mux.HandleFunc("/api/storagedeal/totalreal", dss.handleStorageDealTotalReal)
+		mux.HandleFunc("/api/storagedeal/clientstats", dss.handleStorageClientStats)
 
-		panic(http.ListenAndServe(":7272", nil))
+		s := &http.Server{
+			Addr:    ":7272",
+			Handler: mux,
+		}
+
+		go func() {
+			<-ctx.Done()
+			s.Shutdown(context.TODO())
+		}()
+
+		list, err := net.Listen("tcp", ":7272")
+		if err != nil {
+			panic(err)
+		}
+
+		s.Serve(list)
+		return nil
 	},
 }
