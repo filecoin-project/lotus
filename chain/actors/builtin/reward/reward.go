@@ -29,7 +29,7 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 }
 
 type State interface {
-	cbor.Er
+	cbor.Marshaler
 
 	ThisEpochBaselinePower() (abi.StoragePower, error)
 	ThisEpochReward() (abi.StoragePower, error)
