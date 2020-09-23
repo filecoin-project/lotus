@@ -69,6 +69,8 @@ type scheduler struct {
 	schedQueue  *requestQueue
 	openWindows []*schedWindowRequest
 
+	wt *workTracker
+
 	info chan func(interface{})
 
 	closing  chan struct{}
@@ -88,9 +90,6 @@ type workerHandle struct {
 
 	wndLk         sync.Mutex
 	activeWindows []*schedWindow
-
-	// stats / tracking
-	wt *workTracker
 
 	// for sync manager goroutine closing
 	cleanupStarted bool
@@ -156,6 +155,11 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 		windowRequests: make(chan *schedWindowRequest, 20),
 
 		schedQueue: &requestQueue{},
+
+		wt: &workTracker{
+			done:    map[storiface.CallID]struct{}{},
+			running: map[storiface.CallID]trackedWork{},
+		},
 
 		info: make(chan func(interface{})),
 
@@ -680,7 +684,7 @@ func (sh *scheduler) assignWorker(taskDone chan struct{}, wid WorkerID, w *worke
 	w.lk.Unlock()
 
 	go func() {
-		err := req.prepare(req.ctx, w.wt.worker(w.w))
+		err := req.prepare(req.ctx, sh.wt.worker(wid, w.w))
 		sh.workersLk.Lock()
 
 		if err != nil {
@@ -717,7 +721,7 @@ func (sh *scheduler) assignWorker(taskDone chan struct{}, wid WorkerID, w *worke
 			case <-sh.closing:
 			}
 
-			err = req.work(req.ctx, w.wt.worker(w.w))
+			err = req.work(req.ctx, sh.wt.worker(wid, w.w))
 
 			select {
 			case req.ret <- workerResponse{err: err}:
