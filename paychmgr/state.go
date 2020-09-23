@@ -24,11 +24,19 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	}
 
 	// Load channel "From" account actor state
-	from, err := ca.sm.ResolveToKeyAddress(ctx, st.From(), nil)
+	f, err := st.From()
 	if err != nil {
 		return nil, err
 	}
-	to, err := ca.sm.ResolveToKeyAddress(ctx, st.To(), nil)
+	from, err := ca.sm.ResolveToKeyAddress(ctx, f, nil)
+	if err != nil {
+		return nil, err
+	}
+	t, err := st.To()
+	if err != nil {
+		return nil, err
+	}
+	to, err := ca.sm.ResolveToKeyAddress(ctx, t, nil)
 	if err != nil {
 		return nil, err
 	}

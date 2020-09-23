@@ -31,11 +31,11 @@ type State interface {
 	cbor.Marshaler
 
 	LockedBalance(epoch abi.ChainEpoch) (abi.TokenAmount, error)
-	StartEpoch() abi.ChainEpoch
-	UnlockDuration() abi.ChainEpoch
-	InitialBalance() abi.TokenAmount
-	Threshold() uint64
-	Signers() []address.Address
+	StartEpoch() (abi.ChainEpoch, error)
+	UnlockDuration() (abi.ChainEpoch, error)
+	InitialBalance() (abi.TokenAmount, error)
+	Threshold() (uint64, error)
+	Signers() ([]address.Address, error)
 
 	ForEachPendingTxn(func(id int64, txn Transaction) error) error
 }

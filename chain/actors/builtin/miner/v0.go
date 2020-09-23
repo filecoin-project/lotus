@@ -244,14 +244,14 @@ func (s *state0) NumDeadlines() (uint64, error) {
 	return miner0.WPoStPeriodDeadlines, nil
 }
 
-func (s *state0) DeadlinesChanged(other State) bool {
+func (s *state0) DeadlinesChanged(other State) (bool, error) {
 	other0, ok := other.(*state0)
 	if !ok {
 		// treat an upgrade as a change, always
-		return true
+		return true, nil
 	}
 
-	return s.State.Deadlines.Equals(other0.Deadlines)
+	return s.State.Deadlines.Equals(other0.Deadlines), nil
 }
 
 func (s *state0) Info() (MinerInfo, error) {
@@ -288,8 +288,8 @@ func (s *state0) Info() (MinerInfo, error) {
 	return mi, nil
 }
 
-func (s *state0) DeadlineInfo(epoch abi.ChainEpoch) *dline.Info {
-	return s.State.DeadlineInfo(epoch)
+func (s *state0) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
+	return s.State.DeadlineInfo(epoch), nil
 }
 
 func (s *state0) sectors() (adt.Array, error) {
@@ -339,14 +339,14 @@ func (d *deadline0) ForEachPartition(cb func(uint64, Partition) error) error {
 	})
 }
 
-func (d *deadline0) PartitionsChanged(other Deadline) bool {
+func (d *deadline0) PartitionsChanged(other Deadline) (bool, error) {
 	other0, ok := other.(*deadline0)
 	if !ok {
 		// treat an upgrade as a change, always
-		return true
+		return true, nil
 	}
 
-	return d.Deadline.Partitions.Equals(other0.Deadline.Partitions)
+	return d.Deadline.Partitions.Equals(other0.Deadline.Partitions), nil
 }
 
 func (d *deadline0) PostSubmissions() (bitfield.BitField, error) {

@@ -31,13 +31,13 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 
 type State interface {
 	cbor.Marshaler
-	BalancesChanged(State) bool
+	BalancesChanged(State) (bool, error)
 	EscrowTable() (BalanceTable, error)
 	LockedTable() (BalanceTable, error)
 	TotalLocked() (abi.TokenAmount, error)
-	StatesChanged(State) bool
+	StatesChanged(State) (bool, error)
 	States() (DealStates, error)
-	ProposalsChanged(State) bool
+	ProposalsChanged(State) (bool, error)
 	Proposals() (DealProposals, error)
 	VerifyDealsForActivation(
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,

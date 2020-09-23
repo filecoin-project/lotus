@@ -843,15 +843,30 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				return err
 			}
 
-			if s.StartEpoch() != 0 {
+			se, err := s.StartEpoch()
+			if err != nil {
+				return err
+			}
+
+			if se != 0 {
 				return xerrors.New("genesis multisig doesn't start vesting at epoch 0!")
 			}
 
-			ot, f := totalsByEpoch[s.UnlockDuration()]
+			ud, err := s.UnlockDuration()
+			if err != nil {
+				return err
+			}
+
+			ib, err := s.InitialBalance()
+			if err != nil {
+				return err
+			}
+
+			ot, f := totalsByEpoch[ud]
 			if f {
-				totalsByEpoch[s.UnlockDuration()] = big.Add(ot, s.InitialBalance())
+				totalsByEpoch[ud] = big.Add(ot, ib)
 			} else {
-				totalsByEpoch[s.UnlockDuration()] = s.InitialBalance()
+				totalsByEpoch[ud] = ib
 			}
 
 		} else if act.IsAccountActor() {

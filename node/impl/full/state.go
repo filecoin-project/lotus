@@ -212,7 +212,12 @@ func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.A
 		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	return mas.DeadlineInfo(ts.Height()).NextNotElapsed(), nil
+	di, err := mas.DeadlineInfo(ts.Height())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get deadline info: %w", err)
+	}
+
+	return di.NextNotElapsed(), nil
 }
 
 func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {

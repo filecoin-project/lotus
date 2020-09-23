@@ -89,7 +89,9 @@ func TestPaymentChannels(t *testing.T) {
 
 	// Wait for the chain to reach the settle height
 	chState := getPaychState(ctx, t, paymentReceiver, chAddr)
-	waitForHeight(ctx, t, paymentReceiver, chState.SettlingAt())
+	sa, err := chState.SettlingAt()
+	require.NoError(t, err)
+	waitForHeight(ctx, t, paymentReceiver, sa)
 
 	// receiver: paych collect <channel>
 	cmd = []string{chAddr.String()}

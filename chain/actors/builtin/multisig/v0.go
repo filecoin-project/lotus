@@ -23,24 +23,24 @@ func (s *state0) LockedBalance(currEpoch abi.ChainEpoch) (abi.TokenAmount, error
 	return s.State.AmountLocked(currEpoch - s.State.StartEpoch), nil
 }
 
-func (s *state0) StartEpoch() abi.ChainEpoch {
-	return s.State.StartEpoch
+func (s *state0) StartEpoch() (abi.ChainEpoch, error) {
+	return s.State.StartEpoch, nil
 }
 
-func (s *state0) UnlockDuration() abi.ChainEpoch {
-	return s.State.UnlockDuration
+func (s *state0) UnlockDuration() (abi.ChainEpoch, error) {
+	return s.State.UnlockDuration, nil
 }
 
-func (s *state0) InitialBalance() abi.TokenAmount {
-	return s.State.InitialBalance
+func (s *state0) InitialBalance() (abi.TokenAmount, error) {
+	return s.State.InitialBalance, nil
 }
 
-func (s *state0) Threshold() uint64 {
-	return s.State.NumApprovalsThreshold
+func (s *state0) Threshold() (uint64, error) {
+	return s.State.NumApprovalsThreshold, nil
 }
 
-func (s *state0) Signers() []address.Address {
-	return s.State.Signers
+func (s *state0) Signers() ([]address.Address, error) {
+	return s.State.Signers, nil
 }
 
 func (s *state0) ForEachPendingTxn(cb func(id int64, txn Transaction) error) error {

@@ -97,7 +97,12 @@ type DiffBalanceTablesFunc func(ctx context.Context, oldBalanceTable, newBalance
 // OnBalanceChanged runs when the escrow table for available balances changes
 func (sp *StatePredicates) OnBalanceChanged(diffBalances DiffBalanceTablesFunc) DiffStorageMarketStateFunc {
 	return func(ctx context.Context, oldState market.State, newState market.State) (changed bool, user UserData, err error) {
-		if !oldState.BalancesChanged(newState) {
+		bc, err := oldState.BalancesChanged(newState)
+		if err != nil {
+			return false, nil, err
+		}
+
+		if !bc {
 			return false, nil, nil
 		}
 
@@ -132,7 +137,12 @@ type DiffAdtArraysFunc func(ctx context.Context, oldDealStateRoot, newDealStateR
 // OnDealStateChanged calls diffDealStates when the market deal state changes
 func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc) DiffStorageMarketStateFunc {
 	return func(ctx context.Context, oldState market.State, newState market.State) (changed bool, user UserData, err error) {
-		if !oldState.StatesChanged(newState) {
+		sc, err := oldState.StatesChanged(newState)
+		if err != nil {
+			return false, nil, err
+		}
+
+		if !sc {
 			return false, nil, nil
 		}
 
@@ -152,7 +162,12 @@ func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc)
 // OnDealProposalChanged calls diffDealProps when the market proposal state changes
 func (sp *StatePredicates) OnDealProposalChanged(diffDealProps DiffDealProposalsFunc) DiffStorageMarketStateFunc {
 	return func(ctx context.Context, oldState market.State, newState market.State) (changed bool, user UserData, err error) {
-		if !oldState.ProposalsChanged(newState) {
+		pc, err := oldState.ProposalsChanged(newState)
+		if err != nil {
+			return false, nil, err
+		}
+
+		if !pc {
 			return false, nil, nil
 		}
 
@@ -379,12 +394,22 @@ type PayChToSendChange struct {
 // OnToSendAmountChanges monitors changes on the total amount to send from one party to the other on a payment channel
 func (sp *StatePredicates) OnToSendAmountChanges() DiffPaymentChannelStateFunc {
 	return func(ctx context.Context, oldState paych.State, newState paych.State) (changed bool, user UserData, err error) {
-		if oldState.ToSend().Equals(newState.ToSend()) {
+		ots, err := oldState.ToSend()
+		if err != nil {
+			return false, nil, err
+		}
+
+		nts, err := newState.ToSend()
+		if err != nil {
+			return false, nil, err
+		}
+
+		if ots.Equals(nts) {
 			return false, nil, nil
 		}
 		return true, &PayChToSendChange{
-			OldToSend: oldState.ToSend(),
-			NewToSend: newState.ToSend(),
+			OldToSend: ots,
+			NewToSend: nts,
 		}, nil
 	}
 }

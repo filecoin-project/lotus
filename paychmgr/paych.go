@@ -48,12 +48,12 @@ type laneState struct {
 	nonce    uint64
 }
 
-func (ls laneState) Redeemed() big.Int {
-	return ls.redeemed
+func (ls laneState) Redeemed() (big.Int, error) {
+	return ls.redeemed, nil
 }
 
-func (ls laneState) Nonce() uint64 {
-	return ls.nonce
+func (ls laneState) Nonce() (uint64, error) {
+	return ls.nonce, nil
 }
 
 // channelAccessor is used to simplify locking when accessing a channel
@@ -181,7 +181,12 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	}
 
 	// Load channel "From" account actor state
-	from, err := ca.api.ResolveToKeyAddress(ctx, pchState.From(), nil)
+	f, err := pchState.From()
+	if err != nil {
+		return nil, err
+	}
+
+	from, err := ca.api.ResolveToKeyAddress(ctx, f, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -208,13 +213,24 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	// If the new voucher nonce value is less than the highest known
 	// nonce for the lane
 	ls, lsExists := laneStates[sv.Lane]
-	if lsExists && sv.Nonce <= ls.Nonce() {
-		return nil, fmt.Errorf("nonce too low")
-	}
+	if lsExists {
+		n, err := ls.Nonce()
+		if err != nil {
+			return nil, err
+		}
 
-	// If the voucher amount is less than the highest known voucher amount
-	if lsExists && sv.Amount.LessThanEqual(ls.Redeemed()) {
-		return nil, fmt.Errorf("voucher amount is lower than amount for voucher with lower nonce")
+		if sv.Nonce <= n {
+			return nil, fmt.Errorf("nonce too low")
+		}
+
+		// If the voucher amount is less than the highest known voucher amount
+		r, err := ls.Redeemed()
+		if err != nil {
+			return nil, err
+		}
+		if sv.Amount.LessThanEqual(r) {
+			return nil, fmt.Errorf("voucher amount is lower than amount for voucher with lower nonce")
+		}
 	}
 
 	// Total redeemed is the total redeemed amount for all lanes, including
@@ -239,7 +255,12 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 
 	// Total required balance = total redeemed + toSend
 	// Must not exceed actor balance
-	newTotal := types.BigAdd(totalRedeemed, pchState.ToSend())
+	ts, err := pchState.ToSend()
+	if err != nil {
+		return nil, err
+	}
+
+	newTotal := types.BigAdd(totalRedeemed, ts)
 	if act.Balance.LessThan(newTotal) {
 		return nil, newErrInsufficientFunds(types.BigSub(newTotal, act.Balance))
 	}
@@ -322,7 +343,7 @@ func (ca *channelAccessor) getPaychRecipient(ctx context.Context, ch address.Add
 		return address.Address{}, err
 	}
 
-	return state.To(), nil
+	return state.To()
 }
 
 func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
@@ -376,7 +397,10 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 	laneState, exists := laneStates[sv.Lane]
 	redeemed := big.NewInt(0)
 	if exists {
-		redeemed = laneState.Redeemed()
+		redeemed, err = laneState.Redeemed()
+		if err != nil {
+			return types.NewInt(0), err
+		}
 	}
 
 	delta := types.BigSub(sv.Amount, redeemed)
@@ -531,9 +555,14 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 		// If there's a voucher for a lane that isn't in chain state just
 		// create it
 		ls, ok := laneStates[v.Voucher.Lane]
-
-		if ok && v.Voucher.Nonce < ls.Nonce() {
-			continue
+		if ok {
+			n, err := ls.Nonce()
+			if err != nil {
+				return nil, err
+			}
+			if v.Voucher.Nonce < n {
+				continue
+			}
 		}
 
 		laneStates[v.Voucher.Lane] = laneState{v.Voucher.Amount, v.Voucher.Nonce}
@@ -551,17 +580,31 @@ func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]paych.
 
 	total := big.NewInt(0)
 	for _, ls := range laneStates {
-		total = big.Add(total, ls.Redeemed())
+		r, err := ls.Redeemed()
+		if err != nil {
+			return big.Int{}, err
+		}
+		total = big.Add(total, r)
 	}
 
 	lane, ok := laneStates[sv.Lane]
 	if ok {
 		// If the voucher is for an existing lane, and the voucher nonce
 		// is higher than the lane nonce
-		if sv.Nonce > lane.Nonce() {
+		n, err := lane.Nonce()
+		if err != nil {
+			return big.Int{}, err
+		}
+
+		if sv.Nonce > n {
 			// Add the delta between the redeemed amount and the voucher
 			// amount to the total
-			delta := big.Sub(sv.Amount, lane.Redeemed())
+			r, err := lane.Redeemed()
+			if err != nil {
+				return big.Int{}, err
+			}
+
+			delta := big.Sub(sv.Amount, r)
 			total = big.Add(total, delta)
 		}
 	} else {

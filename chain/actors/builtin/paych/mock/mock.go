@@ -45,23 +45,23 @@ func (ms *mockState) MarshalCBOR(io.Writer) error {
 }
 
 // Channel owner, who has funded the actor
-func (ms *mockState) From() address.Address {
-	return ms.from
+func (ms *mockState) From() (address.Address, error) {
+	return ms.from, nil
 }
 
 // Recipient of payouts from channel
-func (ms *mockState) To() address.Address {
-	return ms.to
+func (ms *mockState) To() (address.Address, error) {
+	return ms.to, nil
 }
 
 // Height at which the channel can be `Collected`
-func (ms *mockState) SettlingAt() abi.ChainEpoch {
-	return ms.settlingAt
+func (ms *mockState) SettlingAt() (abi.ChainEpoch, error) {
+	return ms.settlingAt, nil
 }
 
 // Amount successfully redeemed through the payment channel, paid out on `Collect()`
-func (ms *mockState) ToSend() abi.TokenAmount {
-	return ms.toSend
+func (ms *mockState) ToSend() (abi.TokenAmount, error) {
+	return ms.toSend, nil
 }
 
 // Get total number of lanes
@@ -80,10 +80,10 @@ func (ms *mockState) ForEachLaneState(cb func(idx uint64, dl paych.LaneState) er
 	return lastErr
 }
 
-func (mls *mockLaneState) Redeemed() big.Int {
-	return mls.redeemed
+func (mls *mockLaneState) Redeemed() (big.Int, error) {
+	return mls.redeemed, nil
 }
 
-func (mls *mockLaneState) Nonce() uint64 {
-	return mls.nonce
+func (mls *mockLaneState) Nonce() (uint64, error) {
+	return mls.nonce, nil
 }

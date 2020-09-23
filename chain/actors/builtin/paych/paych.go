@@ -33,15 +33,15 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 type State interface {
 	cbor.Marshaler
 	// Channel owner, who has funded the actor
-	From() address.Address
+	From() (address.Address, error)
 	// Recipient of payouts from channel
-	To() address.Address
+	To() (address.Address, error)
 
 	// Height at which the channel can be `Collected`
-	SettlingAt() abi.ChainEpoch
+	SettlingAt() (abi.ChainEpoch, error)
 
 	// Amount successfully redeemed through the payment channel, paid out on `Collect()`
-	ToSend() abi.TokenAmount
+	ToSend() (abi.TokenAmount, error)
 
 	// Get total number of lanes
 	LaneCount() (uint64, error)
@@ -52,8 +52,8 @@ type State interface {
 
 // LaneState is an abstract copy of the state of a single lane
 type LaneState interface {
-	Redeemed() big.Int
-	Nonce() uint64
+	Redeemed() (big.Int, error)
+	Nonce() (uint64, error)
 }
 
 type SignedVoucher = paych0.SignedVoucher

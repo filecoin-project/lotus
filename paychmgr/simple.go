@@ -317,7 +317,11 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt typ
 		}
 
 		for _, ls := range laneStates {
-			totalRedeemed = types.BigAdd(totalRedeemed, ls.Redeemed())
+			r, err := ls.Redeemed()
+			if err != nil {
+				return nil, err
+			}
+			totalRedeemed = types.BigAdd(totalRedeemed, r)
 		}
 	}
 

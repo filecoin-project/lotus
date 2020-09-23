@@ -108,10 +108,19 @@ var genesisVerifyCmd = &cli.Command{
 					return xerrors.Errorf("multisig actor: %w", err)
 				}
 
+				signers, err := st.Signers()
+				if err != nil {
+					return xerrors.Errorf("multisig actor: %w", err)
+				}
+				threshold, err := st.Threshold()
+				if err != nil {
+					return xerrors.Errorf("multisig actor: %w", err)
+				}
+
 				kmultisigs[addr] = msigInfo{
 					Balance:   types.FIL(act.Balance),
-					Signers:   st.Signers(),
-					Threshold: st.Threshold(),
+					Signers:   signers,
+					Threshold: threshold,
 				}
 				msigAddrs = append(msigAddrs, addr)
 			case act.IsAccountActor():

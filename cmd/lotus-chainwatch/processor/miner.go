@@ -684,7 +684,11 @@ func (p *Processor) diffMinerPartitions(ctx context.Context, m minerActorInfo, e
 		return err
 	}
 	curMiner := m.state
-	if !prevMiner.DeadlinesChanged(curMiner) {
+	dc, err := prevMiner.DeadlinesChanged(curMiner)
+	if err != nil {
+		return err
+	}
+	if !dc {
 		return nil
 	}
 	panic("TODO")

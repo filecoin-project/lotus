@@ -58,11 +58,11 @@ type State interface {
 	LoadDeadline(idx uint64) (Deadline, error)
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
 	NumDeadlines() (uint64, error)
-	DeadlinesChanged(State) bool
+	DeadlinesChanged(State) (bool, error)
 
 	Info() (MinerInfo, error)
 
-	DeadlineInfo(epoch abi.ChainEpoch) *dline.Info
+	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
 
 	// Diff helpers. Used by Diff* functions internally.
 	sectors() (adt.Array, error)
@@ -76,7 +76,7 @@ type Deadline interface {
 	ForEachPartition(cb func(idx uint64, part Partition) error) error
 	PostSubmissions() (bitfield.BitField, error)
 
-	PartitionsChanged(Deadline) bool
+	PartitionsChanged(Deadline) (bool, error)
 }
 
 type Partition interface {

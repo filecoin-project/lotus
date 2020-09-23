@@ -25,24 +25,24 @@ func (s *state0) TotalLocked() (abi.TokenAmount, error) {
 	return fml, nil
 }
 
-func (s *state0) BalancesChanged(otherState State) bool {
+func (s *state0) BalancesChanged(otherState State) (bool, error) {
 	otherState0, ok := otherState.(*state0)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
-		return true
+		return true, nil
 	}
-	return !s.State.EscrowTable.Equals(otherState0.State.EscrowTable) || !s.State.LockedTable.Equals(otherState0.State.LockedTable)
+	return !s.State.EscrowTable.Equals(otherState0.State.EscrowTable) || !s.State.LockedTable.Equals(otherState0.State.LockedTable), nil
 }
 
-func (s *state0) StatesChanged(otherState State) bool {
+func (s *state0) StatesChanged(otherState State) (bool, error) {
 	otherState0, ok := otherState.(*state0)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
-		return true
+		return true, nil
 	}
-	return !s.State.States.Equals(otherState0.State.States)
+	return !s.State.States.Equals(otherState0.State.States), nil
 }
 
 func (s *state0) States() (DealStates, error) {
@@ -53,14 +53,14 @@ func (s *state0) States() (DealStates, error) {
 	return &dealStates0{stateArray}, nil
 }
 
-func (s *state0) ProposalsChanged(otherState State) bool {
+func (s *state0) ProposalsChanged(otherState State) (bool, error) {
 	otherState0, ok := otherState.(*state0)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
-		return true
+		return true, nil
 	}
-	return !s.State.Proposals.Equals(otherState0.State.Proposals)
+	return !s.State.Proposals.Equals(otherState0.State.Proposals), nil
 }
 
 func (s *state0) Proposals() (DealProposals, error) {

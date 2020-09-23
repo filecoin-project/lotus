@@ -206,13 +206,32 @@ var msigInspectCmd = &cli.Command{
 		fmt.Printf("Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
 
 		if cctx.Bool("vesting") {
-			fmt.Printf("InitialBalance: %s\n", types.FIL(mstate.InitialBalance()))
-			fmt.Printf("StartEpoch: %d\n", mstate.StartEpoch())
-			fmt.Printf("UnlockDuration: %d\n", mstate.UnlockDuration())
+			ib, err := mstate.InitialBalance()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("InitialBalance: %s\n", types.FIL(ib))
+			se, err := mstate.StartEpoch()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("StartEpoch: %d\n", se)
+			ud, err := mstate.UnlockDuration()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("UnlockDuration: %d\n", ud)
 		}
 
-		signers := mstate.Signers()
-		fmt.Printf("Threshold: %d / %d\n", mstate.Threshold(), len(signers))
+		signers, err := mstate.Signers()
+		if err != nil {
+			return err
+		}
+		threshold, err := mstate.Threshold()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Threshold: %d / %d\n", threshold, len(signers))
 		fmt.Println("Signers:")
 		for _, s := range signers {
 			fmt.Printf("\t%s\n", s)
