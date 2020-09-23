@@ -23,7 +23,6 @@ import (
 	system0 "github.com/filecoin-project/specs-actors/actors/builtin/system"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
-	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	account1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
 	cron1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/cron"
@@ -36,6 +35,7 @@ import (
 	reward1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
 	system1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/system"
 	verifreg1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
+	vmr "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -115,6 +115,7 @@ type Invokee interface {
 func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
+	runtimeType := reflect.TypeOf((*vmr.Runtime)(nil)).Elem()
 	for i, m := range exports {
 		i := i
 		newErr := func(format string, args ...interface{}) error {
@@ -135,7 +136,7 @@ func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("wrong number of inputs should be: " +
 				"vmr.Runtime, <parameter>")
 		}
-		if t.In(0) != reflect.TypeOf((*vmr.Runtime)(nil)).Elem() {
+		if !runtimeType.Implements(t.In(0)) {
 			return nil, newErr("first arguemnt should be vmr.Runtime")
 		}
 		if t.In(1).Kind() != reflect.Ptr {
