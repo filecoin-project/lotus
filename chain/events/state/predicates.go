@@ -519,32 +519,72 @@ func (i *InitActorAddressChanges) Remove(key string, val *typegen.Deferred) erro
 
 func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 	return func(ctx context.Context, oldState, newState init_.State) (changed bool, user UserData, err error) {
-		/*ctxStore := &contextStore{
-			ctx: ctx,
-			cst: sp.cst,
-		}
-
 		addressChanges := &InitActorAddressChanges{
 			Added:    []AddressPair{},
 			Modified: []AddressChange{},
 			Removed:  []AddressPair{},
 		}
 
-		if oldState.AddressMap.Equals(newState.AddressMap) {
-			return false, nil, nil
-		}
+		err = oldState.ForEachActor(func(oldId abi.ActorID, oldAddress address.Address) error {
+			oldIdAddress, err := address.NewIDAddress(uint64(oldId))
+			if err != nil {
+				return err
+			}
 
-		oldAddrs, err := adt0.AsMap(ctxStore, oldState.AddressMap)
+			newIdAddress, found, err := newState.ResolveAddress(oldAddress)
+			if err != nil {
+				return err
+			}
+
+			if !found {
+				addressChanges.Removed = append(addressChanges.Removed, AddressPair{
+					ID: oldIdAddress,
+					PK: oldAddress,
+				})
+			}
+
+			if oldIdAddress != newIdAddress {
+				addressChanges.Modified = append(addressChanges.Modified, AddressChange{
+					From: AddressPair{
+						ID: oldIdAddress,
+						PK: oldAddress,
+					},
+					To: AddressPair{
+						ID: newIdAddress,
+						PK: oldAddress,
+					},
+				})
+			}
+
+			return nil
+		})
+
 		if err != nil {
 			return false, nil, err
 		}
 
-		newAddrs, err := adt0.AsMap(ctxStore, newState.AddressMap)
-		if err != nil {
-			return false, nil, err
-		}
+		err = newState.ForEachActor(func(newId abi.ActorID, newAddress address.Address) error {
+			newIdAddress, err := address.NewIDAddress(uint64(newId))
+			if err != nil {
+				return err
+			}
 
-		if err := adt.DiffAdtMap(oldAddrs, newAddrs, addressChanges); err != nil {
+			_, found, err := newState.ResolveAddress(newAddress)
+			if err != nil {
+				return err
+			}
+
+			if !found {
+				addressChanges.Added = append(addressChanges.Added, AddressPair{
+					ID: newIdAddress,
+					PK: newAddress,
+				})
+			}
+
+			return nil
+		})
+
+		if err != nil {
 			return false, nil, err
 		}
 
@@ -552,8 +592,6 @@ func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 			return false, nil, nil
 		}
 
-		return true, addressChanges, nil*/
-
-		panic("TODO")
+		return true, addressChanges, nil
 	}
 }
