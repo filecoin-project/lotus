@@ -581,7 +581,7 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 func createSectorsAMT(ctx context.Context, t *testing.T, store adt.Store, sectors []miner.SectorOnChainInfo) cid.Cid {
 	root := adt.MakeEmptyArray(store)
 	for _, sector := range sectors {
-		sector := sector
+		sector := (miner0.SectorOnChainInfo)(sector)
 		err := root.Set(uint64(sector.SectorNumber), &sector)
 		require.NoError(t, err)
 	}
@@ -614,8 +614,8 @@ const (
 )
 
 // returns a unique SectorPreCommitInfo with each invocation with SectorNumber set to `sectorNo`.
-func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiration abi.ChainEpoch) *miner.SectorPreCommitInfo {
-	return &miner.SectorPreCommitInfo{
+func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiration abi.ChainEpoch) *miner0.SectorPreCommitInfo {
+	return &miner0.SectorPreCommitInfo{
 		SealProof:     abi.RegisteredSealProof_StackedDrg32GiBV1,
 		SectorNumber:  sectorNo,
 		SealedCID:     sealed,
