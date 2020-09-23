@@ -33,6 +33,7 @@ import (
 
 	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	account1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
+	cron1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/cron"
 	init1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	market1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
@@ -559,7 +560,7 @@ func init() {
 
 		// builtin1.SystemActorCodeID:        {builtin1.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
 		builtin1.InitActorCodeID:             {builtin1.MethodsInit, init1.Actor{}},
-		builtin1.CronActorCodeID:             {builtin1.MethodsCron, cron.Actor{}},
+		builtin1.CronActorCodeID:             {builtin1.MethodsCron, cron1.Actor{}},
 		builtin1.AccountActorCodeID:          {builtin1.MethodsAccount, account1.Actor{}},
 		builtin1.StoragePowerActorCodeID:     {builtin1.MethodsPower, power1.Actor{}},
 		builtin1.StorageMinerActorCodeID:     {builtin1.MethodsMiner, miner1.Actor{}},
