@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/messagesigner"
+
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -259,6 +261,7 @@ func Online() Option {
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManager),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
+			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
 			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
