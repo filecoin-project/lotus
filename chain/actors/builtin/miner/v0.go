@@ -186,9 +186,9 @@ func (s *state0) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 	if snos == nil {
 		infos := make([]*SectorOnChainInfo, 0, sectors.Length())
 		var info0 miner0.SectorOnChainInfo
-		if err := sectors.ForEach(&info0, func(i int64) error {
+		if err := sectors.ForEach(&info0, func(_ int64) error {
 			info := fromV0SectorOnChainInfo(info0)
-			infos[i] = &info
+			infos = append(infos, &info)
 			return nil
 		}); err != nil {
 			return nil, err
