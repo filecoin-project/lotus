@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
@@ -35,7 +34,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 			return types.NewInt(0), xerrors.Errorf("load state tree: %w", err)
 		}
 
-		act, err := state.GetActor(builtin.StoragePowerActorAddr)
+		act, err := state.GetActor(power.Address)
 		if err != nil {
 			return types.NewInt(0), xerrors.Errorf("get power actor: %w", err)
 		}

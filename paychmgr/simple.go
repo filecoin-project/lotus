@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -400,7 +401,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (c
 	}
 
 	msg := &types.Message{
-		To:     builtin.InitActorAddr,
+		To:     lotusinit.Address,
 		From:   ca.from,
 		Value:  amt,
 		Method: builtin.MethodsInit.Exec,

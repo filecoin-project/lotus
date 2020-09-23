@@ -19,6 +19,7 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
+	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -60,7 +61,7 @@ func TestPaychGetCreateChannelMsg(t *testing.T) {
 
 	pushedMsg := mock.pushedMessages(mcid)
 	require.Equal(t, from, pushedMsg.Message.From)
-	require.Equal(t, builtin.InitActorAddr, pushedMsg.Message.To)
+	require.Equal(t, lotusinit.Address, pushedMsg.Message.To)
 	require.Equal(t, amt, pushedMsg.Message.Value)
 }
 
@@ -712,7 +713,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 	// Check create message amount is correct
 	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
-	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, lotusinit.Address, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
 
 	// Check merged add funds amount is the sum of the individual
@@ -808,7 +809,7 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 	// Check create message amount is correct
 	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
-	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, lotusinit.Address, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
 
 	// Check merged add funds amount only includes the second add funds amount
@@ -890,7 +891,7 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 	// Check create message amount is correct
 	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
-	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, lotusinit.Address, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
 }
 

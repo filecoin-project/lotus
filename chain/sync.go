@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	blst "github.com/supranational/blst/bindings/go"
 
@@ -640,7 +639,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 }
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
-	act, err := syncer.sm.LoadActor(ctx, builtin.StoragePowerActorAddr, baseTs)
+	act, err := syncer.sm.LoadActor(ctx, power.Address, baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to load power actor: %w", err)
 	}

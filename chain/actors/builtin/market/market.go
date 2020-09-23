@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -64,6 +65,12 @@ type DealProposals interface {
 	array() adt.Array
 	decode(*cbg.Deferred) (*DealProposal, error)
 }
+
+type PublishStorageDealsParams = market0.PublishStorageDealsParams
+type PublishStorageDealsReturn = market0.PublishStorageDealsReturn
+type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
+
+type ClientDealProposal = market0.ClientDealProposal
 
 type DealState struct {
 	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector

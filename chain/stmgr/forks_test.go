@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
@@ -168,7 +169,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	m := &types.Message{
 		From:     cg.Banker(),
-		To:       builtin.InitActorAddr,
+		To:       lotusinit.Address,
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
 		GasLimit: types.TestGasLimit,
