@@ -195,9 +195,15 @@ var chainReadObjCmd = &cli.Command{
 }
 
 var chainDeleteObjCmd = &cli.Command{
-	Name:      "delete-obj",
-	Usage:     "Delete an object",
-	ArgsUsage: "[objectCid]",
+	Name:        "delete-obj",
+	Usage:       "Delete an object from the chain blockstore",
+	Description: "WARNING: Removing wrong objects from the chain blockstore may lead to sync issues",
+	ArgsUsage:   "[objectCid]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "really-do-it",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -209,6 +215,10 @@ var chainDeleteObjCmd = &cli.Command{
 		c, err := cid.Decode(cctx.Args().First())
 		if err != nil {
 			return fmt.Errorf("failed to parse cid input: %s", err)
+		}
+
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("pass the --really-do-it flag to proceed")
 		}
 
 		err = api.ChainDeleteObj(ctx, c)
