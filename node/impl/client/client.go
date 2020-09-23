@@ -711,7 +711,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 
 	// TODO: does that defer mean to remove the whole blockstore?
 	defer bufferedDS.Remove(ctx, c) //nolint:errcheck
-	ssb := builder.NewSelectorSpecBuilder(basicnode.Style.Any)
+	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 
 	// entire DAG selector
 	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),

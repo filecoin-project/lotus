@@ -25,9 +25,9 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.0
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.6.4
+	github.com/filecoin-project/go-data-transfer v0.6.5
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-fil-markets v0.6.1-0.20200917052354-ee0af754c6e9
+	github.com/filecoin-project/go-fil-markets v0.6.2
 	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20200822201400-474f4fdccc52
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
@@ -60,7 +60,7 @@ require (
 	github.com/ipfs/go-ds-measure v0.1.0
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.1.2
+	github.com/ipfs/go-graphsync v0.2.0
 	github.com/ipfs/go-ipfs-blockstore v1.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
@@ -77,8 +77,8 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
-	github.com/ipld/go-car v0.1.1-0.20200526133713-1c7508d55aae
-	github.com/ipld/go-ipld-prime v0.0.4-0.20200828224805-5ff8c8b0b6ef
+	github.com/ipld/go-car v0.1.1-0.20200923150018-8cdef32e2da4
+	github.com/ipld/go-ipld-prime v0.5.1-0.20200828233916-988837377a7f
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.7.0
 	github.com/libp2p/go-eventbus v0.2.1
