@@ -320,8 +320,11 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 
 	m.results[wid] = res
 
-	close(m.waitRes[wid])
-	delete(m.waitRes, wid)
+	_, found := m.waitRes[wid]
+	if found {
+		close(m.waitRes[wid])
+		delete(m.waitRes, wid)
+	}
 
 	return nil
 }
