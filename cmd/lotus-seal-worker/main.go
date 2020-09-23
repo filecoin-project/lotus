@@ -14,7 +14,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -304,6 +303,15 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer func() {
+			if err := lr.Close(); err != nil {
+				log.Error("closing repo", err)
+			}
+		}()
+		ds, err := lr.Datastore("/metadata")
+		if err != nil {
+			return err
+		}
 
 		log.Info("Opening local storage; connecting to master")
 		const unspecifiedAddress = "0.0.0.0"
@@ -343,7 +351,7 @@ var runCmd = &cli.Command{
 
 		// Create / expose the worker
 
-		wsts := statestore.New(namespace.Wrap(datastore.NewMapDatastore(), modules.WorkerCallsPrefix)) // TODO: USE A REAL DATASTORE
+		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
 
 		workerApi := &worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
