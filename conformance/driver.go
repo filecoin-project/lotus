@@ -132,7 +132,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 		BaseFee:        BaseFee,
 	}
 
-	lvm, err := vm.NewVM(vmOpts)
+	lvm, err := vm.NewVM(context.TODO(), vmOpts)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

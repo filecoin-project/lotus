@@ -31,11 +31,11 @@ import (
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -1051,12 +1051,8 @@ var clientListDeals = &cli.Command{
 func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet, v api.DealInfo) deal {
 	if v.DealID == 0 {
 		return deal{
-			LocalDeal: v,
-			OnChainDealState: market.DealState{
-				SectorStartEpoch: -1,
-				LastUpdatedEpoch: -1,
-				SlashEpoch:       -1,
-			},
+			LocalDeal:        v,
+			OnChainDealState: *market.EmptyDealState(),
 		}
 	}
 

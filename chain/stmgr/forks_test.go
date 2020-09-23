@@ -11,14 +11,15 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
@@ -33,11 +34,11 @@ import (
 )
 
 func init() {
-	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+	miner0.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 	}
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	power0.ConsensusMinerMinPower = big.NewInt(2048)
+	verifreg0.MinVerifiedDealSize = big.NewInt(256)
 }
 
 const testForkHeight = 40
@@ -148,8 +149,8 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	inv.Register(builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{})
-	sm.SetVMConstructor(func(vmopt *vm.VMOpts) (*vm.VM, error) {
-		nvm, err := vm.NewVM(vmopt)
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
+		nvm, err := vm.NewVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +169,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	m := &types.Message{
 		From:     cg.Banker(),
-		To:       builtin.InitActorAddr,
+		To:       lotusinit.Address,
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
 		GasLimit: types.TestGasLimit,

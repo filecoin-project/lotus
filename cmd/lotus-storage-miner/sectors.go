@@ -8,14 +8,15 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -175,16 +176,16 @@ var sectorsListCmd = &cli.Command{
 		}
 		activeIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 		for _, info := range activeSet {
-			activeIDs[info.ID] = struct{}{}
+			activeIDs[info.SectorNumber] = struct{}{}
 		}
 
-		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, true, types.EmptyTSK)
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 		commitedIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 		for _, info := range sset {
-			commitedIDs[info.ID] = struct{}{}
+			commitedIDs[info.SectorNumber] = struct{}{}
 		}
 
 		sort.Slice(list, func(i, j int) bool {
@@ -389,7 +390,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
 		}
 		if pci.Expiration == 0 {
-			pci.Expiration = miner.MaxSectorExpirationExtension
+			pci.Expiration = miner0.MaxSectorExpirationExtension
 		}
 		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
 		if err != nil {

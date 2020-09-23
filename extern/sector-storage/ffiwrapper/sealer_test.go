@@ -245,6 +245,10 @@ func TestDownloadParams(t *testing.T) {
 }
 
 func TestSealAndVerify(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	defer requireFDsClosed(t, openFDs(t))
 
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
@@ -314,6 +318,10 @@ func TestSealAndVerify(t *testing.T) {
 }
 
 func TestSealPoStNoCommit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	defer requireFDsClosed(t, openFDs(t))
 
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
@@ -375,6 +383,10 @@ func TestSealPoStNoCommit(t *testing.T) {
 }
 
 func TestSealAndVerify3(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	defer requireFDsClosed(t, openFDs(t))
 
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware

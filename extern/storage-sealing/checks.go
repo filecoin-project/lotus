@@ -4,7 +4,12 @@ import (
 	"bytes"
 	"context"
 
-	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
+	"github.com/filecoin-project/lotus/build"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
+	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"golang.org/x/xerrors"
 
@@ -13,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -93,7 +97,20 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
 	}
 
-	if height-(si.TicketEpoch+SealRandomnessLookback) > SealRandomnessLookbackLimit(si.SectorType) {
+	nv, err := api.StateNetworkVersion(ctx, tok)
+	if err != nil {
+		return &ErrApi{xerrors.Errorf("calling StateNetworkVersion: %w", err)}
+	}
+
+	var msd abi.ChainEpoch
+	if nv < build.ActorUpgradeNetworkVersion {
+		msd = miner0.MaxSealDuration[si.SectorType]
+	} else {
+		// TODO: ActorUpgrade(use MaxProveCommitDuration)
+		msd = 0
+	}
+
+	if height-(si.TicketEpoch+SealRandomnessLookback) > msd {
 		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+SealRandomnessLookback, height)}
 	}
 
@@ -170,7 +187,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		log.Warn("on-chain sealed CID doesn't match!")
 	}
 
-	ok, err := m.verif.VerifySeal(saproof.SealVerifyInfo{
+	ok, err := m.verif.VerifySeal(proof0.SealVerifyInfo{
 		SectorID:              m.minerSector(si.SectorNumber),
 		SealedCID:             pci.Info.SealedCID,
 		SealProof:             spt,

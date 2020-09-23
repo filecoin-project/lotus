@@ -7,7 +7,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -34,7 +34,7 @@ func SetupVerifiedRegistryActor(bs bstore.Blockstore) (*types.Actor, error) {
 		return nil, err
 	}
 
-	sms := verifreg.ConstructState(h, RootVerifierID)
+	sms := verifreg0.ConstructState(h, RootVerifierID)
 
 	stcid, err := store.Put(store.Context(), sms)
 	if err != nil {

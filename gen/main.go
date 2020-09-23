@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
@@ -26,6 +28,8 @@ func main() {
 		types.BlockMsg{},
 		types.ExpTipSet{},
 		types.BeaconEntry{},
+		types.StateRoot{},
+		types.StateInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -74,4 +78,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = gen.WriteTupleEncodersToFile("./chain/actors/builtin/miner/cbor_gen.go", "miner",
+		miner.SectorOnChainInfo{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

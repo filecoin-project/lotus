@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -23,8 +23,8 @@ const BreezeGasTampingDuration = 120
 const UpgradeSmokeHeight = 51000
 
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(10 << 40)
-	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
+	power0.ConsensusMinerMinPower = big.NewInt(10 << 40)
+	miner0.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
 		abi.RegisteredSealProof_StackedDrg32GiBV1: {},
 		abi.RegisteredSealProof_StackedDrg64GiBV1: {},
 	}

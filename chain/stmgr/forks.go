@@ -6,13 +6,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
@@ -96,11 +97,8 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 		return xerrors.Errorf("failed to get tipset at lookback height: %w", err)
 	}
 
-	var lbtree *state.StateTree
-	if err = sm.WithStateTree(lbts.ParentState(), func(state *state.StateTree) error {
-		lbtree = state
-		return nil
-	}); err != nil {
+	lbtree, err := sm.ParentState(lbts)
+	if err != nil {
 		return xerrors.Errorf("loading state tree failed: %w", err)
 	}
 
@@ -125,7 +123,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 	// Take all excess funds away, put them into the reserve account
 	err = fetree.ForEach(func(addr address.Address, act *types.Actor) error {
 		switch act.Code {
-		case builtin.AccountActorCodeID, builtin.MultisigActorCodeID, builtin.PaymentChannelActorCodeID:
+		case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
 			sysAcc, err := isSystemAccount(addr)
 			if err != nil {
 				return xerrors.Errorf("checking system account: %w", err)
@@ -138,9 +136,9 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 					Amt:  act.Balance,
 				})
 			}
-		case builtin.StorageMinerActorCodeID:
-			var st miner.State
-			if err := sm.WithActorState(ctx, &st)(act); err != nil {
+		case builtin0.StorageMinerActorCodeID:
+			var st miner0.State
+			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
@@ -176,8 +174,8 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 	}
 
 	// pull up power table to give miners back some funds proportional to their power
-	var ps power.State
-	powAct, err := tree.GetActor(builtin.StoragePowerActorAddr)
+	var ps power0.State
+	powAct, err := tree.GetActor(builtin0.StoragePowerActorAddr)
 	if err != nil {
 		return xerrors.Errorf("failed to load power actor: %w", err)
 	}
@@ -205,7 +203,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 		}
 
 		switch act.Code {
-		case builtin.AccountActorCodeID, builtin.MultisigActorCodeID, builtin.PaymentChannelActorCodeID:
+		case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
 			nbalance := big.Min(prevBalance, AccountCap)
 			if nbalance.Sign() != 0 {
 				transfersBack = append(transfersBack, transfer{
@@ -214,18 +212,18 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 					Amt:  nbalance,
 				})
 			}
-		case builtin.StorageMinerActorCodeID:
-			var st miner.State
-			if err := sm.WithActorState(ctx, &st)(act); err != nil {
+		case builtin0.StorageMinerActorCodeID:
+			var st miner0.State
+			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
-			var minfo miner.MinerInfo
+			var minfo miner0.MinerInfo
 			if err := cst.Get(ctx, st.Info, &minfo); err != nil {
 				return xerrors.Errorf("failed to get miner info: %w", err)
 			}
 
-			sectorsArr, err := adt.AsArray(sm.ChainStore().Store(ctx), st.Sectors)
+			sectorsArr, err := adt0.AsArray(sm.ChainStore().Store(ctx), st.Sectors)
 			if err != nil {
 				return xerrors.Errorf("failed to load sectors array: %w", err)
 			}
@@ -244,12 +242,12 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 			// Now make sure to give each miner who had power at the lookback some FIL
 			lbact, err := lbtree.GetActor(addr)
 			if err == nil {
-				var lbst miner.State
-				if err := sm.WithActorState(ctx, &lbst)(lbact); err != nil {
+				var lbst miner0.State
+				if err := sm.ChainStore().Store(ctx).Get(ctx, lbact.Head, &lbst); err != nil {
 					return xerrors.Errorf("failed to load miner state: %w", err)
 				}
 
-				lbsectors, err := adt.AsArray(sm.ChainStore().Store(ctx), lbst.Sectors)
+				lbsectors, err := adt0.AsArray(sm.ChainStore().Store(ctx), lbst.Sectors)
 				if err != nil {
 					return xerrors.Errorf("failed to load lb sectors array: %w", err)
 				}
@@ -279,11 +277,11 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, tree types
 	}
 
 	// transfer all burnt funds back to the reserve account
-	burntAct, err := tree.GetActor(builtin.BurntFundsActorAddr)
+	burntAct, err := tree.GetActor(builtin0.BurntFundsActorAddr)
 	if err != nil {
 		return xerrors.Errorf("failed to load burnt funds actor: %w", err)
 	}
-	if err := doTransfer(tree, builtin.BurntFundsActorAddr, ReserveAddress, burntAct.Balance); err != nil {
+	if err := doTransfer(tree, builtin0.BurntFundsActorAddr, ReserveAddress, burntAct.Balance); err != nil {
 		return xerrors.Errorf("failed to unburn funds: %w", err)
 	}
 
