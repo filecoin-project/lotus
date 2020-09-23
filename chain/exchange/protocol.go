@@ -139,6 +139,8 @@ func (res *Response) statusToError() error {
 
 // FIXME: Rename.
 type BSTipSet struct {
+	// List of blocks belonging to a single tipset to which the
+	// `CompactedMessages` are linked.
 	Blocks   []*types.BlockHeader
 	Messages *CompactedMessages
 }
