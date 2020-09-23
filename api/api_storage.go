@@ -63,7 +63,7 @@ type StorageMiner interface {
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
 	WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error)
-	WorkerJobs(context.Context) (map[uint64][]storiface.WorkerJob, error)
+	WorkerJobs(context.Context) (map[int64][]storiface.WorkerJob, error)
 	storiface.WorkerReturn
 
 	// SealingSchedDiag dumps internal sealing scheduler state

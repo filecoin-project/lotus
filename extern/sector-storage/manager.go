@@ -57,7 +57,7 @@ type SectorManager interface {
 	FaultTracker
 }
 
-type WorkerID uint64
+type WorkerID int64
 
 type Manager struct {
 	scfg *ffiwrapper.Config

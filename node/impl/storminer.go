@@ -87,7 +87,7 @@ func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]storiface.Wo
 	return sm.StorageMgr.WorkerStats(), nil
 }
 
-func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[uint64][]storiface.WorkerJob, error) {
+func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[int64][]storiface.WorkerJob, error) {
 	return sm.StorageMgr.WorkerJobs(), nil
 }
 

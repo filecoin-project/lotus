@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,10 +10,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
@@ -139,7 +139,7 @@ var sealingJobsCmd = &cli.Command{
 
 		type line struct {
 			storiface.WorkerJob
-			wid uint64
+			wid int64
 		}
 
 		lines := make([]line, 0)
@@ -161,7 +161,7 @@ var sealingJobsCmd = &cli.Command{
 			return lines[i].Start.Before(lines[j].Start)
 		})
 
-		workerHostnames := map[uint64]string{}
+		workerHostnames := map[int64]string{}
 
 		wst, err := nodeApi.WorkerStats(ctx)
 		if err != nil {
@@ -169,7 +169,7 @@ var sealingJobsCmd = &cli.Command{
 		}
 
 		for wid, st := range wst {
-			workerHostnames[wid] = st.Info.Hostname
+			workerHostnames[int64(wid)] = st.Info.Hostname
 		}
 
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
@@ -177,10 +177,18 @@ var sealingJobsCmd = &cli.Command{
 
 		for _, l := range lines {
 			state := "running"
-			if l.RunWait != 0 {
+			if l.RunWait > 0 {
 				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\t%s\t%s\t%s\t%s\n", l.ID, l.Sector.Number, l.wid, workerHostnames[l.wid], l.Task.Short(), state, time.Now().Sub(l.Start).Truncate(time.Millisecond*100))
+			if l.RunWait == -1 {
+				state = "ret-wait"
+			}
+			dur := "n/a"
+			if !l.Start.IsZero() {
+				dur = time.Now().Sub(l.Start).Truncate(time.Millisecond * 100).String()
+			}
+
+			_, _ = fmt.Fprintf(tw, "%s\t%d\t%d\t%s\t%s\t%s\t%s\n", hex.EncodeToString(l.ID.ID[10:]), l.Sector.Number, l.wid, workerHostnames[l.wid], l.Task.Short(), state, dur)
 		}
 
 		return tw.Flush()
