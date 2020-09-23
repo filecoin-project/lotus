@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -72,7 +73,7 @@ func makeClient(c *cli.Context) (api.FullNode, error) {
 		headers.Add("Authorization", "Bearer "+token)
 	}
 
-	node, _, err := client.NewFullNodeRPC(addr, headers)
+	node, _, err := client.NewFullNodeRPC(context.Background(), addr, headers)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to api: %w", err)
 	}
