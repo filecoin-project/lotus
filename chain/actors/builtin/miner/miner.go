@@ -11,11 +11,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 // Unchanged between v0 and v1 actors
@@ -27,6 +29,13 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.StorageMinerActorCodeID:
 		out := state0{store: store}
+		err := store.Get(store.Context(), act.Head, &out)
+		if err != nil {
+			return nil, err
+		}
+		return &out, nil
+	case builtin1.StorageMinerActorCodeID:
+		out := state1{store: store}
 		err := store.Get(store.Context(), act.Head, &out)
 		if err != nil {
 			return nil, err
