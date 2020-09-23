@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -20,8 +22,15 @@ type dealStatsServer struct {
 var filteredClients map[address.Address]bool
 
 func init() {
+	fc := []string{"t0112", "t0113", "t0114", "t010089"}
+
+	filtered, set := os.LookupEnv("FILTERED_CLIENTS")
+	if set {
+		fc = strings.Split(filtered, ":")
+	}
+
 	filteredClients = make(map[address.Address]bool)
-	for _, a := range []string{"t0112", "t0113", "t0114", "t010089"} {
+	for _, a := range fc {
 		addr, err := address.NewFromString(a)
 		if err != nil {
 			panic(err)
@@ -33,16 +42,6 @@ func init() {
 type dealCountResp struct {
 	Total int64 `json:"total"`
 	Epoch int64 `json:"epoch"`
-}
-
-func filterDeals(deals map[string]api.MarketDeal) []*api.MarketDeal {
-	out := make([]*api.MarketDeal, 0, len(deals))
-	for _, d := range deals {
-		if !filteredClients[d.Proposal.Client] {
-			out = append(out, &d)
-		}
-	}
-	return out
 }
 
 func (dss *dealStatsServer) handleStorageDealCount(w http.ResponseWriter, r *http.Request) {
@@ -251,15 +250,16 @@ var serveDealStatsCmd = &cli.Command{
 
 		go func() {
 			<-ctx.Done()
-			s.Shutdown(context.TODO())
+			if err := s.Shutdown(context.TODO()); err != nil {
+				log.Error(err)
+			}
 		}()
 
-		list, err := net.Listen("tcp", ":7272")
+		list, err := net.Listen("tcp", ":7272") // nolint
 		if err != nil {
 			panic(err)
 		}
 
-		s.Serve(list)
-		return nil
+		return s.Serve(list)
 	},
 }
