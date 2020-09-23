@@ -25,24 +25,24 @@ func (s *state1) TotalLocked() (abi.TokenAmount, error) {
 	return fml, nil
 }
 
-func (s *state1) BalancesChanged(otherState State) bool {
+func (s *state1) BalancesChanged(otherState State) (bool, error) {
 	otherState1, ok := otherState.(*state1)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
-		return true
+		return true, nil
 	}
-	return !s.State.EscrowTable.Equals(otherState1.State.EscrowTable) || !s.State.LockedTable.Equals(otherState1.State.LockedTable)
+	return !s.State.EscrowTable.Equals(otherState1.State.EscrowTable) || !s.State.LockedTable.Equals(otherState1.State.LockedTable), nil
 }
 
-func (s *state1) StatesChanged(otherState State) bool {
+func (s *state1) StatesChanged(otherState State) (bool, error) {
 	otherState1, ok := otherState.(*state1)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
-		return true
+		return true, nil
 	}
-	return !s.State.States.Equals(otherState1.State.States)
+	return !s.State.States.Equals(otherState1.State.States), nil
 }
 
 func (s *state1) States() (DealStates, error) {
@@ -53,14 +53,14 @@ func (s *state1) States() (DealStates, error) {
 	return &dealStates1{stateArray}, nil
 }
 
-func (s *state1) ProposalsChanged(otherState State) bool {
+func (s *state1) ProposalsChanged(otherState State) (bool, error) {
 	otherState1, ok := otherState.(*state1)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
-		return true
+		return true, nil
 	}
-	return !s.State.Proposals.Equals(otherState1.State.Proposals)
+	return !s.State.Proposals.Equals(otherState1.State.Proposals), nil
 }
 
 func (s *state1) Proposals() (DealProposals, error) {
@@ -125,6 +125,13 @@ func (s *dealStates1) Get(dealID abi.DealID) (*DealState, bool, error) {
 	}
 	deal := fromV1DealState(deal1)
 	return &deal, true, nil
+}
+
+func (s *dealStates1) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
+	var ds1 market.DealState
+	return s.Array.ForEach(&ds1, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV1DealState(ds1))
+	})
 }
 
 func (s *dealStates1) decode(val *cbg.Deferred) (*DealState, error) {

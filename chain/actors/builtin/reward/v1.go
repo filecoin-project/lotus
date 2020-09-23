@@ -2,17 +2,18 @@ package reward
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	miner1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
+	reward1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
+	smoothing1 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 )
 
 var _ State = (*state1)(nil)
 
 type state1 struct {
-	reward.State
+	reward1.State
 	store adt.Store
 }
 
@@ -56,7 +57,7 @@ func (s *state1) InitialPledgeForPower(qaPower abi.StoragePower, networkTotalPle
 		qaPower,
 		s.State.ThisEpochBaselinePower,
 		s.State.ThisEpochRewardSmoothed,
-		smoothing.FilterEstimate{
+		smoothing1.FilterEstimate{
 			PositionEstimate: networkQAPower.PositionEstimate,
 			VelocityEstimate: networkQAPower.VelocityEstimate,
 		},
@@ -66,7 +67,7 @@ func (s *state1) InitialPledgeForPower(qaPower abi.StoragePower, networkTotalPle
 
 func (s *state1) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate, sectorWeight abi.StoragePower) (abi.TokenAmount, error) {
 	return miner1.PreCommitDepositForPower(s.State.ThisEpochRewardSmoothed,
-		smoothing.FilterEstimate{
+		smoothing1.FilterEstimate{
 			PositionEstimate: networkQAPower.PositionEstimate,
 			VelocityEstimate: networkQAPower.VelocityEstimate,
 		},

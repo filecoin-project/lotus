@@ -18,23 +18,23 @@ type state1 struct {
 }
 
 // Channel owner, who has funded the actor
-func (s *state1) From() address.Address {
-	return s.State.From
+func (s *state1) From() (address.Address, error) {
+	return s.State.From, nil
 }
 
 // Recipient of payouts from channel
-func (s *state1) To() address.Address {
-	return s.State.To
+func (s *state1) To() (address.Address, error) {
+	return s.State.To, nil
 }
 
 // Height at which the channel can be `Collected`
-func (s *state1) SettlingAt() abi.ChainEpoch {
-	return s.State.SettlingAt
+func (s *state1) SettlingAt() (abi.ChainEpoch, error) {
+	return s.State.SettlingAt, nil
 }
 
 // Amount successfully redeemed through the payment channel, paid out on `Collect()`
-func (s *state1) ToSend() abi.TokenAmount {
-	return s.State.ToSend
+func (s *state1) ToSend() (abi.TokenAmount, error) {
+	return s.State.ToSend, nil
 }
 
 func (s *state1) getOrLoadLsAmt() (*adt1.Array, error) {
@@ -82,10 +82,10 @@ type laneState1 struct {
 	paych.LaneState
 }
 
-func (ls *laneState1) Redeemed() big.Int {
-	return ls.LaneState.Redeemed
+func (ls *laneState1) Redeemed() (big.Int, error) {
+	return ls.LaneState.Redeemed, nil
 }
 
-func (ls *laneState1) Nonce() uint64 {
-	return ls.LaneState.Nonce
+func (ls *laneState1) Nonce() (uint64, error) {
+	return ls.LaneState.Nonce, nil
 }

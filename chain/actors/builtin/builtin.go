@@ -17,6 +17,7 @@ type Version int
 
 const (
 	Version0 = iota
+	Version1
 )
 
 // Converts a network version into a specs-actors version.

@@ -3,8 +3,10 @@ package power
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	adt1 "github.com/filecoin-project/specs-actors/actors/util/adt"
 	power1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 )
 
@@ -35,7 +37,7 @@ func (s *state1) TotalCommitted() (Claim, error) {
 }
 
 func (s *state1) MinerPower(addr address.Address) (Claim, bool, error) {
-	claims, err := adt.AsMap(s.store, s.Claims)
+	claims, err := adt1.AsMap(s.store, s.Claims)
 	if err != nil {
 		return Claim{}, false, err
 	}
@@ -63,7 +65,7 @@ func (s *state1) MinerCounts() (uint64, uint64, error) {
 }
 
 func (s *state1) ListAllMiners() ([]address.Address, error) {
-	claims, err := adt.AsMap(s.store, s.Claims)
+	claims, err := adt1.AsMap(s.store, s.Claims)
 	if err != nil {
 		return nil, err
 	}
