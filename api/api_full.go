@@ -21,9 +21,9 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
@@ -788,7 +788,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower      types.BigInt
 	NetworkPower    types.BigInt
-	Sectors         []proof.SectorInfo
+	Sectors         []builtin.SectorInfo
 	WorkerKey       address.Address
 	SectorSize      abi.SectorSize
 	PrevBeaconEntry types.BeaconEntry
@@ -805,7 +805,7 @@ type BlockTemplate struct {
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
-	WinningPoStProof []proof.PoStProof
+	WinningPoStProof []builtin.PoStProof
 }
 
 type DataSize struct {

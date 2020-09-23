@@ -8,6 +8,7 @@ import (
 	big "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -54,3 +55,6 @@ type LaneState interface {
 	Redeemed() big.Int
 	Nonce() uint64
 }
+
+type SignedVoucher = paych0.SignedVoucher
+type ModVerifyParams = paych0.ModVerifyParams
