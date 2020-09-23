@@ -33,6 +33,16 @@ var runCmd = &cli.Command{
 	Usage: "Start a lotus miner process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			Name:  "api",
+			Usage: "lotus daemon api format: ip4/127.0.0.1/tcp/1234",
+			// Hidden: true,
+		},
+		&cli.StringFlag{
+			Name:  "token",
+			Usage: "lotus daemon api token",
+			// Hidden: true,
+		},
+		&cli.StringFlag{
 			Name:  "port",
 			Value: "2345",
 		},
@@ -52,6 +62,11 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("api") {
+			if !cctx.IsSet("token") {
+				return xerrors.Errorf("api is set but token isn't set")
+			}
+		}
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
 			if err != nil {

@@ -82,6 +82,19 @@ func flagForAPI(t repo.RepoType) string {
 	}
 }
 
+func flagForToken(t repo.RepoType) string {
+	switch t {
+	case repo.FullNode:
+		return "token"
+	case repo.StorageMiner:
+		return "miner-token"
+	case repo.Worker:
+		return "worker-token"
+	default:
+		panic(fmt.Sprintf("Unknown repo type: %v", t))
+	}
+}
+
 func flagForRepo(t repo.RepoType) string {
 	switch t {
 	case repo.FullNode:
@@ -126,7 +139,8 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)
 	apiFlag := flagForAPI(t)
-	if ctx.IsSet(apiFlag) {
+	tokenFlag := flagForToken(t)
+	if ctx.IsSet(apiFlag) && ctx.IsSet(tokenFlag) {
 		strma := ctx.String(apiFlag)
 		strma = strings.TrimSpace(strma)
 
@@ -134,7 +148,14 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		if err != nil {
 			return APIInfo{}, err
 		}
-		return APIInfo{Addr: apima}, nil
+
+		token := ctx.String(tokenFlag)
+		token = strings.TrimSpace(token)
+
+		return APIInfo{
+			Addr:  apima,
+			Token: []byte(token),
+		}, nil
 	}
 
 	envKey := envForRepo(t)
