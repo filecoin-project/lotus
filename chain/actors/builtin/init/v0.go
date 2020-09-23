@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
@@ -45,4 +46,22 @@ func (s *state0) ForEachActor(cb func(id abi.ActorID, address address.Address) e
 
 func (s *state0) NetworkName() (dtypes.NetworkName, error) {
 	return dtypes.NetworkName(s.State.NetworkName), nil
+}
+
+func (s *state0) Remove(addrs ...address.Address) (err error) {
+	m, err := adt0.AsMap(s.store, s.State.AddressMap)
+	if err != nil {
+		return err
+	}
+	for _, addr := range addrs {
+		if err = m.Delete(abi.AddrKey(addr)); err != nil {
+			return xerrors.Errorf("failed to delete entry for address: %s; err: %w", addr, err)
+		}
+	}
+	amr, err := m.Root()
+	if err != nil {
+		return xerrors.Errorf("failed to get address map root: %w", err)
+	}
+	s.State.AddressMap = amr
+	return nil
 }

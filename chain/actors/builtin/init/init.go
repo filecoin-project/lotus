@@ -36,4 +36,9 @@ type State interface {
 	NetworkName() (dtypes.NetworkName, error)
 
 	ForEachActor(func(id abi.ActorID, address address.Address) error) error
+
+	// Remove exists to support tooling that manipulates state for testing.
+	// It should not be used in production code, as init actor entries are
+	// immutable.
+	Remove(addrs ...address.Address) error
 }
