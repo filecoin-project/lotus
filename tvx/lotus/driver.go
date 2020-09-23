@@ -4,13 +4,13 @@ import (
 	"context"
 	"log"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/puppet"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -51,15 +51,12 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 		Syscalls:       mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)),
 		CircSupplyCalc: nil,
 		BaseFee:        BaseFee,
+		NtwkVersion: func(context.Context, abi.ChainEpoch) network.Version {
+			// TODO: Network upgrade.
+			return network.Version0
+		},
 	}
-	lvm, err := vm.NewVM(vmOpts)
-	if err != nil {
-		return nil, cid.Undef, err
-	}
-	// need to modify the VM invoker to add the puppet actor
-	chainValInvoker := vm.NewInvoker()
-	chainValInvoker.Register(puppet.PuppetActorCodeID, puppet.Actor{}, puppet.State{})
-	lvm.SetInvoker(chainValInvoker)
+	lvm, err := vm.NewVM(d.ctx, vmOpts)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

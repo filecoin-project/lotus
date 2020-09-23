@@ -7,9 +7,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -36,12 +38,12 @@ func (fss *fakedSigSyscalls) VerifySignature(_ crypto.Signature, _ address.Addre
 }
 
 // TODO VerifySeal this will always succeed; but we want to be able to test failures too.
-func (fss *fakedSigSyscalls) VerifySeal(_ abi.SealVerifyInfo) error {
+func (fss *fakedSigSyscalls) VerifySeal(_ proof.SealVerifyInfo) error {
 	return nil
 }
 
 // TODO VerifyPoSt this will always succeed; but we want to be able to test failures too.
-func (fss *fakedSigSyscalls) VerifyPoSt(_ abi.WindowPoStVerifyInfo) error {
+func (fss *fakedSigSyscalls) VerifyPoSt(_ proof.WindowPoStVerifyInfo) error {
 	return nil
 }
 

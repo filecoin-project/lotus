@@ -11,11 +11,11 @@ require (
 	github.com/drand/drand v1.1.2-0.20200905144319-79c957281b32
 	github.com/filecoin-project/go-address v0.0.3
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20200731171407-e559a0579161 // indirect
-	github.com/filecoin-project/go-fil-markets v0.6.1-0.20200911011457-2959ccca6a3c
+	github.com/filecoin-project/go-fil-markets v0.6.1-0.20200917052354-ee0af754c6e9
 	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20200822201400-474f4fdccc52
 	github.com/filecoin-project/go-state-types v0.0.0-20200911004822-964d6c679cfc
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v0.7.1-0.20200916113100-4ee9e7c1e1ab
+	github.com/filecoin-project/lotus v0.7.2-0.20200922230732-77f81fc49be3
 	github.com/filecoin-project/specs-actors v0.9.10
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
