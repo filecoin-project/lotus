@@ -30,7 +30,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/statediff"
 
 	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
@@ -79,9 +78,6 @@ var importBenchCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "no-import",
 			Usage: "should we import the chain? if set to true chain has to be previously imported",
-		},
-		&cli.BoolFlag{
-			Name: "only-gc",
 		},
 		&cli.BoolFlag{
 			Name:  "global-profile",
@@ -157,13 +153,8 @@ var importBenchCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer bds.Close()
+		defer bds.Close() //nolint:errcheck
 
-		if cctx.Bool("only-gc") {
-			log.Info("calling CollectGarbage on main ds")
-			//bds.CollectGarbage()
-			log.Info("done calling CollectGarbage on main ds")
-		}
 		bs := blockstore.NewBlockstore(bds)
 		cacheOpts := blockstore.DefaultCacheOpts()
 		cacheOpts.HasBloomFilterSize = 0
@@ -181,13 +172,8 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
 			}
-			defer scds.Close()
+			defer scds.Close() //nolint:errcheck
 
-			if cctx.Bool("only-gc") {
-				log.Info("calling CollectGarbage on syscall ds")
-				scds.CollectGarbage()
-				log.Info("done calling CollectGarbage on syscall ds")
-			}
 			verifier = &cachingVerifier{
 				ds:      scds,
 				backend: verifier,
@@ -317,7 +303,7 @@ var importBenchCmd = &cli.Command{
 				}
 				fmt.Println("TRACE")
 				fmt.Println(string(d))
-				fmt.Println(statediff.Diff(context.Background(), bs, tschain[i-1].ParentState(), st, statediff.ExpandActors))
+				//fmt.Println(statediff.Diff(context.Background(), bs, tschain[i-1].ParentState(), st, statediff.ExpandActors))
 				return xerrors.Errorf("tipset chain had state mismatch at height %d (%s != %s)", cur.Height(), cur.ParentState(), st)
 			}
 		}
