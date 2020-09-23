@@ -6,22 +6,20 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/lotus/api"
-
-	"golang.org/x/sync/errgroup"
-
-	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -320,7 +318,11 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt typ
 		}
 
 		for _, ls := range laneStates {
-			totalRedeemed = types.BigAdd(totalRedeemed, ls.Redeemed)
+			r, err := ls.Redeemed()
+			if err != nil {
+				return nil, err
+			}
+			totalRedeemed = types.BigAdd(totalRedeemed, r)
 		}
 	}
 
@@ -385,12 +387,12 @@ func (ca *channelAccessor) processTask(ctx context.Context, amt types.BigInt) *p
 
 // createPaych sends a message to create the channel and returns the message cid
 func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (cid.Cid, error) {
-	params, aerr := actors.SerializeParams(&paych.ConstructorParams{From: ca.from, To: ca.to})
+	params, aerr := actors.SerializeParams(&paych0.ConstructorParams{From: ca.from, To: ca.to})
 	if aerr != nil {
 		return cid.Undef, aerr
 	}
 
-	enc, aerr := actors.SerializeParams(&init_.ExecParams{
+	enc, aerr := actors.SerializeParams(&init0.ExecParams{
 		CodeCID:           builtin.PaymentChannelActorCodeID,
 		ConstructorParams: params,
 	})
@@ -399,7 +401,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (c
 	}
 
 	msg := &types.Message{
-		To:     builtin.InitActorAddr,
+		To:     lotusinit.Address,
 		From:   ca.from,
 		Value:  amt,
 		Method: builtin.MethodsInit.Exec,
@@ -455,7 +457,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 		return err
 	}
 
-	var decodedReturn init_.ExecReturn
+	var decodedReturn init0.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)

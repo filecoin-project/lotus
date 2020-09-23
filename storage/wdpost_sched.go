@@ -4,12 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/dline"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"

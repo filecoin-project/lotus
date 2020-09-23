@@ -306,8 +306,30 @@ func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid
 	return sm.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
 }
 
-func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error) {
-	return sm.StorageProvider.ListDeals(ctx)
+func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, error) {
+	ts, err := sm.Full.ChainHead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tsk := ts.Key()
+	allDeals, err := sm.Full.StateMarketDeals(ctx, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []api.MarketDeal
+
+	for _, deal := range allDeals {
+		if deal.Proposal.Provider == sm.Miner.Address() {
+			out = append(out, deal)
+		}
+	}
+
+	return out, nil
+}
+
+func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]api.MarketDeal, error) {
+	return sm.listDeals(ctx)
 }
 
 func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
@@ -396,8 +418,8 @@ func (sm *StorageMinerAPI) MarketDataTransferUpdates(ctx context.Context) (<-cha
 	return channels, nil
 }
 
-func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
-	return sm.StorageProvider.ListDeals(ctx)
+func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
+	return sm.listDeals(ctx)
 }
 
 func (sm *StorageMinerAPI) RetrievalDealsList(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]retrievalmarket.ProviderDealState, error) {

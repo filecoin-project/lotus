@@ -7,13 +7,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
-
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -25,15 +18,21 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
 
@@ -52,16 +51,12 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
-	if act.Code != builtin.AccountActorCodeID {
-		return address.Undef, xerrors.Errorf("address %s was not for an account actor", addr)
-	}
-
-	var aast account.State
-	if err := cst.Get(context.TODO(), act.Head, &aast); err != nil {
+	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
+	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
 
-	return aast.Address, nil
+	return aast.PubkeyAddress()
 }
 
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
@@ -166,11 +161,11 @@ type VMOpts struct {
 	Bstore         bstore.Blockstore
 	Syscalls       SyscallBuilder
 	CircSupplyCalc CircSupplyCalculator
-	NtwkVersion    NtwkVersionGetter
+	NtwkVersion    NtwkVersionGetter // TODO: stebalien: In what cases do we actually need this? It seems like even when creating new networks we want to use the 'global'/build-default version getter
 	BaseFee        abi.TokenAmount
 }
 
-func NewVM(opts *VMOpts) (*VM, error) {
+func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(opts.Bstore)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, opts.StateBase)
@@ -390,7 +385,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 
 	// this should never happen, but is currently still exercised by some tests
-	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
+	if !fromActor.IsAccountActor() {
 		gasOutputs := ZeroGasOutputs()
 		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
@@ -499,7 +494,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		return nil, xerrors.Errorf("failed to burn base fee: %w", err)
 	}
 
-	if err := vm.transferFromGasHolder(builtin.RewardActorAddr, gasHolder, gasOutputs.MinerTip); err != nil {
+	if err := vm.transferFromGasHolder(reward.Address, gasHolder, gasOutputs.MinerTip); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
 

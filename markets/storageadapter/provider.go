@@ -12,21 +12,23 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/events"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -67,8 +69,8 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		return cid.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&market.PublishStorageDealsParams{
-		Deals: []market.ClientDealProposal{deal.ClientDealProposal},
+	params, err := actors.SerializeParams(&market0.PublishStorageDealsParams{
+		Deals: []market0.ClientDealProposal{deal.ClientDealProposal},
 	})
 
 	if err != nil {
@@ -77,10 +79,10 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 
 	// TODO: We may want this to happen after fetching data
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:     builtin.StorageMarketActorAddr,
+		To:     market.Address,
 		From:   mi.Worker,
 		Value:  types.NewInt(0),
-		Method: builtin.MethodsMarket.PublishStorageDeals,
+		Method: builtin0.MethodsMarket.PublishStorageDeals,
 		Params: params,
 	}, nil)
 	if err != nil {
@@ -143,28 +145,6 @@ func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Si
 	return err == nil, err
 }
 
-func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	tsk, err := types.TipSetKeyFromBytes(encodedTs)
-	if err != nil {
-		return nil, err
-	}
-	allDeals, err := n.StateMarketDeals(ctx, tsk)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []storagemarket.StorageDeal
-
-	for _, deal := range allDeals {
-		sharedDeal := utils.FromOnChainDeal(deal.Proposal, deal.State)
-		if sharedDeal.Provider == addr {
-			out = append(out, sharedDeal)
-		}
-	}
-
-	return out, nil
-}
-
 func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
@@ -199,10 +179,10 @@ func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet addr
 func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:     builtin.StorageMarketActorAddr,
+		To:     market.Address,
 		From:   addr,
 		Value:  amount,
-		Method: builtin.MethodsMarket.AddBalance,
+		Method: builtin0.MethodsMarket.AddBalance,
 	}, nil)
 	if err != nil {
 		return cid.Undef, err
@@ -324,7 +304,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 		}
 
 		switch msg.Method {
-		case builtin.MethodsMiner.PreCommitSector:
+		case builtin0.MethodsMiner.PreCommitSector:
 			var params miner.SectorPreCommitInfo
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 				return true, false, xerrors.Errorf("unmarshal pre commit: %w", err)
@@ -339,7 +319,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 			}
 
 			return true, false, nil
-		case builtin.MethodsMiner.ProveCommitSector:
+		case builtin0.MethodsMiner.ProveCommitSector:
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 				return true, false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
@@ -384,12 +364,14 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
-func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*verifreg.DataCap, error) {
+func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*abi.StoragePower, error) {
 	tsk, err := types.TipSetKeyFromBytes(encodedTs)
 	if err != nil {
 		return nil, err
 	}
-	return n.StateVerifiedClientStatus(ctx, addr, tsk)
+
+	sp, err := n.StateVerifiedClientStatus(ctx, addr, tsk)
+	return sp, err
 }
 
 func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {

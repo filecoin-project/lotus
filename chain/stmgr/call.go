@@ -33,7 +33,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 		BaseFee:        types.NewInt(0),
 	}
 
-	vmi, err := vm.NewVM(vmopt)
+	vmi, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -134,7 +134,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
-	vmi, err := vm.NewVM(vmopt)
+	vmi, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

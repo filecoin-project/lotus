@@ -8,15 +8,14 @@ import (
 	gruntime "runtime"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/go-state-types/network"
-	rtt "github.com/filecoin-project/go-state-types/rt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	rtt "github.com/filecoin-project/go-state-types/rt"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
@@ -318,14 +317,6 @@ func (rt *Runtime) CurrEpoch() abi.ChainEpoch {
 	return rt.height
 }
 
-type dumbWrapperType struct {
-	val []byte
-}
-
-func (dwt *dumbWrapperType) Into(um cbor.Unmarshaler) error {
-	return um.UnmarshalCBOR(bytes.NewReader(dwt.val))
-}
-
 func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
 	if !rt.allowInternal {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "runtime.Send() is currently disallowed")
@@ -391,8 +382,8 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 
 	if subrt != nil {
 		rt.numActorsCreated = subrt.numActorsCreated
+		rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace)
 	}
-	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace)
 	return ret, errSend
 }
 
