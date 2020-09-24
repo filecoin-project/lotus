@@ -27,7 +27,8 @@ workflows:
   version: 2
   main:
     jobs:
-      - soup-build-linux
+      - build-tvx-linux
+      - build-soup-linux
       - trigger-testplans
   nightly:
     triggers:
@@ -41,13 +42,22 @@ workflows:
       - trigger-testplans
 
 jobs:
-  soup-build-linux:
+  build-tvx-linux:
+    executor: golang
+    steps:
+      - setup
+      - run:
+          name: "build tvx"
+          command: pushd tvx && go build .
+
+  build-soup-linux:
     executor: golang
     steps:
       - setup
       - run:
           name: "build lotus-soup"
           command: pushd lotus-soup && go build -tags=testground .
+
   trigger-testplans:
     executor: golang
     steps:
