@@ -121,7 +121,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed getting addr from wallet: %w", params.Wallet)
 	}
 	if !exist {
-		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
+		return nil, xerrors.Errorf("provided address doesn't exist in wallet(haven't set default wallet?)")
 	}
 
 	mi, err := a.StateMinerInfo(ctx, params.Miner, types.EmptyTSK)
