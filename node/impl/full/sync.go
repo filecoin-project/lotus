@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"sync/atomic"
 
 	cid "github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -28,7 +30,9 @@ type SyncAPI struct {
 func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 	states := a.Syncer.State()
 
-	out := &api.SyncState{}
+	out := &api.SyncState{
+		VMApplied: atomic.LoadUint64(&vm.StatApplied),
+	}
 
 	for i := range states {
 		ss := &states[i]

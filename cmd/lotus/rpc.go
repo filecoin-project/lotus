@@ -66,8 +66,10 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 	shutdownDone := make(chan struct{})
 	go func() {
 		select {
-		case <-sigCh:
+		case sig := <-sigCh:
+			log.Warnw("received shutdown", "signal", sig)
 		case <-shutdownCh:
+			log.Warn("received shutdown")
 		}
 
 		log.Warn("Shutting down...")

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
@@ -139,6 +139,7 @@ func (m *Miner) niceSleep(d time.Duration) bool {
 	case <-build.Clock.After(d):
 		return true
 	case <-m.stop:
+		log.Infow("received interrupt while trying to sleep in mining cycle")
 		return false
 	}
 }
@@ -148,7 +149,7 @@ func (m *Miner) mine(ctx context.Context) {
 	defer span.End()
 
 	var lastBase MiningBase
-
+minerLoop:
 	for {
 		select {
 		case <-m.stop:
@@ -169,7 +170,9 @@ func (m *Miner) mine(ctx context.Context) {
 			prebase, err := m.GetBestMiningCandidate(ctx)
 			if err != nil {
 				log.Errorf("failed to get best mining candidate: %s", err)
-				m.niceSleep(time.Second * 5)
+				if !m.niceSleep(time.Second * 5) {
+					continue minerLoop
+				}
 				continue
 			}
 
@@ -199,7 +202,9 @@ func (m *Miner) mine(ctx context.Context) {
 			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
-				m.niceSleep(time.Second)
+				if !m.niceSleep(time.Second) {
+					continue minerLoop
+				}
 				continue
 			}
 
@@ -208,7 +213,9 @@ func (m *Miner) mine(ctx context.Context) {
 
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
-			m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second)
+			if !m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second) {
+				continue minerLoop
+			}
 			continue
 		}
 
@@ -217,7 +224,9 @@ func (m *Miner) mine(ctx context.Context) {
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
-			m.niceSleep(time.Second)
+			if !m.niceSleep(time.Second) {
+				continue minerLoop
+			}
 			onDone(false, 0, err)
 			continue
 		}
@@ -480,7 +489,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof0.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
 	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1

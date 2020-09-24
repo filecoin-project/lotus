@@ -1,5 +1,64 @@
 # Lotus changelog
 
+# 0.7.2 / 2020-09-23
+
+This optional release of Lotus introduces a major refactor around how a Lotus node interacts with code from the specs-actors repo. We now use interfaces to read the state of actors, which is required to be able to reason about different versions of actors code at the same time.
+
+Additionally, this release introduces various improvements to the sync process, as well as changes to better the overall UX experience.
+
+## Changes
+
+#### Core Lotus
+
+- Network upgrade support (https://github.com/filecoin-project/lotus/pull/3781)
+- Upgrade markets to `v0.6.2` (https://github.com/filecoin-project/lotus/pull/3974)
+- Validate chain sync response indices when fetching messages (https://github.com/filecoin-project/lotus/pull/3939)
+- Add height diff to sync wait (https://github.com/filecoin-project/lotus/pull/3926)
+- Replace Requires with Wants (https://github.com/filecoin-project/lotus/pull/3898)
+- Update state diffing for market actor (https://github.com/filecoin-project/lotus/pull/3889)
+- Parallel fetch for sync (https://github.com/filecoin-project/lotus/pull/3887)
+- Fix SectorState (https://github.com/filecoin-project/lotus/pull/3881)
+
+#### User Experience
+
+- Add basic deal stats api server for spacerace slingshot (https://github.com/filecoin-project/lotus/pull/3963)
+- When doing `sectors update-state`, show a list of existing states if user inputs an invalid one (https://github.com/filecoin-project/lotus/pull/3944)
+- Fix `lotus-miner storage find` error (https://github.com/filecoin-project/lotus/pull/3927)
+- Log shutdown method for lotus daemon and miner (https://github.com/filecoin-project/lotus/pull/3925)
+- Update build and setup instruction link (https://github.com/filecoin-project/lotus/pull/3919)
+- Add an option to hide removed sectors from `sectors list` output (https://github.com/filecoin-project/lotus/pull/3903)
+
+#### Testing and validation
+
+- Add init.State#Remove() for testing (https://github.com/filecoin-project/lotus/pull/3971)
+- lotus-shed: add consensus check command (https://github.com/filecoin-project/lotus/pull/3933)
+- Add keyinfo verify and jwt token command to lotus-shed (https://github.com/filecoin-project/lotus/pull/3914)
+- Fix conformance gen (https://github.com/filecoin-project/lotus/pull/3892)
+
+# 0.7.1 / 2020-09-17
+
+This optional release of Lotus introduces some critical fixes to the window PoSt process. It also upgrades some core dependencies, and introduces many improvements to the mining process, deal-making cycle, and overall User Experience.
+
+## Changes
+
+#### Some notable improvements: 
+
+- Correctly construct params for `SubmitWindowedPoSt` messages (https://github.com/filecoin-project/lotus/pull/3909)
+- Skip sectors correctly for Window PoSt (https://github.com/filecoin-project/lotus/pull/3839)
+- Split window PoST submission into multiple messages (https://github.com/filecoin-project/lotus/pull/3689)
+- Improve journal coverage (https://github.com/filecoin-project/lotus/pull/2455)
+- Allow retrievals while sealing (https://github.com/filecoin-project/lotus/pull/3778)
+- Don't prune locally published messages (https://github.com/filecoin-project/lotus/pull/3772)
+- Add get-ask, set-ask retrieval commands (https://github.com/filecoin-project/lotus/pull/3886)
+- Consistently name winning and window post in logs (https://github.com/filecoin-project/lotus/pull/3873))
+- Add auto flag to mpool replace (https://github.com/filecoin-project/lotus/pull/3752))
+
+#### Dependencies
+
+- Upgrade markets to `v0.6.1` (https://github.com/filecoin-project/lotus/pull/3906)
+- Upgrade specs-actors to `v0.9.10` (https://github.com/filecoin-project/lotus/pull/3846)
+- Upgrade badger (https://github.com/filecoin-project/lotus/pull/3739)
+
 # 0.7.0 / 2020-09-10
 
 This consensus-breaking release of Lotus is designed to test a network upgrade on the space race testnet. The changes that break consensus are:

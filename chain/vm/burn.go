@@ -22,6 +22,17 @@ type GasOutputs struct {
 	GasBurned int64
 }
 
+// ZeroGasOutputs returns a logically zeroed GasOutputs.
+func ZeroGasOutputs() GasOutputs {
+	return GasOutputs{
+		BaseFeeBurn:        big.Zero(),
+		OverEstimationBurn: big.Zero(),
+		MinerPenalty:       big.Zero(),
+		MinerTip:           big.Zero(),
+		Refund:             big.Zero(),
+	}
+}
+
 // ComputeGasOverestimationBurn computes amount of gas to be refunded and amount of gas to be burned
 // Result is (refund, burn)
 func ComputeGasOverestimationBurn(gasUsed, gasLimit int64) (int64, int64) {
@@ -58,13 +69,7 @@ func ComputeGasOverestimationBurn(gasUsed, gasLimit int64) (int64, int64) {
 
 func ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) GasOutputs {
 	gasUsedBig := big.NewInt(gasUsed)
-	out := GasOutputs{
-		BaseFeeBurn:        big.Zero(),
-		OverEstimationBurn: big.Zero(),
-		MinerPenalty:       big.Zero(),
-		MinerTip:           big.Zero(),
-		Refund:             big.Zero(),
-	}
+	out := ZeroGasOutputs()
 
 	baseFeeToPay := baseFee
 	if baseFee.Cmp(feeCap.Int) > 0 {

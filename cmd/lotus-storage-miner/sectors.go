@@ -8,16 +8,19 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+
 	lcli "github.com/filecoin-project/lotus/cli"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 var sectorsCmd = &cli.Command{
@@ -136,6 +139,12 @@ var sectorsStatusCmd = &cli.Command{
 var sectorsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List sectors",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "show-removed",
+			Usage: "show removed sectors",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -167,16 +176,16 @@ var sectorsListCmd = &cli.Command{
 		}
 		activeIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 		for _, info := range activeSet {
-			activeIDs[info.ID] = struct{}{}
+			activeIDs[info.SectorNumber] = struct{}{}
 		}
 
-		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, true, types.EmptyTSK)
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 		commitedIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 		for _, info := range sset {
-			commitedIDs[info.ID] = struct{}{}
+			commitedIDs[info.SectorNumber] = struct{}{}
 		}
 
 		sort.Slice(list, func(i, j int) bool {
@@ -192,19 +201,21 @@ var sectorsListCmd = &cli.Command{
 				continue
 			}
 
-			_, inSSet := commitedIDs[s]
-			_, inASet := activeIDs[s]
+			if cctx.Bool("show-removed") || st.State != api.SectorState(sealing.Removed) {
+				_, inSSet := commitedIDs[s]
+				_, inASet := activeIDs[s]
 
-			fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
-				s,
-				st.State,
-				yesno(inSSet),
-				yesno(inASet),
-				st.Ticket.Epoch,
-				st.Seed.Epoch,
-				st.Deals,
-				st.ToUpgrade,
-			)
+				_, _ = fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\tdeals: %v\t toUpgrade:%t\n",
+					s,
+					st.State,
+					yesno(inSSet),
+					yesno(inASet),
+					st.Ticket.Epoch,
+					st.Seed.Epoch,
+					st.Deals,
+					st.ToUpgrade,
+				)
+			}
 		}
 
 		return w.Flush()
@@ -379,7 +390,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
 		}
 		if pci.Expiration == 0 {
-			pci.Expiration = miner.MaxSectorExpirationExtension
+			pci.Expiration = miner0.MaxSectorExpirationExtension
 		}
 		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
 		if err != nil {
@@ -393,8 +404,9 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 }
 
 var sectorsUpdateCmd = &cli.Command{
-	Name:  "update-state",
-	Usage: "ADVANCED: manually update the state of a sector, this may aid in error recovery",
+	Name:      "update-state",
+	Usage:     "ADVANCED: manually update the state of a sector, this may aid in error recovery",
+	ArgsUsage: "<sectorNum> <newState>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "really-do-it",
@@ -418,6 +430,15 @@ var sectorsUpdateCmd = &cli.Command{
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {
 			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		newState := cctx.Args().Get(1)
+		if _, ok := sealing.ExistSectorStateList[sealing.SectorState(newState)]; !ok {
+			fmt.Printf(" \"%s\" is not a valid state. Possible states for sectors are: \n", newState)
+			for state := range sealing.ExistSectorStateList {
+				fmt.Printf("%s\n", string(state))
+			}
+			return nil
 		}
 
 		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))

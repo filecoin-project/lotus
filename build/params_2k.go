@@ -4,10 +4,8 @@ package build
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 const UpgradeBreezeHeight = -1
@@ -20,11 +18,9 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 }
 
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 
 	BuildType |= Build2k
 }

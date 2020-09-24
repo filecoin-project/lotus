@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/dline"
-
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -20,12 +18,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -76,6 +75,9 @@ type FullNode interface {
 	// ChainReadObj reads ipld nodes referenced by the specified CID from chain
 	// blockstore and returns raw bytes.
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+
+	// ChainDeleteObj deletes node referenced by the given CID
+	ChainDeleteObj(context.Context, cid.Cid) error
 
 	// ChainHasObj checks if a given CID exists in the chain blockstore.
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
@@ -231,7 +233,7 @@ type FullNode interface {
 	WalletSignMessage(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)
 	// WalletVerify takes an address, a signature, and some bytes, and indicates whether the signature is valid.
 	// The address does not have to be in the wallet.
-	WalletVerify(context.Context, address.Address, []byte, *crypto.Signature) bool
+	WalletVerify(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)
 	// WalletDefaultAddress returns the address marked as default in the wallet.
 	WalletDefaultAddress(context.Context) (address.Address, error)
 	// WalletSetDefault marks the given address as as the default one.
@@ -314,22 +316,20 @@ type FullNode interface {
 	// StateNetworkName returns the name of the network the node is synced to
 	StateNetworkName(context.Context) (dtypes.NetworkName, error)
 	// StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-	// If the filterOut boolean is set to true, any sectors in the filter are excluded.
-	// If false, only those sectors in the filter are included.
-	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, bool, types.TipSetKey) ([]*ChainSectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	// StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 	// and returns the deadline-related calculations.
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	// StateMinerPower returns the power of the indicated miner
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
 	// StateMinerInfo returns info about the indicated miner
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
-	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]*miner.Deadline, error)
-	// StateMinerPartitions loads miner partitions for the specified miner/deadline
-	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]*miner.Partition, error)
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]Deadline, error)
+	// StateMinerPartitions returns all partitions in the specified deadline
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error)
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	// StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
@@ -349,9 +349,9 @@ type FullNode interface {
 	// expiration epoch
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	// StateSectorExpiration returns epoch at which given sector will expire
-	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*SectorExpiration, error)
+	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorExpiration, error)
 	// StateSectorPartition finds deadline/partition with the specified sector
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
 	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
 	// StateMsgGasCost searches for a message in the chain, and returns details of the messages gas costs, including the penalty and miner tip
@@ -388,13 +388,15 @@ type FullNode interface {
 	// StateVerifiedClientStatus returns the data cap for the given address.
 	// Returns nil if there is no entry in the data cap table for the
 	// address.
-	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error)
+	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	// StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 	// can issue. It takes the deal size and verified status as parameters.
 	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (DealCollateralBounds, error)
 
 	// StateCirculatingSupply returns the circulating supply of Filecoin at the given tipset
 	StateCirculatingSupply(context.Context, types.TipSetKey) (CirculatingSupply, error)
+	// StateNetworkVersion returns the network version at the given tipset
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
@@ -476,21 +478,12 @@ type FileRef struct {
 }
 
 type MinerSectors struct {
-	Sectors uint64
-	Active  uint64
-}
-
-type SectorExpiration struct {
-	OnTime abi.ChainEpoch
-
-	// non-zero if sector is faulty, epoch at which it will be permanently
-	// removed if it doesn't recover
-	Early abi.ChainEpoch
-}
-
-type SectorLocation struct {
-	Deadline  uint64
-	Partition uint64
+	// Live sectors that should be proven.
+	Live uint64
+	// Sectors actively contributing to power.
+	Active uint64
+	// Sectors with failed proofs.
+	Faulty uint64
 }
 
 type ImportRes struct {
@@ -554,11 +547,6 @@ type BlockMessages struct {
 type Message struct {
 	Cid     cid.Cid
 	Message *types.Message
-}
-
-type ChainSectorInfo struct {
-	Info miner.SectorOnChainInfo
-	ID   abi.SectorNumber
 }
 
 type ActorState struct {
@@ -632,8 +620,9 @@ type VoucherCreateResult struct {
 }
 
 type MinerPower struct {
-	MinerPower power.Claim
-	TotalPower power.Claim
+	MinerPower  power.Claim
+	TotalPower  power.Claim
+	HasMinPower bool
 }
 
 type QueryOffer struct {
@@ -736,6 +725,8 @@ type ActiveSync struct {
 
 type SyncState struct {
 	ActiveSyncs []ActiveSync
+
+	VMApplied uint64
 }
 
 type SyncStateStage int
@@ -802,7 +793,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower      types.BigInt
 	NetworkPower    types.BigInt
-	Sectors         []proof.SectorInfo
+	Sectors         []builtin.SectorInfo
 	WorkerKey       address.Address
 	SectorSize      abi.SectorSize
 	PrevBeaconEntry types.BeaconEntry
@@ -819,7 +810,7 @@ type BlockTemplate struct {
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
-	WinningPoStProof []proof.PoStProof
+	WinningPoStProof []builtin.PoStProof
 }
 
 type DataSize struct {
@@ -842,6 +833,18 @@ const (
 	MsigApprove MsigProposeResponse = iota
 	MsigCancel
 )
+
+type Deadline struct {
+	PostSubmissions bitfield.BitField
+}
+
+type Partition struct {
+	AllSectors        bitfield.BitField
+	FaultySectors     bitfield.BitField
+	RecoveringSectors bitfield.BitField
+	LiveSectors       bitfield.BitField
+	ActiveSectors     bitfield.BitField
+}
 
 type Fault struct {
 	Miner address.Address

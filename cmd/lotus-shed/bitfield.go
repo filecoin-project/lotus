@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -28,6 +29,9 @@ var bitFieldCmd = &cli.Command{
 		bitFieldRunsCmd,
 		bitFieldStatCmd,
 		bitFieldDecodeCmd,
+		bitFieldIntersectCmd,
+		bitFieldEncodeCmd,
+		bitFieldSubCmd,
 	},
 }
 
@@ -200,38 +204,9 @@ var bitFieldDecodeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		var val string
-		if cctx.Args().Present() {
-			val = cctx.Args().Get(0)
-		} else {
-			b, err := ioutil.ReadAll(os.Stdin)
-			if err != nil {
-				return err
-			}
-			val = string(b)
-		}
-
-		var dec []byte
-		switch cctx.String("enc") {
-		case "base64":
-			d, err := base64.StdEncoding.DecodeString(val)
-			if err != nil {
-				return fmt.Errorf("decoding base64 value: %w", err)
-			}
-			dec = d
-		case "hex":
-			d, err := hex.DecodeString(val)
-			if err != nil {
-				return fmt.Errorf("decoding hex value: %w", err)
-			}
-			dec = d
-		default:
-			return fmt.Errorf("unrecognized encoding: %s", cctx.String("enc"))
-		}
-
-		rle, err := bitfield.NewFromBytes(dec)
+		rle, err := decode(cctx, 0)
 		if err != nil {
-			return xerrors.Errorf("failed to parse bitfield: %w", err)
+			return err
 		}
 
 		vals, err := rle.All(100000000000)
@@ -242,4 +217,171 @@ var bitFieldDecodeCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+var bitFieldIntersectCmd = &cli.Command{
+	Name:        "intersect",
+	Description: "intersect 2 bitfields and print the resulting bitfield as base64",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "enc",
+			Value: "base64",
+			Usage: "specify input encoding to parse",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		b, err := decode(cctx, 1)
+		if err != nil {
+			return err
+		}
+
+		a, err := decode(cctx, 0)
+		if err != nil {
+			return err
+		}
+
+		o, err := bitfield.IntersectBitField(a, b)
+		if err != nil {
+			return xerrors.Errorf("intersect: %w", err)
+		}
+
+		s, err := o.RunIterator()
+		if err != nil {
+			return err
+		}
+
+		bytes, err := rlepluslazy.EncodeRuns(s, []byte{})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(base64.StdEncoding.EncodeToString(bytes))
+
+		return nil
+	},
+}
+
+var bitFieldSubCmd = &cli.Command{
+	Name:        "sub",
+	Description: "subtract 2 bitfields and print the resulting bitfield as base64",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "enc",
+			Value: "base64",
+			Usage: "specify input encoding to parse",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		b, err := decode(cctx, 1)
+		if err != nil {
+			return err
+		}
+
+		a, err := decode(cctx, 0)
+		if err != nil {
+			return err
+		}
+
+		o, err := bitfield.SubtractBitField(a, b)
+		if err != nil {
+			return xerrors.Errorf("intersect: %w", err)
+		}
+
+		s, err := o.RunIterator()
+		if err != nil {
+			return err
+		}
+
+		bytes, err := rlepluslazy.EncodeRuns(s, []byte{})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(base64.StdEncoding.EncodeToString(bytes))
+
+		return nil
+	},
+}
+
+var bitFieldEncodeCmd = &cli.Command{
+	Name:        "encode",
+	Description: "encode a series of decimal numbers into a bitfield",
+	ArgsUsage:   "[infile]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "enc",
+			Value: "base64",
+			Usage: "specify input encoding to parse",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		f, err := os.Open(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		defer f.Close() // nolint
+
+		out := bitfield.New()
+		for {
+			var i uint64
+			_, err := fmt.Fscan(f, &i)
+			if err == io.EOF {
+				break
+			}
+			out.Set(i)
+		}
+
+		s, err := out.RunIterator()
+		if err != nil {
+			return err
+		}
+
+		bytes, err := rlepluslazy.EncodeRuns(s, []byte{})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(base64.StdEncoding.EncodeToString(bytes))
+
+		return nil
+	},
+}
+
+func decode(cctx *cli.Context, a int) (bitfield.BitField, error) {
+	var val string
+	if cctx.Args().Present() {
+		if a >= cctx.NArg() {
+			return bitfield.BitField{}, xerrors.Errorf("need more than %d args", a)
+		}
+		val = cctx.Args().Get(a)
+	} else {
+		if a > 0 {
+			return bitfield.BitField{}, xerrors.Errorf("need more than %d args", a)
+		}
+		b, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			return bitfield.BitField{}, err
+		}
+		val = string(b)
+	}
+
+	var dec []byte
+	switch cctx.String("enc") {
+	case "base64":
+		d, err := base64.StdEncoding.DecodeString(val)
+		if err != nil {
+			return bitfield.BitField{}, fmt.Errorf("decoding base64 value: %w", err)
+		}
+		dec = d
+	case "hex":
+		d, err := hex.DecodeString(val)
+		if err != nil {
+			return bitfield.BitField{}, fmt.Errorf("decoding hex value: %w", err)
+		}
+		dec = d
+	default:
+		return bitfield.BitField{}, fmt.Errorf("unrecognized encoding: %s", cctx.String("enc"))
+	}
+
+	return bitfield.NewFromBytes(dec)
 }

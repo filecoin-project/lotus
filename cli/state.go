@@ -259,13 +259,13 @@ var stateSectorsCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerSectors(ctx, maddr, nil, true, ts.Key())
+		sectors, err := api.StateMinerSectors(ctx, maddr, nil, ts.Key())
 		if err != nil {
 			return err
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -305,7 +305,7 @@ var stateActiveSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil

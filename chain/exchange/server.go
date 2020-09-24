@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/helpers"
 	inet "github.com/libp2p/go-libp2p-core/network"
 )
 
@@ -39,7 +40,9 @@ func (s *server) HandleStream(stream inet.Stream) {
 	ctx, span := trace.StartSpan(context.Background(), "chainxchg.HandleStream")
 	defer span.End()
 
-	defer stream.Close() //nolint:errcheck
+	// Note: this will become just stream.Close once we've completed the go-libp2p migration to
+	//       go-libp2p-core 0.7.0
+	defer helpers.FullClose(stream) //nolint:errcheck
 
 	var req Request
 	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {

@@ -18,12 +18,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
@@ -192,12 +192,12 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 	}
 
 	// use that to get the miner state
-	var mas miner.State
-	if err = ss.cst.Get(ss.ctx, act.Head, &mas); err != nil {
+	mas, err := miner.Load(adt.WrapStore(ss.ctx, ss.cst), act)
+	if err != nil {
 		return err
 	}
 
-	info, err := mas.GetInfo(adt.WrapStore(ss.ctx, ss.cst))
+	info, err := mas.Info()
 	if err != nil {
 		return err
 	}

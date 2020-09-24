@@ -4,12 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/dline"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -110,7 +109,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 		select {
 		case changes, ok := <-notifs:
 			if !ok {
-				log.Warn("WindowPoStScheduler notifs channel closed")
+				log.Warn("window post scheduler notifs channel closed")
 				notifs = nil
 				continue
 			}
@@ -151,10 +150,10 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 			}
 
 			if err := s.revert(ctx, lowest); err != nil {
-				log.Error("handling head reverts in windowPost sched: %+v", err)
+				log.Error("handling head reverts in window post sched: %+v", err)
 			}
 			if err := s.update(ctx, highest); err != nil {
-				log.Error("handling head updates in windowPost sched: %+v", err)
+				log.Error("handling head updates in window post sched: %+v", err)
 			}
 
 			span.End()
@@ -184,7 +183,7 @@ func (s *WindowPoStScheduler) revert(ctx context.Context, newLowest *types.TipSe
 
 func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) error {
 	if new == nil {
-		return xerrors.Errorf("no new tipset in WindowPoStScheduler.update")
+		return xerrors.Errorf("no new tipset in window post sched update")
 	}
 
 	di, err := s.api.StateMinerProvingDeadline(ctx, s.actor, new.Key())
@@ -206,7 +205,7 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 	//  (Need to get correct deadline above, which is tricky)
 
 	if di.Open+StartConfidence >= new.Height() {
-		log.Info("not starting windowPost yet, waiting for startconfidence", di.Open, di.Open+StartConfidence, new.Height())
+		log.Info("not starting window post yet, waiting for startconfidence", di.Open, di.Open+StartConfidence, new.Height())
 		return nil
 	}
 
@@ -216,7 +215,7 @@ func (s *WindowPoStScheduler) update(ctx context.Context, new *types.TipSet) err
 		s.activeEPS = 0
 	}
 	s.failLk.Unlock()*/
-	log.Infof("at %d, doPost for P %d, dd %d", new.Height(), di.PeriodStart, di.Index)
+	log.Infof("at %d, do window post for P %d, dd %d", new.Height(), di.PeriodStart, di.Index)
 
 	s.doPost(ctx, di, new)
 
@@ -238,7 +237,7 @@ func (s *WindowPoStScheduler) abortActivePoSt() {
 			}
 		})
 
-		log.Warnf("Aborting Window PoSt (Deadline: %+v)", s.activeDeadline)
+		log.Warnf("Aborting window post (Deadline: %+v)", s.activeDeadline)
 	}
 
 	s.activeDeadline = nil

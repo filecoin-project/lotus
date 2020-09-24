@@ -12,6 +12,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
@@ -29,11 +31,11 @@ import (
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -524,6 +526,11 @@ func interactiveDeal(cctx *cli.Context) error {
 			_, err := fmt.Scan(&days)
 			if err != nil {
 				printErr(xerrors.Errorf("parsing duration: %w", err))
+				continue
+			}
+
+			if days < int(build.MinDealDuration/builtin.EpochsInDay) {
+				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin.EpochsInDay)))
 				continue
 			}
 
@@ -1044,12 +1051,8 @@ var clientListDeals = &cli.Command{
 func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet, v api.DealInfo) deal {
 	if v.DealID == 0 {
 		return deal{
-			LocalDeal: v,
-			OnChainDealState: market.DealState{
-				SectorStartEpoch: -1,
-				LastUpdatedEpoch: -1,
-				SlashEpoch:       -1,
-			},
+			LocalDeal:        v,
+			OnChainDealState: *market.EmptyDealState(),
 		}
 	}
 

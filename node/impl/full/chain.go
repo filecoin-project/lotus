@@ -197,6 +197,10 @@ func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error
 	return blk.RawData(), nil
 }
 
+func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
+	return a.Chain.Blockstore().DeleteBlock(obj)
+}
+
 func (a *ChainAPI) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
 	return a.Chain.Blockstore().Has(obj)
 }

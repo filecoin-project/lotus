@@ -382,7 +382,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 
 		func(s *Settings) error {
 			resAPI := &impl.StorageMinerAPI{}
-			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
+			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
 			*out = resAPI
 			return nil
 		},
@@ -509,7 +509,7 @@ func FullAPI(out *api.FullNode) Option {
 		},
 		func(s *Settings) error {
 			resAPI := &impl.FullNodeAPI{}
-			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
+			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
 			*out = resAPI
 			return nil
 		},

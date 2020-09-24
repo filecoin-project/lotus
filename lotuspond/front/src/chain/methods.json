@@ -23,7 +23,8 @@
     "AddSigner",
     "RemoveSigner",
     "SwapSigner",
-    "ChangeNumApprovalsThreshold"
+    "ChangeNumApprovalsThreshold",
+    "LockBalance"
   ],
   "fil/1/paymentchannel": [
     "Send",
