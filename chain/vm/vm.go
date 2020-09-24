@@ -546,7 +546,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := Copy(from, to, root); err != nil {
+	if err := Copy(ctx, from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
@@ -600,9 +600,18 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 	}
 }
 
-func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
+func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
+	ctx, span := trace.StartSpan(ctx, "vm.Copy")
+	defer span.End()
+
+	var numBlocks int
+	var totalCopySize int
+
 	var batch []block.Block
 	batchCp := func(blk block.Block) error {
+		numBlocks++
+		totalCopySize += len(blk.RawData())
+
 		batch = append(batch, blk)
 		if len(batch) > 100 {
 			if err := to.PutMany(batch); err != nil {
@@ -622,6 +631,11 @@ func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
 			return xerrors.Errorf("batch put in copy: %w", err)
 		}
 	}
+
+	span.AddAttributes(
+		trace.Int64Attribute("numBlocks", int64(numBlocks)),
+		trace.Int64Attribute("copySize", int64(totalCopySize)),
+	)
 
 	return nil
 }
