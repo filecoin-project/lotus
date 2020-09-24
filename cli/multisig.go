@@ -20,6 +20,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
@@ -1018,7 +1019,7 @@ var msigLockProposeCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&samsig.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1115,7 +1116,7 @@ var msigLockApproveCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&samsig.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1207,7 +1208,7 @@ var msigLockCancelCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&samsig.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
