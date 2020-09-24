@@ -601,7 +601,7 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 }
 
 func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
-	ctx, span := trace.StartSpan(ctx, "vm.Copy")
+	ctx, span := trace.StartSpan(ctx, "vm.Copy") // nolint
 	defer span.End()
 
 	var numBlocks int
