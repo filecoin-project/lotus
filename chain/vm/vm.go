@@ -134,7 +134,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 	resT, _ := rt.ResolveAddress(msg.To)
 	// may be set to undef if recipient doesn't exist yet
 	vmm.To = resT
-	rt.Message = vmm
+	rt.Message = Message{msg: vmm}
 
 	return rt
 }
@@ -265,13 +265,15 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
-				nmsg := types.Message{
-					To:    aid,
-					From:  rt.vmsg.Caller(),
-					Value: rt.vmsg.ValueReceived(),
+				nmsg := Message{
+					msg: types.Message{
+						To:    aid,
+						From:  rt.Message.Caller(),
+						Value: rt.Message.ValueReceived(),
+					},
 				}
 
-				rt.vmsg = &nmsg
+				rt.Message = nmsg
 			} else {
 				return nil, aerrors.Escalate(err, "getting actor")
 			}
