@@ -968,7 +968,7 @@ var msigLockProposeCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
-			Usage: "account to send the approve message from",
+			Usage: "account to send the propose message from",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1152,7 +1152,7 @@ var msigLockCancelCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
-			Usage: "account to send the approve message from",
+			Usage: "account to send the cancel message from",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
