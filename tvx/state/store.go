@@ -52,14 +52,6 @@ func newStores(ctx context.Context, ds ds.Batching, bs blockstore.Blockstore) *S
 	}
 }
 
-// NewLocalStores creates a Stores object that operates entirely in-memory with
-// no read-through remote fetch fallback.
-func NewLocalStores(ctx context.Context) *Stores {
-	ds := ds.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
-	return newStores(ctx, ds, bs)
-}
-
 type proxyingBlockstore struct {
 	ctx context.Context
 	api api.FullNode

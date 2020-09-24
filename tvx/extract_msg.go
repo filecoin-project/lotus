@@ -9,11 +9,11 @@ import (
 	"os"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/conformance"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/oni/tvx/lotus"
 	"github.com/filecoin-project/oni/tvx/state"
 	"github.com/filecoin-project/test-vectors/schema"
 )
@@ -160,12 +160,12 @@ func runExtractMsg(c *cli.Context) error {
 	fmt.Println("getting the _before_ filtered state tree")
 	tree, err := g.GetStateTreeRootFromTipset(includedTs.Parents())
 
-	driver := lotus.NewDriver(ctx)
+	driver := conformance.NewDriver(ctx, schema.Selector{})
 
 	for _, pm := range neededPrecursorMsgs {
-		_, tree, err = driver.ExecuteMessage(pm, tree, pst.Blockstore, execTs.Height())
+		_, tree, err = driver.ExecuteMessage(pst.Blockstore, tree, execTs.Height(), pm)
 		if err != nil {
-			return fmt.Errorf("Failed to execute preceding message: %w", err)
+			return fmt.Errorf("failed to execute preceding message: %w", err)
 		}
 	}
 
@@ -174,7 +174,7 @@ func runExtractMsg(c *cli.Context) error {
 		return err
 	}
 
-	_, postroot, err := driver.ExecuteMessage(msg, preroot, pst.Blockstore, execTs.Height())
+	_, postroot, err := driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg)
 	if err != nil {
 		return fmt.Errorf("failed to execute message: %w", err)
 	}

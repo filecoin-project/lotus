@@ -14,8 +14,9 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/oni/tvx/state"
 	"github.com/filecoin-project/test-vectors/schema"
+
+	"github.com/filecoin-project/oni/tvx/state"
 )
 
 func trimQuotes(s string) string {
