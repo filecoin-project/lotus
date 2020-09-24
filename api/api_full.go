@@ -725,6 +725,8 @@ type ActiveSync struct {
 
 type SyncState struct {
 	ActiveSyncs []ActiveSync
+
+	VMApplied uint64
 }
 
 type SyncStateStage int
