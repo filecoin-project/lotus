@@ -171,7 +171,7 @@ minerLoop:
 			if err != nil {
 				log.Errorf("failed to get best mining candidate: %s", err)
 				if !m.niceSleep(time.Second * 5) {
-					goto minerLoop
+					continue minerLoop
 				}
 				continue
 			}
@@ -203,7 +203,7 @@ minerLoop:
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
 				if !m.niceSleep(time.Second) {
-					goto minerLoop
+					continue minerLoop
 				}
 				continue
 			}
@@ -214,7 +214,7 @@ minerLoop:
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
 			if !m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second) {
-				goto minerLoop
+				continue minerLoop
 			}
 			continue
 		}
@@ -225,7 +225,7 @@ minerLoop:
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
 			if !m.niceSleep(time.Second) {
-				goto minerLoop
+				continue minerLoop
 			}
 			onDone(false, 0, err)
 			continue
