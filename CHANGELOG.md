@@ -4,7 +4,7 @@
 
 This optional release of Lotus introduces a major refactor around how a Lotus node interacts with code from the specs-actors repo. We now use interfaces to read the state of actors, which is required to be able to reason about different versions of actors code at the same time.
 
-Additionally, this release introduces various 
+Additionally, this release introduces various improvements to the sync process, as well as changes to better the overall UX experience.
 
 ## Changes
 
@@ -21,13 +21,12 @@ Additionally, this release introduces various
 
 #### User Experience
 
-- Fix out-of-bounds when loading all sector infos (https://github.com/filecoin-project/lotus/pull/3976
 - Add basic deal stats api server for spacerace slingshot (https://github.com/filecoin-project/lotus/pull/3963)
 - When doing `sectors update-state`, show a list of existing states if user inputs an invalid one (https://github.com/filecoin-project/lotus/pull/3944)
 - Fix `lotus-miner storage find` error (https://github.com/filecoin-project/lotus/pull/3927)
 - Log shutdown method for lotus daemon and miner (https://github.com/filecoin-project/lotus/pull/3925)
 - Update build and setup instruction link (https://github.com/filecoin-project/lotus/pull/3919)
-- Add an option to hide sectors in Removed from `sectors list` (https://github.com/filecoin-project/lotus/pull/3903)
+- Add an option to hide removed sectors from `sectors list` output (https://github.com/filecoin-project/lotus/pull/3903)
 
 #### Testing and validation
 
