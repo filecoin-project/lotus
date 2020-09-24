@@ -4303,7 +4303,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ActiveSyncs": null
+  "ActiveSyncs": null,
+  "VMApplied": 42
 }
 ```
 
