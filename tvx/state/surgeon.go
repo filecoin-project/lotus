@@ -1,7 +1,6 @@
 package state
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -10,13 +9,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/lotus/chain/state"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
@@ -56,9 +53,13 @@ func (sg *Surgeon) GetStateTreeRootFromTipset(tsk types.TipSetKey) (cid.Cid, err
 // compute a minimal state tree. In the future, thid method will dive into
 // other system actors like the power actor and the market actor.
 func (sg *Surgeon) GetMaskedStateTree(previousRoot cid.Cid, retain []address.Address) (cid.Cid, error) {
-	stateMap := adt.MakeEmptyMap(sg.stores.ADTStore)
+	// TODO: this will need to be parameterized on network version.
+	stateTree, err := state.NewStateTree(sg.stores.CBORStore, builtin.Version0)
+	if err != nil {
+		return cid.Undef, err
+	}
 
-	initState, err := sg.loadInitActor(previousRoot)
+	initActor, initState, err := sg.loadInitActor(previousRoot)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -68,22 +69,22 @@ func (sg *Surgeon) GetMaskedStateTree(previousRoot cid.Cid, retain []address.Add
 		return cid.Undef, err
 	}
 
-	initState, err = sg.retainInitEntries(initState, retain)
+	err = sg.retainInitEntries(initState, retain)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	err = sg.saveInitActor(initState, stateMap)
+	err = sg.saveInitActor(initActor, initState, stateTree)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	err = sg.pluckActorStates(previousRoot, resolved, stateMap)
+	err = sg.pluckActorStates(previousRoot, resolved, stateTree)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	root, err := stateMap.Root()
+	root, err := stateTree.Flush(sg.ctx)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -155,12 +156,7 @@ func (sg *Surgeon) WriteCAR(w io.Writer, roots ...cid.Cid) error {
 
 // pluckActorStates plucks the state from the supplied actors at the given
 // tipset, and places it into the supplied state map.
-func (sg *Surgeon) pluckActorStates(stateRoot cid.Cid, pluck []address.Address, stateMap *adt.Map) error {
-	st, err := state.LoadStateTree(sg.stores.CBORStore, stateRoot)
-	if err != nil {
-		return err
-	}
-
+func (sg *Surgeon) pluckActorStates(stateRoot cid.Cid, pluck []address.Address, st *state.StateTree) error {
 	for _, a := range pluck {
 		actor, err := st.GetActor(a)
 		if err != nil {
@@ -168,7 +164,7 @@ func (sg *Surgeon) pluckActorStates(stateRoot cid.Cid, pluck []address.Address, 
 			//return fmt.Errorf("get actor %s failed: %w", a, err)
 		}
 
-		err = stateMap.Put(abi.AddrKey(a), actor)
+		err = st.SetActor(a, actor)
 		if err != nil {
 			return err
 		}
@@ -198,7 +194,7 @@ func (sg *Surgeon) pluckActorStates(stateRoot cid.Cid, pluck []address.Address, 
 }
 
 // saveInitActor saves the state of the init actor to the provided state map.
-func (sg *Surgeon) saveInitActor(initState *init_.State, stateMap *adt.Map) error {
+func (sg *Surgeon) saveInitActor(initActor *types.Actor, initState init_.State, stateMap *state.StateTree) error {
 	log.Printf("saving init actor into state tree")
 
 	// Store the state of the init actor.
@@ -206,73 +202,55 @@ func (sg *Surgeon) saveInitActor(initState *init_.State, stateMap *adt.Map) erro
 	if err != nil {
 		return err
 	}
-	actor := &types.Actor{
-		Code: builtin.InitActorCodeID,
-		Head: cid,
-	}
+	actor := *initActor
+	actor.Head = cid
 
-	err = stateMap.Put(abi.AddrKey(builtin.InitActorAddr), actor)
+	err = stateMap.SetActor(init_.Address, &actor)
 	if err != nil {
 		return err
 	}
 
-	cid, _ = stateMap.Root()
+	cid, _ = stateMap.Flush(sg.ctx)
 	log.Printf("saved init actor into state tree; new root: %s", cid)
 	return nil
 }
 
 // retainInitEntries takes an old init actor state, and retains only the
 // entries in the retain set, returning a new init actor state.
-func (sg *Surgeon) retainInitEntries(oldState *init_.State, retain []address.Address) (*init_.State, error) {
+func (sg *Surgeon) retainInitEntries(state init_.State, retain []address.Address) error {
 	log.Printf("retaining init actor entries for addresses: %v", retain)
 
-	oldAddrs, err := adt.AsMap(sg.stores.ADTStore, oldState.AddressMap)
-	if err != nil {
-		return nil, err
+	m := make(map[address.Address]struct{}, len(retain))
+	for _, a := range retain {
+		m[a] = struct{}{}
 	}
 
-	newAddrs := adt.MakeEmptyMap(sg.stores.ADTStore)
-	for _, r := range retain {
-		var d cbg.Deferred
-		if _, err := oldAddrs.Get(abi.AddrKey(r), &d); err != nil {
-			return nil, err
+	var remove []address.Address
+	_ = state.ForEachActor(func(id abi.ActorID, address address.Address) error {
+		if _, ok := m[address]; !ok {
+			remove = append(remove, address)
 		}
-		if d.Raw != nil {
-			if err := newAddrs.Put(abi.AddrKey(r), &d); err != nil {
-				return nil, err
-			}
-		}
-	}
+		return nil
+	})
 
-	rootCid, err := newAddrs.Root()
-	if err != nil {
-		return nil, err
-	}
-
-	s := &init_.State{
-		NetworkName: oldState.NetworkName,
-		NextID:      oldState.NextID,
-		AddressMap:  rootCid,
-	}
-
-	log.Printf("new init actor state: %+v", s)
-
-	return s, nil
+	err := state.Remove(remove...)
+	log.Printf("new init actor state: %+v", state)
+	return err
 }
 
 // resolveAddresses resolved the requested addresses from the provided
 // InitActor state, returning a slice of length len(orig), where each index
 // contains the resolved address.
-func (sg *Surgeon) resolveAddresses(orig []address.Address, ist *init_.State) (ret []address.Address, err error) {
+func (sg *Surgeon) resolveAddresses(orig []address.Address, ist init_.State) (ret []address.Address, err error) {
 	log.Printf("resolving addresses: %v", orig)
 
 	ret = make([]address.Address, len(orig))
 	for i, addr := range orig {
-		resolved, _, err := ist.ResolveAddress(sg.stores.ADTStore, addr)
+		resolved, found, err := ist.ResolveAddress(addr)
 		if err != nil {
 			return nil, err
 		}
-		if resolved == address.Undef {
+		if !found {
 			return nil, fmt.Errorf("address not found: %s", addr)
 		}
 		ret[i] = resolved
@@ -283,32 +261,25 @@ func (sg *Surgeon) resolveAddresses(orig []address.Address, ist *init_.State) (r
 }
 
 // loadInitActor loads the init actor state from a given tipset.
-func (sg *Surgeon) loadInitActor(stateRoot cid.Cid) (initState *init_.State, err error) {
+func (sg *Surgeon) loadInitActor(stateRoot cid.Cid) (*types.Actor, init_.State, error) {
 	log.Printf("loading the init actor for root: %s", stateRoot)
 
 	st, err := state.LoadStateTree(sg.stores.CBORStore, stateRoot)
 	if err != nil {
-		return initState, err
+		return nil, nil, err
 	}
 
-	//sg.api.StateGetActor(sg.ctx, builtin.InitActorAddr, tsk)
-	actor, err := st.GetActor(builtin.InitActorAddr)
+	actor, err := st.GetActor(init_.Address)
 	if err != nil {
-		return initState, err
+		return nil, nil, err
 	}
 
-	actorState, err := sg.api.ChainReadObj(sg.ctx, actor.Head)
+	initState, err := init_.Load(sg.stores.ADTStore, actor)
 	if err != nil {
-		return initState, err
-	}
-
-	initState = new(init_.State)
-	err = initState.UnmarshalCBOR(bytes.NewReader(actorState))
-	if err != nil {
-		return initState, err
+		return nil, nil, err
 	}
 
 	log.Printf("loaded init actor state: %+v", initState)
 
-	return initState, nil
+	return actor, initState, nil
 }

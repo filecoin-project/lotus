@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -51,8 +52,12 @@ func (d *Driver) ExecuteMessage(msg *types.Message, preroot cid.Cid, bs blocksto
 		Syscalls:       mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)),
 		CircSupplyCalc: nil,
 		BaseFee:        BaseFee,
+		NtwkVersion: func(context.Context, abi.ChainEpoch) network.Version {
+			// TODO: Network upgrade.
+			return network.Version0
+		},
 	}
-	lvm, err := vm.NewVM(vmOpts)
+	lvm, err := vm.NewVM(context.Background(), vmOpts)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

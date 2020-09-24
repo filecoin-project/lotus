@@ -65,17 +65,17 @@ type proxyingBlockstore struct {
 	api api.FullNode
 
 	online bool
-	lock sync.RWMutex
+	lock   sync.RWMutex
 	blockstore.Blockstore
 }
 
 func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	pb.lock.RLock()
-	if block, err := pb.Blockstore.Get(cid); (err == nil || !pb.online) {
-		pb.lock.RUnlock();
+	if block, err := pb.Blockstore.Get(cid); err == nil || !pb.online {
+		pb.lock.RUnlock()
 		return block, err
 	}
-	pb.lock.RUnlock();
+	pb.lock.RUnlock()
 
 	// fmt.Printf("fetching cid via rpc: %v\n", cid)
 	item, err := pb.api.ChainReadObj(pb.ctx, cid)
@@ -87,8 +87,8 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, err
 	}
 
-	pb.lock.Lock();
-	defer pb.lock.Unlock();
+	pb.lock.Lock()
+	defer pb.lock.Unlock()
 	err = pb.Blockstore.Put(block)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func NewProxyingStore(ctx context.Context, api api.FullNode) *Stores {
 	bs := &proxyingBlockstore{
 		ctx:        ctx,
 		api:        api,
-		online: true,
+		online:     true,
 		Blockstore: blockstore.NewBlockstore(ds),
 	}
 

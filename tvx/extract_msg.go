@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/oni/tvx/lotus"
-	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/filecoin-project/oni/tvx/state"
+	"github.com/filecoin-project/test-vectors/schema"
 )
 
 var extractMsgFlags struct {
@@ -152,7 +152,7 @@ func runExtractMsg(c *cli.Context) error {
 				}
 				if !included {
 					neededPrecursorMsgs = append(neededPrecursorMsgs, &m.Message)
-				}	
+				}
 			}
 		}
 	}
@@ -191,8 +191,6 @@ func runExtractMsg(c *cli.Context) error {
 	if ob, ok := pst.Blockstore.(onlineblockstore); ok {
 		ob.SetOnline(false)
 	}
-
-
 
 	out := new(bytes.Buffer)
 	gw := gzip.NewWriter(out)

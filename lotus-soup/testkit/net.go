@@ -80,6 +80,7 @@ func ApplyNetworkParameters(t *TestEnvironment) {
 		Default:        ls,
 		CallbackState:  sync.State(fmt.Sprintf("latency-configured-%s", t.TestGroupID)),
 		CallbackTarget: t.TestGroupInstanceCount,
+		RoutingPolicy:  network.AllowAll,
 	})
 
 	t.DumpJSON("network-link-shape.json", ls)

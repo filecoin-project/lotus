@@ -14,18 +14,19 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/oni/lotus-soup/testkit"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	tstats "github.com/filecoin-project/lotus/tools/stats"
 )
 
@@ -171,9 +172,9 @@ type plainTextMarshaler interface {
 }
 
 type ProvingFaultState struct {
-	// FaultedSectors is a map of deadline indices to a list of faulted sectors for that proving window.
-	// If the miner has no faulty sectors, the map will be empty.
-	FaultedSectors map[int][]uint64
+	// FaultedSectors is a slice per-deadline faulty sectors. If the miner
+	// has no faulty sectors, this will be nil.
+	FaultedSectors [][]uint64
 }
 
 func (s *ProvingFaultState) MarshalPlainText() ([]byte, error) {
@@ -186,11 +187,9 @@ func (s *ProvingFaultState) MarshalPlainText() ([]byte, error) {
 
 	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)
 	_, _ = fmt.Fprintf(tw, "deadline\tsectors")
-	for deadline := 0; deadline < int(miner.WPoStPeriodDeadlines); deadline++ {
-		if sectors, ok := s.FaultedSectors[deadline]; ok {
-			for _, num := range sectors {
-				_, _ = fmt.Fprintf(tw, "%d\t%d\n", deadline, num)
-			}
+	for deadline, sectors := range s.FaultedSectors {
+		for _, num := range sectors {
+			_, _ = fmt.Fprintf(tw, "%d\t%d\n", deadline, num)
 		}
 	}
 
@@ -201,8 +200,6 @@ func provingFaults(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr addr
 	api := m.FullApi
 	ctx := context.Background()
 
-	s := ProvingFaultState{FaultedSectors: make(map[int][]uint64)}
-
 	head, err := api.ChainHead(ctx)
 	if err != nil {
 		return nil, err
@@ -211,6 +208,8 @@ func provingFaults(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr addr
 	if err != nil {
 		return nil, err
 	}
+	faultedSectors := make([][]uint64, len(deadlines))
+	hasFaults := false
 	for dlIdx := range deadlines {
 		partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
 		if err != nil {
@@ -218,18 +217,24 @@ func provingFaults(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr addr
 		}
 
 		for _, partition := range partitions {
-			faulty, err := partition.Faults.All(10000000)
+			faulty, err := partition.FaultySectors.All(10000000)
 			if err != nil {
 				return nil, err
 			}
 
-			for _, num := range faulty {
-				s.FaultedSectors[dlIdx] = append(s.FaultedSectors[dlIdx], num)
+			if len(faulty) > 0 {
+				hasFaults = true
 			}
+
+			faultedSectors[dlIdx] = append(faultedSectors[dlIdx], faulty...)
 		}
 	}
+	result := new(ProvingFaultState)
+	if hasFaults {
+		result.FaultedSectors = faultedSectors
+	}
 
-	return &s, nil
+	return result, nil
 }
 
 type ProvingInfoState struct {
@@ -279,42 +284,27 @@ func (s *ProvingInfoState) MarshalPlainText() ([]byte, error) {
 }
 
 func provingInfo(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr address.Address, height abi.ChainEpoch) (*ProvingInfoState, error) {
-	api := m.FullApi
+	lapi := m.FullApi
 	ctx := context.Background()
 
-	head, err := api.ChainHead(ctx)
+	head, err := lapi.ChainHead(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	cd, err := api.StateMinerProvingDeadline(ctx, maddr, head.Key())
+	cd, err := lapi.StateMinerProvingDeadline(ctx, maddr, head.Key())
 	if err != nil {
 		return nil, err
 	}
 
-	deadlines, err := api.StateMinerDeadlines(ctx, maddr, head.Key())
+	deadlines, err := lapi.StateMinerDeadlines(ctx, maddr, head.Key())
 	if err != nil {
 		return nil, err
 	}
 
-	var mas miner.State
-	{
-		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-		rmas, err := api.ChainReadObj(ctx, mact.Head)
-		if err != nil {
-			return nil, err
-		}
-		if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
-			return nil, err
-		}
-	}
-
-	parts := map[uint64][]*miner.Partition{}
+	parts := map[uint64][]api.Partition{}
 	for dlIdx := range deadlines {
-		part, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
+		part, err := lapi.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
 		if err != nil {
 			return nil, err
 		}
@@ -328,19 +318,19 @@ func provingInfo(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr addres
 
 	for _, partitions := range parts {
 		for _, partition := range partitions {
-			sc, err := partition.Sectors.Count()
+			sc, err := partition.LiveSectors.Count()
 			if err != nil {
 				return nil, err
 			}
 			proving += sc
 
-			fc, err := partition.Faults.Count()
+			fc, err := partition.FaultySectors.Count()
 			if err != nil {
 				return nil, err
 			}
 			faults += fc
 
-			rc, err := partition.Faults.Count()
+			rc, err := partition.RecoveringSectors.Count()
 			if err != nil {
 				return nil, err
 			}
@@ -365,12 +355,12 @@ func provingInfo(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr addres
 		DeadlineClose:       cd.Close,
 		DeadlineChallenge:   cd.Challenge,
 		DeadlineFaultCutoff: cd.FaultCutoff,
-		WPoStProvingPeriod:  miner.WPoStProvingPeriod,
+		WPoStProvingPeriod:  cd.WPoStProvingPeriod,
 	}
 
-	if cd.Index < miner.WPoStPeriodDeadlines {
+	if cd.Index < cd.WPoStPeriodDeadlines {
 		for _, partition := range parts[cd.Index] {
-			sc, err := partition.Sectors.Count()
+			sc, err := partition.LiveSectors.Count()
 			if err != nil {
 				return nil, err
 			}
@@ -422,37 +412,22 @@ func (d *ProvingDeadlines) MarshalPlainText() ([]byte, error) {
 }
 
 func provingDeadlines(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr address.Address, height abi.ChainEpoch) (*ProvingDeadlines, error) {
-	api := m.FullApi
+	lapi := m.FullApi
 	ctx := context.Background()
 
-	deadlines, err := api.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
+	deadlines, err := lapi.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	di, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+	di, err := lapi.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, err
-	}
-
-	var mas miner.State
-	{
-		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-		rmas, err := api.ChainReadObj(ctx, mact.Head)
-		if err != nil {
-			return nil, err
-		}
-		if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
-			return nil, err
-		}
 	}
 
 	infos := make([]DeadlineInfo, 0, len(deadlines))
 	for dlIdx, deadline := range deadlines {
-		partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
+		partitions, err := lapi.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
 		if err != nil {
 			return nil, err
 		}
@@ -541,16 +516,16 @@ func sectorsList(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr addres
 	}
 	activeIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 	for _, info := range activeSet {
-		activeIDs[info.ID] = struct{}{}
+		activeIDs[info.SectorNumber] = struct{}{}
 	}
 
-	sset, err := node.StateMinerSectors(ctx, maddr, nil, true, types.EmptyTSK)
+	sset, err := node.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 	commitedIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
 	for _, info := range sset {
-		commitedIDs[info.ID] = struct{}{}
+		commitedIDs[info.SectorNumber] = struct{}{}
 	}
 
 	sort.Slice(list, func(i, j int) bool {
@@ -629,7 +604,7 @@ func (i *MinerInfo) MarshalPlainText() ([]byte, error) {
 			i.FaultyPercentage)
 	}
 
-	if i.MinerPower.MinerPower.RawBytePower.LessThan(power.ConsensusMinerMinPower) {
+	if !i.MinerPower.HasMinPower {
 		fmt.Fprintf(w, "Below minimum power threshold, no blocks will be won\n")
 	} else {
 		expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000
@@ -675,41 +650,36 @@ func info(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr address.Addre
 	api := m.FullApi
 	ctx := context.Background()
 
-	mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+	ts, err := api.ChainHead(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var mas miner.State
-	{
-		rmas, err := api.ChainReadObj(ctx, mact.Head)
-		if err != nil {
-			return nil, err
-		}
-		if err := mas.UnmarshalCBOR(bytes.NewReader(rmas)); err != nil {
-			return nil, err
-		}
+
+	mact, err := api.StateGetActor(ctx, maddr, ts.Key())
+	if err != nil {
+		return nil, err
 	}
 
 	i := MinerInfo{MinerAddr: maddr}
 
 	// Sector size
-	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	mi, err := api.StateMinerInfo(ctx, maddr, ts.Key())
 	if err != nil {
 		return nil, err
 	}
 
 	i.SectorSize = types.SizeStr(types.NewInt(uint64(mi.SectorSize)))
 
-	i.MinerPower, err = api.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	i.MinerPower, err = api.StateMinerPower(ctx, maddr, ts.Key())
 	if err != nil {
 		return nil, err
 	}
 
-	secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
+	secCounts, err := api.StateMinerSectorCount(ctx, maddr, ts.Key())
 	if err != nil {
 		return nil, err
 	}
-	faults, err := api.StateMinerFaults(ctx, maddr, types.EmptyTSK)
+	faults, err := api.StateMinerFaults(ctx, maddr, ts.Key())
 	if err != nil {
 		return nil, err
 	}
@@ -719,20 +689,34 @@ func info(t *testkit.TestEnvironment, m *testkit.LotusMiner, maddr address.Addre
 		return nil, err
 	}
 
-	i.CommittedBytes = types.BigMul(types.NewInt(secCounts.Sectors), types.NewInt(uint64(mi.SectorSize)))
+	i.CommittedBytes = types.BigMul(types.NewInt(secCounts.Live), types.NewInt(uint64(mi.SectorSize)))
 	i.ProvingBytes = types.BigMul(types.NewInt(secCounts.Active), types.NewInt(uint64(mi.SectorSize)))
 
 	if nfaults != 0 {
-		if secCounts.Sectors != 0 {
-			i.FaultyPercentage = float64(10000*nfaults/secCounts.Sectors) / 100.
+		if secCounts.Live != 0 {
+			i.FaultyPercentage = float64(10000*nfaults/secCounts.Live) / 100.
 		}
 		i.FaultyBytes = types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize)))
 	}
 
+	stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(api))
+	mas, err := miner.Load(stor, mact)
+	if err != nil {
+		return nil, err
+	}
+
+	funds, err := mas.LockedFunds()
+	if err != nil {
+		return nil, err
+	}
+
 	i.Balance = mact.Balance
-	i.PreCommitDeposits = mas.PreCommitDeposits
-	i.LockedFunds = mas.LockedFunds
-	i.AvailableFunds = types.BigSub(mact.Balance, types.BigAdd(mas.LockedFunds, mas.PreCommitDeposits))
+	i.PreCommitDeposits = funds.PreCommitDeposits
+	i.LockedFunds = funds.VestingFunds
+	i.AvailableFunds, err = mas.AvailableBalance(mact.Balance)
+	if err != nil {
+		return nil, err
+	}
 
 	wb, err := api.WalletBalance(ctx, mi.Worker)
 	if err != nil {
