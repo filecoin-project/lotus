@@ -8,15 +8,26 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	adt1 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+
 	miner1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	adt1 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 var _ State = (*state1)(nil)
+
+func load1(store adt.Store, root cid.Cid) (State, error) {
+	out := state1{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
 
 type state1 struct {
 	miner1.State

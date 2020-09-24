@@ -5,14 +5,25 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 	msig1 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	adt1 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 var _ State = (*state1)(nil)
+
+func load1(store adt.Store, root cid.Cid) (State, error) {
+	out := state1{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
 
 type state1 struct {
 	msig1.State

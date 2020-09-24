@@ -1,18 +1,31 @@
 package paych
 
 import (
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
+
+	paych1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	adt1 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 var _ State = (*state1)(nil)
 
+func load1(store adt.Store, root cid.Cid) (State, error) {
+	out := state1{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 type state1 struct {
-	paych.State
+	paych1.State
 	store adt.Store
 	lsAmt *adt1.Array
 }
@@ -72,14 +85,14 @@ func (s *state1) ForEachLaneState(cb func(idx uint64, dl LaneState) error) error
 	// Note: we use a map instead of an array to store laneStates because the
 	// client sets the lane ID (the index) and potentially they could use a
 	// very large index.
-	var ls paych.LaneState
+	var ls paych1.LaneState
 	return lsamt.ForEach(&ls, func(i int64) error {
 		return cb(uint64(i), &laneState1{ls})
 	})
 }
 
 type laneState1 struct {
-	paych.LaneState
+	paych1.LaneState
 }
 
 func (ls *laneState1) Redeemed() (big.Int, error) {

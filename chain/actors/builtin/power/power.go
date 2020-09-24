@@ -2,6 +2,7 @@ package power
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -15,24 +16,23 @@ import (
 	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
+func init() {
+	builtin.RegisterActorState(builtin0.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load0(store, root)
+	})
+	builtin.RegisterActorState(builtin1.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load1(store, root)
+	})
+}
+
 var Address = builtin0.StoragePowerActorAddr
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.StoragePowerActorCodeID:
-		out := state0{store: store}
-		err := store.Get(store.Context(), act.Head, &out)
-		if err != nil {
-			return nil, err
-		}
-		return &out, nil
+		return load0(store, act.Head)
 	case builtin1.StoragePowerActorCodeID:
-		out := state1{store: store}
-		err := store.Get(store.Context(), act.Head, &out)
-		if err != nil {
-			return nil, err
-		}
-		return &out, nil
+		return load1(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }

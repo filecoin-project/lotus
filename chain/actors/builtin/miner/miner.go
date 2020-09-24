@@ -13,12 +13,22 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
+
+func init() {
+	builtin.RegisterActorState(builtin0.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load0(store, root)
+	})
+	builtin.RegisterActorState(builtin1.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load1(store, root)
+	})
+}
 
 // Unchanged between v0 and v1 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
@@ -28,19 +38,9 @@ const MinSectorExpiration = miner0.MinSectorExpiration
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.StorageMinerActorCodeID:
-		out := state0{store: store}
-		err := store.Get(store.Context(), act.Head, &out)
-		if err != nil {
-			return nil, err
-		}
-		return &out, nil
+		return load0(store, act.Head)
 	case builtin1.StorageMinerActorCodeID:
-		out := state1{store: store}
-		err := store.Get(store.Context(), act.Head, &out)
-		if err != nil {
-			return nil, err
-		}
-		return &out, nil
+		return load1(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
