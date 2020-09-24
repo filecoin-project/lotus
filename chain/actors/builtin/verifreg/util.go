@@ -4,13 +4,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
-func getDataCap(store adt.Store, ver builtin.Version, root cid.Cid, addr address.Address) (bool, abi.StoragePower, error) {
+func getDataCap(store adt.Store, ver actors.Version, root cid.Cid, addr address.Address) (bool, abi.StoragePower, error) {
 	if addr.Protocol() != address.ID {
 		return false, big.Zero(), xerrors.Errorf("can only look up ID addresses")
 	}
@@ -30,7 +30,7 @@ func getDataCap(store adt.Store, ver builtin.Version, root cid.Cid, addr address
 	return true, dcap, nil
 }
 
-func forEachCap(store adt.Store, ver builtin.Version, root cid.Cid, cb func(addr address.Address, dcap abi.StoragePower) error) error {
+func forEachCap(store adt.Store, ver actors.Version, root cid.Cid, cb func(addr address.Address, dcap abi.StoragePower) error) error {
 	vh, err := adt.AsMap(store, root, ver)
 	if err != nil {
 		return xerrors.Errorf("loading verified clients: %w", err)

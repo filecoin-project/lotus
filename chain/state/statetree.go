@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -26,7 +26,7 @@ var log = logging.Logger("statetree")
 // StateTree stores actors state by their ID.
 type StateTree struct {
 	root    adt.Map
-	version builtin.Version // TODO
+	version actors.Version // TODO
 	info    cid.Cid
 	Store   cbor.IpldStore
 
@@ -120,10 +120,10 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 	ss.layers[len(ss.layers)-1].actors[addr] = streeOp{Delete: true}
 }
 
-func NewStateTree(cst cbor.IpldStore, version builtin.Version) (*StateTree, error) {
+func NewStateTree(cst cbor.IpldStore, version actors.Version) (*StateTree, error) {
 	var info cid.Cid
 	switch version {
-	case builtin.Version0:
+	case actors.Version0:
 		// info is undefined
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", version)
@@ -148,18 +148,18 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 	if err := cst.Get(context.TODO(), c, &root); err != nil {
 		// We failed to decode as the new version, must be an old version.
 		root.Actors = c
-		root.Version = builtin.Version0
+		root.Version = actors.Version0
 	}
 
 	// If that fails, load as an old-style state-tree (direct hampt, version 0.
-	nd, err := adt.AsMap(adt.WrapStore(context.TODO(), cst), root.Actors, builtin.Version(root.Version))
+	nd, err := adt.AsMap(adt.WrapStore(context.TODO(), cst), root.Actors, actors.Version(root.Version))
 	if err != nil {
 		log.Errorf("loading hamt node %s failed: %s", c, err)
 		return nil, err
 	}
 
 	switch root.Version {
-	case builtin.Version0:
+	case actors.Version0:
 		// supported
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
@@ -168,7 +168,7 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 	return &StateTree{
 		root:    nd,
 		info:    root.Info,
-		version: builtin.Version(root.Version),
+		version: actors.Version(root.Version),
 		Store:   cst,
 		snaps:   newStateSnaps(),
 	}, nil
@@ -305,7 +305,7 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("failed to flush state-tree hamt: %w", err)
 	}
 	// If we're version 0, return a raw tree.
-	if st.version == builtin.Version0 {
+	if st.version == actors.Version0 {
 		return root, nil
 	}
 	// Otherwise, return a versioned tree.

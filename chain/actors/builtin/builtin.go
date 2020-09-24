@@ -1,34 +1,13 @@
 package builtin
 
 import (
-	"fmt"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
 	smoothing1 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
-
-	"github.com/filecoin-project/go-state-types/network"
 )
-
-type Version int
-
-const (
-	Version0 = iota
-	Version1
-)
-
-// Converts a network version into a specs-actors version.
-func VersionForNetwork(version network.Version) Version {
-	switch version {
-	case network.Version0, network.Version1, network.Version2:
-		return Version0
-	default:
-		panic(fmt.Sprintf("unsupported network version %d", version))
-	}
-}
 
 // TODO: Why does actors have 2 different versions of this?
 type SectorInfo = proof0.SectorInfo
