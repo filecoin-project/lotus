@@ -158,6 +158,9 @@ var sealingJobsCmd = &cli.Command{
 			if lines[i].RunWait != lines[j].RunWait {
 				return lines[i].RunWait < lines[j].RunWait
 			}
+			if lines[i].Start.Equal(lines[j].Start) {
+				return lines[i].ID.ID.String() < lines[j].ID.ID.String()
+			}
 			return lines[i].Start.Before(lines[j].Start)
 		})
 

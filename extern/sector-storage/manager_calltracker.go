@@ -8,12 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/xerrors"
+	"os"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type WorkID struct {
-	Method string
+	Method sealtasks.TaskType
 	Params string // json [...params]
 }
 
@@ -40,7 +42,7 @@ type WorkState struct {
 	WorkError  string           // Status = wsDone, set when failed to start work
 }
 
-func newWorkID(method string, params ...interface{}) (WorkID, error) {
+func newWorkID(method sealtasks.TaskType, params ...interface{}) (WorkID, error) {
 	pb, err := json.Marshal(params)
 	if err != nil {
 		return WorkID{}, xerrors.Errorf("marshaling work params: %w", err)
@@ -74,6 +76,10 @@ func (m *Manager) setupWorkTracker() {
 			continue
 		}
 
+		if os.Getenv("LOTUS_MINER_ABORT_UNFINISHED_WORK") == "1" {
+			st.Status = wsDone
+		}
+
 		switch st.Status {
 		case wsStarted:
 			log.Warnf("dropping non-running work %s", wid)
@@ -96,7 +102,7 @@ func (m *Manager) setupWorkTracker() {
 }
 
 // returns wait=true when the task is already tracked/running
-func (m *Manager) getWork(ctx context.Context, method string, params ...interface{}) (wid WorkID, wait bool, err error) {
+func (m *Manager) getWork(ctx context.Context, method sealtasks.TaskType, params ...interface{}) (wid WorkID, wait bool, err error) {
 	wid, err = newWorkID(method, params)
 	if err != nil {
 		return WorkID{}, false, xerrors.Errorf("creating WorkID: %w", err)

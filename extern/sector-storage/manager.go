@@ -364,7 +364,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	wk, wait, err := m.getWork(ctx, "PreCommit1", sector, ticket, pieces)
+	wk, wait, err := m.getWork(ctx, sealtasks.TTPreCommit1, sector, ticket, pieces)
 	if err != nil {
 		return nil, xerrors.Errorf("getWork: %w", err)
 	}
@@ -408,7 +408,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	wk, wait, err := m.getWork(ctx, "PreCommit2", sector, phase1Out)
+	wk, wait, err := m.getWork(ctx, sealtasks.TTPreCommit2, sector, phase1Out)
 	if err != nil {
 		return storage.SectorCids{}, xerrors.Errorf("getWork: %w", err)
 	}
@@ -449,7 +449,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	wk, wait, err := m.getWork(ctx, "Commit1", sector, ticket, seed, pieces, cids)
+	wk, wait, err := m.getWork(ctx, sealtasks.TTCommit1, sector, ticket, seed, pieces, cids)
 	if err != nil {
 		return storage.Commit1Out{}, xerrors.Errorf("getWork: %w", err)
 	}
@@ -490,7 +490,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 }
 
 func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (out storage.Proof, err error) {
-	wk, wait, err := m.getWork(ctx, "Commit2", sector, phase1Out)
+	wk, wait, err := m.getWork(ctx, sealtasks.TTCommit2, sector, phase1Out)
 	if err != nil {
 		return storage.Proof{}, xerrors.Errorf("getWork: %w", err)
 	}

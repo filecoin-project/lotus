@@ -56,7 +56,7 @@ func (m *Manager) WorkerJobs() map[int64][]storiface.WorkerJob {
 	m.workLk.Lock()
 	defer m.workLk.Unlock()
 
-	for id := range m.callToWork {
+	for id, work := range m.callToWork {
 		_, found := calls[id]
 		if found {
 			continue
@@ -65,7 +65,7 @@ func (m *Manager) WorkerJobs() map[int64][]storiface.WorkerJob {
 		out[-1] = append(out[-1], storiface.WorkerJob{
 			ID:      id,
 			Sector:  id.Sector,
-			Task:    "???",
+			Task:    work.Method,
 			RunWait: -1,
 			Start:   time.Time{},
 		})

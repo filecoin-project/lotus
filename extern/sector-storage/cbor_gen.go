@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	sealtasks "github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -378,7 +379,7 @@ func (t *WorkID) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Method (string) (string)
+	// t.Method (sealtasks.TaskType) (string)
 	if len("Method") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Method\" was too long")
 	}
@@ -459,7 +460,7 @@ func (t *WorkID) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.Method (string) (string)
+		// t.Method (sealtasks.TaskType) (string)
 		case "Method":
 
 			{
@@ -468,7 +469,7 @@ func (t *WorkID) UnmarshalCBOR(r io.Reader) error {
 					return err
 				}
 
-				t.Method = string(sval)
+				t.Method = sealtasks.TaskType(sval)
 			}
 			// t.Params (string) (string)
 		case "Params":
