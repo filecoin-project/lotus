@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -27,66 +30,84 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 	}
 
 	// TODO: More better checks
-	for _, sector := range sectors {
-		err := func() error {
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
+	toCheck := make(chan abi.SectorID, len(sectors))
+	bads := make(chan abi.SectorID, len(sectors))
+	var threads int
+	if len(sectors) > runtime.NumCPU()*2 {
+		threads = runtime.NumCPU() * 2
+	} else {
+		threads = len(sectors)
+	}
+	wg := sync.WaitGroup{}
 
-			locked, err := m.index.StorageTryLock(ctx, sector, stores.FTSealed|stores.FTCache, stores.FTNone)
-			if err != nil {
-				return xerrors.Errorf("acquiring sector lock: %w", err)
-			}
-
-			if !locked {
-				log.Warnw("CheckProvable Sector FAULT: can't acquire read lock", "sector", sector, "sealed")
-				bad = append(bad, sector)
-				return nil
-			}
-
-			lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
-			if err != nil {
-				log.Warnw("CheckProvable Sector FAULT: acquire sector in checkProvable", "sector", sector, "error", err)
-				bad = append(bad, sector)
-				return nil
-			}
-
-			if lp.Sealed == "" || lp.Cache == "" {
-				log.Warnw("CheckProvable Sector FAULT: cache an/or sealed paths not found", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache)
-				bad = append(bad, sector)
-				return nil
-			}
-
-			toCheck := map[string]int64{
-				lp.Sealed:                        1,
-				filepath.Join(lp.Cache, "t_aux"): 0,
-				filepath.Join(lp.Cache, "p_aux"): 0,
-			}
-
-			addCachePathsForSectorSize(toCheck, lp.Cache, ssize)
-
-			for p, sz := range toCheck {
-				st, err := os.Stat(p)
+	start := time.Now()
+	log.Infof("use %d threads to check %d sectors", threads, len(sectors))
+	for w := 0; w < threads; w++ {
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			for sector := range toCheck {
+				lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
 				if err != nil {
-					log.Warnw("CheckProvable Sector FAULT: sector file stat error", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache, "file", p, "err", err)
-					bad = append(bad, sector)
-					return nil
+					log.Warnw("CheckProvable Sector FAULT: acquire sector in checkProvable", "sector", sector, "error", err)
+					bads <- sector
+					continue
 				}
 
-				if sz != 0 {
-					if st.Size() != int64(ssize)*sz {
-						log.Warnw("CheckProvable Sector FAULT: sector file is wrong size", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache, "file", p, "size", st.Size(), "expectSize", int64(ssize)*sz)
-						bad = append(bad, sector)
-						return nil
+				if lp.Sealed == "" || lp.Cache == "" {
+					log.Warnw("CheckProvable Sector FAULT: cache an/or sealed paths not found", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache)
+					bads <- sector
+					continue
+				}
+
+				toCheck := map[string]int64{
+					lp.Sealed:                        1,
+					filepath.Join(lp.Cache, "t_aux"): 0,
+					filepath.Join(lp.Cache, "p_aux"): 0,
+				}
+
+				addCachePathsForSectorSize(toCheck, lp.Cache, ssize)
+
+				for p, sz := range toCheck {
+					st, err := os.Stat(p)
+					if err != nil {
+						log.Warnw("CheckProvable Sector FAULT: sector file stat error", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache, "file", p, "err", err)
+						bads <- sector
+						break
+					}
+
+					if sz != 0 {
+						if st.Size() != int64(ssize)*sz {
+							log.Warnw("CheckProvable Sector FAULT: sector file is wrong size", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache, "file", p, "size", st.Size(), "expectSize", int64(ssize)*sz)
+							bads <- sector
+							break
+						}
 					}
 				}
 			}
-
-			return nil
 		}()
-		if err != nil {
-			return nil, err
-		}
 	}
+
+	for _, sector := range sectors {
+		locked, err := m.index.StorageTryLock(ctx, sector, stores.FTSealed|stores.FTCache, stores.FTNone)
+		if err != nil {
+			return bad, xerrors.Errorf("acquiring sector lock: %w", err)
+		}
+
+		if !locked {
+			log.Warnw("CheckProvable Sector FAULT: can't acquire read lock", "sector", sector, "sealed")
+			bads <- sector
+		}
+		toCheck <- sector
+	}
+	close(toCheck)
+
+	wg.Wait()
+	close(bads)
+	for sector := range bads {
+		bad = append(bad, sector)
+	}
+	log.Infof("checking of %d sectors is finished. elapsed: %d", len(sectors), time.Since(start).Milliseconds())
 
 	return bad, nil
 }
