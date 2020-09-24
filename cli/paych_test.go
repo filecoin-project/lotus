@@ -12,39 +12,31 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-
-	"github.com/filecoin-project/go-state-types/big"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
-	"github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/lotus/chain/events"
-
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	cbor "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api/test"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	builder "github.com/filecoin-project/lotus/node/test"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 func init() {
-	power0.ConsensusMinerMinPower = big.NewInt(2048)
-	miner0.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg0.MinVerifiedDealSize = big.NewInt(256)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
 // TestPaymentChannels does a basic test to exercise the payment channel CLI

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 
 	"github.com/filecoin-project/lotus/build"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -156,8 +156,8 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
 	}
 
-	if pci.PreCommitEpoch+miner.PreCommitChallengeDelay != si.SeedEpoch {
-		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+miner.PreCommitChallengeDelay, si.SeedEpoch)}
+	if pci.PreCommitEpoch+policy.GetPreCommitChallengeDelay() != si.SeedEpoch {
+		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+policy.GetPreCommitChallengeDelay(), si.SeedEpoch)}
 	}
 
 	buf := new(bytes.Buffer)

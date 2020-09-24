@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"golang.org/x/xerrors"
@@ -281,7 +282,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		return ctx.Send(SectorChainPreCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
 	}
 
-	randHeight := pci.PreCommitEpoch + miner.PreCommitChallengeDelay
+	randHeight := pci.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
 
 	err = m.events.ChainAt(func(ectx context.Context, _ TipSetToken, curH abi.ChainEpoch) error {
 		// in case of null blocks the randomness can land after the tipset we
