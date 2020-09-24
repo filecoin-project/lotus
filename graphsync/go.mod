@@ -3,6 +3,7 @@ module github.com/libp2p/test-plans/ping
 go 1.14
 
 require (
+	github.com/hannahhoward/all-selector v0.1.0
 	github.com/ipfs/go-blockservice v0.1.3
 	github.com/ipfs/go-cid v0.0.6
 	github.com/ipfs/go-datastore v0.4.4
@@ -14,7 +15,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-merkledag v0.3.1
 	github.com/ipfs/go-unixfs v0.2.4
-	github.com/ipld/go-ipld-prime v0.0.4-0.20200828224805-5ff8c8b0b6ef
+	github.com/ipld/go-ipld-prime v0.4.0
 	github.com/libp2p/go-libp2p v0.10.0
 	github.com/libp2p/go-libp2p-core v0.6.0
 	github.com/libp2p/go-libp2p-noise v0.1.1

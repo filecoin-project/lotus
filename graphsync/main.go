@@ -8,23 +8,21 @@ import (
 	goruntime "runtime"
 	"time"
 
+	allselector "github.com/hannahhoward/all-selector"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	"github.com/ipfs/go-graphsync/storeutil"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-chunker"
-	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/ipfs/go-ipfs-files"
-	"github.com/ipfs/go-ipld-format"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	chunk "github.com/ipfs/go-ipfs-chunker"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	files "github.com/ipfs/go-ipfs-files"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
-	"github.com/ipld/go-ipld-prime/linking/cid"
-	"github.com/ipld/go-ipld-prime/node/basic"
-	"github.com/ipld/go-ipld-prime/traversal/selector"
-	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/testground/sdk-go/network"
 	"golang.org/x/sync/errgroup"
@@ -37,7 +35,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-noise"
-	"github.com/libp2p/go-libp2p-secio"
+	secio "github.com/libp2p/go-libp2p-secio"
 	tls "github.com/libp2p/go-libp2p-tls"
 
 	"github.com/testground/sdk-go/run"
@@ -156,8 +154,7 @@ func runRequestor(ctx context.Context, runenv *runtime.RunEnv, initCtx *run.Init
 	var (
 		cids []cid.Cid
 		// create a selector for the whole UnixFS dag
-		ssb = builder.NewSelectorSpecBuilder(basicnode.Style.Any)
-		sel = ssb.ExploreRecursive(selector.RecursionLimitNone(), ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
+		sel = allselector.AllSelector
 	)
 
 	for round, np := range networkParams {
