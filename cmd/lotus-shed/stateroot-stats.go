@@ -182,6 +182,11 @@ var staterootStatCmd = &cli.Command{
 			return infos[i].Stat.Size > infos[j].Stat.Size
 		})
 
+		var totalActorsSize uint64
+		for _, info := range infos {
+			totalActorsSize += info.Stat.Size
+		}
+
 		outcap := 10
 		if cctx.Args().Len() > outcap {
 			outcap = cctx.Args().Len()
@@ -189,6 +194,15 @@ var staterootStatCmd = &cli.Command{
 		if len(infos) < outcap {
 			outcap = len(infos)
 		}
+
+		totalStat, err := api.ChainStatObj(ctx, ts.ParentState(), cid.Undef)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Total state tree size: ", totalStat.Size)
+		fmt.Println("Sum of actor state size: ", totalActorsSize)
+		fmt.Println("State tree structure size: ", totalStat.Size-totalActorsSize)
 
 		fmt.Print("Addr\tType\tSize\n")
 		for _, inf := range infos[:outcap] {
