@@ -78,17 +78,17 @@ func NewActorRegistry() *ActorRegistry {
 	inv.Register(actors.Version0, builtin0.PaymentChannelActorCodeID, paych0.Actor{}, paych0.State{}, false)
 	inv.Register(actors.Version0, builtin0.AccountActorCodeID, account0.Actor{}, account0.State{}, false)
 
-	inv.Register(actors.Version0, builtin1.SystemActorCodeID, system1.Actor{}, abi.EmptyValue{}, true)
-	inv.Register(actors.Version0, builtin1.InitActorCodeID, init1.Actor{}, init1.State{}, true)
-	inv.Register(actors.Version0, builtin1.RewardActorCodeID, reward1.Actor{}, reward1.State{}, true)
-	inv.Register(actors.Version0, builtin1.CronActorCodeID, cron1.Actor{}, cron1.State{}, true)
-	inv.Register(actors.Version0, builtin1.StoragePowerActorCodeID, power1.Actor{}, power1.State{}, true)
-	inv.Register(actors.Version0, builtin1.StorageMarketActorCodeID, market1.Actor{}, market1.State{}, true)
-	inv.Register(actors.Version0, builtin1.VerifiedRegistryActorCodeID, verifreg1.Actor{}, verifreg1.State{}, true)
-	inv.Register(actors.Version0, builtin1.StorageMinerActorCodeID, miner1.Actor{}, miner1.State{}, false)
-	inv.Register(actors.Version0, builtin1.MultisigActorCodeID, msig1.Actor{}, msig1.State{}, false)
-	inv.Register(actors.Version0, builtin1.PaymentChannelActorCodeID, paych1.Actor{}, paych1.State{}, false)
-	inv.Register(actors.Version0, builtin1.AccountActorCodeID, account1.Actor{}, account1.State{}, false)
+	inv.Register(actors.Version1, builtin1.SystemActorCodeID, system1.Actor{}, abi.EmptyValue{}, true)
+	inv.Register(actors.Version1, builtin1.InitActorCodeID, init1.Actor{}, init1.State{}, true)
+	inv.Register(actors.Version1, builtin1.RewardActorCodeID, reward1.Actor{}, reward1.State{}, true)
+	inv.Register(actors.Version1, builtin1.CronActorCodeID, cron1.Actor{}, cron1.State{}, true)
+	inv.Register(actors.Version1, builtin1.StoragePowerActorCodeID, power1.Actor{}, power1.State{}, true)
+	inv.Register(actors.Version1, builtin1.StorageMarketActorCodeID, market1.Actor{}, market1.State{}, true)
+	inv.Register(actors.Version1, builtin1.VerifiedRegistryActorCodeID, verifreg1.Actor{}, verifreg1.State{}, true)
+	inv.Register(actors.Version1, builtin1.StorageMinerActorCodeID, miner1.Actor{}, miner1.State{}, false)
+	inv.Register(actors.Version1, builtin1.MultisigActorCodeID, msig1.Actor{}, msig1.State{}, false)
+	inv.Register(actors.Version1, builtin1.PaymentChannelActorCodeID, paych1.Actor{}, paych1.State{}, false)
+	inv.Register(actors.Version1, builtin1.AccountActorCodeID, account1.Actor{}, account1.State{}, false)
 
 	return inv
 }
