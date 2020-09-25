@@ -417,6 +417,7 @@ func (sh *scheduler) trySched() {
 
 	// Step 2
 	scheduled := 0
+	rmQueue := make([]int, 0, sh.schedQueue.Len())
 
 	for sqi := 0; sqi < sh.schedQueue.Len(); sqi++ {
 		task := (*sh.schedQueue)[sqi]
@@ -453,9 +454,14 @@ func (sh *scheduler) trySched() {
 
 		windows[selectedWindow].todo = append(windows[selectedWindow].todo, task)
 
-		sh.schedQueue.Remove(sqi)
-		sqi--
+		rmQueue = append(rmQueue, sqi)
 		scheduled++
+	}
+
+	if len(rmQueue) > 0 {
+		for i := len(rmQueue) - 1; i >= 0; i++ {
+			sh.schedQueue.Remove(rmQueue[i])
+		}
 	}
 
 	// Step 3
