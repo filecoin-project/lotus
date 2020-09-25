@@ -288,16 +288,10 @@ minerLoop:
 			//
 			// See:  https://github.com/filecoin-project/lotus/issues/1845
 			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+build.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
-
-			select {
-			case <-build.Clock.After(build.Clock.Until(nextRound)):
-			case <-m.stop:
-				stopping := m.stopping
-				m.stop = nil
-				m.stopping = nil
-				close(stopping)
-				return
+			if !m.niceSleep(build.Clock.Until(nextRound)) {
+				continue minerLoop
 			}
+
 		}
 	}
 }
