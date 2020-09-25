@@ -327,11 +327,7 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 	return out, nullRounds, nil
 }
 
-func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.Cid]*types.BlockHeader, error) {
-	start := time.Now()
-	defer func() {
-		log.Debugw("Gathered Blocks to process", "duration", time.Since(start).String())
-	}()
+func (p *Processor) getUnprocessedBlocks(batch int) (map[cid.Cid]struct{}, error) {
 	rows, err := p.db.Query(`
 with toProcess as (
     select b.cid, b.height, rank() over (order by height) as rnk
@@ -346,11 +342,8 @@ where rnk <= $1
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to query for unprocessed blocks: %w", err)
 	}
-	out := map[cid.Cid]*types.BlockHeader{}
 
-	minBlock := abi.ChainEpoch(math.MaxInt64)
-	maxBlock := abi.ChainEpoch(0)
-	// TODO consider parallel execution here for getting the blocks from the api as is done in fetchMessages()
+	bcs := map[cid.Cid]struct{}{}
 	for rows.Next() {
 		if rows.Err() != nil {
 			return nil, err
@@ -365,12 +358,28 @@ where rnk <= $1
 			log.Errorf("Failed to parse unprocessed blocks: %s", err.Error())
 			continue
 		}
+		bcs[ci] = struct{}{}
+	}
+	return bcs, rows.Close()
+}
+
+func (p *Processor) fetchBlocks(ctx context.Context, bcs map[cid.Cid]struct{}) (
+	out map[cid.Cid]*types.BlockHeader, minBlock, maxBlock abi.ChainEpoch) {
+	var lk sync.Mutex
+	out = map[cid.Cid]*types.BlockHeader{}
+	minBlock = abi.ChainEpoch(math.MaxInt64)
+	maxBlock = abi.ChainEpoch(0)
+
+	parmap.Par(50, parmap.KMapArr(bcs), func(ci cid.Cid) {
 		bh, err := p.node.ChainGetBlock(ctx, ci)
 		if err != nil {
 			// this is a pretty serious issue.
 			log.Errorf("Failed to get block header %s: %s", ci.String(), err.Error())
-			continue
+			//continue
+			return
 		}
+
+		lk.Lock()
 		out[ci] = bh
 		if bh.Height < minBlock {
 			minBlock = bh.Height
@@ -378,11 +387,31 @@ where rnk <= $1
 		if bh.Height > maxBlock {
 			maxBlock = bh.Height
 		}
+		lk.Unlock()
+	})
+	return
+}
+
+func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.Cid]*types.BlockHeader, error) {
+	start := time.Now()
+	defer func() {
+		log.Debugw("Gathered Blocks to process", "duration", time.Since(start).String())
+	}()
+
+	bcs, err := p.getUnprocessedBlocks(batch)
+	if err != nil {
+		return nil, err
 	}
+	if len(bcs) == 0 {
+		return nil, nil
+	}
+
+	out, minBlock, maxBlock := p.fetchBlocks(ctx, bcs)
 	if minBlock <= maxBlock {
 		log.Infow("Gathered Blocks to Process", "start", minBlock, "end", maxBlock)
 	}
-	return out, rows.Close()
+	//return out, rows.Close()
+	return out, nil
 }
 
 func (p *Processor) markBlocksProcessed(ctx context.Context, processed map[cid.Cid]*types.BlockHeader) error {
