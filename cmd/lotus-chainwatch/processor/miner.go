@@ -3,7 +3,10 @@ package processor
 import (
 	"context"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/filecoin-project/lotus/lib/parmap"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -203,14 +206,17 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 	}()
 
 	stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(p.node))
-
+	var lk sync.Mutex
 	var out []minerActorInfo
-	// TODO add parallel calls if this becomes slow
-	for tipset, miners := range minerTips {
+
+	parmap.Par(50, parmap.KVMapArr(minerTips), func(f func() (types.TipSetKey, []actorInfo)) {
+		tipset, miners := f()
 		// get the power actors claims map
 		powerState, err := getPowerActorState(ctx, p.node, tipset)
 		if err != nil {
-			return nil, err
+			//return nil, err
+			log.Fatalw("Get Power Actor State", "error", err)
+			return
 		}
 
 		// Get miner raw and quality power
@@ -222,7 +228,9 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 			// this tipset
 			claim, found, err := powerState.MinerPower(act.addr)
 			if err != nil {
-				return nil, err
+				//return nil, err
+				log.Fatalw("Get Power Actor State", "error", err)
+				return
 			}
 			if found {
 				mi.qalPower = claim.QualityAdjPower
@@ -235,10 +243,13 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 				log.Warnw("failed to find miner actor state", "address", act.addr, "error", err)
 				continue
 			}
+
 			mi.state = mas
+			lk.Lock()
 			out = append(out, mi)
+			lk.Unlock()
 		}
-	}
+	})
 	return out, nil
 }
 
