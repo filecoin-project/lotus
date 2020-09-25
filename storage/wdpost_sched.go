@@ -125,10 +125,13 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 					continue
 				}
 
+				ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.headChange")
+
 				if err := s.update(ctx, chg.Val); err != nil {
 					log.Errorf("%+v", err)
 				}
 
+				span.End()
 				gotCur = true
 				continue
 			}
