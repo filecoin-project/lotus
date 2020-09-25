@@ -396,7 +396,7 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 }
 
 // Version returns the version of the StateTree data structure in use.
-func (st *StateTree) Version() builtin.Version {
+func (st *StateTree) Version() actors.Version {
 	return st.version
 }
 
