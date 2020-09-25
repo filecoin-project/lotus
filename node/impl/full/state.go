@@ -411,7 +411,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 		return nil, xerrors.Errorf("getting actor head: %w", err)
 	}
 
-	oif, err := vm.DumpActorState(act.Code, blk.RawData())
+	oif, err := vm.DumpActorState(act, blk.RawData())
 	if err != nil {
 		return nil, xerrors.Errorf("dumping actor state (a:%s): %w", actor, err)
 	}

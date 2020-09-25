@@ -152,7 +152,7 @@ type VM struct {
 	cst            *cbor.BasicIpldStore
 	buf            *bufbstore.BufferedBS
 	blockHeight    abi.ChainEpoch
-	inv            *Invoker
+	areg           *ActorRegistry
 	rand           Rand
 	circSupplyCalc CircSupplyCalculator
 	ntwkVersion    NtwkVersionGetter
@@ -186,7 +186,7 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		cst:            cst,
 		buf:            buf,
 		blockHeight:    opts.Epoch,
-		inv:            NewInvoker(),
+		areg:           NewActorRegistry(),
 		rand:           opts.Rand, // TODO: Probably should be a syscall
 		circSupplyCalc: opts.CircSupplyCalc,
 		ntwkVersion:    opts.NtwkVersion,
@@ -734,15 +734,15 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	defer func() {
 		rt.ctx = oldCtx
 	}()
-	ret, err := vm.inv.Invoke(act.Code, rt, method, params)
+	ret, err := vm.areg.Invoke(act.Code, rt, method, params)
 	if err != nil {
 		return nil, err
 	}
 	return ret, nil
 }
 
-func (vm *VM) SetInvoker(i *Invoker) {
-	vm.inv = i
+func (vm *VM) SetInvoker(i *ActorRegistry) {
+	vm.areg = i
 }
 
 func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {

@@ -40,79 +40,113 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type Invoker struct {
-	builtInCode  map[cid.Cid]nativeCode
-	builtInState map[cid.Cid]reflect.Type
+type ActorRegistry struct {
+	actors map[cid.Cid]*actorInfo
 }
 
 type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
-func NewInvoker() *Invoker {
-	inv := &Invoker{
-		builtInCode:  make(map[cid.Cid]nativeCode),
-		builtInState: make(map[cid.Cid]reflect.Type),
-	}
+type actorInfo struct {
+	methods   nativeCode
+	stateType reflect.Type
+	// TODO: consider making this a network version range?
+	version   actors.Version
+	singleton bool
+}
+
+func NewActorRegistry() *ActorRegistry {
+	inv := &ActorRegistry{actors: make(map[cid.Cid]*actorInfo)}
+
+	// TODO: define all these properties on the actors themselves, in specs-actors.
 
 	// add builtInCode using: register(cid, singleton)
-	inv.Register(builtin0.SystemActorCodeID, system0.Actor{}, abi.EmptyValue{})
-	inv.Register(builtin0.InitActorCodeID, init0.Actor{}, init0.State{})
-	inv.Register(builtin0.RewardActorCodeID, reward0.Actor{}, reward0.State{})
-	inv.Register(builtin0.CronActorCodeID, cron0.Actor{}, cron0.State{})
-	inv.Register(builtin0.StoragePowerActorCodeID, power0.Actor{}, power0.State{})
-	inv.Register(builtin0.StorageMarketActorCodeID, market0.Actor{}, market0.State{})
-	inv.Register(builtin0.StorageMinerActorCodeID, miner0.Actor{}, miner0.State{})
-	inv.Register(builtin0.MultisigActorCodeID, msig0.Actor{}, msig0.State{})
-	inv.Register(builtin0.PaymentChannelActorCodeID, paych0.Actor{}, paych0.State{})
-	inv.Register(builtin0.VerifiedRegistryActorCodeID, verifreg0.Actor{}, verifreg0.State{})
-	inv.Register(builtin0.AccountActorCodeID, account0.Actor{}, account0.State{})
+	inv.Register(actors.Version0, builtin0.SystemActorCodeID, system0.Actor{}, abi.EmptyValue{}, true)
+	inv.Register(actors.Version0, builtin0.InitActorCodeID, init0.Actor{}, init0.State{}, true)
+	inv.Register(actors.Version0, builtin0.RewardActorCodeID, reward0.Actor{}, reward0.State{}, true)
+	inv.Register(actors.Version0, builtin0.CronActorCodeID, cron0.Actor{}, cron0.State{}, true)
+	inv.Register(actors.Version0, builtin0.StoragePowerActorCodeID, power0.Actor{}, power0.State{}, true)
+	inv.Register(actors.Version0, builtin0.StorageMarketActorCodeID, market0.Actor{}, market0.State{}, true)
+	inv.Register(actors.Version0, builtin0.VerifiedRegistryActorCodeID, verifreg0.Actor{}, verifreg0.State{}, true)
+	inv.Register(actors.Version0, builtin0.StorageMinerActorCodeID, miner0.Actor{}, miner0.State{}, false)
+	inv.Register(actors.Version0, builtin0.MultisigActorCodeID, msig0.Actor{}, msig0.State{}, false)
+	inv.Register(actors.Version0, builtin0.PaymentChannelActorCodeID, paych0.Actor{}, paych0.State{}, false)
+	inv.Register(actors.Version0, builtin0.AccountActorCodeID, account0.Actor{}, account0.State{}, false)
 
-	inv.Register(builtin1.SystemActorCodeID, system1.Actor{}, abi.EmptyValue{})
-	inv.Register(builtin1.InitActorCodeID, init1.Actor{}, init1.State{})
-	inv.Register(builtin1.RewardActorCodeID, reward1.Actor{}, reward1.State{})
-	inv.Register(builtin1.CronActorCodeID, cron1.Actor{}, cron1.State{})
-	inv.Register(builtin1.StoragePowerActorCodeID, power1.Actor{}, power1.State{})
-	inv.Register(builtin1.StorageMarketActorCodeID, market1.Actor{}, market1.State{})
-	inv.Register(builtin1.StorageMinerActorCodeID, miner1.Actor{}, miner1.State{})
-	inv.Register(builtin1.MultisigActorCodeID, msig1.Actor{}, msig1.State{})
-	inv.Register(builtin1.PaymentChannelActorCodeID, paych1.Actor{}, paych1.State{})
-	inv.Register(builtin1.VerifiedRegistryActorCodeID, verifreg1.Actor{}, verifreg1.State{})
-	inv.Register(builtin1.AccountActorCodeID, account1.Actor{}, account1.State{})
+	inv.Register(actors.Version0, builtin1.SystemActorCodeID, system1.Actor{}, abi.EmptyValue{}, true)
+	inv.Register(actors.Version0, builtin1.InitActorCodeID, init1.Actor{}, init1.State{}, true)
+	inv.Register(actors.Version0, builtin1.RewardActorCodeID, reward1.Actor{}, reward1.State{}, true)
+	inv.Register(actors.Version0, builtin1.CronActorCodeID, cron1.Actor{}, cron1.State{}, true)
+	inv.Register(actors.Version0, builtin1.StoragePowerActorCodeID, power1.Actor{}, power1.State{}, true)
+	inv.Register(actors.Version0, builtin1.StorageMarketActorCodeID, market1.Actor{}, market1.State{}, true)
+	inv.Register(actors.Version0, builtin1.VerifiedRegistryActorCodeID, verifreg1.Actor{}, verifreg1.State{}, true)
+	inv.Register(actors.Version0, builtin1.StorageMinerActorCodeID, miner1.Actor{}, miner1.State{}, false)
+	inv.Register(actors.Version0, builtin1.MultisigActorCodeID, msig1.Actor{}, msig1.State{}, false)
+	inv.Register(actors.Version0, builtin1.PaymentChannelActorCodeID, paych1.Actor{}, paych1.State{}, false)
+	inv.Register(actors.Version0, builtin1.AccountActorCodeID, account1.Actor{}, account1.State{}, false)
 
 	return inv
 }
 
-func (inv *Invoker) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
-
-	code, ok := inv.builtInCode[codeCid]
+func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
+	act, ok := ar.actors[codeCid]
 	if !ok {
 		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Receiver())
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", codeCid, method, hex.EncodeToString(params))
 	}
-	if method >= abi.MethodNum(len(code)) || code[method] == nil {
+	if method >= abi.MethodNum(len(act.methods)) || act.methods[method] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
-	return code[method](rt, params)
+	if curVer := actors.VersionForNetwork(rt.NetworkVersion()); curVer != act.version {
+		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "unsupported actors code version %d, expected %d", act.version, curVer)
+	}
+	return act.methods[method](rt, params)
 
 }
 
-func (inv *Invoker) Register(c cid.Cid, instance Invokee, state interface{}) {
-	code, err := inv.transform(instance)
+func (ar *ActorRegistry) Register(version actors.Version, c cid.Cid, instance Invokee, state interface{}, singleton bool) {
+	code, err := ar.transform(instance)
 	if err != nil {
 		panic(xerrors.Errorf("%s: %w", string(c.Hash()), err))
 	}
-	inv.builtInCode[c] = code
-	inv.builtInState[c] = reflect.TypeOf(state)
+	ar.actors[c] = &actorInfo{
+		methods:   code,
+		version:   version,
+		stateType: reflect.TypeOf(state),
+		singleton: singleton,
+	}
+}
+
+func (ar *ActorRegistry) Create(codeCid cid.Cid, rt vmr.Runtime) (*types.Actor, aerrors.ActorError) {
+	act, ok := ar.actors[codeCid]
+	if !ok {
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
+	}
+	if version := actors.VersionForNetwork(rt.NetworkVersion()); act.version != version {
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only create version %d actors, attempted to create version %d actor", version, act.version)
+	}
+
+	if act.singleton {
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
+	}
+	return &types.Actor{
+		Code:    codeCid,
+		Head:    EmptyObjectCid,
+		Nonce:   0,
+		Balance: abi.NewTokenAmount(0),
+	}, nil
 }
 
 type Invokee interface {
 	Exports() []interface{}
 }
 
-func (*Invoker) transform(instance Invokee) (nativeCode, error) {
+func (*ActorRegistry) transform(instance Invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
 	runtimeType := reflect.TypeOf((*vmr.Runtime)(nil)).Elem()
@@ -201,19 +235,19 @@ func DecodeParams(b []byte, out interface{}) error {
 	return um.UnmarshalCBOR(bytes.NewReader(b))
 }
 
-func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
-	if code == builtin0.AccountActorCodeID { // Account code special case
+func DumpActorState(act *types.Actor, b []byte) (interface{}, error) {
+	if act.IsAccountActor() { // Account code special case
 		return nil, nil
 	}
 
-	i := NewInvoker() // TODO: register builtins in init block
+	i := NewActorRegistry() // TODO: register builtins in init block
 
-	typ, ok := i.builtInState[code]
+	actInfo, ok := i.actors[act.Code]
 	if !ok {
-		return nil, xerrors.Errorf("state type for actor %s not found", code)
+		return nil, xerrors.Errorf("state type for actor %s not found", act.Code)
 	}
 
-	rv := reflect.New(typ)
+	rv := reflect.New(actInfo.stateType)
 	um, ok := rv.Interface().(cbg.CBORUnmarshaler)
 	if !ok {
 		return nil, xerrors.New("state type does not implement CBORUnmarshaler")

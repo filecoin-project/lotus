@@ -106,7 +106,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	sm := NewStateManager(cg.ChainStore())
 
-	inv := vm.NewInvoker()
+	inv := vm.NewActorRegistry()
 
 	// predicting the address here... may break if other assumptions change
 	taddr, err := address.NewIDAddress(1002)
@@ -143,7 +143,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		return nil
 	}
 
-	inv.Register(builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{})
+	inv.Register(actors.Version0, builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{}, false)
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
 		nvm, err := vm.NewVM(ctx, vmopt)
 		if err != nil {

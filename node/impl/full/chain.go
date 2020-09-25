@@ -422,7 +422,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				return nil, nil, xerrors.Errorf("getting actor head for @state: %w", err)
 			}
 
-			m, err := vm.DumpActorState(act.Code, head.RawData())
+			m, err := vm.DumpActorState(&act, head.RawData())
 			if err != nil {
 				return nil, nil, err
 			}

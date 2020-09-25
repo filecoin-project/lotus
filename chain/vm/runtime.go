@@ -10,13 +10,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
@@ -216,12 +214,9 @@ func (rt *Runtime) NewActorAddress() address.Address {
 }
 
 func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
-	if !builtin.IsBuiltinActor(codeID) {
-		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
-	}
-
-	if builtin.IsSingletonActor(codeID) {
-		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
+	act, aerr := rt.vm.areg.Create(codeID, rt)
+	if aerr != nil {
+		rt.Abortf(aerr.RetCode(), aerr.Error())
 	}
 
 	_, err := rt.state.GetActor(address)
@@ -231,12 +226,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 
 	rt.chargeGas(rt.Pricelist().OnCreateActor())
 
-	err = rt.state.SetActor(address, &types.Actor{
-		Code:    codeID,
-		Head:    EmptyObjectCid,
-		Nonce:   0,
-		Balance: big.Zero(),
-	})
+	err = rt.state.SetActor(address, act)
 	if err != nil {
 		panic(aerrors.Fatalf("creating actor entry: %v", err))
 	}
