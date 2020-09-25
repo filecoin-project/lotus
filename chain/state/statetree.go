@@ -125,6 +125,12 @@ func NewStateTree(cst cbor.IpldStore, version actors.Version) (*StateTree, error
 	switch version {
 	case actors.Version0:
 		// info is undefined
+	case actors.Version1:
+		var err error
+		info, err = cst.Put(context.TODO(), new(types.StateInfo))
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", version)
 	}
@@ -159,7 +165,7 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 	}
 
 	switch root.Version {
-	case actors.Version0:
+	case actors.Version0, actors.Version1:
 		// supported
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
