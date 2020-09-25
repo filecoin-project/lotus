@@ -17,8 +17,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var dummyCid cid.Cid
@@ -90,7 +90,7 @@ func (m *mockAPI) getDeadline(currentEpoch abi.ChainEpoch) *dline.Info {
 		close += miner.WPoStChallengeWindow
 		dlIdx++
 	}
-	return miner.NewDeadlineInfo(0, dlIdx, currentEpoch)
+	return NewDeadlineInfo(0, dlIdx, currentEpoch)
 }
 
 func (m *mockAPI) StateMinerProvingDeadline(ctx context.Context, address address.Address, key types.TipSetKey) (*dline.Info, error) {
@@ -355,7 +355,7 @@ func TestChangeHandlerDontStartUntilProvingPeriod(t *testing.T) {
 	periodStart := miner.WPoStProvingPeriod
 	dlIdx := uint64(1)
 	currentEpoch := abi.ChainEpoch(10)
-	di := miner.NewDeadlineInfo(periodStart, dlIdx, currentEpoch)
+	di := NewDeadlineInfo(periodStart, dlIdx, currentEpoch)
 	mock.setDeadline(di)
 
 	defer s.ch.shutdown()
@@ -375,7 +375,7 @@ func TestChangeHandlerDontStartUntilProvingPeriod(t *testing.T) {
 
 	// Advance the head to the next proving period's first epoch
 	currentEpoch = periodStart + miner.WPoStChallengeWindow
-	di = miner.NewDeadlineInfo(periodStart, dlIdx, currentEpoch)
+	di = NewDeadlineInfo(periodStart, dlIdx, currentEpoch)
 	mock.setDeadline(di)
 	go triggerHeadAdvance(t, s, currentEpoch)
 
