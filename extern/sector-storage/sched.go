@@ -461,7 +461,7 @@ func (sh *scheduler) trySched() {
 	}
 
 	if len(rmQueue) > 0 {
-		for i := len(rmQueue) - 1; i >= 0; i++ {
+		for i := len(rmQueue) - 1; i >= 0; i-- {
 			sh.schedQueue.Remove(rmQueue[i])
 		}
 	}
