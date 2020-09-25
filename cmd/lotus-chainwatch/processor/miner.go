@@ -3,7 +3,10 @@ package processor
 import (
 	"context"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/filecoin-project/lotus/lib/parmap"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -881,6 +884,32 @@ func (p *Processor) diffPartition(prevPart, curPart miner.Partition) (*Partition
 	}, nil
 }
 
+type minerInfo struct {
+	minerActorInfo
+	miner.MinerInfo
+}
+
+func (p *Processor) fetchMinersActorInfoStates(ctx context.Context, miners []minerActorInfo) []minerInfo {
+	var lk sync.Mutex
+	var out []minerInfo
+
+	parmap.Par(50, miners, func(m minerActorInfo) {
+		mi, err := p.node.StateMinerInfo(ctx, m.common.addr, m.common.tsKey)
+		if err != nil {
+			//if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
+			//	continue
+			//} else {
+			//	return err
+			//}
+			return
+		}
+		lk.Lock()
+		out = append(out, minerInfo{m, mi})
+		lk.Unlock()
+	})
+	return out
+}
+
 func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []minerActorInfo) error {
 	start := time.Now()
 	defer func() {
@@ -900,31 +929,25 @@ func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []mine
 	if err != nil {
 		return err
 	}
-	for _, m := range miners {
-		mi, err := p.node.StateMinerInfo(ctx, m.common.addr, m.common.tsKey)
-		if err != nil {
-			if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
-				continue
-			} else {
-				return err
-			}
-		}
+
+	mss := p.fetchMinersActorInfoStates(ctx, miners)
+	for _, ms := range mss {
 		var pid string
-		if mi.PeerId != nil {
-			pid = mi.PeerId.String()
+		if ms.PeerId != nil {
+			pid = ms.PeerId.String()
 		}
 		if _, err := stmt.Exec(
-			m.common.addr.String(),
-			mi.Owner.String(),
-			mi.Worker.String(),
+			ms.common.addr.String(),
+			ms.Owner.String(),
+			ms.Worker.String(),
 			pid,
-			mi.SectorSize.ShortString(),
+			ms.SectorSize.ShortString(),
 		); err != nil {
-			log.Errorw("failed to store miner state", "state", m.state, "info", m.state.Info, "error", err)
+			log.Errorw("failed to store miner state", "state", ms.state, "info", ms.state.Info, "error", err)
 			return xerrors.Errorf("failed to store miner state: %w", err)
 		}
-
 	}
+
 	if err := stmt.Close(); err != nil {
 		return err
 	}
