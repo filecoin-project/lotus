@@ -4,6 +4,9 @@ package build
 
 import (
 	"math/big"
+	"os"
+
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -22,8 +25,8 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version2
-const ActorUpgradeNetworkVersion = network.Version3
+const NewestNetworkVersion = network.Version3
+const ActorUpgradeNetworkVersion = network.Version4
 
 // Epochs
 const ForkLengthThreshold = Finality
@@ -61,7 +64,14 @@ const TicketRandomnessLookback = abi.ChainEpoch(1)
 const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
 
 // /////
+// Address
+
+const AddressMainnetEnvVar = "_mainnet_"
+
+// /////
 // Devnet settings
+
+var Devnet = true
 
 const FilBase = uint64(2_000_000_000)
 const FilAllocStorageMining = uint64(1_100_000_000)
@@ -75,6 +85,10 @@ var InitialRewardBalance *big.Int
 func init() {
 	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
+
+	if os.Getenv("LOTUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
+		SetAddressNetwork(address.Mainnet)
+	}
 }
 
 // Sync
