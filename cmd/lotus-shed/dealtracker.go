@@ -303,6 +303,8 @@ var serveDealStatsCmd = &cli.Command{
 			panic(err)
 		}
 
+		log.Warnf("deal-stat server listening on %s\n== NOTE: QUERIES ARE EXPENSIVE - YOU MUST FRONT-CACHE THIS SERVICE\n", list.Addr().String())
+
 		return s.Serve(list)
 	},
 }
