@@ -43,8 +43,9 @@ func init() {
 }
 
 type dealCountResp struct {
-	Total int64 `json:"total"`
-	Epoch int64 `json:"epoch"`
+	Epoch    int64  `json:"epoch"`
+	Endpoint string `json:"endpoint"`
+	Payload  int64  `json:"payload"`
 }
 
 func (dss *dealStatsServer) handleStorageDealCount(w http.ResponseWriter, r *http.Request) {
@@ -56,8 +57,9 @@ func (dss *dealStatsServer) handleStorageDealCount(w http.ResponseWriter, r *htt
 	}
 
 	if err := json.NewEncoder(w).Encode(&dealCountResp{
-		Total: int64(len(deals)),
-		Epoch: epoch,
+		Endpoint: "COUNT_DEALS",
+		Payload:  int64(len(deals)),
+		Epoch:    epoch,
 	}); err != nil {
 		log.Warnf("failed to write back deal count response: %s", err)
 		return
@@ -65,8 +67,9 @@ func (dss *dealStatsServer) handleStorageDealCount(w http.ResponseWriter, r *htt
 }
 
 type dealAverageResp struct {
-	AverageSize int64 `json:"average_size"`
-	Epoch       int64 `json:"epoch"`
+	Epoch    int64  `json:"epoch"`
+	Endpoint string `json:"endpoint"`
+	Payload  int64  `json:"payload"`
 }
 
 func (dss *dealStatsServer) handleStorageDealAverageSize(w http.ResponseWriter, r *http.Request) {
@@ -83,8 +86,9 @@ func (dss *dealStatsServer) handleStorageDealAverageSize(w http.ResponseWriter, 
 	}
 
 	if err := json.NewEncoder(w).Encode(&dealAverageResp{
-		AverageSize: totalBytes / int64(len(deals)),
-		Epoch:       epoch,
+		Endpoint: "AVERAGE_DEAL_SIZE",
+		Payload:  totalBytes / int64(len(deals)),
+		Epoch:    epoch,
 	}); err != nil {
 		log.Warnf("failed to write back deal average response: %s", err)
 		return
@@ -92,8 +96,9 @@ func (dss *dealStatsServer) handleStorageDealAverageSize(w http.ResponseWriter, 
 }
 
 type dealTotalResp struct {
-	TotalBytes int64 `json:"total_size"`
-	Epoch      int64 `json:"epoch"`
+	Epoch    int64  `json:"epoch"`
+	Endpoint string `json:"endpoint"`
+	Payload  int64  `json:"payload"`
 }
 
 func (dss *dealStatsServer) handleStorageDealTotalReal(w http.ResponseWriter, r *http.Request) {
@@ -109,8 +114,9 @@ func (dss *dealStatsServer) handleStorageDealTotalReal(w http.ResponseWriter, r 
 	}
 
 	if err := json.NewEncoder(w).Encode(&dealTotalResp{
-		TotalBytes: totalBytes,
-		Epoch:      epoch,
+		Endpoint: "DEAL_BYTES",
+		Payload:  totalBytes,
+		Epoch:    epoch,
 	}); err != nil {
 		log.Warnf("failed to write back deal average response: %s", err)
 		return
@@ -119,6 +125,12 @@ func (dss *dealStatsServer) handleStorageDealTotalReal(w http.ResponseWriter, r 
 }
 
 type clientStatsOutput struct {
+	Epoch    int64          `json:"epoch"`
+	Endpoint string         `json:"endpoint"`
+	Payload  []*clientStats `json:"payload"`
+}
+
+type clientStats struct {
 	Client    address.Address `json:"client"`
 	DataSize  int64           `json:"data_size"`
 	NumCids   int             `json:"num_cids"`
@@ -136,13 +148,13 @@ func (dss *dealStatsServer) handleStorageClientStats(w http.ResponseWriter, r *h
 		return
 	}
 
-	stats := make(map[address.Address]*clientStatsOutput)
+	stats := make(map[address.Address]*clientStats)
 
 	for _, d := range deals {
 
 		st, ok := stats[d.deal.Proposal.Client]
 		if !ok {
-			st = &clientStatsOutput{
+			st = &clientStats{
 				Client:    d.resolvedWallet,
 				cids:      make(map[cid.Cid]bool),
 				providers: make(map[address.Address]bool),
@@ -156,12 +168,15 @@ func (dss *dealStatsServer) handleStorageClientStats(w http.ResponseWriter, r *h
 		st.NumDeals++
 	}
 
-	out := make([]*clientStatsOutput, 0, len(stats))
-	for _, cso := range stats {
-		cso.NumCids = len(cso.cids)
-		cso.NumMiners = len(cso.providers)
-
-		out = append(out, cso)
+	out := clientStatsOutput{
+		Epoch:    epoch,
+		Endpoint: "CLIENT_DEAL_STATS",
+		Payload:  make([]*clientStats, 0, len(stats)),
+	}
+	for _, cs := range stats {
+		cs.NumCids = len(cs.cids)
+		cs.NumMiners = len(cs.providers)
+		out.Payload = append(out.Payload, cs)
 	}
 
 	if err := json.NewEncoder(w).Encode(out); err != nil {
