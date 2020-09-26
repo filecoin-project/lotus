@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/exchange"
@@ -157,6 +158,10 @@ func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error)
 }
 
 func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
+	if !build.Devnet {
+		return "testnetnet", nil
+	}
+
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	netName, err := stmgr.GetNetworkName(ctx, stmgr.NewStateManager(cs), cs.GetHeaviestTipSet().ParentState())

@@ -41,12 +41,13 @@ var log = logging.Logger("statemgr")
 type StateManager struct {
 	cs *store.ChainStore
 
-	stCache       map[string][]cid.Cid
-	compWait      map[string]chan struct{}
-	stlk          sync.Mutex
-	genesisMsigLk sync.Mutex
-	newVM         func(context.Context, *vm.VMOpts) (*vm.VM, error)
-	genInfo       *genesisInfo
+	stCache              map[string][]cid.Cid
+	compWait             map[string]chan struct{}
+	stlk                 sync.Mutex
+	genesisMsigLk        sync.Mutex
+	newVM                func(context.Context, *vm.VMOpts) (*vm.VM, error)
+	preIgnitionGenInfos  *genesisInfo
+	postIgnitionGenInfos *genesisInfo
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -123,9 +124,8 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 	return st, rec, nil
 }
 
-func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
-	var trace []*api.InvocResult
-	st, _, err := sm.computeTipSetState(ctx, ts, func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+func traceFunc(trace *[]*api.InvocResult) func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	return func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		ir := &api.InvocResult{
 			Msg:            msg,
 			MsgRct:         &ret.MessageReceipt,
@@ -135,9 +135,14 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 		if ret.ActorErr != nil {
 			ir.Error = ret.ActorErr.Error()
 		}
-		trace = append(trace, ir)
+		*trace = append(*trace, ir)
 		return nil
-	})
+	}
+}
+
+func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
+	var trace []*api.InvocResult
+	st, _, err := sm.computeTipSetState(ctx, ts, traceFunc(&trace))
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -149,20 +154,24 @@ type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
 func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []store.BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 
-	vmopt := &vm.VMOpts{
-		StateBase:      pstate,
-		Epoch:          epoch,
-		Rand:           r,
-		Bstore:         sm.cs.Blockstore(),
-		Syscalls:       sm.cs.VMSys(),
-		CircSupplyCalc: sm.GetCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
-		BaseFee:        baseFee,
+	makeVmWithBaseState := func(base cid.Cid) (*vm.VM, error) {
+		vmopt := &vm.VMOpts{
+			StateBase:      base,
+			Epoch:          epoch,
+			Rand:           r,
+			Bstore:         sm.cs.Blockstore(),
+			Syscalls:       sm.cs.VMSys(),
+			CircSupplyCalc: sm.GetCirculatingSupply,
+			NtwkVersion:    sm.GetNtwkVersion,
+			BaseFee:        baseFee,
+		}
+
+		return sm.newVM(ctx, vmopt)
 	}
 
-	vmi, err := sm.newVM(ctx, vmopt)
+	vmi, err := makeVmWithBaseState(pstate)
 	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
+		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
 	}
 
 	runCron := func() error {
@@ -202,9 +211,16 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	for i := parentEpoch; i < epoch; i++ {
 		// handle state forks
 		// XXX: The state tree
-		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
+		newState, err := sm.handleStateForks(ctx, pstate, i, cb, ts)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
+		}
+
+		if pstate != newState {
+			vmi, err = makeVmWithBaseState(newState)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
+			}
 		}
 
 		if i > parentEpoch {
@@ -212,9 +228,15 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			if err := runCron(); err != nil {
 				return cid.Cid{}, cid.Cid{}, err
 			}
+
+			newState, err = vmi.Flush(ctx)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("flushing vm: %w", err)
+			}
 		}
 
 		vmi.SetBlockHeight(i + 1)
+		pstate = newState
 	}
 
 	var receipts []cbg.CBORMarshaler
@@ -904,7 +926,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		gi.genesisMsigs = append(gi.genesisMsigs, ns)
 	}
 
-	sm.genInfo = &gi
+	sm.preIgnitionGenInfos = &gi
 
 	return nil
 }
@@ -912,7 +934,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 // sets up information about the actors in the genesis state
 // For testnet we use a hardcoded set of multisig states, instead of what's actually in the genesis multisigs
 // We also do not consider ANY account actors (including the faucet)
-func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
+func (sm *StateManager) setupPreIgnitionGenesisActorsTestnet(ctx context.Context) error {
 
 	gi := genesisInfo{}
 
@@ -981,7 +1003,87 @@ func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
 		gi.genesisMsigs = append(gi.genesisMsigs, ns)
 	}
 
-	sm.genInfo = &gi
+	sm.preIgnitionGenInfos = &gi
+
+	return nil
+}
+
+// sets up information about the actors in the genesis state, post the ignition fork
+func (sm *StateManager) setupPostIgnitionGenesisActors(ctx context.Context) error {
+
+	gi := genesisInfo{}
+
+	gb, err := sm.cs.GetGenesis()
+	if err != nil {
+		return xerrors.Errorf("getting genesis block: %w", err)
+	}
+
+	gts, err := types.NewTipSet([]*types.BlockHeader{gb})
+	if err != nil {
+		return xerrors.Errorf("getting genesis tipset: %w", err)
+	}
+
+	st, _, err := sm.TipSetState(ctx, gts)
+	if err != nil {
+		return xerrors.Errorf("getting genesis tipset state: %w", err)
+	}
+
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	sTree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return xerrors.Errorf("loading state tree: %w", err)
+	}
+
+	// Unnecessary, should be removed
+	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis market funds: %w", err)
+	}
+
+	// Unnecessary, should be removed
+	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis pledge: %w", err)
+	}
+
+	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
+
+	// 6 months
+	sixMonths := abi.ChainEpoch(183 * builtin0.EpochsInDay)
+	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
+	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
+
+	// 1 year
+	oneYear := abi.ChainEpoch(365 * builtin0.EpochsInDay)
+	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
+
+	// 2 years
+	twoYears := abi.ChainEpoch(2 * 365 * builtin0.EpochsInDay)
+	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
+
+	// 3 years
+	threeYears := abi.ChainEpoch(3 * 365 * builtin0.EpochsInDay)
+	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
+
+	// 6 years
+	sixYears := abi.ChainEpoch(6 * 365 * builtin0.EpochsInDay)
+	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
+	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
+
+	gi.genesisMsigs = make([]msig0.State, 0, len(totalsByEpoch))
+	for k, v := range totalsByEpoch {
+		ns := msig0.State{
+			// In the pre-ignition logic, we incorrectly set this value in Fil, not attoFil, an off-by-10^18 error
+			InitialBalance: big.Mul(v, big.NewInt(int64(build.FilecoinPrecision))),
+			UnlockDuration: k,
+			PendingTxns:    cid.Undef,
+			// In the pre-ignition logic, the start epoch was 0. This changes in the fork logic of the Ignition upgrade itself.
+			StartEpoch: build.UpgradeLiftoffHeight,
+		}
+		gi.genesisMsigs = append(gi.genesisMsigs, ns)
+	}
+
+	sm.postIgnitionGenInfos = &gi
 
 	return nil
 }
@@ -991,13 +1093,23 @@ func (sm *StateManager) setupGenesisActorsTestnet(ctx context.Context) error {
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
 func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	vf := big.Zero()
-	for _, v := range sm.genInfo.genesisMsigs {
-		au := big.Sub(v.InitialBalance, v.AmountLocked(height))
-		vf = big.Add(vf, au)
+	if height <= build.UpgradeIgnitionHeight {
+		for _, v := range sm.preIgnitionGenInfos.genesisMsigs {
+			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
+			vf = big.Add(vf, au)
+		}
+	} else {
+		for _, v := range sm.postIgnitionGenInfos.genesisMsigs {
+			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
+			// The start epoch changed in the Ignition upgrade.
+			au := big.Sub(v.InitialBalance, v.AmountLocked(height-v.StartEpoch))
+			vf = big.Add(vf, au)
+		}
 	}
 
 	// there should not be any such accounts in testnet (and also none in mainnet?)
-	for _, v := range sm.genInfo.genesisActors {
+	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+	for _, v := range sm.preIgnitionGenInfos.genesisActors {
 		act, err := st.GetActor(v.addr)
 		if err != nil {
 			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
@@ -1009,8 +1121,10 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch,
 		}
 	}
 
-	vf = big.Add(vf, sm.genInfo.genesisPledge)
-	vf = big.Add(vf, sm.genInfo.genesisMarketFunds)
+	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+	vf = big.Add(vf, sm.preIgnitionGenInfos.genesisPledge)
+	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+	vf = big.Add(vf, sm.preIgnitionGenInfos.genesisMarketFunds)
 
 	return vf, nil
 }
@@ -1084,10 +1198,16 @@ func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
 	sm.genesisMsigLk.Lock()
 	defer sm.genesisMsigLk.Unlock()
-	if sm.genInfo == nil {
-		err := sm.setupGenesisActorsTestnet(ctx)
+	if sm.preIgnitionGenInfos == nil {
+		err := sm.setupPreIgnitionGenesisActorsTestnet(ctx)
 		if err != nil {
-			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup genesis information: %w", err)
+			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition genesis information: %w", err)
+		}
+	}
+	if sm.postIgnitionGenInfos == nil {
+		err := sm.setupPostIgnitionGenesisActors(ctx)
+		if err != nil {
+			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition genesis information: %w", err)
 		}
 	}
 
@@ -1150,6 +1270,10 @@ func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoc
 
 	if height <= build.UpgradeSmokeHeight {
 		return network.Version1
+	}
+
+	if height <= build.UpgradeIgnitionHeight {
+		return network.Version2
 	}
 
 	return build.NewestNetworkVersion
