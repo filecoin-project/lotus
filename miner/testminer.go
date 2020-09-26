@@ -3,34 +3,51 @@ package miner
 import (
 	"context"
 
+	lru "github.com/hashicorp/golang-lru"
+	ds "github.com/ipfs/go-datastore"
+
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 )
 
-func NewTestMiner(nextCh <-chan struct{}, addr address.Address) func(api.FullNode, gen.ElectionPoStProver) *Miner {
-	return func(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
-		m := &Miner{
-			api:      api,
-			waitFunc: chanWaiter(nextCh),
-			epp:      epp,
+type MineReq struct {
+	InjectNulls abi.ChainEpoch
+	Done        func(bool, abi.ChainEpoch, error)
+}
+
+func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(api.FullNode, gen.WinningPoStProver) *Miner {
+	return func(api api.FullNode, epp gen.WinningPoStProver) *Miner {
+		arc, err := lru.NewARC(10000)
+		if err != nil {
+			panic(err)
 		}
 
-		if err := m.Register(addr); err != nil {
+		m := &Miner{
+			api:               api,
+			waitFunc:          chanWaiter(nextCh),
+			epp:               epp,
+			minedBlockHeights: arc,
+			address:           addr,
+			sf:                slashfilter.New(ds.NewMapDatastore()),
+		}
+
+		if err := m.Start(context.TODO()); err != nil {
 			panic(err)
 		}
 		return m
 	}
 }
 
-func chanWaiter(next <-chan struct{}) func(ctx context.Context, _ uint64) error {
-	return func(ctx context.Context, _ uint64) error {
+func chanWaiter(next <-chan MineReq) func(ctx context.Context, _ uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
+	return func(ctx context.Context, _ uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
-		case <-next:
+			return nil, 0, ctx.Err()
+		case req := <-next:
+			return req.Done, req.InjectNulls, nil
 		}
-
-		return nil
 	}
 }

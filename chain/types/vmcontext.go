@@ -1,13 +1,10 @@
 package types
 
 import (
-	"context"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+
 	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -24,29 +21,8 @@ type Storage interface {
 
 type StateTree interface {
 	SetActor(addr address.Address, act *Actor) error
+	// GetActor returns the actor from any type of `addr` provided.
 	GetActor(addr address.Address) (*Actor, error)
-}
-
-type VMContext interface {
-	Message() *Message
-	Origin() address.Address
-	Ipld() *hamt.CborIpldStore
-	Send(to address.Address, method uint64, value BigInt, params []byte) ([]byte, aerrors.ActorError)
-	BlockHeight() uint64
-	GasUsed() BigInt
-	Storage() Storage
-	StateTree() (StateTree, aerrors.ActorError)
-	VerifySignature(sig *Signature, from address.Address, data []byte) aerrors.ActorError
-	ChargeGas(uint64) aerrors.ActorError
-	GetRandomness(height uint64) ([]byte, aerrors.ActorError)
-	GetBalance(address.Address) (BigInt, aerrors.ActorError)
-	Sys() *VMSyscalls
-
-	Context() context.Context
-}
-
-type VMSyscalls struct {
-	ValidatePoRep func(context.Context, address.Address, uint64, []byte, []byte, []byte, []byte, []byte, uint64) (bool, aerrors.ActorError)
 }
 
 type storageWrapper struct {
@@ -68,8 +44,4 @@ func (sw *storageWrapper) Get(c cid.Cid, out cbg.CBORUnmarshaler) error {
 	}
 
 	return nil
-}
-
-func WrapStorage(s Storage) amt.Blocks {
-	return &storageWrapper{s}
 }

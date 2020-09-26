@@ -49,9 +49,14 @@ Store a **Data CID** with a miner:
 lotus client deal <Data CID> <miner> <price> <duration>
 ```
 
-- Price is in attoFIL.
-- The `duration`, which represents how long the miner will keep your file hosted, is represented in blocks. Each block represents 45 seconds.
+Check the status of a deal:
+
+```sh
+lotus client list-deals
+```
+
+- The `duration`, which represents how long the miner will keep your file hosted, is represented in blocks. Each block represents 25 seconds.
 
 Upon success, this command will return a **Deal CID**.
 
-The storage miner will need to **seal** the file before it can be retrieved. If the **Lotus Storage Miner** is not running on a machine designed for sealing, the process will take a very long time.
+The miner will need to **seal** the file before it can be retrieved. If the **Lotus Miner** is not running on a machine designed for sealing, the process will take a very long time.

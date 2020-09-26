@@ -10,59 +10,75 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/actors"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
+	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	system0 "github.com/filecoin-project/specs-actors/actors/builtin/system"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type invoker struct {
+type Invoker struct {
 	builtInCode  map[cid.Cid]nativeCode
 	builtInState map[cid.Cid]reflect.Type
 }
 
-type invokeFunc func(act *types.Actor, vmctx types.VMContext, params []byte) ([]byte, aerrors.ActorError)
+type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
-func newInvoker() *invoker {
-	inv := &invoker{
+func NewInvoker() *Invoker {
+	inv := &Invoker{
 		builtInCode:  make(map[cid.Cid]nativeCode),
 		builtInState: make(map[cid.Cid]reflect.Type),
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.register(actors.InitCodeCid, actors.InitActor{}, actors.InitActorState{})
-	inv.register(actors.CronCodeCid, actors.CronActor{}, actors.CronActorState{})
-	inv.register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
-	inv.register(actors.StorageMarketCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
-	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
-	inv.register(actors.MultisigCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
-	inv.register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
+	// NETUPGRADE: register code IDs for v2, etc.
+	inv.Register(builtin0.SystemActorCodeID, system0.Actor{}, abi.EmptyValue{})
+	inv.Register(builtin0.InitActorCodeID, init0.Actor{}, init0.State{})
+	inv.Register(builtin0.RewardActorCodeID, reward0.Actor{}, reward0.State{})
+	inv.Register(builtin0.CronActorCodeID, cron0.Actor{}, cron0.State{})
+	inv.Register(builtin0.StoragePowerActorCodeID, power0.Actor{}, power0.State{})
+	inv.Register(builtin0.StorageMarketActorCodeID, market0.Actor{}, market0.State{})
+	inv.Register(builtin0.StorageMinerActorCodeID, miner0.Actor{}, miner0.State{})
+	inv.Register(builtin0.MultisigActorCodeID, msig0.Actor{}, msig0.State{})
+	inv.Register(builtin0.PaymentChannelActorCodeID, paych0.Actor{}, paych0.State{})
+	inv.Register(builtin0.VerifiedRegistryActorCodeID, verifreg0.Actor{}, verifreg0.State{})
+	inv.Register(builtin0.AccountActorCodeID, account0.Actor{}, account0.State{})
 
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
+func (inv *Invoker) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
-	if act.Code == actors.AccountCodeCid {
-		return nil, aerrors.Newf(254, "cannot invoke methods on account actors")
-	}
-
-	code, ok := inv.builtInCode[act.Code]
+	code, ok := inv.builtInCode[codeCid]
 	if !ok {
-		log.Errorf("no code for actor %s (Addr: %s)", act.Code, vmctx.Message().To)
-		return nil, aerrors.Newf(255, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
+		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Receiver())
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", codeCid, method, hex.EncodeToString(params))
 	}
-	if method >= uint64(len(code)) || code[method] == nil {
-		return nil, aerrors.Newf(255, "no method %d on actor", method)
+	if method >= abi.MethodNum(len(code)) || code[method] == nil {
+		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
-	return code[method](act, vmctx, params)
+	return code[method](rt, params)
 
 }
 
-func (inv *invoker) register(c cid.Cid, instance Invokee, state interface{}) {
+func (inv *Invoker) Register(c cid.Cid, instance Invokee, state interface{}) {
 	code, err := inv.transform(instance)
 	if err != nil {
-		panic(err)
+		panic(xerrors.Errorf("%s: %w", string(c.Hash()), err))
 	}
 	inv.builtInCode[c] = code
 	inv.builtInState[c] = reflect.TypeOf(state)
@@ -72,10 +88,7 @@ type Invokee interface {
 	Exports() []interface{}
 }
 
-var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
-var tAError = reflect.TypeOf((*aerrors.ActorError)(nil)).Elem()
-
-func (*invoker) transform(instance Invokee) (nativeCode, error) {
+func (*Invoker) transform(instance Invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
 	for i, m := range exports {
@@ -84,66 +97,70 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 			str := fmt.Sprintf(format, args...)
 			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
 		}
+
 		if m == nil {
 			continue
 		}
+
 		meth := reflect.ValueOf(m)
 		t := meth.Type()
 		if t.Kind() != reflect.Func {
 			return nil, newErr("is not a function")
 		}
-		if t.NumIn() != 3 {
+		if t.NumIn() != 2 {
 			return nil, newErr("wrong number of inputs should be: " +
-				"*types.Actor, *VMContext, <type of parameter>")
+				"vmr.Runtime, <parameter>")
 		}
-		if t.In(0) != reflect.TypeOf(&types.Actor{}) {
-			return nil, newErr("first arguemnt should be *types.Actor")
+		if t.In(0) != reflect.TypeOf((*vmr.Runtime)(nil)).Elem() {
+			return nil, newErr("first arguemnt should be vmr.Runtime")
 		}
-		if t.In(1) != tVMContext {
-			return nil, newErr("second argument should be types.VMContext")
-		}
-
-		if t.In(2).Kind() != reflect.Ptr {
-			return nil, newErr("parameter has to be a pointer to parameter, is: %s",
-				t.In(2).Kind())
+		if t.In(1).Kind() != reflect.Ptr {
+			return nil, newErr("second argument should be of kind reflect.Ptr")
 		}
 
-		if t.NumOut() != 2 {
+		if t.NumOut() != 1 {
 			return nil, newErr("wrong number of outputs should be: " +
-				"(InvokeRet, error)")
+				"cbg.CBORMarshaler")
 		}
-		if t.Out(0) != reflect.TypeOf([]byte{}) {
-			return nil, newErr("first output should be slice of bytes")
+		o0 := t.Out(0)
+		if !o0.Implements(reflect.TypeOf((*cbg.CBORMarshaler)(nil)).Elem()) {
+			return nil, newErr("output needs to implement cgb.CBORMarshaler")
 		}
-		if !t.Out(1).Implements(tAError) {
-			return nil, newErr("second output should be ActorError type")
-		}
-
 	}
 	code := make(nativeCode, len(exports))
 	for id, m := range exports {
+		if m == nil {
+			continue
+		}
 		meth := reflect.ValueOf(m)
 		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
 			func(in []reflect.Value) []reflect.Value {
-				paramT := meth.Type().In(2).Elem()
+				paramT := meth.Type().In(1).Elem()
 				param := reflect.New(paramT)
 
-				inBytes := in[2].Interface().([]byte)
-				if len(inBytes) > 0 {
-					if err := DecodeParams(inBytes, param.Interface()); err != nil {
-						aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
-						return []reflect.Value{
-							reflect.ValueOf([]byte{}),
-							// Below is a hack, fixed in Go 1.13
-							// https://git.io/fjXU6
-							reflect.ValueOf(&aerr).Elem(),
-						}
+				inBytes := in[1].Interface().([]byte)
+				if err := DecodeParams(inBytes, param.Interface()); err != nil {
+					aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
+					return []reflect.Value{
+						reflect.ValueOf([]byte{}),
+						// Below is a hack, fixed in Go 1.13
+						// https://git.io/fjXU6
+						reflect.ValueOf(&aerr).Elem(),
 					}
 				}
-
-				return meth.Call([]reflect.Value{
-					in[0], in[1], param,
+				rt := in[0].Interface().(*Runtime)
+				rval, aerror := rt.shimCall(func() interface{} {
+					ret := meth.Call([]reflect.Value{
+						reflect.ValueOf(rt),
+						param,
+					})
+					return ret[0].Interface()
 				})
+
+				return []reflect.Value{
+					reflect.ValueOf(&rval).Elem(),
+					reflect.ValueOf(&aerror).Elem(),
+				}
 			}).Interface().(invokeFunc)
 
 	}
@@ -160,7 +177,11 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
-	i := newInvoker() // TODO: register builtins in init block
+	if code == builtin0.AccountActorCodeID { // Account code special case
+		return nil, nil
+	}
+
+	i := NewInvoker() // TODO: register builtins in init block
 
 	typ, ok := i.builtInState[code]
 	if !ok {
@@ -174,7 +195,7 @@ func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
 	}
 
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("unmarshaling actor state: %w", err)
 	}
 
 	return rv.Elem().Interface(), nil

@@ -5,15 +5,19 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 )
+
+var EmptyTSK = TipSetKey{}
 
 // The length of a block header CID in bytes.
 var blockHeaderCIDLen int
 
 func init() {
-	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31}.Sum([]byte{})
+	// hash a large string of zeros so we don't estimate based on inlined CIDs.
+	var buf [256]byte
+	c, err := abi.CidBuilder.Sum(buf[:])
 	if err != nil {
 		panic(err)
 	}
@@ -88,6 +92,10 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	}
 	k.value = string(encodeKey(cids))
 	return nil
+}
+
+func (k TipSetKey) IsEmpty() bool {
+	return len(k.value) == 0
 }
 
 func encodeKey(cids []cid.Cid) []byte {

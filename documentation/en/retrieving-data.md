@@ -2,9 +2,9 @@
 
 > There are recent bug reports with these instructions. If you happen to encounter any problems, please create a [GitHub issue](https://github.com/filecoin-project/lotus/issues/new) and a maintainer will address the problem as soon as they can.
 
-Here are the operations you can perform after you have stored and sealed a **Data CID** with the **Lotus Storage Miner** in the network.
+Here are the operations you can perform after you have stored and sealed a **Data CID** with the **Lotus Miner** in the network.
 
-If you would like to learn how to store a **Data CID** on a miner, read the instructions [here](https://docs.lotu.sh/en+storing-data).
+If you would like to learn how to store a **Data CID** on a miner, read the instructions [here](https://lotu.sh/en+storing-data).
 
 ## Find by Data CID
 

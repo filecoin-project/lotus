@@ -1,8 +1,9 @@
-/dns4/lotus-bootstrap-0.dfw.fil-test.net/tcp/1347/p2p/12D3KooWHwGBSiLR5ts7KW9MgH4BMzC2iXe18kwAQ8Ee3LUd1jeR
-/dns4/lotus-bootstrap-1.dfw.fil-test.net/tcp/1347/p2p/12D3KooWCLFaawdhLGcSpiqg43DtZ9QzPQ6HcB8Vvyu2Cnta8UWc
-/dns4/lotus-bootstrap-0.fra.fil-test.net/tcp/1347/p2p/12D3KooWMmaL7eaUCF6tVAghVmgozxz4uztbuFUQv6dyFpHRarHR
-/dns4/lotus-bootstrap-1.fra.fil-test.net/tcp/1347/p2p/12D3KooWLLpNYoKdf9NgcWudBhXLdTcXncqAsTzozw1scMMu6nS5
-/dns4/lotus-bootstrap-0.sin.fil-test.net/tcp/1347/p2p/12D3KooWCNL9vXaXwNs3Bu8uRAJK4pxpCyPeM7jZLSDpJma1wrV8
-/dns4/lotus-bootstrap-1.sin.fil-test.net/tcp/1347/p2p/12D3KooWNGGxFda1eC5U2YKAgs4ypoFHn3Z3xHCsjmFdrCcytoxm
+/dns4/bootstrap-0.testnet.fildev.network/tcp/1347/p2p/12D3KooWJTUBUjtzWJGWU1XSiY21CwmHaCNLNYn2E7jqHEHyZaP7
+/dns4/bootstrap-1.testnet.fildev.network/tcp/1347/p2p/12D3KooW9yeKXha4hdrJKq74zEo99T8DhriQdWNoojWnnQbsgB3v
+/dns4/bootstrap-2.testnet.fildev.network/tcp/1347/p2p/12D3KooWCrx8yVG9U9Kf7w8KLN3Edkj5ZKDhgCaeMqQbcQUoB6CT
+/dns4/bootstrap-4.testnet.fildev.network/tcp/1347/p2p/12D3KooWPkL9LrKRQgHtq7kn9ecNhGU9QaziG8R5tX8v9v7t3h34
+/dns4/bootstrap-3.testnet.fildev.network/tcp/1347/p2p/12D3KooWKYSsbpgZ3HAjax5M1BXCwXLa6gVkUARciz7uN3FNtr7T
+/dns4/bootstrap-5.testnet.fildev.network/tcp/1347/p2p/12D3KooWQYzqnLASJAabyMpPb1GcWZvNSe7JDcRuhdRqonFoiK9W
+/dns4/lotus-bootstrap.forceup.cn/tcp/41778/p2p/12D3KooWFQsv3nRMUevZNWWsY1Wu6NUzUbawnWU5NcRhgKuJA37C
 /dns4/bootstrap-0.starpool.in/tcp/12757/p2p/12D3KooWGHpBMeZbestVEWkfdnC9u7p6uFHXL1n7m1ZBqsEmiUzz
 /dns4/bootstrap-1.starpool.in/tcp/12757/p2p/12D3KooWQZrGH1PxSNZPum99M1zNvjNFM33d1AAu5DcvdHptuU7u

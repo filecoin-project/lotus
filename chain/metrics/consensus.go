@@ -3,13 +3,14 @@ package metrics
 import (
 	"context"
 	"encoding/json"
-	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -43,7 +44,7 @@ func SendHeadNotifs(nickname string) func(mctx helpers.MetricsCtx, lc fx.Lifecyc
 					}
 				}()
 				go func() {
-					sub, err := ps.Subscribe(topic)
+					sub, err := ps.Subscribe(topic) //nolint
 					if err != nil {
 						return
 					}
@@ -68,7 +69,7 @@ type message struct {
 	// TipSet
 	Cids   []cid.Cid
 	Blocks []*types.BlockHeader
-	Height uint64
+	Height abi.ChainEpoch
 	Weight types.BigInt
 	Time   uint64
 	Nonce  uint64
@@ -88,14 +89,14 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 	}
 
 	// using unix nano time makes very sure we pick a nonce higher than previous restart
-	nonce := uint64(time.Now().UnixNano())
+	nonce := uint64(build.Clock.Now().UnixNano())
 
 	for {
 		select {
 		case notif := <-notifs:
 			n := notif[len(notif)-1]
 
-			w, err := chain.ChainTipSetWeight(ctx, n.Val)
+			w, err := chain.ChainTipSetWeight(ctx, n.Val.Key())
 			if err != nil {
 				return err
 			}
@@ -106,7 +107,7 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 				Height:   n.Val.Height(),
 				Weight:   w,
 				NodeName: nickname,
-				Time:     uint64(time.Now().UnixNano() / 1000_000),
+				Time:     uint64(build.Clock.Now().UnixNano() / 1000_000),
 				Nonce:    nonce,
 			}
 
@@ -115,6 +116,7 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 				return err
 			}
 
+			//nolint
 			if err := ps.Publish(topic, b); err != nil {
 				return err
 			}

@@ -1,12 +1,15 @@
 version: 2.1
 orbs:
-  go: gotest/tools@0.0.9
+  go: gotest/tools@0.0.13
 
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/golang:1.14.6
     resource_class: 2xlarge
+  ubuntu:
+    docker:
+      - image: ubuntu:19.10
 
 commands:
   install-deps:
@@ -25,6 +28,8 @@ commands:
         type: boolean
     steps:
       - checkout
+      - git_fetch_all_tags
+      - checkout
       - when:
           condition: << parameters.linux >>
           steps:
@@ -37,16 +42,36 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v20-1k-lotus-params'
+            - 'v25-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  ./lotus fetch-params --proving-params 1024
+      - run:  ./lotus fetch-params 2048
       - save_cache:
           name: Save parameters cache
-          key: 'v20-1k-lotus-params'
+          key: 'v25-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-
+  install_ipfs:
+    steps:
+      - run: |
+          apt update
+          apt install -y wget
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512
+          if [ "$(sha512sum go-ipfs_v0.4.22_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512)" ]
+          then
+            echo "ipfs failed checksum check"
+            exit 1
+          fi
+          tar -xf go-ipfs_v0.4.22_linux-amd64.tar.gz
+          mv go-ipfs/ipfs /usr/local/bin/ipfs
+          chmod +x /usr/local/bin/ipfs
+  git_fetch_all_tags:
+    steps:
+      - run:
+          name: fetch all tags
+          command: |
+            git fetch --all
 
 jobs:
   mod-tidy-check:
@@ -54,7 +79,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - go/mod-tidy-check
 
   build-all:
@@ -62,23 +86,34 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - run: sudo apt-get update
       - run: sudo apt-get install npm
-      - restore_cache:
-          name: restore go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make buildall
       - store_artifacts:
           path: lotus
       - store_artifacts:
-          path: lotus-storage-miner
+          path: lotus-miner
+      - store_artifacts:
+          path: lotus-worker
+      - run: mkdir linux && mv lotus lotus-miner lotus-worker linux/
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux
+
+  build-debug:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make debug
 
   test: &test
     description: |
       Run tests with gotestsum.
-    parameters:
+    parameters: &test-params
       executor:
         type: executor
         default: golang
@@ -90,13 +125,16 @@ jobs:
         type: string
         default: "./..."
         description: Import paths of packages to be tested.
+      winpost-test:
+        type: string
+        default: "0"
       test-suite-name:
         type: string
         default: unit
         description: Test suite name to report to CircleCI.
       gotestsum-format:
         type: string
-        default: short
+        default: pkgname-and-test-fails
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
@@ -112,30 +150,34 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
-      - restore_cache:
-          name: restore go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make deps lotus
           no_output_timeout: 30m
       - download-params
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
+          version: 0.5.2
       - run:
           name: go test
           environment:
-            GOTESTSUM_JUNITFILE: /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml
-            GOTESTSUM_FORMAT: << parameters.gotestsum-format >>
+            LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
+            SKIP_CONFORMANCE: "1"
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
-            gotestsum -- \
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format << parameters.gotestsum-format >> \
+              --junitfile /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.test-suite-name >>.json \
+              -- \
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.packages >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/<< parameters.test-suite-name >>.json
       - when:
           condition: << parameters.codecov-upload >>
           steps:
@@ -145,16 +187,92 @@ jobs:
                 shell: /bin/bash -eo pipefail
                 command: |
                   bash <(curl -s https://codecov.io/bash)
-      - save_cache:
-          name: save go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
-          paths:
-            - "~/go/pkg"
-            - "~/go/src/github.com"
-            - "~/go/src/golang.org"
 
-  test-short: 
+  test-short:
     <<: *test
+  test-window-post:
+    <<: *test
+  test-conformance:
+    description: |
+      Run tests using a corpus of interoperable test vectors for Filecoin 
+      implementations to test their correctness and compliance with the Filecoin
+      specifications.
+    parameters:
+      <<: *test-params
+      vectors-branch:
+        type: string
+        default: ""
+        description: |
+          Branch on github.com/filecoin-project/test-vectors to checkout and
+          test with. If empty (the default) the commit defined by the git
+          submodule is used.
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps lotus
+          no_output_timeout: 30m
+      - download-params
+      - when:
+          condition:
+            not:
+              equal: [ "", << parameters.vectors-branch >> ]
+          steps:
+            - run:
+                name: checkout vectors branch
+                command: |
+                  cd extern/test-vectors
+                  git fetch
+                  git checkout origin/<< parameters.vectors-branch >>
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+          version: 0.5.2
+      - run:
+          name: install statediff globally
+          command: |
+            ## statediff is optional; we succeed even if compilation fails.
+            mkdir -p /tmp/statediff
+            git clone https://github.com/filecoin-project/statediff.git /tmp/statediff
+            cd /tmp/statediff
+            go install ./cmd/statediff || exit 0
+      - run:
+          name: go test
+          environment:
+            SKIP_CONFORMANCE: "0"
+          command: |
+            mkdir -p /tmp/test-reports
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format pkgname-and-test-fails \
+              --junitfile /tmp/test-reports/junit.xml \
+              -- \
+              -v -coverpkg ./chain/vm/,github.com/filecoin-project/specs-actors/... -coverprofile=/tmp/conformance.out ./conformance/
+            go tool cover -html=/tmp/conformance.out -o /tmp/test-artifacts/conformance-coverage.html
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/conformance-coverage.html
+  build-lotus-soup:
+    description: |
+      Compile `lotus-soup` Testground test plan using the current version of Lotus.
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: cd extern/oni && git submodule sync
+      - run: cd extern/oni && git submodule update --init
+      - run: cd extern/filecoin-ffi && make
+      - run:
+          name: "replace lotus, filecoin-ffi, blst and fil-blst deps"
+          command: cd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi && go mod edit -replace github.com/supranational/blst=../../fil-blst/blst && go mod edit -replace github.com/filecoin-project/fil-blst=../../fil-blst
+      - run:
+          name: "build lotus-soup testplan"
+          command: pushd extern/oni/lotus-soup && go build -tags=testground .
+
 
   build-macos:
     description: build darwin lotus binary
@@ -168,8 +286,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.13.4.darwin-amd64.pkg && \
-            sudo installer -pkg go1.13.4.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.14.2.darwin-amd64.pkg && \
+            sudo installer -pkg go1.14.2.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -181,27 +299,61 @@ jobs:
       - run:
           name: Install jq
           command: |
-            mkdir $HOME/.bin
-            curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output $HOME/.bin/jq
-            chmod +x $HOME/.bin/jq
+            curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
+            chmod +x /usr/local/bin/jq
       - restore_cache:
-          name: restore go mod and cargo cache
+          name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
       - install-deps
-      - go/mod-download
       - run:
           command: make build
           no_output_timeout: 30m
       - store_artifacts:
           path: lotus
       - store_artifacts:
-          path: lotus-storage-miner
+          path: lotus-miner
+      - store_artifacts:
+          path: lotus-worker
+      - run: mkdir darwin && mv lotus lotus-miner lotus-worker darwin/
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - darwin
       - save_cache:
           name: save cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
           paths:
             - "~/.rustup"
             - "~/.cargo"
+
+  gofmt:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: "! go fmt ./... 2>&1 | read"
+
+  cbor-gen-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make deps
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: go install github.com/hannahhoward/cbor-gen-for
+      - run: go generate ./...
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
+  docs-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make docsgen
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
 
   lint: &lint
     description: |
@@ -212,7 +364,7 @@ jobs:
         default: golang
       golangci-lint-version:
         type: string
-        default: 1.17.1
+        default: 1.27.0
       concurrency:
         type: string
         default: '2'
@@ -228,7 +380,6 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-download
       - run:
           command: make deps
           no_output_timeout: 30m
@@ -238,25 +389,91 @@ jobs:
       - run:
           name: Lint
           command: |
-            $HOME/.local/bin/golangci-lint run -v \
+            $HOME/.local/bin/golangci-lint run -v --timeout 2m \
               --concurrency << parameters.concurrency >> << parameters.args >>
-  lint-changes:
-    <<: *lint
-
   lint-all:
     <<: *lint
+
+  publish:
+    description: publish binary artifacts
+    executor: ubuntu
+    steps:
+      - run:
+          name: Install git jq curl
+          command: apt update && apt install -y git jq curl
+      - checkout
+      - git_fetch_all_tags
+      - checkout
+      - install_ipfs
+      - attach_workspace:
+          at: "."
+      - run:
+          name: Create bundles
+          command: ./scripts/build-bundle.sh
+      - run:
+          name: Publish release
+          command: ./scripts/publish-release.sh
 
 
 workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-changes:
-          args: "--new-from-rev origin/master"
+      - lint-all:
+          concurrency: "16"   # expend all docker 2xlarge CPUs.
+      - mod-tidy-check
+      - gofmt
+      - cbor-gen-check
+      - docs-check
       - test:
           codecov-upload: true
+          test-suite-name: full
+      - test-window-post:
+          go-test-flags: "-run=TestWindowedPost"
+          winpost-test: "1"
+          test-suite-name: window-post
       - test-short:
           go-test-flags: "--timeout 10m --short"
-      - mod-tidy-check
-      - build-all
-      - build-macos
+          test-suite-name: short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - test-conformance:
+          test-suite-name: conformance
+          packages: "./conformance"
+      - test-conformance:
+          name: test-conformance-bleeding-edge
+          test-suite-name: conformance-bleeding-edge
+          packages: "./conformance"
+          vectors-branch: master
+      - build-lotus-soup
+      - build-debug
+      - build-all:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-macos:
+          requires:
+            - test-short
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - publish:
+          requires:
+            - build-all
+            - build-macos
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/

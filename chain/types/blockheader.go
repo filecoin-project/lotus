@@ -2,16 +2,17 @@ package types
 
 import (
 	"bytes"
-	"context"
 	"math/big"
 
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
+	"github.com/minio/blake2b-simd"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/minio/sha256-simd"
-	"github.com/multiformats/go-multihash"
-	"go.opencensus.io/trace"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -23,52 +24,73 @@ type Ticket struct {
 	VRFProof []byte
 }
 
-type EPostTicket struct {
-	Partial        []byte
-	SectorID       uint64
-	ChallengeIndex uint64
+func (t *Ticket) Quality() float64 {
+	ticketHash := blake2b.Sum256(t.VRFProof)
+	ticketNum := BigFromBytes(ticketHash[:]).Int
+	ticketDenu := big.NewInt(1)
+	ticketDenu.Lsh(ticketDenu, 256)
+	tv, _ := new(big.Rat).SetFrac(ticketNum, ticketDenu).Float64()
+	tq := 1 - tv
+	return tq
 }
 
-type EPostProof struct {
-	Proof      []byte
-	PostRand   []byte
-	Candidates []EPostTicket
+type BeaconEntry struct {
+	Round uint64
+	Data  []byte
+}
+
+func NewBeaconEntry(round uint64, data []byte) BeaconEntry {
+	return BeaconEntry{
+		Round: round,
+		Data:  data,
+	}
 }
 
 type BlockHeader struct {
-	Miner address.Address
+	Miner address.Address // 0
 
-	Ticket *Ticket
+	Ticket *Ticket // 1
 
-	EPostProof EPostProof
+	ElectionProof *ElectionProof // 2
 
-	Parents []cid.Cid
+	BeaconEntries []BeaconEntry // 3
 
-	ParentWeight BigInt
+	WinPoStProof []proof.PoStProof // 4
 
-	Height uint64
+	Parents []cid.Cid // 5
 
-	ParentStateRoot cid.Cid
+	ParentWeight BigInt // 6
 
-	ParentMessageReceipts cid.Cid
+	Height abi.ChainEpoch // 7
 
-	Messages cid.Cid
+	ParentStateRoot cid.Cid // 8
 
-	BLSAggregate Signature
+	ParentMessageReceipts cid.Cid // 8
 
-	Timestamp uint64
+	Messages cid.Cid // 10
 
-	BlockSig *Signature
+	BLSAggregate *crypto.Signature // 11
+
+	Timestamp uint64 // 12
+
+	BlockSig *crypto.Signature // 13
+
+	ForkSignaling uint64 // 14
+
+	// ParentBaseFee is the base fee after executing parent tipset
+	ParentBaseFee abi.TokenAmount // 15
+
+	// internal
+	validated bool // true if the signature has been validated
 }
 
-func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
-	data, err := b.Serialize()
+func (blk *BlockHeader) ToStorageBlock() (block.Block, error) {
+	data, err := blk.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
-	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
+	c, err := abi.CidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
 	}
@@ -76,8 +98,8 @@ func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
 	return block.NewBlockWithCid(data, c)
 }
 
-func (b *BlockHeader) Cid() cid.Cid {
-	sb, err := b.ToStorageBlock()
+func (blk *BlockHeader) Cid() cid.Cid {
+	sb, err := blk.ToStorageBlock()
 	if err != nil {
 		panic(err) // Not sure i'm entirely comfortable with this one, needs to be checked
 	}
@@ -114,16 +136,12 @@ func (blk *BlockHeader) SigningBytes() ([]byte, error) {
 	return blkcopy.Serialize()
 }
 
-func (blk *BlockHeader) CheckBlockSignature(ctx context.Context, worker address.Address) error {
-	_, span := trace.StartSpan(ctx, "checkBlockSignature")
-	defer span.End()
+func (blk *BlockHeader) SetValidated() {
+	blk.validated = true
+}
 
-	sigb, err := blk.SigningBytes()
-	if err != nil {
-		return xerrors.Errorf("failed to get block signing bytes: %w", err)
-	}
-
-	return blk.BlockSig.Verify(worker, sigb)
+func (blk *BlockHeader) IsValidated() bool {
+	return blk.validated
 }
 
 type MsgMeta struct {
@@ -140,13 +158,12 @@ func (mm *MsgMeta) Cid() cid.Cid {
 }
 
 func (mm *MsgMeta) ToStorageBlock() (block.Block, error) {
-	buf := new(bytes.Buffer)
-	if err := mm.MarshalCBOR(buf); err != nil {
+	var buf bytes.Buffer
+	if err := mm.MarshalCBOR(&buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal MsgMeta: %w", err)
 	}
 
-	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(buf.Bytes())
+	c, err := abi.CidBuilder.Sum(buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -173,51 +190,58 @@ func CidArrsEqual(a, b []cid.Cid) bool {
 	return true
 }
 
+func CidArrsSubset(a, b []cid.Cid) bool {
+	// order ignoring compare...
+	s := make(map[cid.Cid]bool)
+	for _, c := range b {
+		s[c] = true
+	}
+
+	for _, c := range a {
+		if !s[c] {
+			return false
+		}
+	}
+	return true
+}
+
+func CidArrsContains(a []cid.Cid, b cid.Cid) bool {
+	for _, elem := range a {
+		if elem.Equals(b) {
+			return true
+		}
+	}
+	return false
+}
+
 var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
 
 const sha256bits = 256
 
-func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow BigInt) bool {
-	ssize := NewInt(ssizeI)
-	ssampled := ElectionPostChallengeCount(snum, 0) // TODO: faults in epost?
+func IsTicketWinner(vrfTicket []byte, mypow BigInt, totpow BigInt) bool {
 	/*
 		Need to check that
-		(h(vrfout) + 1) / (max(h) + 1) <= e * sectorSize / totalPower
+		(h(vrfout) + 1) / (max(h) + 1) <= e * myPower / totalPower
 		max(h) == 2^256-1
 		which in terms of integer math means:
-		(h(vrfout) + 1) * totalPower <= e * sectorSize * 2^256
+		(h(vrfout) + 1) * totalPower <= e * myPower * 2^256
 		in 2^256 space, it is equivalent to:
-		h(vrfout) * totalPower < e * sectorSize * 2^256
+		h(vrfout) * totalPower < e * myPower * 2^256
 
-		Because of SectorChallengeRatioDiv sampling for proofs
-		we need to scale this appropriately.
-
-		Let c = ceil(numSectors/SectorChallengeRatioDiv)
-		(c is the number of tickets a miner requests)
-		Accordingly we check
-		(h(vrfout) + 1) / 2^256 <= e * sectorSize / totalPower * snum / c
-		or
-		h(vrfout) * totalPower * c < e * sectorSize * 2^256 * snum
 	*/
 
-	h := sha256.Sum256(partialTicket)
+	h := blake2b.Sum256(vrfTicket)
 
 	lhs := BigFromBytes(h[:]).Int
 	lhs = lhs.Mul(lhs, totpow.Int)
-	lhs = lhs.Mul(lhs, new(big.Int).SetUint64(ssampled))
 
 	// rhs = sectorSize * 2^256
 	// rhs = sectorSize << 256
-	rhs := new(big.Int).Lsh(ssize.Int, sha256bits)
-	rhs = rhs.Mul(rhs, new(big.Int).SetUint64(snum))
+	rhs := new(big.Int).Lsh(mypow.Int, sha256bits)
 	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
 
 	// h(vrfout) * totalPower < e * sectorSize * 2^256?
 	return lhs.Cmp(rhs) < 0
-}
-
-func ElectionPostChallengeCount(sectors uint64, faults int) uint64 {
-	return sectorbuilder.ElectionPostChallengeCount(sectors, faults)
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

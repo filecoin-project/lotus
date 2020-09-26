@@ -5,13 +5,16 @@ import (
 	"io"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/abi"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 )
 
 type basicContract struct{}
@@ -58,23 +61,23 @@ func (b basicContract) Exports() []interface{} {
 	}
 }
 
-func (basicContract) InvokeSomething0(act *types.Actor, vmctx types.VMContext,
-	params *basicParams) ([]byte, aerrors.ActorError) {
-	return nil, aerrors.New(params.B, "params.B")
+func (basicContract) InvokeSomething0(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
+	rt.Abortf(exitcode.ExitCode(params.B), "params.B")
+	return nil
 }
 
-func (basicContract) BadParam(act *types.Actor, vmctx types.VMContext,
-	params *basicParams) ([]byte, aerrors.ActorError) {
-	return nil, aerrors.New(255, "bad params")
+func (basicContract) BadParam(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
+	rt.Abortf(255, "bad params")
+	return nil
 }
 
-func (basicContract) InvokeSomething10(act *types.Actor, vmctx types.VMContext,
-	params *basicParams) ([]byte, aerrors.ActorError) {
-	return nil, aerrors.New(params.B+10, "params.B")
+func (basicContract) InvokeSomething10(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
+	rt.Abortf(exitcode.ExitCode(params.B+10), "params.B")
+	return nil
 }
 
 func TestInvokerBasic(t *testing.T) {
-	inv := invoker{}
+	inv := Invoker{}
 	code, err := inv.transform(basicContract{})
 	assert.NoError(t, err)
 
@@ -82,9 +85,9 @@ func TestInvokerBasic(t *testing.T) {
 		bParam, err := actors.SerializeParams(&basicParams{B: 1})
 		assert.NoError(t, err)
 
-		_, aerr := code[0](nil, &VMContext{}, bParam)
+		_, aerr := code[0](&Runtime{}, bParam)
 
-		assert.Equal(t, byte(1), aerrors.RetCode(aerr), "return code should be 1")
+		assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 		if aerrors.IsFatal(aerr) {
 			t.Fatal("err should not be fatal")
 		}
@@ -94,17 +97,17 @@ func TestInvokerBasic(t *testing.T) {
 		bParam, err := actors.SerializeParams(&basicParams{B: 2})
 		assert.NoError(t, err)
 
-		_, aerr := code[10](nil, &VMContext{}, bParam)
-		assert.Equal(t, byte(12), aerrors.RetCode(aerr), "return code should be 12")
+		_, aerr := code[10](&Runtime{}, bParam)
+		assert.Equal(t, exitcode.ExitCode(12), aerrors.RetCode(aerr), "return code should be 12")
 		if aerrors.IsFatal(aerr) {
 			t.Fatal("err should not be fatal")
 		}
 	}
 
-	_, aerr := code[1](nil, &VMContext{}, []byte{99})
+	_, aerr := code[1](&Runtime{}, []byte{99})
 	if aerrors.IsFatal(aerr) {
 		t.Fatal("err should not be fatal")
 	}
-	assert.Equal(t, byte(1), aerrors.RetCode(aerr), "return code should be 1")
+	assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 
 }

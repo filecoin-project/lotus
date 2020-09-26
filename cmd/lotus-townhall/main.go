@@ -6,28 +6,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/gorilla/websocket"
-	"github.com/ipfs/go-car"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/peer"
-	pnet "github.com/libp2p/go-libp2p-pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/node/modules/lp2p"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var topic = "/fil/headnotifs/"
 
 func init() {
 	genBytes := build.MaybeGenesis()
-	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	if len(genBytes) == 0 {
+		topic = ""
+		return
+	}
+
+	bs := blockstore.NewTemporary()
 
 	c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 	if err != nil {
@@ -49,17 +50,16 @@ var upgrader = websocket.Upgrader{
 }
 
 func main() {
-	ctx := context.Background()
-
-	protec, err := pnet.NewProtector(strings.NewReader(lp2p.LotusKey))
-	if err != nil {
-		panic(err)
+	if topic == "" {
+		fmt.Println("FATAL: No genesis found")
+		return
 	}
+
+	ctx := context.Background()
 
 	host, err := libp2p.New(
 		ctx,
 		libp2p.Defaults,
-		libp2p.PrivateNetwork(protec),
 	)
 	if err != nil {
 		panic(err)
@@ -106,10 +106,11 @@ func handler(ps *pubsub.PubSub) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sub, err := ps.Subscribe(topic)
+		sub, err := ps.Subscribe(topic) //nolint
 		if err != nil {
 			return
 		}
+		defer sub.Cancel() //nolint:errcheck
 
 		fmt.Println("new conn")
 

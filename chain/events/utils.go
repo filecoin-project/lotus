@@ -5,15 +5,14 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (e *calledEvents) CheckMsg(ctx context.Context, smsg store.ChainMsg, hnd CalledHandler) CheckFunc {
+func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd MsgHandler) CheckFunc {
 	msg := smsg.VMMessage()
 
 	return func(ts *types.TipSet) (done bool, more bool, err error) {
-		fa, err := e.cs.StateGetActor(ctx, msg.From, ts)
+		fa, err := me.cs.StateGetActor(ctx, msg.From, ts.Key())
 		if err != nil {
 			return false, true, err
 		}
@@ -23,7 +22,7 @@ func (e *calledEvents) CheckMsg(ctx context.Context, smsg store.ChainMsg, hnd Ca
 			return false, true, nil
 		}
 
-		rec, err := e.cs.StateGetReceipt(ctx, smsg.VMMessage().Cid(), ts)
+		rec, err := me.cs.StateGetReceipt(ctx, smsg.VMMessage().Cid(), ts.Key())
 		if err != nil {
 			return false, true, xerrors.Errorf("getting receipt in CheckMsg: %w", err)
 		}
@@ -34,12 +33,12 @@ func (e *calledEvents) CheckMsg(ctx context.Context, smsg store.ChainMsg, hnd Ca
 	}
 }
 
-func (e *calledEvents) MatchMsg(inmsg *types.Message) MatchFunc {
-	return func(msg *types.Message) (bool, error) {
+func (me *messageEvents) MatchMsg(inmsg *types.Message) MsgMatchFunc {
+	return func(msg *types.Message) (matchOnce bool, matched bool, err error) {
 		if msg.From == inmsg.From && msg.Nonce == inmsg.Nonce && !inmsg.Equals(msg) {
-			return false, xerrors.Errorf("matching msg %s from %s, nonce %d: got duplicate origin/nonce msg %s", inmsg.Cid(), inmsg.From, inmsg.Nonce, msg.Nonce)
+			return true, false, xerrors.Errorf("matching msg %s from %s, nonce %d: got duplicate origin/nonce msg %d", inmsg.Cid(), inmsg.From, inmsg.Nonce, msg.Nonce)
 		}
 
-		return inmsg.Equals(msg), nil
+		return true, inmsg.Equals(msg), nil
 	}
 }

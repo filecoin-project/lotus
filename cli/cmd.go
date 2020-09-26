@@ -9,24 +9,39 @@ import (
 	"strings"
 	"syscall"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var log = logging.Logger("cli")
 
 const (
-	metadataTraceConetxt = "traceContext"
+	metadataTraceContext = "traceContext"
 )
+
+// custom CLI error
+
+type ErrCmdFailed struct {
+	msg string
+}
+
+func (e *ErrCmdFailed) Error() string {
+	return e.msg
+}
+
+func NewCliError(s string) error {
+	return &ErrCmdFailed{s}
+}
 
 // ApiConnector returns API instance
 type ApiConnector func() api.FullNode
@@ -52,12 +67,29 @@ func (a APIInfo) AuthHeader() http.Header {
 	return nil
 }
 
+// The flag passed on the command line with the listen address of the API
+// server (only used by the tests)
+func flagForAPI(t repo.RepoType) string {
+	switch t {
+	case repo.FullNode:
+		return "api"
+	case repo.StorageMiner:
+		return "miner-api"
+	case repo.Worker:
+		return "worker-api"
+	default:
+		panic(fmt.Sprintf("Unknown repo type: %v", t))
+	}
+}
+
 func flagForRepo(t repo.RepoType) string {
 	switch t {
 	case repo.FullNode:
 		return "repo"
 	case repo.StorageMiner:
-		return "storagerepo"
+		return "miner-repo"
+	case repo.Worker:
+		return "worker-repo"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -68,21 +100,61 @@ func envForRepo(t repo.RepoType) string {
 	case repo.FullNode:
 		return "FULLNODE_API_INFO"
 	case repo.StorageMiner:
+		return "MINER_API_INFO"
+	case repo.Worker:
+		return "WORKER_API_INFO"
+	default:
+		panic(fmt.Sprintf("Unknown repo type: %v", t))
+	}
+}
+
+// TODO remove after deprecation period
+func envForRepoDeprecation(t repo.RepoType) string {
+	switch t {
+	case repo.FullNode:
+		return "FULLNODE_API_INFO"
+	case repo.StorageMiner:
 		return "STORAGE_API_INFO"
+	case repo.Worker:
+		return "WORKER_API_INFO"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
 }
 
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
-	if env, ok := os.LookupEnv(envForRepo(t)); ok {
+	// Check if there was a flag passed with the listen address of the API
+	// server (only used by the tests)
+	apiFlag := flagForAPI(t)
+	if ctx.IsSet(apiFlag) {
+		strma := ctx.String(apiFlag)
+		strma = strings.TrimSpace(strma)
+
+		apima, err := multiaddr.NewMultiaddr(strma)
+		if err != nil {
+			return APIInfo{}, err
+		}
+		return APIInfo{Addr: apima}, nil
+	}
+
+	envKey := envForRepo(t)
+	env, ok := os.LookupEnv(envKey)
+	if !ok {
+		// TODO remove after deprecation period
+		envKey = envForRepoDeprecation(t)
+		env, ok = os.LookupEnv(envKey)
+		if ok {
+			log.Warnf("Use deprecation env(%s) value, please use env(%s) instead.", envKey, envForRepo(t))
+		}
+	}
+	if ok {
 		sp := strings.SplitN(env, ":", 2)
 		if len(sp) != 2 {
-			log.Warnf("invalid env(%s) value, missing token or address", envForRepo(t))
+			log.Warnf("invalid env(%s) value, missing token or address", envKey)
 		} else {
 			ma, err := multiaddr.NewMultiaddr(sp[1])
 			if err != nil {
-				return APIInfo{}, xerrors.Errorf("could not parse multiaddr from env(%s): %w", envForRepo(t), err)
+				return APIInfo{}, xerrors.Errorf("could not parse multiaddr from env(%s): %w", envKey, err)
 			}
 			return APIInfo{
 				Addr:  ma,
@@ -95,7 +167,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 
 	p, err := homedir.Expand(ctx.String(repoFlag))
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("cound not exand home dir (%s): %w", repoFlag, err)
+		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
 	}
 
 	r, err := repo.NewFS(p)
@@ -105,7 +177,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not get api enpoint: %w", err)
+		return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
 	}
 
 	token, err := r.APIToken()
@@ -120,7 +192,6 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType) (string, http.Header, error) {
-
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get API info: %w", err)
@@ -150,7 +221,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		return nil, nil, err
 	}
 
-	return client.NewCommonRPC(addr, headers)
+	return client.NewCommonRPC(ctx.Context, addr, headers)
 }
 
 func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
@@ -159,20 +230,29 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(addr, headers)
+	return client.NewFullNodeRPC(ctx.Context, addr, headers)
 }
 
-func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
 	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewStorageMinerRPC(addr, headers)
+	return client.NewStorageMinerRPC(ctx.Context, addr, headers, opts...)
+}
+
+func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.Worker)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewWorkerRPC(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {
-	if mtCtx, ok := cctx.App.Metadata[metadataTraceConetxt]; ok {
+	if mtCtx, ok := cctx.App.Metadata[metadataTraceContext]; ok {
 		return mtCtx.(context.Context)
 	}
 
@@ -191,22 +271,41 @@ func ReqContext(cctx *cli.Context) context.Context {
 		<-sigChan
 		done()
 	}()
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 
 	return ctx
 }
 
-var Commands = []*cli.Command{
-	authCmd,
-	chainCmd,
-	clientCmd,
-	fetchParamCmd,
-	mpoolCmd,
+var CommonCommands = []*cli.Command{
 	netCmd,
-	paychCmd,
-	sendCmd,
-	stateCmd,
-	syncCmd,
-	versionCmd,
-	walletCmd,
+	authCmd,
+	logCmd,
+	waitApiCmd,
+	fetchParamCmd,
+	pprofCmd,
+	VersionCmd,
+}
+
+var Commands = []*cli.Command{
+	WithCategory("basic", sendCmd),
+	WithCategory("basic", walletCmd),
+	WithCategory("basic", clientCmd),
+	WithCategory("basic", multisigCmd),
+	WithCategory("basic", paychCmd),
+	WithCategory("developer", authCmd),
+	WithCategory("developer", mpoolCmd),
+	WithCategory("developer", stateCmd),
+	WithCategory("developer", chainCmd),
+	WithCategory("developer", logCmd),
+	WithCategory("developer", waitApiCmd),
+	WithCategory("developer", fetchParamCmd),
+	WithCategory("network", netCmd),
+	WithCategory("network", syncCmd),
+	pprofCmd,
+	VersionCmd,
+}
+
+func WithCategory(cat string, cmd *cli.Command) *cli.Command {
+	cmd.Category = cat
+	return cmd
 }

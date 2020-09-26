@@ -3,12 +3,16 @@ package events
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type tsByHFunc func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
+type tsCacheAPI interface {
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainHead(context.Context) (*types.TipSet, error)
+}
 
 // tipSetCache implements a simple ring-buffer cache to keep track of recent
 // tipsets
@@ -17,10 +21,10 @@ type tipSetCache struct {
 	start int
 	len   int
 
-	storage tsByHFunc
+	storage tsCacheAPI
 }
 
-func newTSCache(cap int, storage tsByHFunc) *tipSetCache {
+func newTSCache(cap abi.ChainEpoch, storage tsCacheAPI) *tipSetCache {
 	return &tipSetCache{
 		cache: make([]*types.TipSet, cap),
 		start: 0,
@@ -77,7 +81,7 @@ func (tsc *tipSetCache) revert(ts *types.TipSet) error {
 	return nil
 }
 
-func (tsc *tipSetCache) getNonNull(height uint64) (*types.TipSet, error) {
+func (tsc *tipSetCache) getNonNull(height abi.ChainEpoch) (*types.TipSet, error) {
 	for {
 		ts, err := tsc.get(height)
 		if err != nil {
@@ -90,10 +94,10 @@ func (tsc *tipSetCache) getNonNull(height uint64) (*types.TipSet, error) {
 	}
 }
 
-func (tsc *tipSetCache) get(height uint64) (*types.TipSet, error) {
+func (tsc *tipSetCache) get(height abi.ChainEpoch) (*types.TipSet, error) {
 	if tsc.len == 0 {
 		log.Warnf("tipSetCache.get: cache is empty, requesting from storage (h=%d)", height)
-		return tsc.storage(context.TODO(), height, nil)
+		return tsc.storage.ChainGetTipSetByHeight(context.TODO(), height, types.EmptyTSK)
 	}
 
 	headH := tsc.cache[tsc.start].Height()
@@ -113,14 +117,18 @@ func (tsc *tipSetCache) get(height uint64) (*types.TipSet, error) {
 
 	if height < tail.Height() {
 		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d)", height, tail.Height())
-		return tsc.storage(context.TODO(), height, tail)
+		return tsc.storage.ChainGetTipSetByHeight(context.TODO(), height, tail.Key())
 	}
 
 	return tsc.cache[normalModulo(tsc.start-int(headH-height), clen)], nil
 }
 
-func (tsc *tipSetCache) best() *types.TipSet {
-	return tsc.cache[tsc.start]
+func (tsc *tipSetCache) best() (*types.TipSet, error) {
+	best := tsc.cache[tsc.start]
+	if best == nil {
+		return tsc.storage.ChainHead(context.TODO())
+	}
+	return best, nil
 }
 
 func normalModulo(n, m int) int {

@@ -45,7 +45,7 @@ class FullNode extends React.Component {
       return this.props.client.call('Filecoin.PaychVoucherList', [paych])
     }))
 
-    let mpoolPending = (await this.props.client.call('Filecoin.MpoolPending', [tipset])).length
+    let mpoolPending = (await this.props.client.call('Filecoin.MpoolPending', [tipset.Cids])).length
 
     this.setState(() => ({
       id: id,
@@ -64,13 +64,13 @@ class FullNode extends React.Component {
   }
 
   async newSecpAddr() {
-    const t = "secp256k1"
+    const t = 1
     await this.props.client.call("Filecoin.WalletNew", [t])
     this.loadInfo()
   }
 
   async newBLSAddr() {
-    const t = "bls"
+    const t = 2
     await this.props.client.call("Filecoin.WalletNew", [t])
     this.loadInfo()
   }
@@ -106,7 +106,7 @@ class FullNode extends React.Component {
         )
       }
 
-      let storageMine = <a href="#" onClick={this.startStorageMiner} hidden={!this.props.spawnStorageNode}>[Spawn Storage Miner]</a>
+      let storageMine = <a href="#" onClick={this.startStorageMiner} hidden={!this.props.spawnStorageNode}>[Spawn Miner]</a>
 
       let addresses = this.state.addrs.map((addr) => {
         let line = <Address client={this.props.client} addN={this.props.giveN} add10k={true} nonce={true} addr={addr} mountWindow={this.props.mountWindow}/>

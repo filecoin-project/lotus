@@ -7,8 +7,10 @@ import (
 	"io"
 	"sort"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
@@ -18,18 +20,18 @@ var log = logging.Logger("types")
 type TipSet struct {
 	cids   []cid.Cid
 	blks   []*BlockHeader
-	height uint64
+	height abi.ChainEpoch
 }
 
-// why didnt i just export the fields? Because the struct has methods with the
-// same names already
 type ExpTipSet struct {
 	Cids   []cid.Cid
 	Blocks []*BlockHeader
-	Height uint64
+	Height abi.ChainEpoch
 }
 
 func (ts *TipSet) MarshalJSON() ([]byte, error) {
+	// why didnt i just export the fields? Because the struct has methods with the
+	// same names already
 	return json.Marshal(ExpTipSet{
 		Cids:   ts.cids,
 		Blocks: ts.blks,
@@ -88,13 +90,19 @@ func tipsetSortFunc(blks []*BlockHeader) func(i, j int) bool {
 
 		if ti.Equals(tj) {
 			log.Warnf("blocks have same ticket (%s %s)", blks[i].Miner, blks[j].Miner)
-			return blks[i].Cid().KeyString() < blks[j].Cid().KeyString()
+			return bytes.Compare(blks[i].Cid().Bytes(), blks[j].Cid().Bytes()) < 0
 		}
 
 		return ti.Less(tj)
 	}
 }
 
+// Checks:
+// * A tipset is composed of at least one block. (Because of our variable
+//   number of blocks per tipset, determined by randomness, we do not impose
+//   an upper limit.)
+// * All blocks have the same height.
+// * All blocks have the same parents (same number of them and matching CIDs).
 func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 	if len(blks) == 0 {
 		return nil, xerrors.Errorf("NewTipSet called with zero length array of blocks")
@@ -108,6 +116,10 @@ func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 	for _, b := range blks[1:] {
 		if b.Height != blks[0].Height {
 			return nil, fmt.Errorf("cannot create tipset with mismatching heights")
+		}
+
+		if len(blks[0].Parents) != len(b.Parents) {
+			return nil, fmt.Errorf("cannot create tipset with mismatching number of parents")
 		}
 
 		for i, cid := range b.Parents {
@@ -129,10 +141,13 @@ func (ts *TipSet) Cids() []cid.Cid {
 }
 
 func (ts *TipSet) Key() TipSetKey {
+	if ts == nil {
+		return EmptyTSK
+	}
 	return NewTipSetKey(ts.cids...)
 }
 
-func (ts *TipSet) Height() uint64 {
+func (ts *TipSet) Height() abi.ChainEpoch {
 	return ts.height
 }
 
@@ -166,7 +181,9 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 }
 
 func (t *Ticket) Less(o *Ticket) bool {
-	return bytes.Compare(t.VRFProof, o.VRFProof) < 0
+	tDigest := blake2b.Sum256(t.VRFProof)
+	oDigest := blake2b.Sum256(o.VRFProof)
+	return bytes.Compare(tDigest[:], oDigest[:]) < 0
 }
 
 func (ts *TipSet) MinTicket() *Ticket {
@@ -212,4 +229,16 @@ func (ts *TipSet) Contains(oc cid.Cid) bool {
 		}
 	}
 	return false
+}
+
+func (ts *TipSet) IsChildOf(parent *TipSet) bool {
+	return CidArrsEqual(ts.Parents().Cids(), parent.Cids()) &&
+		// FIXME: The height check might go beyond what is meant by
+		//  "parent", but many parts of the code rely on the tipset's
+		//  height for their processing logic at the moment to obviate it.
+		ts.height > parent.height
+}
+
+func (ts *TipSet) String() string {
+	return fmt.Sprintf("%v", ts.cids)
 }

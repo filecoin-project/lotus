@@ -4,10 +4,13 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+
+	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
 
@@ -17,25 +20,39 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 	if ts == nil {
 		return types.NewInt(0), nil
 	}
-	// >>> w[r] <<< + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
+	// >>> w[r] <<< + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	var out = new(big.Int).Set(ts.Blocks()[0].ParentWeight.Int)
+	var out = new(big.Int).Set(ts.ParentWeight().Int)
 
-	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
+	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	ret, err := cs.call(ctx, &types.Message{
-		From:   actors.StoragePowerAddress,
-		To:     actors.StoragePowerAddress,
-		Method: actors.SPAMethods.GetTotalStorage,
-	}, ts)
-	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)
+	tpow := big2.Zero()
+	{
+		cst := cbor.NewCborStore(cs.Blockstore())
+		state, err := state.LoadStateTree(cst, ts.ParentState())
+		if err != nil {
+			return types.NewInt(0), xerrors.Errorf("load state tree: %w", err)
+		}
+
+		act, err := state.GetActor(power.Address)
+		if err != nil {
+			return types.NewInt(0), xerrors.Errorf("get power actor: %w", err)
+		}
+
+		powState, err := power.Load(cs.Store(ctx), act)
+		if err != nil {
+			return types.NewInt(0), xerrors.Errorf("failed to load power actor state: %w", err)
+		}
+
+		claim, err := powState.TotalPower()
+		if err != nil {
+			return types.NewInt(0), xerrors.Errorf("failed to get total power: %w", err)
+		}
+
+		tpow = claim.QualityAdjPower // TODO: REVIEW: Is this correct?
 	}
-	if ret.ExitCode != 0 {
-		return types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
-	}
+
 	log2P := int64(0)
-	tpow := types.BigFromBytes(ret.Return)
 	if tpow.GreaterThan(zero) {
 		log2P = int64(tpow.BitLen() - 1)
 	} else {
@@ -45,51 +62,19 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 
 	out.Add(out, big.NewInt(log2P<<8))
 
-	// (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
+	// (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	eWeight := big.NewInt((log2P * int64(len(ts.Blocks())) * build.WRatioNum) << 8)
-	eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*build.WRatioDen)))
-	out.Add(out, eWeight)
+	totalJ := int64(0)
+	for _, b := range ts.Blocks() {
+		totalJ += b.ElectionProof.WinCount
+	}
+
+	eWeight := big.NewInt((log2P * build.WRatioNum))
+	eWeight = eWeight.Lsh(eWeight, 8)
+	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
+	eWeight = eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*build.WRatioDen)))
+
+	out = out.Add(out, eWeight)
 
 	return types.BigInt{Int: out}, nil
-}
-
-// todo: dedupe with state manager
-func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
-	bstate := ts.ParentState()
-
-	r := NewChainRand(cs, ts.Cids(), ts.Height())
-
-	vmi, err := vm.NewVM(bstate, ts.Height(), r, actors.NetworkAddress, cs.bs)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to set up vm: %w", err)
-	}
-
-	if msg.GasLimit == types.EmptyInt {
-		msg.GasLimit = types.NewInt(10000000000)
-	}
-	if msg.GasPrice == types.EmptyInt {
-		msg.GasPrice = types.NewInt(0)
-	}
-	if msg.Value == types.EmptyInt {
-		msg.Value = types.NewInt(0)
-	}
-
-	fromActor, err := vmi.StateTree().GetActor(msg.From)
-	if err != nil {
-		return nil, xerrors.Errorf("call raw get actor: %s", err)
-	}
-
-	msg.Nonce = fromActor.Nonce
-
-	// TODO: maybe just use the invoker directly?
-	ret, err := vmi.ApplyMessage(ctx, msg)
-	if err != nil {
-		return nil, xerrors.Errorf("apply message failed: %w", err)
-	}
-
-	if ret.ActorErr != nil {
-		log.Warnf("chain call failed: %s", ret.ActorErr)
-	}
-	return &ret.MessageReceipt, nil
 }

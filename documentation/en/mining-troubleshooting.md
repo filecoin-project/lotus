@@ -16,16 +16,16 @@ The **Bellman** lockfile is created to lock a GPU for a process. This bug can oc
 mining block failed: computing election proof: github.com/filecoin-project/lotus/miner.(*Miner).mineOne
 ```
 
-This bug occurs when the storage miner can't acquire the `bellman.lock`. To fix it you need to stop the `lotus-storage-miner` and remove `/tmp/bellman.lock`.
+This bug occurs when the miner can't acquire the `bellman.lock`. To fix it you need to stop the `lotus-miner` and remove `/tmp/bellman.lock`.
 
 ## Error: Failed to get api endpoint
 
 ```sh
-lotus-storage-miner info
-# WARN  main  lotus-storage-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusstorage) %!w(*errors.errorString=&{API not running (no endpoint)}):
+lotus-miner info
+# WARN  main  lotus-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusminer) %!w(*errors.errorString=&{API not running (no endpoint)}):
 ```
 
-If you see this, that means your **Lotus Storage Miner** isn't ready yet. You need to finish [syncing the chain](https://docs.lotu.sh/en+join-testnet).
+If you see this, that means your **Lotus Miner** isn't ready yet. You need to finish [syncing the chain](https://lotu.sh/en+join-testnet).
 
 ## Error: Your computer may not be fast enough
 
@@ -38,7 +38,7 @@ If you see this, that means your computer is too slow and your blocks are not in
 ## Error: No space left on device
 
 ```sh
-lotus-storage-miner pledge-sector
+lotus-miner sectors pledge
 # No space left on device (os error 28)
 ```
 
@@ -51,7 +51,8 @@ If you suspect that your GPU is not being used, first make sure it is properly c
 First, to watch GPU utilization run `nvtop` in one terminal, then in a separate terminal, run:
 
 ```sh
-lotus-bench --sector-size=1024
+make bench
+./bench sealing --sector-size=2KiB
 ```
 
 This process uses a fair amount of GPU, and generally takes ~4 minutes to complete. If you do not see any activity in nvtop from lotus during the entire process, it is likely something is misconfigured with your GPU.

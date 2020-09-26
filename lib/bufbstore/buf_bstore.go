@@ -2,12 +2,16 @@ package bufbstore
 
 import (
 	"context"
+	"os"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log/v2"
+
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
+
+var log = logging.Logger("bufbs")
 
 type BufferedBS struct {
 	read  bstore.Blockstore
@@ -15,10 +19,22 @@ type BufferedBS struct {
 }
 
 func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
-	buf := bstore.NewBlockstore(ds.NewMapDatastore())
+	buf := bstore.NewTemporary()
+	if os.Getenv("LOTUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
+		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
+		buf = base
+	}
+
 	return &BufferedBS{
 		read:  base,
 		write: buf,
+	}
+}
+
+func NewTieredBstore(r bstore.Blockstore, w bstore.Blockstore) *BufferedBS {
+	return &BufferedBS{
+		read:  r,
+		write: w,
 	}
 }
 
@@ -88,10 +104,24 @@ func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
 }
 
 func (bs *BufferedBS) GetSize(c cid.Cid) (int, error) {
-	panic("nyi")
+	s, err := bs.read.GetSize(c)
+	if err == bstore.ErrNotFound || s == 0 {
+		return bs.write.GetSize(c)
+	}
+
+	return s, err
 }
 
 func (bs *BufferedBS) Put(blk block.Block) error {
+	has, err := bs.read.Has(blk.Cid())
+	if err != nil {
+		return err
+	}
+
+	if has {
+		return nil
+	}
+
 	return bs.write.Put(blk)
 }
 

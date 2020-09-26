@@ -1,34 +1,42 @@
 // +build !debug
+// +build !2k
+// +build !testground
 
 package build
 
-var SectorSizes = []uint64{
-	1 << 30,
-	32 << 30,
+import (
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+)
+
+var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+	0:                  DrandIncentinet,
+	UpgradeSmokeHeight: DrandMainnet,
 }
 
-// Seconds
-const BlockDelay = 45
+const UpgradeBreezeHeight = 41280
+const BreezeGasTampingDuration = 120
 
-const PropagationDelay = 6
+const UpgradeSmokeHeight = 51000
 
-// FallbackPoStDelay is the number of epochs the miner needs to wait after
-//  ElectionPeriodStart before starting fallback post computation
-//
-// Epochs
-const FallbackPoStDelay = 30
+const UpgradeIgnitionHeight = 94000
 
-// SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
-// which the miner is slashed
-//
-// Epochs
-const SlashablePowerDelay = 200
+// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
+// Miners, clients, developers, custodians all need time to prepare.
+// We still have upgrades and state changes to do, but can happen after signaling timing here.
+const UpgradeLiftoffHeight = 148888
 
-// Epochs
-const InteractivePoRepDelay = 8
+func init() {
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
+	policy.SetSupportedProofTypes(
+		abi.RegisteredSealProof_StackedDrg32GiBV1,
+		abi.RegisteredSealProof_StackedDrg64GiBV1,
+	)
+	Devnet = false
+}
 
-// Epochs
-const InteractivePoRepConfidence = 6
+const BlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
 
-// Bytes
-var MinimumMinerPower uint64 = 512 << 30 // 512GB
+const PropagationDelaySecs = uint64(6)

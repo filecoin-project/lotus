@@ -5,7 +5,7 @@
 Here is a command that will delete your chain data, stored wallets, stored data and any miners you have set up:
 
 ```sh
-rm -rf ~/.lotus ~/.lotusstorage
+rm -rf ~/.lotus ~/.lotusminer
 ```
 
 This command usually resolves any issues with running `lotus` but it is not always required for updates. We will share information about when resetting your chain data and miners is required for an update in the future.
@@ -29,15 +29,18 @@ ERROR hello hello/hello.go:81 other peer has different genesis!
 - repo is already locked
 ```
 
-- You already have another lotus deamon running.
+- You already have another lotus daemon running.
 
-## Warning: get message get failed
+## Config: Open files limit
 
-Some errors will occur that do not prevent Lotus from working:
+On most systems you can check the open files limit with:
 
 ```sh
-ERROR chainstore  store/store.go:564  get message get failed: <Data CID>: blockstore: block not found
-
+ulimit -n
 ```
 
-- Someone is requesting a **Data CID** from you that you don't have.
+You can also modify this number by using the `ulimit` command. It gives you the ability to control the resources available for the shell or process started by it. If the number is below 10000, you can change it with the following command prior to starting the Lotus daemon:
+
+```sh
+ulimit -n 10000
+```

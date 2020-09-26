@@ -2,15 +2,17 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 
 	"github.com/BurntSushi/toml"
+	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/xerrors"
 )
 
 // FromFile loads config from a specified file overriding defaults specified in
-// the def parameter. If file does not exist or is empty defaults are asummed.
+// the def parameter. If file does not exist or is empty defaults are assumed.
 func FromFile(path string, def interface{}) (interface{}, error) {
 	file, err := os.Open(path)
 	switch {
@@ -32,6 +34,11 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 		return nil, err
 	}
 
+	err = envconfig.Process("LOTUS", cfg)
+	if err != nil {
+		return nil, fmt.Errorf("processing env vars overrides: %s", err)
+	}
+
 	return cfg, nil
 }
 
@@ -46,5 +53,4 @@ func ConfigComment(t interface{}) ([]byte, error) {
 	b = bytes.ReplaceAll(b, []byte("\n"), []byte("\n#"))
 	b = bytes.ReplaceAll(b, []byte("#["), []byte("["))
 	return b, nil
-
 }

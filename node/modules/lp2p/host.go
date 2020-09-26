@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	record "github.com/libp2p/go-libp2p-record"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -47,7 +46,8 @@ func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, 
 		libp2p.Peerstore(params.Peerstore),
 		libp2p.NoListenAddrs,
 		libp2p.Ping(true),
-		libp2p.UserAgent("lotus-" + build.UserVersion)}
+		libp2p.UserAgent("lotus-" + build.UserVersion()),
+	}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)
 	}
@@ -70,15 +70,24 @@ func MockHost(mn mocknet.Mocknet, id peer.ID, ps peerstore.Peerstore) (RawHost, 
 	return mn.AddPeerWithPeerstore(id, ps)
 }
 
-func DHTRouting(client bool) interface{} {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host RawHost, dstore dtypes.MetadataDS, validator record.Validator) (BaseIpfsRouting, error) {
+func DHTRouting(mode dht.ModeOpt) interface{} {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host RawHost, dstore dtypes.MetadataDS, validator record.Validator, nn dtypes.NetworkName, bs dtypes.Bootstrapper) (BaseIpfsRouting, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
+		if bs {
+			mode = dht.ModeServer
+		}
+
+		opts := []dht.Option{dht.Mode(mode),
+			dht.Datastore(dstore),
+			dht.Validator(validator),
+			dht.ProtocolPrefix(build.DhtProtocolName(nn)),
+			dht.QueryFilter(dht.PublicQueryFilter),
+			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+			dht.DisableProviders(),
+			dht.DisableValues()}
 		d, err := dht.New(
-			ctx, host,
-			dhtopts.Client(client),
-			dhtopts.Datastore(dstore),
-			dhtopts.Validator(validator),
+			ctx, host, opts...,
 		)
 
 		if err != nil {

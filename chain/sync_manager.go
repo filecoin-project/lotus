@@ -20,7 +20,28 @@ const (
 
 type SyncFunc func(context.Context, *types.TipSet) error
 
-type SyncManager struct {
+// SyncManager manages the chain synchronization process, both at bootstrap time
+// and during ongoing operation.
+//
+// It receives candidate chain heads in the form of tipsets from peers,
+// and schedules them onto sync workers, deduplicating processing for
+// already-active syncs.
+type SyncManager interface {
+	// Start starts the SyncManager.
+	Start()
+
+	// Stop stops the SyncManager.
+	Stop()
+
+	// SetPeerHead informs the SyncManager that the supplied peer reported the
+	// supplied tipset.
+	SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet)
+
+	// State retrieves the state of the sync workers.
+	State() []SyncerState
+}
+
+type syncManager struct {
 	lk        sync.Mutex
 	peerHeads map[peer.ID]*types.TipSet
 
@@ -35,6 +56,7 @@ type SyncManager struct {
 
 	syncStates []*SyncerState
 
+	// Normally this handler is set to `(*Syncer).Sync()`.
 	doSync func(context.Context, *types.TipSet) error
 
 	stop chan struct{}
@@ -47,6 +69,8 @@ type SyncManager struct {
 	workerChan     chan *types.TipSet
 }
 
+var _ SyncManager = (*syncManager)(nil)
+
 type syncResult struct {
 	ts      *types.TipSet
 	success bool
@@ -54,8 +78,8 @@ type syncResult struct {
 
 const syncWorkerCount = 3
 
-func NewSyncManager(sync SyncFunc) *SyncManager {
-	return &SyncManager{
+func NewSyncManager(sync SyncFunc) SyncManager {
+	return &syncManager{
 		bspThresh:       1,
 		peerHeads:       make(map[peer.ID]*types.TipSet),
 		syncTargets:     make(chan *types.TipSet),
@@ -68,18 +92,18 @@ func NewSyncManager(sync SyncFunc) *SyncManager {
 	}
 }
 
-func (sm *SyncManager) Start() {
+func (sm *syncManager) Start() {
 	go sm.syncScheduler()
 	for i := 0; i < syncWorkerCount; i++ {
 		go sm.syncWorker(i)
 	}
 }
 
-func (sm *SyncManager) Stop() {
+func (sm *syncManager) Stop() {
 	close(sm.stop)
 }
 
-func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet) {
+func (sm *syncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	sm.peerHeads[p] = ts
@@ -102,6 +126,14 @@ func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.Tip
 	}
 
 	sm.incomingTipSets <- ts
+}
+
+func (sm *syncManager) State() []SyncerState {
+	ret := make([]SyncerState, 0, len(sm.syncStates))
+	for _, s := range sm.syncStates {
+		ret = append(ret, s.Snapshot())
+	}
+	return ret
 }
 
 type syncBucketSet struct {
@@ -233,7 +265,7 @@ func (stb *syncTargetBucket) heaviestTipSet() *types.TipSet {
 	return best
 }
 
-func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
+func (sm *syncManager) selectSyncTarget() (*types.TipSet, error) {
 	var buckets syncBucketSet
 
 	var peerHeads []*types.TipSet
@@ -257,7 +289,7 @@ func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
 	return buckets.Heaviest(), nil
 }
 
-func (sm *SyncManager) syncScheduler() {
+func (sm *syncManager) syncScheduler() {
 
 	for {
 		select {
@@ -279,8 +311,8 @@ func (sm *SyncManager) syncScheduler() {
 	}
 }
 
-func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
-	log.Info("scheduling incoming tipset sync: ", ts.Cids())
+func (sm *syncManager) scheduleIncoming(ts *types.TipSet) {
+	log.Debug("scheduling incoming tipset sync: ", ts.Cids())
 	if sm.getBootstrapState() == BSStateSelected {
 		sm.setBootstrapState(BSStateScheduled)
 		sm.syncTargets <- ts
@@ -327,10 +359,11 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 	}
 }
 
-func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
+func (sm *syncManager) scheduleProcessResult(res *syncResult) {
 	if res.success && sm.getBootstrapState() != BSStateComplete {
 		sm.setBootstrapState(BSStateComplete)
 	}
+
 	delete(sm.activeSyncs, res.ts.Key())
 	relbucket := sm.activeSyncTips.PopRelated(res.ts)
 	if relbucket != nil {
@@ -342,12 +375,12 @@ func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
 				sm.syncQueue.buckets = append(sm.syncQueue.buckets, relbucket)
 			}
 			return
-		} else {
-			// TODO: this is the case where we try to sync a chain, and
-			// fail, and we have more blocks on top of that chain that
-			// have come in since.  The question is, should we try to
-			// sync these? or just drop them?
 		}
+		// TODO: this is the case where we try to sync a chain, and
+		// fail, and we have more blocks on top of that chain that
+		// have come in since.  The question is, should we try to
+		// sync these? or just drop them?
+		log.Error("failed to sync chain but have new unconnected blocks from chain")
 	}
 
 	if sm.nextSyncTarget == nil && !sm.syncQueue.Empty() {
@@ -359,7 +392,7 @@ func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
 	}
 }
 
-func (sm *SyncManager) scheduleWorkSent() {
+func (sm *syncManager) scheduleWorkSent() {
 	hts := sm.nextSyncTarget.heaviestTipSet()
 	sm.activeSyncs[hts.Key()] = hts
 
@@ -371,7 +404,7 @@ func (sm *SyncManager) scheduleWorkSent() {
 	}
 }
 
-func (sm *SyncManager) syncWorker(id int) {
+func (sm *syncManager) syncWorker(id int) {
 	ss := &SyncerState{}
 	sm.syncStates[id] = ss
 	for {
@@ -396,7 +429,7 @@ func (sm *SyncManager) syncWorker(id int) {
 	}
 }
 
-func (sm *SyncManager) syncedPeerCount() int {
+func (sm *syncManager) syncedPeerCount() int {
 	var count int
 	for _, ts := range sm.peerHeads {
 		if ts.Height() > 0 {
@@ -406,19 +439,19 @@ func (sm *SyncManager) syncedPeerCount() int {
 	return count
 }
 
-func (sm *SyncManager) getBootstrapState() int {
+func (sm *syncManager) getBootstrapState() int {
 	sm.bssLk.Lock()
 	defer sm.bssLk.Unlock()
 	return sm.bootstrapState
 }
 
-func (sm *SyncManager) setBootstrapState(v int) {
+func (sm *syncManager) setBootstrapState(v int) {
 	sm.bssLk.Lock()
 	defer sm.bssLk.Unlock()
 	sm.bootstrapState = v
 }
 
-func (sm *SyncManager) IsBootstrapped() bool {
+func (sm *syncManager) IsBootstrapped() bool {
 	sm.bssLk.Lock()
 	defer sm.bssLk.Unlock()
 	return sm.bootstrapState == BSStateComplete

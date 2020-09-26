@@ -1,3 +1,3 @@
-# Development Tools
+# Developer Tools
 
-> This page is a work in progress
+> Running a local network can be a great way to understand how Lotus works and test your setup. 

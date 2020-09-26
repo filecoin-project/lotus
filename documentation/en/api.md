@@ -2,7 +2,7 @@
 
 Here is an early overview of how to make API calls.
 
-Implementation details for the **JSON-RPC** package are [here](https://github.com/filecoin-project/lotus/tree/master/lib/jsonrpc).
+Implementation details for the **JSON-RPC** package are [here](https://github.com/filecoin-project/go-jsonrpc).
 
 ## Overview: How do you modify the config.toml to change the API endpoint?
 
@@ -18,15 +18,15 @@ Options:
 
 For now, you can look into different files to find methods available to you based on your needs:
 
-- [Both Lotus node + storage miner APIs](https://github.com/filecoin-project/lotus/blob/master/api/api_common.go)
+- [Both Lotus node + miner APIs](https://github.com/filecoin-project/lotus/blob/master/api/api_common.go)
 - [Lotus node API](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go)
-- [Storage miner API](https://github.com/filecoin-project/lotus/blob/master/api/api_storage.go)
+- [Lotus miner API](https://github.com/filecoin-project/lotus/blob/master/api/api_storage.go)
 
 The necessary permissions for each are in [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go).
 
 ## How do I make an API request?
 
-To demonstrate making an API request, we will take the method `ChainHead` from [api/api.go](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go).
+To demonstrate making an API request, we will take the method `ChainHead` from [api/api_full.go](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go).
 
 ```go
 ChainHead(context.Context) (*types.TipSet, error)
@@ -46,7 +46,7 @@ If the request requires authorization, add an authorization header:
 ```sh
 curl -X POST \
      -H "Content-Type: application/json" \
-     -H "Authorization: Bearer $(cat ~/.lotusstorage/token)" \
+     -H "Authorization: Bearer $(cat ~/.lotusminer/token)" \
      --data '{ "jsonrpc": "2.0", "method": "Filecoin.ChainHead", "params": [], "id": 3 }' \
      'http://127.0.0.1:1234/rpc/v0'
 ```
@@ -58,10 +58,10 @@ curl -X POST \
 To authorize your request, you will need to include the **JWT** in a HTTP header, for example:
 
 ```sh
--H "Authorization: Bearer $(cat ~/.lotusstorage/token)"
+-H "Authorization: Bearer $(cat ~/.lotusminer/token)"
 ```
 
-Admin token is stored in `~/.lotus/token` for the **Lotus Node** or `~/.lotusstorage/token` for the **Lotus Storage Miner**.
+Admin token is stored in `~/.lotus/token` for the **Lotus Node** or `~/.lotusminer/token` for the **Lotus Miner**.
 
 ## How do I generate a token?
 
@@ -71,13 +71,13 @@ To generate a JWT with custom permissions, use this command:
 # Lotus Node
 lotus auth create-token --perm admin
 
-# Lotus Storage Miner
-lotus-storage-miner auth create-token --perm admin
+# Lotus Miner
+lotus-miner auth create-token --perm admin
 ```
 
 ## What authorization level should I use?
 
-When viewing [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go), you will encounter these types:
+When viewing [api/apistruct/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go), you will encounter these types:
 
 - `read` - Read node state, no private data.
 - `write` - Write to local store / chain, and `read` permissions.

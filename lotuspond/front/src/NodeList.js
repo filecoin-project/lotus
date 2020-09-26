@@ -35,7 +35,7 @@ class NodeList extends React.Component {
   async mountNode(node) {
     const token = await this.props.client.call('Pond.TokenFor', [node.ID])
 
-    const client = new Client(`ws://127.0.0.1:${node.ApiPort}/rpc/v0?token=${token}`)
+    const client = new Client(`ws://127.0.0.1:${node.APIPort}/rpc/v0?token=${token}`)
     client.on('open', async () => {
       const id = await client.call("Filecoin.ID", [])
 

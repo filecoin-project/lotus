@@ -4,19 +4,39 @@ import (
 	"context"
 	"testing"
 
+	"github.com/multiformats/go-multiaddr"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/stretchr/testify/assert"
+	"github.com/filecoin-project/lotus/miner"
 )
 
 type TestNode struct {
 	api.FullNode
+	// ListenAddr is the address on which an API server is listening, if an
+	// API server is created for this Node
+	ListenAddr multiaddr.Multiaddr
 }
 
 type TestStorageNode struct {
 	api.StorageMiner
+	// ListenAddr is the address on which an API server is listening, if an
+	// API server is created for this Node
+	ListenAddr multiaddr.Multiaddr
 
-	MineOne func(context.Context) error
+	MineOne func(context.Context, miner.MineReq) error
+}
+
+var PresealGenesis = -1
+
+const GenesisPreseals = 2
+
+type StorageMiner struct {
+	Full    int
+	Preseal int
 }
 
 // APIBuilder is a function which is invoked in test suite to provide
@@ -24,7 +44,7 @@ type TestStorageNode struct {
 //
 // storage array defines storage nodes, numbers in the array specify full node
 // index the storage node 'belongs' to
-type APIBuilder func(t *testing.T, nFull int, storage []int) ([]TestNode, []TestStorageNode)
+type APIBuilder func(t *testing.T, nFull int, storage []StorageMiner) ([]TestNode, []TestStorageNode)
 type testSuite struct {
 	makeNodes APIBuilder
 }
@@ -39,25 +59,28 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("id", ts.testID)
 	t.Run("testConnectTwo", ts.testConnectTwo)
 	t.Run("testMining", ts.testMining)
+	t.Run("testMiningReal", ts.testMiningReal)
 }
 
+var OneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
+
 func (ts *testSuite) testVersion(t *testing.T) {
+	build.RunningNodeType = build.NodeFull
+
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{0})
+	apis, _ := ts.makeNodes(t, 1, OneMiner)
 	api := apis[0]
 
 	v, err := api.Version(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v.Version != build.BuildVersion {
-		t.Error("Version didn't work properly")
-	}
+	require.Equal(t, v.Version, build.BuildVersion)
 }
 
 func (ts *testSuite) testID(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{0})
+	apis, _ := ts.makeNodes(t, 1, OneMiner)
 	api := apis[0]
 
 	id, err := api.ID(ctx)
@@ -69,7 +92,7 @@ func (ts *testSuite) testID(t *testing.T) {
 
 func (ts *testSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 2, []int{0})
+	apis, _ := ts.makeNodes(t, 2, OneMiner)
 
 	p, err := apis[0].NetPeers(ctx)
 	if err != nil {

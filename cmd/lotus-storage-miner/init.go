@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,26 +12,40 @@ import (
 	"path/filepath"
 	"strconv"
 
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/docker/go-units"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-sectorbuilder"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-state-types/abi"
+	crypto2 "github.com/filecoin-project/go-state-types/crypto"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -40,7 +55,7 @@ import (
 
 var initCmd = &cli.Command{
 	Name:  "init",
-	Usage: "Initialize a lotus storage miner repo",
+	Usage: "Initialize a lotus miner repo",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "actor",
@@ -65,14 +80,18 @@ var initCmd = &cli.Command{
 			Aliases: []string{"o"},
 			Usage:   "owner key to use",
 		},
-		&cli.Uint64Flag{
+		&cli.StringFlag{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
-			Value: build.SectorSizes[0],
+			Value: units.BytesSize(float64(build.DefaultSectorSize())),
 		},
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:  "pre-sealed-sectors",
 			Usage: "specify set of presealed sectors for starting as a genesis miner",
+		},
+		&cli.StringFlag{
+			Name:  "pre-sealed-metadata",
+			Usage: "specify the metadata file for the presealed sectors",
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
@@ -82,19 +101,44 @@ var initCmd = &cli.Command{
 			Name:  "symlink-imported-sectors",
 			Usage: "attempt to symlink to presealed sectors instead of copying them into place",
 		},
+		&cli.BoolFlag{
+			Name:  "no-local-storage",
+			Usage: "don't use storageminer repo for sector storage",
+		},
+		&cli.StringFlag{
+			Name:  "gas-premium",
+			Usage: "set gas premium for initialization messages in AttoFIL",
+			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "select which address to send actor creation message from",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		log.Info("Initializing lotus storage miner")
+		log.Info("Initializing lotus miner")
 
-		ssize := cctx.Uint64("sector-size")
+		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		ssize := abi.SectorSize(sectorSizeInt)
+
+		gasPrice, err := types.BigFromString(cctx.String("gas-premium"))
+		if err != nil {
+			return xerrors.Errorf("failed to parse gas-price flag: %s", err)
+		}
 
 		symlink := cctx.Bool("symlink-imported-sectors")
 		if symlink {
 			log.Info("will attempt to symlink to imported sectors")
 		}
 
+		ctx := lcli.ReqContext(cctx)
+
 		log.Info("Checking proof parameters")
-		if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
+
+		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(ssize)); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -105,7 +149,6 @@ var initCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
 
 		log.Info("Checking full node sync status")
 
@@ -117,7 +160,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Checking if repo exists")
 
-		repoPath := cctx.String(FlagStorageRepo)
+		repoPath := cctx.String(FlagMinerRepo)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
@@ -128,7 +171,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 		if ok {
-			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagStorageRepo))
+			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagMinerRepo))
 		}
 
 		log.Info("Checking full node version")
@@ -138,8 +181,8 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if !v.APIVersion.EqMajorMinor(build.APIVersion) {
-			return xerrors.Errorf("Remote API version didn't match (local %s, remote %s)", build.APIVersion, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(build.FullAPIVersion) {
+			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", build.FullAPIVersion, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")
@@ -148,57 +191,61 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
-			pssb, err := homedir.Expand(pssb)
-			if err != nil {
-				return err
-			}
-
-			log.Infof("moving pre-sealed-sectors from %s into newly created storage miner repo", pssb)
+		{
 			lr, err := r.Lock(repo.StorageMiner)
 			if err != nil {
 				return err
 			}
-			mds, err := lr.Datastore("/metadata")
-			if err != nil {
-				return err
+
+			var localPaths []stores.LocalPath
+
+			if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
+				log.Infof("Setting up storage config with presealed sectors: %v", pssb)
+
+				for _, psp := range pssb {
+					psp, err := homedir.Expand(psp)
+					if err != nil {
+						return err
+					}
+					localPaths = append(localPaths, stores.LocalPath{
+						Path: psp,
+					})
+				}
 			}
 
-			bopts := badger.DefaultOptions
-			bopts.ReadOnly = true
-			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), &bopts)
-			if err != nil {
-				return err
+			if !cctx.Bool("no-local-storage") {
+				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+					ID:       stores.ID(uuid.New().String()),
+					Weight:   10,
+					CanSeal:  true,
+					CanStore: true,
+				}, "", "  ")
+				if err != nil {
+					return xerrors.Errorf("marshaling storage config: %w", err)
+				}
+
+				if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
+				}
+
+				localPaths = append(localPaths, stores.LocalPath{
+					Path: lr.Path(),
+				})
 			}
 
-			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:    ssize,
-				WorkerThreads: 2,
-				Dir:           pssb,
-			}, namespace.Wrap(oldmds, datastore.NewKey("/sectorbuilder")))
-			if err != nil {
-				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
+			if err := lr.SetStorage(func(sc *stores.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
+			}); err != nil {
+				return xerrors.Errorf("set storage config: %w", err)
 			}
 
-			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:    ssize,
-				WorkerThreads: 2,
-				Dir:           lr.Path(),
-			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
-			if err != nil {
-				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
-			}
-
-			if err := nsb.ImportFrom(oldsb, symlink); err != nil {
-				return err
-			}
 			if err := lr.Close(); err != nil {
-				return xerrors.Errorf("unlocking repo after preseal migration: %w", err)
+				return err
 			}
 		}
 
-		if err := storageMinerInit(ctx, cctx, api, r); err != nil {
-			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)
+		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice); err != nil {
+			log.Errorf("Failed to initialize lotus-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
 				return err
@@ -211,58 +258,70 @@ var initCmd = &cli.Command{
 		}
 
 		// TODO: Point to setting storage price, maybe do it interactively or something
-		log.Info("Storage miner successfully created, you can now start it with 'lotus-storage-miner run'")
+		log.Info("Miner successfully created, you can now start it with 'lotus-miner run'")
 
 		return nil
 	},
 }
 
-func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir string, maddr address.Address, mds dtypes.MetadataDS) error {
-	presealDir, err := homedir.Expand(presealDir)
+func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string, maddr address.Address, mds dtypes.MetadataDS) error {
+	metadata, err := homedir.Expand(metadata)
 	if err != nil {
 		return xerrors.Errorf("expanding preseal dir: %w", err)
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(presealDir, "pre-seal-"+maddr.String()+".json"))
+	b, err := ioutil.ReadFile(metadata)
 	if err != nil {
 		return xerrors.Errorf("reading preseal metadata: %w", err)
 	}
 
-	preseals := map[string]genesis.GenesisMiner{}
-
-	if err := json.Unmarshal(b, &preseals); err != nil {
+	psm := map[string]genesis.Miner{}
+	if err := json.Unmarshal(b, &psm); err != nil {
 		return xerrors.Errorf("unmarshaling preseal metadata: %w", err)
 	}
 
-	meta, ok := preseals[maddr.String()]
+	meta, ok := psm[maddr.String()]
 	if !ok {
-		return xerrors.New("got wrong preseal info")
+		return xerrors.Errorf("preseal file didn't contain metadata for miner %s", maddr)
 	}
 
+	maxSectorID := abi.SectorNumber(0)
 	for _, sector := range meta.Sectors {
-		sectorKey := datastore.NewKey(storage.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
+		sectorKey := datastore.NewKey(sealing.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
 
 		dealID, err := findMarketDealID(ctx, api, sector.Deal)
 		if err != nil {
 			return xerrors.Errorf("finding storage deal for pre-sealed sector %d: %w", sector.SectorID, err)
 		}
+		commD := sector.CommD
+		commR := sector.CommR
 
-		info := &storage.SectorInfo{
-			State:    lapi.Proving,
-			SectorID: sector.SectorID,
-			Pieces: []storage.Piece{
+		info := &sealing.SectorInfo{
+			State:        sealing.Proving,
+			SectorNumber: sector.SectorID,
+			Pieces: []sealing.Piece{
 				{
-					DealID: dealID,
-					Size:   meta.SectorSize,
-					CommP:  sector.CommD[:],
+					Piece: abi.PieceInfo{
+						Size:     abi.PaddedPieceSize(meta.SectorSize),
+						PieceCID: commD,
+					},
+					DealInfo: &sealing.DealInfo{
+						DealID: dealID,
+						DealSchedule: sealing.DealSchedule{
+							StartEpoch: sector.Deal.StartEpoch,
+							EndEpoch:   sector.Deal.EndEpoch,
+						},
+					},
 				},
 			},
-			CommD:            sector.CommD[:],
-			CommR:            sector.CommR[:],
+			CommD:            &commD,
+			CommR:            &commR,
 			Proof:            nil,
-			Ticket:           storage.SealTicket{},
+			TicketValue:      abi.SealRandomness{},
+			TicketEpoch:      0,
 			PreCommitMessage: nil,
-			Seed:             storage.SealSeed{},
+			SeedValue:        abi.InteractiveSealRandomness{},
+			SeedEpoch:        0,
 			CommitMessage:    nil,
 		}
 
@@ -275,22 +334,28 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			return err
 		}
 
-		proposalCid, err := sector.Deal.Cid()
+		if sector.SectorID > maxSectorID {
+			maxSectorID = sector.SectorID
+		}
+
+		/* // TODO: Import deals into market
+		pnd, err := cborutil.AsIpld(sector.Deal)
 		if err != nil {
 			return err
 		}
 
-		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
+		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(pnd.Cid().String())
 
 		deal := &deals.MinerDeal{
-			Proposal:    sector.Deal,
-			ProposalCid: proposalCid,
-			State:       lapi.DealComplete,
-			Ref:         proposalCid, // TODO: This is super wrong, but there
-			// are no params for CommP CIDs, we can't recover unixfs cid easily,
-			// and this isn't even used after the deal enters Complete state
-			DealID:   dealID,
-			SectorID: sector.SectorID,
+			MinerDeal: storagemarket.MinerDeal{
+				ClientDealProposal: sector.Deal,
+				ProposalCid: pnd.Cid(),
+				State:       storagemarket.StorageDealActive,
+				Ref:         &storagemarket.DataRef{Root: proposalCid}, // TODO: This is super wrong, but there
+				// are no params for CommP CIDs, we can't recover unixfs cid easily,
+				// and this isn't even used after the deal enters Complete state
+				DealID: dealID,
+			},
 		}
 
 		b, err = cborutil.Dump(deal)
@@ -300,36 +365,39 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 
 		if err := mds.Put(dealKey, b); err != nil {
 			return err
-		}
+		}*/
 	}
 
-	return nil
+	buf := make([]byte, binary.MaxVarintLen64)
+	size := binary.PutUvarint(buf, uint64(maxSectorID))
+	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
-func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDealProposal) (uint64, error) {
+func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market0.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
-	deals, err := api.StateMarketDeals(ctx, nil)
+	deals, err := api.StateMarketDeals(ctx, types.EmptyTSK)
 	if err != nil {
 		return 0, xerrors.Errorf("getting market deals: %w", err)
 	}
 
 	for k, v := range deals {
-		if bytes.Equal(v.PieceRef, deal.PieceRef) {
-			return strconv.ParseUint(k, 10, 64)
+		if v.Proposal.PieceCID.Equals(deal.PieceCID) {
+			id, err := strconv.ParseUint(k, 10, 64)
+			return abi.DealID(id), err
 		}
 	}
 
 	return 0, xerrors.New("deal not found")
 }
 
-func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo) error {
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt) error {
 	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
 	}
-	defer lr.Close()
+	defer lr.Close() //nolint:errcheck
 
 	log.Info("Initializing libp2p identity")
 
@@ -360,34 +428,63 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			sbcfg, err := modules.SectorBuilderConfig(lr.Path(), 2, false, false)(mds, api)
+			spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
 			if err != nil {
-				return xerrors.Errorf("getting genesis miner sector builder config: %w", err)
+				return err
 			}
-			sb, err := sectorbuilder.New(sbcfg, mds)
-			if err != nil {
-				return xerrors.Errorf("failed to set up sectorbuilder for genesis mining: %w", err)
-			}
-			epp := storage.NewElectionPoStProver(sb)
 
-			m := miner.NewMiner(api, epp)
+			mid, err := address.IDFromAddress(a)
+			if err != nil {
+				return xerrors.Errorf("getting id address: %w", err)
+			}
+
+			sa, err := modules.StorageAuth(ctx, api)
+			if err != nil {
+				return err
+			}
+
+			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), &ffiwrapper.Config{
+				SealProofType: spt,
+			}, sectorstorage.SealerConfig{
+				ParallelFetchLimit: 10,
+				AllowAddPiece:      true,
+				AllowPreCommit1:    true,
+				AllowPreCommit2:    true,
+				AllowCommit:        true,
+				AllowUnseal:        true,
+			}, nil, sa)
+			if err != nil {
+				return err
+			}
+			epp, err := storage.NewWinningPoStProver(api, smgr, ffiwrapper.ProofVerifier, dtypes.MinerID(mid))
+			if err != nil {
+				return err
+			}
+
+			if jrnl, err := journal.OpenFSJournal(lr, journal.DefaultDisabledEvents); err == nil {
+				journal.J = jrnl
+			} else {
+				return fmt.Errorf("failed to open filesystem journal: %w", err)
+			}
+
+			m := miner.NewMiner(api, epp, a, slashfilter.New(mds))
 			{
-				if err := m.Register(a); err != nil {
+				if err := m.Start(ctx); err != nil {
 					return xerrors.Errorf("failed to start up genesis miner: %w", err)
 				}
 
-				defer func() {
-					if err := m.Unregister(ctx, a); err != nil {
-						log.Error("failed to shut down storage miner: ", err)
-					}
-				}()
+				cerr := configureStorageMiner(ctx, api, a, peerid, gasPrice)
 
-				if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
-					return xerrors.Errorf("failed to configure storage miner: %w", err)
+				if err := m.Stop(ctx); err != nil {
+					log.Error("failed to shut down miner: ", err)
+				}
+
+				if cerr != nil {
+					return xerrors.Errorf("failed to configure miner: %w", cerr)
 				}
 			}
 
-			if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
+			if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
 				pssb, err := homedir.Expand(pssb)
 				if err != nil {
 					return err
@@ -403,21 +500,34 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			return nil
 		}
 
-		if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
-			return xerrors.Errorf("failed to configure storage miner: %w", err)
+		if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
+			pssb, err := homedir.Expand(pssb)
+			if err != nil {
+				return err
+			}
+
+			log.Infof("Importing pre-sealed sector metadata for %s", a)
+
+			if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+				return xerrors.Errorf("migrating presealed sector metadata: %w", err)
+			}
+		}
+
+		if err := configureStorageMiner(ctx, api, a, peerid, gasPrice); err != nil {
+			return xerrors.Errorf("failed to configure miner: %w", err)
 		}
 
 		addr = a
 	} else {
-		a, err := createStorageMiner(ctx, api, peerid, cctx)
+		a, err := createStorageMiner(ctx, api, peerid, gasPrice, cctx)
 		if err != nil {
-			return err
+			return xerrors.Errorf("creating miner failed: %w", err)
 		}
 
 		addr = a
 	}
 
-	log.Infof("Created new storage miner: %s", addr)
+	log.Infof("Created new miner: %s", addr)
 	if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
 		return err
 	}
@@ -451,48 +561,33 @@ func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
 	return pk, nil
 }
 
-func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.Address, peerid peer.ID) error {
-	// This really just needs to be an api call at this point...
-	recp, err := api.StateCall(ctx, &types.Message{
-		To:     addr,
-		From:   addr,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}, nil)
-	if err != nil {
-		return xerrors.Errorf("failed to get worker address: %w", err)
-	}
-
-	if recp.ExitCode != 0 {
-		return xerrors.Errorf("getWorkerAddr returned exit code %d", recp.ExitCode)
-	}
-
-	waddr, err := address.NewFromBytes(recp.Return)
+func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.Address, peerid peer.ID, gasPrice types.BigInt) error {
+	mi, err := api.StateMinerInfo(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getWorkerAddr returned bad address: %w", err)
 	}
 
-	enc, err := actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID: peerid})
+	enc, err := actors.SerializeParams(&miner0.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
 	if err != nil {
 		return err
 	}
 
 	msg := &types.Message{
-		To:       addr,
-		From:     waddr,
-		Method:   actors.MAMethods.UpdatePeerID,
-		Params:   enc,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(100000000),
+		To:         addr,
+		From:       mi.Worker,
+		Method:     builtin0.MethodsMiner.ChangePeerID,
+		Params:     enc,
+		Value:      types.NewInt(0),
+		GasPremium: gasPrice,
 	}
 
-	smsg, err := api.MpoolPushMessage(ctx, msg)
+	smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return err
 	}
 
 	log.Info("Waiting for message: ", smsg.Cid())
-	ret, err := api.StateWaitMsg(ctx, smsg.Cid())
+	ret, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
 	if err != nil {
 		return err
 	}
@@ -504,9 +599,10 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	return nil
 }
 
-func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, cctx *cli.Context) (addr address.Address, err error) {
+func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, gasPrice types.BigInt, cctx *cli.Context) (address.Address, error) {
 	log.Info("Creating StorageMarket.CreateStorageMiner message")
 
+	var err error
 	var owner address.Address
 	if cctx.String("owner") != "" {
 		owner, err = address.NewFromString(cctx.String("owner"))
@@ -517,47 +613,59 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
-	ssize := cctx.Uint64("sector-size")
+	ssize, err := units.RAMInBytes(cctx.String("sector-size"))
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to parse sector size: %w", err)
+	}
 
 	worker := owner
 	if cctx.String("worker") != "" {
 		worker, err = address.NewFromString(cctx.String("worker"))
 	} else if cctx.Bool("create-worker-key") { // TODO: Do we need to force this if owner is Secpk?
-		worker, err = api.WalletNew(ctx, types.KTBLS)
+		worker, err = api.WalletNew(ctx, crypto2.SigTypeBLS)
 	}
 	// TODO: Transfer some initial funds to worker
 	if err != nil {
 		return address.Undef, err
 	}
 
-	collateral, err := api.StatePledgeCollateral(ctx, nil)
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
 	if err != nil {
 		return address.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
-		Owner:      owner,
-		Worker:     worker,
-		SectorSize: ssize,
-		PeerID:     peerid,
+	params, err := actors.SerializeParams(&power0.CreateMinerParams{
+		Owner:         owner,
+		Worker:        worker,
+		SealProofType: spt,
+		Peer:          abi.PeerID(peerid),
 	})
 	if err != nil {
 		return address.Undef, err
 	}
 
-	createStorageMinerMsg := &types.Message{
-		To:    actors.StoragePowerAddress,
-		From:  owner,
-		Value: collateral,
-
-		Method: actors.SPAMethods.CreateStorageMiner,
-		Params: params,
-
-		GasLimit: types.NewInt(10000000),
-		GasPrice: types.NewInt(0),
+	sender := owner
+	if fromstr := cctx.String("from"); fromstr != "" {
+		faddr, err := address.NewFromString(fromstr)
+		if err != nil {
+			return address.Undef, fmt.Errorf("could not parse from address: %w", err)
+		}
+		sender = faddr
 	}
 
-	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg)
+	createStorageMinerMsg := &types.Message{
+		To:    builtin0.StoragePowerActorAddr,
+		From:  sender,
+		Value: big.Zero(),
+
+		Method: builtin0.MethodsPower.CreateMiner,
+		Params: params,
+
+		GasLimit:   0,
+		GasPremium: gasPrice,
+	}
+
+	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -565,20 +673,20 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	log.Infof("Pushed StorageMarket.CreateStorageMiner, %s to Mpool", signed.Cid())
 	log.Infof("Waiting for confirmation")
 
-	mw, err := api.StateWaitMsg(ctx, signed.Cid())
+	mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence)
 	if err != nil {
 		return address.Undef, err
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode)
+		return address.Undef, xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode)
 	}
 
-	addr, err = address.NewFromBytes(mw.Receipt.Return)
-	if err != nil {
+	var retval power0.CreateMinerReturn
+	if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
 		return address.Undef, err
 	}
 
-	log.Infof("New storage miners address is: %s", addr)
-	return addr, nil
+	log.Infof("New miners address is: %s (%s)", retval.IDAddress, retval.RobustAddress)
+	return retval.IDAddress, nil
 }

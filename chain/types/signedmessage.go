@@ -3,23 +3,23 @@ package types
 import (
 	"bytes"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 )
 
-func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
-	if m.Signature.Type == KTBLS {
-		return m.Message.ToStorageBlock()
+func (sm *SignedMessage) ToStorageBlock() (block.Block, error) {
+	if sm.Signature.Type == crypto.SigTypeBLS {
+		return sm.Message.ToStorageBlock()
 	}
 
-	data, err := m.Serialize()
+	data, err := sm.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
-	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
+	c, err := abi.CidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
 	}
@@ -27,12 +27,12 @@ func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
 	return block.NewBlockWithCid(data, c)
 }
 
-func (m *SignedMessage) Cid() cid.Cid {
-	if m.Signature.Type == KTBLS {
-		return m.Message.Cid()
+func (sm *SignedMessage) Cid() cid.Cid {
+	if sm.Signature.Type == crypto.SigTypeBLS {
+		return sm.Message.Cid()
 	}
 
-	sb, err := m.ToStorageBlock()
+	sb, err := sm.ToStorageBlock()
 	if err != nil {
 		panic(err)
 	}
@@ -42,7 +42,7 @@ func (m *SignedMessage) Cid() cid.Cid {
 
 type SignedMessage struct {
 	Message   Message
-	Signature Signature
+	Signature crypto.Signature
 }
 
 func DecodeSignedMessage(data []byte) (*SignedMessage, error) {
@@ -60,6 +60,14 @@ func (sm *SignedMessage) Serialize() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func (sm *SignedMessage) ChainLength() int {
+	ser, err := sm.Serialize()
+	if err != nil {
+		panic(err)
+	}
+	return len(ser)
 }
 
 func (sm *SignedMessage) Size() int {

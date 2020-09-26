@@ -63,17 +63,13 @@
     "title": "Proof-of-Spacetime(s)",
     "value": "Filecoin is a protocol token whose blockchain runs on a novel proof, called Proof-of-Spacetime, where blocks are created by miners that are storing data."
   },
-  "lotus-testnet": {
-    "title": "Filecoin Testnet",
-    "value": "Until we launch, we are making lots of changes to Lotus. The Testnet is expected to bring a few significant fixes/improvements. During Testnet, you can retrieve test filecoin from our network faucet to use as collateral to start mining. Test filecoin do not have any value – the official filecoin tokens will not be released until Mainnet launch."
-  },
   "filecoin-testnet": {
     "title": "Filecoin Testnet",
     "value": "Until we launch, we are making lots of changes to Lotus. The Testnet is expected to bring a few significant fixes/improvements. During Testnet, you can retrieve test filecoin from our network faucet to use as collateral to start mining. Test filecoin do not have any value – the official filecoin tokens will not be released until Mainnet launch."
   },
   "filecoin-decentralized-storage-market": {
     "title": "Filecoin Decentralized Storage Market",
-    "value": "Storage Market subsystem is the data entry point into the network. Storage miners only earn power from data stored in a storage deal and all deals live on the Filecoin network."
+    "value": "Storage Market subsystem is the data entry point into the network. Miners only earn power from data stored in a storage deal and all deals live on the Filecoin network."
   },
   "filecoin-proof-parameters": {
     "title": "Filecoin Proof Parameters",
@@ -99,13 +95,13 @@
     "title": "Miner (Block Producer)",
     "value": "The Block Producer Miner's logic. It currently shares an interface and process with the Lotus Node. A Block Producer chooses which messages to include in a block and is rewarded according to each message’s gas price and consumption, forming a market."
   },
-  "lotus-storage-miner": {
-    "title": "Storage Miner (lotus-storage-miner)",
-    "value": "The Storage Miner's logic. It has its own dedicated process. Contributes to the network through Sector commitments and Proofs of Spacetime to prove that it is storing the sectors it has commited to."
+  "lotus-miner": {
+    "title": "Miner (lotus-miner)",
+    "value": "The Miner's logic. It has its own dedicated process. Contributes to the network through Sector commitments and Proofs of Spacetime to prove that it is storing the sectors it has commited to."
   },
   "swarm-port": {
     "title": "Swarm Port (Libp2p)",
-    "value": "The LibP2P Swarm manages groups of connections to peers, handles incoming and outgoing streams, and is part of the storage miners implementation. The port value is part of the Host interface."
+    "value": "The LibP2P Swarm manages groups of connections to peers, handles incoming and outgoing streams, and is part of the miners implementation. The port value is part of the Host interface."
   },
   "daemon": {
     "title": "Lotus Daemon",
@@ -133,7 +129,7 @@
   },
   "total-network-power": {
     "title": "Total Network Power",
-    "value": "A reference to all the Power Tables for every subchain, accounting for each Lotus Storage Miner on chain."
+    "value": "A reference to all the Power Tables for every subchain, accounting for each Lotus Miner on chain."
   },
   "chain-block-height": {
     "title": "Chain Block Height",

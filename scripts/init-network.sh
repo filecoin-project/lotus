@@ -3,7 +3,7 @@
 set -xeo
 
 NUM_SECTORS=2
-SECTOR_SIZE=1024
+SECTOR_SIZE=2KiB
 
 
 sdt0111=$(mktemp -d)
@@ -14,9 +14,9 @@ staging=$(mktemp -d)
 
 make debug
 
-./lotus-seed --sectorbuilder-dir="${sdt0111}" pre-seal --miner-addr=t0111 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
-./lotus-seed --sectorbuilder-dir="${sdt0222}" pre-seal --miner-addr=t0222 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
-./lotus-seed --sectorbuilder-dir="${sdt0333}" pre-seal --miner-addr=t0333 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
+./lotus-seed --sector-dir="${sdt0111}" pre-seal --miner-addr=t0111 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
+./lotus-seed --sector-dir="${sdt0222}" pre-seal --miner-addr=t0222 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
+./lotus-seed --sector-dir="${sdt0333}" pre-seal --miner-addr=t0333 --sector-offset=0 --sector-size=${SECTOR_SIZE} --num-sectors=${NUM_SECTORS} &
 
 wait
 
@@ -86,12 +86,12 @@ mdt0111=$(mktemp -d)
 mdt0222=$(mktemp -d)
 mdt0333=$(mktemp -d)
 
-env LOTUS_PATH="${ldt0111}" LOTUS_STORAGE_PATH="${mdt0111}" ./lotus-storage-miner init --genesis-miner --actor=t0111 --pre-sealed-sectors="${sdt0111}" --nosync=true --sector-size="${SECTOR_SIZE}" || true
-env LOTUS_PATH="${ldt0111}" LOTUS_STORAGE_PATH="${mdt0111}" ./lotus-storage-miner run --nosync &
+env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" ./lotus-miner init --genesis-miner --actor=t0111 --pre-sealed-sectors="${sdt0111}" --pre-sealed-metadata="${sdt0111}/pre-seal-t0111.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
+env LOTUS_PATH="${ldt0111}" LOTUS_MINER_PATH="${mdt0111}" ./lotus-miner run --nosync &
 mpid=$!
 
-env LOTUS_PATH="${ldt0222}" LOTUS_STORAGE_PATH="${mdt0222}" ./lotus-storage-miner init                 --actor=t0222 --pre-sealed-sectors="${sdt0222}" --nosync=true --sector-size="${SECTOR_SIZE}" || true
-env LOTUS_PATH="${ldt0333}" LOTUS_STORAGE_PATH="${mdt0333}" ./lotus-storage-miner init                 --actor=t0333 --pre-sealed-sectors="${sdt0333}" --nosync=true --sector-size="${SECTOR_SIZE}" || true
+env LOTUS_PATH="${ldt0222}" LOTUS_MINER_PATH="${mdt0222}" ./lotus-miner init                 --actor=t0222 --pre-sealed-sectors="${sdt0222}" --pre-sealed-metadata="${sdt0222}/pre-seal-t0222.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
+env LOTUS_PATH="${ldt0333}" LOTUS_MINER_PATH="${mdt0333}" ./lotus-miner init                 --actor=t0333 --pre-sealed-sectors="${sdt0333}" --pre-sealed-metadata="${sdt0333}/pre-seal-t0333.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
 
 kill $mpid
 wait $mpid

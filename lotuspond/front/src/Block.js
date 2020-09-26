@@ -70,6 +70,8 @@ class Block extends React.Component {
             <span>&nbsp;<Address client={this.props.conn} short={true} addr="t01" mountWindow={this.props.mountWindow}/></span>
             <span>&nbsp;<Address client={this.props.conn} short={true} addr="t02" mountWindow={this.props.mountWindow}/></span>
             <span>&nbsp;<Address client={this.props.conn} short={true} addr="t03" mountWindow={this.props.mountWindow}/></span>
+            <span>&nbsp;<Address client={this.props.conn} short={true} addr="t04" mountWindow={this.props.mountWindow}/></span>
+            <span>&nbsp;<Address client={this.props.conn} short={true} addr="t05" mountWindow={this.props.mountWindow}/></span>
             <span>&nbsp;<Address client={this.props.conn} short={true} addr="t099" mountWindow={this.props.mountWindow}/></span>
           </div>
           <div>----</div>

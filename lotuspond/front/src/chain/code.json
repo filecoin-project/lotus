@@ -1,0 +1,13 @@
+{
+  "account": "fil/1/account",
+  "cron": "fil/1/cron",
+  "init": "fil/1/init",
+  "market": "fil/1/storagemarket",
+  "miner": "fil/1/storageminer",
+  "multisig": "fil/1/multisig",
+  "paych": "fil/1/paymentchannel",
+  "power": "fil/1/storagepower",
+  "reward": "fil/1/reward",
+  "system": "fil/1/system",
+  "verifreg": "fil/1/verifiedregistry"
+}

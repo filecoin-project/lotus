@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"io"
 	"io/ioutil"
@@ -9,14 +10,15 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
 type NodeState int
 
 const (
-	NodeUnknown = iota
+	NodeUnknown = iota //nolint:deadcode
 	NodeRunning
 	NodeStopped
 )
@@ -31,7 +33,7 @@ type api struct {
 type nodeInfo struct {
 	Repo    string
 	ID      int32
-	ApiPort int32
+	APIPort int32
 	State   NodeState
 
 	FullNode string // only for storage nodes
@@ -128,9 +130,9 @@ type client struct {
 	Nodes func() []nodeInfo
 }
 
-func apiClient() (*client, error) {
+func apiClient(ctx context.Context) (*client, error) {
 	c := &client{}
-	if _, err := jsonrpc.NewClient("ws://"+listenAddr+"/rpc/v0", "Pond", c, nil); err != nil {
+	if _, err := jsonrpc.NewClient(ctx, "ws://"+listenAddr+"/rpc/v0", "Pond", c, nil); err != nil {
 		return nil, err
 	}
 	return c, nil

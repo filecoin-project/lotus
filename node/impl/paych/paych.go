@@ -2,18 +2,19 @@ package paych
 
 import (
 	"context"
-	"fmt"
+
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	full "github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 type PaychAPI struct {
@@ -23,19 +24,31 @@ type PaychAPI struct {
 	full.WalletAPI
 	full.ChainAPI
 
-	PaychMgr *paych.Manager
+	PaychMgr *paychmgr.Manager
 }
 
-func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error) {
-	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, ensureFunds)
+func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
+	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.ChannelInfo{
-		Channel:        ch,
-		ChannelMessage: mcid,
+		Channel:      ch,
+		WaitSentinel: mcid,
 	}, nil
+}
+
+func (a *PaychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
+	return a.PaychMgr.AvailableFunds(ch)
+}
+
+func (a *PaychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error) {
+	return a.PaychMgr.AvailableFundsByFromTo(from, to)
+}
+
+func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) {
+	return a.PaychMgr.GetPaychWaitReady(ctx, sentinel)
 }
 
 func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
@@ -57,33 +70,32 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		return nil, err
 	}
 
-	svs := make([]*types.SignedVoucher, len(vouchers))
+	svs := make([]*paych.SignedVoucher, len(vouchers))
 
 	for i, v := range vouchers {
-		sv, err := a.paychVoucherCreate(ctx, ch.Channel, types.SignedVoucher{
+		sv, err := a.PaychMgr.CreateVoucher(ctx, ch.Channel, paych.SignedVoucher{
 			Amount: v.Amount,
 			Lane:   lane,
 
-			Extra:          v.Extra,
-			TimeLock:       v.TimeLock,
-			MinCloseHeight: v.MinClose,
+			Extra:           v.Extra,
+			TimeLockMin:     v.TimeLockMin,
+			TimeLockMax:     v.TimeLockMax,
+			MinSettleHeight: v.MinSettle,
 		})
 		if err != nil {
 			return nil, err
 		}
+		if sv.Voucher == nil {
+			return nil, xerrors.Errorf("Could not create voucher - shortfall of %d", sv.Shortfall)
+		}
 
-		svs[i] = sv
-	}
-
-	var pchCid *cid.Cid
-	if ch.ChannelMessage != cid.Undef {
-		pchCid = &ch.ChannelMessage
+		svs[i] = sv.Voucher
 	}
 
 	return &api.PaymentInfo{
-		Channel:        ch.Channel,
-		ChannelMessage: pchCid,
-		Vouchers:       svs,
+		Channel:      ch.Channel,
+		WaitSentinel: ch.WaitSentinel,
+		Vouchers:     svs,
 	}, nil
 }
 
@@ -102,52 +114,24 @@ func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.P
 	}, nil
 }
 
-func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Cid, error) {
-	ci, err := a.PaychMgr.GetChannelInfo(addr)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	nonce, err := a.MpoolGetNonce(ctx, ci.Control)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	msg := &types.Message{
-		To:     addr,
-		From:   ci.Control,
-		Value:  types.NewInt(0),
-		Method: actors.PCAMethods.Close,
-		Nonce:  nonce,
-
-		GasLimit: types.NewInt(500),
-		GasPrice: types.NewInt(0),
-	}
-
-	smsg, err := a.WalletSignMessage(ctx, ci.Control, msg)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if _, err := a.MpoolPush(ctx, smsg); err != nil {
-		return cid.Undef, err
-	}
-
-	return smsg.Cid(), nil
+func (a *PaychAPI) PaychSettle(ctx context.Context, addr address.Address) (cid.Cid, error) {
+	return a.PaychMgr.Settle(ctx, addr)
 }
 
-func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+func (a *PaychAPI) PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error) {
+	return a.PaychMgr.Collect(ctx, addr)
+}
+
+func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
 	return a.PaychMgr.CheckVoucherValid(ctx, ch, sv)
 }
 
-func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *types.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	return a.PaychMgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
 }
 
-func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
-	_ = a.PaychMgr.TrackInboundChannel(ctx, ch) // TODO: expose those calls
-
-	return a.PaychMgr.AddVoucher(ctx, ch, sv, proof, minDelta)
+func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+	return a.PaychMgr.AddVoucherInbound(ctx, ch, sv, proof, minDelta)
 }
 
 // PaychVoucherCreate creates a new signed voucher on the given payment channel
@@ -155,50 +139,19 @@ func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *
 // that will be used to create the voucher, so if previous vouchers exist, the
 // actual additional value of this voucher will only be the difference between
 // the two.
-func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
-	return a.paychVoucherCreate(ctx, pch, types.SignedVoucher{Amount: amt, Lane: lane})
+// If there are insufficient funds in the channel to create the voucher,
+// returns a nil voucher and the shortfall.
+func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*api.VoucherCreateResult, error) {
+	return a.PaychMgr.CreateVoucher(ctx, pch, paych.SignedVoucher{Amount: amt, Lane: lane})
 }
 
-func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, voucher types.SignedVoucher) (*types.SignedVoucher, error) {
-	ci, err := a.PaychMgr.GetChannelInfo(pch)
-	if err != nil {
-		return nil, xerrors.Errorf("get channel info: %w", err)
-	}
-
-	nonce, err := a.PaychMgr.NextNonceForLane(ctx, pch, voucher.Lane)
-	if err != nil {
-		return nil, xerrors.Errorf("getting next nonce for lane: %w", err)
-	}
-
-	sv := &voucher
-	sv.Nonce = nonce
-
-	vb, err := sv.SigningBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	sig, err := a.WalletSign(ctx, ci.Control, vb)
-	if err != nil {
-		return nil, err
-	}
-
-	sv.Signature = sig
-
-	if _, err := a.PaychMgr.AddVoucher(ctx, pch, sv, nil, types.NewInt(0)); err != nil {
-		return nil, xerrors.Errorf("failed to persist voucher: %w", err)
-	}
-
-	return sv, nil
-}
-
-func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*types.SignedVoucher, error) {
+func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
 	vi, err := a.PaychMgr.ListVouchers(ctx, pch)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]*types.SignedVoucher, len(vi))
+	out := make([]*paych.SignedVoucher, len(vi))
 	for k, v := range vi {
 		out[k] = v.Voucher
 	}
@@ -206,48 +159,6 @@ func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([
 	return out, nil
 }
 
-func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *types.SignedVoucher) (cid.Cid, error) {
-	ci, err := a.PaychMgr.GetChannelInfo(ch)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	nonce, err := a.MpoolGetNonce(ctx, ci.Control)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if sv.Extra != nil || len(sv.SecretPreimage) > 0 {
-		return cid.Undef, fmt.Errorf("cant handle more advanced payment channel stuff yet")
-	}
-
-	enc, err := actors.SerializeParams(&actors.PCAUpdateChannelStateParams{
-		Sv: *sv,
-	})
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	msg := &types.Message{
-		From:     ci.Control,
-		To:       ch,
-		Value:    types.NewInt(0),
-		Nonce:    nonce,
-		Method:   actors.PCAMethods.UpdateChannelState,
-		Params:   enc,
-		GasLimit: types.NewInt(100000),
-		GasPrice: types.NewInt(0),
-	}
-
-	smsg, err := a.WalletSignMessage(ctx, ci.Control, msg)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if _, err := a.MpoolPush(ctx, smsg); err != nil {
-		return cid.Undef, err
-	}
-
-	// TODO: should we wait for it...?
-	return smsg.Cid(), nil
+func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+	return a.PaychMgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }

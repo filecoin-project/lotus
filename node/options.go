@@ -84,6 +84,15 @@ func Unset(typ interface{}) Option {
 	}
 }
 
+// From(*T) -> func(t T) T {return t}
+func From(typ interface{}) interface{} {
+	rt := []reflect.Type{reflect.TypeOf(typ).Elem()}
+	ft := reflect.FuncOf(rt, rt, false)
+	return reflect.MakeFunc(ft, func(args []reflect.Value) (results []reflect.Value) {
+		return args
+	}).Interface()
+}
+
 // from go-ipfs
 // as casts input constructor to a given interface (if a value is given, it
 // wraps it into a constructor).
@@ -129,8 +138,17 @@ func as(in interface{}, as interface{}) interface{} {
 
 	return reflect.MakeFunc(ctype, func(args []reflect.Value) (results []reflect.Value) {
 		outs := reflect.ValueOf(in).Call(args)
+
 		out := reflect.New(outType.Elem())
-		out.Elem().Set(outs[0])
+		if outs[0].Type().AssignableTo(outType.Elem()) {
+			// Out: Iface = In: *Struct; Out: Iface = In: OtherIface
+			out.Elem().Set(outs[0])
+		} else {
+			// Out: Iface = &(In: Struct)
+			t := reflect.New(outs[0].Type())
+			t.Elem().Set(outs[0])
+			out.Elem().Set(t)
+		}
 		outs[0] = out.Elem()
 
 		return outs

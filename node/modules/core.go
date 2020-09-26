@@ -3,20 +3,25 @@ package modules
 import (
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/lotus/api/apistruct"
+	"errors"
 	"io"
 	"io/ioutil"
 
+	"github.com/gbrlsnchs/jwt/v3"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
+	record "github.com/libp2p/go-libp2p-record"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/addrutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/gbrlsnchs/jwt/v3"
-	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	record "github.com/libp2p/go-libp2p-record"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("modules")
@@ -30,15 +35,17 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	}
 }
 
-const JWTSecretName = "auth-jwt-private"
+const JWTSecretName = "auth-jwt-private"  //nolint:gosec
+const KTJwtHmacSecret = "jwt-hmac-secret" //nolint:gosec
 
-type jwtPayload struct {
-	Allow []string
+type JwtPayload struct {
+	Allow []auth.Permission
 }
 
 func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, error) {
 	key, err := keystore.Get(JWTSecretName)
-	if err != nil {
+
+	if errors.Is(err, types.ErrKeyInfoNotFound) {
 		log.Warn("Generating new API secret")
 
 		sk, err := ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
@@ -47,7 +54,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 		}
 
 		key = types.KeyInfo{
-			Type:       "jwt-hmac-secret",
+			Type:       KTJwtHmacSecret,
 			PrivateKey: sk,
 		}
 
@@ -56,7 +63,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 		}
 
 		// TODO: make this configurable
-		p := jwtPayload{
+		p := JwtPayload{
 			Allow: apistruct.AllPermissions,
 		}
 
@@ -68,6 +75,8 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 		if err := lr.SetAPIToken(cliToken); err != nil {
 			return nil, err
 		}
+	} else if err != nil {
+		return nil, xerrors.Errorf("could not get JWT Token: %w", err)
 	}
 
 	return (*dtypes.APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
@@ -81,4 +90,18 @@ func ConfigBootstrap(peers []string) func() (dtypes.BootstrapPeers, error) {
 
 func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
 	return build.BuiltinBootstrap()
+}
+
+func DrandBootstrap(ds dtypes.DrandSchedule) (dtypes.DrandBootstrap, error) {
+	// TODO: retry resolving, don't fail if at least one resolve succeeds
+	res := []peer.AddrInfo{}
+	for _, d := range ds {
+		addrs, err := addrutil.ParseAddresses(context.TODO(), d.Config.Relays)
+		if err != nil {
+			log.Errorf("reoslving drand relays addresses: %+v", err)
+			return res, nil
+		}
+		res = append(res, addrs...)
+	}
+	return res, nil
 }

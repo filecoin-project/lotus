@@ -3,29 +3,32 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"golang.org/x/xerrors"
+
+	"contrib.go.opencensus.io/exporter/prometheus"
+
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/auth"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
-
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("main")
 
-func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) error {
+func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownCh <-chan struct{}) error {
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(a))
 
@@ -43,6 +46,15 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) erro
 
 	http.Handle("/rest/v0/import", importAH)
 
+	exporter, err := prometheus.NewExporter(prometheus.Options{
+		Namespace: "lotus",
+	})
+	if err != nil {
+		log.Fatalf("could not create the prometheus stats exporter: %v", err)
+	}
+
+	http.Handle("/debug/metrics", exporter)
+
 	lst, err := manet.Listen(addr)
 	if err != nil {
 		return xerrors.Errorf("could not listen: %w", err)
@@ -50,19 +62,35 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) erro
 
 	srv := &http.Server{Handler: http.DefaultServeMux}
 
-	sigChan := make(chan os.Signal, 2)
+	sigCh := make(chan os.Signal, 2)
+	shutdownDone := make(chan struct{})
 	go func() {
-		<-sigChan
+		select {
+		case sig := <-sigCh:
+			log.Warnw("received shutdown", "signal", sig)
+		case <-shutdownCh:
+			log.Warn("received shutdown")
+		}
+
+		log.Warn("Shutting down...")
 		if err := srv.Shutdown(context.TODO()); err != nil {
 			log.Errorf("shutting down RPC server failed: %s", err)
 		}
 		if err := stop(context.TODO()); err != nil {
 			log.Errorf("graceful shutting down failed: %s", err)
 		}
+		log.Warn("Graceful shutdown successful")
+		_ = log.Sync() //nolint:errcheck
+		close(shutdownDone)
 	}()
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 
-	return srv.Serve(manet.NetListener(lst))
+	err = srv.Serve(manet.NetListener(lst))
+	if err == http.ErrServerClosed {
+		<-shutdownDone
+		return nil
+	}
+	return err
 }
 
 func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {
@@ -71,16 +99,16 @@ func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(404)
 			return
 		}
-		if !apistruct.HasPerm(r.Context(), apistruct.PermWrite) {
+		if !auth.HasPerm(r.Context(), nil, apistruct.PermWrite) {
 			w.WriteHeader(401)
-			json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
+			_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 			return
 		}
 
 		c, err := a.ClientImportLocal(r.Context(), r.Body)
 		if err != nil {
 			w.WriteHeader(500)
-			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			_ = json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
 			return
 		}
 		w.WriteHeader(200)
