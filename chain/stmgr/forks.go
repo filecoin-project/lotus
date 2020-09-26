@@ -53,10 +53,6 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 	return retCid, nil
 }
 
-type forEachTree interface {
-	ForEach(func(address.Address, *types.Actor) error) error
-}
-
 func doTransfer(cb ExecCallback, tree types.StateTree, from, to address.Address, amt abi.TokenAmount) error {
 	fromAct, err := tree.GetActor(from)
 	if err != nil {
