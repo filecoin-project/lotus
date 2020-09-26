@@ -149,7 +149,7 @@ func (m *Miner) mine(ctx context.Context) {
 	defer span.End()
 
 	var lastBase MiningBase
-
+minerLoop:
 	for {
 		select {
 		case <-m.stop:
@@ -171,7 +171,7 @@ func (m *Miner) mine(ctx context.Context) {
 			if err != nil {
 				log.Errorf("failed to get best mining candidate: %s", err)
 				if !m.niceSleep(time.Second * 5) {
-					break
+					continue minerLoop
 				}
 				continue
 			}
@@ -203,7 +203,7 @@ func (m *Miner) mine(ctx context.Context) {
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
 				if !m.niceSleep(time.Second) {
-					break
+					continue minerLoop
 				}
 				continue
 			}
@@ -214,7 +214,7 @@ func (m *Miner) mine(ctx context.Context) {
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
 			if !m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second) {
-				break
+				continue minerLoop
 			}
 			continue
 		}
@@ -225,7 +225,7 @@ func (m *Miner) mine(ctx context.Context) {
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
 			if !m.niceSleep(time.Second) {
-				break
+				continue minerLoop
 			}
 			onDone(false, 0, err)
 			continue

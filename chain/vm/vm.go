@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 	"time"
 
 	block "github.com/ipfs/go-block-format"
@@ -39,6 +40,12 @@ import (
 var log = logging.Logger("vm")
 var actorLog = logging.Logger("actors")
 var gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
+
+// stat counters
+var (
+	StatSends   uint64
+	StatApplied uint64
+)
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
@@ -204,6 +211,8 @@ type ApplyRet struct {
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	gasCharge *GasCharge, start time.Time) ([]byte, aerrors.ActorError, *Runtime) {
 
+	defer atomic.AddUint64(&StatSends, 1)
+
 	st := vm.cstate
 
 	origin := msg.From
@@ -312,6 +321,7 @@ func checkMessage(msg *types.Message) error {
 
 func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
 	ret, actorErr, rt := vm.send(ctx, msg, nil, nil, start)
 	rt.finilizeGasTracing()
 	return &ApplyRet{
@@ -331,6 +341,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	start := build.Clock.Now()
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
+	defer atomic.AddUint64(&StatApplied, 1)
 	msg := cmsg.VMMessage()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
@@ -546,7 +557,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := Copy(from, to, root); err != nil {
+	if err := Copy(ctx, from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
@@ -600,9 +611,18 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 	}
 }
 
-func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
+func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
+	ctx, span := trace.StartSpan(ctx, "vm.Copy") // nolint
+	defer span.End()
+
+	var numBlocks int
+	var totalCopySize int
+
 	var batch []block.Block
 	batchCp := func(blk block.Block) error {
+		numBlocks++
+		totalCopySize += len(blk.RawData())
+
 		batch = append(batch, blk)
 		if len(batch) > 100 {
 			if err := to.PutMany(batch); err != nil {
@@ -622,6 +642,11 @@ func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
 			return xerrors.Errorf("batch put in copy: %w", err)
 		}
 	}
+
+	span.AddAttributes(
+		trace.Int64Attribute("numBlocks", int64(numBlocks)),
+		trace.Int64Attribute("copySize", int64(totalCopySize)),
+	)
 
 	return nil
 }

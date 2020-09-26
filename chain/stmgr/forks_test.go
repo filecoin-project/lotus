@@ -8,18 +8,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
@@ -28,17 +25,16 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 func init() {
-	miner0.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	power0.ConsensusMinerMinPower = big.NewInt(2048)
-	verifreg0.MinVerifiedDealSize = big.NewInt(256)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
 const testForkHeight = 40
@@ -119,33 +115,38 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree, ts *types.TipSet) error {
+	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
 		cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
+
+		st, err := sm.StateTree(root)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
+		}
 
 		act, err := st.GetActor(taddr)
 		if err != nil {
-			return err
+			return cid.Undef, err
 		}
 
 		var tas testActorState
 		if err := cst.Get(ctx, act.Head, &tas); err != nil {
-			return xerrors.Errorf("in fork handler, failed to run get: %w", err)
+			return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
 		}
 
 		tas.HasUpgraded = 55
 
 		ns, err := cst.Put(ctx, &tas)
 		if err != nil {
-			return err
+			return cid.Undef, err
 		}
 
 		act.Head = ns
 
 		if err := st.SetActor(taddr, act); err != nil {
-			return err
+			return cid.Undef, err
 		}
 
-		return nil
+		return st.Flush(ctx)
 	}
 
 	inv.Register(builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{})

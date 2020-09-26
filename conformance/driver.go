@@ -122,6 +122,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
 func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch abi.ChainEpoch, msg *types.Message) (*vm.ApplyRet, cid.Cid, error) {
+	// dummy state manager; only to reference the GetNetworkVersion method, which does not depend on state.
+	sm := new(stmgr.StateManager)
 	vmOpts := &vm.VMOpts{
 		StateBase:      preroot,
 		Epoch:          epoch,
@@ -130,6 +132,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 		Syscalls:       mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), // TODO always succeeds; need more flexibility.
 		CircSupplyCalc: nil,
 		BaseFee:        BaseFee,
+		NtwkVersion:    sm.GetNtwkVersion,
 	}
 
 	lvm, err := vm.NewVM(context.TODO(), vmOpts)
