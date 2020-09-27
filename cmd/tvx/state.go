@@ -116,8 +116,8 @@ func (sg *StateSurgeon) GetAccessedActors(ctx context.Context, a api.FullNode, m
 	recur = func(trace *types.ExecutionTrace) {
 		accessed[trace.Msg.To] = struct{}{}
 		accessed[trace.Msg.From] = struct{}{}
-		for _, s := range trace.Subcalls {
-			recur(&s)
+		for i := range trace.Subcalls {
+			recur(&trace.Subcalls[i])
 		}
 	}
 	recur(&trace.ExecutionTrace)

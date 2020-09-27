@@ -22,8 +22,8 @@ import (
 var apiEndpoint string
 
 var apiFlag = cli.StringFlag{
-	Name:        "api",
-	Usage:       "json-rpc api endpoint, formatted as [token]:multiaddr;" +
+	Name: "api",
+	Usage: "json-rpc api endpoint, formatted as [token]:multiaddr;" +
 		"tvx uses unpriviliged operations, so the token may be omitted," +
 		"but permissions may change in the future",
 	EnvVars:     []string{"FULLNODE_API_INFO"},
