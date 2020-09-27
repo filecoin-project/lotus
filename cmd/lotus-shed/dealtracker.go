@@ -26,6 +26,8 @@ var resolvedWallets = new(sync.Map)
 func init() {
 	for _, a := range []string{
 		"t0100", // client for genesis miner
+		"t0101", // client for genesis miner
+		"t0102", // client for genesis miner
 		"t0112", // client for genesis miner
 		"t0113", // client for genesis miner
 		"t0114", // client for genesis miner
@@ -201,25 +203,27 @@ func (dss *dealStatsServer) filteredDealList() (int64, map[string]dealInfo) {
 		return 0, nil
 	}
 
-	// Exclude any address associated with a miner
-	miners, err := dss.api.StateListMiners(ctx, head.Key())
-	if err != nil {
-		log.Warnf("failed to get miner list: %s", err)
-		return 0, nil
-	}
-	for _, m := range miners {
-		info, err := dss.api.StateMinerInfo(ctx, m, head.Key())
-		if err != nil {
-			log.Warnf("failed to get info for known miner '%s': %s", m, err)
-			continue
-		}
+	// Disabled as per @pooja's request
+	//
+	// // Exclude any address associated with a miner
+	// miners, err := dss.api.StateListMiners(ctx, head.Key())
+	// if err != nil {
+	// 	log.Warnf("failed to get miner list: %s", err)
+	// 	return 0, nil
+	// }
+	// for _, m := range miners {
+	// 	info, err := dss.api.StateMinerInfo(ctx, m, head.Key())
+	// 	if err != nil {
+	// 		log.Warnf("failed to get info for known miner '%s': %s", m, err)
+	// 		continue
+	// 	}
 
-		knownFiltered.Store(info.Owner, true)
-		knownFiltered.Store(info.Worker, true)
-		for _, a := range info.ControlAddresses {
-			knownFiltered.Store(a, true)
-		}
-	}
+	// 	knownFiltered.Store(info.Owner, true)
+	// 	knownFiltered.Store(info.Worker, true)
+	// 	for _, a := range info.ControlAddresses {
+	// 		knownFiltered.Store(a, true)
+	// 	}
+	// }
 
 	deals, err := dss.api.StateMarketDeals(ctx, head.Key())
 	if err != nil {
