@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/crypto"
 
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -154,7 +155,12 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 		return nil, cid.Undef, err
 	}
 
-	root, err := lvm.Flush(d.ctx)
+	// do not flush the VM, as this forces a recursive copy to the blockstore,
+	// walking the full state tree, which we don't require.
+	// root, err := lvm.Flush(d.ctx)
+	//
+	// instead, flush the pending writes on the state tree.
+	root, err := lvm.StateTree().(*state.StateTree).Flush(d.ctx)
 	return ret, root, err
 }
 
