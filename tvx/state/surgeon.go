@@ -9,12 +9,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
@@ -54,17 +52,12 @@ func (sg *Surgeon) GetStateTreeRootFromTipset(tsk types.TipSetKey) (cid.Cid, err
 // other system actors like the power actor and the market actor.
 func (sg *Surgeon) GetMaskedStateTree(previousRoot cid.Cid, retain []address.Address) (cid.Cid, error) {
 	// TODO: this will need to be parameterized on network version.
-	stateTree, err := state.NewStateTree(sg.stores.CBORStore, builtin.Version0)
+	st, err := state.LoadStateTree(sg.stores.CBORStore, previousRoot)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	initActor, initState, err := sg.loadInitActor(previousRoot)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	resolved, err := sg.resolveAddresses(retain, initState)
+	initActor, initState, err := sg.loadInitActor(st)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -74,17 +67,23 @@ func (sg *Surgeon) GetMaskedStateTree(previousRoot cid.Cid, retain []address.Add
 		return cid.Undef, err
 	}
 
-	err = sg.saveInitActor(initActor, initState, stateTree)
+	err = sg.saveInitActor(initActor, initState, st)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	err = sg.pluckActorStates(previousRoot, resolved, stateTree)
+	// resolve all addresses to ID addresses.
+	resolved, err := sg.resolveAddresses(retain, initState)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	root, err := stateTree.Flush(sg.ctx)
+	st, err = sg.transplantActors(st, resolved)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	root, err := st.Flush(sg.ctx)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -120,6 +119,7 @@ func (sg *Surgeon) GetAccessedActors(ctx context.Context, a api.FullNode, mid ci
 	}
 
 	accessed := make(map[address.Address]struct{})
+
 	var recur func(trace *types.ExecutionTrace)
 	recur = func(trace *types.ExecutionTrace) {
 		accessed[trace.Msg.To] = struct{}{}
@@ -128,7 +128,6 @@ func (sg *Surgeon) GetAccessedActors(ctx context.Context, a api.FullNode, mid ci
 			recur(&s)
 		}
 	}
-
 	recur(&trace.ExecutionTrace)
 
 	ret := make([]address.Address, 0, len(accessed))
@@ -154,35 +153,41 @@ func (sg *Surgeon) WriteCAR(w io.Writer, roots ...cid.Cid) error {
 	return car.WriteCarWithWalker(sg.ctx, sg.stores.DAGService, roots, w, carWalkFn)
 }
 
-// pluckActorStates plucks the state from the supplied actors at the given
+// transplantActors plucks the state from the supplied actors at the given
 // tipset, and places it into the supplied state map.
-func (sg *Surgeon) pluckActorStates(stateRoot cid.Cid, pluck []address.Address, st *state.StateTree) error {
+func (sg *Surgeon) transplantActors(src *state.StateTree, pluck []address.Address) (*state.StateTree, error) {
+	log.Printf("transplanting actor states: %v", pluck)
+
+	dst, err := state.NewStateTree(sg.stores.CBORStore, src.Version())
+	if err != nil {
+		return nil, err
+	}
+
 	for _, a := range pluck {
-		actor, err := st.GetActor(a)
+		actor, err := src.GetActor(a)
 		if err != nil {
-			continue
-			//return fmt.Errorf("get actor %s failed: %w", a, err)
+			return nil, fmt.Errorf("get actor %s failed: %w", a, err)
 		}
 
-		err = st.SetActor(a, actor)
+		err = dst.SetActor(a, actor)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		// recursive copy of the actor state so we can
-		err = vm.Copy(sg.stores.Blockstore, sg.stores.Blockstore, actor.Head)
+		// recursive copy of the actor state.
+		err = vm.Copy(context.TODO(), sg.stores.Blockstore, sg.stores.Blockstore, actor.Head)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		actorState, err := sg.api.ChainReadObj(sg.ctx, actor.Head)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		cid, err := sg.stores.CBORStore.Put(sg.ctx, &cbg.Deferred{Raw: actorState})
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if cid != actor.Head {
@@ -190,11 +195,11 @@ func (sg *Surgeon) pluckActorStates(stateRoot cid.Cid, pluck []address.Address, 
 		}
 	}
 
-	return nil
+	return dst, nil
 }
 
 // saveInitActor saves the state of the init actor to the provided state map.
-func (sg *Surgeon) saveInitActor(initActor *types.Actor, initState init_.State, stateMap *state.StateTree) error {
+func (sg *Surgeon) saveInitActor(initActor *types.Actor, initState init_.State, st *state.StateTree) error {
 	log.Printf("saving init actor into state tree")
 
 	// Store the state of the init actor.
@@ -205,12 +210,12 @@ func (sg *Surgeon) saveInitActor(initActor *types.Actor, initState init_.State, 
 	actor := *initActor
 	actor.Head = cid
 
-	err = stateMap.SetActor(init_.Address, &actor)
+	err = st.SetActor(init_.Address, &actor)
 	if err != nil {
 		return err
 	}
 
-	cid, _ = stateMap.Flush(sg.ctx)
+	cid, _ = st.Flush(sg.ctx)
 	log.Printf("saved init actor into state tree; new root: %s", cid)
 	return nil
 }
@@ -261,14 +266,7 @@ func (sg *Surgeon) resolveAddresses(orig []address.Address, ist init_.State) (re
 }
 
 // loadInitActor loads the init actor state from a given tipset.
-func (sg *Surgeon) loadInitActor(stateRoot cid.Cid) (*types.Actor, init_.State, error) {
-	log.Printf("loading the init actor for root: %s", stateRoot)
-
-	st, err := state.LoadStateTree(sg.stores.CBORStore, stateRoot)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func (sg *Surgeon) loadInitActor(st *state.StateTree) (*types.Actor, init_.State, error) {
 	actor, err := st.GetActor(init_.Address)
 	if err != nil {
 		return nil, nil, err

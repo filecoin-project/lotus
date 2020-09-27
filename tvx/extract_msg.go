@@ -6,21 +6,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/conformance"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/oni/tvx/state"
 	"github.com/filecoin-project/test-vectors/schema"
+
+	"github.com/filecoin-project/oni/tvx/state"
 )
 
 var extractMsgFlags struct {
-	cid  string
-	file string
+	cid    string
+	file   string
+	retain string
 }
 
 var extractMsgCmd = &cli.Command{
@@ -40,6 +47,12 @@ var extractMsgCmd = &cli.Command{
 			Usage:       "output file",
 			Required:    true,
 			Destination: &extractMsgFlags.file,
+		},
+		&cli.StringFlag{
+			Name:        "state-retain",
+			Usage:       "state retention policy; values: 'accessed-cids' (default), 'accessed-actors'",
+			Value:       "accessed-actors",
+			Destination: &extractMsgFlags.retain,
 		},
 	},
 }
@@ -62,7 +75,7 @@ func runExtractMsg(c *cli.Context) error {
 		return fmt.Errorf("output file required")
 	}
 
-	mid, err := cid.Decode(extractMsgFlags.cid)
+	mcid, err := cid.Decode(extractMsgFlags.cid)
 	if err != nil {
 		return err
 	}
@@ -73,110 +86,112 @@ func runExtractMsg(c *cli.Context) error {
 		return err
 	}
 
-	// locate the message.
-	msgInfo, err := api.StateSearchMsg(ctx, mid)
+	log.Printf("locating message with CID: %s...", mcid)
+
+	// Locate the message.
+	msgInfo, err := api.StateSearchMsg(ctx, mcid)
 	if err != nil {
 		return fmt.Errorf("failed to locate message: %w", err)
 	}
 
-	// Extract the serialized message.
-	msg, err := api.ChainGetMessage(ctx, mid)
+	log.Printf("located message at tipset %s (height: %d) with exit code: %s", msgInfo.TipSet, msgInfo.Height, msgInfo.Receipt.ExitCode)
+
+	// Extract the full message.
+	msg, err := api.ChainGetMessage(ctx, mcid)
 	if err != nil {
 		return err
 	}
 
-	// create a read through store that uses ChainGetObject to fetch unknown CIDs.
-	pst := state.NewProxyingStore(ctx, api)
+	log.Printf("full message: %+v", msg)
 
-	g := state.NewSurgeon(ctx, api, pst)
-
-	// Get actors accessed by message.
-	retain, err := g.GetAccessedActors(ctx, api, mid)
+	execTs, incTs, err := findRelevantTipsets(ctx, api, msgInfo.TipSet)
 	if err != nil {
 		return err
 	}
 
-	retain = append(retain, builtin.RewardActorAddr)
-	retain = append(retain, builtin.BurntFundsActorAddr)
+	log.Printf("message was executed in tipset: %s", execTs.Key())
+	log.Printf("message was included in tipset: %s", incTs.Key())
+	log.Printf("finding precursor messages...")
 
-	fmt.Println("accessed actors:")
-	for _, k := range retain {
-		fmt.Println("\t", k.String())
-	}
-
-	// get the tipset on which this message was "executed".
-	// https://github.com/filecoin-project/lotus/issues/2847
-	execTs, err := api.ChainGetTipSet(ctx, msgInfo.TipSet)
-	if err != nil {
-		return err
-	}
-
-	// get the previous tipset, on which this message was mined.
-	includedTs, err := api.ChainGetTipSet(ctx, execTs.Parents())
-	if err != nil {
-		return err
-	}
-
-	neededPrecursorMsgs := make([]*types.Message, 0)
-	for _, b := range includedTs.Blocks() {
+	var allmsgs []*types.Message
+	for _, b := range incTs.Blocks() {
 		messages, err := api.ChainGetBlockMessages(ctx, b.Cid())
 		if err != nil {
 			return err
 		}
-		for _, other := range messages.BlsMessages {
-			if other.Cid() == mid {
-				break
-			}
-			if other.From == msg.From && other.Nonce < msg.Nonce {
-				included := false
-				for _, o := range neededPrecursorMsgs {
-					if o.Cid() == other.Cid() {
-						included = true
-					}
-				}
-				if !included {
-					neededPrecursorMsgs = append(neededPrecursorMsgs, other)
-				}
-			}
+
+		related, found, err := findMsgAndPrecursors(messages, msg)
+		if err != nil {
+			return fmt.Errorf("invariant failed while scanning messages in block %s: %w", b.Cid(), err)
 		}
-		for _, m := range messages.SecpkMessages {
-			if m.Message.Cid() == mid {
-				break
+
+		if found {
+			var mcids []cid.Cid
+			for _, m := range related {
+				mcids = append(mcids, m.Cid())
 			}
-			if m.Message.From == msg.From && m.Message.Nonce < msg.Nonce {
-				included := false
-				for _, o := range neededPrecursorMsgs {
-					if o.Cid() == m.Message.Cid() {
-						included = true
-					}
-				}
-				if !included {
-					neededPrecursorMsgs = append(neededPrecursorMsgs, &m.Message)
-				}
-			}
+			log.Printf("found message in block %s; precursors: %v", b.Cid(), mcids[:len(mcids)-1])
+			allmsgs = related
+			break
 		}
+
+		log.Printf("message not found in block %s; precursors found: %d", b.Cid(), len(related))
 	}
 
-	fmt.Println("getting the _before_ filtered state tree")
-	tree, err := g.GetStateTreeRootFromTipset(includedTs.Parents())
+	if allmsgs == nil {
+		// Message was not found; abort.
+		return fmt.Errorf("did not find a block containing the message")
+	}
+
+	precursors := allmsgs[:len(allmsgs)-1]
+
+	var (
+		// create a read through store that uses ChainGetObject to fetch unknown CIDs.
+		pst = state.NewProxyingStores(ctx, api)
+		g   = state.NewSurgeon(ctx, api, pst)
+	)
 
 	driver := conformance.NewDriver(ctx, schema.Selector{})
 
-	for _, pm := range neededPrecursorMsgs {
-		_, tree, err = driver.ExecuteMessage(pst.Blockstore, tree, execTs.Height(), pm)
+	// this is the root of the state tree we start with.
+	root := incTs.ParentState()
+	log.Printf("base state tree root CID: %s", root)
+
+	// on top of that state tree, we apply all precursors.
+	log.Printf("precursors to apply: %d", len(precursors))
+	for i, m := range precursors {
+		log.Printf("applying precursor %d, cid: %s", i, m.Cid())
+		_, root, err = driver.ExecuteMessage(pst.Blockstore, root, execTs.Height(), m)
 		if err != nil {
-			return fmt.Errorf("failed to execute preceding message: %w", err)
+			return fmt.Errorf("failed to execute precursor message: %w", err)
 		}
 	}
 
-	preroot, err := g.GetMaskedStateTree(tree, retain)
-	if err != nil {
-		return err
-	}
+	var (
+		preroot cid.Cid
+		postroot cid.Cid
+	)
 
-	_, postroot, err := driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg)
-	if err != nil {
-		return fmt.Errorf("failed to execute message: %w", err)
+	if extractMsgFlags.retain == "accessed-actors" {
+		log.Printf("calculating accessed actors...")
+		// get actors accessed by message.
+		retain, err := g.GetAccessedActors(ctx, api, mcid)
+		if err != nil {
+			return fmt.Errorf("failed to calculate accessed actors: %w", err)
+		}
+		// also append the reward actor and the burnt funds actor.
+		retain = append(retain, reward.Address, builtin.BurntFundsActorAddr, init_.Address)
+		log.Printf("calculated accessed actors: %v", retain)
+
+		// get the masked state tree from the root,
+		preroot, err = g.GetMaskedStateTree(root, retain)
+		if err != nil {
+			return err
+		}
+		_, postroot, err = driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg)
+		if err != nil {
+			return fmt.Errorf("failed to execute message: %w", err)
+		}
 	}
 
 	msgBytes, err := msg.Serialize()
@@ -249,4 +264,65 @@ func runExtractMsg(c *cli.Context) error {
 	}
 
 	return nil
+}
+
+func findRelevantTipsets(ctx context.Context, api api.FullNode, execTsk types.TipSetKey) (execTs *types.TipSet, incTs *types.TipSet, err error) {
+	// get the tipset on which this message was "executed" on.
+	// https://github.com/filecoin-project/lotus/issues/2847
+	execTs, err = api.ChainGetTipSet(ctx, execTsk)
+	if err != nil {
+		return nil, nil, err
+	}
+	// get the previous tipset, on which this message was mined,
+	// i.e. included on-chain.
+	incTs, err = api.ChainGetTipSet(ctx, execTs.Parents())
+	if err != nil {
+		return nil, nil, err
+	}
+	return execTs, incTs, nil
+}
+
+// findMsgAndPrecursors scans the messages in a block to locate the supplied
+// message, looking into the BLS or SECP section depending on the sender's
+// address type.
+//
+// It returns any precursors (if they exist), and the found message (if found),
+// in a slice.
+//
+// It also returns a boolean indicating whether the message was actually found.
+//
+// This function also asserts invariants, and if those fail, it returns an error.
+func findMsgAndPrecursors(messages *api.BlockMessages, target *types.Message) (related []*types.Message, found bool, err error) {
+	// Decide which block of messages to process, depending on whether the
+	// sender is a BLS or a SECP account.
+	input := messages.BlsMessages
+	if senderKind := target.From.Protocol(); senderKind == address.SECP256K1 {
+		input = make([]*types.Message, 0, len(messages.SecpkMessages))
+		for _, sm := range messages.SecpkMessages {
+			input = append(input, &sm.Message)
+		}
+	}
+
+	for _, other := range input {
+		if other.From != target.From {
+			continue
+		}
+
+		// this message is from the same sender, so it's related.
+		related = append(related, other)
+
+		if other.Nonce > target.Nonce {
+			return nil, false, fmt.Errorf("a message with nonce higher than the target was found before the target; offending mcid: %s", other.Cid())
+		}
+
+		// this message is the target; we're done.
+		if other.Cid() == target.Cid() {
+			return related, true, nil
+		}
+	}
+
+	// this could happen because a block contained related messages, but not
+	// the target (that is, messages with a lower nonce, but ultimately not the
+	// target).
+	return related, false, nil
 }

@@ -3,10 +3,11 @@ module github.com/filecoin-project/oni/tvx
 go 1.14
 
 require (
+	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/go-address v0.0.3
 	github.com/filecoin-project/go-state-types v0.0.0-20200911004822-964d6c679cfc
-	github.com/filecoin-project/lotus v0.7.2
-	github.com/filecoin-project/specs-actors v0.9.10
+	github.com/filecoin-project/lotus v0.8.0
+	github.com/filecoin-project/specs-actors v0.9.11
 	github.com/filecoin-project/test-vectors/schema v0.0.1
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834

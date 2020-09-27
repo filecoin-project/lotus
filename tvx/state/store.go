@@ -2,8 +2,10 @@ package state
 
 import (
 	"context"
+	"log"
 	"sync"
 
+	"github.com/fatih/color"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
@@ -69,7 +71,7 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	}
 	pb.lock.RUnlock()
 
-	// fmt.Printf("fetching cid via rpc: %v\n", cid)
+	log.Println(color.CyanString("fetching cid via rpc: %v", cid))
 	item, err := pb.api.ChainReadObj(pb.ctx, cid)
 	if err != nil {
 		return nil, err
@@ -93,9 +95,9 @@ func (pb *proxyingBlockstore) SetOnline(online bool) {
 	pb.online = online
 }
 
-// NewProxyingStore is a Stores that proxies get requests for unknown CIDs
+// NewProxyingStores is a Stores that proxies get requests for unknown CIDs
 // to a Filecoin node, via the ChainReadObj RPC.
-func NewProxyingStore(ctx context.Context, api api.FullNode) *Stores {
+func NewProxyingStores(ctx context.Context, api api.FullNode) *Stores {
 	ds := ds.NewMapDatastore()
 
 	bs := &proxyingBlockstore{
