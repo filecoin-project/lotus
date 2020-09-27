@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-cid"
@@ -17,6 +18,10 @@ import (
 type dealStatsServer struct {
 	api api.FullNode
 }
+
+// Requested by @jbenet
+// How many epochs back to look at for dealstats
+var epochLookback = abi.ChainEpoch(10)
 
 // these lists grow continuously with the network
 // TODO: need to switch this to an LRU of sorts, to ensure refreshes
@@ -200,6 +205,12 @@ func (dss *dealStatsServer) filteredDealList() (int64, map[string]dealInfo) {
 	head, err := dss.api.ChainHead(ctx)
 	if err != nil {
 		log.Warnf("failed to get chain head: %s", err)
+		return 0, nil
+	}
+
+	head, err = dss.api.ChainGetTipSetByHeight(ctx, head.Height()-epochLookback, head.Key())
+	if err != nil {
+		log.Warnf("failed to walk back %s epochs: %s", epochLookback, err)
 		return 0, nil
 	}
 
