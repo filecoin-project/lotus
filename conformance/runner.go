@@ -164,7 +164,7 @@ func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstore.
 	if err != nil {
 		r.Fatalf("failed to write temporary state CAR: %s", err)
 	}
-	defer os.RemoveAll(tmpCar)
+	defer os.RemoveAll(tmpCar) //nolint:errcheck
 
 	color.NoColor = false // enable colouring.
 

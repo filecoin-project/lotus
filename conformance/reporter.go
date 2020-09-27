@@ -33,17 +33,17 @@ type LogReporter struct {
 
 var _ Reporter = (*LogReporter)(nil)
 
-func (_ *LogReporter) Helper() {}
+func (*LogReporter) Helper() {}
 
-func (_ *LogReporter) Log(args ...interface{}) {
+func (*LogReporter) Log(args ...interface{}) {
 	log.Println(args...)
 }
 
-func (_ *LogReporter) Logf(format string, args ...interface{}) {
+func (*LogReporter) Logf(format string, args ...interface{}) {
 	log.Printf(format, args...)
 }
 
-func (_ *LogReporter) FailNow() {
+func (*LogReporter) FailNow() {
 	os.Exit(1)
 }
 

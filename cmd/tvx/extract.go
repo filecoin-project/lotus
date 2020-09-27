@@ -304,7 +304,7 @@ func runExtract(_ *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		defer output.Close()
+		defer output.Close() //nolint:errcheck
 		defer log.Printf("wrote test vector to file: %s", file)
 	}
 

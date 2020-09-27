@@ -33,7 +33,7 @@ var (
 type Driver struct {
 	ctx      context.Context
 	selector schema.Selector
-	vmFlush bool
+	vmFlush  bool
 }
 
 type DriverOpts struct {

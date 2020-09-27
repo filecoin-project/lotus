@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/fatih/color"
+	dssync "github.com/ipfs/go-datastore/sync"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/blockstore"
@@ -40,7 +41,8 @@ type Stores struct {
 // proxies Get requests for unknown CIDs to a Filecoin node, via the
 // ChainReadObj RPC.
 func NewProxyingStores(ctx context.Context, api api.FullNode) *Stores {
-	ds := ds.NewMapDatastore()
+	ds := dssync.MutexWrap(ds.NewMapDatastore())
+	ds = dssync.MutexWrap(ds)
 
 	bs := &proxyingBlockstore{
 		ctx:        ctx,
