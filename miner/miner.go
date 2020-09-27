@@ -321,17 +321,19 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 			return m.lastWork, nil
 		}
 
-		btsw, err := m.api.ChainTipSetWeight(ctx, bts.Key())
-		if err != nil {
-			return nil, err
-		}
-		ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.TipSet.Key())
-		if err != nil {
-			return nil, err
-		}
+		if bts.Height() == m.lastWork.TipSet.Height() {
+			btsw, err := m.api.ChainTipSetWeight(ctx, bts.Key())
+			if err != nil {
+				return nil, err
+			}
+			ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.TipSet.Key())
+			if err != nil {
+				return nil, err
+			}
 
-		if types.BigCmp(btsw, ltsw) <= 0 {
-			return m.lastWork, nil
+			if types.BigCmp(btsw, ltsw) <= 0 {
+				return m.lastWork, nil
+			}
 		}
 	}
 
