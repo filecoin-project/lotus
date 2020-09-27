@@ -167,6 +167,10 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 		return false
 	}
 
+	if ts.height != ots.height {
+		return false
+	}
+
 	if len(ts.blks) != len(ots.blks) {
 		return false
 	}
