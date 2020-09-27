@@ -17,6 +17,7 @@ import (
 
 	"github.com/Gurpartap/async"
 	"github.com/hashicorp/go-multierror"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -374,21 +375,28 @@ func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) bool {
 	return syncer.InformNewHead(from, fts)
 }
 
-func copyBlockstore(from, to bstore.Blockstore) error {
-	cids, err := from.AllKeysChan(context.TODO())
+func copyBlockstore(ctx context.Context, from, to bstore.Blockstore) error {
+	ctx, span := trace.StartSpan(ctx, "copyBlockstore")
+	defer span.End()
+
+	cids, err := from.AllKeysChan(ctx)
 	if err != nil {
 		return err
 	}
 
+	// TODO: should probably expose better methods on the blockstore for this operation
+	var blks []blocks.Block
 	for c := range cids {
 		b, err := from.Get(c)
 		if err != nil {
 			return err
 		}
 
-		if err := to.Put(b); err != nil {
-			return err
-		}
+		blks = append(blks, b)
+	}
+
+	if err := to.PutMany(blks); err != nil {
+		return err
 	}
 
 	return nil
@@ -1515,11 +1523,11 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				return err
 			}
 
-			if err := persistMessages(bs, bstip); err != nil {
+			if err := persistMessages(ctx, bs, bstip); err != nil {
 				return err
 			}
 
-			if err := copyBlockstore(bs, syncer.store.Blockstore()); err != nil {
+			if err := copyBlockstore(ctx, bs, syncer.store.Blockstore()); err != nil {
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
@@ -1596,7 +1604,10 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 	return batch, nil
 }
 
-func persistMessages(bs bstore.Blockstore, bst *exchange.CompactedMessages) error {
+func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.CompactedMessages) error {
+	_, span := trace.StartSpan(ctx, "persistMessages")
+	defer span.End()
+
 	for _, m := range bst.Bls {
 		//log.Infof("putting BLS message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
@@ -1728,7 +1739,7 @@ func (syncer *Syncer) getLatestBeaconEntry(_ context.Context, ts *types.TipSet) 
 		cur = next
 	}
 
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
 }
 
 func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {

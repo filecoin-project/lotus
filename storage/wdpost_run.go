@@ -371,6 +371,10 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 			return j
 		})
 
+		if ts.Height() > build.UpgradeIgnitionHeight {
+			return // FORK: declaring faults after ignition upgrade makes no sense
+		}
+
 		if faults, sigmsg, err = s.checkNextFaults(context.TODO(), declDeadline, partitions); err != nil {
 			// TODO: This is also potentially really bad, but we try to post anyways
 			log.Errorf("checking sector faults: %v", err)

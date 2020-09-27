@@ -22,8 +22,8 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version2
-const ActorUpgradeNetworkVersion = network.Version3
+const NewestNetworkVersion = network.Version3
+const ActorUpgradeNetworkVersion = network.Version4
 
 // Epochs
 const ForkLengthThreshold = Finality
@@ -62,6 +62,8 @@ const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
 
 // /////
 // Devnet settings
+
+var Devnet = true
 
 const FilBase = uint64(2_000_000_000)
 const FilAllocStorageMining = uint64(1_100_000_000)

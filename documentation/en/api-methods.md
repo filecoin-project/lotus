@@ -3825,7 +3825,7 @@ Inputs:
 ]
 ```
 
-Response: `2`
+Response: `3`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4303,7 +4303,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ActiveSyncs": null
+  "ActiveSyncs": null,
+  "VMApplied": 42
 }
 ```
 

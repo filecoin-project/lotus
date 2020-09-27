@@ -9,6 +9,10 @@ import (
 	"strconv"
 	"text/tabwriter"
 
+	"github.com/filecoin-project/lotus/chain/actors"
+
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-address"
@@ -16,6 +20,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
@@ -40,6 +45,9 @@ var multisigCmd = &cli.Command{
 		msigSwapProposeCmd,
 		msigSwapApproveCmd,
 		msigSwapCancelCmd,
+		msigLockProposeCmd,
+		msigLockApproveCmd,
+		msigLockCancelCmd,
 		msigVestedCmd,
 	},
 }
@@ -948,6 +956,282 @@ var msigSwapCancelCmd = &cli.Command{
 
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("swap cancellation returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigLockProposeCmd = &cli.Command{
+	Name:      "lock-propose",
+	Usage:     "Propose to lock up some balance",
+	ArgsUsage: "[multisigAddress startEpoch unlockDuration amount]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the propose message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 4 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, start epoch, unlock duration, and amount"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		start, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		duration, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		amount, err := types.ParseFIL(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+			StartEpoch:     abi.ChainEpoch(start),
+			UnlockDuration: abi.ChainEpoch(duration),
+			Amount:         abi.NewTokenAmount(amount.Int64()),
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		msgCid, err := api.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent lock proposal in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("lock proposal returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigLockApproveCmd = &cli.Command{
+	Name:      "lock-approve",
+	Usage:     "Approve a message to lock up some balance",
+	ArgsUsage: "[multisigAddress proposerAddress txId startEpoch unlockDuration amount]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 6 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, tx id, start epoch, unlock duration, and amount"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		prop, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		start, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		duration, err := strconv.ParseUint(cctx.Args().Get(4), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		amount, err := types.ParseFIL(cctx.Args().Get(5))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+			StartEpoch:     abi.ChainEpoch(start),
+			UnlockDuration: abi.ChainEpoch(duration),
+			Amount:         abi.NewTokenAmount(amount.Int64()),
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		msgCid, err := api.MsigApprove(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent lock approval in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("lock approval returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigLockCancelCmd = &cli.Command{
+	Name:      "lock-cancel",
+	Usage:     "Cancel a message to lock up some balance",
+	ArgsUsage: "[multisigAddress txId startEpoch unlockDuration amount]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the cancel message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 6 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, tx id, start epoch, unlock duration, and amount"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		start, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		duration, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		amount, err := types.ParseFIL(cctx.Args().Get(4))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+			StartEpoch:     abi.ChainEpoch(start),
+			UnlockDuration: abi.ChainEpoch(duration),
+			Amount:         abi.NewTokenAmount(amount.Int64()),
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		msgCid, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent lock cancellation in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("lock cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
 		return nil

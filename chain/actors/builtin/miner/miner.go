@@ -19,7 +19,6 @@ import (
 )
 
 // Unchanged between v0 and v1 actors
-var PreCommitChallengeDelay = miner0.PreCommitChallengeDelay
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 
 const MinSectorExpiration = miner0.MinSectorExpiration

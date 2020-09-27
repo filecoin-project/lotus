@@ -74,7 +74,9 @@ var (
 	UpgradeBreezeHeight      abi.ChainEpoch = -1
 	BreezeGasTampingDuration abi.ChainEpoch = 0
 
-	UpgradeSmokeHeight abi.ChainEpoch = -1
+	UpgradeSmokeHeight    abi.ChainEpoch = -1
+	UpgradeIgnitionHeight abi.ChainEpoch = -2
+	UpgradeLiftoffHeight  abi.ChainEpoch = -3
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
@@ -82,4 +84,6 @@ var (
 
 	NewestNetworkVersion       = network.Version2
 	ActorUpgradeNetworkVersion = network.Version3
+
+	Devnet = true
 )
