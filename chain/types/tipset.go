@@ -171,12 +171,12 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 		return false
 	}
 
-	if len(ts.blks) != len(ots.blks) {
+	if len(ts.cids) != len(ots.cids) {
 		return false
 	}
 
-	for i, b := range ts.blks {
-		if b.Cid() != ots.blks[i].Cid() {
+	for i, cid := range ts.cids {
+		if cid != ots.cids[i] {
 			return false
 		}
 	}
