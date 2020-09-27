@@ -43,7 +43,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 	}
 
 	// Create a new Driver.
-	driver := NewDriver(ctx, vector.Selector)
+	driver := NewDriver(ctx, vector.Selector, DriverOpts{})
 
 	// Apply every message.
 	for i, m := range vector.ApplyMessages {
@@ -93,7 +93,7 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector) {
 	}
 
 	// Create a new Driver.
-	driver := NewDriver(ctx, vector.Selector)
+	driver := NewDriver(ctx, vector.Selector, DriverOpts{})
 
 	// Apply every tipset.
 	var receiptsIdx int

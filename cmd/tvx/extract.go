@@ -164,7 +164,9 @@ func runExtract(_ *cli.Context) error {
 		g   = NewSurgeon(ctx, api, pst)
 	)
 
-	driver := conformance.NewDriver(ctx, schema.Selector{})
+	driver := conformance.NewDriver(ctx, schema.Selector{}, conformance.DriverOpts{
+		DisableVMFlush: true,
+	})
 
 	// this is the root of the state tree we start with.
 	root := incTs.ParentState()

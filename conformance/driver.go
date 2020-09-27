@@ -33,10 +33,24 @@ var (
 type Driver struct {
 	ctx      context.Context
 	selector schema.Selector
+	vmFlush bool
 }
 
-func NewDriver(ctx context.Context, selector schema.Selector) *Driver {
-	return &Driver{ctx: ctx, selector: selector}
+type DriverOpts struct {
+	// DisableVMFlush, when true, avoids calling VM.Flush(), forces a blockstore
+	// recursive copy, from the temporary buffer blockstore, to the real
+	// system's blockstore. Disabling VM flushing is useful when extracting test
+	// vectors and trimming state, as we don't want to force an accidental
+	// deep copy of the state tree.
+	//
+	// Disabling VM flushing almost always should go hand-in-hand with
+	// LOTUS_DISABLE_VM_BUF=iknowitsabadidea. That way, state tree writes are
+	// immediately committed to the blockstore.
+	DisableVMFlush bool
+}
+
+func NewDriver(ctx context.Context, selector schema.Selector, opts DriverOpts) *Driver {
+	return &Driver{ctx: ctx, selector: selector, vmFlush: !opts.DisableVMFlush}
 }
 
 type ExecuteTipsetResult struct {
@@ -155,12 +169,17 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 		return nil, cid.Undef, err
 	}
 
-	// do not flush the VM, as this forces a recursive copy to the blockstore,
-	// walking the full state tree, which we don't require.
-	// root, err := lvm.Flush(d.ctx)
-	//
-	// instead, flush the pending writes on the state tree.
-	root, err := lvm.StateTree().(*state.StateTree).Flush(d.ctx)
+	var root cid.Cid
+	if d.vmFlush {
+		// flush the VM, committing the state tree changes and forcing a
+		// recursive copoy from the temporary blcokstore to the real blockstore.
+		root, err = lvm.Flush(d.ctx)
+	} else {
+		// do not flush the VM, just the state tree; this should be used with
+		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.
+		root, err = lvm.StateTree().(*state.StateTree).Flush(d.ctx)
+	}
+
 	return ret, root, err
 }
 
