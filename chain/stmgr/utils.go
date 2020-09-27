@@ -368,6 +368,16 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
+	for i := ts.Height(); i < height; i++ {
+		// handle state forks
+		base, err = sm.handleStateForks(ctx, base, i, traceFunc(&trace), ts)
+		if err != nil {
+			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
+		}
+
+		// TODO: should we also run cron here?
+	}
+
 	r := store.NewChainRand(sm.cs, ts.Cids())
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
@@ -382,16 +392,6 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	vmi, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, nil, err
-	}
-
-	for i := ts.Height(); i < height; i++ {
-		// handle state forks
-		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
-		if err != nil {
-			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
-		}
-
-		// TODO: should we also run cron here?
 	}
 
 	for i, msg := range msgs {
