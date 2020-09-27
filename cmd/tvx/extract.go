@@ -48,7 +48,7 @@ var extractCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:        "id",
 			Usage:       "identifier to name this test vector with",
-			Value:       "<undefined>",
+			Value:       "(undefined)",
 			Destination: &extractFlags.id,
 		},
 		&cli.StringFlag{
@@ -297,12 +297,13 @@ func runExtract(_ *cli.Context) error {
 	}
 
 	output := io.WriteCloser(os.Stdout)
-	if extractFlags.file != "" {
-		output, err = os.Create(extractFlags.file)
+	if file := extractFlags.file; file != "" {
+		output, err = os.Create(file)
 		if err != nil {
 			return err
 		}
 		defer output.Close()
+		defer log.Printf("wrote test vector to file: %s", file)
 	}
 
 	enc := json.NewEncoder(output)
