@@ -153,6 +153,24 @@ func (sg *Surgeon) WriteCAR(w io.Writer, roots ...cid.Cid) error {
 	return car.WriteCarWithWalker(sg.ctx, sg.stores.DAGService, roots, w, carWalkFn)
 }
 
+// WriteCARIncluding writes a CAR including only the CIDs that are listed in
+// the include set. This leads to an intentially sparse tree with dangling links.
+func (sg *Surgeon) WriteCARIncluding(w io.Writer, include map[cid.Cid]struct{}, roots ...cid.Cid) error {
+	carWalkFn := func(nd format.Node) (out []*format.Link, err error) {
+		for _, link := range nd.Links() {
+			if _, ok := include[link.Cid]; !ok {
+				continue
+			}
+			if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
+				continue
+			}
+			out = append(out, link)
+		}
+		return out, nil
+	}
+	return car.WriteCarWithWalker(sg.ctx, sg.stores.DAGService, roots, w, carWalkFn)
+}
+
 // transplantActors plucks the state from the supplied actors at the given
 // tipset, and places it into the supplied state map.
 func (sg *Surgeon) transplantActors(src *state.StateTree, pluck []address.Address) (*state.StateTree, error) {

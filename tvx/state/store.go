@@ -58,18 +58,50 @@ type proxyingBlockstore struct {
 	ctx context.Context
 	api api.FullNode
 
-	online bool
-	lock   sync.RWMutex
+	lk      sync.RWMutex
+	tracing bool
+	traced  map[cid.Cid]struct{}
+
 	blockstore.Blockstore
 }
 
+type TracingBlockstore interface {
+	StartTracing()
+	FinishTracing() map[cid.Cid]struct{}
+}
+
+var _ TracingBlockstore = (*proxyingBlockstore)(nil)
+
+// StartTracing starts tracing the CIDs that are effectively fetched during the
+// processing of a message.
+func (pb *proxyingBlockstore) StartTracing() {
+	pb.lk.Lock()
+	pb.tracing = true
+	pb.traced = map[cid.Cid]struct{}{}
+	pb.lk.Unlock()
+}
+
+// FinishTracing finishes tracing accessed CIDs, and returns a map of the
+// CIDs that were traced.
+func (pb *proxyingBlockstore) FinishTracing() map[cid.Cid]struct{} {
+	pb.lk.Lock()
+	ret := pb.traced
+	pb.tracing = false
+	pb.traced = map[cid.Cid]struct{}{}
+	pb.lk.Unlock()
+	return ret
+}
+
 func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
-	pb.lock.RLock()
-	if block, err := pb.Blockstore.Get(cid); err == nil || !pb.online {
-		pb.lock.RUnlock()
+	pb.lk.RLock()
+	if pb.tracing {
+		pb.traced[cid] = struct{}{}
+	}
+	pb.lk.RUnlock()
+
+	if block, err := pb.Blockstore.Get(cid); err == nil {
 		return block, err
 	}
-	pb.lock.RUnlock()
 
 	log.Println(color.CyanString("fetching cid via rpc: %v", cid))
 	item, err := pb.api.ChainReadObj(pb.ctx, cid)
@@ -81,18 +113,12 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, err
 	}
 
-	pb.lock.Lock()
-	defer pb.lock.Unlock()
 	err = pb.Blockstore.Put(block)
 	if err != nil {
 		return nil, err
 	}
 
 	return block, nil
-}
-
-func (pb *proxyingBlockstore) SetOnline(online bool) {
-	pb.online = online
 }
 
 // NewProxyingStores is a Stores that proxies get requests for unknown CIDs
@@ -103,7 +129,6 @@ func NewProxyingStores(ctx context.Context, api api.FullNode) *Stores {
 	bs := &proxyingBlockstore{
 		ctx:        ctx,
 		api:        api,
-		online:     true,
 		Blockstore: blockstore.NewBlockstore(ds),
 	}
 

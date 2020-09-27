@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -51,7 +52,7 @@ var extractMsgCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:        "state-retain",
 			Usage:       "state retention policy; values: 'accessed-cids' (default), 'accessed-actors'",
-			Value:       "accessed-actors",
+			Value:       "accessed-cids",
 			Destination: &extractMsgFlags.retain,
 		},
 	},
@@ -168,11 +169,13 @@ func runExtractMsg(c *cli.Context) error {
 	}
 
 	var (
-		preroot cid.Cid
-		postroot cid.Cid
+		preroot   cid.Cid
+		postroot  cid.Cid
+		carWriter func(w io.Writer) error
 	)
 
-	if extractMsgFlags.retain == "accessed-actors" {
+	switch retention := extractMsgFlags.retain; retention {
+	case "accessed-actors":
 		log.Printf("calculating accessed actors...")
 		// get actors accessed by message.
 		retain, err := g.GetAccessedActors(ctx, api, mcid)
@@ -192,6 +195,30 @@ func runExtractMsg(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
 		}
+		carWriter = func(w io.Writer) error {
+			return g.WriteCAR(w, preroot, postroot)
+		}
+
+	case "accessed-cids":
+		log.Printf("using state retention: %s", retention)
+		tbs, ok := pst.Blockstore.(state.TracingBlockstore)
+		if !ok {
+			return fmt.Errorf("requested 'accessed-cids' state retention, but no tracing blockstore was present")
+		}
+		tbs.StartTracing()
+
+		preroot = execTs.ParentState()
+		_, postroot, err = driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg)
+		if err != nil {
+			return fmt.Errorf("failed to execute message: %w", err)
+		}
+		accessed := tbs.FinishTracing()
+		carWriter = func(w io.Writer) error {
+			return g.WriteCARIncluding(w, accessed, preroot, postroot)
+		}
+
+	default:
+		return fmt.Errorf("unknown state retention option: %s", retention)
 	}
 
 	msgBytes, err := msg.Serialize()
@@ -199,17 +226,11 @@ func runExtractMsg(c *cli.Context) error {
 		return err
 	}
 
-	// don't fetch additional content that wasn't accessed yet during car spidering / generation.
-	type onlineblockstore interface {
-		SetOnline(bool)
-	}
-	if ob, ok := pst.Blockstore.(onlineblockstore); ok {
-		ob.SetOnline(false)
-	}
-
-	out := new(bytes.Buffer)
-	gw := gzip.NewWriter(out)
-	if err := g.WriteCAR(gw, preroot, postroot); err != nil {
+	var (
+		out = new(bytes.Buffer)
+		gw  = gzip.NewWriter(out)
+	)
+	if err := carWriter(gw); err != nil {
 		return err
 	}
 	if err = gw.Flush(); err != nil {
