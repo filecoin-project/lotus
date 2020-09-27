@@ -112,6 +112,7 @@ type FullNodeStruct struct {
 		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
 		SyncUnmarkBad      func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
 		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
+		SyncValidateTipset func(ctx context.Context, tsk types.TipSetKey) (bool, error) `perm:"read"`
 
 		MpoolGetConfig func(context.Context) (*types.MpoolConfig, error) `perm:"read"`
 		MpoolSetConfig func(context.Context, *types.MpoolConfig) error   `perm:"write"`
@@ -733,6 +734,10 @@ func (c *FullNodeStruct) SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error 
 
 func (c *FullNodeStruct) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) {
 	return c.Internal.SyncCheckBad(ctx, bcid)
+}
+
+func (c *FullNodeStruct) SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error) {
+	return c.Internal.SyncValidateTipset(ctx, tsk)
 }
 
 func (c *FullNodeStruct) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
