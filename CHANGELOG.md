@@ -1,5 +1,62 @@
 # Lotus changelog
 
+# 0.8.0 / 2020-09-26
+
+This consensus-breaking release of Lotus introduces an upgrade to the network. The changes that break consensus are:
+
+- Upgrading to specs-actors v0.9.11, which reduces WindowPoSt faults per [FIP 0002](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0002.md) to reduce cost for honest miners with occasional faults (see https://github.com/filecoin-project/specs-actors/pull/1181)
+- Revisions to some cryptoeconomics and network params
+
+This release also updates go-fil-markets to fix an incompatibility issue between v0.7.2 and earlier versions.
+
+## Changes 
+
+#### Dependencies
+
+- Update spec actors to 0.9.11 (https://github.com/filecoin-project/lotus/pull/4039)
+- Update markets to 0.6.3 (https://github.com/filecoin-project/lotus/pull/4013)
+
+#### Core Lotus
+
+- Network upgrade (https://github.com/filecoin-project/lotus/pull/4039)
+- Fix AddSupportedProofTypes (https://github.com/filecoin-project/lotus/pull/4033)
+- Return an error when we fail to find a sector when checking sector expiration (https://github.com/filecoin-project/lotus/pull/4026)
+- Batch blockstore copies after block validation (https://github.com/filecoin-project/lotus/pull/3980)
+- Remove a misleading miner actor abstraction (https://github.com/filecoin-project/lotus/pull/3977)
+- Fix out-of-bounds when loading all sector infos (https://github.com/filecoin-project/lotus/pull/3976)
+- Fix break condition in the miner (https://github.com/filecoin-project/lotus/pull/3953)
+
+#### UX
+
+- Correct helptext around miners setting ask (https://github.com/filecoin-project/lotus/pull/4009)
+- Make sync wait nicer (https://github.com/filecoin-project/lotus/pull/3991)
+
+#### Tooling and validation
+
+- Small adjustments following network upgradability changes (https://github.com/filecoin-project/lotus/pull/3996)
+- Add some more big pictures stats to stateroot stat (https://github.com/filecoin-project/lotus/pull/3995)
+- Add some actors policy setters for testing (https://github.com/filecoin-project/lotus/pull/3975)
+
+## Contributors
+
+The following contributors had 5 or more commits go into this release.
+We are grateful for every contribution!
+
+| Contributor        | Commits | Lines ±       |
+|--------------------|---------|---------------|
+| arajasek           | 66       | +3140/-1261  |
+| Stebalien          | 64       | +3797/-3434  |
+| magik6k            | 48       | +1892/-976   |
+| raulk              | 40       | +2412/-1549  |
+| vyzo               | 22       | +287/-196    |
+| alanshaw           | 15       | +761/-146    |
+| whyrusleeping      | 15       | +736/-52     |
+| hannahhoward       | 14       | +1237/837-   | 
+| anton              | 6        | +32/-8       |
+| travisperson       | 5        | +502/-6      |
+| Frank              | 5        | +78/-39      |
+| Jennifer           | 5        | +148/-41     |
+
 # 0.7.2 / 2020-09-23
 
 This optional release of Lotus introduces a major refactor around how a Lotus node interacts with code from the specs-actors repo. We now use interfaces to read the state of actors, which is required to be able to reason about different versions of actors code at the same time.

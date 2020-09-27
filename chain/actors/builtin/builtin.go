@@ -21,7 +21,7 @@ const (
 // Converts a network version into a specs-actors version.
 func VersionForNetwork(version network.Version) Version {
 	switch version {
-	case network.Version0, network.Version1, network.Version2:
+	case network.Version0, network.Version1, network.Version2, network.Version3:
 		return Version0
 	default:
 		panic(fmt.Sprintf("unsupported network version %d", version))
