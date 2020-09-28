@@ -480,7 +480,9 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *state.StateTree,
 		return xerrors.Errorf("reading init state: %w", err)
 	}
 
-	initState.SetNetworkName(name)
+	if err := initState.SetNetworkName(name); err != nil {
+		return xerrors.Errorf("setting network name: %w", err)
+	}
 
 	ia.Head, err = store.Put(ctx, initState)
 	if err != nil {
