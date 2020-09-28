@@ -8,6 +8,18 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// DefaultLotusRepoPath is where the fallback path where to look for a Lotus
+// client repo. It is expanded with mitchellh/go-homedir, so it'll work with all
+// OSes despite the Unix twiddle notation.
+const DefaultLotusRepoPath = "~/.lotus"
+
+var repoFlag = cli.StringFlag{
+	Name:      "repo",
+	EnvVars:   []string{"LOTUS_PATH"},
+	Value:     DefaultLotusRepoPath,
+	TakesFile: true,
+}
+
 func main() {
 	app := &cli.App{
 		Name: "tvx",
@@ -22,7 +34,7 @@ func main() {
 
    SETTING THE JSON-RPC API ENDPOINT
 
-   You can set the JSON-RPC API endpoint through one of the following approaches.
+   You can set the JSON-RPC API endpoint through one of the following methods.
 
    1. Directly set the API endpoint on the FULLNODE_API_INFO env variable.
       The format is [token]:multiaddr, where token is optional for commands not
@@ -30,11 +42,12 @@ func main() {
 
    2. If you're running tvx against a local Lotus client, you can set the REPO
       env variable to have the API endpoint and token extracted from the repo.
+      Alternatively, you can pass the --repo CLI flag.
 
    3. Rely on the default fallback, which inspects ~/.lotus and extracts the
       API endpoint string if the location is a Lotus repo.
 
-   tvx will apply these approaches in the same order of precedence they're listed.
+   tvx will apply these methods in the same order of precedence they're listed.
 `,
 		Usage: "tvx is a tool for extracting and executing test vectors",
 		Commands: []*cli.Command{

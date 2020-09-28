@@ -36,9 +36,10 @@ var extractFlags struct {
 
 var extractCmd = &cli.Command{
 	Name:        "extract",
-	Description: "generate a message-class test vector by extracting it from a live chain",
+	Description: "generate a test vector by extracting it from a live chain",
 	Action:      runExtract,
 	Flags: []cli.Flag{
+		&repoFlag,
 		&cli.StringFlag{
 			Name:        "class",
 			Usage:       "class of vector to extract; other required flags depend on the; values: 'message'",
