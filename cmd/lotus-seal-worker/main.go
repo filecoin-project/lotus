@@ -443,7 +443,6 @@ var runCmd = &cli.Command{
 				// TODO: we could get rid of this, but that requires tracking resources for restarted tasks correctly
 				workerApi.LocalWorker.WaitQuiet()
 
-
 				if err := nodeApi.WorkerConnect(ctx, "ws://"+address+"/rpc/v0"); err != nil {
 					log.Errorf("Registering worker failed: %+v", err)
 					cancel()

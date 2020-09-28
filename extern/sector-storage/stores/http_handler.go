@@ -58,14 +58,14 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	id, err := storiface.ParseSectorID(vars["id"])
 	if err != nil {
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
 
 	ft, err := ftFromString(vars["type"])
 	if err != nil {
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -75,7 +75,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	// passing 0 spt because we don't allocate anything
 	paths, _, err := handler.Local.AcquireSector(r.Context(), id, 0, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -91,7 +91,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -105,14 +105,14 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 	if err != nil {
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
 
 	w.WriteHeader(200)
 	if _, err := io.Copy(w, rd); err != nil { // TODO: default 32k buf may be too small
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		return
 	}
 }
@@ -123,20 +123,20 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 
 	id, err := storiface.ParseSectorID(vars["id"])
 	if err != nil {
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
 
 	ft, err := ftFromString(vars["type"])
 	if err != nil {
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
 
 	if err := handler.Remove(r.Context(), id, ft, false); err != nil {
-		log.Error("%+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
