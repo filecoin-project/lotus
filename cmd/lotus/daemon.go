@@ -23,6 +23,7 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
+	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -333,6 +334,11 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) error {
 	}
 	defer fi.Close() //nolint:errcheck
 
+	st, err := os.Stat(fname)
+	if err != nil {
+		return err
+	}
+
 	lr, err := r.Lock(repo.FullNode)
 	if err != nil {
 		return err
@@ -354,7 +360,17 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) error {
 	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
 
 	log.Info("importing chain from file...")
-	ts, err := cst.Import(fi)
+
+	bar := pb.New64(st.Size())
+	br := bar.NewProxyReader(fi)
+	bar.ShowTimeLeft = true
+	bar.ShowPercent = true
+	bar.Units = pb.U_BYTES
+
+	bar.Start()
+	ts, err := cst.Import(br)
+	bar.Finish()
+
 	if err != nil {
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
