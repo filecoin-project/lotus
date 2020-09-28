@@ -472,16 +472,16 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	// Fetch tipset block headers from blockstore in parallel
 	var eg errgroup.Group
 	cids := tsk.Cids()
-	blks := make([]*types.BlockHeader, 0, len(cids))
-	for _, c := range cids {
-		c := c
+	blks := make([]*types.BlockHeader, len(cids))
+	for i, c := range cids {
+		i, c := i, c
 		eg.Go(func() error {
 			b, err := cs.GetBlock(c)
 			if err != nil {
 				return xerrors.Errorf("get block %s: %w", c, err)
 			}
 
-			blks = append(blks, b)
+			blks[i] = b
 			return nil
 		})
 	}
