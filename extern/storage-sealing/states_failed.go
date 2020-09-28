@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 )

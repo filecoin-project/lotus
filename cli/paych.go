@@ -14,10 +14,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/urfave/cli/v2"
 
-	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var paychCmd = &cli.Command{
@@ -404,7 +404,7 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		sv, err := types.DecodeSignedVoucher(cctx.Args().Get(1))
+		sv, err := paych.DecodeSignedVoucher(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
@@ -440,7 +440,7 @@ var paychVoucherAddCmd = &cli.Command{
 			return err
 		}
 
-		sv, err := types.DecodeSignedVoucher(cctx.Args().Get(1))
+		sv, err := paych.DecodeSignedVoucher(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
@@ -598,7 +598,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		sv, err := types.DecodeSignedVoucher(cctx.Args().Get(1))
+		sv, err := paych.DecodeSignedVoucher(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}

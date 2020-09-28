@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -221,7 +220,7 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	return ca.getChannelInfo(addr)
 }
 
-func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych0.SignedVoucher) (*api.VoucherCreateResult, error) {
+func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*api.VoucherCreateResult, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return nil, err
@@ -233,7 +232,7 @@ func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, vouche
 // CheckVoucherValid checks if the given voucher is valid (is or could become spendable at some point).
 // If the channel is not in the store, fetches the channel from state (and checks that
 // the channel To address is owned by the wallet).
-func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher) error {
+func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
 	// Get an accessor for the channel, creating it from state if necessary
 	ca, err := pm.inboundChannelAccessor(ctx, ch)
 	if err != nil {
@@ -245,7 +244,7 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 }
 
 // CheckVoucherSpendable checks if the given voucher is currently spendable
-func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return false, err
@@ -256,7 +255,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 
 // AddVoucherOutbound adds a voucher for an outbound channel.
 // Returns an error if the channel is not already in the store.
-func (pm *Manager) AddVoucherOutbound(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (pm *Manager) AddVoucherOutbound(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return types.NewInt(0), err
@@ -267,7 +266,7 @@ func (pm *Manager) AddVoucherOutbound(ctx context.Context, ch address.Address, s
 // AddVoucherInbound adds a voucher for an inbound channel.
 // If the channel is not in the store, fetches the channel from state (and checks that
 // the channel To address is owned by the wallet).
-func (pm *Manager) AddVoucherInbound(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (pm *Manager) AddVoucherInbound(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	// Get an accessor for the channel, creating it from state if necessary
 	ca, err := pm.inboundChannelAccessor(ctx, ch)
 	if err != nil {
@@ -336,7 +335,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	return pm.store.TrackChannel(stateCi)
 }
 
-func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return cid.Undef, err

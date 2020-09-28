@@ -1,6 +1,8 @@
 package paych
 
 import (
+	"encoding/base64"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -8,6 +10,7 @@ import (
 	big "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -68,3 +71,18 @@ type LaneState interface {
 
 type SignedVoucher = paych0.SignedVoucher
 type ModVerifyParams = paych0.ModVerifyParams
+
+// DecodeSignedVoucher decodes base64 encoded signed voucher.
+func DecodeSignedVoucher(s string) (*SignedVoucher, error) {
+	data, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+
+	var sv SignedVoucher
+	if err := ipldcbor.DecodeInto(data, &sv); err != nil {
+		return nil, err
+	}
+
+	return &sv, nil
+}

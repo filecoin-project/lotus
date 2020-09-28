@@ -15,10 +15,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -39,9 +39,9 @@ type API struct {
 type settlerAPI interface {
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*api.PaychStatus, error)
-	PaychVoucherCheckSpendable(context.Context, address.Address, *paych0.SignedVoucher, []byte, []byte) (bool, error)
-	PaychVoucherList(context.Context, address.Address) ([]*paych0.SignedVoucher, error)
-	PaychVoucherSubmit(context.Context, address.Address, *paych0.SignedVoucher, []byte, []byte) (cid.Cid, error)
+	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
+	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
+	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)
 }
 
@@ -86,7 +86,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 		if err != nil {
 			return true, err
 		}
-		go func(voucher *paych0.SignedVoucher, submitMessageCID cid.Cid) {
+		go func(voucher *paych.SignedVoucher, submitMessageCID cid.Cid) {
 			defer wg.Done()
 			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, build.MessageConfidence)
 			if err != nil {
