@@ -178,6 +178,78 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return xerrors.Errorf("declaring storage in index: %w", err)
 	}
 
+	if err := st.declareSectors(ctx, p, meta.ID, meta.CanStore); err != nil {
+		return err
+	}
+
+	st.paths[meta.ID] = out
+
+	return nil
+}
+
+func (st *Local) open(ctx context.Context) error {
+	cfg, err := st.localStorage.GetStorage()
+	if err != nil {
+		return xerrors.Errorf("getting local storage config: %w", err)
+	}
+
+	for _, path := range cfg.StoragePaths {
+		err := st.OpenPath(ctx, path.Path)
+		if err != nil {
+			return xerrors.Errorf("opening path %s: %w", path.Path, err)
+		}
+	}
+
+	go st.reportHealth(ctx)
+
+	return nil
+}
+
+func (st *Local) Redeclare(ctx context.Context) error {
+	st.localLk.Lock()
+	defer st.localLk.Unlock()
+
+	for id, p := range st.paths {
+		mb, err := ioutil.ReadFile(filepath.Join(p.local, MetaFile))
+		if err != nil {
+			return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
+		}
+
+		var meta LocalStorageMeta
+		if err := json.Unmarshal(mb, &meta); err != nil {
+			return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
+		}
+
+		fst, err := p.stat(st.localStorage)
+		if err != nil {
+			return err
+		}
+
+		if id != meta.ID {
+			log.Errorf("storage path ID changed: %s; %s -> %s", p.local, id, meta.ID)
+			continue
+		}
+
+		err = st.index.StorageAttach(ctx, StorageInfo{
+			ID:       id,
+			URLs:     st.urls,
+			Weight:   meta.Weight,
+			CanSeal:  meta.CanSeal,
+			CanStore: meta.CanStore,
+		}, fst)
+		if err != nil {
+			return xerrors.Errorf("redeclaring storage in index: %w", err)
+		}
+
+		if err := st.declareSectors(ctx, p.local, meta.ID, meta.CanStore); err != nil {
+			return xerrors.Errorf("redeclaring sectors: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (st *Local) declareSectors(ctx context.Context, p string, id ID, primary bool) error {
 	for _, t := range storiface.PathTypes {
 		ents, err := ioutil.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
@@ -201,31 +273,11 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
 			}
 
-			if err := st.index.StorageDeclareSector(ctx, meta.ID, sid, t, meta.CanStore); err != nil {
-				return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", sid, t, meta.ID, err)
+			if err := st.index.StorageDeclareSector(ctx, id, sid, t, primary); err != nil {
+				return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", sid, t, id, err)
 			}
 		}
 	}
-
-	st.paths[meta.ID] = out
-
-	return nil
-}
-
-func (st *Local) open(ctx context.Context) error {
-	cfg, err := st.localStorage.GetStorage()
-	if err != nil {
-		return xerrors.Errorf("getting local storage config: %w", err)
-	}
-
-	for _, path := range cfg.StoragePaths {
-		err := st.OpenPath(ctx, path.Path)
-		if err != nil {
-			return xerrors.Errorf("opening path %s: %w", path.Path, err)
-		}
-	}
-
-	go st.reportHealth(ctx)
 
 	return nil
 }

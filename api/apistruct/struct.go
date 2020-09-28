@@ -300,7 +300,7 @@ type StorageMinerStruct struct {
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                          `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                                 `perm:"admin"`
 		StorageStat          func(context.Context, stores.ID) (fsutil.FsStat, error)                                                                                             `perm:"admin"`
-		StorageAttach        func(context.Context, stores.StorageInfo, fsutil.FsStat) error                                                                                      `perm:"admin"`
+		StorageAttach        func(context.Context, stores.StorageInfo, fsutil.FsStat) error                                                                                      `perm:"admin" retry:"true"`
 		StorageDeclareSector func(context.Context, stores.ID, abi.SectorID, storiface.SectorFileType, bool) error                                                                `perm:"admin"`
 		StorageDropSector    func(context.Context, stores.ID, abi.SectorID, storiface.SectorFileType) error                                                                      `perm:"admin"`
 		StorageFindSector    func(context.Context, abi.SectorID, storiface.SectorFileType, abi.RegisteredSealProof, bool) ([]stores.SectorStorageInfo, error)                    `perm:"admin"`
