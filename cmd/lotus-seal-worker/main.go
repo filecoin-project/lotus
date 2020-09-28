@@ -428,18 +428,21 @@ var runCmd = &cli.Command{
 		go func() {
 			var reconnect bool
 			for {
-				log.Info("Making sure no local tasks are running")
-
-				// TODO: we could get rid of this, but that requires tracking resources for restarted tasks correctly
-				workerApi.LocalWorker.WaitQuiet()
-
 				if reconnect {
+					log.Info("Redeclaring local storage")
+
 					if err := localStore.Redeclare(ctx); err != nil {
 						log.Errorf("Redeclaring local storage failed: %+v", err)
 						cancel()
 						return
 					}
 				}
+
+				log.Info("Making sure no local tasks are running")
+
+				// TODO: we could get rid of this, but that requires tracking resources for restarted tasks correctly
+				workerApi.LocalWorker.WaitQuiet()
+
 
 				if err := nodeApi.WorkerConnect(ctx, "ws://"+address+"/rpc/v0"); err != nil {
 					log.Errorf("Registering worker failed: %+v", err)
