@@ -157,27 +157,25 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 		root.Version = actors.Version0
 	}
 
-	// If that fails, load as an old-style state-tree (direct hampt, version 0.
-	nd, err := adt.AsMap(adt.WrapStore(context.TODO(), cst), root.Actors, actors.Version(root.Version))
-	if err != nil {
-		log.Errorf("loading hamt node %s failed: %s", c, err)
-		return nil, err
-	}
-
 	switch root.Version {
 	case actors.Version0, actors.Version2:
-		// supported
+		// Load the actual state-tree HAMT.
+		nd, err := adt.AsMap(adt.WrapStore(context.TODO(), cst), root.Actors, actors.Version(root.Version))
+		if err != nil {
+			log.Errorf("loading hamt node %s failed: %s", c, err)
+			return nil, err
+		}
+
+		return &StateTree{
+			root:    nd,
+			info:    root.Info,
+			version: actors.Version(root.Version),
+			Store:   cst,
+			snaps:   newStateSnaps(),
+		}, nil
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
 	}
-
-	return &StateTree{
-		root:    nd,
-		info:    root.Info,
-		version: actors.Version(root.Version),
-		Store:   cst,
-		snaps:   newStateSnaps(),
-	}, nil
 }
 
 func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
