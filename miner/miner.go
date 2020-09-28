@@ -211,6 +211,8 @@ minerLoop:
 			base = prebase
 		}
 
+		base.NullRounds += injectNulls // testing
+
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
 			if !m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second) {
@@ -218,8 +220,6 @@ minerLoop:
 			}
 			continue
 		}
-
-		base.NullRounds += injectNulls // testing
 
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
