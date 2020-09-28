@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/conformance"
 
 	"github.com/filecoin-project/go-address"
@@ -38,7 +39,6 @@ var extractCmd = &cli.Command{
 	Description: "generate a message-class test vector by extracting it from a live chain",
 	Action:      runExtract,
 	Flags: []cli.Flag{
-		&apiFlag,
 		&cli.StringFlag{
 			Name:        "class",
 			Usage:       "class of vector to extract; other required flags depend on the; values: 'message'",
@@ -72,7 +72,7 @@ var extractCmd = &cli.Command{
 	},
 }
 
-func runExtract(_ *cli.Context) error {
+func runExtract(c *cli.Context) error {
 	// LOTUS_DISABLE_VM_BUF disables what's called "VM state tree buffering",
 	// which stashes write operations in a BufferedBlockstore
 	// (https://github.com/filecoin-project/lotus/blob/b7a4dbb07fd8332b4492313a617e3458f8003b2a/lib/bufbstore/buf_bstore.go#L21)
@@ -91,7 +91,7 @@ func runExtract(_ *cli.Context) error {
 	}
 
 	// Make the API client.
-	api, closer, err := makeAPIClient()
+	api, closer, err := lcli.GetFullNodeAPI(c)
 	if err != nil {
 		return err
 	}
