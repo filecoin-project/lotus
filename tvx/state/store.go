@@ -2,7 +2,10 @@ package state
 
 import (
 	"context"
+	"log"
+	"sync"
 
+	"github.com/fatih/color"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
@@ -51,27 +54,56 @@ func newStores(ctx context.Context, ds ds.Batching, bs blockstore.Blockstore) *S
 	}
 }
 
-// NewLocalStores creates a Stores object that operates entirely in-memory with
-// no read-through remote fetch fallback.
-func NewLocalStores(ctx context.Context) *Stores {
-	ds := ds.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
-	return newStores(ctx, ds, bs)
-}
-
 type proxyingBlockstore struct {
 	ctx context.Context
 	api api.FullNode
 
+	lk      sync.RWMutex
+	tracing bool
+	traced  map[cid.Cid]struct{}
+
 	blockstore.Blockstore
 }
 
+type TracingBlockstore interface {
+	StartTracing()
+	FinishTracing() map[cid.Cid]struct{}
+}
+
+var _ TracingBlockstore = (*proxyingBlockstore)(nil)
+
+// StartTracing starts tracing the CIDs that are effectively fetched during the
+// processing of a message.
+func (pb *proxyingBlockstore) StartTracing() {
+	pb.lk.Lock()
+	pb.tracing = true
+	pb.traced = map[cid.Cid]struct{}{}
+	pb.lk.Unlock()
+}
+
+// FinishTracing finishes tracing accessed CIDs, and returns a map of the
+// CIDs that were traced.
+func (pb *proxyingBlockstore) FinishTracing() map[cid.Cid]struct{} {
+	pb.lk.Lock()
+	ret := pb.traced
+	pb.tracing = false
+	pb.traced = map[cid.Cid]struct{}{}
+	pb.lk.Unlock()
+	return ret
+}
+
 func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
+	pb.lk.RLock()
+	if pb.tracing {
+		pb.traced[cid] = struct{}{}
+	}
+	pb.lk.RUnlock()
+
 	if block, err := pb.Blockstore.Get(cid); err == nil {
 		return block, err
 	}
 
-	// fmt.Printf("fetching cid via rpc: %v\n", cid)
+	log.Println(color.CyanString("fetching cid via rpc: %v", cid))
 	item, err := pb.api.ChainReadObj(pb.ctx, cid)
 	if err != nil {
 		return nil, err
@@ -89,9 +121,9 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	return block, nil
 }
 
-// NewProxyingStore is a Stores that proxies get requests for unknown CIDs
+// NewProxyingStores is a Stores that proxies get requests for unknown CIDs
 // to a Filecoin node, via the ChainReadObj RPC.
-func NewProxyingStore(ctx context.Context, api api.FullNode) *Stores {
+func NewProxyingStores(ctx context.Context, api api.FullNode) *Stores {
 	ds := ds.NewMapDatastore()
 
 	bs := &proxyingBlockstore{

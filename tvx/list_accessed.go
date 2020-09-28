@@ -42,7 +42,7 @@ func runListAccessed(c *cli.Context) error {
 		return err
 	}
 
-	rtst := state.NewProxyingStore(ctx, node)
+	rtst := state.NewProxyingStores(ctx, node)
 
 	sg := state.NewSurgeon(ctx, node, rtst)
 

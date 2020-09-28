@@ -9,14 +9,15 @@ import (
 	"io"
 	"os"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/conformance"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/oni/tvx/lotus"
-	"github.com/filecoin-project/oni/tvx/schema"
+	"github.com/filecoin-project/test-vectors/schema"
 )
 
 var execLotusFlags struct {
@@ -101,7 +102,7 @@ func executeTestVector(tv schema.TestVector) error {
 
 		fmt.Println("roots: ", header.Roots)
 
-		driver := lotus.NewDriver(ctx)
+		driver := conformance.NewDriver(ctx, tv.Selector)
 
 		for i, m := range tv.ApplyMessages {
 			fmt.Printf("decoding message %v\n", i)
@@ -117,12 +118,12 @@ func executeTestVector(tv schema.TestVector) error {
 
 			fmt.Printf("executing message %v\n", i)
 			var ret *vm.ApplyRet
-			ret, root, err = driver.ExecuteMessage(msg, root, bs, epoch)
+			ret, root, err = driver.ExecuteMessage(bs, root, abi.ChainEpoch(epoch), msg)
 			if err != nil {
 				return err
 			}
 
-			if expected, actual := tv.Post.Receipts[i].ExitCode, ret.ExitCode; expected != actual {
+			if expected, actual := tv.Post.Receipts[i].ExitCode, ret.ExitCode; expected != int64(actual) {
 				return fmt.Errorf("exit code of msg %d did not match; expected: %s, got: %s", i, expected, actual)
 			}
 			if expected, actual := tv.Post.Receipts[i].GasUsed, ret.GasUsed; expected != actual {
