@@ -106,59 +106,9 @@ func runExtract(c *cli.Context) error {
 	}
 	defer closer()
 
-	var (
-		msg    *types.Message
-		incTs  *types.TipSet
-		execTs *types.TipSet
-	)
-
-	// Extract the full message.
-	msg, err = api.ChainGetMessage(ctx, mcid)
+	msg, execTs, incTs, err := resolveFromChain(ctx, api, mcid)
 	if err != nil {
-		return err
-	}
-
-	log.Printf("found message with CID %s: %+v", mcid, msg)
-
-	if block := extractFlags.block; block == "" {
-		log.Printf("locating message in blockchain")
-
-		// Locate the message.
-		msgInfo, err := api.StateSearchMsg(ctx, mcid)
-		if err != nil {
-			return fmt.Errorf("failed to locate message: %w", err)
-		}
-
-		log.Printf("located message at tipset %s (height: %d) with exit code: %s", msgInfo.TipSet, msgInfo.Height, msgInfo.Receipt.ExitCode)
-
-		execTs, incTs, err = fetchThisAndPrevTipset(ctx, api, msgInfo.TipSet)
-		if err != nil {
-			return err
-		}
-	} else {
-		bcid, err := cid.Decode(block)
-		if err != nil {
-			return err
-		}
-
-		log.Printf("message inclusion block CID was provided; scanning around it: %s", bcid)
-
-		blk, err := api.ChainGetBlock(ctx, bcid)
-		if err != nil {
-			return fmt.Errorf("failed to get block: %w", err)
-		}
-
-		// types.EmptyTSK hints to use the HEAD.
-		execTs, err = api.ChainGetTipSetByHeight(ctx, blk.Height+1, types.EmptyTSK)
-		if err != nil {
-			return fmt.Errorf("failed to get message execution tipset: %w", err)
-		}
-
-		// walk back from the execTs instead of HEAD, to save time.
-		incTs, err = api.ChainGetTipSetByHeight(ctx, blk.Height, execTs.Key())
-		if err != nil {
-			return fmt.Errorf("failed to get message inclusion tipset: %w", err)
-		}
+		return fmt.Errorf("failed to resolve message and tipsets from chain: %w", err)
 	}
 
 	log.Printf("message was executed in tipset: %s", execTs.Key())
@@ -382,6 +332,60 @@ func runExtract(c *cli.Context) error {
 	}
 
 	return nil
+}
+
+// resolveFromChain queries the chain for the provided message, using the block CID to
+// speed up the query, if provided
+func resolveFromChain(ctx context.Context, api api.FullNode, mcid cid.Cid) (msg *types.Message, execTs *types.TipSet, incTs *types.TipSet, err error) {
+	// Extract the full message.
+	msg, err = api.ChainGetMessage(ctx, mcid)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	log.Printf("found message with CID %s: %+v", mcid, msg)
+
+	block := extractFlags.block
+	if block == "" {
+		log.Printf("locating message in blockchain")
+
+		// Locate the message.
+		msgInfo, err := api.StateSearchMsg(ctx, mcid)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to locate message: %w", err)
+		}
+
+		log.Printf("located message at tipset %s (height: %d) with exit code: %s", msgInfo.TipSet, msgInfo.Height, msgInfo.Receipt.ExitCode)
+
+		execTs, incTs, err = fetchThisAndPrevTipset(ctx, api, msgInfo.TipSet)
+		return msg, execTs, incTs, err
+	}
+
+	bcid, err := cid.Decode(block)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	log.Printf("message inclusion block CID was provided; scanning around it: %s", bcid)
+
+	blk, err := api.ChainGetBlock(ctx, bcid)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get block: %w", err)
+	}
+
+	// types.EmptyTSK hints to use the HEAD.
+	execTs, err = api.ChainGetTipSetByHeight(ctx, blk.Height+1, types.EmptyTSK)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get message execution tipset: %w", err)
+	}
+
+	// walk back from the execTs instead of HEAD, to save time.
+	incTs, err = api.ChainGetTipSetByHeight(ctx, blk.Height, execTs.Key())
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get message inclusion tipset: %w", err)
+	}
+
+	return msg, execTs, incTs, nil
 }
 
 // fetchThisAndPrevTipset returns the full tipset identified by the key, as well
