@@ -821,6 +821,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "html",
 			Usage: "generate html report",
 		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "generate json output",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -863,6 +867,15 @@ var stateComputeStateCmd = &cli.Command{
 		stout, err := api.StateCompute(ctx, h, msgs, ts.Key())
 		if err != nil {
 			return err
+		}
+
+		if cctx.Bool("json") {
+			out, err := json.Marshal(stout)
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(out))
+			return nil
 		}
 
 		if cctx.Bool("html") {
