@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
-	adt1 "github.com/filecoin-project/specs-actors/actors/util/adt"
 	power1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	adt1 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 var _ State = (*state1)(nil)
