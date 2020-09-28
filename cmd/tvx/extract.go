@@ -28,6 +28,7 @@ import (
 
 var extractFlags struct {
 	id     string
+	block  string
 	class  string
 	cid    string
 	file   string
@@ -51,6 +52,11 @@ var extractCmd = &cli.Command{
 			Usage:       "identifier to name this test vector with",
 			Value:       "(undefined)",
 			Destination: &extractFlags.id,
+		},
+		&cli.StringFlag{
+			Name:        "block",
+			Usage:       "optionally, the block CID the message was included in, to avoid expensive chain scanning",
+			Destination: &extractFlags.block,
 		},
 		&cli.StringFlag{
 			Name:        "cid",
@@ -98,27 +104,59 @@ func runExtract(c *cli.Context) error {
 	}
 	defer closer()
 
-	log.Printf("locating message with CID: %s", mcid)
-
-	// Locate the message.
-	msgInfo, err := api.StateSearchMsg(ctx, mcid)
-	if err != nil {
-		return fmt.Errorf("failed to locate message: %w", err)
-	}
-
-	log.Printf("located message at tipset %s (height: %d) with exit code: %s", msgInfo.TipSet, msgInfo.Height, msgInfo.Receipt.ExitCode)
+	var (
+		msg    *types.Message
+		incTs  *types.TipSet
+		execTs *types.TipSet
+	)
 
 	// Extract the full message.
-	msg, err := api.ChainGetMessage(ctx, mcid)
+	msg, err = api.ChainGetMessage(ctx, mcid)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("full message: %+v", msg)
+	log.Printf("found message with CID %s: %+v", mcid, msg)
 
-	execTs, incTs, err := fetchThisAndPrevTipset(ctx, api, msgInfo.TipSet)
-	if err != nil {
-		return err
+	if block := extractFlags.block; block == "" {
+		log.Printf("locating message in blockchain")
+
+		// Locate the message.
+		msgInfo, err := api.StateSearchMsg(ctx, mcid)
+		if err != nil {
+			return fmt.Errorf("failed to locate message: %w", err)
+		}
+
+		log.Printf("located message at tipset %s (height: %d) with exit code: %s", msgInfo.TipSet, msgInfo.Height, msgInfo.Receipt.ExitCode)
+
+		execTs, incTs, err = fetchThisAndPrevTipset(ctx, api, msgInfo.TipSet)
+		if err != nil {
+			return err
+		}
+	} else {
+		bcid, err := cid.Decode(block)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("message inclusion block CID was provided; scanning around it: %s", bcid)
+
+		blk, err := api.ChainGetBlock(ctx, bcid)
+		if err != nil {
+			return fmt.Errorf("failed to get block: %w", err)
+		}
+
+		// types.EmptyTSK hints to use the HEAD.
+		execTs, err = api.ChainGetTipSetByHeight(ctx, blk.Height+1, types.EmptyTSK)
+		if err != nil {
+			return fmt.Errorf("failed to get message execution tipset: %w", err)
+		}
+
+		// walk back from the execTs instead of HEAD, to save time.
+		incTs, err = api.ChainGetTipSetByHeight(ctx, blk.Height, execTs.Key())
+		if err != nil {
+			return fmt.Errorf("failed to get message inclusion tipset: %w", err)
+		}
 	}
 
 	log.Printf("message was executed in tipset: %s", execTs.Key())
@@ -274,7 +312,10 @@ func runExtract(c *cli.Context) error {
 		Meta: &schema.Metadata{
 			ID: extractFlags.id,
 			Gen: []schema.GenerationData{
-				{Source: fmt.Sprintf("message:%s:%s", ntwkName, msg.Cid().String())},
+				{Source: fmt.Sprintf("network:%s", ntwkName)},
+				{Source: fmt.Sprintf("msg:%s", msg.Cid().String())},
+				{Source: fmt.Sprintf("inc_ts:%s", incTs.Key().String())},
+				{Source: fmt.Sprintf("exec_ts:%s", execTs.Key().String())},
 				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
 		},
 		CAR: out.Bytes(),
