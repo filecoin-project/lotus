@@ -3,11 +3,14 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -23,6 +26,7 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
+	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -100,11 +104,11 @@ var DaemonCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "import-chain",
-			Usage: "on first run, load chain from given file and validate",
+			Usage: "on first run, load chain from given file or url and validate",
 		},
 		&cli.StringFlag{
 			Name:  "import-snapshot",
-			Usage: "import chain state from a given chain export file",
+			Usage: "import chain state from a given chain export file or url",
 		},
 		&cli.BoolFlag{
 			Name:  "halt-after-import",
@@ -204,11 +208,6 @@ var DaemonCmd = &cli.Command{
 			if chainfile == "" {
 				chainfile = snapshot
 				issnapshot = true
-			}
-
-			chainfile, err := homedir.Expand(chainfile)
-			if err != nil {
-				return err
 			}
 
 			if err := ImportChain(r, chainfile, issnapshot); err != nil {
@@ -326,12 +325,42 @@ func importKey(ctx context.Context, api api.FullNode, f string) error {
 	return nil
 }
 
-func ImportChain(r repo.Repo, fname string, snapshot bool) error {
-	fi, err := os.Open(fname)
-	if err != nil {
-		return err
+func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
+	var rd io.Reader
+	var l int64
+	if strings.HasPrefix(fname, "http://") || strings.HasPrefix(fname, "https://") {
+		resp, err := http.Get(fname) //nolint:gosec
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close() //nolint:errcheck
+
+		if resp.StatusCode != http.StatusOK {
+			return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
+		}
+
+		rd = resp.Body
+		l = resp.ContentLength
+	} else {
+		fname, err = homedir.Expand(fname)
+		if err != nil {
+			return err
+		}
+
+		fi, err := os.Open(fname)
+		if err != nil {
+			return err
+		}
+		defer fi.Close() //nolint:errcheck
+
+		st, err := os.Stat(fname)
+		if err != nil {
+			return err
+		}
+
+		rd = fi
+		l = st.Size()
 	}
-	defer fi.Close() //nolint:errcheck
 
 	lr, err := r.Lock(repo.FullNode)
 	if err != nil {
@@ -353,8 +382,21 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) error {
 
 	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
 
-	log.Info("importing chain from file...")
-	ts, err := cst.Import(fi)
+	log.Infof("importing chain from %s...", fname)
+
+	bufr := bufio.NewReaderSize(rd, 1<<20)
+
+	bar := pb.New64(l)
+	br := bar.NewProxyReader(bufr)
+	bar.ShowTimeLeft = true
+	bar.ShowPercent = true
+	bar.ShowSpeed = true
+	bar.Units = pb.U_BYTES
+
+	bar.Start()
+	ts, err := cst.Import(br)
+	bar.Finish()
+
 	if err != nil {
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
