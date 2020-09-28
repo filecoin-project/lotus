@@ -21,8 +21,10 @@ import (
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
+	m2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -32,6 +34,7 @@ import (
 var ForksAtHeight = map[abi.ChainEpoch]func(context.Context, *StateManager, ExecCallback, cid.Cid, *types.TipSet) (cid.Cid, error){
 	build.UpgradeBreezeHeight:   UpgradeFaucetBurnRecovery,
 	build.UpgradeIgnitionHeight: UpgradeIgnition,
+	build.UpgradeActorsV2:       UpgradeActorsV2,
 	build.UpgradeLiftoffHeight:  UpgradeLiftoff,
 }
 
@@ -412,6 +415,43 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 	}
 
 	return tree.Flush(ctx)
+}
+
+func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
+	store := sm.cs.Store(ctx)
+
+	info, err := store.Put(ctx, new(types.StateInfo))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create new state info for actors v2: %w", err)
+	}
+
+	newHamtRoot, err := m2.MigrateStateTree(ctx, store, root)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %w", err)
+	}
+
+	newRoot, err := store.Put(ctx, &types.StateRoot{
+		// TODO: ActorUpgrade: should be state-tree specific, not just the actors version.
+		Version: actors.Version2,
+		Actors:  newHamtRoot,
+		Info:    info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// perform some basic sanity checks.
+	if newSm, err := state.LoadStateTree(store, newRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("state tree sanity load failed: %w", err)
+	} else if newRoot2, err := newSm.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("state tree sanity flush failed: %w", err)
+	} else if newRoot2 != newRoot {
+		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
+	} else if _, err := newSm.GetActor(builtin0.InitActorAddr); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %w", err)
+	}
+
+	return newRoot, nil
 }
 
 func UpgradeLiftoff(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
