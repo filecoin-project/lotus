@@ -26,7 +26,7 @@ var extractManyFlags struct {
 
 var extractManyCmd = &cli.Command{
 	Name: "extract-many",
-	Description: `generate many test vectors by repeateadly calling tvx extract, using a csv file as input.
+	Description: `generate many test vectors by repeatedly calling tvx extract, using a csv file as input.
 
    The CSV file must have a format just like the following:
 

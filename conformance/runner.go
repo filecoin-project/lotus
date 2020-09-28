@@ -45,6 +45,12 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 	// Create a new Driver.
 	driver := NewDriver(ctx, vector.Selector, DriverOpts{})
 
+	var circSupply *abi.TokenAmount
+	if cs := vector.Pre.CircSupply; cs != nil {
+		ta := abi.NewTokenAmount(*cs)
+		circSupply = &ta
+	}
+
 	// Apply every message.
 	for i, m := range vector.ApplyMessages {
 		msg, err := types.DecodeMessage(m.Bytes)
@@ -59,7 +65,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 
 		// Execute the message.
 		var ret *vm.ApplyRet
-		ret, root, err = driver.ExecuteMessage(bs, root, abi.ChainEpoch(epoch), msg)
+		ret, root, err = driver.ExecuteMessage(bs, root, abi.ChainEpoch(epoch), msg, circSupply)
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)
 		}
