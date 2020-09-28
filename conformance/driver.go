@@ -3,8 +3,6 @@ package conformance
 import (
 	"context"
 
-	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -15,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/test-vectors/schema"
 
@@ -23,6 +22,11 @@ import (
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 )
+
+// DefaultCirculatingSupply is the fallback circulating supply returned by
+// the driver's CircSupplyCalculator function, used if the vector specifies
+// no circulating supply.
+var DefaultCirculatingSupply = types.TotalFilecoinInt
 
 var (
 	// BaseFee to use in the VM.
@@ -136,18 +140,24 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
-func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch abi.ChainEpoch, msg *types.Message) (*vm.ApplyRet, cid.Cid, error) {
-	// dummy state manager; only to reference the GetNetworkVersion method, which does not depend on state.
+func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch abi.ChainEpoch, msg *types.Message, circSupply *abi.TokenAmount) (*vm.ApplyRet, cid.Cid, error) {
+	// dummy state manager; only to reference the GetNetworkVersion method,
+	// which does not depend on state.
 	sm := new(stmgr.StateManager)
 	vmOpts := &vm.VMOpts{
-		StateBase:      preroot,
-		Epoch:          epoch,
-		Rand:           &testRand{}, // TODO always succeeds; need more flexibility.
-		Bstore:         bs,
-		Syscalls:       mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), // TODO always succeeds; need more flexibility.
-		CircSupplyCalc: nil,
-		BaseFee:        BaseFee,
-		NtwkVersion:    sm.GetNtwkVersion,
+		StateBase: preroot,
+		Epoch:     epoch,
+		Rand:      &testRand{}, // TODO always succeeds; need more flexibility.
+		Bstore:    bs,
+		Syscalls:  mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), // TODO always succeeds; need more flexibility.
+		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
+			if circSupply != nil {
+				return *circSupply, nil
+			}
+			return DefaultCirculatingSupply, nil
+		},
+		BaseFee:     BaseFee,
+		NtwkVersion: sm.GetNtwkVersion,
 	}
 
 	lvm, err := vm.NewVM(context.TODO(), vmOpts)

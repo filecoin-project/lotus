@@ -118,8 +118,17 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		return fmt.Errorf("failed to resolve message and tipsets from chain: %w", err)
 	}
 
+	// get the circulating supply before the message was executed.
+	circSupplyDetail, err := fapi.StateCirculatingSupply(ctx, incTs.Key())
+	if err != nil {
+		return fmt.Errorf("failed while fetching circulating supply: %w", err)
+	}
+
+	circSupply := circSupplyDetail.FilCirculating.Int64()
+
 	log.Printf("message was executed in tipset: %s", execTs.Key())
 	log.Printf("message was included in tipset: %s", incTs.Key())
+	log.Printf("circulating supply at inclusion tipset: %d", circSupply)
 	log.Printf("finding precursor messages")
 
 	// Iterate through blocks, finding the one that contains the message and its
@@ -174,7 +183,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	log.Printf("number of precursors to apply: %d", len(precursors))
 	for i, m := range precursors {
 		log.Printf("applying precursor %d, cid: %s", i, m.Cid())
-		_, root, err = driver.ExecuteMessage(pst.Blockstore, root, execTs.Height(), m)
+		_, root, err = driver.ExecuteMessage(pst.Blockstore, root, execTs.Height(), m, &circSupplyDetail.FilCirculating)
 		if err != nil {
 			return fmt.Errorf("failed to execute precursor message: %w", err)
 		}
@@ -199,7 +208,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		tbs.StartTracing()
 
 		preroot = root
-		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg)
+		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg, &circSupplyDetail.FilCirculating)
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
 		}
@@ -224,7 +233,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		if err != nil {
 			return err
 		}
-		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg)
+		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg, &circSupplyDetail.FilCirculating)
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
 		}
@@ -302,7 +311,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		},
 		CAR: out.Bytes(),
 		Pre: &schema.Preconditions{
-			Epoch: int64(execTs.Height()),
+			Epoch:      int64(execTs.Height()),
+			CircSupply: &circSupply,
 			StateTree: &schema.StateTree{
 				RootCID: preroot,
 			},
