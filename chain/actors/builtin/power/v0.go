@@ -15,6 +15,17 @@ type state0 struct {
 	store adt.Store
 }
 
+func (s *state0) NewLocked() (abi.TokenAmount, error) {
+	return s.ThisEpochPledgeCollateral, nil
+}
+
+func (s *state0) NewPower() (Claim, error) {
+	return Claim{
+		RawBytePower:    s.ThisEpochRawBytePower,
+		QualityAdjPower: s.ThisEpochQualityAdjPower,
+	}, nil
+}
+
 func (s *state0) TotalLocked() (abi.TokenAmount, error) {
 	return s.TotalPledgeCollateral, nil
 }
