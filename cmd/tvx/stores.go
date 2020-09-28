@@ -42,14 +42,11 @@ type Stores struct {
 // ChainReadObj RPC.
 func NewProxyingStores(ctx context.Context, api api.FullNode) *Stores {
 	ds := dssync.MutexWrap(ds.NewMapDatastore())
-	ds = dssync.MutexWrap(ds)
-
 	bs := &proxyingBlockstore{
 		ctx:        ctx,
 		api:        api,
 		Blockstore: blockstore.NewBlockstore(ds),
 	}
-
 	return NewStores(ctx, ds, bs)
 }
 
