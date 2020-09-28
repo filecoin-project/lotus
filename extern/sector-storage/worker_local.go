@@ -229,6 +229,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector abi.SectorID, rt Ret
 
 		if err := returnFunc[rt](ctx, ci, l.ret, res, err); err != nil {
 			log.Errorf("return error: %s: %+v", rt, err)
+			return
 		}
 
 		if err := l.ct.onReturned(ci); err != nil {
