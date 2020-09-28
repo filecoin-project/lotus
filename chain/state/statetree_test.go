@@ -9,6 +9,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
@@ -237,7 +238,8 @@ func assertNotHas(t *testing.T, st *StateTree, addr address.Address) {
 
 func TestStateTreeConsistency(t *testing.T) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, actors.VersionForNetwork(build.NewestNetworkVersion))
+	// TODO: ActorUpgrade: this test tests pre actors v2
+	st, err := NewStateTree(cst, actors.VersionForNetwork(network.Version3))
 	if err != nil {
 		t.Fatal(err)
 	}
