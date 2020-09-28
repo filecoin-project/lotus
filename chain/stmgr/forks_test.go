@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -44,16 +43,8 @@ const testForkHeight = 40
 type testActor struct {
 }
 
-var testActorCodeID = func() cid.Cid {
-	builder := cid.V1Builder{Codec: cid.Raw, MhType: multihash.IDENTITY}
-	c, err := builder.Sum([]byte("fil/any/test"))
-	if err != nil {
-		panic(err)
-	}
-	return c
-}()
-
-func (testActor) Code() cid.Cid  { return testActorCodeID }
+// must use existing actor that an account is allowed to exec.
+func (testActor) Code() cid.Cid  { return builtin.PaymentChannelActorCodeID }
 func (testActor) State() cbor.Er { return new(testActorState) }
 
 type testActorState struct {
