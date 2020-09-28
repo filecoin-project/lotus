@@ -230,7 +230,7 @@ func runExtract(c *cli.Context) error {
 	}
 
 	log.Printf("message applied; preroot: %s, postroot: %s", preroot, postroot)
-	log.Printf("performing sanity check on receipt")
+	log.Println("performing sanity check on receipt")
 
 	receipt := &schema.Receipt{
 		ExitCode:    int64(applyret.ExitCode),
@@ -241,13 +241,13 @@ func runExtract(c *cli.Context) error {
 	reporter := new(conformance.LogReporter)
 	conformance.AssertMsgResult(reporter, receipt, applyret, "as locally executed")
 	if reporter.Failed() {
-		log.Printf(color.RedString("receipt sanity check failed; aborting"))
+		log.Println(color.RedString("receipt sanity check failed; aborting"))
 		return fmt.Errorf("vector generation aborted")
-	} else {
-		log.Printf(color.GreenString("receipt sanity check succeeded"))
 	}
 
-	log.Printf("generating vector")
+	log.Println(color.GreenString("receipt sanity check succeeded"))
+
+	log.Println("generating vector")
 	msgBytes, err := msg.Serialize()
 	if err != nil {
 		return err
