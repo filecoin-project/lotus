@@ -14,7 +14,6 @@ import (
 	"golang.org/x/xerrors"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -25,6 +24,8 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -468,20 +469,20 @@ func UpgradeLiftoff(ctx context.Context, sm *StateManager, cb ExecCallback, root
 	return tree.Flush(ctx)
 }
 
-func setNetworkName(ctx context.Context, store adt0.Store, tree *state.StateTree, name string) error {
+func setNetworkName(ctx context.Context, store adt.Store, tree *state.StateTree, name string) error {
 	ia, err := tree.GetActor(builtin0.InitActorAddr)
 	if err != nil {
 		return xerrors.Errorf("getting init actor: %w", err)
 	}
 
-	var initState init0.State
-	if err := store.Get(ctx, ia.Head, &initState); err != nil {
+	initState, err := init_.Load(store, ia)
+	if err != nil {
 		return xerrors.Errorf("reading init state: %w", err)
 	}
 
-	initState.NetworkName = name
+	initState.SetNetworkName(name)
 
-	ia.Head, err = store.Put(ctx, &initState)
+	ia.Head, err = store.Put(ctx, initState)
 	if err != nil {
 		return xerrors.Errorf("writing new init state: %w", err)
 	}

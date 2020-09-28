@@ -57,6 +57,11 @@ func (s *state0) NetworkName() (dtypes.NetworkName, error) {
 	return dtypes.NetworkName(s.State.NetworkName), nil
 }
 
+func (s *state0) SetNetworkName(name string) error {
+	s.State.NetworkName = name
+	return nil
+}
+
 func (s *state0) Remove(addrs ...address.Address) (err error) {
 	m, err := adt0.AsMap(s.store, s.State.AddressMap)
 	if err != nil {

@@ -51,4 +51,7 @@ type State interface {
 	// It should not be used in production code, as init actor entries are
 	// immutable.
 	Remove(addrs ...address.Address) error
+
+	// Sets the network's name. This should only be used on upgrade/fork.
+	SetNetworkName(name string) error
 }
