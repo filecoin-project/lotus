@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/minio/blake2b-simd"
 
@@ -467,14 +469,25 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 		return v.(*types.TipSet), nil
 	}
 
-	var blks []*types.BlockHeader
-	for _, c := range tsk.Cids() {
-		b, err := cs.GetBlock(c)
-		if err != nil {
-			return nil, xerrors.Errorf("get block %s: %w", c, err)
-		}
+	// Fetch tipset block headers from blockstore in parallel
+	var eg errgroup.Group
+	cids := tsk.Cids()
+	blks := make([]*types.BlockHeader, 0, len(cids))
+	for _, c := range cids {
+		c := c
+		eg.Go(func() error {
+			b, err := cs.GetBlock(c)
+			if err != nil {
+				return xerrors.Errorf("get block %s: %w", c, err)
+			}
 
-		blks = append(blks, b)
+			blks = append(blks, b)
+			return nil
+		})
+	}
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	ts, err := types.NewTipSet(blks)
