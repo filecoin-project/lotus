@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
 func TestNextDeadline(t *testing.T) {
@@ -14,7 +14,7 @@ func TestNextDeadline(t *testing.T) {
 	deadlineIdx := 0
 	currentEpoch := abi.ChainEpoch(10)
 
-	di := miner.NewDeadlineInfo(periodStart, uint64(deadlineIdx), currentEpoch)
+	di := NewDeadlineInfo(periodStart, uint64(deadlineIdx), currentEpoch)
 	require.EqualValues(t, 0, di.Index)
 	require.EqualValues(t, 0, di.PeriodStart)
 	require.EqualValues(t, -20, di.Challenge)
