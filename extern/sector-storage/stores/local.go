@@ -257,7 +257,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 
 		for id, report := range toReport {
 			if err := st.index.StorageReportHealth(ctx, id, report); err != nil {
-				log.Warnf("error reporting storage health for %s: %+v", id, report)
+				log.Warnf("error reporting storage health for %s (%+v): %+v", id, report, err)
 			}
 		}
 	}

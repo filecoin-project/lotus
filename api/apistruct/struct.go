@@ -279,21 +279,21 @@ type StorageMinerStruct struct {
 		SectorRemove                  func(context.Context, abi.SectorNumber) error                                                 `perm:"admin"`
 		SectorMarkForUpgrade          func(ctx context.Context, id abi.SectorNumber) error                                          `perm:"admin"`
 
-		WorkerConnect func(context.Context, string) error                             `perm:"admin"` // TODO: worker perm
+		WorkerConnect func(context.Context, string) error                             `perm:"admin" retry:"true"` // TODO: worker perm
 		WorkerStats   func(context.Context) (map[uint64]storiface.WorkerStats, error) `perm:"admin"`
 		WorkerJobs    func(context.Context) (map[int64][]storiface.WorkerJob, error)  `perm:"admin"`
 
-		ReturnAddPiece        func(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err string) error          `perm:"admin"`
-		ReturnSealPreCommit1  func(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err string) error `perm:"admin"`
-		ReturnSealPreCommit2  func(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err string) error `perm:"admin"`
-		ReturnSealCommit1     func(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err string) error    `perm:"admin"`
-		ReturnSealCommit2     func(ctx context.Context, callID storiface.CallID, proof storage.Proof, err string) error       `perm:"admin"`
-		ReturnFinalizeSector  func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
-		ReturnReleaseUnsealed func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
-		ReturnMoveStorage     func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
-		ReturnUnsealPiece     func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
-		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err string) error                   `perm:"admin"`
-		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin"`
+		ReturnAddPiece        func(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err string) error          `perm:"admin" retry:"true"`
+		ReturnSealPreCommit1  func(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err string) error `perm:"admin" retry:"true"`
+		ReturnSealPreCommit2  func(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err string) error `perm:"admin" retry:"true"`
+		ReturnSealCommit1     func(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err string) error    `perm:"admin" retry:"true"`
+		ReturnSealCommit2     func(ctx context.Context, callID storiface.CallID, proof storage.Proof, err string) error       `perm:"admin" retry:"true"`
+		ReturnFinalizeSector  func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
+		ReturnReleaseUnsealed func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
+		ReturnMoveStorage     func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
+		ReturnUnsealPiece     func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
+		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err string) error                   `perm:"admin" retry:"true"`
+		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
 
 		SealingSchedDiag func(context.Context) (interface{}, error) `perm:"admin"`
 
