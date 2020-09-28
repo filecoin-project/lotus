@@ -102,6 +102,7 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 	}
 
 	var mpow power.Claim
+	var minpow bool
 	if maddr != address.Undef {
 		var found bool
 		mpow, found, err = pas.MinerPower(maddr)
@@ -109,11 +110,11 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 			// TODO: return an error when not found?
 			return power.Claim{}, power.Claim{}, false, err
 		}
-	}
 
-	minpow, err := pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
-	if err != nil {
-		return power.Claim{}, power.Claim{}, false, err
+		minpow, err = pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
+		if err != nil {
+			return power.Claim{}, power.Claim{}, false, err
+		}
 	}
 
 	return mpow, tpow, minpow, nil
