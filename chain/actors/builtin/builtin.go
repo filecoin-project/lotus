@@ -10,9 +10,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
+	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	smoothing1 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 )
 
@@ -48,4 +50,19 @@ func Load(store adt.Store, act *types.Actor) (cbor.Marshaler, error) {
 		return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 	}
 	return loader(store, act.Head)
+}
+
+func ActorNameByCode(c cid.Cid) string {
+	switch {
+	case builtin0.IsBuiltinActor(c):
+		return builtin0.ActorNameByCode(c)
+	case builtin1.IsBuiltinActor(c):
+		return builtin1.ActorNameByCode(c)
+	default:
+		return "<unknown>"
+	}
+}
+
+func IsBuiltinActor(c cid.Cid) bool {
+	return builtin0.IsBuiltinActor(c) || builtin1.IsBuiltinActor(c)
 }

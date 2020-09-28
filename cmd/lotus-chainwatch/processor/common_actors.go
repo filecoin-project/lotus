@@ -9,12 +9,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+
+	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/ipfs/go-cid"
 )
 
 func (p *Processor) setupCommonActors() error {
@@ -135,15 +138,15 @@ func (p Processor) storeActorAddresses(ctx context.Context, actors map[cid.Cid]A
 
 	addressToID := map[address.Address]address.Address{}
 	// HACK until genesis storage is figured out:
-	addressToID[builtin.SystemActorAddr] = builtin.SystemActorAddr
-	addressToID[builtin.InitActorAddr] = builtin.InitActorAddr
-	addressToID[builtin.RewardActorAddr] = builtin.RewardActorAddr
-	addressToID[builtin.CronActorAddr] = builtin.CronActorAddr
-	addressToID[builtin.StoragePowerActorAddr] = builtin.StoragePowerActorAddr
-	addressToID[builtin.StorageMarketActorAddr] = builtin.StorageMarketActorAddr
-	addressToID[builtin.VerifiedRegistryActorAddr] = builtin.VerifiedRegistryActorAddr
-	addressToID[builtin.BurntFundsActorAddr] = builtin.BurntFundsActorAddr
-	initActor, err := p.node.StateGetActor(ctx, builtin.InitActorAddr, types.EmptyTSK)
+	addressToID[builtin1.SystemActorAddr] = builtin1.SystemActorAddr
+	addressToID[builtin1.InitActorAddr] = builtin1.InitActorAddr
+	addressToID[builtin1.RewardActorAddr] = builtin1.RewardActorAddr
+	addressToID[builtin1.CronActorAddr] = builtin1.CronActorAddr
+	addressToID[builtin1.StoragePowerActorAddr] = builtin1.StoragePowerActorAddr
+	addressToID[builtin1.StorageMarketActorAddr] = builtin1.StorageMarketActorAddr
+	addressToID[builtin1.VerifiedRegistryActorAddr] = builtin1.VerifiedRegistryActorAddr
+	addressToID[builtin1.BurntFundsActorAddr] = builtin1.BurntFundsActorAddr
+	initActor, err := p.node.StateGetActor(ctx, builtin1.InitActorAddr, types.EmptyTSK)
 	if err != nil {
 		return err
 	}

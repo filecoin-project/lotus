@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -145,7 +144,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
-		invoker.Register(actors.Version0, chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{}, true)
+		invoker.Register(nil, chaos.Actor{})
 	}
 
 	lvm.SetInvoker(invoker)

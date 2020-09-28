@@ -8,9 +8,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -25,7 +27,8 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
@@ -40,6 +43,18 @@ const testForkHeight = 40
 
 type testActor struct {
 }
+
+var testActorCodeID = func() cid.Cid {
+	builder := cid.V1Builder{Codec: cid.Raw, MhType: multihash.IDENTITY}
+	c, err := builder.Sum([]byte("fil/any/test"))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}()
+
+func (testActor) Code() cid.Cid  { return testActorCodeID }
+func (testActor) State() cbor.Er { return new(testActorState) }
 
 type testActorState struct {
 	HasUpgraded uint64
@@ -61,7 +76,7 @@ func (tas *testActorState) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (ta *testActor) Exports() []interface{} {
+func (ta testActor) Exports() []interface{} {
 	return []interface{}{
 		1: ta.Constructor,
 		2: ta.TestMethod,
@@ -115,7 +130,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree, ts *types.TipSet) error {
-		cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
+		cst := ipldcbor.NewCborStore(sm.ChainStore().Blockstore())
 
 		act, err := st.GetActor(taddr)
 		if err != nil {
@@ -143,7 +158,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		return nil
 	}
 
-	inv.Register(actors.Version0, builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{}, false)
+	inv.Register(nil, testActor{})
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
 		nvm, err := vm.NewVM(ctx, vmopt)
 		if err != nil {
@@ -157,7 +172,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	var msgs []*types.SignedMessage
 
-	enc, err := actors.SerializeParams(&init_.ExecParams{CodeCID: builtin.PaymentChannelActorCodeID})
+	enc, err := actors.SerializeParams(&init_.ExecParams{CodeCID: (testActor{}).Code()})
 	if err != nil {
 		t.Fatal(err)
 	}

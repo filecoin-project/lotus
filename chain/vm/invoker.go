@@ -10,35 +10,13 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
-	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	system0 "github.com/filecoin-project/specs-actors/actors/builtin/system"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
-	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	account1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
-	cron1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/cron"
-	init1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	market1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
-	miner1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	msig1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
-	paych1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
-	power1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
-	reward1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
-	system1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/system"
-	verifreg1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
+	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
+	exported1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	vmr "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	rtt "github.com/filecoin-project/go-state-types/rt"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -49,15 +27,27 @@ type ActorRegistry struct {
 	actors map[cid.Cid]*actorInfo
 }
 
+// An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
+type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
+
+func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
+	return func(rt vmr.Runtime, v rtt.VMActor) error {
+		nver := actors.VersionForNetwork(rt.NetworkVersion())
+		if nver != ver {
+			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrEpoch())
+		}
+		return nil
+	}
+}
+
 type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
 type actorInfo struct {
-	methods   nativeCode
-	stateType reflect.Type
+	methods nativeCode
+	vmActor rtt.VMActor
 	// TODO: consider making this a network version range?
-	version   actors.Version
-	singleton bool
+	predicate ActorPredicate
 }
 
 func NewActorRegistry() *ActorRegistry {
@@ -66,29 +56,8 @@ func NewActorRegistry() *ActorRegistry {
 	// TODO: define all these properties on the actors themselves, in specs-actors.
 
 	// add builtInCode using: register(cid, singleton)
-	inv.Register(actors.Version0, builtin0.SystemActorCodeID, system0.Actor{}, abi.EmptyValue{}, true)
-	inv.Register(actors.Version0, builtin0.InitActorCodeID, init0.Actor{}, init0.State{}, true)
-	inv.Register(actors.Version0, builtin0.RewardActorCodeID, reward0.Actor{}, reward0.State{}, true)
-	inv.Register(actors.Version0, builtin0.CronActorCodeID, cron0.Actor{}, cron0.State{}, true)
-	inv.Register(actors.Version0, builtin0.StoragePowerActorCodeID, power0.Actor{}, power0.State{}, true)
-	inv.Register(actors.Version0, builtin0.StorageMarketActorCodeID, market0.Actor{}, market0.State{}, true)
-	inv.Register(actors.Version0, builtin0.VerifiedRegistryActorCodeID, verifreg0.Actor{}, verifreg0.State{}, true)
-	inv.Register(actors.Version0, builtin0.StorageMinerActorCodeID, miner0.Actor{}, miner0.State{}, false)
-	inv.Register(actors.Version0, builtin0.MultisigActorCodeID, msig0.Actor{}, msig0.State{}, false)
-	inv.Register(actors.Version0, builtin0.PaymentChannelActorCodeID, paych0.Actor{}, paych0.State{}, false)
-	inv.Register(actors.Version0, builtin0.AccountActorCodeID, account0.Actor{}, account0.State{}, false)
-
-	inv.Register(actors.Version1, builtin1.SystemActorCodeID, system1.Actor{}, abi.EmptyValue{}, true)
-	inv.Register(actors.Version1, builtin1.InitActorCodeID, init1.Actor{}, init1.State{}, true)
-	inv.Register(actors.Version1, builtin1.RewardActorCodeID, reward1.Actor{}, reward1.State{}, true)
-	inv.Register(actors.Version1, builtin1.CronActorCodeID, cron1.Actor{}, cron1.State{}, true)
-	inv.Register(actors.Version1, builtin1.StoragePowerActorCodeID, power1.Actor{}, power1.State{}, true)
-	inv.Register(actors.Version1, builtin1.StorageMarketActorCodeID, market1.Actor{}, market1.State{}, true)
-	inv.Register(actors.Version1, builtin1.VerifiedRegistryActorCodeID, verifreg1.Actor{}, verifreg1.State{}, true)
-	inv.Register(actors.Version1, builtin1.StorageMinerActorCodeID, miner1.Actor{}, miner1.State{}, false)
-	inv.Register(actors.Version1, builtin1.MultisigActorCodeID, msig1.Actor{}, msig1.State{}, false)
-	inv.Register(actors.Version1, builtin1.PaymentChannelActorCodeID, paych1.Actor{}, paych1.State{}, false)
-	inv.Register(actors.Version1, builtin1.AccountActorCodeID, account1.Actor{}, account1.State{}, false)
+	inv.Register(ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
+	inv.Register(ActorsVersionPredicate(actors.Version1), exported1.BuiltinActors()...)
 
 	return inv
 }
@@ -102,23 +71,27 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 	if method >= abi.MethodNum(len(act.methods)) || act.methods[method] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
-	if curVer := actors.VersionForNetwork(rt.NetworkVersion()); curVer != act.version {
-		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "unsupported actors code version %d, expected %d", act.version, curVer)
+	if err := act.predicate(rt, act.vmActor); err != nil {
+		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "unsupported actor: %s", err)
 	}
 	return act.methods[method](rt, params)
 
 }
 
-func (ar *ActorRegistry) Register(version actors.Version, c cid.Cid, instance Invokee, state interface{}, singleton bool) {
-	code, err := ar.transform(instance)
-	if err != nil {
-		panic(xerrors.Errorf("%s: %w", string(c.Hash()), err))
+func (ar *ActorRegistry) Register(pred ActorPredicate, actors ...rtt.VMActor) {
+	if pred == nil {
+		pred = func(vmr.Runtime, rtt.VMActor) error { return nil }
 	}
-	ar.actors[c] = &actorInfo{
-		methods:   code,
-		version:   version,
-		stateType: reflect.TypeOf(state),
-		singleton: singleton,
+	for _, a := range actors {
+		code, err := ar.transform(a)
+		if err != nil {
+			panic(xerrors.Errorf("%s: %w", string(a.Code().Hash()), err))
+		}
+		ar.actors[a.Code()] = &actorInfo{
+			methods:   code,
+			vmActor:   a,
+			predicate: pred,
+		}
 	}
 }
 
@@ -127,11 +100,12 @@ func (ar *ActorRegistry) Create(codeCid cid.Cid, rt vmr.Runtime) (*types.Actor, 
 	if !ok {
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
 	}
-	if version := actors.VersionForNetwork(rt.NetworkVersion()); act.version != version {
-		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only create version %d actors, attempted to create version %d actor", version, act.version)
+
+	if err := act.predicate(rt, act.vmActor); err != nil {
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Cannot create actor: %w", err)
 	}
 
-	if act.singleton {
+	if rtt.IsSingletonActor(act.vmActor) {
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 	return &types.Actor{
@@ -142,11 +116,11 @@ func (ar *ActorRegistry) Create(codeCid cid.Cid, rt vmr.Runtime) (*types.Actor, 
 	}, nil
 }
 
-type Invokee interface {
+type invokee interface {
 	Exports() []interface{}
 }
 
-func (*ActorRegistry) transform(instance Invokee) (nativeCode, error) {
+func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
 	runtimeType := reflect.TypeOf((*vmr.Runtime)(nil)).Elem()
@@ -247,15 +221,10 @@ func DumpActorState(act *types.Actor, b []byte) (interface{}, error) {
 		return nil, xerrors.Errorf("state type for actor %s not found", act.Code)
 	}
 
-	rv := reflect.New(actInfo.stateType)
-	um, ok := rv.Interface().(cbg.CBORUnmarshaler)
-	if !ok {
-		return nil, xerrors.New("state type does not implement CBORUnmarshaler")
-	}
-
+	um := actInfo.vmActor.State()
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, xerrors.Errorf("unmarshaling actor state: %w", err)
 	}
 
-	return rv.Elem().Interface(), nil
+	return um, nil
 }
