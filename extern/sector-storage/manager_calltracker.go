@@ -232,6 +232,11 @@ func (m *Manager) waitWork(ctx context.Context, wid WorkID) (interface{}, error)
 		res := m.results[wid]
 		delete(m.results, wid)
 
+		_, ok := m.callToWork[ws.WorkerCall]
+		if ok {
+			delete(m.callToWork, ws.WorkerCall)
+		}
+
 		err := m.work.Get(wk).End()
 		if err != nil {
 			// Not great, but not worth discarding potentially multi-hour computation over this
