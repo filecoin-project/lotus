@@ -23,7 +23,7 @@ var repoFlag = cli.StringFlag{
 func main() {
 	app := &cli.App{
 		Name: "tvx",
-		Description: `tvx is a tool for extracting and executing test vectors. It has two subcommands.
+		Description: `tvx is a tool for extracting and executing test vectors. It has three subcommands.
 
    tvx extract extracts a test vector from a live network. It requires access to
    a Filecoin client that exposes the standard JSON-RPC API endpoint. Only
@@ -31,6 +31,9 @@ func main() {
 
    tvx exec executes test vectors against Lotus. Either you can supply one in a
    file, or many as an ndjson stdin stream.
+
+   tvx extract-many performs a batch extraction of many messages, supplied in a
+   CSV file. Refer to the help of that subcommand for more info.
 
    SETTING THE JSON-RPC API ENDPOINT
 
@@ -53,6 +56,7 @@ func main() {
 		Commands: []*cli.Command{
 			extractCmd,
 			execCmd,
+			extractManyCmd,
 		},
 	}
 

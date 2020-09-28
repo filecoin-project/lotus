@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/fatih/color"
 
@@ -28,7 +29,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var extractFlags struct {
+type extractOpts struct {
 	id     string
 	block  string
 	class  string
@@ -36,6 +37,8 @@ var extractFlags struct {
 	file   string
 	retain string
 }
+
+var extractFlags extractOpts
 
 var extractCmd = &cli.Command{
 	Name:        "extract",
@@ -94,19 +97,23 @@ func runExtract(c *cli.Context) error {
 
 	ctx := context.Background()
 
-	mcid, err := cid.Decode(extractFlags.cid)
-	if err != nil {
-		return err
-	}
-
 	// Make the API client.
-	api, closer, err := lcli.GetFullNodeAPI(c)
+	fapi, closer, err := lcli.GetFullNodeAPI(c)
 	if err != nil {
 		return err
 	}
 	defer closer()
 
-	msg, execTs, incTs, err := resolveFromChain(ctx, api, mcid)
+	return doExtract(ctx, fapi, extractFlags)
+}
+
+func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
+	mcid, err := cid.Decode(opts.cid)
+	if err != nil {
+		return err
+	}
+
+	msg, execTs, incTs, err := resolveFromChain(ctx, fapi, mcid, opts.block)
 	if err != nil {
 		return fmt.Errorf("failed to resolve message and tipsets from chain: %w", err)
 	}
@@ -119,7 +126,7 @@ func runExtract(c *cli.Context) error {
 	// precursors, if any.
 	var allmsgs []*types.Message
 	for _, b := range incTs.Blocks() {
-		messages, err := api.ChainGetBlockMessages(ctx, b.Cid())
+		messages, err := fapi.ChainGetBlockMessages(ctx, b.Cid())
 		if err != nil {
 			return err
 		}
@@ -139,7 +146,7 @@ func runExtract(c *cli.Context) error {
 			break
 		}
 
-		log.Printf("message not found in block %s; precursors found: %v; ignoring block", b.Cid(), related)
+		log.Printf("message not found in block %s; number of precursors found: %d; ignoring block", b.Cid(), len(related))
 	}
 
 	if allmsgs == nil {
@@ -151,8 +158,8 @@ func runExtract(c *cli.Context) error {
 
 	var (
 		// create a read-through store that uses ChainGetObject to fetch unknown CIDs.
-		pst = NewProxyingStores(ctx, api)
-		g   = NewSurgeon(ctx, api, pst)
+		pst = NewProxyingStores(ctx, fapi)
+		g   = NewSurgeon(ctx, fapi, pst)
 	)
 
 	driver := conformance.NewDriver(ctx, schema.Selector{}, conformance.DriverOpts{
@@ -178,7 +185,7 @@ func runExtract(c *cli.Context) error {
 		postroot  cid.Cid
 		applyret  *vm.ApplyRet
 		carWriter func(w io.Writer) error
-		retention = extractFlags.retain
+		retention = opts.retain
 	)
 
 	log.Printf("using state retention strategy: %s", retention)
@@ -204,7 +211,7 @@ func runExtract(c *cli.Context) error {
 	case "accessed-actors":
 		log.Printf("calculating accessed actors")
 		// get actors accessed by message.
-		retain, err := g.GetAccessedActors(ctx, api, mcid)
+		retain, err := g.GetAccessedActors(ctx, fapi, mcid)
 		if err != nil {
 			return fmt.Errorf("failed to calculate accessed actors: %w", err)
 		}
@@ -267,12 +274,12 @@ func runExtract(c *cli.Context) error {
 		return err
 	}
 
-	version, err := api.Version(ctx)
+	version, err := fapi.Version(ctx)
 	if err != nil {
 		return err
 	}
 
-	ntwkName, err := api.StateNetworkName(ctx)
+	ntwkName, err := fapi.StateNetworkName(ctx)
 	if err != nil {
 		return err
 	}
@@ -281,7 +288,7 @@ func runExtract(c *cli.Context) error {
 	vector := schema.TestVector{
 		Class: schema.ClassMessage,
 		Meta: &schema.Metadata{
-			ID: extractFlags.id,
+			ID: opts.id,
 			// TODO need to replace schema.GenerationData with a more flexible
 			//  data structure that makes no assumption about the traceability
 			//  data that's being recorded; a flexible map[string]string
@@ -316,7 +323,11 @@ func runExtract(c *cli.Context) error {
 	}
 
 	output := io.WriteCloser(os.Stdout)
-	if file := extractFlags.file; file != "" {
+	if file := opts.file; file != "" {
+		dir := filepath.Dir(file)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("unable to create directory %s: %w", dir, err)
+		}
 		output, err = os.Create(file)
 		if err != nil {
 			return err
@@ -336,7 +347,7 @@ func runExtract(c *cli.Context) error {
 
 // resolveFromChain queries the chain for the provided message, using the block CID to
 // speed up the query, if provided
-func resolveFromChain(ctx context.Context, api api.FullNode, mcid cid.Cid) (msg *types.Message, execTs *types.TipSet, incTs *types.TipSet, err error) {
+func resolveFromChain(ctx context.Context, api api.FullNode, mcid cid.Cid, block string) (msg *types.Message, execTs *types.TipSet, incTs *types.TipSet, err error) {
 	// Extract the full message.
 	msg, err = api.ChainGetMessage(ctx, mcid)
 	if err != nil {
@@ -345,7 +356,6 @@ func resolveFromChain(ctx context.Context, api api.FullNode, mcid cid.Cid) (msg 
 
 	log.Printf("found message with CID %s: %+v", mcid, msg)
 
-	block := extractFlags.block
 	if block == "" {
 		log.Printf("locating message in blockchain")
 
