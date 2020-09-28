@@ -65,7 +65,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 		}
 
 		// Assert that the receipt matches what the test vector expects.
-		assertMsgResult(r, vector.Post.Receipts[i], ret, strconv.Itoa(i))
+		AssertMsgResult(r, vector.Post.Receipts[i], ret, strconv.Itoa(i))
 	}
 
 	// Once all messages are applied, assert that the final state root matches
@@ -105,7 +105,7 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector) {
 		}
 
 		for j, v := range ret.AppliedResults {
-			assertMsgResult(r, vector.Post.Receipts[receiptsIdx], v, fmt.Sprintf("%d of tipset %d", j, i))
+			AssertMsgResult(r, vector.Post.Receipts[receiptsIdx], v, fmt.Sprintf("%d of tipset %d", j, i))
 			receiptsIdx++
 		}
 
@@ -127,10 +127,10 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector) {
 	}
 }
 
-// assertMsgResult compares a message result. It takes the expected receipt
+// AssertMsgResult compares a message result. It takes the expected receipt
 // encoded in the vector, the actual receipt returned by Lotus, and a message
 // label to log in the assertion failure message to facilitate debugging.
-func assertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.ApplyRet, label string) {
+func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.ApplyRet, label string) {
 	r.Helper()
 
 	if expected, actual := exitcode.ExitCode(expected.ExitCode), actual.ExitCode; expected != actual {

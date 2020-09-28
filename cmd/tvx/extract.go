@@ -10,6 +10,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/fatih/color"
+
 	"github.com/filecoin-project/lotus/api"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -277,6 +279,25 @@ func runExtract(c *cli.Context) error {
 		return fmt.Errorf("unknown state retention option: %s", retention)
 	}
 
+	log.Printf("message applied; preroot: %s, postroot: %s", preroot, postroot)
+	log.Printf("performing sanity check on receipt")
+
+	receipt := &schema.Receipt{
+		ExitCode:    int64(applyret.ExitCode),
+		ReturnValue: applyret.Return,
+		GasUsed:     applyret.GasUsed,
+	}
+
+	reporter := new(conformance.LogReporter)
+	conformance.AssertMsgResult(reporter, receipt, applyret, "as locally executed")
+	if reporter.Failed() {
+		log.Printf(color.RedString("receipt sanity check failed; aborting"))
+		return fmt.Errorf("vector generation aborted")
+	} else {
+		log.Printf(color.GreenString("receipt sanity check succeeded"))
+	}
+
+	log.Printf("generating vector")
 	msgBytes, err := msg.Serialize()
 	if err != nil {
 		return err
@@ -311,11 +332,15 @@ func runExtract(c *cli.Context) error {
 		Class: schema.ClassMessage,
 		Meta: &schema.Metadata{
 			ID: extractFlags.id,
+			// TODO need to replace schema.GenerationData with a more flexible
+			//  data structure that makes no assumption about the traceability
+			//  data that's being recorded; a flexible map[string]string
+			//  would do.
 			Gen: []schema.GenerationData{
 				{Source: fmt.Sprintf("network:%s", ntwkName)},
-				{Source: fmt.Sprintf("msg:%s", msg.Cid().String())},
-				{Source: fmt.Sprintf("inc_ts:%s", incTs.Key().String())},
-				{Source: fmt.Sprintf("exec_ts:%s", execTs.Key().String())},
+				{Source: fmt.Sprintf("message:%s", msg.Cid().String())},
+				{Source: fmt.Sprintf("inclusion_tipset:%s", incTs.Key().String())},
+				{Source: fmt.Sprintf("execution_tipset:%s", execTs.Key().String())},
 				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
 		},
 		CAR: out.Bytes(),
