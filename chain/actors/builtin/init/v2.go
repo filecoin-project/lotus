@@ -10,14 +10,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
-	init1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	adt1 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
-var _ State = (*state1)(nil)
+var _ State = (*state2)(nil)
 
-func load1(store adt.Store, root cid.Cid) (State, error) {
-	out := state1{store: store}
+func load2(store adt.Store, root cid.Cid) (State, error) {
+	out := state2{store: store}
 	err := store.Get(store.Context(), root, &out)
 	if err != nil {
 		return nil, err
@@ -25,21 +25,21 @@ func load1(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-type state1 struct {
-	init1.State
+type state2 struct {
+	init2.State
 	store adt.Store
 }
 
-func (s *state1) ResolveAddress(address address.Address) (address.Address, bool, error) {
+func (s *state2) ResolveAddress(address address.Address) (address.Address, bool, error) {
 	return s.State.ResolveAddress(s.store, address)
 }
 
-func (s *state1) MapAddressToNewID(address address.Address) (address.Address, error) {
+func (s *state2) MapAddressToNewID(address address.Address) (address.Address, error) {
 	return s.State.MapAddressToNewID(s.store, address)
 }
 
-func (s *state1) ForEachActor(cb func(id abi.ActorID, address address.Address) error) error {
-	addrs, err := adt1.AsMap(s.store, s.State.AddressMap)
+func (s *state2) ForEachActor(cb func(id abi.ActorID, address address.Address) error) error {
+	addrs, err := adt2.AsMap(s.store, s.State.AddressMap)
 	if err != nil {
 		return err
 	}
@@ -53,12 +53,12 @@ func (s *state1) ForEachActor(cb func(id abi.ActorID, address address.Address) e
 	})
 }
 
-func (s *state1) NetworkName() (dtypes.NetworkName, error) {
+func (s *state2) NetworkName() (dtypes.NetworkName, error) {
 	return dtypes.NetworkName(s.State.NetworkName), nil
 }
 
-func (s *state1) Remove(addrs ...address.Address) (err error) {
-	m, err := adt1.AsMap(s.store, s.State.AddressMap)
+func (s *state2) Remove(addrs ...address.Address) (err error) {
+	m, err := adt2.AsMap(s.store, s.State.AddressMap)
 	if err != nil {
 		return err
 	}

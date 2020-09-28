@@ -6,13 +6,13 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
-	account1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
+	account2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
 )
 
-var _ State = (*state1)(nil)
+var _ State = (*state2)(nil)
 
-func load1(store adt.Store, root cid.Cid) (State, error) {
-	out := state1{store: store}
+func load2(store adt.Store, root cid.Cid) (State, error) {
+	out := state2{store: store}
 	err := store.Get(store.Context(), root, &out)
 	if err != nil {
 		return nil, err
@@ -20,11 +20,11 @@ func load1(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-type state1 struct {
-	account1.State
+type state2 struct {
+	account2.State
 	store adt.Store
 }
 
-func (s *state1) PubkeyAddress() (address.Address, error) {
+func (s *state2) PubkeyAddress() (address.Address, error) {
 	return s.Address, nil
 }

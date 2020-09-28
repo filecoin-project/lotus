@@ -14,8 +14,8 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
-	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	smoothing1 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 )
 
 // TODO: Why does actors have 2 different versions of this?
@@ -32,7 +32,7 @@ func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, 
 	return miner0.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }
 
-func FromV1FilterEstimate(v1 smoothing1.FilterEstimate) FilterEstimate {
+func FromV2FilterEstimate(v1 smoothing2.FilterEstimate) FilterEstimate {
 	return (FilterEstimate)(v1)
 }
 
@@ -56,13 +56,13 @@ func ActorNameByCode(c cid.Cid) string {
 	switch {
 	case builtin0.IsBuiltinActor(c):
 		return builtin0.ActorNameByCode(c)
-	case builtin1.IsBuiltinActor(c):
-		return builtin1.ActorNameByCode(c)
+	case builtin2.IsBuiltinActor(c):
+		return builtin2.ActorNameByCode(c)
 	default:
 		return "<unknown>"
 	}
 }
 
 func IsBuiltinActor(c cid.Cid) bool {
-	return builtin0.IsBuiltinActor(c) || builtin1.IsBuiltinActor(c)
+	return builtin0.IsBuiltinActor(c) || builtin2.IsBuiltinActor(c)
 }

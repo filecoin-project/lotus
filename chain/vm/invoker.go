@@ -11,7 +11,7 @@ import (
 	"golang.org/x/xerrors"
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
-	exported1 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
+	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	vmr "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -57,7 +57,7 @@ func NewActorRegistry() *ActorRegistry {
 
 	// add builtInCode using: register(cid, singleton)
 	inv.Register(ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
-	inv.Register(ActorsVersionPredicate(actors.Version1), exported1.BuiltinActors()...)
+	inv.Register(ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
 
 	return inv
 }

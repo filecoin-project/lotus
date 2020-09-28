@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -138,15 +138,15 @@ func (p Processor) storeActorAddresses(ctx context.Context, actors map[cid.Cid]A
 
 	addressToID := map[address.Address]address.Address{}
 	// HACK until genesis storage is figured out:
-	addressToID[builtin1.SystemActorAddr] = builtin1.SystemActorAddr
-	addressToID[builtin1.InitActorAddr] = builtin1.InitActorAddr
-	addressToID[builtin1.RewardActorAddr] = builtin1.RewardActorAddr
-	addressToID[builtin1.CronActorAddr] = builtin1.CronActorAddr
-	addressToID[builtin1.StoragePowerActorAddr] = builtin1.StoragePowerActorAddr
-	addressToID[builtin1.StorageMarketActorAddr] = builtin1.StorageMarketActorAddr
-	addressToID[builtin1.VerifiedRegistryActorAddr] = builtin1.VerifiedRegistryActorAddr
-	addressToID[builtin1.BurntFundsActorAddr] = builtin1.BurntFundsActorAddr
-	initActor, err := p.node.StateGetActor(ctx, builtin1.InitActorAddr, types.EmptyTSK)
+	addressToID[builtin2.SystemActorAddr] = builtin2.SystemActorAddr
+	addressToID[builtin2.InitActorAddr] = builtin2.InitActorAddr
+	addressToID[builtin2.RewardActorAddr] = builtin2.RewardActorAddr
+	addressToID[builtin2.CronActorAddr] = builtin2.CronActorAddr
+	addressToID[builtin2.StoragePowerActorAddr] = builtin2.StoragePowerActorAddr
+	addressToID[builtin2.StorageMarketActorAddr] = builtin2.StorageMarketActorAddr
+	addressToID[builtin2.VerifiedRegistryActorAddr] = builtin2.VerifiedRegistryActorAddr
+	addressToID[builtin2.BurntFundsActorAddr] = builtin2.BurntFundsActorAddr
+	initActor, err := p.node.StateGetActor(ctx, builtin2.InitActorAddr, types.EmptyTSK)
 	if err != nil {
 		return err
 	}

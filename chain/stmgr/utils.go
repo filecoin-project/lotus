@@ -21,7 +21,7 @@ import (
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
-	exported1 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
+	exported2 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
@@ -530,14 +530,14 @@ func init() {
 	// TODO: combine with the runtime actor registry.
 	var actors []rt.VMActor
 	actors = append(actors, exported0.BuiltinActors()...)
-	actors = append(actors, exported1.BuiltinActors()...)
+	actors = append(actors, exported2.BuiltinActors()...)
 
 	for _, actor := range actors {
 		exports := actor.Exports()
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
 		// Explicitly add send, it's special.
-		// Note that builtin1.MethodSend = builtin0.MethodSend = 0.
+		// Note that builtin2.MethodSend = builtin0.MethodSend = 0.
 		methods[builtin0.MethodSend] = MethodMeta{
 			Name:   "Send",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
@@ -563,10 +563,10 @@ func init() {
 
 			switch abi.MethodNum(number) {
 			case builtin0.MethodSend:
-				// Note that builtin1.MethodSend = builtin0.MethodSend = 0.
+				// Note that builtin2.MethodSend = builtin0.MethodSend = 0.
 				panic("method 0 is reserved for Send")
 			case builtin0.MethodConstructor:
-				// Note that builtin1.MethodConstructor = builtin0.MethodConstructor = 1.
+				// Note that builtin2.MethodConstructor = builtin0.MethodConstructor = 1.
 				if fnName != "Constructor" {
 					panic("method 1 is reserved for Constructor")
 				}

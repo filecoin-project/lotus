@@ -18,19 +18,19 @@ import (
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 func init() {
 	builtin.RegisterActorState(builtin0.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load0(store, root)
 	})
-	builtin.RegisterActorState(builtin1.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load1(store, root)
+	builtin.RegisterActorState(builtin2.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load2(store, root)
 	})
 }
 
-// Unchanged between v0 and v1 actors
+// Unchanged between v0 and v2 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 
 const MinSectorExpiration = miner0.MinSectorExpiration
@@ -39,8 +39,8 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.StorageMinerActorCodeID:
 		return load0(store, act.Head)
-	case builtin1.StorageMinerActorCodeID:
-		return load1(store, act.Head)
+	case builtin2.StorageMinerActorCodeID:
+		return load2(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }

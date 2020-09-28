@@ -11,7 +11,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -87,8 +87,8 @@ func newAccountActor(ver actors.Version) *types.Actor {
 	switch ver {
 	case actors.Version0:
 		code = builtin0.AccountActorCodeID
-	case actors.Version1:
-		code = builtin1.AccountActorCodeID
+	case actors.Version2:
+		code = builtin2.AccountActorCodeID
 	default:
 		panic("unsupported actors version")
 	}

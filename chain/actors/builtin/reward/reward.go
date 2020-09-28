@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	builtin1 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -19,8 +19,8 @@ func init() {
 	builtin.RegisterActorState(builtin0.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load0(store, root)
 	})
-	builtin.RegisterActorState(builtin1.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load1(store, root)
+	builtin.RegisterActorState(builtin2.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load2(store, root)
 	})
 }
 
@@ -30,8 +30,8 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.RewardActorCodeID:
 		return load0(store, act.Head)
-	case builtin1.RewardActorCodeID:
-		return load1(store, act.Head)
+	case builtin2.RewardActorCodeID:
+		return load2(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }

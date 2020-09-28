@@ -9,8 +9,8 @@ import (
 type Version int
 
 const (
-	Version0 = iota
-	Version1
+	Version0 = 0
+	Version2 = 2
 )
 
 // Converts a network version into an actors adt version.
