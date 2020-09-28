@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -250,6 +251,14 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	netBalFil := new(big.Rat).SetFrac(netBal.Int, attoFil)
 	netBalFilFloat, _ := netBalFil.Float64()
 	p := NewPoint("network.balance", netBalFilFloat)
+	pl.AddPoint(p)
+
+	totalPower, err := api.StateMinerPower(ctx, address.Address{}, tipset.Key())
+	if err != nil {
+		return err
+	}
+
+	p = NewPoint("chain.power", totalPower.TotalPower.QualityAdjPower.Int64())
 	pl.AddPoint(p)
 
 	miners, err := api.StateListMiners(ctx, tipset.Key())

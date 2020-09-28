@@ -109,6 +109,9 @@ func MinerID(ma dtypes.MinerAddress) (dtypes.MinerID, error) {
 }
 
 func StorageNetworkName(ctx helpers.MetricsCtx, a lapi.FullNode) (dtypes.NetworkName, error) {
+	if !build.Devnet {
+		return "testnetnet", nil
+	}
 	return a.StateNetworkName(ctx)
 }
 

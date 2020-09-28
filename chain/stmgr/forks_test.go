@@ -129,33 +129,38 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, st types.StateTree, ts *types.TipSet) error {
+	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
 		cst := ipldcbor.NewCborStore(sm.ChainStore().Blockstore())
+
+		st, err := sm.StateTree(root)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
+		}
 
 		act, err := st.GetActor(taddr)
 		if err != nil {
-			return err
+			return cid.Undef, err
 		}
 
 		var tas testActorState
 		if err := cst.Get(ctx, act.Head, &tas); err != nil {
-			return xerrors.Errorf("in fork handler, failed to run get: %w", err)
+			return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
 		}
 
 		tas.HasUpgraded = 55
 
 		ns, err := cst.Put(ctx, &tas)
 		if err != nil {
-			return err
+			return cid.Undef, err
 		}
 
 		act.Head = ns
 
 		if err := st.SetActor(taddr, act); err != nil {
-			return err
+			return cid.Undef, err
 		}
 
-		return nil
+		return st.Flush(ctx)
 	}
 
 	inv.Register(nil, testActor{})
