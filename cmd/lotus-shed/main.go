@@ -25,6 +25,7 @@ func main() {
 		staterootCmd,
 		auditsCmd,
 		importCarCmd,
+		importObjectCmd,
 		commpToCidCmd,
 		fetchParamCmd,
 		proofsCmd,
