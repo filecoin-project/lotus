@@ -115,11 +115,6 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 
 		Prover: prover,
 
-		wt: &workTracker{
-			done:    map[storiface.CallID]struct{}{},
-			running: map[storiface.CallID]trackedWork{},
-		},
-
 		work:       statestore.New(ds),
 		callToWork: map[storiface.CallID]WorkID{},
 		callRes:    map[storiface.CallID]chan result{},

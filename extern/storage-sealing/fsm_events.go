@@ -101,16 +101,26 @@ func (evt SectorPacked) apply(state *SectorInfo) {
 	}
 }
 
+type SectorTicket struct {
+	TicketValue abi.SealRandomness
+	TicketEpoch abi.ChainEpoch
+}
+
+func (evt SectorTicket) apply(state *SectorInfo) {
+	state.TicketEpoch = evt.TicketEpoch
+	state.TicketValue = evt.TicketValue
+}
+
+type SectorOldTicket struct{}
+
+func (evt SectorOldTicket) apply(*SectorInfo) {}
+
 type SectorPreCommit1 struct {
 	PreCommit1Out storage.PreCommit1Out
-	TicketValue   abi.SealRandomness
-	TicketEpoch   abi.ChainEpoch
 }
 
 func (evt SectorPreCommit1) apply(state *SectorInfo) {
 	state.PreCommit1Out = evt.PreCommit1Out
-	state.TicketEpoch = evt.TicketEpoch
-	state.TicketValue = evt.TicketValue
 	state.PreCommit2Fails = 0
 }
 

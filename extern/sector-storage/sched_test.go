@@ -439,7 +439,7 @@ func TestSched(t *testing.T) {
 				for _, job := range jobs {
 					lines = append(lines, line{
 						WorkerJob: job,
-						wid:       wid,
+						wid:       uint64(wid),
 					})
 				}
 			}

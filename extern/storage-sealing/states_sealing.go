@@ -21,6 +21,7 @@ import (
 )
 
 var DealSectorPriority = 1024
+var MaxTicketAge = abi.ChainEpoch(builtin.EpochsInDay * 2)
 
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
@@ -83,6 +84,18 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 	return abi.SealRandomness(rand), ticketEpoch, nil
 }
 
+func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) error {
+	ticketValue, ticketEpoch, err := m.getTicket(ctx, sector)
+	if err != nil {
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
+	}
+
+	return ctx.Send(SectorTicket{
+		TicketValue: ticketValue,
+		TicketEpoch: ticketEpoch,
+	})
+}
+
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
 	if err := checkPieces(ctx.Context(), m.maddr, sector, m.api); err != nil { // Sanity check state
 		switch err.(type) {
@@ -99,21 +112,23 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		}
 	}
 
-	log.Infow("performing sector replication...", "sector", sector.SectorNumber)
-	ticketValue, ticketEpoch, err := m.getTicket(ctx, sector)
+	_, height, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
-		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
+		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
+		return nil
 	}
 
-	pc1o, err := m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), ticketValue, sector.pieceInfos())
+	if height-sector.TicketEpoch > MaxTicketAge {
+		return ctx.Send(SectorOldTicket{})
+	}
+
+	pc1o, err := m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), sector.TicketValue, sector.pieceInfos())
 	if err != nil {
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
 	}
 
 	return ctx.Send(SectorPreCommit1{
 		PreCommit1Out: pc1o,
-		TicketValue:   ticketValue,
-		TicketEpoch:   ticketEpoch,
 	})
 }
 
