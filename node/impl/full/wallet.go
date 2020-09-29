@@ -19,8 +19,8 @@ import (
 type WalletAPI struct {
 	fx.In
 
-	StateManager *stmgr.StateManager
-	Wallet       *wallet.Wallet
+	stmgr.StateManagerAPI
+	Wallet *wallet.Wallet
 }
 
 func (a *WalletAPI) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
@@ -36,7 +36,7 @@ func (a *WalletAPI) WalletList(ctx context.Context) ([]address.Address, error) {
 }
 
 func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
-	act, err := a.StateManager.LoadActorTsk(ctx, addr, types.EmptyTSK)
+	act, err := a.StateManagerAPI.LoadActorTsk(ctx, addr, types.EmptyTSK)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return big.Zero(), nil
 	} else if err != nil {
@@ -46,7 +46,7 @@ func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (ty
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
-	keyAddr, err := a.StateManager.ResolveToKeyAddress(ctx, k, nil)
+	keyAddr, err := a.StateManagerAPI.ResolveToKeyAddress(ctx, k, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}

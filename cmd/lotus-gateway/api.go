@@ -49,17 +49,6 @@ func (a *GatewayAPI) checkTipset(ctx context.Context, ts types.TipSetKey) error 
 	return nil
 }
 
-func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
-	ctx, span := trace.StartSpan(ctx, "StateGetActor")
-	defer span.End()
-
-	if err := a.checkTipset(ctx, ts); err != nil {
-		return nil, fmt.Errorf("bad tipset: %w", err)
-	}
-
-	return a.api.StateGetActor(ctx, actor, ts)
-}
-
 func (a *GatewayAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "ChainHead")
 	defer span.End()
@@ -87,4 +76,26 @@ func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (ci
 	// TODO: additional anti-spam checks
 
 	return a.api.MpoolPushUntrusted(ctx, sm)
+}
+
+func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
+	ctx, span := trace.StartSpan(ctx, "StateGetActor")
+	defer span.End()
+
+	if err := a.checkTipset(ctx, ts); err != nil {
+		return nil, fmt.Errorf("bad tipset: %w", err)
+	}
+
+	return a.api.StateGetActor(ctx, actor, ts)
+}
+
+func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	ctx, span := trace.StartSpan(ctx, "StateAccountKey")
+	defer span.End()
+
+	if err := a.checkTipset(ctx, tsk); err != nil {
+		return address.Undef, fmt.Errorf("bad tipset: %w", err)
+	}
+
+	return a.api.StateAccountKey(ctx, addr, tsk)
 }

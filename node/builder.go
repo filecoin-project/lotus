@@ -261,6 +261,7 @@ func Online() Option {
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule()),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
+			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 

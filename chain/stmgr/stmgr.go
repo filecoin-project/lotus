@@ -40,6 +40,11 @@ import (
 
 var log = logging.Logger("statemgr")
 
+type StateManagerAPI interface {
+	LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
+	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+}
+
 type versionSpec struct {
 	networkVersion network.Version
 	atOrBelow      abi.ChainEpoch
@@ -1393,3 +1398,5 @@ func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (m
 	}
 	return actState, nil
 }
+
+var _ StateManagerAPI = (*StateManager)(nil)

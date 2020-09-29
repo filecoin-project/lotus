@@ -15,6 +15,8 @@ import (
 	"runtime/pprof"
 	"strings"
 
+	"go.uber.org/fx"
+
 	"github.com/filecoin-project/lotus/chain/types"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
@@ -113,6 +115,10 @@ var DaemonCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "halt-after-import",
 			Usage: "halt the process after importing chain from file",
+		},
+		&cli.BoolFlag{
+			Name:  "lite",
+			Usage: "start lotus in lite mode",
 		},
 		&cli.StringFlag{
 			Name:  "pprof",
@@ -240,6 +246,27 @@ var DaemonCmd = &cli.Command{
 
 		shutdownChan := make(chan struct{})
 
+		// If the daemon is started in "lite mode", replace the StateManager
+		// with a thin client to a gateway server
+		liteMode := node.Options()
+		if cctx.Bool("lite") {
+			gapi, closer, err := lcli.GetGatewayAPI(cctx)
+			if err != nil {
+				return err
+			}
+
+			createRPCStateMgr := func(lc fx.Lifecycle) *modules.RPCStateManager {
+				lc.Append(fx.Hook{
+					OnStop: func(ctx context.Context) error {
+						closer()
+						return nil
+					},
+				})
+				return modules.NewRPCStateManager(gapi)
+			}
+			liteMode = node.Override(new(stmgr.StateManagerAPI), createRPCStateMgr)
+		}
+
 		var api api.FullNode
 
 		stop, err := node.New(ctx,
@@ -251,6 +278,7 @@ var DaemonCmd = &cli.Command{
 			node.Repo(r),
 
 			genesis,
+			liteMode,
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {

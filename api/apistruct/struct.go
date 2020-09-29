@@ -361,6 +361,17 @@ type WorkerStruct struct {
 	}
 }
 
+type GatewayStruct struct {
+	Internal struct {
+		// TODO: does the gateway need perms?
+		StateGetActor   func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
+		ChainHead       func(ctx context.Context) (*types.TipSet, error)
+		ChainGetTipSet  func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+		MpoolPush       func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
+		StateAccountKey func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	}
+}
+
 // CommonStruct
 
 func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
@@ -1372,7 +1383,28 @@ func (w *WorkerStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
 	return w.Internal.Closing(ctx)
 }
 
+func (g GatewayStruct) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
+	return g.Internal.StateGetActor(ctx, actor, ts)
+}
+
+func (g GatewayStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	return g.Internal.ChainHead(ctx)
+}
+
+func (g GatewayStruct) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+	return g.Internal.ChainGetTipSet(ctx, tsk)
+}
+
+func (g GatewayStruct) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
+	return g.Internal.MpoolPush(ctx, sm)
+}
+
+func (g GatewayStruct) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return g.Internal.StateAccountKey(ctx, addr, tsk)
+}
+
 var _ api.Common = &CommonStruct{}
 var _ api.FullNode = &FullNodeStruct{}
 var _ api.StorageMiner = &StorageMinerStruct{}
 var _ api.WorkerAPI = &WorkerStruct{}
+var _ api.GatewayAPI = &GatewayStruct{}
