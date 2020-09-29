@@ -132,6 +132,7 @@ func (blk *BlockHeader) LastTicket() *Ticket {
 func (blk *BlockHeader) SigningBytes() ([]byte, error) {
 	blkcopy := *blk
 	blkcopy.BlockSig = nil
+	blkcopy.validated = false
 
 	return blkcopy.Serialize()
 }
