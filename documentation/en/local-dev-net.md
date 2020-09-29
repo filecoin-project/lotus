@@ -1,5 +1,11 @@
 # Setup Local Devnet
 
+*If you are running your local devnet on **MacOS** and having trouble building, you'll need to set the following ENV variables before running `make 2k`:*
+```
+export CGO_CFLAGS_ALLOW="-D__BLST_PORTABLE__"
+export CGO_CFLAGS="-D__BLST_PORTABLE__"
+```
+
 Build the Lotus Binaries in debug mode, This enables the use of 2048 byte sectors.
 
 ```sh
