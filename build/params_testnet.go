@@ -20,7 +20,7 @@ const BreezeGasTampingDuration = 120
 
 const UpgradeSmokeHeight = -1
 
-const UpgradeIgnitionHeight = -1
+const UpgradeIgnitionHeight = 23950
 
 const UpgradeActorsV2 = 24000
 
