@@ -735,6 +735,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 
 	// fast checks first
 	nulls := h.Height - (baseTs.Height() + 1)
+	if nulls < 0 {
+		return xerrors.Errorf("block has wrong height %d, parents height %d", h.Height, baseTs.Height())
+	}
 	if tgtTs := baseTs.MinTimestamp() + build.BlockDelaySecs*uint64(nulls+1); h.Timestamp != tgtTs {
 		return xerrors.Errorf("block has wrong timestamp: %d != %d", h.Timestamp, tgtTs)
 	}
