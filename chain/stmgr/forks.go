@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	m2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
+	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -431,6 +432,19 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %w", err)
 	}
 
+	newStateTree, err := states2.LoadTree(store, newHamtRoot)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load new state tree: %w", err)
+	}
+
+	// Check all state-tree invariants.
+	if msgs, err := states2.CheckStateInvariants(newStateTree, types.TotalFilecoinInt); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to check new state tree: %w", err)
+	} else if !msgs.IsEmpty() {
+		// This error is going to be really nasty.
+		return cid.Undef, xerrors.Errorf("network upgrade failed: %v", msgs.Messages())
+	}
+
 	newRoot, err := store.Put(ctx, &types.StateRoot{
 		// TODO: ActorUpgrade: should be state-tree specific, not just the actors version.
 		Version: actors.Version2,
@@ -441,7 +455,7 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
 	}
 
-	// perform some basic sanity checks.
+	// perform some basic sanity checks to make sure everything still works.
 	if newSm, err := state.LoadStateTree(store, newRoot); err != nil {
 		return cid.Undef, xerrors.Errorf("state tree sanity load failed: %w", err)
 	} else if newRoot2, err := newSm.Flush(ctx); err != nil {
