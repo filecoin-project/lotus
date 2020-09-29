@@ -16,19 +16,18 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandIncentinet,
-	UpgradeSmokeHeight: DrandMainnet,
+	0: DrandMainnet,
 }
 
-const UpgradeBreezeHeight = 41280
+const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 120
 
-const UpgradeSmokeHeight = 51000
+const UpgradeSmokeHeight = -2
 
-const UpgradeIgnitionHeight = 94000
-const UpgradeRefuelHeight = 130800
+const UpgradeIgnitionHeight = -3
+const UpgradeRefuelHeight = -4
 
-var UpgradeActorsV2Height = abi.ChainEpoch(138720)
+var UpgradeActorsV2Height = abi.ChainEpoch(2 * 15)
 
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
@@ -36,21 +35,20 @@ var UpgradeActorsV2Height = abi.ChainEpoch(138720)
 const UpgradeLiftoffHeight = 148888
 
 func init() {
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(1 << 30))
 	policy.SetSupportedProofTypes(
+		abi.RegisteredSealProof_StackedDrg512MiBV1,
 		abi.RegisteredSealProof_StackedDrg32GiBV1,
 		abi.RegisteredSealProof_StackedDrg64GiBV1,
 	)
 
-	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
-		SetAddressNetwork(address.Mainnet)
-	}
+	SetAddressNetwork(address.Testnet)
 
 	if os.Getenv("LOTUS_DISABLE_V2_ACTOR_MIGRATION") == "1" {
 		UpgradeActorsV2Height = math.MaxInt64
 	}
 
-	Devnet = false
+	Devnet = true
 }
 
 const BlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
