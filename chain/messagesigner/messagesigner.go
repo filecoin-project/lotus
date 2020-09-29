@@ -4,20 +4,21 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/wallet"
-
-	"github.com/filecoin-project/lotus/chain/messagepool"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
 
 const dsKeyActorNonce = "ActorNonce"
+
+var log = logging.Logger("messagesigner")
 
 type mpoolAPI interface {
 	GetNonce(address.Address) (uint64, error)
@@ -67,30 +68,30 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message) (*
 // nextNonce increments the nonce.
 // If there is no nonce in the datastore, gets the nonce from the message pool.
 func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
-	addrNonceKey := datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
+	// Nonces used to be created by the mempool and we need to support nodes
+	// that have mempool nonces, so first check the mempool for a nonce for
+	// this address. Note that the mempool returns the actor state's nonce
+	// by default.
+	nonce, err := ms.mpool.GetNonce(addr)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to get nonce from mempool: %w", err)
+	}
 
 	// Get the nonce for this address from the datastore
-	nonceBytes, err := ms.ds.Get(addrNonceKey)
+	addrNonceKey := datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
+	dsNonceBytes, err := ms.ds.Get(addrNonceKey)
 
-	var nonce uint64
 	switch {
 	case xerrors.Is(err, datastore.ErrNotFound):
 		// If a nonce for this address hasn't yet been created in the
-		// datastore, check the mempool - nonces used to be created by
-		// the mempool so we need to support nodes that still have mempool
-		// nonces. Note that the mempool returns the actor state's nonce by
-		// default.
-		nonce, err = ms.mpool.GetNonce(addr)
-		if err != nil {
-			return 0, xerrors.Errorf("failed to get nonce from mempool: %w", err)
-		}
+		// datastore, just use the nonce from the mempool
 
 	case err != nil:
 		return 0, xerrors.Errorf("failed to get nonce from datastore: %w", err)
 
 	default:
-		// There is a nonce in the mempool, so unmarshall and increment it
-		maj, val, err := cbg.CborReadHeader(bytes.NewReader(nonceBytes))
+		// There is a nonce in the datastore, so unmarshall and increment it
+		maj, val, err := cbg.CborReadHeader(bytes.NewReader(dsNonceBytes))
 		if err != nil {
 			return 0, xerrors.Errorf("failed to parse nonce from datastore: %w", err)
 		}
@@ -98,7 +99,14 @@ func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
 			return 0, xerrors.Errorf("bad cbor type parsing nonce from datastore")
 		}
 
-		nonce = val + 1
+		dsNonce := val + 1
+
+		// The message pool nonce should be <= than the datastore nonce
+		if nonce <= dsNonce {
+			nonce = dsNonce
+		} else {
+			log.Warnf("mempool nonce was larger than datastore nonce (%d > %d)", nonce, dsNonce)
+		}
 	}
 
 	// Write the nonce for this address to the datastore

@@ -98,10 +98,9 @@ func TestMessageSignerSignMessage(t *testing.T) {
 				To:   to1,
 				From: from1,
 			},
-			// Should ignore mpool nonce because after the first message nonce
-			// will come from the datastore
+			// Should adjust datastore nonce because mpool nonce is higher
 			mpoolNonce: [1]uint64{10},
-			expNonce:   6,
+			expNonce:   10,
 		}},
 	}, {
 		// Nonce should increment independently for each address
