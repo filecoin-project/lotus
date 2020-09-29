@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-
-	"github.com/filecoin-project/lotus/build"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
@@ -102,16 +100,10 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrApi{xerrors.Errorf("calling StateNetworkVersion: %w", err)}
 	}
 
-	var msd abi.ChainEpoch
-	if nv < build.ActorUpgradeNetworkVersion {
-		msd = miner0.MaxSealDuration[si.SectorType]
-	} else {
-		// TODO: ActorUpgrade(use MaxProveCommitDuration)
-		msd = 0
-	}
+	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), si.SectorType)
 
-	if height-(si.TicketEpoch+SealRandomnessLookback) > msd {
-		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+SealRandomnessLookback, height)}
+	if height-(si.TicketEpoch+policy.SealRandomnessLookback) > msd {
+		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+policy.SealRandomnessLookback, height)}
 	}
 
 	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)

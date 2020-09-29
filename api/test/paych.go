@@ -169,7 +169,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		return true, nil
 	}, func(ctx context.Context, ts *types.TipSet) error {
 		return nil
-	}, int(build.MessageConfidence)+1, build.SealRandomnessLookbackLimit, func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
+	}, int(build.MessageConfidence)+1, build.Finality, func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
 		return preds.OnPaymentChannelActorChanged(channel, preds.OnToSendAmountChanges())(ctx, oldTs.Key(), newTs.Key())
 	})
 	if err != nil {
