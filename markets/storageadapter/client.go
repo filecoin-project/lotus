@@ -438,37 +438,6 @@ func (c *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (addres
 	return addr, err
 }
 
-func (c *ClientNodeAdapter) ValidateAskSignature(ctx context.Context, ask *storagemarket.SignedStorageAsk, encodedTs shared.TipSetToken) (bool, error) {
-	tsk, err := types.TipSetKeyFromBytes(encodedTs)
-	if err != nil {
-		return false, err
-	}
-
-	mi, err := c.StateMinerInfo(ctx, ask.Ask.Miner, tsk)
-	if err != nil {
-		return false, xerrors.Errorf("failed to get worker for miner in ask: %w", err)
-	}
-
-	sigb, err := cborutil.Dump(ask.Ask)
-	if err != nil {
-		return false, xerrors.Errorf("failed to re-serialize ask")
-	}
-
-	ts, err := c.ChainGetTipSet(ctx, tsk)
-	if err != nil {
-		return false, xerrors.Errorf("failed to load tipset")
-	}
-
-	m, err := c.StateManager.ResolveToKeyAddress(ctx, mi.Worker, ts)
-
-	if err != nil {
-		return false, xerrors.Errorf("failed to resolve miner to key address")
-	}
-
-	err = sigs.Verify(ask.Signature, m, sigb)
-	return err == nil, err
-}
-
 func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
 	head, err := c.ChainHead(ctx)
 	if err != nil {
