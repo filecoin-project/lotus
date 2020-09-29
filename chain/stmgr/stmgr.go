@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
@@ -858,7 +860,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 	err = sTree.ForEach(func(kaddr address.Address, act *types.Actor) error {
-		if act.IsMultisigActor() {
+		if builtin.IsMultisigActor(act.Code) {
 			s, err := multisig.Load(sm.cs.Store(ctx), act)
 			if err != nil {
 				return err
@@ -890,7 +892,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				totalsByEpoch[ud] = ib
 			}
 
-		} else if act.IsAccountActor() {
+		} else if builtin.IsAccountActor(act.Code) {
 			// should exclude burnt funds actor and "remainder account actor"
 			// should only ever be "faucet" accounts in testnets
 			if kaddr == builtin0.BurntFundsActorAddr {

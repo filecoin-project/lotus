@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -210,7 +212,7 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(act *types.Actor, b []byte) (interface{}, error) {
-	if act.IsAccountActor() { // Account code special case
+	if builtin.IsAccountActor(act.Code) { // Account code special case
 		return nil, nil
 	}
 

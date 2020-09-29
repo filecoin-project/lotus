@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/go-cid"
@@ -28,7 +30,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"

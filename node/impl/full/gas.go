@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -182,7 +184,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 		return res.MsgRct.GasUsed, nil
 	}
 
-	if !act.IsPaymentChannelActor() {
+	if !builtin.IsPaymentChannelActor(act.Code) {
 		return res.MsgRct.GasUsed, nil
 	}
 	if msgIn.Method != builtin0.MethodsPaych.Collect {

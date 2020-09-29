@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
@@ -1080,7 +1082,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 
-			if !act.IsAccountActor() {
+			if !builtin.IsAccountActor(act.Code) {
 				return xerrors.New("Sender must be an account actor")
 			}
 			nonces[m.From] = act.Nonce
