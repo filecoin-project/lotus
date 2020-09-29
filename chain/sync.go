@@ -782,31 +782,35 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 			b.Header.ParentWeight, pweight)
 	}
 
-	// Stuff that needs stateroot / worker address
-	stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
-	if err != nil {
-		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
-	}
-
-	if stateroot != h.ParentStateRoot {
-		msgs, err := syncer.store.MessagesForTipset(baseTs)
+	stateRootCheck := async.Err(func() error {
+		stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
 		if err != nil {
-			log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
-		} else {
-			log.Warn("Messages for tipset with mismatching state:")
-			for i, m := range msgs {
-				mm := m.VMMessage()
-				log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
-			}
+			return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
 		}
 
-		return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
-	}
+		if stateroot != h.ParentStateRoot {
+			msgs, err := syncer.store.MessagesForTipset(baseTs)
+			if err != nil {
+				log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+			} else {
+				log.Warn("Messages for tipset with mismatching state:")
+				for i, m := range msgs {
+					mm := m.VMMessage()
+					log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
+				}
+			}
 
-	if precp != h.ParentMessageReceipts {
-		return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
-	}
+			return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
+		}
 
+		if precp != h.ParentMessageReceipts {
+			return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
+		}
+
+		return nil
+	})
+
+	// Stuff that needs worker address
 	waddr, err := stmgr.GetMinerWorkerRaw(ctx, syncer.sm, lbst, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("GetMinerWorkerRaw failed: %w", err)
@@ -927,6 +931,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		winnerCheck,
 		msgsCheck,
 		baseFeeCheck,
+		stateRootCheck,
 	}
 
 	var merr error
