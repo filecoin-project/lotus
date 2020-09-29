@@ -614,6 +614,14 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
 
+func GetParamType(actCode cid.Cid, method abi.MethodNum) (cbg.CBORUnmarshaler, error) {
+	m, found := MethodsMap[actCode][method]
+	if !found {
+		return nil, fmt.Errorf("unknown method %d for actor %s", method, actCode)
+	}
+	return reflect.New(m.Params.Elem()).Interface().(cbg.CBORUnmarshaler), nil
+}
+
 func minerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
 	pact, err := sm.LoadActor(ctx, power.Address, ts)
 	if err != nil {
