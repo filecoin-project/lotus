@@ -20,8 +20,9 @@ import (
 )
 
 var extractManyFlags struct {
-	in     string
-	outdir string
+	in      string
+	outdir  string
+	batchId string
 }
 
 var extractManyCmd = &cli.Command{
@@ -37,11 +38,17 @@ var extractManyCmd = &cli.Command{
 
    The first row MUST be a header row. At the bare minimum, those seven fields
    must appear, in the order specified. Extra fields are accepted, but always
-   after these compulsory six.
+   after these compulsory seven.
 `,
 	Action: runExtractMany,
 	Flags: []cli.Flag{
 		&repoFlag,
+		&cli.StringFlag{
+			Name:        "batch-id",
+			Usage:       "batch id; a four-digit left-zero-padded sequential number (e.g. 0041)",
+			Required:    true,
+			Destination: &extractManyFlags.batchId,
+		},
 		&cli.StringFlag{
 			Name:        "in",
 			Usage:       "path to input file (csv)",
@@ -164,7 +171,7 @@ func runExtractMany(c *cli.Context) error {
 		actorcodename := strings.ReplaceAll(actorcode, "/", "_")
 
 		// Compute the ID of the vector.
-		id := fmt.Sprintf("extracted-msg-%s-%s-%s-%s", actorcodename, methodname, exitcodename, seq)
+		id := fmt.Sprintf("ext-%s-%s-%s-%s-%s", extractManyFlags.batchId, actorcodename, methodname, exitcodename, seq)
 		// Vector filename, using a base of outdir.
 		file := filepath.Join(outdir, actorcodename, methodname, exitcodename, id) + ".json"
 
