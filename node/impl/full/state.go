@@ -382,12 +382,8 @@ func (a *StateAPI) StateLookupID(ctx context.Context, addr address.Address, tsk 
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	state, err := a.stateForTs(ctx, ts)
-	if err != nil {
-		return address.Undef, err
-	}
 
-	return state.LookupID(addr)
+	return a.StateManager.LookupID(ctx, addr, ts)
 }
 
 func (a *StateAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {

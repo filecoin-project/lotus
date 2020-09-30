@@ -68,14 +68,6 @@ func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (ci
 	return a.api.MpoolPushUntrusted(ctx, sm)
 }
 
-func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
-	if err := a.checkTipset(ctx, ts); err != nil {
-		return nil, fmt.Errorf("bad tipset: %w", err)
-	}
-
-	return a.api.StateGetActor(ctx, actor, ts)
-}
-
 func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	if err := a.checkTipset(ctx, tsk); err != nil {
 		return address.Undef, fmt.Errorf("bad tipset: %w", err)
@@ -83,3 +75,21 @@ func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, 
 
 	return a.api.StateAccountKey(ctx, addr, tsk)
 }
+
+func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+	if err := a.checkTipset(ctx, tsk); err != nil {
+		return nil, fmt.Errorf("bad tipset: %w", err)
+	}
+
+	return a.api.StateGetActor(ctx, actor, tsk)
+}
+
+func (a *GatewayAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	if err := a.checkTipset(ctx, tsk); err != nil {
+		return address.Undef, fmt.Errorf("bad tipset: %w", err)
+	}
+
+	return a.api.StateLookupID(ctx, addr, tsk)
+}
+
+var _ api.GatewayAPI = &GatewayAPI{}
