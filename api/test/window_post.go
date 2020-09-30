@@ -153,17 +153,15 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	require.NoError(t, err)
 
 	fmt.Printf("Running one proving period\n")
+	fmt.Printf("End for head.Height > %d\n", di.PeriodStart+di.WPoStProvingPeriod+2)
 
 	for {
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
 		if head.Height() > di.PeriodStart+(di.WPoStProvingPeriod)+2 {
+			fmt.Printf("Now head.Height = %d\n", head.Height())
 			break
-		}
-
-		if head.Height()%100 == 0 {
-			fmt.Printf("@%d\n", head.Height())
 		}
 		build.Clock.Sleep(blocktime)
 	}
@@ -186,7 +184,6 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		require.Greater(t, len(parts), 0)
 
 		secs := parts[0].AllSectors
-		require.NoError(t, err)
 		n, err := secs.Count()
 		require.NoError(t, err)
 		require.Equal(t, uint64(2), n)
@@ -210,7 +207,6 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		require.Greater(t, len(parts), 0)
 
 		secs := parts[0].AllSectors
-		require.NoError(t, err)
 		n, err := secs.Count()
 		require.NoError(t, err)
 		require.Equal(t, uint64(2), n)
@@ -236,18 +232,17 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	require.NoError(t, err)
 
 	fmt.Printf("Go through another PP, wait for sectors to become faulty\n")
+	fmt.Printf("End for head.Height > %d\n", di.PeriodStart+di.WPoStProvingPeriod+2)
 
 	for {
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
 		if head.Height() > di.PeriodStart+(di.WPoStProvingPeriod)+2 {
+			fmt.Printf("Now head.Height = %d\n", head.Height())
 			break
 		}
 
-		if head.Height()%100 == 0 {
-			fmt.Printf("@%d\n", head.Height())
-		}
 		build.Clock.Sleep(blocktime)
 	}
 
@@ -267,17 +262,17 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
+	fmt.Printf("End for head.Height > %d\n", di.PeriodStart+di.WPoStProvingPeriod+2)
+
 	for {
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
 		if head.Height() > di.PeriodStart+di.WPoStProvingPeriod+2 {
+			fmt.Printf("Now head.Height = %d\n", head.Height())
 			break
 		}
 
-		if head.Height()%100 == 0 {
-			fmt.Printf("@%d\n", head.Height())
-		}
 		build.Clock.Sleep(blocktime)
 	}
 
@@ -300,12 +295,14 @@ func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSector
 		require.NoError(t, err)
 
 		waitUntil := head.Height() + 10
+		fmt.Printf("End for head.Height > %d\n", waitUntil)
 
 		for {
 			head, err := client.ChainHead(ctx)
 			require.NoError(t, err)
 
 			if head.Height() > waitUntil {
+				fmt.Printf("Now head.Height = %d\n", head.Height())
 				break
 			}
 		}
