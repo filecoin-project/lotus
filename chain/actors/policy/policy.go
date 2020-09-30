@@ -2,12 +2,15 @@ package policy
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors"
 
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 )
@@ -77,5 +80,20 @@ func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) ab
 		return miner2.MaxProveCommitDuration[t]
 	default:
 		panic("unsupported actors version")
+	}
+}
+
+func DealProviderCollateralBounds(
+	size abi.PaddedPieceSize, verified bool,
+	rawBytePower, qaPower, baselinePower abi.StoragePower,
+	circulatingFil abi.TokenAmount, nwVer network.Version,
+) (min, max abi.TokenAmount) {
+	switch actors.VersionForNetwork(nwVer) {
+	case actors.Version0:
+		return market0.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil, nwVer)
+	case actors.Version2:
+		return market2.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
+	default:
+		panic("unsupported network version")
 	}
 }
