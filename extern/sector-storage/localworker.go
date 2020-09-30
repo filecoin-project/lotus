@@ -26,6 +26,7 @@ var pathTypes = []stores.SectorFileType{stores.FTUnsealed, stores.FTSealed, stor
 type WorkerConfig struct {
 	SealProof abi.RegisteredSealProof
 	TaskTypes []sealtasks.TaskType
+	NoSwap    bool
 }
 
 type LocalWorker struct {
@@ -33,6 +34,7 @@ type LocalWorker struct {
 	storage    stores.Store
 	localStore *stores.Local
 	sindex     stores.SectorIndex
+	noSwap     bool
 
 	acceptTasks map[sealtasks.TaskType]struct{}
 }
@@ -50,6 +52,7 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 		storage:    store,
 		localStore: local,
 		sindex:     sindex,
+		noSwap:     wcfg.NoSwap,
 
 		acceptTasks: acceptTasks,
 	}
@@ -275,11 +278,16 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		return storiface.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
 	}
 
+	memSwap := mem.VirtualTotal
+	if l.noSwap {
+		memSwap = 0
+	}
+
 	return storiface.WorkerInfo{
 		Hostname: hostname,
 		Resources: storiface.WorkerResources{
 			MemPhysical: mem.Total,
-			MemSwap:     mem.VirtualTotal,
+			MemSwap:     memSwap,
 			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
 			CPUs:        uint64(runtime.NumCPU()),
 			GPUs:        gpus,
