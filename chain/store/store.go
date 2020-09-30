@@ -286,6 +286,16 @@ func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) e
 	return nil
 }
 
+func (cs *ChainStore) UnmarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	if err := cs.ds.Delete(key); err != nil {
+		return xerrors.Errorf("removing from valid block cache: %w", err)
+	}
+
+	return nil
+}
+
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 	ts, err := types.NewTipSet([]*types.BlockHeader{b})
 	if err != nil {

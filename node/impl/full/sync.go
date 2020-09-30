@@ -126,3 +126,22 @@ func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error
 
 	return reason, nil
 }
+
+func (a *SyncAPI) SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error) {
+	ts, err := a.Syncer.ChainStore().LoadTipSet(tsk)
+	if err != nil {
+		return false, err
+	}
+
+	fts, err := a.Syncer.ChainStore().TryFillTipSet(ts)
+	if err != nil {
+		return false, err
+	}
+
+	err = a.Syncer.ValidateTipSet(ctx, fts, false)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}

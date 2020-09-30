@@ -597,7 +597,7 @@ func isPermanent(err error) bool {
 	return !errors.Is(err, ErrTemporal)
 }
 
-func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet) error {
+func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet, useCache bool) error {
 	ctx, span := trace.StartSpan(ctx, "validateTipSet")
 	defer span.End()
 
@@ -613,7 +613,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 		b := b // rebind to a scoped variable
 
 		futures = append(futures, async.Err(func() error {
-			if err := syncer.ValidateBlock(ctx, b); err != nil {
+			if err := syncer.ValidateBlock(ctx, b, useCache); err != nil {
 				if isPermanent(err) {
 					syncer.bad.Add(b.Cid(), NewBadBlockReason([]cid.Cid{b.Cid()}, err.Error()))
 				}
@@ -680,7 +680,7 @@ func blockSanityChecks(h *types.BlockHeader) error {
 }
 
 // ValidateBlock should match up with 'Semantical Validation' in validation.md in the spec
-func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
+func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, useCache bool) (err error) {
 	defer func() {
 		// b.Cid() could panic for empty blocks that are used in tests.
 		if rerr := recover(); rerr != nil {
@@ -689,13 +689,15 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		}
 	}()
 
-	isValidated, err := syncer.store.IsBlockValidated(ctx, b.Cid())
-	if err != nil {
-		return xerrors.Errorf("check block validation cache %s: %w", b.Cid(), err)
-	}
+	if useCache {
+		isValidated, err := syncer.store.IsBlockValidated(ctx, b.Cid())
+		if err != nil {
+			return xerrors.Errorf("check block validation cache %s: %w", b.Cid(), err)
+		}
 
-	if isValidated {
-		return nil
+		if isValidated {
+			return nil
+		}
 	}
 
 	validationStart := build.Clock.Now()
@@ -959,8 +961,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) (er
 		return mulErr
 	}
 
-	if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {
-		return xerrors.Errorf("caching block validation %s: %w", b.Cid(), err)
+	if useCache {
+		if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {
+			return xerrors.Errorf("caching block validation %s: %w", b.Cid(), err)
+		}
 	}
 
 	return nil
@@ -1462,7 +1466,7 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 
 	return syncer.iterFullTipsets(ctx, headers, func(ctx context.Context, fts *store.FullTipSet) error {
 		log.Debugw("validating tipset", "height", fts.TipSet().Height(), "size", len(fts.TipSet().Cids()))
-		if err := syncer.ValidateTipSet(ctx, fts); err != nil {
+		if err := syncer.ValidateTipSet(ctx, fts, true); err != nil {
 			log.Errorf("failed to validate tipset: %+v", err)
 			return xerrors.Errorf("message processing failed: %w", err)
 		}

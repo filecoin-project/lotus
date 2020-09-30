@@ -732,7 +732,7 @@ func TestSyncInputs(t *testing.T) {
 
 	err := s.ValidateBlock(context.TODO(), &types.FullBlock{
 		Header: &types.BlockHeader{},
-	})
+	}, false)
 	if err == nil {
 		t.Fatal("should error on empty block")
 	}
@@ -741,7 +741,7 @@ func TestSyncInputs(t *testing.T) {
 
 	h.ElectionProof = nil
 
-	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h})
+	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h}, false)
 	if err == nil {
 		t.Fatal("should error on block with nil election proof")
 	}
