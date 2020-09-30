@@ -21,21 +21,27 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/conformance"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 )
 
+const (
+	PrecursorSelectAll    = "all"
+	PrecursorSelectSender = "sender"
+)
+
 type extractOpts struct {
-	id     string
-	block  string
-	class  string
-	cid    string
-	file   string
-	retain string
+	id        string
+	block     string
+	class     string
+	cid       string
+	file      string
+	retain    string
+	precursor string
 }
 
 var extractFlags extractOpts
@@ -81,6 +87,16 @@ var extractCmd = &cli.Command{
 			Value:       "accessed-cids",
 			Destination: &extractFlags.retain,
 		},
+		&cli.StringFlag{
+			Name: "precursor-select",
+			Usage: "precursors to apply; values: 'all', 'sender'; 'all' selects all preceding" +
+				"messages in the canonicalised tipset, 'sender' selects only preceding messages from the same" +
+				"sender. Usually, 'sender' is a good tradeoff and gives you sufficient accuracy. If the receipt sanity" +
+				"check fails due to gas reasons, switch to 'all', as previous messages in the tipset may have" +
+				"affected state in a disruptive way",
+			Value:       "sender",
+			Destination: &extractFlags.precursor,
+		},
 	},
 }
 
@@ -124,46 +140,38 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		return fmt.Errorf("failed while fetching circulating supply: %w", err)
 	}
 
-	circSupply := circSupplyDetail.FilCirculating.Int64()
+	circSupply := circSupplyDetail.FilCirculating
 
 	log.Printf("message was executed in tipset: %s", execTs.Key())
 	log.Printf("message was included in tipset: %s", incTs.Key())
 	log.Printf("circulating supply at inclusion tipset: %d", circSupply)
-	log.Printf("finding precursor messages")
+	log.Printf("finding precursor messages using mode: %s", opts.precursor)
 
-	// Iterate through blocks, finding the one that contains the message and its
-	// precursors, if any.
-	var allmsgs []*types.Message
-	for _, b := range incTs.Blocks() {
-		messages, err := fapi.ChainGetBlockMessages(ctx, b.Cid())
-		if err != nil {
-			return err
-		}
-
-		related, found, err := findMsgAndPrecursors(messages, msg)
-		if err != nil {
-			return fmt.Errorf("invariant failed while scanning messages in block %s: %w", b.Cid(), err)
-		}
-
-		if found {
-			var mcids []cid.Cid
-			for _, m := range related {
-				mcids = append(mcids, m.Cid())
-			}
-			log.Printf("found message in block %s; precursors: %v", b.Cid(), mcids[:len(mcids)-1])
-			allmsgs = related
-			break
-		}
-
-		log.Printf("message not found in block %s; number of precursors found: %d; ignoring block", b.Cid(), len(related))
+	// Fetch messages in canonical order from inclusion tipset.
+	msgs, err := fapi.ChainGetParentMessages(ctx, execTs.Blocks()[0].Cid())
+	if err != nil {
+		return fmt.Errorf("failed to fetch messages in canonical order from inclusion tipset: %w", err)
 	}
 
-	if allmsgs == nil {
-		// Message was not found; abort.
-		return fmt.Errorf("did not find a block containing the message")
+	related, found, err := findMsgAndPrecursors(opts.precursor, msg, msgs)
+	if err != nil {
+		return fmt.Errorf("failed while finding message and precursors: %w", err)
 	}
 
-	precursors := allmsgs[:len(allmsgs)-1]
+	if !found {
+		return fmt.Errorf("message not found; precursors found: %d", len(related))
+	}
+
+	var (
+		precursors     = related[:len(related)-1]
+		precursorsCids []cid.Cid
+	)
+
+	for _, p := range precursors {
+		precursorsCids = append(precursorsCids, p.Cid())
+	}
+
+	log.Println(color.GreenString("found message; precursors (count: %d): %v", len(precursors), precursorsCids))
 
 	var (
 		// create a read-through store that uses ChainGetObject to fetch unknown CIDs.
@@ -179,11 +187,20 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	root := incTs.ParentState()
 	log.Printf("base state tree root CID: %s", root)
 
+	basefee := incTs.Blocks()[0].ParentBaseFee
+	log.Printf("basefee: %s", basefee)
+
 	// on top of that state tree, we apply all precursors.
 	log.Printf("number of precursors to apply: %d", len(precursors))
 	for i, m := range precursors {
 		log.Printf("applying precursor %d, cid: %s", i, m.Cid())
-		_, root, err = driver.ExecuteMessage(pst.Blockstore, root, execTs.Height(), m, &circSupplyDetail.FilCirculating)
+		_, root, err = driver.ExecuteMessage(pst.Blockstore, conformance.ExecuteMessageParams{
+			Preroot:    root,
+			Epoch:      execTs.Height(),
+			Message:    m,
+			CircSupply: &circSupplyDetail.FilCirculating,
+			BaseFee:    &basefee,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to execute precursor message: %w", err)
 		}
@@ -208,7 +225,13 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		tbs.StartTracing()
 
 		preroot = root
-		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg, &circSupplyDetail.FilCirculating)
+		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, conformance.ExecuteMessageParams{
+			Preroot:    preroot,
+			Epoch:      execTs.Height(),
+			Message:    msg,
+			CircSupply: &circSupplyDetail.FilCirculating,
+			BaseFee:    &basefee,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
 		}
@@ -233,7 +256,13 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		if err != nil {
 			return err
 		}
-		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, preroot, execTs.Height(), msg, &circSupplyDetail.FilCirculating)
+		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, conformance.ExecuteMessageParams{
+			Preroot:    preroot,
+			Epoch:      execTs.Height(),
+			Message:    msg,
+			CircSupply: &circSupplyDetail.FilCirculating,
+			BaseFee:    &basefee,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
 		}
@@ -248,20 +277,38 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	log.Printf("message applied; preroot: %s, postroot: %s", preroot, postroot)
 	log.Println("performing sanity check on receipt")
 
-	receipt := &schema.Receipt{
-		ExitCode:    int64(applyret.ExitCode),
-		ReturnValue: applyret.Return,
-		GasUsed:     applyret.GasUsed,
+	// TODO sometimes this returns a nil receipt and no error ¯\_(ツ)_/¯
+	//  ex: https://filfox.info/en/message/bafy2bzacebpxw3yiaxzy2bako62akig46x3imji7fewszen6fryiz6nymu2b2
+	//  This code is lenient and skips receipt comparison in case of a nil receipt.
+	rec, err := fapi.StateGetReceipt(ctx, mcid, execTs.Key())
+	if err != nil {
+		return fmt.Errorf("failed to find receipt on chain: %w", err)
 	}
+	log.Printf("found receipt: %+v", rec)
 
-	reporter := new(conformance.LogReporter)
-	conformance.AssertMsgResult(reporter, receipt, applyret, "as locally executed")
-	if reporter.Failed() {
-		log.Println(color.RedString("receipt sanity check failed; aborting"))
-		return fmt.Errorf("vector generation aborted")
+	// generate the schema receipt; if we got
+	var receipt *schema.Receipt
+	if rec != nil {
+		receipt = &schema.Receipt{
+			ExitCode:    int64(rec.ExitCode),
+			ReturnValue: rec.Return,
+			GasUsed:     rec.GasUsed,
+		}
+		reporter := new(conformance.LogReporter)
+		conformance.AssertMsgResult(reporter, receipt, applyret, "as locally executed")
+		if reporter.Failed() {
+			log.Println(color.RedString("receipt sanity check failed; aborting"))
+			return fmt.Errorf("vector generation aborted")
+		}
+		log.Println(color.GreenString("receipt sanity check succeeded"))
+	} else {
+		receipt = &schema.Receipt{
+			ExitCode:    int64(applyret.ExitCode),
+			ReturnValue: applyret.Return,
+			GasUsed:     applyret.GasUsed,
+		}
+		log.Println(color.YellowString("skipping receipts comparison; we got back a nil receipt from lotus"))
 	}
-
-	log.Println(color.GreenString("receipt sanity check succeeded"))
 
 	log.Println("generating vector")
 	msgBytes, err := msg.Serialize()
@@ -312,7 +359,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		CAR: out.Bytes(),
 		Pre: &schema.Preconditions{
 			Epoch:      int64(execTs.Height()),
-			CircSupply: &circSupply,
+			CircSupply: circSupply.Int,
+			BaseFee:    basefee.Int,
 			StateTree: &schema.StateTree{
 				RootCID: preroot,
 			},
@@ -428,41 +476,22 @@ func fetchThisAndPrevTipset(ctx context.Context, api api.FullNode, target types.
 	return targetTs, prevTs, nil
 }
 
-// findMsgAndPrecursors scans the messages in a block to locate the supplied
-// message, looking into the BLS or SECP section depending on the sender's
-// address type.
-//
-// It returns any precursors (if they exist), and the found message (if found),
-// in a slice.
-//
-// It also returns a boolean indicating whether the message was actually found.
-//
-// This function also asserts invariants, and if those fail, it returns an error.
-func findMsgAndPrecursors(messages *api.BlockMessages, target *types.Message) (related []*types.Message, found bool, err error) {
-	// Decide which block of messages to process, depending on whether the
-	// sender is a BLS or a SECP account.
-	input := messages.BlsMessages
-	if senderKind := target.From.Protocol(); senderKind == address.SECP256K1 {
-		input = make([]*types.Message, 0, len(messages.SecpkMessages))
-		for _, sm := range messages.SecpkMessages {
-			input = append(input, &sm.Message)
-		}
-	}
-
-	for _, other := range input {
-		if other.From != target.From {
-			continue
-		}
-
-		// this message is from the same sender, so it's related.
-		related = append(related, other)
-
-		if other.Nonce > target.Nonce {
-			return nil, false, fmt.Errorf("a message with nonce higher than the target was found before the target; offending mcid: %s", other.Cid())
+// findMsgAndPrecursors ranges through the canonical messages slice, locating
+// the target message and returning precursors in accordance to the supplied
+// mode.
+func findMsgAndPrecursors(mode string, target *types.Message, msgs []api.Message) (related []*types.Message, found bool, err error) {
+	// Range through canonicalised messages, selecting only the precursors based
+	// on selection mode.
+	for _, other := range msgs {
+		switch {
+		case mode == PrecursorSelectAll:
+			fallthrough
+		case mode == PrecursorSelectSender && other.Message.From == target.From:
+			related = append(related, other.Message)
 		}
 
 		// this message is the target; we're done.
-		if other.Cid() == target.Cid() {
+		if other.Cid == target.Cid() {
 			return related, true, nil
 		}
 	}

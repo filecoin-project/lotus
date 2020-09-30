@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"context"
+	"os"
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -23,15 +24,14 @@ import (
 	ds "github.com/ipfs/go-datastore"
 )
 
-// DefaultCirculatingSupply is the fallback circulating supply returned by
-// the driver's CircSupplyCalculator function, used if the vector specifies
-// no circulating supply.
-var DefaultCirculatingSupply = types.TotalFilecoinInt
-
 var (
-	// BaseFee to use in the VM.
-	// TODO make parametrisable through vector.
-	BaseFee = abi.NewTokenAmount(100)
+	// DefaultCirculatingSupply is the fallback circulating supply returned by
+	// the driver's CircSupplyCalculator function, used if the vector specifies
+	// no circulating supply.
+	DefaultCirculatingSupply = types.TotalFilecoinInt
+
+	// DefaultBaseFee to use in the VM, if one is not supplied in the vector.
+	DefaultBaseFee = abi.NewTokenAmount(100)
 )
 
 type Driver struct {
@@ -139,24 +139,46 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 	return ret, nil
 }
 
+type ExecuteMessageParams struct {
+	Preroot    cid.Cid
+	Epoch      abi.ChainEpoch
+	Message    *types.Message
+	CircSupply *abi.TokenAmount
+	BaseFee    *abi.TokenAmount
+}
+
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
-func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch abi.ChainEpoch, msg *types.Message, circSupply *abi.TokenAmount) (*vm.ApplyRet, cid.Cid, error) {
+func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageParams) (*vm.ApplyRet, cid.Cid, error) {
+	if !d.vmFlush {
+		// do not flush the VM, just the state tree; this should be used with
+		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.
+		_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
+	}
+
+	basefee := DefaultBaseFee
+	if params.BaseFee != nil {
+		basefee = *params.BaseFee
+	}
+
+	circSupply := DefaultCirculatingSupply
+	if params.CircSupply != nil {
+		circSupply = *params.CircSupply
+	}
+
 	// dummy state manager; only to reference the GetNetworkVersion method,
 	// which does not depend on state.
 	sm := new(stmgr.StateManager)
+
 	vmOpts := &vm.VMOpts{
-		StateBase: preroot,
-		Epoch:     epoch,
+		StateBase: params.Preroot,
+		Epoch:     params.Epoch,
 		Rand:      &testRand{}, // TODO always succeeds; need more flexibility.
 		Bstore:    bs,
 		Syscalls:  mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), // TODO always succeeds; need more flexibility.
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
-			if circSupply != nil {
-				return *circSupply, nil
-			}
-			return DefaultCirculatingSupply, nil
+			return circSupply, nil
 		},
-		BaseFee:     BaseFee,
+		BaseFee:     basefee,
 		NtwkVersion: sm.GetNtwkVersion,
 	}
 
@@ -174,7 +196,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 
 	lvm.SetInvoker(invoker)
 
-	ret, err := lvm.ApplyMessage(d.ctx, toChainMsg(msg))
+	ret, err := lvm.ApplyMessage(d.ctx, toChainMsg(params.Message))
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -185,8 +207,6 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 		// recursive copoy from the temporary blcokstore to the real blockstore.
 		root, err = lvm.Flush(d.ctx)
 	} else {
-		// do not flush the VM, just the state tree; this should be used with
-		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.
 		root, err = lvm.StateTree().(*state.StateTree).Flush(d.ctx)
 	}
 

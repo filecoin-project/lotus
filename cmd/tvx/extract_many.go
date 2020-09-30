@@ -111,8 +111,12 @@ func runExtractMany(c *cli.Context) error {
 		log.Println(color.GreenString("csv sanity check succeeded; header contains fields: %v", header))
 	}
 
-	var generated []string
-	merr := new(multierror.Error)
+	var (
+		generated []string
+		merr      = new(multierror.Error)
+		retry     []extractOpts // to retry with 'canonical' precursor selection mode
+	)
+
 	// Read each row and extract the requested message.
 	for {
 		row, err := reader.Read()
@@ -164,25 +168,42 @@ func runExtractMany(c *cli.Context) error {
 		// Vector filename, using a base of outdir.
 		file := filepath.Join(outdir, actorcodename, methodname, exitcodename, id) + ".json"
 
-		log.Println(color.YellowString("processing message id: %s", id))
+		log.Println(color.YellowString("processing message cid with 'sender' precursor mode: %s", id))
 
 		opts := extractOpts{
-			id:     id,
-			block:  block,
-			class:  "message",
-			cid:    cid,
-			file:   file,
-			retain: "accessed-cids",
+			id:        id,
+			block:     block,
+			class:     "message",
+			cid:       cid,
+			file:      file,
+			retain:    "accessed-cids",
+			precursor: PrecursorSelectSender,
 		}
 
 		if err := doExtract(ctx, fapi, opts); err != nil {
-			merr = multierror.Append(err, fmt.Errorf("failed to extract vector for message %s: %w", cid, err))
+			log.Println(color.RedString("failed to extract vector for message %s: %s; queuing for 'canonical' precursor selection", cid, err))
+			retry = append(retry, opts)
 			continue
 		}
 
 		log.Println(color.MagentaString("generated file: %s", file))
 
 		generated = append(generated, file)
+	}
+
+	log.Printf("extractions to try with canonical precursor selection mode: %d", len(retry))
+
+	for _, r := range retry {
+		log.Printf("retrying %s: %s", r.cid, r.id)
+
+		r.precursor = PrecursorSelectAll
+		if err := doExtract(ctx, fapi, r); err != nil {
+			merr = multierror.Append(merr, fmt.Errorf("failed to extract vector for message %s: %w", r.cid, err))
+			continue
+		}
+
+		log.Println(color.MagentaString("generated file: %s", r.file))
+		generated = append(generated, r.file)
 	}
 
 	if len(generated) == 0 {
@@ -195,7 +216,7 @@ func runExtractMany(c *cli.Context) error {
 	}
 
 	if merr.ErrorOrNil() != nil {
-		log.Println(color.YellowString("done processing with errors: %s"))
+		log.Println(color.YellowString("done processing with errors: %s", err))
 	} else {
 		log.Println(color.GreenString("done processing with no errors"))
 	}

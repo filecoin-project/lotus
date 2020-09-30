@@ -13,6 +13,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/ipfs/go-blockservice"
@@ -43,12 +44,18 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 	}
 
 	// Create a new Driver.
-	driver := NewDriver(ctx, vector.Selector, DriverOpts{})
+	driver := NewDriver(ctx, vector.Selector, DriverOpts{DisableVMFlush: true})
 
 	var circSupply *abi.TokenAmount
 	if cs := vector.Pre.CircSupply; cs != nil {
-		ta := abi.NewTokenAmount(*cs)
+		ta := big.NewFromGo(cs)
 		circSupply = &ta
+	}
+
+	var basefee *abi.TokenAmount
+	if bf := vector.Pre.BaseFee; bf != nil {
+		ta := big.NewFromGo(bf)
+		basefee = &ta
 	}
 
 	// Apply every message.
@@ -65,7 +72,13 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 
 		// Execute the message.
 		var ret *vm.ApplyRet
-		ret, root, err = driver.ExecuteMessage(bs, root, abi.ChainEpoch(epoch), msg, circSupply)
+		ret, root, err = driver.ExecuteMessage(bs, ExecuteMessageParams{
+			Preroot:    root,
+			Epoch:      abi.ChainEpoch(epoch),
+			Message:    msg,
+			CircSupply: circSupply,
+			BaseFee:    basefee,
+		})
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)
 		}
