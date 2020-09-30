@@ -2,7 +2,6 @@ package stores
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"io"
 	"net/http"
 	"os"
@@ -11,6 +10,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 )
 

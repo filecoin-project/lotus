@@ -1,8 +1,9 @@
 package sectorstorage
 
 import (
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"time"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 func (m *Manager) WorkerStats() map[uint64]storiface.WorkerStats {

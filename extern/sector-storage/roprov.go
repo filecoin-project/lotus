@@ -2,13 +2,13 @@ package sectorstorage
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type readonlyProvider struct {

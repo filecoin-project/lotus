@@ -2,7 +2,6 @@ package stores
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"net/url"
 	gopath "path"
 	"sort"
@@ -11,10 +10,11 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 var HeartbeatInterval = 10 * time.Second

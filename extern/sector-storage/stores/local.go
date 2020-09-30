@@ -212,12 +212,12 @@ func (st *Local) Redeclare(ctx context.Context) error {
 	for id, p := range st.paths {
 		mb, err := ioutil.ReadFile(filepath.Join(p.local, MetaFile))
 		if err != nil {
-			return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
+			return xerrors.Errorf("reading storage metadata for %s: %w", p.local, err)
 		}
 
 		var meta LocalStorageMeta
 		if err := json.Unmarshal(mb, &meta); err != nil {
-			return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
+			return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p.local, err)
 		}
 
 		fst, err := p.stat(st.localStorage)

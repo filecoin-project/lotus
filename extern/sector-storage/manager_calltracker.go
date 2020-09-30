@@ -7,8 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/xerrors"
 	"os"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -71,10 +72,6 @@ func (m *Manager) setupWorkTracker() {
 
 	for _, st := range ids {
 		wid := st.ID
-		if err := m.work.Get(wid).Get(&st); err != nil {
-			log.Errorf("getting work state for %s", wid)
-			continue
-		}
 
 		if os.Getenv("LOTUS_MINER_ABORT_UNFINISHED_WORK") == "1" {
 			st.Status = wsDone
@@ -363,7 +360,7 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 
 	_, ok = m.results[wid]
 	if ok {
-		return xerrors.Errorf("result for call %v already reported")
+		return xerrors.Errorf("result for call %v already reported", wid)
 	}
 
 	m.results[wid] = res

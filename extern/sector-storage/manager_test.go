@@ -265,7 +265,7 @@ func TestRestartManager(t *testing.T) {
 	cwg.Wait()
 	require.Error(t, perr)
 
-	m, lstor, _, _ = newTestMgr(ctx, t, ds)
+	m, _, _, _ = newTestMgr(ctx, t, ds)
 	tw.ret = m // simulate jsonrpc auto-reconnect
 	err = m.AddWorker(ctx, tw)
 	require.NoError(t, err)

@@ -2,13 +2,14 @@ package stores
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 var aSector = abi.SectorID{
