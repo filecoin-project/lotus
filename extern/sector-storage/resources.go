@@ -131,22 +131,22 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 	},
 	sealtasks.TTPreCommit2: {
 		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{
-			MaxMemory: 64 << 30,
-			MinMemory: 64 << 30,
+			MaxMemory: 30 << 30,
+			MinMemory: 30 << 30,
 
 			MaxParallelism: -1,
 			CanGPU:         true,
 
-			BaseMinMemory: 60 << 30,
+			BaseMinMemory: 1 << 30,
 		},
 		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{
-			MaxMemory: 32 << 30,
-			MinMemory: 32 << 30,
+			MaxMemory: 15 << 30,
+			MinMemory: 15 << 30,
 
 			MaxParallelism: -1,
 			CanGPU:         true,
 
-			BaseMinMemory: 30 << 30,
+			BaseMinMemory: 1 << 30,
 		},
 		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
 			MaxMemory: 3 << 29, // 1.5G
