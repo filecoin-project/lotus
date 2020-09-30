@@ -129,18 +129,19 @@ type FullNodeStruct struct {
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
 
-		WalletNew            func(context.Context, crypto.SigType) (address.Address, error)                       `perm:"write"`
-		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
-		WalletList           func(context.Context) ([]address.Address, error)                                     `perm:"write"`
-		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
-		WalletSign           func(context.Context, address.Address, []byte) (*crypto.Signature, error)            `perm:"sign"`
-		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
-		WalletVerify         func(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)      `perm:"read"`
-		WalletDefaultAddress func(context.Context) (address.Address, error)                                       `perm:"write"`
-		WalletSetDefault     func(context.Context, address.Address) error                                         `perm:"admin"`
-		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
-		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
-		WalletDelete         func(context.Context, address.Address) error                                         `perm:"write"`
+		WalletNew             func(context.Context, crypto.SigType) (address.Address, error)                       `perm:"write"`
+		WalletHas             func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
+		WalletList            func(context.Context) ([]address.Address, error)                                     `perm:"write"`
+		WalletBalance         func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
+		WalletSign            func(context.Context, address.Address, []byte) (*crypto.Signature, error)            `perm:"sign"`
+		WalletSignMessage     func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
+		WalletVerify          func(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)      `perm:"read"`
+		WalletDefaultAddress  func(context.Context) (address.Address, error)                                       `perm:"write"`
+		WalletSetDefault      func(context.Context, address.Address) error                                         `perm:"admin"`
+		WalletExport          func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
+		WalletImport          func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
+		WalletDelete          func(context.Context, address.Address) error                                         `perm:"write"`
+		WalletValidateAddress func(context.Context, string) (address.Address, error)                               `perm:"read"`
 
 		ClientImport                              func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                                `perm:"admin"`
 		ClientListImports                         func(ctx context.Context) ([]api.Import, error)                                                                   `perm:"write"`
@@ -629,6 +630,10 @@ func (c *FullNodeStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (a
 
 func (c *FullNodeStruct) WalletDelete(ctx context.Context, addr address.Address) error {
 	return c.Internal.WalletDelete(ctx, addr)
+}
+
+func (c *FullNodeStruct) WalletValidateAddress(ctx context.Context, str string) (address.Address, error) {
+	return c.Internal.WalletValidateAddress(ctx, str)
 }
 
 func (c *FullNodeStruct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
