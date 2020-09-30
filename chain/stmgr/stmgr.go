@@ -280,7 +280,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 
 		sysAct, actErr := vmi.StateTree().GetActor(builtin0.SystemActorAddr)
 		if actErr != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", actErr)
 		}
 
 		rwMsg := &types.Message{
@@ -296,7 +296,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 		ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
 		if actErr != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, err)
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, actErr)
 		}
 		if cb != nil {
 			if err := cb(rwMsg.Cid(), rwMsg, ret); err != nil {
