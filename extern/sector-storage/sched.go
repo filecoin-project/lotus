@@ -803,13 +803,7 @@ func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {
 		}
 		sh.openWindows = newWindows
 
-		log.Debugf("dropWorker %d", wid)
-
-		/*go func() { // TODO: just remove?
-			if err := w.w.Close(); err != nil {
-				log.Warnf("closing worker %d: %+v", err)
-			}
-		}()*/
+		log.Debugf("worker %d dropped", wid)
 	}
 }
 
