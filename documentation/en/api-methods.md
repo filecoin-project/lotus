@@ -181,6 +181,7 @@
   * [WalletSetDefault](#WalletSetDefault)
   * [WalletSign](#WalletSign)
   * [WalletSignMessage](#WalletSignMessage)
+  * [WalletValidateAddress](#WalletValidateAddress)
   * [WalletVerify](#WalletVerify)
 ## 
 
@@ -4584,6 +4585,21 @@ Response:
   }
 }
 ```
+
+### WalletValidateAddress
+WalletValidateAddress validates whether a given string can be decoded as a well-formed address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `"t01234"`
 
 ### WalletVerify
 WalletVerify takes an address, a signature, and some bytes, and indicates whether the signature is valid.
