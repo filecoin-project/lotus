@@ -198,6 +198,9 @@ func TestRedoPC1(t *testing.T) {
 	_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
 	require.NoError(t, err)
 
+	// tell mock ffi that we expect PC1 again
+	require.NoError(t, tw.mockSeal.ForceState(sid, 0)) // sectorPacking
+
 	_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
 	require.NoError(t, err)
 

@@ -127,6 +127,19 @@ func (mgr *SectorMgr) AcquireSectorNumber() (abi.SectorNumber, error) {
 	return id, nil
 }
 
+func (mgr *SectorMgr) ForceState(sid abi.SectorID, st int) error {
+	mgr.lk.Lock()
+	ss, ok := mgr.sectors[sid]
+	mgr.lk.Unlock()
+	if !ok {
+		return xerrors.Errorf("no sector with id %d in storage", sid)
+	}
+
+	ss.state = st
+
+	return nil
+}
+
 func (mgr *SectorMgr) SealPreCommit1(ctx context.Context, sid abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
 	mgr.lk.Lock()
 	ss, ok := mgr.sectors[sid]
