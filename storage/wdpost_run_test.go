@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -177,7 +178,10 @@ func TestWDPostDoPost(t *testing.T) {
 		FaultDeclarationCutoff: miner0.FaultDeclarationCutoff,
 	}
 	ts := mockTipSet(t)
-	scheduler.doPost(ctx, di, ts)
+
+	scheduler.startGeneratePoST(ctx, ts, di, func(posts []miner.SubmitWindowedPoStParams, err error) {
+		scheduler.startSubmitPoST(ctx, ts, di, posts, func(err error) {})
+	})
 
 	// Read the window PoST messages
 	for i := 0; i < expectedMsgCount; i++ {
