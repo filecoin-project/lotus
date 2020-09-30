@@ -48,7 +48,7 @@ var extractManyCmd = &cli.Command{
 			Destination: &extractManyFlags.in,
 		},
 		&cli.StringFlag{
-			Name:        "out-dir",
+			Name:        "outdir",
 			Usage:       "output directory",
 			Destination: &extractManyFlags.outdir,
 		},
@@ -216,7 +216,7 @@ func runExtractMany(c *cli.Context) error {
 	}
 
 	if merr.ErrorOrNil() != nil {
-		log.Println(color.YellowString("done processing with errors: %s", err))
+		log.Println(color.YellowString("done processing with errors: %v", merr))
 	} else {
 		log.Println(color.GreenString("done processing with no errors"))
 	}
