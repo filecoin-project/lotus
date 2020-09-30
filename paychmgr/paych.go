@@ -10,8 +10,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -82,6 +80,15 @@ func newChannelAccessor(pm *Manager, from address.Address, to address.Address) *
 		lk:           &channelLock{globalLock: &pm.lk},
 		msgListeners: newMsgListeners(),
 	}
+}
+
+func (ca *channelAccessor) messageBuilder(ctx context.Context) (paych.MessageBuilder, error) {
+	nwVersion, err := ca.api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	return paych.Message(actors.VersionForNetwork(nwVersion)), nil
 }
 
 func (ca *channelAccessor) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
@@ -294,20 +301,17 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, nil
 	}
 
-	enc, err := actors.SerializeParams(&paych0.UpdateChannelStateParams{
-		Sv:     *sv,
-		Secret: secret,
-	})
+	mb, err := ca.messageBuilder(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	ret, err := ca.api.Call(ctx, &types.Message{
-		From:   recipient,
-		To:     ch,
-		Method: builtin.MethodsPaych.UpdateChannelState,
-		Params: enc,
-	}, nil)
+	mes, err := mb.Update(recipient, ch, sv, secret)
+	if err != nil {
+		return false, err
+	}
+
+	ret, err := ca.api.Call(ctx, mes, nil)
 	if err != nil {
 		return false, err
 	}
@@ -414,21 +418,14 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		}
 	}
 
-	// TODO: ActorUpgrade
-	enc, err := actors.SerializeParams(&paych0.UpdateChannelStateParams{
-		Sv:     *sv,
-		Secret: secret,
-	})
+	mb, err := ca.messageBuilder(ctx)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	msg := &types.Message{
-		From:   ci.Control,
-		To:     ch,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.UpdateChannelState,
-		Params: enc,
+	msg, err := mb.Update(ci.Control, ch, sv, secret)
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
@@ -577,11 +574,13 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 		return cid.Undef, err
 	}
 
-	msg := &types.Message{
-		To:     ch,
-		From:   ci.Control,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.Settle,
+	mb, err := ca.messageBuilder(ctx)
+	if err != nil {
+		return cid.Undef, err
+	}
+	msg, err := mb.Settle(ci.Control, ch)
+	if err != nil {
+		return cid.Undef, err
 	}
 	smgs, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
@@ -606,11 +605,14 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 		return cid.Undef, err
 	}
 
-	msg := &types.Message{
-		To:     ch,
-		From:   ci.Control,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.Collect,
+	mb, err := ca.messageBuilder(ctx)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	msg, err := mb.Collect(ci.Control, ch)
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
