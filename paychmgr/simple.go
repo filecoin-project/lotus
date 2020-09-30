@@ -384,11 +384,11 @@ func (ca *channelAccessor) processTask(ctx context.Context, amt types.BigInt) *p
 
 // createPaych sends a message to create the channel and returns the message cid
 func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (cid.Cid, error) {
-	mb, err := ca.messageBuilder(ctx)
+	mb, err := ca.messageBuilder(ctx, ca.from)
 	if err != nil {
 		return cid.Undef, err
 	}
-	msg, err := mb.Create(ca.from, ca.to, amt)
+	msg, err := mb.Create(ca.to, amt)
 	if err != nil {
 		return cid.Undef, err
 	}

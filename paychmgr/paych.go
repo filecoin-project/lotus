@@ -82,13 +82,13 @@ func newChannelAccessor(pm *Manager, from address.Address, to address.Address) *
 	}
 }
 
-func (ca *channelAccessor) messageBuilder(ctx context.Context) (paych.MessageBuilder, error) {
+func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Address) (paych.MessageBuilder, error) {
 	nwVersion, err := ca.api.StateNetworkVersion(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	return paych.Message(actors.VersionForNetwork(nwVersion)), nil
+	return paych.Message(actors.VersionForNetwork(nwVersion), from), nil
 }
 
 func (ca *channelAccessor) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
@@ -301,12 +301,12 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, nil
 	}
 
-	mb, err := ca.messageBuilder(ctx)
+	mb, err := ca.messageBuilder(ctx, recipient)
 	if err != nil {
 		return false, err
 	}
 
-	mes, err := mb.Update(recipient, ch, sv, secret)
+	mes, err := mb.Update(ch, sv, secret)
 	if err != nil {
 		return false, err
 	}
@@ -418,12 +418,12 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		}
 	}
 
-	mb, err := ca.messageBuilder(ctx)
+	mb, err := ca.messageBuilder(ctx, ci.Control)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	msg, err := mb.Update(ci.Control, ch, sv, secret)
+	msg, err := mb.Update(ch, sv, secret)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -574,11 +574,11 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 		return cid.Undef, err
 	}
 
-	mb, err := ca.messageBuilder(ctx)
+	mb, err := ca.messageBuilder(ctx, ci.Control)
 	if err != nil {
 		return cid.Undef, err
 	}
-	msg, err := mb.Settle(ci.Control, ch)
+	msg, err := mb.Settle(ch)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -605,12 +605,12 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 		return cid.Undef, err
 	}
 
-	mb, err := ca.messageBuilder(ctx)
+	mb, err := ca.messageBuilder(ctx, ci.Control)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	msg, err := mb.Collect(ci.Control, ch)
+	msg, err := mb.Collect(ch)
 	if err != nil {
 		return cid.Undef, err
 	}

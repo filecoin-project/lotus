@@ -13,10 +13,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type message0 struct{}
+type message0 struct{ from address.Address }
 
-func (message0) Create(from, to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
-	params, aerr := actors.SerializeParams(&paych0.ConstructorParams{From: from, To: to})
+func (m message0) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
+	params, aerr := actors.SerializeParams(&paych0.ConstructorParams{From: m.from, To: to})
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -30,14 +30,14 @@ func (message0) Create(from, to address.Address, initialAmount abi.TokenAmount) 
 
 	return &types.Message{
 		To:     init_.Address,
-		From:   from,
+		From:   m.from,
 		Value:  initialAmount,
 		Method: builtin0.MethodsInit.Exec,
 		Params: enc,
 	}, nil
 }
 
-func (message0) Update(from, paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
+func (m message0) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := actors.SerializeParams(&paych0.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
@@ -48,26 +48,26 @@ func (message0) Update(from, paych address.Address, sv *SignedVoucher, secret []
 
 	return &types.Message{
 		To:     paych,
-		From:   from,
+		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
 		Method: builtin0.MethodsPaych.UpdateChannelState,
 		Params: params,
 	}, nil
 }
 
-func (message0) Settle(from, paych address.Address) (*types.Message, error) {
+func (m message0) Settle(paych address.Address) (*types.Message, error) {
 	return &types.Message{
 		To:     paych,
-		From:   from,
+		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
 		Method: builtin0.MethodsPaych.Settle,
 	}, nil
 }
 
-func (message0) Collect(from, paych address.Address) (*types.Message, error) {
+func (m message0) Collect(paych address.Address) (*types.Message, error) {
 	return &types.Message{
 		To:     paych,
-		From:   from,
+		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
 		Method: builtin0.MethodsPaych.Collect,
 	}, nil
