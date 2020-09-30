@@ -82,8 +82,8 @@ var (
 		0: DrandMainnet,
 	}
 
-	NewestNetworkVersion       = network.Version2
-	ActorUpgradeNetworkVersion = network.Version3
+	NewestNetworkVersion       = network.Version4
+	ActorUpgradeNetworkVersion = network.Version4
 
 	Devnet = true
 )
