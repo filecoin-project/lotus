@@ -29,7 +29,30 @@ func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 		return nil, xerrors.Errorf("pubSectorToPriv skipped sectors: %+v", skipped)
 	}
 
-	return ffi.GenerateWinningPoSt(minerID, privsectors, randomness)
+	proofType := privsectors.Values()[0].PoStProofType
+
+	sectorIds := make([]abi.SectorNumber, 0, len(privsectors.Values()))
+	for _, s := range privsectors.Values() {
+		sectorIds = append(sectorIds, s.SectorNumber)
+	}
+	challenges, err := ffi.GeneratePoStFallbackSectorChallenges(proofType, minerID, randomness, sectorIds)
+
+	proofs := make([][]byte, len(challenges.Sectors))
+	for i, sId := range challenges.Sectors {
+		var priv ffi.PrivateSectorInfo
+		for _, s := range privsectors.Values() {
+			if s.SectorNumber == sId {
+				priv = s
+				break
+			}
+		}
+		proof, err := ffi.GenerateSingleVanillaProof(priv, challenges.Challenges[sId])
+		if err != nil {
+			return nil, xerrors.Errorf("computing vanilla proof: %w", err)
+		}
+		proofs[i] = proof
+	}
+	return ffi.GenerateWinningPoStWithVanilla(proofType, minerID, randomness, proofs)
 }
 
 func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
@@ -44,17 +67,31 @@ func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 		return nil, skipped, xerrors.Errorf("pubSectorToPriv skipped some sectors")
 	}
 
-	proof, faulty, err := ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
+	proofType := privsectors.Values()[0].PoStProofType
 
-	var faultyIDs []abi.SectorID
-	for _, f := range faulty {
-		faultyIDs = append(faultyIDs, abi.SectorID{
-			Miner:  minerID,
-			Number: f,
-		})
+	sectorIds := make([]abi.SectorNumber, 0, len(privsectors.Values()))
+	for _, s := range privsectors.Values() {
+		sectorIds = append(sectorIds, s.SectorNumber)
 	}
+	challenges, err := ffi.GeneratePoStFallbackSectorChallenges(proofType, minerID, randomness, sectorIds)
 
-	return proof, faultyIDs, err
+	proofs := make([][]byte, len(challenges.Sectors))
+	for i, sId := range challenges.Sectors {
+		var priv ffi.PrivateSectorInfo
+		for _, s := range privsectors.Values() {
+			if s.SectorNumber == sId {
+				priv = s
+				break
+			}
+		}
+		proof, err := ffi.GenerateSingleVanillaProof(priv, challenges.Challenges[sId])
+		if err != nil {
+			return nil, nil, xerrors.Errorf("computing vanilla proof: %w", err)
+		}
+		proofs[i] = proof
+	}
+	out, err := ffi.GenerateWindowPoStWithVanilla(proofType, minerID, randomness, proofs)
+	return out, nil, err
 }
 
 func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
