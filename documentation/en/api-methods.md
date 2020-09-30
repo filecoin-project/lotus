@@ -1122,20 +1122,14 @@ Inputs:
 Response:
 ```json
 {
-  "Ask": {
-    "Price": "0",
-    "VerifiedPrice": "0",
-    "MinPieceSize": 1032,
-    "MaxPieceSize": 1032,
-    "Miner": "t01234",
-    "Timestamp": 10101,
-    "Expiry": 10101,
-    "SeqNo": 42
-  },
-  "Signature": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  }
+  "Price": "0",
+  "VerifiedPrice": "0",
+  "MinPieceSize": 1032,
+  "MaxPieceSize": 1032,
+  "Miner": "t01234",
+  "Timestamp": 10101,
+  "Expiry": 10101,
+  "SeqNo": 42
 }
 ```
 
