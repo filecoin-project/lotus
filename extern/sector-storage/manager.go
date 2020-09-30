@@ -382,7 +382,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 
 	if wait { // already in progress
 		waitRes()
-		return
+		return out, waitErr
 	}
 
 	if err := m.index.StorageLock(ctx, sector, storiface.FTUnsealed, storiface.FTSealed|storiface.FTCache); err != nil {
@@ -431,7 +431,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 
 	if wait { // already in progress
 		waitRes()
-		return
+		return out, waitErr
 	}
 
 	if err := m.index.StorageLock(ctx, sector, storiface.FTSealed, storiface.FTCache); err != nil {
@@ -478,7 +478,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 
 	if wait { // already in progress
 		waitRes()
-		return
+		return out, waitErr
 	}
 
 	if err := m.index.StorageLock(ctx, sector, storiface.FTSealed, storiface.FTCache); err != nil {
@@ -525,7 +525,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 
 	if wait { // already in progress
 		waitRes()
-		return
+		return out, waitErr
 	}
 
 	selector := newTaskSelector()
