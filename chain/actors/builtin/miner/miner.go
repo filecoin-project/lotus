@@ -20,6 +20,10 @@ import (
 
 // Unchanged between v0 and v1 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
+var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
+var WPoStChallengeWindow = miner0.WPoStChallengeWindow
+var WPoStChallengeLookback = miner0.WPoStChallengeLookback
+var FaultDeclarationCutoff = miner0.FaultDeclarationCutoff
 
 const MinSectorExpiration = miner0.MinSectorExpiration
 

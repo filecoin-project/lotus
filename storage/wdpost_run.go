@@ -29,15 +29,21 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 )
 
-func (s *WindowPoStScheduler) failPost(err error, deadline *dline.Info) {
+func (s *WindowPoStScheduler) failPost(err error, ts *types.TipSet, deadline *dline.Info) {
 	journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+		c := evtCommon{Error: err}
+		if ts != nil {
+			c.Deadline = deadline
+			c.Height = ts.Height()
+			c.TipSet = ts.Cids()
+		}
 		return WdPoStSchedulerEvt{
-			evtCommon: s.getEvtCommon(err),
+			evtCommon: c,
 			State:     SchedulerStateFaulted,
 		}
 	})
 
-	log.Errorf("TODO")
+	log.Errorf("Got err %w - TODO handle errors", err)
 	/*s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps
@@ -45,67 +51,134 @@ func (s *WindowPoStScheduler) failPost(err error, deadline *dline.Info) {
 	s.failLk.Unlock()*/
 }
 
-func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *dline.Info, ts *types.TipSet) {
-	ctx, abort := context.WithCancel(ctx)
-
-	s.abort = abort
-	s.activeDeadline = deadline
-
-	journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
-		return WdPoStSchedulerEvt{
-			evtCommon: s.getEvtCommon(nil),
-			State:     SchedulerStateStarted,
+// recordProofsEvent records a successful proofs_processed event in the
+// journal, even if it was a noop (no partitions).
+func (s *WindowPoStScheduler) recordProofsEvent(partitions []miner.PoStPartition, mcid cid.Cid) {
+	journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStProofs], func() interface{} {
+		return &WdPoStProofsProcessedEvt{
+			evtCommon:  s.getEvtCommon(nil),
+			Partitions: partitions,
+			MessageCID: mcid,
 		}
 	})
+}
 
+// startGeneratePoST kicks off the process of generating a PoST
+func (s *WindowPoStScheduler) startGeneratePoST(
+	ctx context.Context,
+	ts *types.TipSet,
+	deadline *dline.Info,
+	completeGeneratePoST CompleteGeneratePoSTCb,
+) context.CancelFunc {
+	ctx, abort := context.WithCancel(ctx)
 	go func() {
 		defer abort()
-
-		ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.doPost")
-		defer span.End()
-
-		// recordProofsEvent records a successful proofs_processed event in the
-		// journal, even if it was a noop (no partitions).
-		recordProofsEvent := func(partitions []miner.PoStPartition, mcid cid.Cid) {
-			journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStProofs], func() interface{} {
-				return &WdPoStProofsProcessedEvt{
-					evtCommon:  s.getEvtCommon(nil),
-					Partitions: partitions,
-					MessageCID: mcid,
-				}
-			})
-		}
-
-		posts, err := s.runPost(ctx, *deadline, ts)
-		if err != nil {
-			log.Errorf("run window post failed: %+v", err)
-			s.failPost(err, deadline)
-			return
-		}
-
-		if len(posts) == 0 {
-			recordProofsEvent(nil, cid.Undef)
-			return
-		}
-
-		for i := range posts {
-			post := &posts[i]
-			sm, err := s.submitPost(ctx, post)
-			if err != nil {
-				log.Errorf("submit window post failed: %+v", err)
-				s.failPost(err, deadline)
-			} else {
-				recordProofsEvent(post.Partitions, sm.Cid())
-			}
-		}
 
 		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 			return WdPoStSchedulerEvt{
 				evtCommon: s.getEvtCommon(nil),
-				State:     SchedulerStateSucceeded,
+				State:     SchedulerStateStarted,
 			}
 		})
+
+		posts, err := s.runGeneratePoST(ctx, ts, deadline)
+		completeGeneratePoST(posts, err)
 	}()
+
+	return abort
+}
+
+// runGeneratePoST generates the PoST
+func (s *WindowPoStScheduler) runGeneratePoST(
+	ctx context.Context,
+	ts *types.TipSet,
+	deadline *dline.Info,
+) ([]miner.SubmitWindowedPoStParams, error) {
+	ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.generatePoST")
+	defer span.End()
+
+	posts, err := s.runPost(ctx, *deadline, ts)
+	if err != nil {
+		log.Errorf("runPost failed: %+v", err)
+		return nil, err
+	}
+
+	if len(posts) == 0 {
+		s.recordProofsEvent(nil, cid.Undef)
+	}
+
+	return posts, nil
+}
+
+// startSubmitPoST kicks of the process of submitting PoST
+func (s *WindowPoStScheduler) startSubmitPoST(
+	ctx context.Context,
+	ts *types.TipSet,
+	deadline *dline.Info,
+	posts []miner.SubmitWindowedPoStParams,
+	completeSubmitPoST CompleteSubmitPoSTCb,
+) context.CancelFunc {
+
+	ctx, abort := context.WithCancel(ctx)
+	go func() {
+		defer abort()
+
+		err := s.runSubmitPoST(ctx, ts, deadline, posts)
+		if err == nil {
+			journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+				return WdPoStSchedulerEvt{
+					evtCommon: s.getEvtCommon(nil),
+					State:     SchedulerStateSucceeded,
+				}
+			})
+		}
+		completeSubmitPoST(err)
+	}()
+
+	return abort
+}
+
+// runSubmitPoST submits PoST
+func (s *WindowPoStScheduler) runSubmitPoST(
+	ctx context.Context,
+	ts *types.TipSet,
+	deadline *dline.Info,
+	posts []miner.SubmitWindowedPoStParams,
+) error {
+	if len(posts) == 0 {
+		return nil
+	}
+
+	ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.submitPoST")
+	defer span.End()
+
+	// Get randomness from tickets
+	commEpoch := deadline.Open
+	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
+	if err != nil {
+		err = xerrors.Errorf("failed to get chain randomness from tickets for windowPost (ts=%d; deadline=%d): %w", ts.Height(), commEpoch, err)
+		log.Errorf("submitPost failed: %+v", err)
+
+		return err
+	}
+
+	var submitErr error
+	for i := range posts {
+		// Add randomness to PoST
+		post := &posts[i]
+		post.ChainCommitEpoch = commEpoch
+		post.ChainCommitRand = commRand
+
+		// Submit PoST
+		sm, submitErr := s.submitPost(ctx, post)
+		if submitErr != nil {
+			log.Errorf("submit window post failed: %+v", submitErr)
+		} else {
+			s.recordProofsEvent(post.Partitions, sm.Cid())
+		}
+	}
+
+	return submitErr
 }
 
 func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.BitField) (bitfield.BitField, error) {
@@ -396,7 +469,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 	rand, err := s.api.ChainGetRandomnessFromBeacon(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+		return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
 
 	// Get the partitions for the given deadline
@@ -540,19 +613,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		posts = append(posts, params)
 	}
 
-	// Compute randomness after generating proofs so as to reduce the impact
-	// of chain reorgs (which change randomness)
-	commEpoch := di.Open
-	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %w", ts.Height(), commEpoch, err)
-	}
-
-	for i := range posts {
-		posts[i].ChainCommitEpoch = commEpoch
-		posts[i].ChainCommitRand = commRand
-	}
-
 	return posts, nil
 }
 
@@ -593,6 +653,7 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition) ([][]a
 		}
 		batches = append(batches, partitions[i:end])
 	}
+
 	return batches, nil
 }
 

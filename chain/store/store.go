@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/minio/blake2b-simd"
 
@@ -284,6 +286,16 @@ func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) e
 	return nil
 }
 
+func (cs *ChainStore) UnmarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	if err := cs.ds.Delete(key); err != nil {
+		return xerrors.Errorf("removing from valid block cache: %w", err)
+	}
+
+	return nil
+}
+
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 	ts, err := types.NewTipSet([]*types.BlockHeader{b})
 	if err != nil {
@@ -467,14 +479,25 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 		return v.(*types.TipSet), nil
 	}
 
-	var blks []*types.BlockHeader
-	for _, c := range tsk.Cids() {
-		b, err := cs.GetBlock(c)
-		if err != nil {
-			return nil, xerrors.Errorf("get block %s: %w", c, err)
-		}
+	// Fetch tipset block headers from blockstore in parallel
+	var eg errgroup.Group
+	cids := tsk.Cids()
+	blks := make([]*types.BlockHeader, len(cids))
+	for i, c := range cids {
+		i, c := i, c
+		eg.Go(func() error {
+			b, err := cs.GetBlock(c)
+			if err != nil {
+				return xerrors.Errorf("get block %s: %w", c, err)
+			}
 
-		blks = append(blks, b)
+			blks[i] = b
+			return nil
+		})
+	}
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	ts, err := types.NewTipSet(blks)

@@ -75,8 +75,6 @@ var (
 	ErrRBFTooLowPremium       = errors.New("replace by fee has too low GasPremium")
 	ErrTooManyPendingMessages = errors.New("too many pending messages for actor")
 	ErrNonceGap               = errors.New("unfulfilled nonce gap")
-
-	ErrTryAgain = errors.New("state inconsistency while pushing message; please try again")
 )
 
 const (
@@ -793,98 +791,6 @@ func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (
 	}
 
 	return act.Balance, nil
-}
-
-func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, cb func(address.Address, uint64) (*types.SignedMessage, error)) (*types.SignedMessage, error) {
-	// serialize push access to reduce lock contention
-	mp.addSema <- struct{}{}
-	defer func() {
-		<-mp.addSema
-	}()
-
-	mp.curTsLk.Lock()
-	mp.lk.Lock()
-
-	curTs := mp.curTs
-
-	fromKey := addr
-	if fromKey.Protocol() == address.ID {
-		var err error
-		fromKey, err = mp.api.StateAccountKey(ctx, fromKey, mp.curTs)
-		if err != nil {
-			mp.lk.Unlock()
-			mp.curTsLk.Unlock()
-			return nil, xerrors.Errorf("resolving sender key: %w", err)
-		}
-	}
-
-	nonce, err := mp.getNonceLocked(fromKey, mp.curTs)
-	if err != nil {
-		mp.lk.Unlock()
-		mp.curTsLk.Unlock()
-		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
-	}
-
-	// release the locks for signing
-	mp.lk.Unlock()
-	mp.curTsLk.Unlock()
-
-	msg, err := cb(fromKey, nonce)
-	if err != nil {
-		return nil, err
-	}
-
-	err = mp.checkMessage(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	msgb, err := msg.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	// reacquire the locks and check state for consistency
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
-
-	if mp.curTs != curTs {
-		return nil, ErrTryAgain
-	}
-
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
-
-	nonce2, err := mp.getNonceLocked(fromKey, mp.curTs)
-	if err != nil {
-		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
-	}
-
-	if nonce2 != nonce {
-		return nil, ErrTryAgain
-	}
-
-	publish, err := mp.verifyMsgBeforeAdd(msg, curTs, true)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := mp.checkBalance(msg, curTs); err != nil {
-		return nil, err
-	}
-
-	if err := mp.addLocked(msg, false); err != nil {
-		return nil, xerrors.Errorf("add locked failed: %w", err)
-	}
-	if err := mp.addLocal(msg, msgb); err != nil {
-		log.Errorf("addLocal failed: %+v", err)
-	}
-
-	if publish {
-		err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
-	}
-
-	return msg, err
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64, applied bool) {

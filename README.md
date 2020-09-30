@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://lotu.sh/" title="Lotus Docs">
+  <a href="https://docs.filecoin.io/" title="Filecoin Docs">
     <img src="documentation/images/lotus_logo_h.png" alt="Project Lotus Logo" width="244" />
   </a>
 </p>
@@ -18,7 +18,7 @@ Lotus is an implementation of the Filecoin Distributed Storage Network. For more
 
 ## Building & Documentation
 
-For instructions on how to build lotus from source, please visit [Lotus build and setup instruction](https://docs.filecoin.io/get-started/lotus/installation/#minimal-requirements) or read the source [here](https://github.com/filecoin-project/lotus/tree/master/documentation).
+For instructions on how to build, install and setup lotus, please visit [https://docs.filecoin.io/get-started/lotus](https://docs.filecoin.io/get-started/lotus/).
 
 ## Reporting a Vulnerability
 

@@ -112,6 +112,11 @@ var runCmd = &cli.Command{
 			Usage: "don't use storageminer repo for sector storage",
 		},
 		&cli.BoolFlag{
+			Name:  "no-swap",
+			Usage: "don't use swap",
+			Value: false,
+		},
+		&cli.BoolFlag{
 			Name:  "addpiece",
 			Usage: "enable addpiece",
 			Value: true,
@@ -355,6 +360,7 @@ var runCmd = &cli.Command{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				SealProof: spt,
 				TaskTypes: taskTypes,
+				NoSwap:    cctx.Bool("no-swap"),
 			}, remote, localStore, nodeApi, nodeApi, wsts),
 			localStore: localStore,
 			ls:         lr,

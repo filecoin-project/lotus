@@ -32,6 +32,7 @@ var pathTypes = []storiface.SectorFileType{storiface.FTUnsealed, storiface.FTSea
 type WorkerConfig struct {
 	SealProof abi.RegisteredSealProof
 	TaskTypes []sealtasks.TaskType
+	NoSwap    bool
 }
 
 type LocalWorker struct {
@@ -41,6 +42,7 @@ type LocalWorker struct {
 	sindex     stores.SectorIndex
 	ret        storiface.WorkerReturn
 	executor   func() (ffiwrapper.Storage, error)
+	noSwap     bool
 
 	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
@@ -69,6 +71,7 @@ func newLocalWorker(executor func() (ffiwrapper.Storage, error), wcfg WorkerConf
 		},
 		acceptTasks: acceptTasks,
 		executor:    executor,
+		noSwap:      wcfg.NoSwap,
 
 		closing: make(chan struct{}),
 	}
@@ -445,11 +448,16 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		return storiface.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
 	}
 
+	memSwap := mem.VirtualTotal
+	if l.noSwap {
+		memSwap = 0
+	}
+
 	return storiface.WorkerInfo{
 		Hostname: hostname,
 		Resources: storiface.WorkerResources{
 			MemPhysical: mem.Total,
-			MemSwap:     mem.VirtualTotal,
+			MemSwap:     memSwap,
 			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
 			CPUs:        uint64(runtime.NumCPU()),
 			GPUs:        gpus,

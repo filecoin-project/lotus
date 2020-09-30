@@ -545,34 +545,37 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 		defer done()
 
 		pf, err := openPartialFile(maxPieceSize, paths.Unsealed)
-		if xerrors.Is(err, os.ErrNotExist) {
-			return xerrors.Errorf("opening partial file: %w", err)
-		}
+		if err == nil {
+			var at uint64
+			for sr.HasNext() {
+				r, err := sr.NextRun()
+				if err != nil {
+					_ = pf.Close()
+					return err
+				}
 
-		var at uint64
-		for sr.HasNext() {
-			r, err := sr.NextRun()
-			if err != nil {
-				_ = pf.Close()
+				offset := at
+				at += r.Len
+				if !r.Val {
+					continue
+				}
+
+				err = pf.Free(storiface.PaddedByteIndex(abi.UnpaddedPieceSize(offset).Padded()), abi.UnpaddedPieceSize(r.Len).Padded())
+				if err != nil {
+					_ = pf.Close()
+					return xerrors.Errorf("free partial file range: %w", err)
+				}
+			}
+
+			if err := pf.Close(); err != nil {
 				return err
 			}
-
-			offset := at
-			at += r.Len
-			if !r.Val {
-				continue
-			}
-
-			err = pf.Free(storiface.PaddedByteIndex(abi.UnpaddedPieceSize(offset).Padded()), abi.UnpaddedPieceSize(r.Len).Padded())
-			if err != nil {
-				_ = pf.Close()
-				return xerrors.Errorf("free partial file range: %w", err)
+		} else {
+			if !xerrors.Is(err, os.ErrNotExist) {
+				return xerrors.Errorf("opening partial file: %w", err)
 			}
 		}
 
-		if err := pf.Close(); err != nil {
-			return err
-		}
 	}
 
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)

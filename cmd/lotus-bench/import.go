@@ -16,6 +16,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/bloom"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -24,12 +26,16 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
+	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
+	pebbleds "github.com/ipfs/go-ds-pebble"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -60,6 +66,29 @@ var importBenchCmd = &cli.Command{
 			Name:  "repodir",
 			Usage: "set the repo directory for the lotus bench run (defaults to /tmp)",
 		},
+		&cli.StringFlag{
+			Name:  "syscall-cache",
+			Usage: "read and write syscall results from datastore",
+		},
+		&cli.BoolFlag{
+			Name:  "export-traces",
+			Usage: "should we export execution traces",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "no-import",
+			Usage: "should we import the chain? if set to true chain has to be previously imported",
+		},
+		&cli.BoolFlag{
+			Name:  "global-profile",
+			Value: true,
+		},
+		&cli.Int64Flag{
+			Name: "start-at",
+		},
+		&cli.BoolFlag{
+			Name: "only-import",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
@@ -74,6 +103,10 @@ var importBenchCmd = &cli.Command{
 		}
 		defer cfi.Close() //nolint:errcheck // read only file
 
+		go func() {
+			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
+		}()
+
 		var tdir string
 		if rdir := cctx.String("repodir"); rdir != "" {
 			tdir = rdir
@@ -85,33 +118,105 @@ var importBenchCmd = &cli.Command{
 			tdir = tmp
 		}
 
-		bds, err := badger.NewDatastore(tdir, nil)
+		bdgOpt := badger.DefaultOptions
+		bdgOpt.GcInterval = 0
+		bdgOpt.Options = bdg.DefaultOptions("")
+		bdgOpt.Options.SyncWrites = false
+		bdgOpt.Options.Truncate = true
+		bdgOpt.Options.DetectConflicts = false
+
+		var bds datastore.Batching
+		if false {
+			cache := 512
+			bds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
+				// Pebble has a single combined cache area and the write
+				// buffers are taken from this too. Assign all available
+				// memory allowance for cache.
+				Cache: pebble.NewCache(int64(cache * 1024 * 1024)),
+				// The size of memory table(as well as the write buffer).
+				// Note, there may have more than two memory tables in the system.
+				// MemTableStopWritesThreshold can be configured to avoid the memory abuse.
+				MemTableSize: cache * 1024 * 1024 / 4,
+				// The default compaction concurrency(1 thread),
+				// Here use all available CPUs for faster compaction.
+				MaxConcurrentCompactions: runtime.NumCPU(),
+				// Per-level options. Options for at least one level must be specified. The
+				// options for the last level are used for all subsequent levels.
+				Levels: []pebble.LevelOptions{
+					{TargetFileSize: 16 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10), Compression: pebble.NoCompression},
+				},
+				Logger: log,
+			})
+		} else {
+			bds, err = badger.NewDatastore(tdir, &bdgOpt)
+		}
 		if err != nil {
 			return err
 		}
+		defer bds.Close() //nolint:errcheck
+
 		bs := blockstore.NewBlockstore(bds)
-		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, blockstore.DefaultCacheOpts())
+		cacheOpts := blockstore.DefaultCacheOpts()
+		cacheOpts.HasBloomFilterSize = 0
+
+		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, cacheOpts)
 		if err != nil {
 			return err
 		}
 		bs = cbs
 		ds := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, ds, vm.Syscalls(ffiwrapper.ProofVerifier))
+
+		var verifier ffiwrapper.Verifier = ffiwrapper.ProofVerifier
+		if cctx.IsSet("syscall-cache") {
+			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &bdgOpt)
+			if err != nil {
+				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
+			}
+			defer scds.Close() //nolint:errcheck
+
+			verifier = &cachingVerifier{
+				ds:      scds,
+				backend: verifier,
+			}
+		}
+		if cctx.Bool("only-gc") {
+			return nil
+		}
+
+		cs := store.NewChainStore(bs, ds, vm.Syscalls(verifier))
 		stm := stmgr.NewStateManager(cs)
 
-		prof, err := os.Create("import-bench.prof")
-		if err != nil {
-			return err
-		}
-		defer prof.Close() //nolint:errcheck
+		if cctx.Bool("global-profile") {
+			prof, err := os.Create("import-bench.prof")
+			if err != nil {
+				return err
+			}
+			defer prof.Close() //nolint:errcheck
 
-		if err := pprof.StartCPUProfile(prof); err != nil {
-			return err
+			if err := pprof.StartCPUProfile(prof); err != nil {
+				return err
+			}
 		}
 
-		head, err := cs.Import(cfi)
-		if err != nil {
-			return err
+		var head *types.TipSet
+		if !cctx.Bool("no-import") {
+			head, err = cs.Import(cfi)
+			if err != nil {
+				return err
+			}
+		} else {
+			cr, err := car.NewCarReader(cfi)
+			if err != nil {
+				return err
+			}
+			head, err = cs.LoadTipSet(types.NewTipSetKey(cr.Header.Roots...))
+			if err != nil {
+				return err
+			}
+		}
+
+		if cctx.Bool("only-import") {
+			return nil
 		}
 
 		gb, err := cs.GetTipsetByHeight(context.TODO(), 0, head, true)
@@ -124,6 +229,20 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 
+		startEpoch := abi.ChainEpoch(1)
+		if cctx.IsSet("start-at") {
+			startEpoch = abi.ChainEpoch(cctx.Int64("start-at"))
+			start, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(cctx.Int64("start-at")), head, true)
+			if err != nil {
+				return err
+			}
+
+			err = cs.SetHead(start)
+			if err != nil {
+				return err
+			}
+		}
+
 		if h := cctx.Int64("height"); h != 0 {
 			tsh, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
 			if err != nil {
@@ -134,7 +253,7 @@ var importBenchCmd = &cli.Command{
 
 		ts := head
 		tschain := []*types.TipSet{ts}
-		for ts.Height() != 0 {
+		for ts.Height() > startEpoch {
 			next, err := cs.LoadTipSet(ts.Parents())
 			if err != nil {
 				return err
@@ -144,45 +263,48 @@ var importBenchCmd = &cli.Command{
 			ts = next
 		}
 
-		ibj, err := os.Create("import-bench.json")
-		if err != nil {
-			return err
+		var enc *json.Encoder
+		if cctx.Bool("export-traces") {
+			ibj, err := os.Create("import-bench.json")
+			if err != nil {
+				return err
+			}
+			defer ibj.Close() //nolint:errcheck
+
+			enc = json.NewEncoder(ibj)
 		}
-		defer ibj.Close() //nolint:errcheck
 
-		enc := json.NewEncoder(ibj)
-
-		var lastTse *TipSetExec
-
-		lastState := tschain[len(tschain)-1].ParentState()
-		for i := len(tschain) - 2; i >= 0; i-- {
+		for i := len(tschain) - 1; i >= 1; i-- {
 			cur := tschain[i]
+			start := time.Now()
 			log.Infof("computing state (height: %d, ts=%s)", cur.Height(), cur.Cids())
-			if cur.ParentState() != lastState {
-				lastTrace := lastTse.Trace
+			st, trace, err := stm.ExecutionTrace(context.TODO(), cur)
+			if err != nil {
+				return err
+			}
+			tse := &TipSetExec{
+				TipSet:   cur.Key(),
+				Trace:    trace,
+				Duration: time.Since(start),
+			}
+			if enc != nil {
+				stripCallers(tse.Trace)
+
+				if err := enc.Encode(tse); err != nil {
+					return xerrors.Errorf("failed to write out tipsetexec: %w", err)
+				}
+			}
+			if tschain[i-1].ParentState() != st {
+				stripCallers(tse.Trace)
+				lastTrace := tse.Trace
 				d, err := json.MarshalIndent(lastTrace, "", "  ")
 				if err != nil {
 					panic(err)
 				}
 				fmt.Println("TRACE")
 				fmt.Println(string(d))
-				return xerrors.Errorf("tipset chain had state mismatch at height %d (%s != %s)", cur.Height(), cur.ParentState(), lastState)
-			}
-			start := time.Now()
-			st, trace, err := stm.ExecutionTrace(context.TODO(), cur)
-			if err != nil {
-				return err
-			}
-			stripCallers(trace)
-
-			lastTse = &TipSetExec{
-				TipSet:   cur.Key(),
-				Trace:    trace,
-				Duration: time.Since(start),
-			}
-			lastState = st
-			if err := enc.Encode(lastTse); err != nil {
-				return xerrors.Errorf("failed to write out tipsetexec: %w", err)
+				//fmt.Println(statediff.Diff(context.Background(), bs, tschain[i-1].ParentState(), st, statediff.ExpandActors))
+				return xerrors.Errorf("tipset chain had state mismatch at height %d (%s != %s)", cur.Height(), cur.ParentState(), st)
 			}
 		}
 

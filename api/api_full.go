@@ -176,6 +176,9 @@ type FullNode interface {
 	// the reason.
 	SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error)
 
+	// SyncValidateTipset indicates whether the provided tipset is valid or not
+	SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error)
+
 	// MethodGroup: Mpool
 	// The Mpool methods are for interacting with the message pool. The message pool
 	// manages all incoming and outgoing 'messages' going over the network.
@@ -244,6 +247,8 @@ type FullNode interface {
 	WalletImport(context.Context, *types.KeyInfo) (address.Address, error)
 	// WalletDelete deletes an address from the wallet.
 	WalletDelete(context.Context, address.Address) error
+	// WalletValidateAddress validates whether a given string can be decoded as a well-formed address
+	WalletValidateAddress(context.Context, string) (address.Address, error)
 
 	// Other
 

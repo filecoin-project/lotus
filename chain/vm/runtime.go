@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	gruntime "runtime"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -460,8 +459,10 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 }
 
 func (rt *Runtime) finilizeGasTracing() {
-	if rt.lastGasCharge != nil {
-		rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
+	if enableTracing {
+		if rt.lastGasCharge != nil {
+			rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
+		}
 	}
 }
 
@@ -490,33 +491,38 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 
 }
 
+var enableTracing = false
+
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
-	var callers [10]uintptr
-	cout := gruntime.Callers(2+skip, callers[:])
+	if enableTracing {
+		var callers [10]uintptr
 
-	now := build.Clock.Now()
-	if rt.lastGasCharge != nil {
-		rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
+		cout := 0 //gruntime.Callers(2+skip, callers[:])
+
+		now := build.Clock.Now()
+		if rt.lastGasCharge != nil {
+			rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
+		}
+
+		gasTrace := types.GasTrace{
+			Name:  gas.Name,
+			Extra: gas.Extra,
+
+			TotalGas:   toUse,
+			ComputeGas: gas.ComputeGas,
+			StorageGas: gas.StorageGas,
+
+			TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
+			VirtualComputeGas: gas.VirtualCompute,
+			VirtualStorageGas: gas.VirtualStorage,
+
+			Callers: callers[:cout],
+		}
+		rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
+		rt.lastGasChargeTime = now
+		rt.lastGasCharge = &gasTrace
 	}
-
-	gasTrace := types.GasTrace{
-		Name:  gas.Name,
-		Extra: gas.Extra,
-
-		TotalGas:   toUse,
-		ComputeGas: gas.ComputeGas,
-		StorageGas: gas.StorageGas,
-
-		TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
-		VirtualComputeGas: gas.VirtualCompute,
-		VirtualStorageGas: gas.VirtualStorage,
-
-		Callers: callers[:cout],
-	}
-	rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
-	rt.lastGasChargeTime = now
-	rt.lastGasCharge = &gasTrace
 
 	// overflow safe
 	if rt.gasUsed > rt.gasAvailable-toUse {
