@@ -370,10 +370,11 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 	}
 	defer cancel()
 
+	var waitErr error
 	waitRes := func() {
 		p, werr := m.waitWork(ctx, wk)
 		if werr != nil {
-			err = werr
+			waitErr = werr
 			return
 		}
 		out = p.(storage.PreCommit1Out)
@@ -401,8 +402,11 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 		waitRes()
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return out, err
+	return out, waitErr
 }
 
 func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (out storage.SectorCids, err error) {
@@ -415,10 +419,11 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 	}
 	defer cancel()
 
+	var waitErr error
 	waitRes := func() {
 		p, werr := m.waitWork(ctx, wk)
 		if werr != nil {
-			err = werr
+			waitErr = werr
 			return
 		}
 		out = p.(storage.SectorCids)
@@ -444,7 +449,11 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 		waitRes()
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return storage.SectorCids{}, err
+	}
+
+	return out, waitErr
 }
 
 func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (out storage.Commit1Out, err error) {
@@ -457,10 +466,11 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 	}
 	defer cancel()
 
+	var waitErr error
 	waitRes := func() {
 		p, werr := m.waitWork(ctx, wk)
 		if werr != nil {
-			err = werr
+			waitErr = werr
 			return
 		}
 		out = p.(storage.Commit1Out)
@@ -489,7 +499,11 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 		waitRes()
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+
+	return out, waitErr
 }
 
 func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.Commit1Out) (out storage.Proof, err error) {
@@ -499,10 +513,11 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 	}
 	defer cancel()
 
+	var waitErr error
 	waitRes := func() {
 		p, werr := m.waitWork(ctx, wk)
 		if werr != nil {
-			err = werr
+			waitErr = werr
 			return
 		}
 		out = p.(storage.Proof)
@@ -525,7 +540,11 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 		return nil
 	})
 
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+
+	return out, waitErr
 }
 
 func (m *Manager) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) error {
