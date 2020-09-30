@@ -569,7 +569,7 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
-			ask = *a.Ask
+			ask = *a
 
 			// TODO: run more validation
 			state = "confirm"
@@ -951,15 +951,15 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Ask.Price))
-		fmt.Printf("Verified Price per GiB: %s\n", types.FIL(ask.Ask.VerifiedPrice))
-		fmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.Ask.MaxPieceSize))))
+		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Price))
+		fmt.Printf("Verified Price per GiB: %s\n", types.FIL(ask.VerifiedPrice))
+		fmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))))
 
 		size := cctx.Int64("size")
 		if size == 0 {
 			return nil
 		}
-		perEpoch := types.BigDiv(types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))), types.NewInt(1<<30))
+		perEpoch := types.BigDiv(types.BigMul(ask.Price, types.NewInt(uint64(size))), types.NewInt(1<<30))
 		fmt.Printf("Price per Block: %s\n", types.FIL(perEpoch))
 
 		duration := cctx.Int64("duration")
