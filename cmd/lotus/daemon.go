@@ -15,8 +15,6 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	"go.uber.org/fx"
-
 	"github.com/filecoin-project/lotus/chain/types"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
@@ -249,22 +247,24 @@ var DaemonCmd = &cli.Command{
 		// If the daemon is started in "lite mode", replace the StateManager
 		// with a thin client to a gateway server
 		liteMode := node.Options()
-		if cctx.Bool("lite") {
+		isLite := cctx.Bool("lite")
+		if isLite {
 			gapi, closer, err := lcli.GetGatewayAPI(cctx)
 			if err != nil {
 				return err
 			}
 
-			createRPCStateMgr := func(lc fx.Lifecycle) *modules.RPCStateManager {
-				lc.Append(fx.Hook{
-					OnStop: func(ctx context.Context) error {
-						closer()
-						return nil
-					},
-				})
-				return modules.NewRPCStateManager(gapi)
-			}
-			liteMode = node.Override(new(stmgr.StateManagerAPI), createRPCStateMgr)
+			defer closer()
+
+			liteMode = node.Options(
+				node.Override(new(api.GatewayAPI), gapi),
+				node.Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),
+				node.Unset(node.RunHelloKey),
+				node.Unset(node.RunChainExchangeKey),
+				node.Unset(node.RunPeerMgrKey),
+				node.Unset(node.HandleIncomingBlocksKey),
+				node.Unset(node.HandleIncomingMessagesKey),
+			)
 		}
 
 		var api api.FullNode
