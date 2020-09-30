@@ -9,13 +9,16 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/crypto"
-	types "github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/urfave/cli/v2"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+
+	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
 var walletCmd = &cli.Command{
@@ -66,6 +69,13 @@ var walletNew = &cli.Command{
 var walletList = &cli.Command{
 	Name:  "list",
 	Usage: "List wallet address",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "addr-only",
+			Usage:   "Only print addresses",
+			Aliases: []string{"a"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -79,9 +89,52 @@ var walletList = &cli.Command{
 			return err
 		}
 
+		// Assume an error means no default key is set
+		def, _ := api.WalletDefaultAddress(ctx)
+
+		tw := tablewriter.New(
+			tablewriter.Col("Address"),
+			tablewriter.Col("Balance"),
+			tablewriter.Col("Nonce"),
+			tablewriter.Col("Default"),
+			tablewriter.NewLineCol("Error"))
+
 		for _, addr := range addrs {
-			fmt.Println(addr.String())
+			if cctx.Bool("addr-only") {
+				fmt.Println(addr.String())
+			} else {
+				a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
+				if err != nil {
+					if !strings.Contains(err.Error(), "actor not found") {
+						tw.Write(map[string]interface{}{
+							"Address": addr,
+							"Error":   err,
+						})
+						continue
+					}
+
+					a = &types.Actor{
+						Balance: big.Zero(),
+					}
+				}
+
+				row := map[string]interface{}{
+					"Address": addr,
+					"Balance": types.FIL(a.Balance),
+					"Nonce":   a.Nonce,
+				}
+				if addr == def {
+					row["Default"] = "X"
+				}
+
+				tw.Write(row)
+			}
 		}
+
+		if !cctx.Bool("addr-only") {
+			return tw.Flush(os.Stdout)
+		}
+
 		return nil
 	},
 }

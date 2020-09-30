@@ -25,6 +25,7 @@ func main() {
 		staterootCmd,
 		auditsCmd,
 		importCarCmd,
+		importObjectCmd,
 		commpToCidCmd,
 		fetchParamCmd,
 		proofsCmd,
@@ -37,6 +38,7 @@ func main() {
 		exportChainCmd,
 		consensusCmd,
 		serveDealStatsCmd,
+		syncCmd,
 	}
 
 	app := &cli.App{

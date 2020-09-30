@@ -1,232 +1,25 @@
 {
   "posts": [
     {
-      "title": "Hardware Requirements",
-      "slug": "en+hardware",
-      "github": "en/hardware.md",
+      "title": "About Lotus",
+      "slug": "",
+      "github": "en/about.md",
       "value": null,
-      "posts": [
-        {
-          "title": "Testing Configuration",
-          "slug": "en+hardware-mining",
-          "github": "en/hardware-mining.md",
-          "value": null
-        }
-      ]
+      "posts": []
     },
     {
-      "title": "Setup",
-      "slug": "en+getting-started",
-      "github": "en/getting-started.md",
-      "value": null,
-      "posts": [
-        {
-          "title": "Arch Linux Installation",
-          "slug": "en+install-lotus-arch",
-          "github": "en/install-lotus-arch.md",
-          "value": null
-        },
-        {
-          "title": "Ubuntu Installation",
-          "slug": "en+install-lotus-ubuntu",
-          "github": "en/install-lotus-ubuntu.md",
-          "value": null
-        },
-        {
-          "title": "Fedora Installation",
-          "slug": "en+install-lotus-fedora",
-          "github": "en/install-lotus-fedora.md",
-          "value": null
-        },
-        {
-          "title": "MacOS Installation",
-          "slug": "en+install-lotus-macos",
-          "github": "en/install-lotus-macos.md",
-          "value": null
-        },
-        {
-          "title": "Updating Lotus",
-          "slug": "en+updating-lotus",
-          "github": "en/updating-lotus.md",
-          "value": null
-        },
-        {
-          "title": "Join Testnet",
-          "slug": "en+join-testnet",
-          "github": "en/join-testnet.md",
-          "value": null
-        },
-        {
-          "title": "Use Lotus with systemd",
-          "slug": "en+install-systemd-services",
-          "github": "en/install-systemd-services.md",
-          "value": null
-        },
-        {
-          "title": "Setup Troubleshooting",
-          "slug": "en+setup-troubleshooting",
-          "github": "en/setup-troubleshooting.md",
-          "value": null
-        },
-        {
-          "title": "Environment Variables",
-          "slug": "en+env-vars",
-          "github": "en/environment-vars.md",
-          "value": null
-        }
-      ]
-    },
-    {
-      "title": "Architecture",
+      "title": "Lotus Architecture (WIP)",
       "slug": "en+arch",
-      "github": "en/architecture.md",
+      "github": "en/architecture/architecture.md",
       "value": null,
       "posts": [
-        {
-          "title": "The Message Pool",
-          "slug": "en+mpool",
-          "github": "en/mpool.md",
-          "value": null
-        }
+	{
+	  "title": "The Message Pool",
+	  "slug": "en+mpool",
+	  "github": "en/architecture/mpool.md",
+	  "value": null
+	}
       ]
-    },
-    {
-      "title": "Storage Mining",
-      "slug": "en+mining",
-      "github": "en/mining.md",
-      "value": null,
-      "posts": [
-        {
-          "title": "Lotus Worker",
-          "slug": "en+lotus-worker",
-          "github": "en/mining-lotus-worker.md",
-          "value": null
-        },
-        {
-          "title": "Static Ports",
-          "slug": "en+setting-a-static-port",
-          "github": "en/setting-a-static-port.md",
-          "value": null
-        },
-        {
-          "title": "Mining Troubleshooting",
-          "slug": "en+mining-troubleshooting",
-          "github": "en/mining-troubleshooting.md",
-          "value": null
-        }
-      ]
-    },
-    {
-      "title": "Storing Data",
-      "slug": "en+storing-data",
-      "github": "en/storing-data.md",
-      "value": null,
-      "posts": [
-        {
-          "title": "Storage Troubleshooting",
-          "slug": "en+storing-data-troubleshooting",
-          "github": "en/storing-data-troubleshooting.md",
-          "value": null
-        },
-        {
-          "title": "Information for Miners",
-          "slug": "en+info-for-miners",
-          "github": "en/miner-deals.md",
-          "value": null
-        },
-        {
-          "title": "IPFS Integration",
-          "slug": "en+ipfs-client-integration",
-          "github": "en/storing-ipfs-integration.md",
-          "value": null
-        }
-      ]
-    },
-    {
-      "title": "Retrieving Data",
-      "slug": "en+retrieving-data",
-      "github": "en/retrieving-data.md",
-      "value": null,
-      "posts": []
-    },
-    {
-      "title": "Payment Channels",
-      "slug": "en+payment-channels",
-      "github": "en/payment-channels.md",
-      "value": null,
-      "posts": []
-    },
-    {
-      "title": "Command Line Interface",
-      "slug": "en+cli",
-      "github": "en/cli.md",
-      "value": null,
-      "posts": []
-    },
-    {
-      "title": "API",
-      "slug": "en+api",
-      "github": "en/api.md",
-      "value": null,
-      "posts": [
-        {
-          "title": "Remote API Support",
-          "slug": "en+api-scripting-support",
-          "github": "en/api-scripting-support.md",
-          "value": null
-        },
-        {
-          "title": "API Methods",
-          "slug": "en+api-methods",
-          "github": "en/api-methods.md",
-          "value": null
-        },
-        {
-          "title": "API Troubleshooting",
-          "slug": "en+api-troubleshooting",
-          "github": "en/api-troubleshooting.md",
-          "value": null
-        }
-      ]
-    },
-    {
-      "title": "Developer Tools",
-      "slug": "en+dev-tools",
-      "github": "en/dev-tools.md",
-      "value": null,
-      "posts": [
-        {
-          "title": "Setup Local Devnet",
-          "slug": "en+setup-local-dev-net",
-          "github": "en/local-dev-net.md",
-          "value": null,
-          "posts": []
-        },
-        {
-          "title": "Jaeger Tracing",
-          "slug": "en+dev-tools-jaeger-tracing",
-          "github": "en/dev-tools-jaeger-tracing.md",
-          "value": null,
-          "posts": []
-        }
-      ]
-    },
-    {
-      "title": "FAQs",
-      "slug": "en+faqs",
-      "github": "en/faqs.md",
-      "value": null,
-      "posts": []
-    },
-    {
-      "title": "Glossary",
-      "slug": "en+glossary",
-      "github": "en/.glossary.json",
-      "value": null,
-      "custom": {
-        "glossary": true
-      },
-      "posts": []
     }
   ]
 }

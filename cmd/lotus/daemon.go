@@ -127,6 +127,10 @@ var DaemonCmd = &cli.Command{
 			Usage: "manage open file limit",
 			Value: true,
 		},
+		&cli.StringFlag{
+			Name:  "config",
+			Usage: "specify path of config file to use",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
@@ -178,6 +182,10 @@ var DaemonCmd = &cli.Command{
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return xerrors.Errorf("opening fs repo: %w", err)
+		}
+
+		if cctx.String("config") != "" {
+			r.SetConfigPath(cctx.String("config"))
 		}
 
 		if err := r.Init(repo.FullNode); err != nil && err != repo.ErrRepoExists {
