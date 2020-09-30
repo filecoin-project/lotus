@@ -28,14 +28,10 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	bstate := ts.ParentState()
 	bheight := ts.Height()
 
-	newState, err := sm.handleStateForks(ctx, bstate, bheight-1, nil, ts)
+	bstate, err := sm.handleStateForks(ctx, bstate, bheight-1, nil, ts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to handle fork")
+		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
-	if newState != bstate {
-		fmt.Println("IT WORKED!")
-	}
-	bstate = newState
 
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
@@ -115,6 +111,11 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	state, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state: %w", err)
+	}
+
+	state, err = sm.handleStateForks(ctx, state, ts.Height(), nil, ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids())
