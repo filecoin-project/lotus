@@ -138,14 +138,7 @@ func (a *SyncAPI) SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (
 		return false, err
 	}
 
-	for _, blk := range tsk.Cids() {
-		err = a.Syncer.ChainStore().UnmarkBlockAsValidated(ctx, blk)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	err = a.Syncer.ValidateTipSet(ctx, fts)
+	err = a.Syncer.ValidateTipSet(ctx, fts, false)
 	if err != nil {
 		return false, err
 	}
