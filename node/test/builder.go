@@ -198,6 +198,7 @@ func Builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 	templ := &genesis.Template{
 		Accounts:         genaccs,
 		Miners:           genms,
+		NetworkName:      "test",
 		Timestamp:        uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
 		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
@@ -344,6 +345,7 @@ func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 	templ := &genesis.Template{
 		Accounts:         genaccs,
 		Miners:           genms,
+		NetworkName:      "test",
 		Timestamp:        uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
 		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
