@@ -1423,7 +1423,7 @@ func toChannelOutput(useColor bool, otherPartyColumn string, channel lapi.DataTr
 		otherPartyColumn: otherParty,
 		"Root Cid":       rootCid,
 		"Initiated?":     initiated,
-		"Transferred":    channel.Transferred,
+		"Transferred":    units.BytesSize(float64(channel.Transferred)),
 		"Voucher":        voucher,
 		"Message":        channel.Message,
 	}
