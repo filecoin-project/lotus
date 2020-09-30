@@ -16,7 +16,7 @@ import (
 )
 
 var datastoreCmd = &cli.Command{
-	Name: "datastore",
+	Name:        "datastore",
 	Description: "access node datastores directly",
 	Subcommands: []*cli.Command{
 		datastoreListCmd,
@@ -25,19 +25,19 @@ var datastoreCmd = &cli.Command{
 }
 
 var datastoreListCmd = &cli.Command{
-	Name: "list",
+	Name:        "list",
 	Description: "list datastore keys",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
-			Name: "repo-type",
+			Name:  "repo-type",
 			Value: 1,
 		},
 		&cli.BoolFlag{
-			Name: "top-level",
+			Name:  "top-level",
 			Usage: "only print top-level keys",
 		},
 		&cli.StringFlag{
-			Name: "get-enc",
+			Name:  "get-enc",
 			Usage: "print values [esc/hex/cbor]",
 		},
 	},
@@ -72,8 +72,8 @@ var datastoreListCmd = &cli.Command{
 		genc := cctx.String("get-enc")
 
 		q, err := ds.Query(dsq.Query{
-			Prefix:            datastore.NewKey(cctx.Args().Get(1)).String(),
-			KeysOnly:          genc == "",
+			Prefix:   datastore.NewKey(cctx.Args().Get(1)).String(),
+			KeysOnly: genc == "",
 		})
 		if err != nil {
 			return xerrors.Errorf("datastore query: %w", err)
@@ -98,7 +98,6 @@ var datastoreListCmd = &cli.Command{
 				seen[s] = struct{}{}
 			}
 
-
 			s = fmt.Sprintf("%q", s)
 			s = strings.Trim(s, "\"")
 			fmt.Println(s)
@@ -116,15 +115,15 @@ var datastoreListCmd = &cli.Command{
 }
 
 var datastoreGetCmd = &cli.Command{
-	Name: "get",
+	Name:        "get",
 	Description: "list datastore keys",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
-			Name: "repo-type",
+			Name:  "repo-type",
 			Value: 1,
 		},
 		&cli.StringFlag{
-			Name: "enc",
+			Name:  "enc",
 			Usage: "encoding (esc/hex/cbor)",
 			Value: "esc",
 		},
