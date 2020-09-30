@@ -2,9 +2,9 @@ package conformance
 
 import (
 	"context"
+	"os"
 
-	"github.com/filecoin-project/go-state-types/crypto"
-
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/test-vectors/schema"
 
@@ -24,18 +25,36 @@ import (
 )
 
 var (
-	// BaseFee to use in the VM.
-	// TODO make parametrisable through vector.
-	BaseFee = abi.NewTokenAmount(100)
+	// DefaultCirculatingSupply is the fallback circulating supply returned by
+	// the driver's CircSupplyCalculator function, used if the vector specifies
+	// no circulating supply.
+	DefaultCirculatingSupply = types.TotalFilecoinInt
+
+	// DefaultBaseFee to use in the VM, if one is not supplied in the vector.
+	DefaultBaseFee = abi.NewTokenAmount(100)
 )
 
 type Driver struct {
 	ctx      context.Context
 	selector schema.Selector
+	vmFlush  bool
 }
 
-func NewDriver(ctx context.Context, selector schema.Selector) *Driver {
-	return &Driver{ctx: ctx, selector: selector}
+type DriverOpts struct {
+	// DisableVMFlush, when true, avoids calling VM.Flush(), forces a blockstore
+	// recursive copy, from the temporary buffer blockstore, to the real
+	// system's blockstore. Disabling VM flushing is useful when extracting test
+	// vectors and trimming state, as we don't want to force an accidental
+	// deep copy of the state tree.
+	//
+	// Disabling VM flushing almost always should go hand-in-hand with
+	// LOTUS_DISABLE_VM_BUF=iknowitsabadidea. That way, state tree writes are
+	// immediately committed to the blockstore.
+	DisableVMFlush bool
+}
+
+func NewDriver(ctx context.Context, selector schema.Selector, opts DriverOpts) *Driver {
+	return &Driver{ctx: ctx, selector: selector, vmFlush: !opts.DisableVMFlush}
 }
 
 type ExecuteTipsetResult struct {
@@ -120,19 +139,47 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 	return ret, nil
 }
 
+type ExecuteMessageParams struct {
+	Preroot    cid.Cid
+	Epoch      abi.ChainEpoch
+	Message    *types.Message
+	CircSupply *abi.TokenAmount
+	BaseFee    *abi.TokenAmount
+}
+
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
-func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch abi.ChainEpoch, msg *types.Message) (*vm.ApplyRet, cid.Cid, error) {
-	// dummy state manager; only to reference the GetNetworkVersion method, which does not depend on state.
+func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageParams) (*vm.ApplyRet, cid.Cid, error) {
+	if !d.vmFlush {
+		// do not flush the VM, just the state tree; this should be used with
+		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.
+		_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
+	}
+
+	basefee := DefaultBaseFee
+	if params.BaseFee != nil {
+		basefee = *params.BaseFee
+	}
+
+	circSupply := DefaultCirculatingSupply
+	if params.CircSupply != nil {
+		circSupply = *params.CircSupply
+	}
+
+	// dummy state manager; only to reference the GetNetworkVersion method,
+	// which does not depend on state.
 	sm := new(stmgr.StateManager)
+
 	vmOpts := &vm.VMOpts{
-		StateBase:      preroot,
-		Epoch:          epoch,
-		Rand:           &testRand{}, // TODO always succeeds; need more flexibility.
-		Bstore:         bs,
-		Syscalls:       mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), // TODO always succeeds; need more flexibility.
-		CircSupplyCalc: nil,
-		BaseFee:        BaseFee,
-		NtwkVersion:    sm.GetNtwkVersion,
+		StateBase: params.Preroot,
+		Epoch:     params.Epoch,
+		Rand:      &testRand{}, // TODO always succeeds; need more flexibility.
+		Bstore:    bs,
+		Syscalls:  mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), // TODO always succeeds; need more flexibility.
+		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
+			return circSupply, nil
+		},
+		BaseFee:     basefee,
+		NtwkVersion: sm.GetNtwkVersion,
 	}
 
 	lvm, err := vm.NewVM(context.TODO(), vmOpts)
@@ -149,12 +196,20 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, preroot cid.Cid, epoch
 
 	lvm.SetInvoker(invoker)
 
-	ret, err := lvm.ApplyMessage(d.ctx, toChainMsg(msg))
+	ret, err := lvm.ApplyMessage(d.ctx, toChainMsg(params.Message))
 	if err != nil {
 		return nil, cid.Undef, err
 	}
 
-	root, err := lvm.Flush(d.ctx)
+	var root cid.Cid
+	if d.vmFlush {
+		// flush the VM, committing the state tree changes and forcing a
+		// recursive copoy from the temporary blcokstore to the real blockstore.
+		root, err = lvm.Flush(d.ctx)
+	} else {
+		root, err = lvm.StateTree().(*state.StateTree).Flush(d.ctx)
+	}
+
 	return ret, root, err
 }
 
