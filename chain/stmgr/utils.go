@@ -102,6 +102,7 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 	}
 
 	var mpow power.Claim
+	var minpow bool
 	if maddr != address.Undef {
 		var found bool
 		mpow, found, err = pas.MinerPower(maddr)
@@ -109,11 +110,11 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 			// TODO: return an error when not found?
 			return power.Claim{}, power.Claim{}, false, err
 		}
-	}
 
-	minpow, err := pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
-	if err != nil {
-		return power.Claim{}, power.Claim{}, false, err
+		minpow, err = pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
+		if err != nil {
+			return power.Claim{}, power.Claim{}, false, err
+		}
 	}
 
 	return mpow, tpow, minpow, nil
@@ -368,6 +369,16 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
+	for i := ts.Height(); i < height; i++ {
+		// handle state forks
+		base, err = sm.handleStateForks(ctx, base, i, traceFunc(&trace), ts)
+		if err != nil {
+			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
+		}
+
+		// TODO: should we also run cron here?
+	}
+
 	r := store.NewChainRand(sm.cs, ts.Cids())
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
@@ -382,16 +393,6 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	vmi, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, nil, err
-	}
-
-	for i := ts.Height(); i < height; i++ {
-		// handle state forks
-		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
-		if err != nil {
-			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
-		}
-
-		// TODO: should we also run cron here?
 	}
 
 	for i, msg := range msgs {

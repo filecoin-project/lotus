@@ -90,3 +90,7 @@ func (a *WalletAPI) WalletImport(ctx context.Context, ki *types.KeyInfo) (addres
 func (a *WalletAPI) WalletDelete(ctx context.Context, addr address.Address) error {
 	return a.Wallet.DeleteKey(addr)
 }
+
+func (a *WalletAPI) WalletValidateAddress(ctx context.Context, str string) (address.Address, error) {
+	return address.NewFromString(str)
+}
