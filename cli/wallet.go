@@ -89,10 +89,8 @@ var walletList = &cli.Command{
 			return err
 		}
 
-		def, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
-		}
+		// Assume an error means no default key is set
+		def, _ := api.WalletDefaultAddress(ctx)
 
 		tw := tablewriter.New(
 			tablewriter.Col("Address"),
