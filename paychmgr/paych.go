@@ -1,7 +1,6 @@
 package paychmgr
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -133,7 +132,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 	sv.Signature = sig
 
 	// Store the voucher
-	if _, err := ca.addVoucherUnlocked(ctx, ch, sv, nil, types.NewInt(0)); err != nil {
+	if _, err := ca.addVoucherUnlocked(ctx, ch, sv, types.NewInt(0)); err != nil {
 		// If there are not enough funds in the channel to cover the voucher,
 		// return a voucher create result with the shortfall
 		var ife insufficientFundsErr
@@ -272,7 +271,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	return laneStates, nil
 }
 
-func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (bool, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -295,26 +294,9 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, nil
 	}
 
-	// If proof is needed and wasn't supplied as a parameter, get it from the
-	// datastore
-	if sv.Extra != nil && proof == nil {
-		vi, err := ci.infoForVoucher(sv)
-		if err != nil {
-			return false, err
-		}
-
-		if vi.Proof != nil {
-			log.Info("CheckVoucherSpendable: using stored proof")
-			proof = vi.Proof
-		} else {
-			log.Warn("CheckVoucherSpendable: nil proof for voucher with validation")
-		}
-	}
-
 	enc, err := actors.SerializeParams(&paych0.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
-		Proof:  proof,
 	})
 	if err != nil {
 		return false, err
@@ -346,44 +328,31 @@ func (ca *channelAccessor) getPaychRecipient(ctx context.Context, ch address.Add
 	return state.To()
 }
 
-func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, minDelta types.BigInt) (types.BigInt, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
-	return ca.addVoucherUnlocked(ctx, ch, sv, proof, minDelta)
+	return ca.addVoucherUnlocked(ctx, ch, sv, minDelta)
 }
 
-func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, minDelta types.BigInt) (types.BigInt, error) {
 	ci, err := ca.store.ByAddress(ch)
 	if err != nil {
 		return types.BigInt{}, err
 	}
 
 	// Check if the voucher has already been added
-	for i, v := range ci.Vouchers {
+	for _, v := range ci.Vouchers {
 		eq, err := cborutil.Equals(sv, v.Voucher)
 		if err != nil {
 			return types.BigInt{}, err
 		}
-		if !eq {
-			continue
+		if eq {
+			// Ignore the duplicate voucher.
+			log.Warnf("AddVoucher: voucher re-added")
+			return types.NewInt(0), nil
 		}
 
-		// This is a duplicate voucher.
-		// Update the proof on the existing voucher
-		if len(proof) > 0 && !bytes.Equal(v.Proof, proof) {
-			log.Warnf("AddVoucher: adding proof to stored voucher")
-			ci.Vouchers[i] = &VoucherInfo{
-				Voucher: v.Voucher,
-				Proof:   proof,
-			}
-
-			return types.NewInt(0), ca.store.putChannelInfo(ci)
-		}
-
-		// Otherwise just ignore the duplicate voucher
-		log.Warnf("AddVoucher: voucher re-added with matching proof")
-		return types.NewInt(0), nil
 	}
 
 	// Check voucher validity
@@ -410,7 +379,6 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 
 	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
 		Voucher: sv,
-		Proof:   proof,
 	})
 
 	if ci.NextLane <= sv.Lane {
@@ -420,28 +388,13 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 	return delta, ca.store.putChannelInfo(ci)
 }
 
-func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (cid.Cid, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	ci, err := ca.store.ByAddress(ch)
 	if err != nil {
 		return cid.Undef, err
-	}
-
-	// If voucher needs proof, and none was supplied, check datastore for proof
-	if sv.Extra != nil && proof == nil {
-		vi, err := ci.infoForVoucher(sv)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		if vi.Proof != nil {
-			log.Info("SubmitVoucher: using stored proof")
-			proof = vi.Proof
-		} else {
-			log.Warn("SubmitVoucher: nil proof for voucher with validation")
-		}
 	}
 
 	has, err := ci.hasVoucher(sv)
@@ -462,13 +415,9 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 	}
 
 	// TODO: ActorUpgrade
-	// The "proof" field is going away. We will need to abstract over the
-	// network version here.
-	// Alternatively, we'd need to support the "old" method on-chain.
 	enc, err := actors.SerializeParams(&paych0.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
-		Proof:  proof,
 	})
 	if err != nil {
 		return cid.Undef, err
@@ -492,7 +441,6 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		// Add the voucher to the channel
 		ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
 			Voucher: sv,
-			Proof:   proof,
 		})
 	}
 

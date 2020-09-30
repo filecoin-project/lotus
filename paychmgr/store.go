@@ -49,7 +49,7 @@ const (
 
 type VoucherInfo struct {
 	Voucher   *paych.SignedVoucher
-	Proof     []byte
+	Proof     []byte // ignored
 	Submitted bool
 }
 
