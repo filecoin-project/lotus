@@ -15,6 +15,8 @@ import (
 	"runtime/pprof"
 	"strings"
 
+	"github.com/filecoin-project/lotus/node/impl/full"
+
 	"github.com/filecoin-project/lotus/chain/types"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
@@ -259,6 +261,7 @@ var DaemonCmd = &cli.Command{
 			liteMode = node.Options(
 				node.Override(new(api.GatewayAPI), gapi),
 				node.Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),
+				node.Override(new(full.PushMessageAPI), modules.NewRPCPushMessageAPI),
 				node.Unset(node.RunHelloKey),
 				node.Unset(node.RunChainExchangeKey),
 				node.Unset(node.RunPeerMgrKey),

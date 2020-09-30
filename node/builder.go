@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/lotus/node/impl/full"
+
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -262,6 +264,7 @@ func Online() Option {
 			Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule()),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
 			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
+			Override(new(full.PushMessageAPI), From(new(full.MpoolAPI))),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
