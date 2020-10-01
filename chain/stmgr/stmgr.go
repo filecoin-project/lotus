@@ -57,15 +57,18 @@ type StateManager struct {
 	postIgnitionGenInfos *genesisInfo
 }
 
-func NewStateManager(cs *store.ChainStore, options ...Option) *StateManager {
-	cfg := parseOptions(options...)
-	stateMigrations := make(map[abi.ChainEpoch]UpgradeFunc, len(cfg.upgradeSchedule))
+func NewStateManager(cs *store.ChainStore) *StateManager {
+	return NewStateManagerWithUpgradeSchedule(cs, DefaultUpgradeSchedule)
+}
+
+func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule) *StateManager {
+	stateMigrations := make(map[abi.ChainEpoch]UpgradeFunc, len(us))
 	networkVersions := make([]abi.ChainEpoch, 0, len(stateMigrations))
 
 	// Iterate version by version, to make sure we handle skipped version numbers.
 	// Always skip version 0.
-	for i, version := 0, network.Version(1); i < len(cfg.upgradeSchedule); version++ {
-		upgrade, ok := cfg.upgradeSchedule[version]
+	for i, version := 0, network.Version(1); i < len(us); version++ {
+		upgrade, ok := us[version]
 		if ok {
 			// We've processed an upgrade.
 			i++
