@@ -5,19 +5,22 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"text/tabwriter"
 	"time"
 
+	"github.com/docker/go-units"
+	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -144,8 +147,19 @@ var sectorsListCmd = &cli.Command{
 			Name:  "show-removed",
 			Usage: "show removed sectors",
 		},
+		&cli.BoolFlag{
+			Name:    "color",
+			Aliases: []string{"c"},
+			Value:   true,
+		},
+		&cli.BoolFlag{
+			Name:  "fast",
+			Usage: "don't show on-chain info for better performance",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		color.NoColor = !cctx.Bool("color")
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -170,7 +184,12 @@ var sectorsListCmd = &cli.Command{
 			return err
 		}
 
-		activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		head, err := fullApi.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, head.Key())
 		if err != nil {
 			return err
 		}
@@ -179,7 +198,7 @@ var sectorsListCmd = &cli.Command{
 			activeIDs[info.SectorNumber] = struct{}{}
 		}
 
-		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil, head.Key())
 		if err != nil {
 			return err
 		}
@@ -192,12 +211,26 @@ var sectorsListCmd = &cli.Command{
 			return list[i] < list[j]
 		})
 
-		w := tabwriter.NewWriter(os.Stdout, 8, 4, 1, ' ', 0)
+		tw := tablewriter.New(
+			tablewriter.Col("ID"),
+			tablewriter.Col("State"),
+			tablewriter.Col("OnChain"),
+			tablewriter.Col("Active"),
+			tablewriter.Col("Expiration"),
+			tablewriter.Col("Deals"),
+			tablewriter.Col("DealWeight"),
+			tablewriter.NewLineCol("Error"),
+			tablewriter.NewLineCol("EarlyExpiration"))
+
+		fast := cctx.Bool("fast")
 
 		for _, s := range list {
-			st, err := nodeApi.SectorsStatus(ctx, s, false)
+			st, err := nodeApi.SectorsStatus(ctx, s, !fast)
 			if err != nil {
-				fmt.Fprintf(w, "%d:\tError: %s\n", s, err)
+				tw.Write(map[string]interface{}{
+					"ID":    s,
+					"Error": err,
+				})
 				continue
 			}
 
@@ -205,20 +238,60 @@ var sectorsListCmd = &cli.Command{
 				_, inSSet := commitedIDs[s]
 				_, inASet := activeIDs[s]
 
-				_, _ = fmt.Fprintf(w, "%d: %s\tsSet: %s\tactive: %s\ttktH: %d\tseedH: %d\ttoUpgrade: %t\tdeals: %v\n",
-					s,
-					st.State,
-					yesno(inSSet),
-					yesno(inASet),
-					st.Ticket.Epoch,
-					st.Seed.Epoch,
-					st.ToUpgrade,
-					st.Deals,
-				)
+				dw := .0
+				if st.Expiration-st.Activation > 0 {
+					dw = float64(big.Div(st.DealWeight, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+				}
+
+				var deals int
+				for _, deal := range st.Deals {
+					if deal != 0 {
+						deals++
+					}
+				}
+
+				exp := st.Expiration
+				if st.OnTime > 0 && st.OnTime < exp {
+					exp = st.OnTime // Can be different when the sector was CC upgraded
+				}
+
+				m := map[string]interface{}{
+					"ID":      s,
+					"State":   color.New(stateOrder[sealing.SectorState(st.State)].col).Sprint(st.State),
+					"OnChain": yesno(inSSet),
+					"Active":  yesno(inASet),
+				}
+
+				if deals > 0 {
+					m["Deals"] = color.GreenString("%d", deals)
+				} else {
+					m["Deals"] = color.BlueString("CC")
+					if st.ToUpgrade {
+						m["Deals"] = color.CyanString("CC(upgrade)")
+					}
+				}
+
+				if !fast {
+					if !inSSet {
+						m["Expiration"] = "n/a"
+					} else {
+						m["Expiration"] = lcli.EpochTime(head.Height(), exp)
+
+						if !fast && deals > 0 {
+							m["DealWeight"] = units.BytesSize(dw)
+						}
+
+						if st.Early > 0 {
+							m["EarlyExpiration"] = color.YellowString(lcli.EpochTime(head.Height(), st.Early))
+						}
+					}
+				}
+
+				tw.Write(m)
 			}
 		}
 
-		return w.Flush()
+		return tw.Flush(os.Stdout)
 	},
 }
 
@@ -447,7 +520,7 @@ var sectorsUpdateCmd = &cli.Command{
 
 func yesno(b bool) string {
 	if b {
-		return "YES"
+		return color.GreenString("YES")
 	}
-	return "NO"
+	return color.RedString("NO")
 }

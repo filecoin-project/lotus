@@ -29,10 +29,11 @@ import (
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
+	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
@@ -216,14 +217,16 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 }
 
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
+	m.OnReady(marketevents.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
+
+		OnStart: func(ctx context.Context) error {
 			m.SubscribeToEvents(marketevents.RetrievalProviderLogger)
 
 			evtType := journal.J.RegisterEventType("markets/retrieval/provider", "state_change")
 			m.SubscribeToEvents(markets.RetrievalProviderJournaler(evtType))
 
-			return m.Start()
+			return m.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
 			return m.Stop()
@@ -233,7 +236,7 @@ func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.Retrieva
 
 func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
-
+	h.OnReady(marketevents.ReadyLogger("storage provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			h.SubscribeToEvents(marketevents.StorageProviderLogger)
@@ -275,8 +278,18 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the storage and retrieval providers
-func NewProviderPieceStore(ds dtypes.MetadataDS) dtypes.ProviderPieceStore {
-	return piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
+func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.ProviderPieceStore, error) {
+	ps, err := piecestoreimpl.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
+	if err != nil {
+		return nil, err
+	}
+	ps.OnReady(marketevents.ReadyLogger("piecestore"))
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return ps.Start(ctx)
+		},
+	})
+	return ps, nil
 }
 
 func StagingMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
@@ -371,7 +384,13 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 		return nil, err
 	}
 
-	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(ds, datastore.NewKey("/deals/provider")), datastore.NewKey("latest-ask"), spn, address.Address(minerAddress))
+	providerDs := namespace.Wrap(ds, datastore.NewKey("/deals/provider"))
+	// legacy this was mistake where this key was place -- so we move the legacy key if need be
+	err = shared.MoveKey(providerDs, "/latest-ask", "/storage-ask/latest")
+	if err != nil {
+		return nil, err
+	}
+	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress))
 	if err != nil {
 		return nil, err
 	}

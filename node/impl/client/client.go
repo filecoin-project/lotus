@@ -33,6 +33,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/discovery"
 	"github.com/filecoin-project/go-fil-markets/pieceio"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -70,7 +71,7 @@ type API struct {
 	paych.PaychAPI
 
 	SMDealClient storagemarket.StorageClient
-	RetDiscovery rm.PeerResolver
+	RetDiscovery discovery.PeerResolver
 	Retrieval    rm.RetrievalClient
 	Chain        *store.ChainStore
 
@@ -614,18 +615,18 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	return
 }
 
-func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) {
+func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner info: %w", err)
 	}
 
 	info := utils.NewStorageProviderInfo(miner, mi.Worker, mi.SectorSize, p, mi.Multiaddrs)
-	signedAsk, err := a.SMDealClient.GetAsk(ctx, info)
+	ask, err := a.SMDealClient.GetAsk(ctx, info)
 	if err != nil {
 		return nil, err
 	}
-	return signedAsk, nil
+	return ask, nil
 }
 
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error) {

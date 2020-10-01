@@ -20,8 +20,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-fil-markets/discovery"
+	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 
@@ -293,8 +294,8 @@ func Online() Option {
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
-			Override(new(*discovery.Local), modules.NewLocalDiscovery),
-			Override(new(retrievalmarket.PeerResolver), modules.RetrievalResolver),
+			Override(new(*discoveryimpl.Local), modules.NewLocalDiscovery),
+			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
 
 			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),

@@ -288,6 +288,9 @@ func TestSched(t *testing.T) {
 	}
 
 	testFunc := func(workers []workerSpec, tasks []task) func(t *testing.T) {
+		ParallelNum = 1
+		ParallelDenom = 1
+
 		return func(t *testing.T) {
 			index := stores.NewIndex()
 
