@@ -1277,7 +1277,7 @@ func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoc
 		return network.Version2
 	}
 
-	if height <= build.UpgradeActorsV2 {
+	if height <= build.UpgradeActorsV2Height {
 		return network.Version3
 	}
 

@@ -36,7 +36,7 @@ import (
 var ForksAtHeight = map[abi.ChainEpoch]func(context.Context, *StateManager, ExecCallback, cid.Cid, *types.TipSet) (cid.Cid, error){
 	build.UpgradeBreezeHeight:   UpgradeFaucetBurnRecovery,
 	build.UpgradeIgnitionHeight: UpgradeIgnition,
-	build.UpgradeActorsV2:       UpgradeActorsV2,
+	build.UpgradeActorsV2Height: UpgradeActorsV2,
 	build.UpgradeLiftoffHeight:  UpgradeLiftoff,
 }
 
@@ -427,7 +427,7 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 		return cid.Undef, xerrors.Errorf("failed to create new state info for actors v2: %w", err)
 	}
 
-	newHamtRoot, err := m2.MigrateStateTree(ctx, store, root)
+	newHamtRoot, err := m2.MigrateStateTree(ctx, store, root, build.UpgradeActorsV2Height, m2.DefaultConfig())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %w", err)
 	}

@@ -23,7 +23,7 @@ const UpgradeSmokeHeight = 51000
 
 const UpgradeIgnitionHeight = 94000
 
-const UpgradeActorsV2 = 128888
+const UpgradeActorsV2Height = 128888
 
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
