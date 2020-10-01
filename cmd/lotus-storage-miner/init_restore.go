@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/filecoin-project/lotus/node/config"
+	"github.com/mitchellh/go-homedir"
 	"os"
 
 	"github.com/docker/go-units"
@@ -28,7 +30,10 @@ var initRestoreCmd = &cli.Command{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
 		},
-		// TODO: Config
+		&cli.StringFlag{
+			Name:  "config",
+			Usage: "config file",
+		},
 		// TODO: Storage paths
 	},
 	ArgsUsage: "[backupFile]",
@@ -98,6 +103,46 @@ var initRestoreCmd = &cli.Command{
 			return err
 		}
 		defer lr.Close() //nolint:errcheck
+
+		if cctx.IsSet("config") {
+			log.Info("Restoring config")
+
+			cf, err := homedir.Expand(cctx.String("config"))
+			if err != nil {
+				return xerrors.Errorf("expanding config path: %w", err)
+			}
+
+			_, err = os.Stat(cf)
+			if err != nil {
+				return xerrors.Errorf("stat config file (%s): %w", cf, err)
+			}
+
+			var cerr error
+			err = lr.SetConfig(func(raw interface{}) {
+				rcfg, ok := raw.(*config.StorageMiner)
+				if !ok {
+					cerr = xerrors.New("expected miner config")
+					return
+				}
+
+				ff, err := config.FromFile(cf, rcfg)
+				if err != nil {
+					cerr = xerrors.Errorf("loading config: %w", err)
+					return
+				}
+
+				*rcfg = *ff.(*config.StorageMiner)
+			})
+			if cerr != nil {
+				return cerr
+			}
+			if err != nil {
+				return xerrors.Errorf("setting config: %w", err)
+			}
+
+		} else {
+			log.Warn("--config NOT SET, WILL USE DEFAULT VALUES")
+		}
 
 		log.Info("Restoring metadata backup")
 
