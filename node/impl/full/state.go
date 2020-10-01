@@ -42,12 +42,32 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+type StateModuleAPI interface {
+	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
+	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+}
+
+// StateModule provides a default implementation of StateModuleAPI.
+// It can be swapped out with another implementation through Dependency
+// Injection (for example with a thin RPC client).
+type StateModule struct {
+	fx.In
+
+	StateManager *stmgr.StateManager
+	Chain        *store.ChainStore
+}
+
+var _ StateModuleAPI = (*StateModule)(nil)
+
 type StateAPI struct {
 	fx.In
 
 	// TODO: the wallet here is only needed because we have the MinerCreateBlock
 	// API attached to the state API. It probably should live somewhere better
 	Wallet *wallet.Wallet
+
+	StateModuleAPI
 
 	ProofVerifier ffiwrapper.Verifier
 	StateManager  *stmgr.StateManager
@@ -349,27 +369,33 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}, nil
 }
 
-func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.StateTree, error) {
+func stateForTs(ctx context.Context, ts *types.TipSet, cstore *store.ChainStore, smgr *stmgr.StateManager) (*state.StateTree, error) {
 	if ts == nil {
-		ts = a.Chain.GetHeaviestTipSet()
+		ts = cstore.GetHeaviestTipSet()
 	}
 
-	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	st, _, err := smgr.TipSetState(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	buf := bufbstore.NewBufferedBstore(a.Chain.Blockstore())
+	buf := bufbstore.NewBufferedBstore(cstore.Blockstore())
 	cst := cbor.NewCborStore(buf)
 	return state.LoadStateTree(cst, st)
 }
+func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.StateTree, error) {
+	return stateForTs(ctx, ts, a.Chain, a.StateManager)
+}
+func (m *StateModule) stateForTs(ctx context.Context, ts *types.TipSet) (*state.StateTree, error) {
+	return stateForTs(ctx, ts, m.Chain, m.StateManager)
+}
 
-func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	state, err := a.stateForTs(ctx, ts)
+	state, err := m.stateForTs(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state failed: %w", err)
 	}
@@ -377,22 +403,22 @@ func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, tsk
 	return state.GetActor(actor)
 }
 
-func (a *StateAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return a.StateManager.LookupID(ctx, addr, ts)
+	return m.StateManager.LookupID(ctx, addr, ts)
 }
 
-func (a *StateAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return a.StateManager.ResolveToKeyAddress(ctx, addr, ts)
+	return m.StateManager.ResolveToKeyAddress(ctx, addr, ts)
 }
 
 func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {

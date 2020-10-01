@@ -4,27 +4,43 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/filecoin-project/lotus/chain/messagepool"
+
+	"github.com/filecoin-project/lotus/chain/messagesigner"
+
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-type PushMessageAPI interface {
+type MpoolModuleAPI interface {
 	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 }
+
+// MpoolModule provides a default implementation of MpoolModuleAPI.
+// It can be swapped out with another implementation through Dependency
+// Injection (for example with a thin RPC client).
+type MpoolModule struct {
+	fx.In
+
+	Mpool *messagepool.MessagePool
+}
+
+var _ MpoolModuleAPI = (*MpoolModule)(nil)
 
 type MpoolAPI struct {
 	fx.In
 
+	MpoolModuleAPI
+
 	WalletAPI
 	GasAPI
-	PushMessageAPI
 
 	MessageSigner *messagesigner.MessageSigner
 
@@ -111,8 +127,8 @@ func (a *MpoolAPI) MpoolClear(ctx context.Context, local bool) error {
 	return nil
 }
 
-func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
-	return a.PushMessageAPI.MpoolPush(ctx, smsg)
+func (m *MpoolModule) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	return m.Mpool.Push(smsg)
 }
 
 func (a *MpoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {

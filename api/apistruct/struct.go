@@ -364,11 +364,12 @@ type WorkerStruct struct {
 type GatewayStruct struct {
 	Internal struct {
 		// TODO: does the gateway need perms?
-		StateGetActor   func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
-		ChainHead       func(ctx context.Context) (*types.TipSet, error)
 		ChainGetTipSet  func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+		ChainHead       func(ctx context.Context) (*types.TipSet, error)
 		MpoolPush       func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 		StateAccountKey func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+		StateGetActor   func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
+		StateLookupID   func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	}
 }
 
@@ -1404,7 +1405,7 @@ func (g GatewayStruct) StateGetActor(ctx context.Context, actor address.Address,
 }
 
 func (g GatewayStruct) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	panic("implement me")
+	return g.Internal.StateLookupID(ctx, addr, tsk)
 }
 
 var _ api.Common = &CommonStruct{}

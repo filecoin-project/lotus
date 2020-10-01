@@ -39,10 +39,27 @@ import (
 
 var log = logging.Logger("fullnode")
 
+type ChainModuleAPI interface {
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+}
+
+// ChainModule provides a default implementation of ChainModuleAPI.
+// It can be swapped out with another implementation through Dependency
+// Injection (for example with a thin RPC client).
+type ChainModule struct {
+	fx.In
+
+	Chain *store.ChainStore
+}
+
+var _ ChainModuleAPI = (*ChainModule)(nil)
+
 type ChainAPI struct {
 	fx.In
 
 	WalletAPI
+	ChainModuleAPI
 
 	Chain *store.ChainStore
 }
@@ -51,8 +68,8 @@ func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, e
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
-func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
-	return a.Chain.GetHeaviestTipSet(), nil
+func (m *ChainModule) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	return m.Chain.GetHeaviestTipSet(), nil
 }
 
 func (a *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -77,8 +94,8 @@ func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.Block
 	return a.Chain.GetBlock(msg)
 }
 
-func (a *ChainAPI) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
-	return a.Chain.LoadTipSet(key)
+func (m *ChainModule) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
+	return m.Chain.LoadTipSet(key)
 }
 
 func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
