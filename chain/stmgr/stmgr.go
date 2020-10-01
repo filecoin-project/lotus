@@ -1292,9 +1292,12 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 }
 
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+	// The epochs here are the _last_ epoch for every version, or -1 if the
+	// version is disabled.
 	for v, epoch := range sm.networkVersions {
 		if epoch >= 0 && height <= epoch {
-			return network.Version(v + 1) // we've skipped version 0
+			// Use the _previous_ version
+			return network.Version(v)
 		}
 	}
 	return network.Version(len(sm.networkVersions))
