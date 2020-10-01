@@ -50,3 +50,27 @@ func ReadBackup(r io.Reader, cb func(key datastore.Key, value []byte) error) err
 
 	return nil
 }
+
+func RestoreInto(r io.Reader, dest datastore.Batching) error {
+	batch, err := dest.Batch()
+	if err != nil {
+		return xerrors.Errorf("creating batch: %w", err)
+	}
+
+	err = ReadBackup(r, func(key datastore.Key, value []byte) error {
+		if err := batch.Put(key, value); err != nil {
+			return xerrors.Errorf("put key: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return xerrors.Errorf("reading backup: %w", err)
+	}
+
+	if err := batch.Commit(); err != nil {
+		return xerrors.Errorf("committing batch: %w", err)
+	}
+
+	return nil
+}
