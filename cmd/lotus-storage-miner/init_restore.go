@@ -2,17 +2,16 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/mitchellh/go-homedir"
 	"io/ioutil"
 	"os"
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
@@ -21,7 +20,9 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/lib/backupds"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -76,7 +77,17 @@ var initRestoreCmd = &cli.Command{
 			}
 		}
 
-		f, err := os.Open(cctx.Args().First())
+		bf, err := homedir.Expand(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("expand backup file path: %w", err)
+		}
+
+		st, err := os.Stat(bf)
+		if err != nil {
+			return xerrors.Errorf("stat backup file (%s): %w", bf, err)
+		}
+
+		f, err := os.Open(bf)
 		if err != nil {
 			return xerrors.Errorf("opening backup file: %w", err)
 		}
@@ -184,7 +195,18 @@ var initRestoreCmd = &cli.Command{
 			return err
 		}
 
-		if err := backupds.RestoreInto(f, mds); err != nil {
+		bar := pb.New64(st.Size())
+		br := bar.NewProxyReader(f)
+		bar.ShowTimeLeft = true
+		bar.ShowPercent = true
+		bar.ShowSpeed = true
+		bar.Units = pb.U_BYTES
+
+		bar.Start()
+		err = backupds.RestoreInto(br, mds)
+		bar.Finish()
+
+		if err != nil {
 			return xerrors.Errorf("restoring metadata: %w", err)
 		}
 
