@@ -231,7 +231,12 @@ var initRestoreCmd = &cli.Command{
 
 		log.Info("SECTOR SIZE: ", units.BytesSize(float64(mi.SectorSize)))
 
-		has, err := api.WalletHas(ctx, mi.Worker)
+		wk, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("resolving worker key: %w", err)
+		}
+
+		has, err := api.WalletHas(ctx, wk)
 		if err != nil {
 			return xerrors.Errorf("checking worker address: %w", err)
 		}
