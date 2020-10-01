@@ -42,6 +42,12 @@ var log = logging.Logger("statemgr")
 type StateManager struct {
 	cs *store.ChainStore
 
+	// Sorted network upgrade epochs (starting at version 1).
+	// -1 means the version is skipped.
+	networkVersions []abi.ChainEpoch
+	// Maps chain epochs to upgrade functions.
+	stateMigrations map[abi.ChainEpoch]UpgradeFunc
+
 	stCache              map[string][]cid.Cid
 	compWait             map[string]chan struct{}
 	stlk                 sync.Mutex
@@ -51,12 +57,36 @@ type StateManager struct {
 	postIgnitionGenInfos *genesisInfo
 }
 
-func NewStateManager(cs *store.ChainStore) *StateManager {
+func NewStateManager(cs *store.ChainStore, options ...Option) *StateManager {
+	cfg := parseOptions(options...)
+	stateMigrations := make(map[abi.ChainEpoch]UpgradeFunc, len(cfg.upgradeSchedule))
+	networkVersions := make([]abi.ChainEpoch, 0, len(stateMigrations))
+
+	// Iterate version by version, to make sure we handle skipped version numbers.
+	// Always skip version 0.
+	for i, version := 0, network.Version(1); i < len(cfg.upgradeSchedule); version++ {
+		upgrade, ok := cfg.upgradeSchedule[version]
+		if ok {
+			// We've processed an upgrade.
+			i++
+		}
+
+		epoch := abi.ChainEpoch(-1)
+		if ok && upgrade.Height >= 0 {
+			epoch = upgrade.Height
+			stateMigrations[epoch] = upgrade.Migration
+		}
+
+		networkVersions = append(networkVersions, epoch)
+	}
+
 	return &StateManager{
-		newVM:    vm.NewVM,
-		cs:       cs,
-		stCache:  make(map[string][]cid.Cid),
-		compWait: make(map[string]chan struct{}),
+		networkVersions: networkVersions,
+		stateMigrations: stateMigrations,
+		newVM:           vm.NewVM,
+		cs:              cs,
+		stCache:         make(map[string][]cid.Cid),
+		compWait:        make(map[string]chan struct{}),
 	}
 }
 
@@ -1259,29 +1289,12 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 }
 
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
-	// TODO: move hard fork epoch checks to a schedule defined in build/
-
-	if build.UseNewestNetwork() {
-		return build.NewestNetworkVersion
+	for v, epoch := range sm.networkVersions {
+		if epoch >= 0 && height <= epoch {
+			return network.Version(v + 1) // we've skipped version 0
+		}
 	}
-
-	if height <= build.UpgradeBreezeHeight {
-		return network.Version0
-	}
-
-	if height <= build.UpgradeSmokeHeight {
-		return network.Version1
-	}
-
-	if height <= build.UpgradeIgnitionHeight {
-		return network.Version2
-	}
-
-	if height <= build.UpgradeActorsV2Height {
-		return network.Version3
-	}
-
-	return build.NewestNetworkVersion
+	return network.Version(len(sm.networkVersions))
 }
 
 func (sm *StateManager) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {

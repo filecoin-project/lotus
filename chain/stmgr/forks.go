@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
@@ -33,17 +34,27 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-var ForksAtHeight = map[abi.ChainEpoch]func(context.Context, *StateManager, ExecCallback, cid.Cid, *types.TipSet) (cid.Cid, error){
-	build.UpgradeBreezeHeight:   UpgradeFaucetBurnRecovery,
-	build.UpgradeIgnitionHeight: UpgradeIgnition,
-	build.UpgradeActorsV2Height: UpgradeActorsV2,
-	build.UpgradeLiftoffHeight:  UpgradeLiftoff,
+type UpgradeFunc func(context.Context, *StateManager, ExecCallback, cid.Cid, *types.TipSet) (cid.Cid, error)
+
+type Upgrade struct {
+	Height    abi.ChainEpoch
+	Migration UpgradeFunc
+}
+
+type UpgradeSchedule map[network.Version]Upgrade
+
+var DefaultUpgradeSchedule = UpgradeSchedule{
+	network.Version1: {build.UpgradeBreezeHeight, UpgradeFaucetBurnRecovery},
+	network.Version2: {build.UpgradeSmokeHeight, nil},
+	network.Version3: {build.UpgradeIgnitionHeight, UpgradeIgnition},
+	network.Version4: {build.UpgradeActorsV2Height, UpgradeActorsV2},
+	network.Version5: {build.UpgradeLiftoffHeight, UpgradeLiftoff},
 }
 
 func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecCallback, ts *types.TipSet) (cid.Cid, error) {
 	retCid := root
 	var err error
-	f, ok := ForksAtHeight[height]
+	f, ok := sm.stateMigrations[height]
 	if ok {
 		retCid, err = f(ctx, sm, cb, root, ts)
 		if err != nil {

@@ -19,7 +19,6 @@ import (
 	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -110,51 +109,54 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sm := NewStateManager(cg.ChainStore())
-
-	inv := vm.NewActorRegistry()
-
 	// predicting the address here... may break if other assumptions change
 	taddr, err := address.NewIDAddress(1002)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
-		cst := ipldcbor.NewCborStore(sm.ChainStore().Blockstore())
+	sm := NewStateManager(cg.ChainStore(),
+		WithUpgradeSchedule(UpgradeSchedule{
+			1: {Height: testForkHeight, Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
+				root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
+				cst := ipldcbor.NewCborStore(sm.ChainStore().Blockstore())
 
-		st, err := sm.StateTree(root)
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
-		}
+				st, err := sm.StateTree(root)
+				if err != nil {
+					return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
+				}
 
-		act, err := st.GetActor(taddr)
-		if err != nil {
-			return cid.Undef, err
-		}
+				act, err := st.GetActor(taddr)
+				if err != nil {
+					return cid.Undef, err
+				}
 
-		var tas testActorState
-		if err := cst.Get(ctx, act.Head, &tas); err != nil {
-			return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
-		}
+				var tas testActorState
+				if err := cst.Get(ctx, act.Head, &tas); err != nil {
+					return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
+				}
 
-		tas.HasUpgraded = 55
+				tas.HasUpgraded = 55
 
-		ns, err := cst.Put(ctx, &tas)
-		if err != nil {
-			return cid.Undef, err
-		}
+				ns, err := cst.Put(ctx, &tas)
+				if err != nil {
+					return cid.Undef, err
+				}
 
-		act.Head = ns
+				act.Head = ns
 
-		if err := st.SetActor(taddr, act); err != nil {
-			return cid.Undef, err
-		}
+				if err := st.SetActor(taddr, act); err != nil {
+					return cid.Undef, err
+				}
 
-		return st.Flush(ctx)
-	}
+				return st.Flush(ctx)
+			}},
+		}),
+	)
 
+	inv := vm.NewActorRegistry()
 	inv.Register(nil, testActor{})
+
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
 		nvm, err := vm.NewVM(ctx, vmopt)
 		if err != nil {
