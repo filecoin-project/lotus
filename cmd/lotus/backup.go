@@ -9,6 +9,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-var backupCmd = lcli.BackupCmd(FlagMinerRepo, repo.StorageMiner, func(cctx *cli.Context) (lcli.BackupAPI, jsonrpc.ClientCloser, error) {
-	return lcli.GetStorageMinerAPI(cctx)
+var backupCmd = lcli.BackupCmd("repo", repo.FullNode, func(cctx *cli.Context) (lcli.BackupAPI, jsonrpc.ClientCloser, error) {
+	return lcli.GetFullNodeAPI(cctx)
 })
