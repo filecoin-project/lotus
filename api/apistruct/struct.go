@@ -319,6 +319,8 @@ type StorageMinerStruct struct {
 		PiecesListCidInfos func(ctx context.Context) ([]cid.Cid, error)                               `perm:"read"`
 		PiecesGetPieceInfo func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
+
+		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 	}
 }
 
@@ -1263,6 +1265,10 @@ func (c *StorageMinerStruct) PiecesGetPieceInfo(ctx context.Context, pieceCid ci
 
 func (c *StorageMinerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
 	return c.Internal.PiecesGetCIDInfo(ctx, payloadCid)
+}
+
+func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) error {
+	return c.Internal.CreateBackup(ctx, fpath)
 }
 
 // WorkerStruct
