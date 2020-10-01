@@ -160,6 +160,8 @@
   * [StateSectorPartition](#StateSectorPartition)
   * [StateSectorPreCommitInfo](#StateSectorPreCommitInfo)
   * [StateVerifiedClientStatus](#StateVerifiedClientStatus)
+  * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
+  * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
@@ -4113,6 +4115,53 @@ Response:
 
 ### StateVerifiedClientStatus
 StateVerifiedClientStatus returns the data cap for the given address.
+Returns nil if there is no entry in the data cap table for the
+address.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "t01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### StateVerifiedRegistryRootKey
+StateVerifiedClientStatus returns the address of the Verified Registry's root key
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"t01234"`
+
+### StateVerifierStatus
+StateVerifierStatus returns the data cap for the given address.
 Returns nil if there is no entry in the data cap table for the
 address.
 
