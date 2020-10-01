@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/mitchellh/go-homedir"
+	"io/ioutil"
 	"os"
 
 	"github.com/docker/go-units"
@@ -32,9 +35,12 @@ var initRestoreCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "config",
-			Usage: "config file",
+			Usage: "config file (config.toml)",
 		},
-		// TODO: Storage paths
+		&cli.StringFlag{
+			Name:  "storage-config",
+			Usage: "storage paths config (storage.json)",
+		},
 	},
 	ArgsUsage: "[backupFile]",
 	Action: func(cctx *cli.Context) error {
@@ -142,6 +148,33 @@ var initRestoreCmd = &cli.Command{
 
 		} else {
 			log.Warn("--config NOT SET, WILL USE DEFAULT VALUES")
+		}
+
+		if cctx.IsSet("storage-config") {
+			log.Info("Restoring storage path config")
+
+			cf, err := homedir.Expand(cctx.String("storage-config"))
+			if err != nil {
+				return xerrors.Errorf("expanding storage config path: %w", err)
+			}
+
+			cfb, err := ioutil.ReadFile(cf)
+			if err != nil {
+				return xerrors.Errorf("reading storage config: %w", err)
+			}
+
+			var cerr error
+			err = lr.SetStorage(func(scfg *stores.StorageConfig) {
+				cerr = json.Unmarshal(cfb, scfg)
+			})
+			if cerr != nil {
+				return xerrors.Errorf("unmarshalling storage config: %w", cerr)
+			}
+			if err != nil {
+				return xerrors.Errorf("setting storage config: %w", err)
+			}
+		} else {
+			log.Warn("--storage-config NOT SET. NO SECTOR PATHS WILL BE CONFIGURED")
 		}
 
 		log.Info("Restoring metadata backup")
