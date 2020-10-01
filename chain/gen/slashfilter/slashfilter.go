@@ -105,6 +105,10 @@ func checkFault(t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType str
 			return err
 		}
 
+		if other == bh.Cid() {
+			return nil
+		}
+
 		return xerrors.Errorf("produced block would trigger '%s' consensus fault; miner: %s; bh: %s, other: %s", faultType, bh.Miner, bh.Cid(), other)
 	}
 
