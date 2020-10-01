@@ -68,7 +68,7 @@ func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, e
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
-func (m *ChainModule) ChainHead(ctx context.Context) (*types.TipSet, error) {
+func (m *ChainModule) ChainHead(context.Context) (*types.TipSet, error) {
 	return m.Chain.GetHeaviestTipSet(), nil
 }
 

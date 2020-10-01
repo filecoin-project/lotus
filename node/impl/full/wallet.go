@@ -19,8 +19,8 @@ import (
 type WalletAPI struct {
 	fx.In
 
-	stmgr.StateManagerAPI
-	Wallet *wallet.Wallet
+	StateManagerAPI stmgr.StateManagerAPI
+	Wallet          *wallet.Wallet
 }
 
 func (a *WalletAPI) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {

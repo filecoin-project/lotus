@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/impl/full"
-
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -61,6 +59,7 @@ import (
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/impl/common"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -270,6 +269,7 @@ func Online() Option {
 			Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 			Override(new(full.StateModuleAPI), From(new(full.StateModule))),
 			Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
+			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
 			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),

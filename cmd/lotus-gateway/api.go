@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/ipfs/go-cid"
 )
 
@@ -93,3 +94,6 @@ func (a *GatewayAPI) StateLookupID(ctx context.Context, addr address.Address, ts
 }
 
 var _ api.GatewayAPI = &GatewayAPI{}
+var _ full.ChainModuleAPI = (*GatewayAPI)(nil)
+var _ full.MpoolModuleAPI = (*GatewayAPI)(nil)
+var _ full.StateModuleAPI = (*GatewayAPI)(nil)
