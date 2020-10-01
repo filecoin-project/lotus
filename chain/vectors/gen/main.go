@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-address"
 	"golang.org/x/xerrors"
@@ -19,15 +19,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/vectors"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 func init() {
-	verifreg.MinVerifiedDealSize = big.NewInt(2048)
-	power.ConsensusMinerMinPower = big.NewInt(2048)
+	verifreg0.MinVerifiedDealSize = big.NewInt(2048)
+	power0.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 func MakeHeaderVectors() []vectors.HeaderVector {

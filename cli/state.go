@@ -19,6 +19,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
@@ -33,7 +34,9 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -259,13 +262,13 @@ var stateSectorsCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerSectors(ctx, maddr, nil, true, ts.Key())
+		sectors, err := api.StateMinerSectors(ctx, maddr, nil, ts.Key())
 		if err != nil {
 			return err
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -305,7 +308,7 @@ var stateActiveSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -818,6 +821,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "html",
 			Usage: "generate html report",
 		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "generate json output",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -834,14 +841,14 @@ var stateComputeStateCmd = &cli.Command{
 		}
 
 		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
-		if h == 0 {
-			if ts == nil {
-				head, err := api.ChainHead(ctx)
-				if err != nil {
-					return err
-				}
-				ts = head
+		if ts == nil {
+			head, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
 			}
+			ts = head
+		}
+		if h == 0 {
 			h = ts.Height()
 		}
 
@@ -862,14 +869,28 @@ var stateComputeStateCmd = &cli.Command{
 			return err
 		}
 
+		if cctx.Bool("json") {
+			out, err := json.Marshal(stout)
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(out))
+			return nil
+		}
+
 		if cctx.Bool("html") {
+			st, err := state.LoadStateTree(cbor.NewCborStore(apibstore.NewAPIBlockstore(api)), stout.Root)
+			if err != nil {
+				return xerrors.Errorf("loading state tree: %w", err)
+			}
+
 			codeCache := map[address.Address]cid.Cid{}
 			getCode := func(addr address.Address) (cid.Cid, error) {
 				if c, found := codeCache[addr]; found {
 					return c, nil
 				}
 
-				c, err := api.StateGetActor(ctx, addr, ts.Key())
+				c, err := st.GetActor(addr)
 				if err != nil {
 					return cid.Cid{}, err
 				}

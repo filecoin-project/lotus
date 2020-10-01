@@ -9,6 +9,7 @@
 * [Beacon](#Beacon)
   * [BeaconGetEntry](#BeaconGetEntry)
 * [Chain](#Chain)
+  * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainExport](#ChainExport)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
@@ -150,6 +151,7 @@
   * [StateMinerSectors](#StateMinerSectors)
   * [StateMsgGasCost](#StateMsgGasCost)
   * [StateNetworkName](#StateNetworkName)
+  * [StateNetworkVersion](#StateNetworkVersion)
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)
   * [StateSearchMsg](#StateSearchMsg)
@@ -167,6 +169,7 @@
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
   * [SyncUnmarkBad](#SyncUnmarkBad)
+  * [SyncValidateTipset](#SyncValidateTipset)
 * [Wallet](#Wallet)
   * [WalletBalance](#WalletBalance)
   * [WalletDefaultAddress](#WalletDefaultAddress)
@@ -179,6 +182,7 @@
   * [WalletSetDefault](#WalletSetDefault)
   * [WalletSign](#WalletSign)
   * [WalletSignMessage](#WalletSignMessage)
+  * [WalletValidateAddress](#WalletValidateAddress)
   * [WalletVerify](#WalletVerify)
 ## 
 
@@ -212,7 +216,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 3840,
+  "APIVersion": 4096,
   "BlockDelay": 42
 }
 ```
@@ -279,6 +283,23 @@ Response:
 The Chain method group contains methods for interacting with the
 blockchain, but that do not require any form of state computation.
 
+
+### ChainDeleteObj
+ChainDeleteObj deletes node referenced by the given CID
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `{}`
 
 ### ChainExport
 ChainExport returns a stream of bytes with CAR dump of chain data.
@@ -1101,20 +1122,14 @@ Inputs:
 Response:
 ```json
 {
-  "Ask": {
-    "Price": "0",
-    "VerifiedPrice": "0",
-    "MinPieceSize": 1032,
-    "MaxPieceSize": 1032,
-    "Miner": "t01234",
-    "Timestamp": 10101,
-    "Expiry": 10101,
-    "SeqNo": 42
-  },
-  "Signature": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  }
+  "Price": "0",
+  "VerifiedPrice": "0",
+  "MinPieceSize": 1032,
+  "MaxPieceSize": 1032,
+  "Miner": "t01234",
+  "Timestamp": 10101,
+  "Expiry": 10101,
+  "SeqNo": 42
 }
 ```
 
@@ -3516,7 +3531,7 @@ Inputs:
 Response: `"0"`
 
 ### StateMinerPartitions
-StateMinerPartitions loads miner partitions for the specified miner/deadline
+StateMinerPartitions returns all partitions in the specified deadline
 
 
 Perms: read
@@ -3570,7 +3585,8 @@ Response:
   "TotalPower": {
     "RawBytePower": "0",
     "QualityAdjPower": "0"
-  }
+  },
+  "HasMinPower": true
 }
 ```
 
@@ -3704,15 +3720,14 @@ Inputs:
 Response:
 ```json
 {
-  "Sectors": 42,
-  "Active": 42
+  "Live": 42,
+  "Active": 42,
+  "Faulty": 42
 }
 ```
 
 ### StateMinerSectors
 StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-If the filterOut boolean is set to true, any sectors in the filter are excluded.
-If false, only those sectors in the filter are included.
 
 
 Perms: read
@@ -3724,7 +3739,6 @@ Inputs:
   [
     0
   ],
-  true,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -3786,6 +3800,28 @@ Perms: read
 Inputs: `null`
 
 Response: `"lotus"`
+
+### StateNetworkVersion
+StateNetworkVersion returns the network version at the given tipset
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `3`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4263,7 +4299,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ActiveSyncs": null
+  "ActiveSyncs": null,
+  "VMApplied": 42
 }
 ```
 
@@ -4337,6 +4374,28 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SyncValidateTipset
+SyncValidateTipset indicates whether the provided tipset is valid or not
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `true`
 
 ## Wallet
 
@@ -4543,6 +4602,21 @@ Response:
   }
 }
 ```
+
+### WalletValidateAddress
+WalletValidateAddress validates whether a given string can be decoded as a well-formed address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `"t01234"`
 
 ### WalletVerify
 WalletVerify takes an address, a signature, and some bytes, and indicates whether the signature is valid.

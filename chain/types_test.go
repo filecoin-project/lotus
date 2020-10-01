@@ -1,8 +1,11 @@
 package chain
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"testing"
+
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -34,4 +37,41 @@ func TestSignedMessageJsonRoundtrip(t *testing.T) {
 	if err := json.Unmarshal(out, &osmsg); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestAddressType(t *testing.T) {
+	build.SetAddressNetwork(address.Testnet)
+	addr, err := makeRandomAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(addr[0]) != address.TestnetPrefix {
+		t.Fatalf("address should start with %s", address.TestnetPrefix)
+	}
+
+	build.SetAddressNetwork(address.Mainnet)
+	addr, err = makeRandomAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(addr[0]) != address.MainnetPrefix {
+		t.Fatalf("address should start with %s", address.MainnetPrefix)
+	}
+}
+
+func makeRandomAddress() (string, error) {
+	bytes := make([]byte, 32)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+
+	addr, err := address.NewActorAddress(bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return addr.String(), nil
 }

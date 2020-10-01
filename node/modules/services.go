@@ -13,8 +13,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
+	"github.com/filecoin-project/go-fil-markets/discovery"
+	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -26,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -117,12 +119,22 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
 }
 
-func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
-	return discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
+func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
+	local, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
+	if err != nil {
+		return nil, err
+	}
+	local.OnReady(marketevents.ReadyLogger("discovery"))
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return local.Start(ctx)
+		},
+	})
+	return local, nil
 }
 
-func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
-	return discovery.Multi(l)
+func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
+	return discoveryimpl.Multi(l)
 }
 
 type RandomBeaconParams struct {

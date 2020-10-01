@@ -29,6 +29,17 @@ func RetrievalProviderLogger(event retrievalmarket.ProviderEvent, deal retrieval
 	log.Infow("retrieval event", "name", retrievalmarket.ProviderEvents[event], "deal ID", deal.ID, "receiver", deal.Receiver, "state", retrievalmarket.DealStatuses[deal.Status], "message", deal.Message)
 }
 
+// ReadyLogger returns a function to log the results of module initialization
+func ReadyLogger(module string) func(error) {
+	return func(err error) {
+		if err != nil {
+			log.Errorw("module initialization error", "module", module, "err", err)
+		} else {
+			log.Infow("module ready", "module", module)
+		}
+	}
+}
+
 type RetrievalEvent struct {
 	Event         retrievalmarket.ClientEvent
 	Status        retrievalmarket.DealStatus

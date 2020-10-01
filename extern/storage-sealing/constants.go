@@ -1,17 +1,11 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 // Epochs
-const SealRandomnessLookback = miner.ChainFinality
-
-// Epochs
-func SealRandomnessLookbackLimit(spt abi.RegisteredSealProof) abi.ChainEpoch {
-	return miner.MaxSealDuration[spt]
-}
+const SealRandomnessLookback = miner0.ChainFinality
 
 // Epochs
 const InteractivePoRepConfidence = 6
