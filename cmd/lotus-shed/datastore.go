@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log"
@@ -12,6 +14,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -19,6 +22,7 @@ var datastoreCmd = &cli.Command{
 	Name:        "datastore",
 	Description: "access node datastores directly",
 	Subcommands: []*cli.Command{
+		datastoreBackupCmd,
 		datastoreListCmd,
 		datastoreGetCmd,
 	},
@@ -80,33 +84,11 @@ var datastoreListCmd = &cli.Command{
 		}
 		defer q.Close() //nolint:errcheck
 
-		seen := map[string]struct{}{}
+		printKv := kvPrinter(cctx.Bool("top-level"), genc)
+
 		for res := range q.Next() {
-			s := res.Key
-			if cctx.Bool("top-level") {
-				k := datastore.NewKey(datastore.NewKey(s).List()[0])
-				if k.Type() != "" {
-					s = k.Type()
-				} else {
-					s = k.String()
-				}
-
-				_, has := seen[s]
-				if has {
-					continue
-				}
-				seen[s] = struct{}{}
-			}
-
-			s = fmt.Sprintf("%q", s)
-			s = strings.Trim(s, "\"")
-			fmt.Println(s)
-
-			if genc != "" {
-				fmt.Print("\t")
-				if err := printVal(genc, res.Value); err != nil {
-					return err
-				}
+			if err := printKv(res.Key, res.Value); err != nil {
+				return err
 			}
 		}
 
@@ -163,6 +145,120 @@ var datastoreGetCmd = &cli.Command{
 
 		return printVal(cctx.String("enc"), val)
 	},
+}
+
+var datastoreBackupCmd = &cli.Command{
+	Name:        "backup",
+	Description: "manage datastore backups",
+	Subcommands: []*cli.Command{
+		datastoreBackupStatCmd,
+		datastoreBackupListCmd,
+	},
+}
+
+var datastoreBackupStatCmd = &cli.Command{
+	Name:        "stat",
+	Description: "validate and print info about datastore backup",
+	ArgsUsage:   "[file]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("expected 1 argument")
+		}
+
+		f, err := os.Open(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("opening backup file: %w", err)
+		}
+		defer f.Close() // nolint:errcheck
+
+		var keys, kbytes, vbytes uint64
+		err = backupds.ReadBackup(f, func(key datastore.Key, value []byte) error {
+			keys++
+			kbytes += uint64(len(key.String()))
+			vbytes += uint64(len(value))
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Keys:        ", keys)
+		fmt.Println("Key bytes:   ", units.BytesSize(float64(kbytes)))
+		fmt.Println("Value bytes: ", units.BytesSize(float64(vbytes)))
+
+		return err
+	},
+}
+
+var datastoreBackupListCmd = &cli.Command{
+	Name:        "list",
+	Description: "list data in a backup",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "top-level",
+			Usage: "only print top-level keys",
+		},
+		&cli.StringFlag{
+			Name:  "get-enc",
+			Usage: "print values [esc/hex/cbor]",
+		},
+	},
+	ArgsUsage: "[file]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("expected 1 argument")
+		}
+
+		f, err := os.Open(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("opening backup file: %w", err)
+		}
+		defer f.Close() // nolint:errcheck
+
+		printKv := kvPrinter(cctx.Bool("top-level"), cctx.String("get-enc"))
+		err = backupds.ReadBackup(f, func(key datastore.Key, value []byte) error {
+			return printKv(key.String(), value)
+		})
+		if err != nil {
+			return err
+		}
+
+		return err
+	},
+}
+
+func kvPrinter(toplevel bool, genc string) func(sk string, value []byte) error {
+	seen := map[string]struct{}{}
+
+	return func(s string, value []byte) error {
+		if toplevel {
+			k := datastore.NewKey(datastore.NewKey(s).List()[0])
+			if k.Type() != "" {
+				s = k.Type()
+			} else {
+				s = k.String()
+			}
+
+			_, has := seen[s]
+			if has {
+				return nil
+			}
+			seen[s] = struct{}{}
+		}
+
+		s = fmt.Sprintf("%q", s)
+		s = strings.Trim(s, "\"")
+		fmt.Println(s)
+
+		if genc != "" {
+			fmt.Print("\t")
+			if err := printVal(genc, value); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
 }
 
 func printVal(enc string, val []byte) error {
