@@ -60,7 +60,7 @@ func offlineBackup(cctx *cli.Context) error {
 		return xerrors.Errorf("repo at '%s' is not initialized", cctx.String(FlagMinerRepo))
 	}
 
-	lr, err := r.Lock(repo.StorageMiner)
+	lr, err := r.LockRO(repo.StorageMiner)
 	if err != nil {
 		return xerrors.Errorf("locking repo: %w", err)
 	}
