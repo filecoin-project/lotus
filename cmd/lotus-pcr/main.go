@@ -615,6 +615,10 @@ func (r *refunder) FindMiners(ctx context.Context, tipset *types.TipSet, refunds
 
 		// Look up and find all addresses associated with the miner
 		minerInfo, err := r.api.StateMinerInfo(ctx, maddr, tipset.Key())
+		if err != nil {
+			log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
 
 		allAddresses := []address.Address{}
 
@@ -673,7 +677,7 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 			return nil, err
 		}
 
-		defer f.Close()
+		defer f.Close() // nolint:errcheck
 
 		w = bufio.NewWriter(f)
 	}
@@ -703,6 +707,10 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 
 		// Look up and find all addresses associated with the miner
 		minerInfo, err := r.api.StateMinerInfo(ctx, maddr, tipset.Key())
+		if err != nil {
+			log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
 
 		allAddresses := []address.Address{minerInfo.Worker, minerInfo.Owner}
 		allAddresses = append(allAddresses, minerInfo.ControlAddresses...)
