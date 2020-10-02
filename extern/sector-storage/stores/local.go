@@ -32,13 +32,13 @@ type StoragePath struct {
 type LocalStorageMeta struct {
 	ID ID
 
-	// A height wait means data is more likely to be stored here
+	// A high weight means data is more likely to be stored in this path
 	Weight uint64 // 0 = readonly
 
-	// Intermittment data for the sealing process will be stored here
+	// Intermediate data for the sealing process will be stored here
 	CanSeal bool
 
-	// Finalized sectors that will be proved over will be stored here
+	// Finalized sectors that will be proved over time will be stored here
 	CanStore bool
 }
 
