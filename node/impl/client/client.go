@@ -200,6 +200,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 			Duration:      uint64(v.Proposal.Duration()),
 			DealID:        v.DealID,
 			CreationTime:  v.CreationTime.Time(),
+			Verified:      v.Proposal.VerifiedDeal,
 		}
 	}
 
@@ -223,6 +224,7 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 		Duration:      uint64(v.Proposal.Duration()),
 		DealID:        v.DealID,
 		CreationTime:  v.CreationTime.Time(),
+		Verified:      v.Proposal.VerifiedDeal,
 	}, nil
 }
 
@@ -848,6 +850,7 @@ func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
 		Duration:      uint64(v.Proposal.Duration()),
 		DealID:        v.DealID,
 		CreationTime:  v.CreationTime.Time(),
+		Verified:      v.Proposal.VerifiedDeal,
 	}
 }
 
