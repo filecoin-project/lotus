@@ -42,6 +42,7 @@ var log = logging.Logger("fullnode")
 type ChainModuleAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 }
 
 // ChainModule provides a default implementation of ChainModuleAPI.
@@ -197,12 +198,12 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
-func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.Chain.GetTipsetByHeight(ctx, h, ts, true)
+	return m.Chain.GetTipsetByHeight(ctx, h, ts, true)
 }
 
 func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {

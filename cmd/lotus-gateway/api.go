@@ -6,13 +6,18 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/ipfs/go-cid"
 )
 
-const LookbackCap = time.Hour
+const (
+	LookbackCap            = time.Hour
+	stateWaitLookbackLimit = abi.ChainEpoch(20)
+)
 
 var (
 	ErrLookbackTooLong = fmt.Errorf("lookbacks of more than %s are disallowed", LookbackCap)
@@ -22,26 +27,41 @@ type GatewayAPI struct {
 	api api.FullNode
 }
 
-func (a *GatewayAPI) getTipsetTimestamp(ctx context.Context, tsk types.TipSetKey) (time.Time, error) {
+func (a *GatewayAPI) checkTipsetKey(ctx context.Context, tsk types.TipSetKey) error {
 	if tsk.IsEmpty() {
-		return time.Now(), nil
+		return nil
 	}
 
 	ts, err := a.api.ChainGetTipSet(ctx, tsk)
 	if err != nil {
-		return time.Time{}, err
-	}
-
-	return time.Unix(int64(ts.Blocks()[0].Timestamp), 0), nil
-}
-
-func (a *GatewayAPI) checkTipset(ctx context.Context, ts types.TipSetKey) error {
-	when, err := a.getTipsetTimestamp(ctx, ts)
-	if err != nil {
 		return err
 	}
 
-	if time.Since(when) > time.Hour {
+	return a.checkTipset(ts)
+}
+
+func (a *GatewayAPI) checkTipset(ts *types.TipSet) error {
+	at := time.Unix(int64(ts.Blocks()[0].Timestamp), 0)
+	if err := a.checkTimestamp(at); err != nil {
+		return fmt.Errorf("bad tipset: %w", err)
+	}
+	return nil
+}
+
+// TODO: write tests for this check
+func (a *GatewayAPI) checkTipsetHeight(ts *types.TipSet, h abi.ChainEpoch) error {
+	tsBlock := ts.Blocks()[0]
+	heightDelta := time.Duration(uint64(tsBlock.Height-h)*build.BlockDelaySecs) * time.Second
+	timeAtHeight := time.Unix(int64(tsBlock.Timestamp), 0).Add(-heightDelta)
+
+	if err := a.checkTimestamp(timeAtHeight); err != nil {
+		return fmt.Errorf("bad tipset height: %w", err)
+	}
+	return nil
+}
+
+func (a *GatewayAPI) checkTimestamp(at time.Time) error {
+	if time.Since(at) > LookbackCap {
 		return ErrLookbackTooLong
 	}
 
@@ -55,12 +75,26 @@ func (a *GatewayAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 }
 
 func (a *GatewayAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
-	if err := a.checkTipset(ctx, tsk); err != nil {
-		return nil, fmt.Errorf("bad tipset: %w", err)
+	return a.api.ChainGetTipSet(ctx, tsk)
+}
+
+func (a *GatewayAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	ts, err := a.api.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO: since we're limiting lookbacks, should just cache this (could really even cache the json response bytes)
-	return a.api.ChainGetTipSet(ctx, tsk)
+	// Check if the tipset key refers to a tipset that's too far in the past
+	if err := a.checkTipset(ts); err != nil {
+		return nil, err
+	}
+
+	// Check if the height is too far in the past
+	if err := a.checkTipsetHeight(ts, h); err != nil {
+		return nil, err
+	}
+
+	return a.api.ChainGetTipSetByHeight(ctx, h, tsk)
 }
 
 func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
@@ -70,30 +104,34 @@ func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (ci
 }
 
 func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	if err := a.checkTipset(ctx, tsk); err != nil {
-		return address.Undef, fmt.Errorf("bad tipset: %w", err)
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return address.Undef, err
 	}
 
 	return a.api.StateAccountKey(ctx, addr, tsk)
 }
 
 func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	if err := a.checkTipset(ctx, tsk); err != nil {
-		return nil, fmt.Errorf("bad tipset: %w", err)
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
 	}
 
 	return a.api.StateGetActor(ctx, actor, tsk)
 }
 
 func (a *GatewayAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	if err := a.checkTipset(ctx, tsk); err != nil {
-		return address.Undef, fmt.Errorf("bad tipset: %w", err)
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return address.Undef, err
 	}
 
 	return a.api.StateLookupID(ctx, addr, tsk)
 }
 
-var _ api.GatewayAPI = &GatewayAPI{}
+func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+	return a.api.StateWaitMsgLimited(ctx, msg, confidence, stateWaitLookbackLimit)
+}
+
+var _ api.GatewayAPI = (*GatewayAPI)(nil)
 var _ full.ChainModuleAPI = (*GatewayAPI)(nil)
 var _ full.MpoolModuleAPI = (*GatewayAPI)(nil)
 var _ full.StateModuleAPI = (*GatewayAPI)(nil)

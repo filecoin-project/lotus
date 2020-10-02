@@ -244,7 +244,7 @@ var DaemonCmd = &cli.Command{
 
 		shutdownChan := make(chan struct{})
 
-		// If the daemon is started in "lite mode", replace the StateManager
+		// If the daemon is started in "lite mode", replace key APIs
 		// with a thin client to a gateway server
 		liteMode := node.Options()
 		isLite := cctx.Bool("lite")

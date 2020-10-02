@@ -46,6 +46,7 @@ type StateModuleAPI interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 }
 
 // StateModule provides a default implementation of StateModuleAPI.
@@ -475,22 +476,28 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 	return &out, nil
 }
 
-func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	ts, recpt, found, err := a.StateManager.WaitForMessage(ctx, msg, confidence)
+func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+	return stateWaitMsgLimited(ctx, m.StateManager, m.Chain, msg, confidence, stmgr.LookbackNoLimit)
+}
+func (a *StateAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
+	return stateWaitMsgLimited(ctx, a.StateManager, a.Chain, msg, confidence, lookbackLimit)
+}
+func stateWaitMsgLimited(ctx context.Context, smgr *stmgr.StateManager, cstore *store.ChainStore, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
+	ts, recpt, found, err := smgr.WaitForMessage(ctx, msg, confidence, lookbackLimit)
 	if err != nil {
 		return nil, err
 	}
 
 	var returndec interface{}
 	if recpt.ExitCode == 0 && len(recpt.Return) > 0 {
-		cmsg, err := a.Chain.GetCMessage(msg)
+		cmsg, err := cstore.GetCMessage(msg)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load message after successful receipt search: %w", err)
 		}
 
 		vmsg := cmsg.VMMessage()
 
-		t, err := stmgr.GetReturnType(ctx, a.StateManager, vmsg.To, vmsg.Method, ts)
+		t, err := stmgr.GetReturnType(ctx, smgr, vmsg.To, vmsg.Method, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get return type: %w", err)
 		}
