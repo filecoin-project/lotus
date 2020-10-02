@@ -27,10 +27,9 @@ type mockLaneState struct {
 func NewMockPayChState(from address.Address,
 	to address.Address,
 	settlingAt abi.ChainEpoch,
-	toSend abi.TokenAmount,
 	lanes map[uint64]paych.LaneState,
 ) paych.State {
-	return &mockState{from, to, settlingAt, toSend, lanes}
+	return &mockState{from: from, to: to, settlingAt: settlingAt, toSend: big.NewInt(0), lanes: lanes}
 }
 
 // NewMockLaneState constructs a state for a payment channel lane with the set fixed values
