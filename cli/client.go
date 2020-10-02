@@ -637,10 +637,15 @@ func interactiveDeal(cctx *cli.Context) error {
 			epochs = abi.ChainEpoch(dur / (time.Duration(build.BlockDelaySecs) * time.Second))
 			// TODO: do some more or epochs math (round to miner PP, deal start buffer)
 
+			pricePerGib := ask.Price
+			if verified {
+				pricePerGib = ask.VerifiedPrice
+			}
+
 			gib := types.NewInt(1 << 30)
 
 			// TODO: price is based on PaddedPieceSize, right?
-			epochPrice = types.BigDiv(types.BigMul(ask.Price, types.NewInt(uint64(ds.PieceSize))), gib)
+			epochPrice = types.BigDiv(types.BigMul(pricePerGib, types.NewInt(uint64(ds.PieceSize))), gib)
 			totalPrice := types.BigMul(epochPrice, types.NewInt(uint64(epochs)))
 
 			fmt.Printf("-----\n")
