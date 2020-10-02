@@ -212,7 +212,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		if i > parentEpoch {
 			// run cron for null rounds if any
 			if err := runCron(); err != nil {
-				return cid.Cid{}, cid.Cid{}, err
+				return cid.Undef, cid.Undef, err
 			}
 
 			pstate, err = vmi.Flush(ctx)
