@@ -12,6 +12,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
@@ -29,11 +31,11 @@ import (
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -527,6 +529,11 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
+			if days < int(build.MinDealDuration/builtin.EpochsInDay) {
+				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin.EpochsInDay)))
+				continue
+			}
+
 			state = "miner"
 		case "miner":
 			fmt.Print("Miner Address (t0..): ")
@@ -562,7 +569,7 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
-			ask = *a.Ask
+			ask = *a
 
 			// TODO: run more validation
 			state = "confirm"
@@ -944,15 +951,15 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Ask.Price))
-		fmt.Printf("Verified Price per GiB: %s\n", types.FIL(ask.Ask.VerifiedPrice))
-		fmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.Ask.MaxPieceSize))))
+		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Price))
+		fmt.Printf("Verified Price per GiB: %s\n", types.FIL(ask.VerifiedPrice))
+		fmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))))
 
 		size := cctx.Int64("size")
 		if size == 0 {
 			return nil
 		}
-		perEpoch := types.BigDiv(types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))), types.NewInt(1<<30))
+		perEpoch := types.BigDiv(types.BigMul(ask.Price, types.NewInt(uint64(size))), types.NewInt(1<<30))
 		fmt.Printf("Price per Block: %s\n", types.FIL(perEpoch))
 
 		duration := cctx.Int64("duration")
@@ -1044,12 +1051,8 @@ var clientListDeals = &cli.Command{
 func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet, v api.DealInfo) deal {
 	if v.DealID == 0 {
 		return deal{
-			LocalDeal: v,
-			OnChainDealState: market.DealState{
-				SectorStartEpoch: -1,
-				LastUpdatedEpoch: -1,
-				SlashEpoch:       -1,
-			},
+			LocalDeal:        v,
+			OnChainDealState: *market.EmptyDealState(),
 		}
 	}
 
@@ -1420,7 +1423,7 @@ func toChannelOutput(useColor bool, otherPartyColumn string, channel lapi.DataTr
 		otherPartyColumn: otherParty,
 		"Root Cid":       rootCid,
 		"Initiated?":     initiated,
-		"Transferred":    channel.Transferred,
+		"Transferred":    units.BytesSize(float64(channel.Transferred)),
 		"Voucher":        voucher,
 		"Message":        channel.Message,
 	}

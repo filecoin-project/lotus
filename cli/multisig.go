@@ -2,8 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"context"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -11,22 +9,26 @@ import (
 	"strconv"
 	"text/tabwriter"
 
+	"github.com/filecoin-project/lotus/chain/actors"
+
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-address"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
-	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var multisigCmd = &cli.Command{
@@ -37,9 +39,16 @@ var multisigCmd = &cli.Command{
 		msigInspectCmd,
 		msigProposeCmd,
 		msigApproveCmd,
+		msigAddProposeCmd,
+		msigAddApproveCmd,
+		msigAddCancelCmd,
 		msigSwapProposeCmd,
 		msigSwapApproveCmd,
 		msigSwapCancelCmd,
+		msigLockProposeCmd,
+		msigLockApproveCmd,
+		msigLockCancelCmd,
+		msigVestedCmd,
 	},
 }
 
@@ -142,7 +151,7 @@ var msigCreateCmd = &cli.Command{
 
 		// get address of newly created miner
 
-		var execreturn init_.ExecReturn
+		var execreturn init0.ExecReturn
 		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
@@ -175,17 +184,9 @@ var msigInspectCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api)))
+
 		maddr, err := address.NewFromString(cctx.Args().First())
-		if err != nil {
-			return err
-		}
-
-		act, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		obj, err := api.ChainReadObj(ctx, act.Head)
 		if err != nil {
 			return err
 		}
@@ -195,30 +196,61 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		var mstate samsig.State
-		if err := mstate.UnmarshalCBOR(bytes.NewReader(obj)); err != nil {
+		act, err := api.StateGetActor(ctx, maddr, head.Key())
+		if err != nil {
 			return err
 		}
 
-		locked := mstate.AmountLocked(head.Height() - mstate.StartEpoch)
+		mstate, err := multisig.Load(store, act)
+		if err != nil {
+			return err
+		}
+		locked, err := mstate.LockedBalance(head.Height())
+		if err != nil {
+			return err
+		}
+
 		fmt.Printf("Balance: %s\n", types.FIL(act.Balance))
 		fmt.Printf("Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
 
 		if cctx.Bool("vesting") {
-			fmt.Printf("InitialBalance: %s\n", types.FIL(mstate.InitialBalance))
-			fmt.Printf("StartEpoch: %d\n", mstate.StartEpoch)
-			fmt.Printf("UnlockDuration: %d\n", mstate.UnlockDuration)
+			ib, err := mstate.InitialBalance()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("InitialBalance: %s\n", types.FIL(ib))
+			se, err := mstate.StartEpoch()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("StartEpoch: %d\n", se)
+			ud, err := mstate.UnlockDuration()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("UnlockDuration: %d\n", ud)
 		}
 
-		fmt.Printf("Threshold: %d / %d\n", mstate.NumApprovalsThreshold, len(mstate.Signers))
+		signers, err := mstate.Signers()
+		if err != nil {
+			return err
+		}
+		threshold, err := mstate.Threshold()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Threshold: %d / %d\n", threshold, len(signers))
 		fmt.Println("Signers:")
-		for _, s := range mstate.Signers {
+		for _, s := range signers {
 			fmt.Printf("\t%s\n", s)
 		}
 
-		pending, err := GetMultisigPending(ctx, api, mstate.PendingTxns)
-		if err != nil {
-			return fmt.Errorf("reading pending transactions: %w", err)
+		pending := make(map[int64]multisig.Transaction)
+		if err := mstate.ForEachPendingTxn(func(id int64, txn multisig.Transaction) error {
+			pending[id] = txn
+			return nil
+		}); err != nil {
+			return xerrors.Errorf("reading pending transactions: %w", err)
 		}
 
 		fmt.Println("Transactions: ", len(pending))
@@ -235,7 +267,7 @@ var msigInspectCmd = &cli.Command{
 			fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
 			for _, txid := range txids {
 				tx := pending[txid]
-				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%d\t%x\n", txid, state(tx), len(tx.Approved), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
+				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%d\t%x\n", txid, "pending", len(tx.Approved), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
 			}
 			if err := w.Flush(); err != nil {
 				return xerrors.Errorf("flushing output: %+v", err)
@@ -245,43 +277,6 @@ var msigInspectCmd = &cli.Command{
 
 		return nil
 	},
-}
-
-func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*samsig.Transaction, error) {
-	bs := apibstore.NewAPIBlockstore(lapi)
-	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
-
-	nd, err := adt.AsMap(store, hroot)
-	if err != nil {
-		return nil, err
-	}
-
-	txs := make(map[int64]*samsig.Transaction)
-	var tx samsig.Transaction
-	err = nd.ForEach(&tx, func(k string) error {
-		txid, _ := binary.Varint([]byte(k))
-
-		cpy := tx // copy so we don't clobber on future iterations.
-		txs[txid] = &cpy
-		return nil
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("failed to iterate transactions hamt: %w", err)
-	}
-
-	return txs, nil
-}
-
-func state(tx *samsig.Transaction) string {
-	/* // TODO(why): I strongly disagree with not having these... but i need to move forward
-	if tx.Complete {
-		return "done"
-	}
-	if tx.Canceled {
-		return "canceled"
-	}
-	*/
-	return "pending"
 }
 
 var msigProposeCmd = &cli.Command{
@@ -361,7 +356,7 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("failed to look up multisig %s: %w", msig, err)
 		}
 
-		if act.Code != builtin.MultisigActorCodeID {
+		if !act.IsMultisigActor() {
 			return fmt.Errorf("actor %s is not a multisig actor", msig)
 		}
 
@@ -381,7 +376,7 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		var retval samsig.ProposeReturn
+		var retval msig0.ProposeReturn
 		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
 		}
@@ -500,6 +495,236 @@ var msigApproveCmd = &cli.Command{
 
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigAddProposeCmd = &cli.Command{
+	Name:      "add-propose",
+	Usage:     "Propose to add a signer",
+	ArgsUsage: "[multisigAddress signer]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "increase-threshold",
+			Usage: "whether the number of required signers should be increased",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the propose message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 2 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		addr, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		msgCid, err := api.MsigAddPropose(ctx, msig, from, addr, cctx.Bool("increase-threshold"))
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent add proposal in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("add proposal returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigAddApproveCmd = &cli.Command{
+	Name:      "add-approve",
+	Usage:     "Approve a message to add a signer",
+	ArgsUsage: "[multisigAddress proposerAddress txId newAddress increaseThreshold]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 5 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, new signer address, whether to increase threshold"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		prop, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		newAdd, err := address.NewFromString(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		inc, err := strconv.ParseBool(cctx.Args().Get(4))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		msgCid, err := api.MsigAddApprove(ctx, msig, from, txid, prop, newAdd, inc)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent add approval in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("add approval returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigAddCancelCmd = &cli.Command{
+	Name:      "add-cancel",
+	Usage:     "Cancel a message to add a signer",
+	ArgsUsage: "[multisigAddress txId newAddress increaseThreshold]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 4 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, new signer address, whether to increase threshold"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		newAdd, err := address.NewFromString(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		inc, err := strconv.ParseBool(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		msgCid, err := api.MsigAddCancel(ctx, msig, from, txid, newAdd, inc)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent add cancellation in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("add cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
 		return nil
@@ -722,7 +947,7 @@ var msigSwapCancelCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("sent swap approval in message: ", msgCid)
+		fmt.Println("sent swap cancellation in message: ", msgCid)
 
 		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
 		if err != nil {
@@ -730,8 +955,346 @@ var msigSwapCancelCmd = &cli.Command{
 		}
 
 		if wait.Receipt.ExitCode != 0 {
-			return fmt.Errorf("swap approval returned exit %d", wait.Receipt.ExitCode)
+			return fmt.Errorf("swap cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
+
+		return nil
+	},
+}
+
+var msigLockProposeCmd = &cli.Command{
+	Name:      "lock-propose",
+	Usage:     "Propose to lock up some balance",
+	ArgsUsage: "[multisigAddress startEpoch unlockDuration amount]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the propose message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 4 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, start epoch, unlock duration, and amount"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		start, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		duration, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		amount, err := types.ParseFIL(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+			StartEpoch:     abi.ChainEpoch(start),
+			UnlockDuration: abi.ChainEpoch(duration),
+			Amount:         abi.NewTokenAmount(amount.Int64()),
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		msgCid, err := api.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent lock proposal in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("lock proposal returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigLockApproveCmd = &cli.Command{
+	Name:      "lock-approve",
+	Usage:     "Approve a message to lock up some balance",
+	ArgsUsage: "[multisigAddress proposerAddress txId startEpoch unlockDuration amount]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 6 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, tx id, start epoch, unlock duration, and amount"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		prop, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		start, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		duration, err := strconv.ParseUint(cctx.Args().Get(4), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		amount, err := types.ParseFIL(cctx.Args().Get(5))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+			StartEpoch:     abi.ChainEpoch(start),
+			UnlockDuration: abi.ChainEpoch(duration),
+			Amount:         abi.NewTokenAmount(amount.Int64()),
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		msgCid, err := api.MsigApprove(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent lock approval in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("lock approval returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigLockCancelCmd = &cli.Command{
+	Name:      "lock-cancel",
+	Usage:     "Cancel a message to lock up some balance",
+	ArgsUsage: "[multisigAddress txId startEpoch unlockDuration amount]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the cancel message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 6 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, tx id, start epoch, unlock duration, and amount"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		start, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		duration, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		amount, err := types.ParseFIL(cctx.Args().Get(4))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+			StartEpoch:     abi.ChainEpoch(start),
+			UnlockDuration: abi.ChainEpoch(duration),
+			Amount:         abi.NewTokenAmount(amount.Int64()),
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		msgCid, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent lock cancellation in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("lock cancellation returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigVestedCmd = &cli.Command{
+	Name:      "vested",
+	Usage:     "Gets the amount vested in an msig between two epochs",
+	ArgsUsage: "[multisigAddress]",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "start-epoch",
+			Usage: "start epoch to measure vesting from",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name:  "end-epoch",
+			Usage: "end epoch to stop measure vesting at",
+			Value: -1,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		start, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Int64("start-epoch")), types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		var end *types.TipSet
+		if cctx.Int64("end-epoch") < 0 {
+			end, err = LoadTipSet(ctx, cctx, api)
+			if err != nil {
+				return err
+			}
+		} else {
+			end, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Int64("end-epoch")), types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+		}
+
+		ret, err := api.MsigGetVested(ctx, msig, start.Key(), end.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Vested: %s between %d and %d\n", types.FIL(ret), start.Height(), end.Height())
 
 		return nil
 	},

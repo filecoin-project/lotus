@@ -231,11 +231,11 @@ jobs:
       - run:
           name: install statediff globally
           command: |
+            ## statediff is optional; we succeed even if compilation fails.
             mkdir -p /tmp/statediff
             git clone https://github.com/filecoin-project/statediff.git /tmp/statediff
             cd /tmp/statediff
-            go generate ./...
-            go install ./cmd/statediff
+            go install ./cmd/statediff || exit 0
       - run:
           name: go test
           environment:
@@ -254,6 +254,25 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
+  build-lotus-soup:
+    description: |
+      Compile `lotus-soup` Testground test plan using the current version of Lotus.
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: cd extern/oni && git submodule sync
+      - run: cd extern/oni && git submodule update --init
+      - run: cd extern/filecoin-ffi && make
+      - run:
+          name: "replace lotus, filecoin-ffi, blst and fil-blst deps"
+          command: cd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi && go mod edit -replace github.com/supranational/blst=../../fil-blst/blst && go mod edit -replace github.com/filecoin-project/fil-blst=../../fil-blst
+      - run:
+          name: "build lotus-soup testplan"
+          command: pushd extern/oni/lotus-soup && go build -tags=testground .
+
 
   build-macos:
     description: build darwin lotus binary
@@ -400,7 +419,8 @@ workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-all
+      - lint-all:
+          concurrency: "16"   # expend all docker 2xlarge CPUs.
       - mod-tidy-check
       - gofmt
       - cbor-gen-check
@@ -427,6 +447,7 @@ workflows:
           test-suite-name: conformance-bleeding-edge
           packages: "./conformance"
           vectors-branch: master
+      - build-lotus-soup
       - build-debug
       - build-all:
           requires:

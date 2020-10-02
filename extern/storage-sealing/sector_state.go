@@ -2,6 +2,38 @@ package sealing
 
 type SectorState string
 
+var ExistSectorStateList = map[SectorState]struct{}{
+	Empty:                {},
+	WaitDeals:            {},
+	Packing:              {},
+	PreCommit1:           {},
+	PreCommit2:           {},
+	PreCommitting:        {},
+	PreCommitWait:        {},
+	WaitSeed:             {},
+	Committing:           {},
+	SubmitCommit:         {},
+	CommitWait:           {},
+	FinalizeSector:       {},
+	Proving:              {},
+	FailedUnrecoverable:  {},
+	SealPreCommit1Failed: {},
+	SealPreCommit2Failed: {},
+	PreCommitFailed:      {},
+	ComputeProofFailed:   {},
+	CommitFailed:         {},
+	PackingFailed:        {},
+	FinalizeFailed:       {},
+	DealsExpired:         {},
+	RecoverDealIDs:       {},
+	Faulty:               {},
+	FaultReported:        {},
+	FaultedFinal:         {},
+	Removing:             {},
+	RemoveFailed:         {},
+	Removed:              {},
+}
+
 const (
 	UndefinedSectorState SectorState = ""
 

@@ -7,13 +7,16 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -56,7 +59,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&verifreg.AddVerifierParams{Address: target, Allowance: allowance})
+		params, err := actors.SerializeParams(&verifreg0.AddVerifierParams{Address: target, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -69,9 +72,9 @@ var verifRegAddVerifierCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		msg := &types.Message{
-			To:     builtin.VerifiedRegistryActorAddr,
+			To:     verifreg.Address,
 			From:   fromk,
-			Method: builtin.MethodsVerifiedRegistry.AddVerifier,
+			Method: builtin0.MethodsVerifiedRegistry.AddVerifier,
 			Params: params,
 		}
 
@@ -130,7 +133,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&verifreg.AddVerifiedClientParams{Address: target, Allowance: allowance})
+		params, err := actors.SerializeParams(&verifreg0.AddVerifiedClientParams{Address: target, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -143,9 +146,9 @@ var verifRegVerifyClientCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		msg := &types.Message{
-			To:     builtin.VerifiedRegistryActorAddr,
+			To:     verifreg.Address,
 			From:   fromk,
-			Method: builtin.MethodsVerifiedRegistry.AddVerifiedClient,
+			Method: builtin0.MethodsVerifiedRegistry.AddVerifiedClient,
 			Params: params,
 		}
 
@@ -180,7 +183,7 @@ var verifRegListVerifiersCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -188,31 +191,14 @@ var verifRegListVerifiersCmd = &cli.Command{
 		apibs := apibstore.NewAPIBlockstore(api)
 		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
-		var st verifreg.State
-		if err := store.Get(ctx, act.Head, &st); err != nil {
-			return err
-		}
-
-		vh, err := adt.AsMap(store, st.Verifiers)
+		st, err := verifreg.Load(store, act)
 		if err != nil {
 			return err
 		}
-
-		var dcap verifreg.DataCap
-		if err := vh.ForEach(&dcap, func(k string) error {
-			addr, err := address.NewFromBytes([]byte(k))
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("%s: %s\n", addr, dcap)
-
-			return nil
-		}); err != nil {
+		return st.ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error {
+			_, err := fmt.Printf("%s: %s\n", addr, dcap)
 			return err
-		}
-
-		return nil
+		})
 	},
 }
 
@@ -227,7 +213,7 @@ var verifRegListClientsCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -235,31 +221,14 @@ var verifRegListClientsCmd = &cli.Command{
 		apibs := apibstore.NewAPIBlockstore(api)
 		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
-		var st verifreg.State
-		if err := store.Get(ctx, act.Head, &st); err != nil {
-			return err
-		}
-
-		vh, err := adt.AsMap(store, st.VerifiedClients)
+		st, err := verifreg.Load(store, act)
 		if err != nil {
 			return err
 		}
-
-		var dcap verifreg.DataCap
-		if err := vh.ForEach(&dcap, func(k string) error {
-			addr, err := address.NewFromBytes([]byte(k))
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("%s: %s\n", addr, dcap)
-
-			return nil
-		}); err != nil {
+		return st.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
+			_, err := fmt.Printf("%s: %s\n", addr, dcap)
 			return err
-		}
-
-		return nil
+		})
 	},
 }
 
@@ -317,7 +286,17 @@ var verifRegCheckVerifierCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		vid, err := api.StateLookupID(ctx, vaddr, head.Key())
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, verifreg.Address, head.Key())
 		if err != nil {
 			return err
 		}
@@ -325,20 +304,16 @@ var verifRegCheckVerifierCmd = &cli.Command{
 		apibs := apibstore.NewAPIBlockstore(api)
 		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
-		var st verifreg.State
-		if err := store.Get(ctx, act.Head, &st); err != nil {
-			return err
-		}
-
-		vh, err := adt.AsMap(store, st.Verifiers)
+		st, err := verifreg.Load(store, act)
 		if err != nil {
 			return err
 		}
 
-		var dcap verifreg.DataCap
-		if found, err := vh.Get(adt.AddrKey(vaddr), &dcap); err != nil {
+		found, dcap, err := st.VerifierDataCap(vid)
+		if err != nil {
 			return err
-		} else if !found {
+		}
+		if !found {
 			return fmt.Errorf("not found")
 		}
 

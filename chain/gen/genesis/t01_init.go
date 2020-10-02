@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -50,7 +51,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 				fmt.Printf("init set %s t0%d\n", e, counter)
 
 				value := cbg.CborInt(counter)
-				if err := amap.Put(adt.AddrKey(e), &value); err != nil {
+				if err := amap.Put(abi.AddrKey(e), &value); err != nil {
 					return 0, nil, nil, err
 				}
 				counter = counter + 1
@@ -77,7 +78,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		fmt.Printf("init set %s t0%d\n", ainfo.Owner, counter)
 
 		value := cbg.CborInt(counter)
-		if err := amap.Put(adt.AddrKey(ainfo.Owner), &value); err != nil {
+		if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
 			return 0, nil, nil, err
 		}
 		counter = counter + 1
@@ -95,7 +96,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
 		value := cbg.CborInt(80)
-		if err := amap.Put(adt.AddrKey(ainfo.Owner), &value); err != nil {
+		if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
 			return 0, nil, nil, err
 		}
 	} else if rootVerifier.Type == genesis.TMultisig {
@@ -110,7 +111,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 			fmt.Printf("init set %s t0%d\n", e, counter)
 
 			value := cbg.CborInt(counter)
-			if err := amap.Put(adt.AddrKey(e), &value); err != nil {
+			if err := amap.Put(abi.AddrKey(e), &value); err != nil {
 				return 0, nil, nil, err
 			}
 			counter = counter + 1

@@ -5,14 +5,8 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 	"time"
-
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
-
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -25,21 +19,33 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
 
 var log = logging.Logger("vm")
 var actorLog = logging.Logger("actors")
 var gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
+
+// stat counters
+var (
+	StatSends   uint64
+	StatApplied uint64
+)
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
@@ -52,16 +58,12 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
-	if act.Code != builtin.AccountActorCodeID {
-		return address.Undef, xerrors.Errorf("address %s was not for an account actor", addr)
-	}
-
-	var aast account.State
-	if err := cst.Get(context.TODO(), act.Head, &aast); err != nil {
+	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
+	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
 
-	return aast.Address, nil
+	return aast.PubkeyAddress()
 }
 
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
@@ -116,7 +118,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
-	rt.sys = pricedSyscalls{
+	rt.Syscalls = pricedSyscalls{
 		under:     vm.Syscalls(ctx, vm.cstate, rt.cst),
 		chargeGas: rt.chargeGasFunc(1),
 		pl:        rt.pricelist,
@@ -128,7 +130,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
 	}
 	vmm.From = resF
-	rt.vmsg = &vmm
+	rt.Message = vmm
 
 	return rt
 }
@@ -142,7 +144,7 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin 
 }
 
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
-type NtwkVersionGetter func(context.Context, abi.ChainEpoch) runtime.NetworkVersion
+type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
 
 type VM struct {
 	cstate         *state.StateTree
@@ -166,11 +168,11 @@ type VMOpts struct {
 	Bstore         bstore.Blockstore
 	Syscalls       SyscallBuilder
 	CircSupplyCalc CircSupplyCalculator
-	NtwkVersion    NtwkVersionGetter
+	NtwkVersion    NtwkVersionGetter // TODO: stebalien: In what cases do we actually need this? It seems like even when creating new networks we want to use the 'global'/build-default version getter
 	BaseFee        abi.TokenAmount
 }
 
-func NewVM(opts *VMOpts) (*VM, error) {
+func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(opts.Bstore)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, opts.StateBase)
@@ -201,14 +203,15 @@ type Rand interface {
 type ApplyRet struct {
 	types.MessageReceipt
 	ActorErr       aerrors.ActorError
-	Penalty        types.BigInt
-	MinerTip       types.BigInt
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
+	GasCosts       GasOutputs
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	gasCharge *GasCharge, start time.Time) ([]byte, aerrors.ActorError, *Runtime) {
+
+	defer atomic.AddUint64(&StatSends, 1)
 
 	st := vm.cstate
 
@@ -224,14 +227,21 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	}
 
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
-	rt.lastGasChargeTime = start
+	if enableTracing {
+		rt.lastGasChargeTime = start
+		if parent != nil {
+			rt.lastGasChargeTime = parent.lastGasChargeTime
+			rt.lastGasCharge = parent.lastGasCharge
+			defer func() {
+				parent.lastGasChargeTime = rt.lastGasChargeTime
+				parent.lastGasCharge = rt.lastGasCharge
+			}()
+		}
+	}
+
 	if parent != nil {
-		rt.lastGasChargeTime = parent.lastGasChargeTime
-		rt.lastGasCharge = parent.lastGasCharge
 		defer func() {
 			parent.gasUsed = rt.gasUsed
-			parent.lastGasChargeTime = rt.lastGasChargeTime
-			parent.lastGasCharge = rt.lastGasCharge
 		}()
 	}
 	if gasCharge != nil {
@@ -318,6 +328,7 @@ func checkMessage(msg *types.Message) error {
 
 func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
 	ret, actorErr, rt := vm.send(ctx, msg, nil, nil, start)
 	rt.finilizeGasTracing()
 	return &ApplyRet{
@@ -328,8 +339,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		Penalty:        types.NewInt(0),
-		MinerTip:       types.NewInt(0),
+		GasCosts:       GasOutputs{},
 		Duration:       time.Since(start),
 	}, actorErr
 }
@@ -338,6 +348,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	start := build.Clock.Now()
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
+	defer atomic.AddUint64(&StatApplied, 1)
 	msg := cmsg.VMMessage()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
@@ -357,14 +368,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	msgGasCost := msgGas.Total()
 	// this should never happen, but is currently still exercised by some tests
 	if msgGasCost > msg.GasLimit {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost))
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrOutOfGas,
 				GasUsed:  0,
 			},
-			Penalty:  types.BigMul(vm.baseFee, abi.NewTokenAmount(msgGasCost)),
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -375,35 +387,39 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	// this should never happen, but is currently still exercised by some tests
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
+			gasOutputs := ZeroGasOutputs()
+			gasOutputs.MinerPenalty = minerPenaltyAmount
 			return &ApplyRet{
 				MessageReceipt: types.MessageReceipt{
 					ExitCode: exitcode.SysErrSenderInvalid,
 					GasUsed:  0,
 				},
 				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
-				Penalty:  minerPenaltyAmount,
+				GasCosts: gasOutputs,
 				Duration: time.Since(start),
-				MinerTip: big.Zero(),
 			}, nil
 		}
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
 	}
 
 	// this should never happen, but is currently still exercised by some tests
-	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
+	if !fromActor.IsAccountActor() {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderInvalid,
 				GasUsed:  0,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
-			Penalty:  minerPenaltyAmount,
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
 	if msg.Nonce != fromActor.Nonce {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
@@ -411,14 +427,16 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
-			Penalty:  minerPenaltyAmount,
+
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
 	gascost := types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasFeeCap)
 	if fromActor.Balance.LessThan(gascost) {
+		gasOutputs := ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
@@ -426,9 +444,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
-			Penalty:  minerPenaltyAmount,
+			GasCosts: gasOutputs,
 			Duration: time.Since(start),
-			MinerTip: big.Zero(),
 		}, nil
 	}
 
@@ -495,7 +512,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		return nil, xerrors.Errorf("failed to burn base fee: %w", err)
 	}
 
-	if err := vm.transferFromGasHolder(builtin.RewardActorAddr, gasHolder, gasOutputs.MinerTip); err != nil {
+	if err := vm.transferFromGasHolder(reward.Address, gasHolder, gasOutputs.MinerTip); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
 
@@ -521,8 +538,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		Penalty:        gasOutputs.MinerPenalty,
-		MinerTip:       gasOutputs.MinerTip,
+		GasCosts:       gasOutputs,
 		Duration:       time.Since(start),
 	}, nil
 }
@@ -548,7 +564,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := Copy(from, to, root); err != nil {
+	if err := Copy(ctx, from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
@@ -602,9 +618,18 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 	}
 }
 
-func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
+func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
+	ctx, span := trace.StartSpan(ctx, "vm.Copy") // nolint
+	defer span.End()
+
+	var numBlocks int
+	var totalCopySize int
+
 	var batch []block.Block
 	batchCp := func(blk block.Block) error {
+		numBlocks++
+		totalCopySize += len(blk.RawData())
+
 		batch = append(batch, blk)
 		if len(batch) > 100 {
 			if err := to.PutMany(batch); err != nil {
@@ -624,6 +649,11 @@ func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
 			return xerrors.Errorf("batch put in copy: %w", err)
 		}
 	}
+
+	span.AddAttributes(
+		trace.Int64Attribute("numBlocks", int64(numBlocks)),
+		trace.Int64Attribute("copySize", int64(totalCopySize)),
+	)
 
 	return nil
 }
@@ -700,9 +730,9 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("to", rt.Message().Receiver().String()),
+			trace.StringAttribute("to", rt.Receiver().String()),
 			trace.Int64Attribute("method", int64(method)),
-			trace.StringAttribute("value", rt.Message().ValueReceived().String()),
+			trace.StringAttribute("value", rt.ValueReceived().String()),
 		)
 	}
 
@@ -722,7 +752,7 @@ func (vm *VM) SetInvoker(i *Invoker) {
 	vm.inv = i
 }
 
-func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) runtime.NetworkVersion {
+func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
 	return vm.ntwkVersion(ctx, ce)
 }
 

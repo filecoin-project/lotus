@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 
+	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -42,6 +43,10 @@ var mpoolPending = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "local",
 			Usage: "print pending messages for addresses in local wallet only",
+		},
+		&cli.BoolFlag{
+			Name:  "cids",
+			Usage: "only print cids of messages in output",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -79,11 +84,15 @@ var mpoolPending = &cli.Command{
 				}
 			}
 
-			out, err := json.MarshalIndent(msg, "", "  ")
-			if err != nil {
-				return err
+			if cctx.Bool("cids") {
+				fmt.Println(msg.Cid())
+			} else {
+				out, err := json.MarshalIndent(msg, "", "  ")
+				if err != nil {
+					return err
+				}
+				fmt.Println(string(out))
 			}
-			fmt.Println(string(out))
 		}
 
 		return nil
@@ -303,22 +312,13 @@ var mpoolReplaceCmd = &cli.Command{
 			Name:  "auto",
 			Usage: "automatically reprice the specified message",
 		},
+		&cli.StringFlag{
+			Name:  "max-fee",
+			Usage: "Spend up to X FIL for this message (applicable for auto mode)",
+		},
 	},
-	ArgsUsage: "[from] [nonce]",
+	ArgsUsage: "<from nonce> | <message-cid>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
-			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
-		}
-
-		from, err := address.NewFromString(cctx.Args().Get(0))
-		if err != nil {
-			return err
-		}
-
-		nonce, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
-		if err != nil {
-			return err
-		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -327,6 +327,39 @@ var mpoolReplaceCmd = &cli.Command{
 		defer closer()
 
 		ctx := ReqContext(cctx)
+
+		var from address.Address
+		var nonce uint64
+		switch cctx.Args().Len() {
+		case 1:
+			mcid, err := cid.Decode(cctx.Args().First())
+			if err != nil {
+				return err
+			}
+
+			msg, err := api.ChainGetMessage(ctx, mcid)
+			if err != nil {
+				return fmt.Errorf("could not find referenced message: %w", err)
+			}
+
+			from = msg.From
+			nonce = msg.Nonce
+		case 2:
+			f, err := address.NewFromString(cctx.Args().Get(0))
+			if err != nil {
+				return err
+			}
+
+			n, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+			if err != nil {
+				return err
+			}
+
+			from = f
+			nonce = n
+		default:
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
 
 		ts, err := api.ChainHead(ctx)
 		if err != nil {
@@ -353,17 +386,30 @@ var mpoolReplaceCmd = &cli.Command{
 		msg := found.Message
 
 		if cctx.Bool("auto") {
+			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
+
+			var mss *lapi.MessageSendSpec
+			if cctx.IsSet("max-fee") {
+				maxFee, err := types.BigFromString(cctx.String("max-fee"))
+				if err != nil {
+					return fmt.Errorf("parsing max-spend: %w", err)
+				}
+				mss = &lapi.MessageSendSpec{
+					MaxFee: maxFee,
+				}
+			}
+
 			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
-			retm, err := api.GasEstimateMessageGas(ctx, &msg, &lapi.MessageSendSpec{}, types.EmptyTSK)
+			retm, err := api.GasEstimateMessageGas(ctx, &msg, mss, types.EmptyTSK)
 			if err != nil {
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
-			msg.GasFeeCap = retm.GasFeeCap
 
-			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
 			msg.GasPremium = big.Max(retm.GasPremium, minRBF)
+			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
+			messagepool.CapGasFee(&msg, mss.Get().MaxFee)
 		} else {
 			msg.GasLimit = cctx.Int64("gas-limit")
 			msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))

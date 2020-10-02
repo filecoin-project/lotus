@@ -19,6 +19,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
@@ -27,12 +28,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -53,6 +57,7 @@ var stateCmd = &cli.Command{
 		stateListActorsCmd,
 		stateListMinersCmd,
 		stateCircSupplyCmd,
+		stateSectorCmd,
 		stateGetActorCmd,
 		stateLookupIDCmd,
 		stateReplaySetCmd,
@@ -64,6 +69,7 @@ var stateCmd = &cli.Command{
 		stateGetDealSetCmd,
 		stateWaitMsgCmd,
 		stateSearchMsgCmd,
+		stateMsgCostCmd,
 		stateMinerInfo,
 		stateMarketCmd,
 	},
@@ -118,11 +124,18 @@ var stateMinerInfo = &cli.Command{
 		}
 		fmt.Println()
 
+		cd, err := api.StateMinerProvingDeadline(ctx, addr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		fmt.Printf("Proving Period Start:\t%s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart))
+
 		return nil
 	},
 }
 
-func parseTipSetString(ts string) ([]cid.Cid, error) {
+func ParseTipSetString(ts string) ([]cid.Cid, error) {
 	strs := strings.Split(ts, ",")
 
 	var cids []cid.Cid
@@ -160,7 +173,7 @@ func ParseTipSetRef(ctx context.Context, api api.FullNode, tss string) (*types.T
 		return api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(h), types.EmptyTSK)
 	}
 
-	cids, err := parseTipSetString(tss)
+	cids, err := ParseTipSetString(tss)
 	if err != nil {
 		return nil, err
 	}
@@ -249,13 +262,13 @@ var stateSectorsCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerSectors(ctx, maddr, nil, true, ts.Key())
+		sectors, err := api.StateMinerSectors(ctx, maddr, nil, ts.Key())
 		if err != nil {
 			return err
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -295,7 +308,7 @@ var stateActiveSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.Info.SectorNumber, s.Info.SealedCID)
+			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -808,6 +821,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "html",
 			Usage: "generate html report",
 		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "generate json output",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -824,14 +841,14 @@ var stateComputeStateCmd = &cli.Command{
 		}
 
 		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
-		if h == 0 {
-			if ts == nil {
-				head, err := api.ChainHead(ctx)
-				if err != nil {
-					return err
-				}
-				ts = head
+		if ts == nil {
+			head, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
 			}
+			ts = head
+		}
+		if h == 0 {
 			h = ts.Height()
 		}
 
@@ -852,14 +869,28 @@ var stateComputeStateCmd = &cli.Command{
 			return err
 		}
 
+		if cctx.Bool("json") {
+			out, err := json.Marshal(stout)
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(out))
+			return nil
+		}
+
 		if cctx.Bool("html") {
+			st, err := state.LoadStateTree(cbor.NewCborStore(apibstore.NewAPIBlockstore(api)), stout.Root)
+			if err != nil {
+				return xerrors.Errorf("loading state tree: %w", err)
+			}
+
 			codeCache := map[address.Address]cid.Cid{}
 			getCode := func(addr address.Address) (cid.Cid, error) {
 				if c, found := codeCache[addr]; found {
 					return c, nil
 				}
 
-				c, err := api.StateGetActor(ctx, addr, ts.Key())
+				c, err := st.GetActor(addr)
 				if err != nil {
 					return cid.Cid{}, err
 				}
@@ -1303,6 +1334,60 @@ var stateSearchMsgCmd = &cli.Command{
 	},
 }
 
+var stateMsgCostCmd = &cli.Command{
+	Name:      "msg-cost",
+	Usage:     "Get the detailed gas costs of a message",
+	ArgsUsage: "[messageCid]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify message cid to get gas costs for")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		msg, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		tsk := types.EmptyTSK
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		if ts != nil {
+			tsk = ts.Key()
+		}
+
+		mgc, err := api.StateMsgGasCost(ctx, msg, tsk)
+		if err != nil {
+			return err
+		}
+
+		if mgc != nil {
+			fmt.Printf("Message CID: %s", mgc.Message)
+			fmt.Printf("\nGas Used: %d", mgc.GasUsed)
+			fmt.Printf("\nBase Fee Burn: %d", mgc.BaseFeeBurn)
+			fmt.Printf("\nOverestimation Burn: %d", mgc.OverEstimationBurn)
+			fmt.Printf("\nMiner Tip: %d", mgc.MinerTip)
+			fmt.Printf("\nRefund: %d", mgc.Refund)
+			fmt.Printf("\nTotal Cost: %d", mgc.TotalCost)
+			fmt.Printf("\nMiner Penalty: %d", mgc.MinerPenalty)
+		} else {
+			fmt.Print("message was not found on chain")
+		}
+		return nil
+	},
+}
+
 var stateCallCmd = &cli.Command{
 	Name:      "call",
 	Usage:     "Invoke a method on an actor locally",
@@ -1384,7 +1469,7 @@ var stateCallCmd = &cli.Command{
 		}
 
 		if ret.MsgRct.ExitCode != 0 {
-			return fmt.Errorf("invocation failed (exit: %d): %s", ret.MsgRct.ExitCode, ret.Error)
+			return fmt.Errorf("invocation failed (exit: %d, gasUsed: %d): %s", ret.MsgRct.ExitCode, ret.MsgRct.GasUsed, ret.Error)
 		}
 
 		s, err := formatOutput(cctx.String("ret"), ret.MsgRct.Return)
@@ -1392,6 +1477,7 @@ var stateCallCmd = &cli.Command{
 			return fmt.Errorf("failed to format output: %s", err)
 		}
 
+		fmt.Printf("gas used: %d\n", ret.MsgRct.GasUsed)
 		fmt.Printf("return: %s\n", s)
 
 		return nil
@@ -1465,11 +1551,11 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 	f := methods[method]
 
 	rf := reflect.TypeOf(f)
-	if rf.NumIn() != 3 {
+	if rf.NumIn() != 2 {
 		return nil, fmt.Errorf("expected referenced method to have three arguments")
 	}
 
-	paramObj := rf.In(2).Elem()
+	paramObj := rf.In(1).Elem()
 	if paramObj.NumField() != len(args) {
 		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
 	}
@@ -1485,6 +1571,18 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 			p.Elem().Field(i).Set(reflect.ValueOf(a))
 		case reflect.TypeOf(uint64(0)):
 			val, err := strconv.ParseUint(args[i], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			p.Elem().Field(i).Set(reflect.ValueOf(val))
+		case reflect.TypeOf(abi.ChainEpoch(0)):
+			val, err := strconv.ParseInt(args[i], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			p.Elem().Field(i).Set(reflect.ValueOf(abi.ChainEpoch(val)))
+		case reflect.TypeOf(big.Int{}):
+			val, err := big.FromString(args[i])
 			if err != nil {
 				return nil, err
 			}
@@ -1535,6 +1633,77 @@ var stateCircSupplyCmd = &cli.Command{
 		fmt.Println("Vested: ", types.FIL(circ.FilVested))
 		fmt.Println("Burnt: ", types.FIL(circ.FilBurnt))
 		fmt.Println("Locked: ", types.FIL(circ.FilLocked))
+
+		return nil
+	},
+}
+
+var stateSectorCmd = &cli.Command{
+	Name:      "sector",
+	Usage:     "Get miner sector info",
+	ArgsUsage: "[miner address] [sector number]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 2 {
+			return xerrors.Errorf("expected 2 params")
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		if ts == nil {
+			ts, err = api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		maddr, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		sid, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		si, err := api.StateSectorGetInfo(ctx, maddr, abi.SectorNumber(sid), ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("SectorNumber: ", si.SectorNumber)
+		fmt.Println("SealProof: ", si.SealProof)
+		fmt.Println("SealedCID: ", si.SealedCID)
+		fmt.Println("DealIDs: ", si.DealIDs)
+		fmt.Println()
+		fmt.Println("Activation: ", EpochTime(ts.Height(), si.Activation))
+		fmt.Println("Expiration: ", EpochTime(ts.Height(), si.Expiration))
+		fmt.Println()
+		fmt.Println("DealWeight: ", si.DealWeight)
+		fmt.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
+		fmt.Println("InitialPledge: ", types.FIL(si.InitialPledge))
+		fmt.Println("ExpectedDayReward: ", types.FIL(si.ExpectedDayReward))
+		fmt.Println("ExpectedStoragePledge: ", types.FIL(si.ExpectedStoragePledge))
+		fmt.Println()
+
+		sp, err := api.StateSectorPartition(ctx, maddr, abi.SectorNumber(sid), ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Deadline: ", sp.Deadline)
+		fmt.Println("Partition: ", sp.Partition)
 
 		return nil
 	},

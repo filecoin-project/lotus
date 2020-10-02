@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
@@ -31,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
@@ -50,6 +52,7 @@ var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationD
 
 var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
 var baseFeeLowerBoundFactor = types.NewInt(10)
+var baseFeeLowerBoundFactorConservative = types.NewInt(100)
 
 var MaxActorPendingMessages = 1000
 
@@ -72,8 +75,6 @@ var (
 	ErrRBFTooLowPremium       = errors.New("replace by fee has too low GasPremium")
 	ErrTooManyPendingMessages = errors.New("too many pending messages for actor")
 	ErrNonceGap               = errors.New("unfulfilled nonce gap")
-
-	ErrTryAgain = errors.New("state inconsistency while pushing message; please try again")
 )
 
 const (
@@ -82,9 +83,25 @@ const (
 	localUpdates = "update"
 )
 
-// this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
-// away in the next fork.
-var strictBaseFeeValidation = false
+// Journal event types.
+const (
+	evtTypeMpoolAdd = iota
+	evtTypeMpoolRemove
+	evtTypeMpoolRepub
+)
+
+// MessagePoolEvt is the journal entry for message pool events.
+type MessagePoolEvt struct {
+	Action   string
+	Messages []MessagePoolEvtMessage
+	Error    error `json:",omitempty"`
+}
+
+type MessagePoolEvtMessage struct {
+	types.Message
+
+	CID cid.Cid
+}
 
 func init() {
 	// if the republish interval is too short compared to the pubsub timecache, adjust it
@@ -139,6 +156,8 @@ type MessagePool struct {
 	netName dtypes.NetworkName
 
 	sigValCache *lru.TwoQueueCache
+
+	evtTypes [3]journal.EventType
 }
 
 type msgSet struct {
@@ -158,6 +177,22 @@ func newMsgSet(nonce uint64) *msgSet {
 func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 	minPrice := types.BigAdd(curPrem, types.BigDiv(types.BigMul(curPrem, rbfNumBig), rbfDenomBig))
 	return types.BigAdd(minPrice, types.NewInt(1))
+}
+
+func CapGasFee(msg *types.Message, maxFee abi.TokenAmount) {
+	if maxFee.Equals(big.Zero()) {
+		maxFee = types.NewInt(build.FilecoinPrecision / 10)
+	}
+
+	gl := types.NewInt(uint64(msg.GasLimit))
+	totalFee := types.BigMul(msg.GasFeeCap, gl)
+
+	if totalFee.LessThanEqual(maxFee) {
+		return
+	}
+
+	msg.GasFeeCap = big.Div(maxFee, gl)
+	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }
 
 func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict bool) (bool, error) {
@@ -299,6 +334,11 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 		api:           api,
 		netName:       netName,
 		cfg:           cfg,
+		evtTypes: [...]journal.EventType{
+			evtTypeMpoolAdd:    journal.J.RegisterEventType("mpool", "add"),
+			evtTypeMpoolRemove: journal.J.RegisterEventType("mpool", "remove"),
+			evtTypeMpoolRepub:  journal.J.RegisterEventType("mpool", "repub"),
+		},
 	}
 
 	// enable initial prunes
@@ -350,10 +390,12 @@ func (mp *MessagePool) runLoop() {
 			if err := mp.republishPendingMessages(); err != nil {
 				log.Errorf("error while republishing messages: %s", err)
 			}
+
 		case <-mp.pruneTrigger:
 			if err := mp.pruneExcessMessages(); err != nil {
 				log.Errorf("failed to prune excess messages from mempool: %s", err)
 			}
+
 		case <-mp.closer:
 			mp.repubTk.Stop()
 			return
@@ -397,18 +439,27 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	// Note that for local messages, we always add them so that they can be accepted and republished
 	// automatically.
 	publish := local
-	if strictBaseFeeValidation && len(curTs.Blocks()) > 0 {
-		baseFee := curTs.Blocks()[0].ParentBaseFee
-		baseFeeLowerBound := types.BigDiv(baseFee, baseFeeLowerBoundFactor)
-		if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
-			if local {
-				log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
-					m.Message.GasFeeCap, baseFeeLowerBound)
-				publish = false
-			} else {
-				return false, xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
-					m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
-			}
+
+	var baseFee big.Int
+	if len(curTs.Blocks()) > 0 {
+		baseFee = curTs.Blocks()[0].ParentBaseFee
+	} else {
+		var err error
+		baseFee, err = mp.api.ChainComputeBaseFee(context.TODO(), curTs)
+		if err != nil {
+			return false, xerrors.Errorf("computing basefee: %w", err)
+		}
+	}
+
+	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactorConservative)
+	if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+		if local {
+			log.Warnf("local message will not be immediately published because GasFeeCap doesn't meet the lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s)",
+				m.Message.GasFeeCap, baseFeeLowerBound)
+			publish = false
+		} else {
+			return false, xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
+				m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
 		}
 	}
 
@@ -590,7 +641,7 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local 
 		return false, err
 	}
 
-	return publish, mp.addLocked(m, true)
+	return publish, mp.addLocked(m, !local)
 }
 
 func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
@@ -683,6 +734,14 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict bool) error {
 		Type:    api.MpoolAdd,
 		Message: m,
 	}, localUpdates)
+
+	journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
+		return MessagePoolEvt{
+			Action:   "add",
+			Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}},
+		}
+	})
+
 	return nil
 }
 
@@ -734,98 +793,6 @@ func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (
 	return act.Balance, nil
 }
 
-func (mp *MessagePool) PushWithNonce(ctx context.Context, addr address.Address, cb func(address.Address, uint64) (*types.SignedMessage, error)) (*types.SignedMessage, error) {
-	// serialize push access to reduce lock contention
-	mp.addSema <- struct{}{}
-	defer func() {
-		<-mp.addSema
-	}()
-
-	mp.curTsLk.Lock()
-	mp.lk.Lock()
-
-	curTs := mp.curTs
-
-	fromKey := addr
-	if fromKey.Protocol() == address.ID {
-		var err error
-		fromKey, err = mp.api.StateAccountKey(ctx, fromKey, mp.curTs)
-		if err != nil {
-			mp.lk.Unlock()
-			mp.curTsLk.Unlock()
-			return nil, xerrors.Errorf("resolving sender key: %w", err)
-		}
-	}
-
-	nonce, err := mp.getNonceLocked(fromKey, mp.curTs)
-	if err != nil {
-		mp.lk.Unlock()
-		mp.curTsLk.Unlock()
-		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
-	}
-
-	// release the locks for signing
-	mp.lk.Unlock()
-	mp.curTsLk.Unlock()
-
-	msg, err := cb(fromKey, nonce)
-	if err != nil {
-		return nil, err
-	}
-
-	err = mp.checkMessage(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	msgb, err := msg.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	// reacquire the locks and check state for consistency
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
-
-	if mp.curTs != curTs {
-		return nil, ErrTryAgain
-	}
-
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
-
-	nonce2, err := mp.getNonceLocked(fromKey, mp.curTs)
-	if err != nil {
-		return nil, xerrors.Errorf("get nonce locked failed: %w", err)
-	}
-
-	if nonce2 != nonce {
-		return nil, ErrTryAgain
-	}
-
-	publish, err := mp.verifyMsgBeforeAdd(msg, curTs, true)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := mp.checkBalance(msg, curTs); err != nil {
-		return nil, err
-	}
-
-	if err := mp.addLocked(msg, true); err != nil {
-		return nil, xerrors.Errorf("add locked failed: %w", err)
-	}
-	if err := mp.addLocal(msg, msgb); err != nil {
-		log.Errorf("addLocal failed: %+v", err)
-	}
-
-	if publish {
-		err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
-	}
-
-	return msg, err
-}
-
 func (mp *MessagePool) Remove(from address.Address, nonce uint64, applied bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
@@ -844,6 +811,12 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 			Type:    api.MpoolRemove,
 			Message: m,
 		}, localUpdates)
+
+		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
+			return MessagePoolEvt{
+				Action:   "remove",
+				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}}}
+		})
 
 		mp.currentSize--
 	}
@@ -1281,4 +1254,13 @@ func (mp *MessagePool) Clear(local bool) {
 		}
 		delete(mp.pending, a)
 	}
+}
+
+func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
+	baseFeeLowerBound := types.BigDiv(baseFee, factor)
+	if baseFeeLowerBound.LessThan(minimumBaseFee) {
+		baseFeeLowerBound = minimumBaseFee
+	}
+
+	return baseFeeLowerBound
 }

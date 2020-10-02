@@ -9,6 +9,7 @@
 * [Beacon](#Beacon)
   * [BeaconGetEntry](#BeaconGetEntry)
 * [Chain](#Chain)
+  * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainExport](#ChainExport)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
@@ -75,10 +76,14 @@
   * [MpoolSetConfig](#MpoolSetConfig)
   * [MpoolSub](#MpoolSub)
 * [Msig](#Msig)
+  * [MsigAddApprove](#MsigAddApprove)
+  * [MsigAddCancel](#MsigAddCancel)
+  * [MsigAddPropose](#MsigAddPropose)
   * [MsigApprove](#MsigApprove)
   * [MsigCancel](#MsigCancel)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
+  * [MsigGetVested](#MsigGetVested)
   * [MsigPropose](#MsigPropose)
   * [MsigSwapApprove](#MsigSwapApprove)
   * [MsigSwapCancel](#MsigSwapCancel)
@@ -144,7 +149,9 @@
   * [StateMinerRecoveries](#StateMinerRecoveries)
   * [StateMinerSectorCount](#StateMinerSectorCount)
   * [StateMinerSectors](#StateMinerSectors)
+  * [StateMsgGasCost](#StateMsgGasCost)
   * [StateNetworkName](#StateNetworkName)
+  * [StateNetworkVersion](#StateNetworkVersion)
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)
   * [StateSearchMsg](#StateSearchMsg)
@@ -162,6 +169,7 @@
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
   * [SyncUnmarkBad](#SyncUnmarkBad)
+  * [SyncValidateTipset](#SyncValidateTipset)
 * [Wallet](#Wallet)
   * [WalletBalance](#WalletBalance)
   * [WalletDefaultAddress](#WalletDefaultAddress)
@@ -174,6 +182,7 @@
   * [WalletSetDefault](#WalletSetDefault)
   * [WalletSign](#WalletSign)
   * [WalletSignMessage](#WalletSignMessage)
+  * [WalletValidateAddress](#WalletValidateAddress)
   * [WalletVerify](#WalletVerify)
 ## 
 
@@ -207,7 +216,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 3584,
+  "APIVersion": 4096,
   "BlockDelay": 42
 }
 ```
@@ -275,11 +284,29 @@ The Chain method group contains methods for interacting with the
 blockchain, but that do not require any form of state computation.
 
 
+### ChainDeleteObj
+ChainDeleteObj deletes node referenced by the given CID
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `{}`
+
 ### ChainExport
 ChainExport returns a stream of bytes with CAR dump of chain data.
 The exported chain data includes the header chain from the given tipset
 back to genesis, the entire genesis state, and the most recent 'nroots'
 state trees.
+If oldmsgskip is set, messages from before the requested roots are also not included.
 
 
 Perms: read
@@ -288,6 +315,7 @@ Inputs:
 ```json
 [
   10101,
+  true,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1094,20 +1122,14 @@ Inputs:
 Response:
 ```json
 {
-  "Ask": {
-    "Price": "0",
-    "VerifiedPrice": "0",
-    "MinPieceSize": 1032,
-    "MaxPieceSize": 1032,
-    "Miner": "t01234",
-    "Timestamp": 10101,
-    "Expiry": 10101,
-    "SeqNo": 42
-  },
-  "Signature": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  }
+  "Price": "0",
+  "VerifiedPrice": "0",
+  "MinPieceSize": 1032,
+  "MaxPieceSize": 1032,
+  "Miner": "t01234",
+  "Timestamp": 10101,
+  "Expiry": 10101,
+  "SeqNo": 42
 }
 ```
 
@@ -1839,6 +1861,84 @@ The Msig methods are used to interact with multisig wallets on the
 filecoin network
 
 
+### MsigAddApprove
+MsigAddApprove approves a previously proposed AddSigner message
+It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
+<proposer address>, <new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  42,
+  "t01234",
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigAddCancel
+MsigAddCancel cancels a previously proposed AddSigner message
+It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
+<new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  42,
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigAddPropose
+MsigAddPropose proposes adding a signer in the multisig
+It takes the following params: <multisig address>, <sender address of the propose msg>,
+<new signer>, <whether the number of required signers should be increased>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  "t01234",
+  "t01234",
+  true
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ### MsigApprove
 MsigApprove approves a previously-proposed multisig message
 It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
@@ -1946,6 +2046,38 @@ Inputs:
 
 Response: `"0"`
 
+### MsigGetVested
+MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
+It takes the following params: <multisig address>, <start epoch>, <end epoch>
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "t01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
 ### MsigPropose
 MsigPropose proposes a multisig message
 It takes the following params: <multisig address>, <recipient address>, <value to transfer>,
@@ -1976,7 +2108,7 @@ Response:
 ### MsigSwapApprove
 MsigSwapApprove approves a previously proposed SwapSigner
 It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
-<proposer address>, <old signer> <new signer>
+<proposer address>, <old signer>, <new signer>
 
 
 Perms: sign
@@ -2003,7 +2135,7 @@ Response:
 ### MsigSwapCancel
 MsigSwapCancel cancels a previously proposed SwapSigner message
 It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
-<old signer> <new signer>
+<old signer>, <new signer>
 
 
 Perms: sign
@@ -2029,7 +2161,7 @@ Response:
 ### MsigSwapPropose
 MsigSwapPropose proposes swapping 2 signers in the multisig
 It takes the following params: <multisig address>, <sender address of the propose msg>,
-<old signer> <new signer>
+<old signer>, <new signer>
 
 
 Perms: sign
@@ -2259,7 +2391,12 @@ There are not yet any comments for this method.
 
 Perms: sign
 
-Inputs: `null`
+Inputs:
+```json
+[
+  "t01234"
+]
+```
 
 Response:
 ```json
@@ -2283,6 +2420,7 @@ Perms: sign
 Inputs:
 ```json
 [
+  "t01234",
   "t01234"
 ]
 ```
@@ -3393,7 +3531,7 @@ Inputs:
 Response: `"0"`
 
 ### StateMinerPartitions
-StateMinerPartitions loads miner partitions for the specified miner/deadline
+StateMinerPartitions returns all partitions in the specified deadline
 
 
 Perms: read
@@ -3447,7 +3585,8 @@ Response:
   "TotalPower": {
     "RawBytePower": "0",
     "QualityAdjPower": "0"
-  }
+  },
+  "HasMinPower": true
 }
 ```
 
@@ -3519,7 +3658,12 @@ Response:
   "Open": 10101,
   "Close": 10101,
   "Challenge": 10101,
-  "FaultCutoff": 10101
+  "FaultCutoff": 10101,
+  "WPoStPeriodDeadlines": 42,
+  "WPoStProvingPeriod": 10101,
+  "WPoStChallengeWindow": 10101,
+  "WPoStChallengeLookback": 10101,
+  "FaultDeclarationCutoff": 10101
 }
 ```
 
@@ -3576,15 +3720,14 @@ Inputs:
 Response:
 ```json
 {
-  "Sectors": 42,
-  "Active": 42
+  "Live": 42,
+  "Active": 42,
+  "Faulty": 42
 }
 ```
 
 ### StateMinerSectors
 StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-If the filterOut boolean is set to true, any sectors in the filter are excluded.
-If false, only those sectors in the filter are included.
 
 
 Perms: read
@@ -3596,7 +3739,6 @@ Inputs:
   [
     0
   ],
-  true,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -3610,6 +3752,45 @@ Inputs:
 
 Response: `null`
 
+### StateMsgGasCost
+StateMsgGasCost searches for a message in the chain, and returns details of the messages gas costs, including the penalty and miner tip
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Message": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "GasUsed": "0",
+  "BaseFeeBurn": "0",
+  "OverEstimationBurn": "0",
+  "MinerPenalty": "0",
+  "MinerTip": "0",
+  "Refund": "0",
+  "TotalCost": "0"
+}
+```
+
 ### StateNetworkName
 StateNetworkName returns the name of the network the node is synced to
 
@@ -3619,6 +3800,28 @@ Perms: read
 Inputs: `null`
 
 Response: `"lotus"`
+
+### StateNetworkVersion
+StateNetworkVersion returns the network version at the given tipset
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `3`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4096,7 +4299,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ActiveSyncs": null
+  "ActiveSyncs": null,
+  "VMApplied": 42
 }
 ```
 
@@ -4170,6 +4374,28 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SyncValidateTipset
+SyncValidateTipset indicates whether the provided tipset is valid or not
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `true`
 
 ## Wallet
 
@@ -4376,6 +4602,21 @@ Response:
   }
 }
 ```
+
+### WalletValidateAddress
+WalletValidateAddress validates whether a given string can be decoded as a well-formed address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `"t01234"`
 
 ### WalletVerify
 WalletVerify takes an address, a signature, and some bytes, and indicates whether the signature is valid.

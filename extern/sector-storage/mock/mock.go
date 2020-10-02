@@ -66,8 +66,9 @@ const (
 )
 
 type sectorState struct {
-	pieces []cid.Cid
-	failed bool
+	pieces    []cid.Cid
+	failed    bool
+	corrupted bool
 
 	state int
 
@@ -251,6 +252,18 @@ func (mgr *SectorMgr) MarkFailed(sid abi.SectorID, failed bool) error {
 	return nil
 }
 
+func (mgr *SectorMgr) MarkCorrupted(sid abi.SectorID, corrupted bool) error {
+	mgr.lk.Lock()
+	defer mgr.lk.Unlock()
+	ss, ok := mgr.sectors[sid]
+	if !ok {
+		return fmt.Errorf("no such sector in storage")
+	}
+
+	ss.corrupted = corrupted
+	return nil
+}
+
 func opFinishWait(ctx context.Context) {
 	val, ok := ctx.Value("opfinish").(chan struct{})
 	if !ok {
@@ -275,6 +288,8 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 	si := make([]proof.SectorInfo, 0, len(sectorInfo))
 	var skipped []abi.SectorID
 
+	var err error
+
 	for _, info := range sectorInfo {
 		sid := abi.SectorID{
 			Miner:  minerID,
@@ -283,11 +298,16 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 
 		_, found := mgr.sectors[sid]
 
-		if found && !mgr.sectors[sid].failed {
+		if found && !mgr.sectors[sid].failed && !mgr.sectors[sid].corrupted {
 			si = append(si, info)
 		} else {
 			skipped = append(skipped, sid)
+			err = xerrors.Errorf("skipped some sectors")
 		}
+	}
+
+	if err != nil {
+		return nil, skipped, err
 	}
 
 	return generateFakePoSt(si, abi.RegisteredSealProof.RegisteredWindowPoStProof, randomness), skipped, nil

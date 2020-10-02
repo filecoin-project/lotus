@@ -1,6 +1,8 @@
 package modules
 
 import (
+	"context"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	eventbus "github.com/libp2p/go-eventbus"
@@ -11,8 +13,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
+	"github.com/filecoin-project/go-fil-markets/discovery"
+	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -22,10 +25,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/sub"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) error {
@@ -113,12 +119,22 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
 }
 
-func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
-	return discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
+func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
+	local, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
+	if err != nil {
+		return nil, err
+	}
+	local.OnReady(marketevents.ReadyLogger("discovery"))
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return local.Start(ctx)
+		},
+	})
+	return local, nil
 }
 
-func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
-	return discovery.Multi(l)
+func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
+	return discoveryimpl.Multi(l)
 }
 
 type RandomBeaconParams struct {
@@ -126,19 +142,40 @@ type RandomBeaconParams struct {
 
 	PubSub      *pubsub.PubSub `optional:"true"`
 	Cs          *store.ChainStore
-	DrandConfig dtypes.DrandConfig
+	DrandConfig dtypes.DrandSchedule
 }
 
-func BuiltinDrandConfig() dtypes.DrandConfig {
-	return build.DrandConfig()
+func BuiltinDrandConfig() dtypes.DrandSchedule {
+	return build.DrandConfigSchedule()
 }
 
-func RandomBeacon(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.RandomBeacon, error) {
+func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
 	gen, err := p.Cs.GetGenesis()
 	if err != nil {
 		return nil, err
 	}
 
-	//return beacon.NewMockBeacon(build.BlockDelaySecs * time.Second)
-	return drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, p.DrandConfig)
+	shd := beacon.Schedule{}
+	for _, dc := range p.DrandConfig {
+		bc, err := drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, dc.Config)
+		if err != nil {
+			return nil, xerrors.Errorf("creating drand beacon: %w", err)
+		}
+		shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
+	}
+
+	return shd, nil
+}
+
+func OpenFilesystemJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled journal.DisabledEvents) (journal.Journal, error) {
+	jrnl, err := journal.OpenFSJournal(lr, disabled)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error { return jrnl.Close() },
+	})
+
+	return jrnl, err
 }

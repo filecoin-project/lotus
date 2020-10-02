@@ -11,8 +11,9 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 
 	AllowableClockDriftSecs = uint64(1)
 
-	Finality            = miner.ChainFinality
+	Finality            = miner0.ChainFinality
 	ForkLengthThreshold = Finality
 
 	SlashablePowerDelay        = 20
@@ -70,6 +71,19 @@ var (
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5
 
-	UpgradeBreezeHeight      abi.ChainEpoch = 0
+	UpgradeBreezeHeight      abi.ChainEpoch = -1
 	BreezeGasTampingDuration abi.ChainEpoch = 0
+
+	UpgradeSmokeHeight    abi.ChainEpoch = -1
+	UpgradeIgnitionHeight abi.ChainEpoch = -2
+	UpgradeLiftoffHeight  abi.ChainEpoch = -3
+
+	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+		0: DrandMainnet,
+	}
+
+	NewestNetworkVersion       = network.Version2
+	ActorUpgradeNetworkVersion = network.Version3
+
+	Devnet = true
 )

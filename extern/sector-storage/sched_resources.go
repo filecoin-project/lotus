@@ -28,12 +28,7 @@ func (a *activeResources) withResources(id WorkerID, wr storiface.WorkerResource
 
 func (a *activeResources) add(wr storiface.WorkerResources, r Resources) {
 	a.gpuUsed = r.CanGPU
-	if r.MultiThread() {
-		a.cpuUse += wr.CPUs
-	} else {
-		a.cpuUse += uint64(r.Threads)
-	}
-
+	a.cpuUse += r.Threads(wr.CPUs)
 	a.memUsedMin += r.MinMemory
 	a.memUsedMax += r.MaxMemory
 }
@@ -42,12 +37,7 @@ func (a *activeResources) free(wr storiface.WorkerResources, r Resources) {
 	if r.CanGPU {
 		a.gpuUsed = false
 	}
-	if r.MultiThread() {
-		a.cpuUse -= wr.CPUs
-	} else {
-		a.cpuUse -= uint64(r.Threads)
-	}
-
+	a.cpuUse -= r.Threads(wr.CPUs)
 	a.memUsedMin -= r.MinMemory
 	a.memUsedMax -= r.MaxMemory
 }
@@ -68,16 +58,9 @@ func (a *activeResources) canHandleRequest(needRes Resources, wid WorkerID, call
 		return false
 	}
 
-	if needRes.MultiThread() {
-		if a.cpuUse > 0 {
-			log.Debugf("sched: not scheduling on worker %d for %s; multicore process needs %d threads, %d in use, target %d", wid, caller, res.CPUs, a.cpuUse, res.CPUs)
-			return false
-		}
-	} else {
-		if a.cpuUse+uint64(needRes.Threads) > res.CPUs {
-			log.Debugf("sched: not scheduling on worker %d for %s; not enough threads, need %d, %d in use, target %d", wid, caller, needRes.Threads, a.cpuUse, res.CPUs)
-			return false
-		}
+	if a.cpuUse+needRes.Threads(res.CPUs) > res.CPUs {
+		log.Debugf("sched: not scheduling on worker %d for %s; not enough threads, need %d, %d in use, target %d", wid, caller, needRes.Threads(res.CPUs), a.cpuUse, res.CPUs)
+		return false
 	}
 
 	if len(res.GPUs) > 0 && needRes.CanGPU {
