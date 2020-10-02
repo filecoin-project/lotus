@@ -137,13 +137,13 @@ var stateTreePruneCmd = &cli.Command{
 			return err
 		}
 
-		defer ds.Close()
+		defer ds.Close() //nolint:errcheck
 
 		mds, err := lkrepo.Datastore("/metadata")
 		if err != nil {
 			return err
 		}
-		defer mds.Close()
+		defer mds.Close() //nolint:errcheck
 
 		if cctx.Bool("only-ds-gc") {
 			gcds, ok := ds.(datastore.GCDatastore)
@@ -156,9 +156,8 @@ var stateTreePruneCmd = &cli.Command{
 				}
 				fmt.Println("gc complete!")
 				return nil
-			} else {
-				return fmt.Errorf("datastore doesnt support gc")
 			}
+			return fmt.Errorf("datastore doesnt support gc")
 		}
 
 		bs := blockstore.NewBlockstore(ds)
@@ -194,7 +193,7 @@ var stateTreePruneCmd = &cli.Command{
 		}
 
 		fmt.Println()
-		fmt.Printf("Succesfully marked keep set! (%d objects)\n", goodSet.Len())
+		fmt.Printf("Successfully marked keep set! (%d objects)\n", goodSet.Len())
 
 		if cctx.Bool("dry-run") {
 			return nil
