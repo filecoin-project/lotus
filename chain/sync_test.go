@@ -19,13 +19,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -43,11 +40,9 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
 const source = 0
@@ -662,6 +657,49 @@ func TestDuplicateNonce(t *testing.T) {
 	require.Equal(t, includedMsg, mft[0].VMMessage().Cid(), "messages for tipset didn't contain expected message")
 }
 
+// This test asserts that a block that includes a message with bad nonce can't be synced. A nonce is "bad" if it can't
+// be applied on the parent state.
+func TestBadNonce(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	base := tu.g.CurTipset
+
+	// Produce a message from the banker with a bad nonce
+	makeBadMsg := func() *types.SignedMessage {
+
+		ba, err := tu.nds[0].StateGetActor(context.TODO(), tu.g.Banker(), base.TipSet().Key())
+		require.NoError(t, err)
+		msg := types.Message{
+			To:   tu.g.Banker(),
+			From: tu.g.Banker(),
+
+			Nonce: ba.Nonce + 5,
+
+			Value: types.NewInt(1),
+
+			Method: 0,
+
+			GasLimit:   100_000_000,
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
+		}
+
+		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		require.NoError(t, err)
+
+		return &types.SignedMessage{
+			Message:   msg,
+			Signature: *sig,
+		}
+	}
+
+	msgs := make([][]*types.SignedMessage, 1)
+	msgs[0] = []*types.SignedMessage{makeBadMsg()}
+
+	tu.mineOnBlock(base, 0, []int{0}, true, true, msgs)
+}
+
 func BenchmarkSyncBasic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		runSyncBenchLength(b, 100)
@@ -694,7 +732,7 @@ func TestSyncInputs(t *testing.T) {
 
 	err := s.ValidateBlock(context.TODO(), &types.FullBlock{
 		Header: &types.BlockHeader{},
-	})
+	}, false)
 	if err == nil {
 		t.Fatal("should error on empty block")
 	}
@@ -703,7 +741,7 @@ func TestSyncInputs(t *testing.T) {
 
 	h.ElectionProof = nil
 
-	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h})
+	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h}, false)
 	if err == nil {
 		t.Fatal("should error on block with nil election proof")
 	}

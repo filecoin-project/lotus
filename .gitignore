@@ -11,6 +11,7 @@
 /lotus-stats
 /lotus-bench
 /lotus-gateway
+/lotus-pcr
 /bench.json
 /lotuspond/front/node_modules
 /lotuspond/front/build

@@ -5,31 +5,24 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/lotus/api"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/lib/sigs"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
-
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	tutils "github.com/filecoin-project/specs-actors/support/testing"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 func TestCheckVoucherValid(t *testing.T) {
@@ -46,15 +39,14 @@ func TestCheckVoucherValid(t *testing.T) {
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
 	mock := newMockManagerAPI()
-	mock.setAccountState(fromAcct, account.State{Address: from})
-	mock.setAccountState(toAcct, account.State{Address: to})
+	mock.setAccountAddress(fromAcct, from)
+	mock.setAccountAddress(toAcct, to)
 
 	tcases := []struct {
 		name          string
 		expectError   bool
 		key           []byte
 		actorBalance  big.Int
-		toSend        big.Int
 		voucherAmount big.Int
 		voucherLane   uint64
 		voucherNonce  uint64
@@ -63,143 +55,147 @@ func TestCheckVoucherValid(t *testing.T) {
 		name:          "passes when voucher amount < balance",
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(0),
 		voucherAmount: big.NewInt(5),
 	}, {
 		name:          "fails when funds too low",
 		expectError:   true,
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(5),
-		toSend:        big.NewInt(0),
 		voucherAmount: big.NewInt(10),
 	}, {
 		name:          "fails when invalid signature",
 		expectError:   true,
 		key:           randKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(0),
 		voucherAmount: big.NewInt(5),
 	}, {
 		name:          "fails when signed by channel To account (instead of From account)",
 		expectError:   true,
 		key:           toKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(0),
 		voucherAmount: big.NewInt(5),
 	}, {
 		name:          "fails when nonce too low",
 		expectError:   true,
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(0),
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  2,
 		laneStates: map[uint64]paych.LaneState{
-			1: {
-				Redeemed: big.NewInt(2),
-				Nonce:    3,
-			},
+			1: paychmock.NewMockLaneState(big.NewInt(2), 3),
 		},
 	}, {
 		name:          "passes when nonce higher",
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(0),
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  3,
 		laneStates: map[uint64]paych.LaneState{
-			1: {
-				Redeemed: big.NewInt(2),
-				Nonce:    2,
-			},
+			1: paychmock.NewMockLaneState(big.NewInt(2), 2),
 		},
 	}, {
 		name:          "passes when nonce for different lane",
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(0),
 		voucherAmount: big.NewInt(5),
 		voucherLane:   2,
 		voucherNonce:  2,
 		laneStates: map[uint64]paych.LaneState{
-			1: {
-				Redeemed: big.NewInt(2),
-				Nonce:    3,
-			},
+			1: paychmock.NewMockLaneState(big.NewInt(2), 3),
 		},
 	}, {
 		name:          "fails when voucher has higher nonce but lower value than lane state",
 		expectError:   true,
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(0),
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  3,
 		laneStates: map[uint64]paych.LaneState{
-			1: {
-				Redeemed: big.NewInt(6),
-				Nonce:    2,
-			},
+			1: paychmock.NewMockLaneState(big.NewInt(6), 2),
 		},
-	}, {
-		name:          "fails when voucher + ToSend > balance",
-		expectError:   true,
-		key:           fromKeyPrivate,
-		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(9),
-		voucherAmount: big.NewInt(2),
 	}, {
 		// voucher supersedes lane 1 redeemed so
 		// lane 1 effective redeemed = voucher amount
 		//
-		// required balance = toSend + total redeemed
-		//                  = 1 + 6 (lane1)
+		// required balance = voucher amt
 		//                  = 7
 		// So required balance: 7 < actor balance: 10
-		name:          "passes when voucher + total redeemed <= balance",
+		name:          "passes when voucher total redeemed <= balance",
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(1),
 		voucherAmount: big.NewInt(6),
 		voucherLane:   1,
 		voucherNonce:  2,
 		laneStates: map[uint64]paych.LaneState{
 			// Lane 1 (same as voucher lane 1)
-			1: {
-				Redeemed: big.NewInt(4),
-				Nonce:    1,
-			},
+			1: paychmock.NewMockLaneState(big.NewInt(4), 1),
 		},
 	}, {
-		// required balance = toSend + total redeemed
-		//                  = 1 + 4 (lane 2) + 6 (voucher lane 1)
+		// required balance = total redeemed
+		//                  = 6 (voucher lane 1) + 5 (lane 2)
 		//                  = 11
 		// So required balance: 11 > actor balance: 10
-		name:          "fails when voucher + total redeemed > balance",
+		name:          "fails when voucher total redeemed > balance",
 		expectError:   true,
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
-		toSend:        big.NewInt(1),
 		voucherAmount: big.NewInt(6),
 		voucherLane:   1,
 		voucherNonce:  1,
 		laneStates: map[uint64]paych.LaneState{
 			// Lane 2 (different from voucher lane 1)
-			2: {
-				Redeemed: big.NewInt(4),
-				Nonce:    1,
-			},
+			2: paychmock.NewMockLaneState(big.NewInt(5), 1),
+		},
+	}, {
+		// voucher supersedes lane 1 redeemed so
+		// lane 1 effective redeemed = voucher amount
+		//
+		// required balance = total redeemed
+		//                  = 6 (new voucher lane 1) + 5 (lane 2)
+		//                  = 11
+		// So required balance: 11 > actor balance: 10
+		name:          "fails when voucher total redeemed > balance",
+		expectError:   true,
+		key:           fromKeyPrivate,
+		actorBalance:  big.NewInt(10),
+		voucherAmount: big.NewInt(6),
+		voucherLane:   1,
+		voucherNonce:  2,
+		laneStates: map[uint64]paych.LaneState{
+			// Lane 1 (superseded by new voucher in voucher lane 1)
+			1: paychmock.NewMockLaneState(big.NewInt(5), 1),
+			// Lane 2 (different from voucher lane 1)
+			2: paychmock.NewMockLaneState(big.NewInt(5), 1),
+		},
+	}, {
+		// voucher supersedes lane 1 redeemed so
+		// lane 1 effective redeemed = voucher amount
+		//
+		// required balance = total redeemed
+		//                  = 5 (new voucher lane 1) + 5 (lane 2)
+		//                  = 10
+		// So required balance: 10 <= actor balance: 10
+		name:          "passes when voucher total redeemed <= balance",
+		expectError:   false,
+		key:           fromKeyPrivate,
+		actorBalance:  big.NewInt(10),
+		voucherAmount: big.NewInt(5),
+		voucherLane:   1,
+		voucherNonce:  2,
+		laneStates: map[uint64]paych.LaneState{
+			// Lane 1 (superseded by new voucher in voucher lane 1)
+			1: paychmock.NewMockLaneState(big.NewInt(4), 1),
+			// Lane 2 (different from voucher lane 1)
+			2: paychmock.NewMockLaneState(big.NewInt(5), 1),
 		},
 	}}
 
 	for _, tcase := range tcases {
 		tcase := tcase
 		t.Run(tcase.name, func(t *testing.T) {
-			store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-
 			// Create an actor for the channel with the test case balance
 			act := &types.Actor{
 				Code:    builtin.AccountActorCodeID,
@@ -208,27 +204,18 @@ func TestCheckVoucherValid(t *testing.T) {
 				Balance: tcase.actorBalance,
 			}
 
-			// Set the state of the channel's lanes
-			laneStates, err := mock.storeLaneStates(tcase.laneStates)
-			require.NoError(t, err)
-
-			mock.setPaychState(ch, act, paych.State{
-				From:            fromAcct,
-				To:              toAcct,
-				ToSend:          tcase.toSend,
-				SettlingAt:      abi.ChainEpoch(0),
-				MinSettleHeight: abi.ChainEpoch(0),
-				LaneStates:      laneStates,
-			})
+			mock.setPaychState(ch, act, paychmock.NewMockPayChState(
+				fromAcct, toAcct, abi.ChainEpoch(0), tcase.laneStates))
 
 			// Create a manager
+			store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 			mgr, err := newManager(store, mock)
 			require.NoError(t, err)
 
 			// Add channel To address to wallet
 			mock.addWalletAddress(to)
 
-			// Create a signed voucher
+			// Create the test case signed voucher
 			sv := createTestVoucher(t, ch, tcase.voucherLane, tcase.voucherNonce, tcase.voucherAmount, tcase.key)
 
 			// Check the voucher's validity
@@ -242,154 +229,15 @@ func TestCheckVoucherValid(t *testing.T) {
 	}
 }
 
-func TestCheckVoucherValidCountingAllLanes(t *testing.T) {
-	ctx := context.Background()
-
-	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
-
-	ch := tutils.NewIDAddr(t, 100)
-	from := tutils.NewSECP256K1Addr(t, string(fromKeyPublic))
-	to := tutils.NewSECP256K1Addr(t, "secpTo")
-	fromAcct := tutils.NewActorAddr(t, "fromAct")
-	toAcct := tutils.NewActorAddr(t, "toAct")
-	minDelta := big.NewInt(0)
-
-	mock := newMockManagerAPI()
-	mock.setAccountState(fromAcct, account.State{Address: from})
-	mock.setAccountState(toAcct, account.State{Address: to})
-
-	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-
-	actorBalance := big.NewInt(10)
-	toSend := big.NewInt(1)
-	laneStates := map[uint64]paych.LaneState{
-		1: {
-			Nonce:    1,
-			Redeemed: big.NewInt(3),
-		},
-		2: {
-			Nonce:    1,
-			Redeemed: big.NewInt(4),
-		},
-	}
-
-	act := &types.Actor{
-		Code:    builtin.AccountActorCodeID,
-		Head:    cid.Cid{},
-		Nonce:   0,
-		Balance: actorBalance,
-	}
-
-	lsCid, err := mock.storeLaneStates(laneStates)
-	require.NoError(t, err)
-	mock.setPaychState(ch, act, paych.State{
-		From:            fromAcct,
-		To:              toAcct,
-		ToSend:          toSend,
-		SettlingAt:      abi.ChainEpoch(0),
-		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      lsCid,
-	})
-
-	mgr, err := newManager(store, mock)
-	require.NoError(t, err)
-
-	// Add channel To address to wallet
-	mock.addWalletAddress(to)
-
-	//
-	// Should not be possible to add a voucher with a value such that
-	// <total lane Redeemed> + toSend > <actor balance>
-	//
-	// lane 1 redeemed:                   3
-	// voucher amount (lane 1):           6
-	// lane 1 redeemed (with voucher):    6
-	//
-	// Lane 1:             6
-	// Lane 2:             4
-	// toSend:             1
-	//                     --
-	// total:              11
-	//
-	// actor balance is 10 so total is too high.
-	//
-	voucherLane := uint64(1)
-	voucherNonce := uint64(2)
-	voucherAmount := big.NewInt(6)
-	sv := createTestVoucher(t, ch, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
-	err = mgr.CheckVoucherValid(ctx, ch, sv)
-	require.Error(t, err)
-
-	//
-	// lane 1 redeemed:                   3
-	// voucher amount (lane 1):           4
-	// lane 1 redeemed (with voucher):    4
-	//
-	// Lane 1:             4
-	// Lane 2:             4
-	// toSend:             1
-	//                     --
-	// total:              9
-	//
-	// actor balance is 10 so total is ok.
-	//
-	voucherAmount = big.NewInt(4)
-	sv = createTestVoucher(t, ch, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
-	err = mgr.CheckVoucherValid(ctx, ch, sv)
-	require.NoError(t, err)
-
-	// Add voucher to lane 1, so Lane 1 effective redeemed
-	// (with first voucher) is now 4
-	_, err = mgr.AddVoucherOutbound(ctx, ch, sv, nil, minDelta)
-	require.NoError(t, err)
-
-	//
-	// lane 1 redeemed:                   4
-	// voucher amount (lane 1):           6
-	// lane 1 redeemed (with voucher):    6
-	//
-	// Lane 1:             6
-	// Lane 2:             4
-	// toSend:             1
-	//                     --
-	// total:              11
-	//
-	// actor balance is 10 so total is too high.
-	//
-	voucherNonce++
-	voucherAmount = big.NewInt(6)
-	sv = createTestVoucher(t, ch, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
-	err = mgr.CheckVoucherValid(ctx, ch, sv)
-	require.Error(t, err)
-
-	//
-	// lane 1 redeemed:                   4
-	// voucher amount (lane 1):           5
-	// lane 1 redeemed (with voucher):    5
-	//
-	// Lane 1:             5
-	// Lane 2:             4
-	// toSend:             1
-	//                     --
-	// total:              10
-	//
-	// actor balance is 10 so total is ok.
-	//
-	voucherAmount = big.NewInt(5)
-	sv = createTestVoucher(t, ch, voucherLane, voucherNonce, voucherAmount, fromKeyPrivate)
-	err = mgr.CheckVoucherValid(ctx, ch, sv)
-	require.NoError(t, err)
-}
-
 func TestCreateVoucher(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	s := testSetupMgrWithChannel(ctx, t)
+	s := testSetupMgrWithChannel(t)
 
 	// Create a voucher in lane 1
 	voucherLane1Amt := big.NewInt(5)
-	voucher := paych.SignedVoucher{
+	voucher := paych0.SignedVoucher{
 		Lane:   1,
 		Amount: voucherLane1Amt,
 	}
@@ -404,7 +252,7 @@ func TestCreateVoucher(t *testing.T) {
 
 	// Create a voucher in lane 1 again, with a higher amount
 	voucherLane1Amt = big.NewInt(8)
-	voucher = paych.SignedVoucher{
+	voucher = paych0.SignedVoucher{
 		Lane:   1,
 		Amount: voucherLane1Amt,
 	}
@@ -419,7 +267,7 @@ func TestCreateVoucher(t *testing.T) {
 	// Create a voucher in lane 2 that covers all the remaining funds
 	// in the channel
 	voucherLane2Amt := big.Sub(s.amt, voucherLane1Amt)
-	voucher = paych.SignedVoucher{
+	voucher = paych0.SignedVoucher{
 		Lane:   2,
 		Amount: voucherLane2Amt,
 	}
@@ -433,7 +281,7 @@ func TestCreateVoucher(t *testing.T) {
 	// Create a voucher in lane 2 that exceeds the remaining funds in the
 	// channel
 	voucherLane2Amt = big.Add(voucherLane2Amt, big.NewInt(1))
-	voucher = paych.SignedVoucher{
+	voucher = paych0.SignedVoucher{
 		Lane:   2,
 		Amount: voucherLane2Amt,
 	}
@@ -450,7 +298,7 @@ func TestAddVoucherDelta(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	s := testSetupMgrWithChannel(ctx, t)
+	s := testSetupMgrWithChannel(t)
 
 	voucherLane := uint64(1)
 
@@ -492,7 +340,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	s := testSetupMgrWithChannel(ctx, t)
+	s := testSetupMgrWithChannel(t)
 
 	minDelta := big.NewInt(0)
 	voucherAmount := big.NewInt(2)
@@ -539,10 +387,8 @@ func TestAddVoucherNextLane(t *testing.T) {
 }
 
 func TestAllocateLane(t *testing.T) {
-	ctx := context.Background()
-
 	// Set up a manager with a single payment channel
-	s := testSetupMgrWithChannel(ctx, t)
+	s := testSetupMgrWithChannel(t)
 
 	// First lane should be 0
 	lane, err := s.mgr.AllocateLane(s.ch)
@@ -567,15 +413,14 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
 	mock := newMockManagerAPI()
-	mock.setAccountState(fromAcct, account.State{Address: from})
-	mock.setAccountState(toAcct, account.State{Address: to})
+	mock.setAccountAddress(fromAcct, from)
+	mock.setAccountAddress(toAcct, to)
 	mock.addWalletAddress(to)
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
 	// Create a channel that will be retrieved from state
 	actorBalance := big.NewInt(10)
-	toSend := big.NewInt(1)
 
 	act := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
@@ -584,16 +429,7 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 		Balance: actorBalance,
 	}
 
-	arr, err := adt.MakeEmptyArray(mock.store).Root()
-	require.NoError(t, err)
-	mock.setPaychState(ch, act, paych.State{
-		From:            fromAcct,
-		To:              toAcct,
-		ToSend:          toSend,
-		SettlingAt:      abi.ChainEpoch(0),
-		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      arr,
-	})
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
@@ -618,7 +454,7 @@ func TestAddVoucherProof(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	s := testSetupMgrWithChannel(ctx, t)
+	s := testSetupMgrWithChannel(t)
 
 	nonce := uint64(1)
 	voucherAmount := big.NewInt(1)
@@ -681,19 +517,11 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 	}
 
 	mock := newMockManagerAPI()
-	arr, err := adt.MakeEmptyArray(mock.store).Root()
-	require.NoError(t, err)
-	mock.setAccountState(fromAcct, account.State{Address: from})
-	mock.setAccountState(toAcct, account.State{Address: to})
 
-	mock.setPaychState(ch, act, paych.State{
-		From:            fromAcct,
-		To:              toAcct,
-		ToSend:          types.NewInt(0),
-		SettlingAt:      abi.ChainEpoch(0),
-		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      arr,
-	})
+	mock.setAccountAddress(fromAcct, from)
+	mock.setAccountAddress(toAcct, to)
+
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	// Create a manager
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
@@ -728,7 +556,7 @@ func TestBestSpendable(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	s := testSetupMgrWithChannel(ctx, t)
+	s := testSetupMgrWithChannel(t)
 
 	// Add vouchers to lane 1 with amounts: [1, 2, 3]
 	voucherLane := uint64(1)
@@ -808,7 +636,7 @@ func TestCheckSpendable(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	s := testSetupMgrWithChannel(ctx, t)
+	s := testSetupMgrWithChannel(t)
 
 	// Create voucher with Extra
 	voucherLane := uint64(1)
@@ -840,7 +668,7 @@ func TestCheckSpendable(t *testing.T) {
 
 	// Check that the secret and proof were passed through correctly
 	lastCall := s.mock.getLastCall()
-	var p paych.UpdateChannelStateParams
+	var p paych0.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(lastCall.Params))
 	require.NoError(t, err)
 	require.Equal(t, otherProof, p.Proof)
@@ -854,7 +682,7 @@ func TestCheckSpendable(t *testing.T) {
 	require.True(t, spendable)
 
 	lastCall = s.mock.getLastCall()
-	var p2 paych.UpdateChannelStateParams
+	var p2 paych0.UpdateChannelStateParams
 	err = p2.UnmarshalCBOR(bytes.NewReader(lastCall.Params))
 	require.NoError(t, err)
 	require.Equal(t, proof, p2.Proof)
@@ -889,7 +717,7 @@ func TestSubmitVoucher(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
-	s := testSetupMgrWithChannel(ctx, t)
+	s := testSetupMgrWithChannel(t)
 
 	// Create voucher with Extra
 	voucherLane := uint64(1)
@@ -911,7 +739,7 @@ func TestSubmitVoucher(t *testing.T) {
 
 	// Check that the secret and proof were passed through correctly
 	msg := s.mock.pushedMessages(submitCid)
-	var p paych.UpdateChannelStateParams
+	var p paych0.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
 	require.Equal(t, submitProof, p.Proof)
@@ -931,7 +759,7 @@ func TestSubmitVoucher(t *testing.T) {
 	require.NoError(t, err)
 
 	msg = s.mock.pushedMessages(submitCid)
-	var p2 paych.UpdateChannelStateParams
+	var p2 paych0.UpdateChannelStateParams
 	err = p2.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
 	require.Equal(t, addVoucherProof2, p2.Proof)
@@ -947,7 +775,7 @@ func TestSubmitVoucher(t *testing.T) {
 	require.NoError(t, err)
 
 	msg = s.mock.pushedMessages(submitCid)
-	var p3 paych.UpdateChannelStateParams
+	var p3 paych0.UpdateChannelStateParams
 	err = p3.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
 	require.Equal(t, proof3, p3.Proof)
@@ -976,7 +804,7 @@ type testScaffold struct {
 	fromKeyPrivate []byte
 }
 
-func testSetupMgrWithChannel(ctx context.Context, t *testing.T) *testScaffold {
+func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
 
 	ch := tutils.NewIDAddr(t, 100)
@@ -986,10 +814,8 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) *testScaffold {
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
 	mock := newMockManagerAPI()
-	arr, err := adt.MakeEmptyArray(mock.store).Root()
-	require.NoError(t, err)
-	mock.setAccountState(fromAcct, account.State{Address: from})
-	mock.setAccountState(toAcct, account.State{Address: to})
+	mock.setAccountAddress(fromAcct, from)
+	mock.setAccountAddress(toAcct, to)
 
 	// Create channel in state
 	balance := big.NewInt(20)
@@ -999,14 +825,7 @@ func testSetupMgrWithChannel(ctx context.Context, t *testing.T) *testScaffold {
 		Nonce:   0,
 		Balance: balance,
 	}
-	mock.setPaychState(ch, act, paych.State{
-		From:            fromAcct,
-		To:              toAcct,
-		ToSend:          big.NewInt(0),
-		SettlingAt:      abi.ChainEpoch(0),
-		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      arr,
-	})
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 	mgr, err := newManager(store, mock)
@@ -1043,8 +862,8 @@ func testGenerateKeyPair(t *testing.T) ([]byte, []byte) {
 	return priv, pub
 }
 
-func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych.SignedVoucher {
-	sv := &paych.SignedVoucher{
+func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych0.SignedVoucher {
+	sv := &paych0.SignedVoucher{
 		ChannelAddr: ch,
 		Lane:        voucherLane,
 		Nonce:       nonce,
@@ -1059,13 +878,13 @@ func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, non
 	return sv
 }
 
-func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych.SignedVoucher {
-	sv := &paych.SignedVoucher{
+func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych0.SignedVoucher {
+	sv := &paych0.SignedVoucher{
 		ChannelAddr: ch,
 		Lane:        voucherLane,
 		Nonce:       nonce,
 		Amount:      voucherAmount,
-		Extra: &paych.ModVerifyParams{
+		Extra: &paych0.ModVerifyParams{
 			Actor: tutils.NewActorAddr(t, "act"),
 		},
 	}
@@ -1083,13 +902,13 @@ type mockBestSpendableAPI struct {
 	mgr *Manager
 }
 
-func (m *mockBestSpendableAPI) PaychVoucherList(ctx context.Context, ch address.Address) ([]*paych.SignedVoucher, error) {
+func (m *mockBestSpendableAPI) PaychVoucherList(ctx context.Context, ch address.Address) ([]*paych0.SignedVoucher, error) {
 	vi, err := m.mgr.ListVouchers(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]*paych.SignedVoucher, len(vi))
+	out := make([]*paych0.SignedVoucher, len(vi))
 	for k, v := range vi {
 		out[k] = v.Voucher
 	}
@@ -1097,7 +916,7 @@ func (m *mockBestSpendableAPI) PaychVoucherList(ctx context.Context, ch address.
 	return out, nil
 }
 
-func (m *mockBestSpendableAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, voucher *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (m *mockBestSpendableAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, voucher *paych0.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	return m.mgr.CheckVoucherSpendable(ctx, ch, voucher, secret, proof)
 }
 

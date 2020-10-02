@@ -40,7 +40,7 @@ const (
 	WriteReqDeadline    = 5 * time.Second
 	ReadResDeadline     = WriteReqDeadline
 	ReadResMinSpeed     = 50 << 10
-	ShufflePeersPrefix  = 5
+	ShufflePeersPrefix  = 16
 	WriteResDeadline    = 60 * time.Second
 )
 
@@ -139,6 +139,8 @@ func (res *Response) statusToError() error {
 
 // FIXME: Rename.
 type BSTipSet struct {
+	// List of blocks belonging to a single tipset to which the
+	// `CompactedMessages` are linked.
 	Blocks   []*types.BlockHeader
 	Messages *CompactedMessages
 }

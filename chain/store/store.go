@@ -10,15 +10,18 @@ import (
 	"strconv"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
@@ -283,6 +286,16 @@ func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) e
 	return nil
 }
 
+func (cs *ChainStore) UnmarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	if err := cs.ds.Delete(key); err != nil {
+		return xerrors.Errorf("removing from valid block cache: %w", err)
+	}
+
+	return nil
+}
+
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 	ts, err := types.NewTipSet([]*types.BlockHeader{b})
 	if err != nil {
@@ -466,14 +479,25 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 		return v.(*types.TipSet), nil
 	}
 
-	var blks []*types.BlockHeader
-	for _, c := range tsk.Cids() {
-		b, err := cs.GetBlock(c)
-		if err != nil {
-			return nil, xerrors.Errorf("get block %s: %w", c, err)
-		}
+	// Fetch tipset block headers from blockstore in parallel
+	var eg errgroup.Group
+	cids := tsk.Cids()
+	blks := make([]*types.BlockHeader, len(cids))
+	for i, c := range cids {
+		i, c := i, c
+		eg.Go(func() error {
+			b, err := cs.GetBlock(c)
+			if err != nil {
+				return xerrors.Errorf("get block %s: %w", c, err)
+			}
 
-		blks = append(blks, b)
+			blks[i] = b
+			return nil
+		})
+	}
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	ts, err := types.NewTipSet(blks)
@@ -767,32 +791,16 @@ type BlockMessages struct {
 func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, error) {
 	applied := make(map[address.Address]uint64)
 
-	cst := cbor.NewCborStore(cs.bs)
-	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load state tree")
-	}
-
-	preloadAddr := func(a address.Address) error {
-		if _, ok := applied[a]; !ok {
-			act, err := st.GetActor(a)
-			if err != nil {
-				return err
-			}
-
-			applied[a] = act.Nonce
-		}
-		return nil
-	}
-
 	selectMsg := func(m *types.Message) (bool, error) {
-		if err := preloadAddr(m.From); err != nil {
-			return false, err
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[m.From]; !ok {
+			applied[m.From] = m.Nonce
 		}
 
 		if applied[m.From] != m.Nonce {
 			return false, nil
 		}
+
 		applied[m.From]++
 
 		return true, nil
@@ -1215,6 +1223,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 	walked := cid.NewSet()
 
 	blocksToWalk := ts.Cids()
+	currentMinHeight := ts.Height()
 
 	walkChain := func(blk cid.Cid) error {
 		if !seen.Visit(blk) {
@@ -1233,6 +1242,13 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		var b types.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
+		}
+
+		if currentMinHeight > b.Height {
+			currentMinHeight = b.Height
+			if currentMinHeight%builtin.EpochsInDay == 0 {
+				log.Infow("export", "height", currentMinHeight)
+			}
 		}
 
 		var cids []cid.Cid
@@ -1280,6 +1296,9 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		return nil
 	}
 
+	log.Infow("export started")
+	exportStart := build.Clock.Now()
+
 	for len(blocksToWalk) > 0 {
 		next := blocksToWalk[0]
 		blocksToWalk = blocksToWalk[1:]
@@ -1287,6 +1306,8 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 			return xerrors.Errorf("walk chain failed: %w", err)
 		}
 	}
+
+	log.Infow("export finished", "duration", build.Clock.Now().Sub(exportStart).Seconds())
 
 	return nil
 }
@@ -1330,7 +1351,7 @@ func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry
 		}, nil
 	}
 
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
 }
 
 type chainRand struct {

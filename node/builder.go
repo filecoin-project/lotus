@@ -20,8 +20,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-fil-markets/discovery"
+	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 
@@ -35,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -259,6 +261,7 @@ func Online() Option {
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManager),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
+			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
 			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
@@ -290,8 +293,8 @@ func Online() Option {
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
-			Override(new(*discovery.Local), modules.NewLocalDiscovery),
-			Override(new(retrievalmarket.PeerResolver), modules.RetrievalResolver),
+			Override(new(*discoveryimpl.Local), modules.NewLocalDiscovery),
+			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
 
 			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
@@ -382,7 +385,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 
 		func(s *Settings) error {
 			resAPI := &impl.StorageMinerAPI{}
-			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
+			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
 			*out = resAPI
 			return nil
 		},
@@ -509,7 +512,7 @@ func FullAPI(out *api.FullNode) Option {
 		},
 		func(s *Settings) error {
 			resAPI := &impl.FullNodeAPI{}
-			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
+			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
 			*out = resAPI
 			return nil
 		},

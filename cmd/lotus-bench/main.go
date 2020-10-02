@@ -27,11 +27,11 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -75,8 +75,6 @@ func main() {
 	logging.SetLogLevel("*", "INFO")
 
 	log.Info("Starting lotus-bench")
-
-	miner.SupportedProofTypes[abi.RegisteredSealProof_StackedDrg2KiBV1] = struct{}{}
 
 	app := &cli.App{
 		Name:    "lotus-bench",
@@ -147,6 +145,8 @@ var sealBenchCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
+		policy.AddSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+
 		if c.Bool("no-gpu") {
 			err := os.Setenv("BELLMAN_NO_GPU", "1")
 			if err != nil {
@@ -387,7 +387,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 			if !ok {
-				log.Error("post verification failed")
+				log.Error("window post verification failed")
 			}
 
 			verifyWindowpost1 := time.Now()
@@ -403,7 +403,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 			if !ok {
-				log.Error("post verification failed")
+				log.Error("window post verification failed")
 			}
 
 			verifyWindowpost2 := time.Now()

@@ -47,13 +47,15 @@ func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
 }
 
 func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
-	var act types.Actor
 	stcid, _, err := mpp.sm.TipSetState(context.TODO(), ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state for GetActor: %w", err)
 	}
-
-	return &act, mpp.sm.WithStateTree(stcid, mpp.sm.WithActor(addr, stmgr.GetActor(&act)))
+	st, err := mpp.sm.StateTree(stcid)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+	return st.GetActor(addr)
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {

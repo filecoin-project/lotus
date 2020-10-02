@@ -8,24 +8,19 @@ import (
 	builder "github.com/filecoin-project/lotus/node/test"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
 func TestAPI(t *testing.T) {
@@ -68,7 +63,12 @@ func TestAPIDealFlowReal(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	saminer.PreCommitChallengeDelay = 5
+	// TODO: just set this globally?
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
 
 	t.Run("basic", func(t *testing.T) {
 		test.TestDealFlow(t, builder.Builder, time.Second, false, false)

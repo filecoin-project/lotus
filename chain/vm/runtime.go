@@ -5,18 +5,16 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	gruntime "runtime"
 	"time"
-
-	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/go-state-types/network"
-	rtt "github.com/filecoin-project/go-state-types/rt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	rtt "github.com/filecoin-project/go-state-types/rt"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
@@ -318,14 +316,6 @@ func (rt *Runtime) CurrEpoch() abi.ChainEpoch {
 	return rt.height
 }
 
-type dumbWrapperType struct {
-	val []byte
-}
-
-func (dwt *dumbWrapperType) Into(um cbor.Unmarshaler) error {
-	return um.UnmarshalCBOR(bytes.NewReader(dwt.val))
-}
-
 func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
 	if !rt.allowInternal {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "runtime.Send() is currently disallowed")
@@ -391,8 +381,8 @@ func (rt *Runtime) internalSend(from, to address.Address, method abi.MethodNum, 
 
 	if subrt != nil {
 		rt.numActorsCreated = subrt.numActorsCreated
+		rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace)
 	}
-	rt.executionTrace.Subcalls = append(rt.executionTrace.Subcalls, subrt.executionTrace)
 	return ret, errSend
 }
 
@@ -469,8 +459,10 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 }
 
 func (rt *Runtime) finilizeGasTracing() {
-	if rt.lastGasCharge != nil {
-		rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
+	if enableTracing {
+		if rt.lastGasCharge != nil {
+			rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
+		}
 	}
 }
 
@@ -499,33 +491,38 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 
 }
 
+var enableTracing = false
+
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
-	var callers [10]uintptr
-	cout := gruntime.Callers(2+skip, callers[:])
+	if enableTracing {
+		var callers [10]uintptr
 
-	now := build.Clock.Now()
-	if rt.lastGasCharge != nil {
-		rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
+		cout := 0 //gruntime.Callers(2+skip, callers[:])
+
+		now := build.Clock.Now()
+		if rt.lastGasCharge != nil {
+			rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
+		}
+
+		gasTrace := types.GasTrace{
+			Name:  gas.Name,
+			Extra: gas.Extra,
+
+			TotalGas:   toUse,
+			ComputeGas: gas.ComputeGas,
+			StorageGas: gas.StorageGas,
+
+			TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
+			VirtualComputeGas: gas.VirtualCompute,
+			VirtualStorageGas: gas.VirtualStorage,
+
+			Callers: callers[:cout],
+		}
+		rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
+		rt.lastGasChargeTime = now
+		rt.lastGasCharge = &gasTrace
 	}
-
-	gasTrace := types.GasTrace{
-		Name:  gas.Name,
-		Extra: gas.Extra,
-
-		TotalGas:   toUse,
-		ComputeGas: gas.ComputeGas,
-		StorageGas: gas.StorageGas,
-
-		TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
-		VirtualComputeGas: gas.VirtualCompute,
-		VirtualStorageGas: gas.VirtualStorage,
-
-		Callers: callers[:cout],
-	}
-	rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
-	rt.lastGasChargeTime = now
-	rt.lastGasCharge = &gasTrace
 
 	// overflow safe
 	if rt.gasUsed > rt.gasAvailable-toUse {
