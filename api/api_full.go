@@ -192,6 +192,9 @@ type FullNode interface {
 	// MpoolPush pushes a signed message to mempool.
 	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
 
+	// MpoolPushUntrusted pushes a signed message to mempool from untrusted sources.
+	MpoolPushUntrusted(context.Context, *types.SignedMessage) (cid.Cid, error)
+
 	// MpoolPushMessage atomically assigns a nonce, signs, and pushes a message
 	// to mempool.
 	// maxFee is only used when GasFeeCap/GasPremium fields aren't specified
