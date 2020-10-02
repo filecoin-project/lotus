@@ -19,13 +19,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -43,11 +40,9 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
 const source = 0
@@ -737,7 +732,7 @@ func TestSyncInputs(t *testing.T) {
 
 	err := s.ValidateBlock(context.TODO(), &types.FullBlock{
 		Header: &types.BlockHeader{},
-	})
+	}, false)
 	if err == nil {
 		t.Fatal("should error on empty block")
 	}
@@ -746,7 +741,7 @@ func TestSyncInputs(t *testing.T) {
 
 	h.ElectionProof = nil
 
-	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h})
+	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h}, false)
 	if err == nil {
 		t.Fatal("should error on block with nil election proof")
 	}

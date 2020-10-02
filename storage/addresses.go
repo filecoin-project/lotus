@@ -3,12 +3,13 @@ package storage
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -27,7 +28,7 @@ type addrSelectApi interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
-func AddressFor(ctx context.Context, a addrSelectApi, mi api.MinerInfo, use AddrUse, minFunds abi.TokenAmount) (address.Address, error) {
+func AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use AddrUse, minFunds abi.TokenAmount) (address.Address, error) {
 	switch use {
 	case PreCommitAddr, CommitAddr:
 		// always use worker, at least for now

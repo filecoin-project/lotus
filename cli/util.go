@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hako/durafmt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -36,11 +37,11 @@ func parseTipSet(ctx context.Context, api api.FullNode, vals []string) (*types.T
 func EpochTime(curr, e abi.ChainEpoch) string {
 	switch {
 	case curr > e:
-		return fmt.Sprintf("%d (%s ago)", e, time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e)))
+		return fmt.Sprintf("%d (%s ago)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e))).LimitFirstN(2))
 	case curr == e:
 		return fmt.Sprintf("%d (now)", e)
 	case curr < e:
-		return fmt.Sprintf("%d (in %s)", e, time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e-curr)))
+		return fmt.Sprintf("%d (in %s)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e-curr))).LimitFirstN(2))
 	}
 
 	panic("math broke")

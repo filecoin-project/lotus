@@ -12,6 +12,7 @@ import (
 type Column struct {
 	Name         string
 	SeparateLine bool
+	Lines        int
 }
 
 type TableWriter struct {
@@ -50,6 +51,7 @@ cloop:
 		for i, column := range w.cols {
 			if column.Name == col {
 				byColID[i] = fmt.Sprint(val)
+				w.cols[i].Lines++
 				continue cloop
 			}
 		}
@@ -58,6 +60,7 @@ cloop:
 		w.cols = append(w.cols, Column{
 			Name:         col,
 			SeparateLine: false,
+			Lines:        1,
 		})
 	}
 
@@ -77,7 +80,11 @@ func (w *TableWriter) Flush(out io.Writer) error {
 
 	w.rows = append([]map[int]string{header}, w.rows...)
 
-	for col := range w.cols {
+	for col, c := range w.cols {
+		if c.Lines == 0 {
+			continue
+		}
+
 		for _, row := range w.rows {
 			val, found := row[col]
 			if !found {
@@ -94,9 +101,13 @@ func (w *TableWriter) Flush(out io.Writer) error {
 		cols := make([]string, len(w.cols))
 
 		for ci, col := range w.cols {
+			if col.Lines == 0 {
+				continue
+			}
+
 			e, _ := row[ci]
 			pad := colLengths[ci] - cliStringLength(e) + 2
-			if !col.SeparateLine {
+			if !col.SeparateLine && col.Lines > 0 {
 				e = e + strings.Repeat(" ", pad)
 				if _, err := fmt.Fprint(out, e); err != nil {
 					return err

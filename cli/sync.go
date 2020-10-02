@@ -225,6 +225,16 @@ var syncCheckpointCmd = &cli.Command{
 }
 
 func SyncWait(ctx context.Context, napi api.FullNode) error {
+	tick := time.Second / 4
+
+	lastLines := 0
+	ticker := time.NewTicker(tick)
+	defer ticker.Stop()
+
+	samples := 8
+	i := 0
+	var app, lastApp uint64
+
 	for {
 		state, err := napi.SyncState(ctx)
 		if err != nil {
@@ -249,14 +259,41 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 
 		ss := state.ActiveSyncs[working]
 
+		var baseHeight abi.ChainEpoch
 		var target []cid.Cid
 		var theight abi.ChainEpoch
+		var heightDiff int64
+
+		if ss.Base != nil {
+			baseHeight = ss.Base.Height()
+			heightDiff = int64(ss.Base.Height())
+		}
 		if ss.Target != nil {
 			target = ss.Target.Cids()
 			theight = ss.Target.Height()
+			heightDiff = int64(ss.Target.Height()) - heightDiff
+		} else {
+			heightDiff = 0
 		}
 
-		fmt.Printf("\r\x1b[2KWorker %d: Target Height: %d\tTarget: %s\tState: %s\tHeight: %d", working, theight, target, ss.Stage, ss.Height)
+		for i := 0; i < lastLines; i++ {
+			fmt.Print("\r\x1b[2K\x1b[A")
+		}
+
+		fmt.Printf("Worker: %d; Base: %d; Target: %d (diff: %d)\n", working, baseHeight, theight, heightDiff)
+		fmt.Printf("State: %s; Current Epoch: %d; Todo: %d\n", ss.Stage, ss.Height, theight-ss.Height)
+		lastLines = 2
+
+		if i%samples == 0 {
+			lastApp = app
+			app = state.VMApplied
+		}
+		if i > 0 {
+			fmt.Printf("Validated %d messages (%d per second)\n", state.VMApplied, (app-lastApp)*uint64(time.Second/tick)/uint64(samples))
+			lastLines++
+		}
+
+		_ = target // todo: maybe print? (creates a bunch of line wrapping issues with most tipsets)
 
 		if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
 			fmt.Println("\nDone!")
@@ -267,7 +304,9 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 		case <-ctx.Done():
 			fmt.Println("\nExit by user")
 			return nil
-		case <-build.Clock.After(1 * time.Second):
+		case <-ticker.C:
 		}
+
+		i++
 	}
 }
