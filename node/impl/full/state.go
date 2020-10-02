@@ -1024,8 +1024,39 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 // StateVerifiedClientStatus returns the data cap for the given address.
 // Returns zero if there is no entry in the data cap table for the
 // address.
+func (a *StateAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	act, err := a.StateGetActor(ctx, verifreg.Address, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	aid, err := a.StateLookupID(ctx, addr, tsk)
+	if err != nil {
+		log.Warnf("lookup failure %v", err)
+		return nil, err
+	}
+
+	vrs, err := verifreg.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
+	}
+
+	verified, dcap, err := vrs.VerifierDataCap(aid)
+	if err != nil {
+		return nil, xerrors.Errorf("looking up verifier: %w", err)
+	}
+	if !verified {
+		return nil, nil
+	}
+
+	return &dcap, nil
+}
+
+// StateVerifiedClientStatus returns the data cap for the given address.
+// Returns zero if there is no entry in the data cap table for the
+// address.
 func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
-	act, err := a.StateGetActor(ctx, builtin0.VerifiedRegistryActorAddr, tsk)
+	act, err := a.StateGetActor(ctx, verifreg.Address, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -1050,6 +1081,20 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 	}
 
 	return &dcap, nil
+}
+
+func (a *StateAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {
+	vact, err := a.StateGetActor(ctx, verifreg.Address, tsk)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	vst, err := verifreg.Load(a.StateManager.ChainStore().Store(ctx), vact)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return vst.RootKey()
 }
 
 var dealProviderCollateralNum = types.NewInt(110)

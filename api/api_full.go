@@ -393,10 +393,16 @@ type FullNode interface {
 	// StateCompute is a flexible command that applies the given messages on the given tipset.
 	// The messages are run as though the VM were at the provided height.
 	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*ComputeStateOutput, error)
+	// StateVerifierStatus returns the data cap for the given address.
+	// Returns nil if there is no entry in the data cap table for the
+	// address.
+	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	// StateVerifiedClientStatus returns the data cap for the given address.
 	// Returns nil if there is no entry in the data cap table for the
 	// address.
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
+	// StateVerifiedClientStatus returns the address of the Verified Registry's root key
+	StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error)
 	// StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 	// can issue. It takes the deal size and verified status as parameters.
 	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (DealCollateralBounds, error)
