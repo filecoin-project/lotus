@@ -1191,13 +1191,6 @@ func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.
 }
 
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
-	if ts == nil {
-		ts = cs.GetHeaviestTipSet()
-	}
-
-	seen := cid.NewSet()
-	walked := cid.NewSet()
-
 	h := &car.CarHeader{
 		Roots:   ts.Cids(),
 		Version: 1,
@@ -1207,6 +1200,28 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 		return xerrors.Errorf("failed to write car header: %s", err)
 	}
 
+	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, func(c cid.Cid) error {
+		blk, err := cs.bs.Get(c)
+		if err != nil {
+			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
+		}
+
+		if err := carutil.LdWrite(w, c.Bytes(), blk.RawData()); err != nil {
+			return xerrors.Errorf("failed to write block to car output: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, cb func(cid.Cid) error) error {
+	if ts == nil {
+		ts = cs.GetHeaviestTipSet()
+	}
+
+	seen := cid.NewSet()
+	walked := cid.NewSet()
+
 	blocksToWalk := ts.Cids()
 	currentMinHeight := ts.Height()
 
@@ -1215,13 +1230,13 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 			return nil
 		}
 
+		if err := cb(blk); err != nil {
+			return err
+		}
+
 		data, err := cs.bs.Get(blk)
 		if err != nil {
 			return xerrors.Errorf("getting block: %w", err)
-		}
-
-		if err := carutil.LdWrite(w, blk.Bytes(), data.RawData()); err != nil {
-			return xerrors.Errorf("failed to write block to car output: %w", err)
 		}
 
 		var b types.BlockHeader
@@ -1270,14 +1285,11 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 				if c.Prefix().Codec != cid.DagCBOR {
 					continue
 				}
-				data, err := cs.bs.Get(c)
-				if err != nil {
-					return xerrors.Errorf("writing object to car (get %s): %w", c, err)
+
+				if err := cb(c); err != nil {
+					return err
 				}
 
-				if err := carutil.LdWrite(w, c.Bytes(), data.RawData()); err != nil {
-					return xerrors.Errorf("failed to write out car object: %w", err)
-				}
 			}
 		}
 
