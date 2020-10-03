@@ -117,10 +117,9 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 
 func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	for _, height := range []abi.ChainEpoch{
-		1,      // before
-		162,    // while sealing
-		3000,   // while proving
-		10_000, // after
+		1,    // before
+		162,  // while sealing
+		5000, // while proving
 	} {
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
 			testWindowPostUpgrade(t, b, blocktime, nSectors, height)
