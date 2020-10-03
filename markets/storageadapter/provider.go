@@ -25,15 +25,15 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/events"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -50,14 +50,24 @@ type ProviderNodeAdapter struct {
 
 	secb *sectorblocks.SectorBlocks
 	ev   *events.Events
+
+	publishSpec, addBalanceSpec *api.MessageSendSpec
 }
 
-func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
-	return &ProviderNodeAdapter{
-		FullNode: full,
-		dag:      dag,
-		secb:     secb,
-		ev:       events.NewEvents(context.TODO(), full),
+func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
+	return func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
+		na := &ProviderNodeAdapter{
+			FullNode: full,
+
+			dag:  dag,
+			secb: secb,
+			ev:   events.NewEvents(context.TODO(), full),
+		}
+		if fc != nil {
+			na.publishSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxPublishDealsFee)}
+			na.addBalanceSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
+		}
+		return na
 	}
 }
 
@@ -84,7 +94,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		Value:  types.NewInt(0),
 		Method: builtin0.MethodsMarket.PublishStorageDeals,
 		Params: params,
-	}, nil)
+	}, n.publishSpec)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -183,7 +193,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		From:   addr,
 		Value:  amount,
 		Method: builtin0.MethodsMarket.AddBalance,
-	}, nil)
+	}, n.addBalanceSpec)
 	if err != nil {
 		return cid.Undef, err
 	}

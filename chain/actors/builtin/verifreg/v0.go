@@ -27,6 +27,10 @@ type state0 struct {
 	store adt.Store
 }
 
+func (s *state0) RootKey() (address.Address, error) {
+	return s.State.RootKey, nil
+}
+
 func (s *state0) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
 	return getDataCap(s.store, actors.Version0, s.State.VerifiedClients, addr)
 }

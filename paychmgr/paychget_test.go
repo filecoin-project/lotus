@@ -978,7 +978,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 		Nonce:   0,
 		Balance: createAmt,
 	}
-	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), big.NewInt(0), make(map[uint64]paych.LaneState)))
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 	// Send create channel response
 	response := testChannelResponse(t, ch)
 	mock.receiveMsgResponse(createMsgCid, response)

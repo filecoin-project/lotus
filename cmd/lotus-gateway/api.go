@@ -86,5 +86,5 @@ func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (ci
 
 	// TODO: additional anti-spam checks
 
-	return a.api.MpoolPush(ctx, sm)
+	return a.api.MpoolPushUntrusted(ctx, sm)
 }
