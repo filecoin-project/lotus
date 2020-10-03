@@ -115,10 +115,11 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sm := NewStateManagerWithUpgradeSchedule(
-		cg.ChainStore(),
-		UpgradeSchedule{
-			1: {Height: testForkHeight, Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
+	sm, err := NewStateManagerWithUpgradeSchedule(
+		cg.ChainStore(), UpgradeSchedule{{
+			Network: 1,
+			Height:  testForkHeight,
+			Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
 				root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
 				cst := ipldcbor.NewCborStore(sm.ChainStore().Blockstore())
 
@@ -151,8 +152,10 @@ func TestForkHeightTriggers(t *testing.T) {
 				}
 
 				return st.Flush(ctx)
-			}},
-		})
+			}}})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	inv := vm.NewActorRegistry()
 	inv.Register(nil, testActor{})

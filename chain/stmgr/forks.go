@@ -38,17 +38,70 @@ type UpgradeFunc func(context.Context, *StateManager, ExecCallback, cid.Cid, *ty
 
 type Upgrade struct {
 	Height    abi.ChainEpoch
+	Network   network.Version
 	Migration UpgradeFunc
 }
 
-type UpgradeSchedule map[network.Version]Upgrade
+type UpgradeSchedule []Upgrade
 
-var DefaultUpgradeSchedule = UpgradeSchedule{
-	network.Version1: {build.UpgradeBreezeHeight, UpgradeFaucetBurnRecovery},
-	network.Version2: {build.UpgradeSmokeHeight, nil},
-	network.Version3: {build.UpgradeIgnitionHeight, UpgradeIgnition},
-	network.Version4: {build.UpgradeActorsV2Height, UpgradeActorsV2},
-	network.Version5: {build.UpgradeLiftoffHeight, UpgradeLiftoff},
+func DefaultUpgradeSchedule() UpgradeSchedule {
+	var us UpgradeSchedule
+
+	for _, u := range []Upgrade{{
+		Height:    build.UpgradeBreezeHeight,
+		Network:   network.Version1,
+		Migration: UpgradeFaucetBurnRecovery,
+	}, {
+		Height:    build.UpgradeSmokeHeight,
+		Network:   network.Version2,
+		Migration: nil,
+	}, {
+		Height:    build.UpgradeIgnitionHeight,
+		Network:   network.Version3,
+		Migration: UpgradeIgnition,
+	}, {
+		Height:    build.UpgradeActorsV2Height,
+		Network:   network.Version4,
+		Migration: UpgradeActorsV2,
+	}, {
+		Height:    build.UpgradeLiftoffHeight,
+		Network:   network.Version4,
+		Migration: UpgradeLiftoff,
+	}} {
+		if u.Height < 0 {
+			// upgrade disabled
+			continue
+		}
+		us = append(us, u)
+	}
+	return us
+}
+
+func (us UpgradeSchedule) Validate() error {
+	// Make sure we're not trying to upgrade to version 0.
+	for _, u := range us {
+		if u.Network <= 0 {
+			return xerrors.Errorf("cannot upgrade to version <= 0: %d", u.Network)
+		}
+	}
+
+	// Make sure all the upgrades make sense.
+	for i := 1; i < len(us); i++ {
+		prev := &us[i-1]
+		curr := &us[i]
+		if !(prev.Network <= curr.Network) {
+			return xerrors.Errorf("cannot downgrade from version %d to version %d", prev.Network, curr.Network)
+		}
+		// Make sure the heights make sense.
+		if prev.Height < 0 {
+			// Previous upgrade was disabled.
+			continue
+		}
+		if !(prev.Height < curr.Height) {
+			return xerrors.Errorf("upgrade heights must be strictly increasing: upgrade %d was at height %d, followed by upgrade %d at height %d", i-1, prev.Height, i, curr.Height)
+		}
+	}
+	return nil
 }
 
 func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecCallback, ts *types.TipSet) (cid.Cid, error) {

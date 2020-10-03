@@ -259,7 +259,7 @@ func Online() Option {
 			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 			Override(new(vm.SyscallBuilder), vm.Syscalls),
 			Override(new(*store.ChainStore), modules.ChainStore),
-			Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule),
+			Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule()),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),

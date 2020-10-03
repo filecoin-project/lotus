@@ -39,12 +39,18 @@ import (
 
 var log = logging.Logger("statemgr")
 
+type versionSpec struct {
+	networkVersion network.Version
+	atOrBelow      abi.ChainEpoch
+}
+
 type StateManager struct {
 	cs *store.ChainStore
 
-	// Sorted network upgrade epochs (starting at version 1).
-	// -1 means the version is skipped.
-	networkVersions []abi.ChainEpoch
+	// Determines the network version at any given epoch.
+	networkVersions []versionSpec
+	latestVersion   network.Version
+
 	// Maps chain epochs to upgrade functions.
 	stateMigrations map[abi.ChainEpoch]UpgradeFunc
 
@@ -58,39 +64,49 @@ type StateManager struct {
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
-	return NewStateManagerWithUpgradeSchedule(cs, DefaultUpgradeSchedule)
+	sm, err := NewStateManagerWithUpgradeSchedule(cs, DefaultUpgradeSchedule())
+	if err != nil {
+		panic(fmt.Sprintf("default upgrade schedule is invalid: %s", err))
+	}
+	return sm
 }
 
-func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule) *StateManager {
+func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule) (*StateManager, error) {
+	// If we have upgrades, make sure they're in-order and make sense.
+	if err := us.Validate(); err != nil {
+		return nil, err
+	}
+
 	stateMigrations := make(map[abi.ChainEpoch]UpgradeFunc, len(us))
-	networkVersions := make([]abi.ChainEpoch, 0, len(stateMigrations))
-
-	// Iterate version by version, to make sure we handle skipped version numbers.
-	// Always skip version 0.
-	for i, version := 0, network.Version(1); i < len(us); version++ {
-		upgrade, ok := us[version]
-		if ok {
-			// We've processed an upgrade.
-			i++
+	var networkVersions []versionSpec
+	lastVersion := network.Version0
+	if len(us) > 0 {
+		// If we have any upgrades, process them and create a version
+		// schedule.
+		for _, upgrade := range us {
+			if upgrade.Migration != nil {
+				stateMigrations[upgrade.Height] = upgrade.Migration
+			}
+			networkVersions = append(networkVersions, versionSpec{
+				networkVersion: lastVersion,
+				atOrBelow:      upgrade.Height,
+			})
+			lastVersion = upgrade.Network
 		}
-
-		epoch := abi.ChainEpoch(-1)
-		if ok && upgrade.Height >= 0 {
-			epoch = upgrade.Height
-			stateMigrations[epoch] = upgrade.Migration
-		}
-
-		networkVersions = append(networkVersions, epoch)
+	} else {
+		// Otherwise, go directly to the latest version.
+		lastVersion = build.NewestNetworkVersion
 	}
 
 	return &StateManager{
 		networkVersions: networkVersions,
+		latestVersion:   lastVersion,
 		stateMigrations: stateMigrations,
 		newVM:           vm.NewVM,
 		cs:              cs,
 		stCache:         make(map[string][]cid.Cid),
 		compWait:        make(map[string]chan struct{}),
-	}
+	}, nil
 }
 
 func cidsToKey(cids []cid.Cid) string {
@@ -1294,13 +1310,12 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
-	for v, epoch := range sm.networkVersions {
-		if epoch >= 0 && height <= epoch {
-			// Use the _previous_ version
-			return network.Version(v)
+	for _, spec := range sm.networkVersions {
+		if height <= spec.atOrBelow {
+			return spec.networkVersion
 		}
 	}
-	return network.Version(len(sm.networkVersions))
+	return sm.latestVersion
 }
 
 func (sm *StateManager) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
