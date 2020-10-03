@@ -158,6 +158,10 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 		for ctx.Err() == nil {
 			build.Clock.Sleep(blocktime)
 			if err := sn[0].MineOne(ctx, MineNext); err != nil {
+				if ctx.Err() != nil {
+					// context was canceled, ignore the error.
+					return
+				}
 				t.Error(err)
 			}
 		}
