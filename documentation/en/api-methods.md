@@ -956,7 +956,8 @@ Response:
   "PricePerEpoch": "0",
   "Duration": 42,
   "DealID": 5432,
-  "CreationTime": "0001-01-01T00:00:00Z"
+  "CreationTime": "0001-01-01T00:00:00Z",
+  "Verified": true
 }
 ```
 
@@ -992,7 +993,8 @@ Response:
   "PricePerEpoch": "0",
   "Duration": 42,
   "DealID": 5432,
-  "CreationTime": "0001-01-01T00:00:00Z"
+  "CreationTime": "0001-01-01T00:00:00Z",
+  "Verified": true
 }
 ```
 
