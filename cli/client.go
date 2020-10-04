@@ -12,13 +12,12 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -476,6 +475,7 @@ func interactiveDeal(cctx *cli.Context) error {
 	var ask storagemarket.StorageAsk
 	var epochPrice big.Int
 	var epochs abi.ChainEpoch
+	var verified bool
 
 	var a address.Address
 	if from := cctx.String("from"); from != "" {
@@ -572,6 +572,53 @@ func interactiveDeal(cctx *cli.Context) error {
 			ask = *a
 
 			// TODO: run more validation
+			state = "verified"
+		case "verified":
+			ts, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			dcap, err := api.StateVerifiedClientStatus(ctx, a, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			if dcap == nil {
+				state = "confirm"
+				continue
+			}
+
+			color.Blue(".. checking verified deal eligibility\n")
+			ds, err := api.ClientDealSize(ctx, data)
+			if err != nil {
+				return err
+			}
+
+			if dcap.Uint64() < uint64(ds.PieceSize) {
+				color.Yellow(".. not enough DataCap available for a verified deal\n")
+				state = "confirm"
+				continue
+			}
+
+			fmt.Print("\nMake this a verified deal? (yes/no): ")
+
+			var yn string
+			_, err = fmt.Scan(&yn)
+			if err != nil {
+				return err
+			}
+
+			switch yn {
+			case "yes":
+				verified = true
+			case "no":
+				verified = false
+			default:
+				fmt.Println("Type in full 'yes' or 'no'")
+				continue
+			}
+
 			state = "confirm"
 		case "confirm":
 			fromBal, err := api.WalletBalance(ctx, a)
@@ -590,10 +637,15 @@ func interactiveDeal(cctx *cli.Context) error {
 			epochs = abi.ChainEpoch(dur / (time.Duration(build.BlockDelaySecs) * time.Second))
 			// TODO: do some more or epochs math (round to miner PP, deal start buffer)
 
+			pricePerGib := ask.Price
+			if verified {
+				pricePerGib = ask.VerifiedPrice
+			}
+
 			gib := types.NewInt(1 << 30)
 
 			// TODO: price is based on PaddedPieceSize, right?
-			epochPrice = types.BigDiv(types.BigMul(ask.Price, types.NewInt(uint64(ds.PieceSize))), gib)
+			epochPrice = types.BigDiv(types.BigMul(pricePerGib, types.NewInt(uint64(ds.PieceSize))), gib)
 			totalPrice := types.BigMul(epochPrice, types.NewInt(uint64(epochs)))
 
 			fmt.Printf("-----\n")
@@ -603,6 +655,7 @@ func interactiveDeal(cctx *cli.Context) error {
 			fmt.Printf("Piece size: %s (Payload size: %s)\n", units.BytesSize(float64(ds.PieceSize)), units.BytesSize(float64(ds.PayloadSize)))
 			fmt.Printf("Duration: %s\n", dur)
 			fmt.Printf("Total price: ~%s (%s per epoch)\n", types.FIL(totalPrice), types.FIL(epochPrice))
+			fmt.Printf("Verified: %v\n", verified)
 
 			state = "accept"
 		case "accept":
@@ -637,7 +690,7 @@ func interactiveDeal(cctx *cli.Context) error {
 				MinBlocksDuration: uint64(epochs),
 				DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
 				FastRetrieval:     cctx.Bool("fast-retrieval"),
-				VerifiedDeal:      false, // TODO: Allow setting
+				VerifiedDeal:      verified,
 			})
 			if err != nil {
 				return err

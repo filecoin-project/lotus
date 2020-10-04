@@ -39,6 +39,10 @@ func getDataCap(store adt.Store, root cid.Cid, addr address.Address) (bool, abi.
 	return true, dcap, nil
 }
 
+func (s *state0) RootKey() (address.Address, error) {
+	return s.State.RootKey, nil
+}
+
 func (s *state0) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
 	return getDataCap(s.store, s.State.VerifiedClients, addr)
 }

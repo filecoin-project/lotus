@@ -205,7 +205,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	}
 
 	// Check the voucher against the highest known voucher nonce / value
-	laneStates, err := ca.laneState(ctx, pchState, ch)
+	laneStates, err := ca.laneState(pchState, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -253,16 +253,9 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 		return nil, err
 	}
 
-	// Total required balance = total redeemed + toSend
-	// Must not exceed actor balance
-	ts, err := pchState.ToSend()
-	if err != nil {
-		return nil, err
-	}
-
-	newTotal := types.BigAdd(totalRedeemed, ts)
-	if act.Balance.LessThan(newTotal) {
-		return nil, newErrInsufficientFunds(types.BigSub(newTotal, act.Balance))
+	// Total required balance must not exceed actor balance
+	if act.Balance.LessThan(totalRedeemed) {
+		return nil, newErrInsufficientFunds(types.BigSub(totalRedeemed, act.Balance))
 	}
 
 	if len(sv.Merges) != 0 {
@@ -505,7 +498,6 @@ func (ca *channelAccessor) allocateLane(ch address.Address) (uint64, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
-	// TODO: should this take into account lane state?
 	return ca.store.AllocateLane(ch)
 }
 
@@ -520,7 +512,7 @@ func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address)
 
 // laneState gets the LaneStates from chain, then applies all vouchers in
 // the data store over the chain state
-func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch address.Address) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) laneState(state paych.State, ch address.Address) (map[uint64]paych.LaneState, error) {
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
 	//  (but technically dont't need to)
 
@@ -552,9 +544,12 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 			return nil, xerrors.Errorf("paych merges not handled yet")
 		}
 
-		// If there's a voucher for a lane that isn't in chain state just
-		// create it
+		// Check if there is an existing laneState in the payment channel
+		// for this voucher's lane
 		ls, ok := laneStates[v.Voucher.Lane]
+
+		// If the voucher does not have a higher nonce than the existing
+		// laneState for this lane, ignore it
 		if ok {
 			n, err := ls.Nonce()
 			if err != nil {
@@ -565,6 +560,7 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 			}
 		}
 
+		// Voucher has a higher nonce, so replace laneState with this voucher
 		laneStates[v.Voucher.Lane] = laneState{v.Voucher.Amount, v.Voucher.Nonce}
 	}
 
