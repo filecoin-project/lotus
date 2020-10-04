@@ -117,7 +117,13 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 			}
 		}
 	}
-	exist, err := a.WalletHas(ctx, params.Wallet)
+
+	walletKey, err := a.StateAPI.StateManager.ResolveToKeyAddress(ctx, params.Wallet, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed resolving params.Wallet addr: %w", params.Wallet)
+	}
+
+	exist, err := a.WalletHas(ctx, walletKey)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting addr from wallet: %w", params.Wallet)
 	}
