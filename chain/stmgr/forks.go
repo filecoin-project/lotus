@@ -437,6 +437,10 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 
 	epoch := ts.Height() - 1
 
+	if build.UpgradeLiftoffHeight <= epoch {
+		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
+	}
+
 	nst, err := nv3.MigrateStateTree(ctx, store, root, epoch)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors state: %w", err)
@@ -462,7 +466,7 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 		return cid.Undef, xerrors.Errorf("second split address: %w", err)
 	}
 
-	err = resetGenesisMsigs(ctx, sm, store, tree, epoch)
+	err = resetGenesisMsigs(ctx, sm, store, tree, build.UpgradeLiftoffHeight)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("resetting genesis msig start epochs: %w", err)
 	}
@@ -695,7 +699,7 @@ func makeKeyAddr(splitAddr address.Address, count uint64) (address.Address, erro
 	return addr, nil
 }
 
-func resetGenesisMsigs(ctx context.Context, sm *StateManager, store adt0.Store, tree *state.StateTree, epoch abi.ChainEpoch) error {
+func resetGenesisMsigs(ctx context.Context, sm *StateManager, store adt0.Store, tree *state.StateTree, startEpoch abi.ChainEpoch) error {
 	gb, err := sm.cs.GetGenesis()
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %w", err)
@@ -724,7 +728,7 @@ func resetGenesisMsigs(ctx context.Context, sm *StateManager, store adt0.Store, 
 				return xerrors.Errorf("reading multisig state: %w", err)
 			}
 
-			currState.StartEpoch = epoch
+			currState.StartEpoch = startEpoch
 
 			currActor.Head, err = store.Put(ctx, &currState)
 			if err != nil {
