@@ -17,7 +17,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const dsKeyActorNonce = "ActorNonce"
+const dsKeyActorNonce = "ActorNextNonce"
 
 var log = logging.Logger("messagesigner")
 
@@ -84,7 +84,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 	return smsg, nil
 }
 
-// nextNonce increments the nonce.
+// nextNonce gets the next nonce for the given address.
 // If there is no nonce in the datastore, gets the nonce from the message pool.
 func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
 	// Nonces used to be created by the mempool and we need to support nodes
@@ -96,7 +96,7 @@ func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
 		return 0, xerrors.Errorf("failed to get nonce from mempool: %w", err)
 	}
 
-	// Get the nonce for this address from the datastore
+	// Get the next nonce for this address from the datastore
 	addrNonceKey := ms.dstoreKey(addr)
 	dsNonceBytes, err := ms.ds.Get(addrNonceKey)
 
@@ -104,13 +104,14 @@ func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
 	case xerrors.Is(err, datastore.ErrNotFound):
 		// If a nonce for this address hasn't yet been created in the
 		// datastore, just use the nonce from the mempool
+		return nonce, nil
 
 	case err != nil:
 		return 0, xerrors.Errorf("failed to get nonce from datastore: %w", err)
 
 	default:
-		// There is a nonce in the datastore, so unmarshall and increment it
-		maj, val, err := cbg.CborReadHeader(bytes.NewReader(dsNonceBytes))
+		// There is a nonce in the datastore, so unmarshall it
+		maj, dsNonce, err := cbg.CborReadHeader(bytes.NewReader(dsNonceBytes))
 		if err != nil {
 			return 0, xerrors.Errorf("failed to parse nonce from datastore: %w", err)
 		}
@@ -118,21 +119,24 @@ func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
 			return 0, xerrors.Errorf("bad cbor type parsing nonce from datastore")
 		}
 
-		dsNonce := val + 1
-
 		// The message pool nonce should be <= than the datastore nonce
 		if nonce <= dsNonce {
 			nonce = dsNonce
 		} else {
 			log.Warnf("mempool nonce was larger than datastore nonce (%d > %d)", nonce, dsNonce)
 		}
-	}
 
-	return nonce, nil
+		return nonce, nil
+	}
 }
 
-// saveNonce writes the nonce for this address to the datastore
+// saveNonce increments the nonce for this address and writes it to the
+// datastore
 func (ms *MessageSigner) saveNonce(addr address.Address, nonce uint64) error {
+	// Increment the nonce
+	nonce++
+
+	// Write the nonce to the datastore
 	addrNonceKey := ms.dstoreKey(addr)
 	buf := bytes.Buffer{}
 	_, err := buf.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, nonce))
