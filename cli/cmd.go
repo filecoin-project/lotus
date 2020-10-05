@@ -216,6 +216,13 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		log.Errorf("repoType type does not match the type of repo.RepoType")
 	}
 
+	if tn, ok := ctx.App.Metadata["testnode-storage"]; ok {
+		return tn.(api.StorageMiner), func() {}, nil
+	}
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(api.FullNode), func() {}, nil
+	}
+
 	addr, headers, err := GetRawAPI(ctx, t)
 	if err != nil {
 		return nil, nil, err
@@ -225,6 +232,10 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 }
 
 func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(api.FullNode), func() {}, nil
+	}
+
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
 	if err != nil {
 		return nil, nil, err
@@ -234,6 +245,10 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 }
 
 func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-storage"]; ok {
+		return tn.(api.StorageMiner), func() {}, nil
+	}
+
 	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner)
 	if err != nil {
 		return nil, nil, err

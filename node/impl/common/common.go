@@ -121,6 +121,12 @@ func (a *CommonAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, 
 func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
 	autonat := a.RawHost.(*basichost.BasicHost).AutoNat
 
+	if autonat == nil {
+		return api.NatInfo{
+			Reachability: network.ReachabilityUnknown,
+		}, nil
+	}
+
 	var maddr string
 	if autonat.Status() == network.ReachabilityPublic {
 		pa, err := autonat.PublicAddr()
