@@ -34,6 +34,7 @@ var datastoreListCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "repo-type",
+			Usage: "node type (1 - full, 2 - storage, 3 - worker)",
 			Value: 1,
 		},
 		&cli.BoolFlag{
@@ -102,6 +103,7 @@ var datastoreGetCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "repo-type",
+			Usage: "node type (1 - full, 2 - storage, 3 - worker)",
 			Value: 1,
 		},
 		&cli.StringFlag{
