@@ -259,6 +259,7 @@ var DaemonCmd = &cli.Command{
 			liteMode = node.Options(
 				node.Override(new(api.GatewayAPI), gapi),
 				node.Override(new(full.ChainModuleAPI), node.From(new(api.GatewayAPI))),
+				node.Override(new(full.GasModuleAPI), node.From(new(api.GatewayAPI))),
 				node.Override(new(full.MpoolModuleAPI), node.From(new(api.GatewayAPI))),
 				node.Override(new(full.StateModuleAPI), node.From(new(api.GatewayAPI))),
 				node.Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),

@@ -267,8 +267,9 @@ func Online() Option {
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
 			Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
-			Override(new(full.StateModuleAPI), From(new(full.StateModule))),
+			Override(new(full.GasModuleAPI), From(new(full.GasModule))),
 			Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
+			Override(new(full.StateModuleAPI), From(new(full.StateModule))),
 			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),

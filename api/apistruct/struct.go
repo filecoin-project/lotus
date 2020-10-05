@@ -368,6 +368,7 @@ type GatewayStruct struct {
 		ChainGetTipSet         func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 		ChainGetTipSetByHeight func(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 		ChainHead              func(ctx context.Context) (*types.TipSet, error)
+		GasEstimateMessageGas  func(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 		MpoolPush              func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 		StateAccountKey        func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 		StateGetActor          func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
@@ -1401,6 +1402,10 @@ func (g GatewayStruct) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) 
 
 func (g GatewayStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	return g.Internal.ChainGetTipSetByHeight(ctx, h, tsk)
+}
+
+func (g GatewayStruct) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
+	return g.Internal.GasEstimateMessageGas(ctx, msg, spec, tsk)
 }
 
 func (g GatewayStruct) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {

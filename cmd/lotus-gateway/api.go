@@ -111,6 +111,14 @@ func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, 
 	return a.api.StateAccountKey(ctx, addr, tsk)
 }
 
+func (a *GatewayAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+
+	return a.api.GasEstimateMessageGas(ctx, msg, spec, tsk)
+}
+
 func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	if err := a.checkTipsetKey(ctx, tsk); err != nil {
 		return nil, err
@@ -133,5 +141,6 @@ func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence u
 
 var _ api.GatewayAPI = (*GatewayAPI)(nil)
 var _ full.ChainModuleAPI = (*GatewayAPI)(nil)
+var _ full.GasModuleAPI = (*GatewayAPI)(nil)
 var _ full.MpoolModuleAPI = (*GatewayAPI)(nil)
 var _ full.StateModuleAPI = (*GatewayAPI)(nil)
