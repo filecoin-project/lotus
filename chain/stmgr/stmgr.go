@@ -259,6 +259,18 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	}
 
 	for i := parentEpoch; i < epoch; i++ {
+		if i > parentEpoch {
+			// run cron for null rounds if any
+			if err := runCron(); err != nil {
+				return cid.Undef, cid.Undef, err
+			}
+
+			pstate, err = vmi.Flush(ctx)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("flushing vm: %w", err)
+			}
+		}
+
 		// handle state forks
 		// XXX: The state tree
 		newState, err := sm.handleStateForks(ctx, pstate, i, cb, ts)
@@ -270,18 +282,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			vmi, err = makeVmWithBaseState(newState)
 			if err != nil {
 				return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
-			}
-		}
-
-		if i > parentEpoch {
-			// run cron for null rounds if any
-			if err := runCron(); err != nil {
-				return cid.Cid{}, cid.Cid{}, err
-			}
-
-			newState, err = vmi.Flush(ctx)
-			if err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 			}
 		}
 

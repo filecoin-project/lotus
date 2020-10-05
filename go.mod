@@ -23,7 +23,7 @@ require (
 	github.com/fatih/color v1.8.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.4
-	github.com/filecoin-project/go-bitfield v0.2.1-0.20200920172649-837cbe6a1ed3
+	github.com/filecoin-project/go-bitfield v0.2.1
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.6.7
