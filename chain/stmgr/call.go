@@ -132,7 +132,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
-		BaseFee:        ts.Blocks()[0].ParentBaseFee,
+		BaseFee:        types.NewInt(build.MinimumBaseFee),
 	}
 	vmi, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
