@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
@@ -106,9 +107,7 @@ func (s *state2) NumLiveSectors() (uint64, error) {
 
 // GetSectorExpiration returns the effective expiration of the given sector.
 //
-// If the sector isn't found or has already been terminated, this method returns
-// nil and no error. If the sector does not expire early, the Early expiration
-// field is 0.
+// If the sector does not expire early, the Early expiration field is 0.
 func (s *state2) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -171,7 +170,7 @@ func (s *state2) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 		return nil, err
 	}
 	if out.Early == 0 && out.OnTime == 0 {
-		return nil, nil
+		return nil, xerrors.Errorf("failed to find sector %d", num)
 	}
 	return &out, nil
 }
