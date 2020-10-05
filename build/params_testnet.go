@@ -23,6 +23,7 @@ const UpgradeSmokeHeight = 51000
 
 const UpgradeIgnitionHeight = 94000
 
+// TODO: Actual epoch needs to be filled in
 const UpgradeActorsV2Height = 128888
 
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.

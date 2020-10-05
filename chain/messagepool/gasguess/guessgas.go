@@ -42,6 +42,7 @@ var Costs = map[CostKey]int64{
 	{builtin0.StorageMinerActorCodeID, 16}: 5325185,
 	{builtin0.StorageMinerActorCodeID, 18}: 2328637,
 	{builtin0.StoragePowerActorCodeID, 2}:  23600956,
+	// TODO: Just reuse v0 values for now, this isn't actually used
 	{builtin2.InitActorCodeID, 2}:          8916753,
 	{builtin2.StorageMarketActorCodeID, 2}: 6955002,
 	{builtin2.StorageMarketActorCodeID, 4}: 245436108,
