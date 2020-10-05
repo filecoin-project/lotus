@@ -1171,12 +1171,25 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch,
 		}
 	}
 
-	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-	vf = big.Add(vf, sm.preIgnitionGenInfos.genesisPledge)
-	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-	vf = big.Add(vf, sm.preIgnitionGenInfos.genesisMarketFunds)
+	// After UpgradeActorsV2Height these funds are accounted for in GetFilReserveDisbursed
+	if height <= build.UpgradeActorsV2Height {
+		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+		vf = big.Add(vf, sm.preIgnitionGenInfos.genesisPledge)
+		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+		vf = big.Add(vf, sm.preIgnitionGenInfos.genesisMarketFunds)
+	}
 
 	return vf, nil
+}
+
+func GetFilReserveDisbursed(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	ract, err := st.GetActor(builtin.ReserveAddress)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get reserve actor: %w", err)
+	}
+
+	// If money enters the reserve actor, this could lead to a negative term
+	return big.Sub(big.NewFromGo(build.InitialFilReserved), ract.Balance), nil
 }
 
 func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
@@ -1266,6 +1279,11 @@ func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
 	}
 
+	filReserveDisbursed, err := GetFilReserveDisbursed(ctx, st)
+	if err != nil {
+		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)
+	}
+
 	filMined, err := GetFilMined(ctx, st)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
@@ -1282,6 +1300,7 @@ func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height
 	}
 
 	ret := types.BigAdd(filVested, filMined)
+	ret = types.BigAdd(ret, filReserveDisbursed)
 	ret = types.BigSub(ret, filBurnt)
 	ret = types.BigSub(ret, filLocked)
 

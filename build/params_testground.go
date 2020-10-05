@@ -55,6 +55,7 @@ var (
 
 	FilBase               uint64 = 2_000_000_000
 	FilAllocStorageMining uint64 = 1_400_000_000
+	FilReserved           uint64 = 300_000_000
 
 	FilecoinPrecision uint64 = 1_000_000_000_000_000_000
 
@@ -63,6 +64,13 @@ var (
 		v = v.Mul(v, big.NewInt(int64(FilecoinPrecision)))
 		return v
 	}()
+
+	InitialFilReserved = func() *big.Int {
+		v := big.NewInt(int64(FilReserved))
+		v = v.Mul(v, big.NewInt(int64(FilecoinPrecision)))
+		return v
+	}()
+
 	// Actor consts
 	// TODO: Pull from actors when its made not private
 	MinDealDuration = abi.ChainEpoch(180 * builtin.EpochsInDay)

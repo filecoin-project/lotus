@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -20,6 +21,7 @@ import (
 
 var SystemActorAddr = builtin0.SystemActorAddr
 var BurntFundsActorAddr = builtin0.BurntFundsActorAddr
+var ReserveAddress = makeAddress("t090")
 
 // TODO: Why does actors have 2 different versions of this?
 type SectorInfo = proof0.SectorInfo
@@ -85,4 +87,13 @@ func IsMultisigActor(c cid.Cid) bool {
 
 func IsPaymentChannelActor(c cid.Cid) bool {
 	return c == builtin0.PaymentChannelActorCodeID || c == builtin2.PaymentChannelActorCodeID
+}
+
+func makeAddress(addr string) address.Address {
+	ret, err := address.NewFromString(addr)
+	if err != nil {
+		panic(err)
+	}
+
+	return ret
 }
