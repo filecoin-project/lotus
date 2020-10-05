@@ -1,6 +1,7 @@
 package backupds
 
 import (
+	"crypto/sha256"
 	"io"
 	"sync"
 
@@ -26,58 +27,81 @@ func Wrap(child datastore.Batching) *Datastore {
 	}
 }
 
-// Writes a datastore dump into the provided writer as indefinite length cbor
-// array of [key, value] tuples
+// Writes a datastore dump into the provided writer as
+// [array(*) of [key, value] tuples, checksum]
 func (d *Datastore) Backup(out io.Writer) error {
-	// write indefinite length array header
-	if _, err := out.Write([]byte{0x9f}); err != nil {
-		return xerrors.Errorf("writing header: %w", err)
-	}
-
-	d.backupLk.Lock()
-	defer d.backupLk.Unlock()
-
-	log.Info("Starting datastore backup")
-	defer log.Info("Datastore backup done")
-
-	qr, err := d.child.Query(query.Query{})
-	if err != nil {
-		return xerrors.Errorf("query: %w", err)
-	}
-	defer func() {
-		if err := qr.Close(); err != nil {
-			log.Errorf("query close error: %+v", err)
-			return
-		}
-	}()
-
 	scratch := make([]byte, 9)
 
-	for result := range qr.Next() {
-		if err := cbg.WriteMajorTypeHeaderBuf(scratch, out, cbg.MajArray, 2); err != nil {
-			return xerrors.Errorf("writing tuple header: %w", err)
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, out, cbg.MajArray, 2); err != nil {
+		return xerrors.Errorf("writing tuple header: %w", err)
+	}
+
+	hasher := sha256.New()
+	hout := io.MultiWriter(hasher, out)
+
+	// write KVs
+	{
+		// write indefinite length array header
+		if _, err := hout.Write([]byte{0x9f}); err != nil {
+			return xerrors.Errorf("writing header: %w", err)
 		}
 
-		if err := cbg.WriteMajorTypeHeaderBuf(scratch, out, cbg.MajByteString, uint64(len([]byte(result.Key)))); err != nil {
-			return xerrors.Errorf("writing key header: %w", err)
+		d.backupLk.Lock()
+		defer d.backupLk.Unlock()
+
+		log.Info("Starting datastore backup")
+		defer log.Info("Datastore backup done")
+
+		qr, err := d.child.Query(query.Query{})
+		if err != nil {
+			return xerrors.Errorf("query: %w", err)
+		}
+		defer func() {
+			if err := qr.Close(); err != nil {
+				log.Errorf("query close error: %+v", err)
+				return
+			}
+		}()
+
+		for result := range qr.Next() {
+			if err := cbg.WriteMajorTypeHeaderBuf(scratch, hout, cbg.MajArray, 2); err != nil {
+				return xerrors.Errorf("writing tuple header: %w", err)
+			}
+
+			if err := cbg.WriteMajorTypeHeaderBuf(scratch, hout, cbg.MajByteString, uint64(len([]byte(result.Key)))); err != nil {
+				return xerrors.Errorf("writing key header: %w", err)
+			}
+
+			if _, err := hout.Write([]byte(result.Key)[:]); err != nil {
+				return xerrors.Errorf("writing key: %w", err)
+			}
+
+			if err := cbg.WriteMajorTypeHeaderBuf(scratch, hout, cbg.MajByteString, uint64(len(result.Value))); err != nil {
+				return xerrors.Errorf("writing value header: %w", err)
+			}
+
+			if _, err := hout.Write(result.Value[:]); err != nil {
+				return xerrors.Errorf("writing value: %w", err)
+			}
 		}
 
-		if _, err := out.Write([]byte(result.Key)[:]); err != nil {
-			return xerrors.Errorf("writing key: %w", err)
-		}
-
-		if err := cbg.WriteMajorTypeHeaderBuf(scratch, out, cbg.MajByteString, uint64(len(result.Value))); err != nil {
-			return xerrors.Errorf("writing value header: %w", err)
-		}
-
-		if _, err := out.Write(result.Value[:]); err != nil {
-			return xerrors.Errorf("writing value: %w", err)
+		// array break
+		if _, err := hout.Write([]byte{0xff}); err != nil {
+			return xerrors.Errorf("writing array 'break': %w", err)
 		}
 	}
 
-	// array break
-	if _, err := out.Write([]byte{0xff}); err != nil {
-		return xerrors.Errorf("writing array 'break': %w", err)
+	// Write the checksum
+	{
+		sum := hasher.Sum(nil)
+
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, hout, cbg.MajByteString, uint64(len(sum))); err != nil {
+			return xerrors.Errorf("writing checksum header: %w", err)
+		}
+
+		if _, err := hout.Write(sum[:]); err != nil {
+			return xerrors.Errorf("writing checksum: %w", err)
+		}
 	}
 
 	return nil
