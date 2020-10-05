@@ -164,14 +164,6 @@ var mpoolSub = &cli.Command{
 	},
 }
 
-type statBucket struct {
-	msgs map[uint64]*types.SignedMessage
-}
-type mpStat struct {
-	addr              string
-	past, cur, future uint64
-}
-
 var mpoolStat = &cli.Command{
 	Name:  "stat",
 	Usage: "print mempool stats",
@@ -179,6 +171,11 @@ var mpoolStat = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "local",
 			Usage: "print stats for addresses in local wallet only",
+		},
+		&cli.IntFlag{
+			Name:  "basefee-lookback",
+			Usage: "number of blocks to look back for minimum basefee",
+			Value: 60,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -193,6 +190,20 @@ var mpoolStat = &cli.Command{
 		ts, err := api.ChainHead(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting chain head: %w", err)
+		}
+		currBF := ts.Blocks()[0].ParentBaseFee
+		minBF := currBF
+		{
+			currTs := ts
+			for i := 0; i < cctx.Int("basefee-lookback"); i++ {
+				currTs, err = api.ChainGetTipSet(ctx, currTs.Parents())
+				if err != nil {
+					return xerrors.Errorf("walking chain: %w", err)
+				}
+				if newBF := currTs.Blocks()[0].ParentBaseFee; newBF.LessThan(minBF) {
+					minBF = newBF
+				}
+			}
 		}
 
 		var filter map[address.Address]struct{}
@@ -214,8 +225,16 @@ var mpoolStat = &cli.Command{
 			return err
 		}
 
-		buckets := map[address.Address]*statBucket{}
+		type statBucket struct {
+			msgs map[uint64]*types.SignedMessage
+		}
+		type mpStat struct {
+			addr                 string
+			past, cur, future    uint64
+			belowCurr, belowPast uint64
+		}
 
+		buckets := map[address.Address]*statBucket{}
 		for _, v := range msgs {
 			if filter != nil {
 				if _, has := filter[v.Message.From]; !has {
@@ -252,23 +271,27 @@ var mpoolStat = &cli.Command{
 				cur++
 			}
 
-			past := uint64(0)
-			future := uint64(0)
+			var s mpStat
+			s.addr = a.String()
+
 			for _, m := range bkt.msgs {
 				if m.Message.Nonce < act.Nonce {
-					past++
+					s.past++
+				} else if m.Message.Nonce > cur {
+					s.future++
+				} else {
+					s.cur++
 				}
-				if m.Message.Nonce > cur {
-					future++
+
+				if m.Message.GasFeeCap.LessThan(currBF) {
+					s.belowCurr++
+				}
+				if m.Message.GasFeeCap.LessThan(minBF) {
+					s.belowPast++
 				}
 			}
 
-			out = append(out, mpStat{
-				addr:   a.String(),
-				past:   past,
-				cur:    cur - act.Nonce,
-				future: future,
-			})
+			out = append(out, s)
 		}
 
 		sort.Slice(out, func(i, j int) bool {
@@ -281,12 +304,14 @@ var mpoolStat = &cli.Command{
 			total.past += stat.past
 			total.cur += stat.cur
 			total.future += stat.future
+			total.belowCurr += stat.belowCurr
+			total.belowPast += stat.belowPast
 
-			fmt.Printf("%s: past: %d, cur: %d, future: %d\n", stat.addr, stat.past, stat.cur, stat.future)
+			fmt.Printf("%s: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d \n", stat.addr, stat.past, stat.cur, stat.future, stat.belowCurr, cctx.Int("basefee-lookback"), stat.belowPast)
 		}
 
 		fmt.Println("-----")
-		fmt.Printf("total: past: %d, cur: %d, future: %d\n", total.past, total.cur, total.future)
+		fmt.Printf("total: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d \n", total.past, total.cur, total.future, total.belowCurr, cctx.Int("basefee-lookback"), total.belowPast)
 
 		return nil
 	},
