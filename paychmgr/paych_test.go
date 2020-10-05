@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
+	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
@@ -237,7 +237,7 @@ func TestCreateVoucher(t *testing.T) {
 
 	// Create a voucher in lane 1
 	voucherLane1Amt := big.NewInt(5)
-	voucher := paych0.SignedVoucher{
+	voucher := paych2.SignedVoucher{
 		Lane:   1,
 		Amount: voucherLane1Amt,
 	}
@@ -252,7 +252,7 @@ func TestCreateVoucher(t *testing.T) {
 
 	// Create a voucher in lane 1 again, with a higher amount
 	voucherLane1Amt = big.NewInt(8)
-	voucher = paych0.SignedVoucher{
+	voucher = paych2.SignedVoucher{
 		Lane:   1,
 		Amount: voucherLane1Amt,
 	}
@@ -267,7 +267,7 @@ func TestCreateVoucher(t *testing.T) {
 	// Create a voucher in lane 2 that covers all the remaining funds
 	// in the channel
 	voucherLane2Amt := big.Sub(s.amt, voucherLane1Amt)
-	voucher = paych0.SignedVoucher{
+	voucher = paych2.SignedVoucher{
 		Lane:   2,
 		Amount: voucherLane2Amt,
 	}
@@ -281,7 +281,7 @@ func TestCreateVoucher(t *testing.T) {
 	// Create a voucher in lane 2 that exceeds the remaining funds in the
 	// channel
 	voucherLane2Amt = big.Add(voucherLane2Amt, big.NewInt(1))
-	voucher = paych0.SignedVoucher{
+	voucher = paych2.SignedVoucher{
 		Lane:   2,
 		Amount: voucherLane2Amt,
 	}
@@ -619,7 +619,7 @@ func TestCheckSpendable(t *testing.T) {
 
 	// Check that the secret was passed through correctly
 	lastCall := s.mock.getLastCall()
-	var p paych0.UpdateChannelStateParams
+	var p paych2.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(lastCall.Params))
 	require.NoError(t, err)
 	require.Equal(t, secret, p.Secret)
@@ -673,7 +673,7 @@ func TestSubmitVoucher(t *testing.T) {
 
 	// Check that the secret was passed through correctly
 	msg := s.mock.pushedMessages(submitCid)
-	var p paych0.UpdateChannelStateParams
+	var p paych2.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
 	require.Equal(t, secret, p.Secret)
@@ -687,7 +687,7 @@ func TestSubmitVoucher(t *testing.T) {
 	require.NoError(t, err)
 
 	msg = s.mock.pushedMessages(submitCid)
-	var p3 paych0.UpdateChannelStateParams
+	var p3 paych2.UpdateChannelStateParams
 	err = p3.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
 	require.Equal(t, secret3, p3.Secret)
@@ -773,8 +773,8 @@ func testGenerateKeyPair(t *testing.T) ([]byte, []byte) {
 	return priv, pub
 }
 
-func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych0.SignedVoucher {
-	sv := &paych0.SignedVoucher{
+func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych2.SignedVoucher {
+	sv := &paych2.SignedVoucher{
 		ChannelAddr: ch,
 		Lane:        voucherLane,
 		Nonce:       nonce,
@@ -789,13 +789,13 @@ func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, non
 	return sv
 }
 
-func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych0.SignedVoucher {
-	sv := &paych0.SignedVoucher{
+func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych2.SignedVoucher {
+	sv := &paych2.SignedVoucher{
 		ChannelAddr: ch,
 		Lane:        voucherLane,
 		Nonce:       nonce,
 		Amount:      voucherAmount,
-		Extra: &paych0.ModVerifyParams{
+		Extra: &paych2.ModVerifyParams{
 			Actor: tutils.NewActorAddr(t, "act"),
 		},
 	}
@@ -813,13 +813,13 @@ type mockBestSpendableAPI struct {
 	mgr *Manager
 }
 
-func (m *mockBestSpendableAPI) PaychVoucherList(ctx context.Context, ch address.Address) ([]*paych0.SignedVoucher, error) {
+func (m *mockBestSpendableAPI) PaychVoucherList(ctx context.Context, ch address.Address) ([]*paych2.SignedVoucher, error) {
 	vi, err := m.mgr.ListVouchers(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]*paych0.SignedVoucher, len(vi))
+	out := make([]*paych2.SignedVoucher, len(vi))
 	for k, v := range vi {
 		out[k] = v.Voucher
 	}
@@ -827,7 +827,7 @@ func (m *mockBestSpendableAPI) PaychVoucherList(ctx context.Context, ch address.
 	return out, nil
 }
 
-func (m *mockBestSpendableAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, voucher *paych0.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (m *mockBestSpendableAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, voucher *paych2.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	return m.mgr.CheckVoucherSpendable(ctx, ch, voucher, secret, proof)
 }
 

@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -26,7 +26,7 @@ import (
 )
 
 func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt {
-	createChannelRet := init_.ExecReturn{
+	createChannelRet := init2.ExecReturn{
 		IDAddress:     ch,
 		RobustAddress: ch,
 	}
