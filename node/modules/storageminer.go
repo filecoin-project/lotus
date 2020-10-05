@@ -469,9 +469,9 @@ func BasicDealFilter(user dtypes.DealFilter) func(onlineOk dtypes.ConsiderOnline
 				return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
 			}
 
-			// Reject if it's more than 90 days in the future
+			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg
-			maxStartEpoch := ht + abi.ChainEpoch(90*builtin.EpochsInDay)
+			maxStartEpoch := ht + abi.ChainEpoch(7*builtin.EpochsInDay)
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}
