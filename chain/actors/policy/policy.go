@@ -97,3 +97,13 @@ func DealProviderCollateralBounds(
 		panic("unsupported network version")
 	}
 }
+
+// Sets the challenge window and scales the proving period to match (such that
+// there are always 48 challenge windows in a proving period).
+func SetWPoStChallengeWindow(period abi.ChainEpoch) {
+	miner0.WPoStChallengeWindow = period
+	miner0.WPoStProvingPeriod = period * abi.ChainEpoch(miner0.WPoStPeriodDeadlines)
+
+	miner2.WPoStChallengeWindow = period
+	miner2.WPoStProvingPeriod = period * abi.ChainEpoch(miner2.WPoStPeriodDeadlines)
+}
