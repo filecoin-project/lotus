@@ -28,6 +28,7 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		520,  // after upgrade deal
 		5000, // after
 	} {
+		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
 			testCCUpgrade(t, b, blocktime, height)
 		})
