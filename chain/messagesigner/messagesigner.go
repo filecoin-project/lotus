@@ -3,6 +3,7 @@ package messagesigner
 import (
 	"bytes"
 	"context"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -28,6 +29,7 @@ type mpoolAPI interface {
 // when signing a message
 type MessageSigner struct {
 	wallet *wallet.Wallet
+	lk     sync.Mutex
 	mpool  mpoolAPI
 	ds     datastore.Batching
 }
@@ -47,22 +49,39 @@ func newMessageSigner(wallet *wallet.Wallet, mpool mpoolAPI, ds dtypes.MetadataD
 
 // SignMessage increments the nonce for the message From address, and signs
 // the message
-func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb func(*types.SignedMessage) error) (*types.SignedMessage, error) {
+	ms.lk.Lock()
+	defer ms.lk.Unlock()
+
+	// Get the next message nonce
 	nonce, err := ms.nextNonce(msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create nonce: %w", err)
 	}
 
+	// Sign the message with the nonce
 	msg.Nonce = nonce
 	sig, err := ms.wallet.Sign(ctx, msg.From, msg.Cid().Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}
 
-	return &types.SignedMessage{
+	// Callback with the signed message
+	smsg := &types.SignedMessage{
 		Message:   *msg,
 		Signature: *sig,
-	}, nil
+	}
+	err = cb(smsg)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the callback executed successfully, write the nonce to the datastore
+	if err := ms.saveNonce(msg.From, nonce); err != nil {
+		return nil, xerrors.Errorf("failed to save nonce: %w", err)
+	}
+
+	return smsg, nil
 }
 
 // nextNonce increments the nonce.
@@ -78,7 +97,7 @@ func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
 	}
 
 	// Get the nonce for this address from the datastore
-	addrNonceKey := datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
+	addrNonceKey := ms.dstoreKey(addr)
 	dsNonceBytes, err := ms.ds.Get(addrNonceKey)
 
 	switch {
@@ -109,16 +128,24 @@ func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
 		}
 	}
 
-	// Write the nonce for this address to the datastore
+	return nonce, nil
+}
+
+// saveNonce writes the nonce for this address to the datastore
+func (ms *MessageSigner) saveNonce(addr address.Address, nonce uint64) error {
+	addrNonceKey := ms.dstoreKey(addr)
 	buf := bytes.Buffer{}
-	_, err = buf.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, nonce))
+	_, err := buf.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, nonce))
 	if err != nil {
-		return 0, xerrors.Errorf("failed to marshall nonce: %w", err)
+		return xerrors.Errorf("failed to marshall nonce: %w", err)
 	}
 	err = ms.ds.Put(addrNonceKey, buf.Bytes())
 	if err != nil {
-		return 0, xerrors.Errorf("failed to write nonce to datastore: %w", err)
+		return xerrors.Errorf("failed to write nonce to datastore: %w", err)
 	}
+	return nil
+}
 
-	return nonce, nil
+func (ms *MessageSigner) dstoreKey(addr address.Address) datastore.Key {
+	return datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
 }

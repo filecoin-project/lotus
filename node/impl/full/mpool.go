@@ -160,17 +160,13 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
 	}
 
-	smsg, err := a.MessageSigner.SignMessage(ctx, msg)
-	if err != nil {
-		return nil, xerrors.Errorf("mpool push: failed to sign message: %w", err)
-	}
-
-	_, err = a.Mpool.Push(smsg)
-	if err != nil {
-		return nil, xerrors.Errorf("mpool push: failed to push message: %w", err)
-	}
-
-	return smsg, err
+	// Sign and push the message
+	return a.MessageSigner.SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {
+		if _, err := a.Mpool.Push(smsg); err != nil {
+			return xerrors.Errorf("mpool push: failed to push message: %w", err)
+		}
+		return nil
+	})
 }
 
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {

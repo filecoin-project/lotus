@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/chain/wallet"
 
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -58,6 +60,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 		msg        *types.Message
 		mpoolNonce [1]uint64
 		expNonce   uint64
+		cbErr      error
 	}
 	tests := []struct {
 		name string
@@ -137,6 +140,37 @@ func TestMessageSignerSignMessage(t *testing.T) {
 			},
 			expNonce: 2,
 		}},
+	}, {
+		name: "recover from callback error",
+		msgs: []msgSpec{{
+			// No nonce yet in datastore
+			msg: &types.Message{
+				To:   to1,
+				From: from1,
+			},
+			expNonce: 0,
+		}, {
+			// Increment nonce
+			msg: &types.Message{
+				To:   to1,
+				From: from1,
+			},
+			expNonce: 1,
+		}, {
+			// Callback returns error
+			msg: &types.Message{
+				To:   to1,
+				From: from1,
+			},
+			cbErr: xerrors.Errorf("err"),
+		}, {
+			// Callback successful, should increment nonce in datastore
+			msg: &types.Message{
+				To:   to1,
+				From: from1,
+			},
+			expNonce: 2,
+		}},
 	}}
 	for _, tt := range tests {
 		tt := tt
@@ -149,9 +183,18 @@ func TestMessageSignerSignMessage(t *testing.T) {
 				if len(m.mpoolNonce) == 1 {
 					mpool.setNonce(m.msg.From, m.mpoolNonce[0])
 				}
-				smsg, err := ms.SignMessage(ctx, m.msg)
-				require.NoError(t, err)
-				require.Equal(t, m.expNonce, smsg.Message.Nonce)
+				merr := m.cbErr
+				smsg, err := ms.SignMessage(ctx, m.msg, func(message *types.SignedMessage) error {
+					return merr
+				})
+
+				if m.cbErr != nil {
+					require.Error(t, err)
+					require.Nil(t, smsg)
+				} else {
+					require.NoError(t, err)
+					require.Equal(t, m.expNonce, smsg.Message.Nonce)
+				}
 			}
 		})
 	}
