@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
@@ -32,6 +33,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -823,6 +825,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "json",
 			Usage: "generate json output",
 		},
+		&cli.StringFlag{
+			Name:  "compute-state-output",
+			Usage: "a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -862,9 +868,26 @@ var stateComputeStateCmd = &cli.Command{
 			}
 		}
 
-		stout, err := api.StateCompute(ctx, h, msgs, ts.Key())
-		if err != nil {
-			return err
+		var stout *lapi.ComputeStateOutput
+		if csofile := cctx.String("compute-state-output"); csofile != "" {
+			data, err := ioutil.ReadFile(csofile)
+			if err != nil {
+				return err
+			}
+
+			var o lapi.ComputeStateOutput
+			if err := json.Unmarshal(data, &o); err != nil {
+				return err
+			}
+
+			stout = &o
+		} else {
+			o, err := api.StateCompute(ctx, h, msgs, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			stout = o
 		}
 
 		if cctx.Bool("json") {
