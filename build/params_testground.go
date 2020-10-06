@@ -50,8 +50,7 @@ var (
 
 	SealRandomnessLookback = policy.SealRandomnessLookback
 
-	TicketRandomnessLookback     = abi.ChainEpoch(1)
-	WinningPoStSectorSetLookback = abi.ChainEpoch(10)
+	TicketRandomnessLookback = abi.ChainEpoch(1)
 
 	FilBase               uint64 = 2_000_000_000
 	FilAllocStorageMining uint64 = 1_400_000_000
