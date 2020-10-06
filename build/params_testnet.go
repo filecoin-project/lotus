@@ -25,9 +25,8 @@ const BreezeGasTampingDuration = 120
 const UpgradeSmokeHeight = 51000
 
 const UpgradeIgnitionHeight = 94000
-
-// TODO: Actual epoch needs to be filled in
-const UpgradeActorsV2Height = 128888
+const UpgradeRefuelHeight = 130800
+const UpgradeActorsV2Height = 138720
 
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
