@@ -494,7 +494,7 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 
 	epoch := ts.Height() - 1
 
-	info, err := store.Put(ctx, new(types.StateInfo))
+	info, err := store.Put(ctx, new(types.StateInfo0))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create new state info for actors v2: %w", err)
 	}
