@@ -167,7 +167,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 
 	// dummy state manager; only to reference the GetNetworkVersion method,
 	// which does not depend on state.
-	sm := new(stmgr.StateManager)
+	sm := stmgr.NewStateManager(nil)
 
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
