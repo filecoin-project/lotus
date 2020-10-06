@@ -56,8 +56,6 @@ const SealRandomnessLookback = policy.SealRandomnessLookback
 // Epochs
 const TicketRandomnessLookback = abi.ChainEpoch(1)
 
-const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
-
 // /////
 // Address
 

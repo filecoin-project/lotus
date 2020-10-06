@@ -106,3 +106,11 @@ func SetWPoStChallengeWindow(period abi.ChainEpoch) {
 	miner2.WPoStChallengeWindow = period
 	miner2.WPoStProvingPeriod = period * abi.ChainEpoch(miner2.WPoStPeriodDeadlines)
 }
+
+func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
+	if nwVer <= network.Version3 {
+		return 10
+	}
+
+	return ChainFinality
+}
