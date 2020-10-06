@@ -5,6 +5,7 @@
 package build
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
@@ -34,6 +35,9 @@ func init() {
 		abi.RegisteredSealProof_StackedDrg32GiBV1,
 		abi.RegisteredSealProof_StackedDrg64GiBV1,
 	)
+
+	SetAddressNetwork(address.Mainnet)
+
 	Devnet = false
 }
 
