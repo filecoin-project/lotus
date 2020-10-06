@@ -930,11 +930,18 @@ var chainExportCmd = &cli.Command{
 			return err
 		}
 
+		var last bool
 		for b := range stream {
+			last = len(b) == 0
+
 			_, err := fi.Write(b)
 			if err != nil {
 				return err
 			}
+		}
+
+		if !last {
+			return xerrors.Errorf("incomplete export (remote connection lost?)")
 		}
 
 		return nil
