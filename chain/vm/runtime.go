@@ -50,7 +50,7 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 }
 
 type Runtime struct {
-	Message
+	rt0.Message
 	rt0.Syscalls
 
 	ctx context.Context

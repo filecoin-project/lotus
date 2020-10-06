@@ -131,10 +131,15 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
 	}
 	vmm.From = resF
-	resT, _ := rt.ResolveAddress(msg.To)
-	// may be set to undef if recipient doesn't exist yet
-	vmm.To = resT
-	rt.Message = Message{msg: vmm}
+
+	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+		rt.Message = &vmm
+	} else {
+		resT, _ := rt.ResolveAddress(msg.To)
+		// may be set to undef if recipient doesn't exist yet
+		vmm.To = resT
+		rt.Message = &Message{msg: vmm}
+	}
 
 	return rt
 }
@@ -265,15 +270,19 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
-				nmsg := Message{
-					msg: types.Message{
-						To:    aid,
-						From:  rt.Message.Caller(),
-						Value: rt.Message.ValueReceived(),
-					},
-				}
+				if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+					// Leave the rt.Message as is
+				} else {
+					nmsg := Message{
+						msg: types.Message{
+							To:    aid,
+							From:  rt.Message.Caller(),
+							Value: rt.Message.ValueReceived(),
+						},
+					}
 
-				rt.Message = nmsg
+					rt.Message = &nmsg
+				}
 			} else {
 				return nil, aerrors.Escalate(err, "getting actor")
 			}
