@@ -165,6 +165,7 @@ func (w *Wallet) ListAddrs() ([]address.Address, error) {
 
 	sort.Strings(all)
 
+	seen := map[address.Address]struct{}{}
 	out := make([]address.Address, 0, len(all))
 	for _, a := range all {
 		if strings.HasPrefix(a, KNamePrefix) {
@@ -173,9 +174,18 @@ func (w *Wallet) ListAddrs() ([]address.Address, error) {
 			if err != nil {
 				return nil, xerrors.Errorf("converting name to address: %w", err)
 			}
+			if _, ok := seen[addr]; ok {
+				continue // got duplicate with a different prefix
+			}
+			seen[addr] = struct{}{}
+
 			out = append(out, addr)
 		}
 	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].String() < out[j].String()
+	})
 
 	return out, nil
 }
