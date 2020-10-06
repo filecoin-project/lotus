@@ -117,7 +117,7 @@ func (c *client) doRequest(
 		res, err := c.sendRequestToPeer(ctx, peer, req)
 		if err != nil {
 			if !xerrors.Is(err, network.ErrNoConn) {
-				log.Warnf("could not connect to peer %s: %s",
+				log.Warnf("could not send request to peer %s: %s",
 					peer.String(), err)
 			}
 			continue

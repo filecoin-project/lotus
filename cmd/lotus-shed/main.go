@@ -40,6 +40,7 @@ func main() {
 		serveDealStatsCmd,
 		syncCmd,
 		stateTreePruneCmd,
+		datastoreCmd,
 	}
 
 	app := &cli.App{
