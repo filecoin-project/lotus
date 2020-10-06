@@ -32,8 +32,8 @@
 [[groups]]
   id = "bootstrapper"
   [groups.resources]
-    memory = "4096Mi"
-    cpu = "1000m"
+    memory = "2048Mi"
+    cpu = "100m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -44,7 +44,7 @@
 [[groups]]
   id = "miners"
   [groups.resources]
-    memory = "12000Mi"
+    memory = "14000Mi"
     cpu = "1000m"
   [groups.instances]
     count = 2
@@ -57,13 +57,13 @@
 [[groups]]
   id = "clients"
   [groups.resources]
-    memory = "4096Mi"
-    cpu = "1000m"
+    memory = "2048Mi"
+    cpu = "100m"
   [groups.instances]
     count = 6
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]
       role = "client"
-      deals = "20"
+      deals = "5"
       deal_mode = "concurrent"

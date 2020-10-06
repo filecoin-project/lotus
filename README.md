@@ -224,6 +224,7 @@ Additional to the Filecoin FFI Git submodules, we are also bundling `proof param
 * `v6` => locking in Filecoin FFI commit 40569104603407c999d6c9e4c3f1228cbd4d0e5c.
 * `v7` => add Filecoin-BLST repo to buildbase.
 * `v8` => locking in Filecoin FFI commit f640612a1a1f7a2d.
+* `v9` => locking in Filecoin FFI commit 57e38efe4943f09d3127dcf6f0edd614e6acf68e and Filecoin-BLST commit 8609119cf4595d1741139c24378fcd8bc4f1c475.
 
 
 ### oni-runtime
@@ -238,6 +239,7 @@ Additional to the Filecoin FFI Git submodules, we are also bundling `proof param
 * `v2` => locking in Lotus commit e21ea53
 * `v3` => locking in Lotus commit d557c40
 * `v4` => bump proof parameters from v27 to v28
+* `v5` => locking in Lotus commit 1a170e18a
 
 
 ## Team

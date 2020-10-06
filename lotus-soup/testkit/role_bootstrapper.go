@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -99,6 +100,7 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 		Timestamp:        uint64(time.Now().Unix()) - uint64(t.IntParam("genesis_timestamp_offset")),
 		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
+		NetworkName:      "testground-local-" + uuid.New().String(),
 	}
 
 	// dump the genesis block

@@ -327,7 +327,6 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	// add local storage for presealed sectors
 	err = n.MinerApi.StorageAddLocal(ctx, presealDir)
 	if err != nil {
-		n.StopFn(context.TODO())
 		return nil, err
 	}
 
@@ -347,7 +346,6 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 
 	_, err = n.FullApi.MpoolPushMessage(ctx, changeMinerID, nil)
 	if err != nil {
-		n.StopFn(context.TODO())
 		return nil, err
 	}
 

@@ -11,12 +11,12 @@ build-images:
 	docker build -t "iptestground/oni-runtime:v4-debug" -f "docker-images/Dockerfile.oni-runtime-debug" "docker-images"
 
 push-images:
-	docker push iptestground/oni-buildbase:v8
+	docker push iptestground/oni-buildbase:v9
 	docker push iptestground/oni-runtime:v3
 	docker push iptestground/oni-runtime:v4-debug
 
 pull-images:
-	docker pull iptestground/oni-buildbase:v8
+	docker pull iptestground/oni-buildbase:v9
 	docker pull iptestground/oni-runtime:v3
 	docker pull iptestground/oni-runtime:v4-debug
 
