@@ -72,14 +72,19 @@ const FilBase = uint64(2_000_000_000)
 const FilAllocStorageMining = uint64(1_100_000_000)
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
+const FilReserved = uint64(300_000_000)
 
 var InitialRewardBalance *big.Int
+var InitialFilReserved *big.Int
 
 // TODO: Move other important consts here
 
 func init() {
 	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
+
+	InitialFilReserved = big.NewInt(int64(FilReserved))
+	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
 
 	if os.Getenv("LOTUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
 		SetAddressNetwork(address.Mainnet)
