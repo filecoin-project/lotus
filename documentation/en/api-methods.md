@@ -1611,7 +1611,7 @@ Response:
     "Data": "Ynl0ZSBhcnJheQ=="
   },
   "BeaconEntries": null,
-  "HasMinPower": true
+  "EligibleForMining": true
 }
 ```
 
@@ -3531,7 +3531,8 @@ Response:
   "Multiaddrs": null,
   "SealProofType": 3,
   "SectorSize": 34359738368,
-  "WindowPoStPartitionSectors": 42
+  "WindowPoStPartitionSectors": 42,
+  "ConsensusFaultElapsed": 10101
 }
 ```
 
