@@ -144,7 +144,11 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 			//log.Desugar().WithOptions(zap.AddStacktrace(zapcore.ErrorLevel)).
 			//Sugar().Errorf("spec actors failure: %s", r)
 			log.Errorf("spec actors failure: %s", r)
-			aerr = aerrors.Newf(1, "spec actors failure: %s", r)
+			if rt.NetworkVersion() <= network.Version3 {
+				aerr = aerrors.Newf(1, "spec actors failure: %s", r)
+			} else {
+				aerr = aerrors.Newf(exitcode.SysErrReserved1, "spec actors failure: %s", r)
+			}
 		}
 	}()
 
