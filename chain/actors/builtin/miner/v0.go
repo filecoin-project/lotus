@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -59,6 +61,10 @@ func (s *state0) LockedFunds() (LockedFunds, error) {
 		InitialPledgeRequirement: s.State.InitialPledgeRequirement,
 		PreCommitDeposits:        s.State.PreCommitDeposits,
 	}, nil
+}
+
+func (s *state0) FeeDebt() (abi.TokenAmount, error) {
+	return big.Zero(), nil
 }
 
 func (s *state0) InitialPledge() (abi.TokenAmount, error) {
@@ -287,6 +293,7 @@ func (s *state0) Info() (MinerInfo, error) {
 		SealProofType:              info.SealProofType,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
+		ConsensusFaultElapsed:      -1,
 	}
 
 	if info.PendingWorkerKey != nil {

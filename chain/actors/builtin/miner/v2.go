@@ -61,6 +61,10 @@ func (s *state2) LockedFunds() (LockedFunds, error) {
 	}, nil
 }
 
+func (s *state2) FeeDebt() (abi.TokenAmount, error) {
+	return s.State.FeeDebt, nil
+}
+
 func (s *state2) InitialPledge() (abi.TokenAmount, error) {
 	return s.State.InitialPledge, nil
 }
@@ -288,6 +292,7 @@ func (s *state2) Info() (MinerInfo, error) {
 		SealProofType:              info.SealProofType,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
+		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
 	}
 
 	if info.PendingWorkerKey != nil {
