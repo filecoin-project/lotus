@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"github.com/filecoin-project/lotus/chain/store"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"math"
 
 	"github.com/filecoin-project/go-address"
@@ -490,7 +493,8 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 }
 
 func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
-	store := sm.cs.Store(ctx)
+	buf := bufbstore.NewTieredBstore(sm.cs.Blockstore(), bstore.NewTemporarySync())
+	store := store.ActorStore(ctx, buf)
 
 	epoch := ts.Height() - 1
 
@@ -536,6 +540,15 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
 	} else if _, err := newSm.GetActor(builtin0.InitActorAddr); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %w", err)
+	}
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
+		   return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
+		}
 	}
 
 	return newRoot, nil
