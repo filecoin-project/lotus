@@ -233,7 +233,12 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 			if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
 				continue
 			}
-			out = append(out, link)
+			// ignore things we don't have, the state tree is incomplete.
+			if has, err := bs.Has(link.Cid); err != nil {
+				return nil, err
+			} else if has {
+				out = append(out, link)
+			}
 		}
 		return out, nil
 	}
