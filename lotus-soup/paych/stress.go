@@ -181,7 +181,7 @@ func runSender(ctx context.Context, t *testkit.TestEnvironment, clients []*testk
 			}
 			t.RecordMessage("payment voucher created; lane=%d, nonce=%d, amount=%d", voucher.Voucher.Lane, voucher.Voucher.Nonce, voucher.Voucher.Amount)
 
-			_, err = t.SyncClient.Publish(ctx, VoucherTopic, voucher)
+			_, err = t.SyncClient.Publish(ctx, VoucherTopic, voucher.Voucher)
 			if err != nil {
 				return fmt.Errorf("failed to publish voucher: %w", err)
 			}
