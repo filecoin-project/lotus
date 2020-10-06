@@ -27,8 +27,30 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+type Message struct {
+	msg types.Message
+}
+
+func (m *Message) Caller() address.Address {
+	if m.msg.From.Protocol() != address.ID {
+		panic("runtime message has a non-ID caller")
+	}
+	return m.msg.From
+}
+
+func (m *Message) Receiver() address.Address {
+	if m.msg.To != address.Undef && m.msg.To.Protocol() != address.ID {
+		panic("runtime message has a non-ID receiver")
+	}
+	return m.msg.To
+}
+
+func (m *Message) ValueReceived() abi.TokenAmount {
+	return m.msg.Value
+}
+
 type Runtime struct {
-	types.Message
+	rt0.Message
 	rt0.Syscalls
 
 	ctx context.Context

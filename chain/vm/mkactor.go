@@ -31,41 +31,41 @@ func init() {
 var EmptyObjectCid cid.Cid
 
 // TryCreateAccountActor creates account actors from only BLS/SECP256K1 addresses.
-func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aerrors.ActorError) {
+func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, address.Address, aerrors.ActorError) {
 	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
-		return nil, err
+		return nil, address.Undef, err
 	}
 
 	addrID, err := rt.state.RegisterNewAddress(addr)
 	if err != nil {
-		return nil, aerrors.Escalate(err, "registering actor address")
+		return nil, address.Undef, aerrors.Escalate(err, "registering actor address")
 	}
 
 	act, aerr := makeActor(actors.VersionForNetwork(rt.NetworkVersion()), addr)
 	if aerr != nil {
-		return nil, aerr
+		return nil, address.Undef, aerr
 	}
 
 	if err := rt.state.SetActor(addrID, act); err != nil {
-		return nil, aerrors.Escalate(err, "creating new actor failed")
+		return nil, address.Undef, aerrors.Escalate(err, "creating new actor failed")
 	}
 
 	p, err := actors.SerializeParams(&addr)
 	if err != nil {
-		return nil, aerrors.Escalate(err, "couldn't serialize params for actor construction")
+		return nil, address.Undef, aerrors.Escalate(err, "couldn't serialize params for actor construction")
 	}
 	// call constructor on account
 
 	_, aerr = rt.internalSend(builtin0.SystemActorAddr, addrID, builtin0.MethodsAccount.Constructor, big.Zero(), p)
 	if aerr != nil {
-		return nil, aerrors.Wrap(aerr, "failed to invoke account constructor")
+		return nil, address.Undef, aerrors.Wrap(aerr, "failed to invoke account constructor")
 	}
 
 	act, err = rt.state.GetActor(addrID)
 	if err != nil {
-		return nil, aerrors.Escalate(err, "loading newly created actor failed")
+		return nil, address.Undef, aerrors.Escalate(err, "loading newly created actor failed")
 	}
-	return act, nil
+	return act, addrID, nil
 }
 
 func makeActor(ver actors.Version, addr address.Address) (*types.Actor, aerrors.ActorError) {
