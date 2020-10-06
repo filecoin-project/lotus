@@ -9,6 +9,10 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/go-state-types/network"
+
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -490,7 +494,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, nil
 	}
 
-	mpow, tpow, hmp, err := GetPowerRaw(ctx, sm, lbst, maddr)
+	mpow, tpow, _, err := GetPowerRaw(ctx, sm, lbst, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %w", err)
 	}
@@ -505,15 +509,21 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}
 
+	// TODO: Not ideal performance...This method reloads miner and power state (already looked up here and in GetPowerRaw)
+	eligible, err := MinerEligibleToMine(ctx, sm, maddr, ts, lbts)
+	if err != nil {
+		return nil, xerrors.Errorf("determining miner eligibility: %w", err)
+	}
+
 	return &api.MiningBaseInfo{
-		MinerPower:      mpow.QualityAdjPower,
-		NetworkPower:    tpow.QualityAdjPower,
-		Sectors:         sectors,
-		WorkerKey:       worker,
-		SectorSize:      info.SectorSize,
-		PrevBeaconEntry: *prev,
-		BeaconEntries:   entries,
-		HasMinPower:     hmp,
+		MinerPower:        mpow.QualityAdjPower,
+		NetworkPower:      tpow.QualityAdjPower,
+		Sectors:           sectors,
+		WorkerKey:         worker,
+		SectorSize:        info.SectorSize,
+		PrevBeaconEntry:   *prev,
+		BeaconEntries:     entries,
+		EligibleForMining: eligible,
 	}, nil
 }
 
@@ -595,7 +605,7 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
 
-func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
+func minerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
 	pact, err := sm.LoadActor(ctx, power.Address, ts)
 	if err != nil {
 		return false, xerrors.Errorf("loading power actor state: %w", err)
@@ -607,6 +617,70 @@ func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Addres
 	}
 
 	return ps.MinerNominalPowerMeetsConsensusMinimum(addr)
+}
+
+func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Address, baseTs *types.TipSet, lookbackTs *types.TipSet) (bool, error) {
+	hmp, err := minerHasMinPower(ctx, sm, addr, lookbackTs)
+
+	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
+	if sm.GetNtwkVersion(ctx, baseTs.Height()) <= network.Version3 {
+		return hmp, err
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	if !hmp {
+		return false, nil
+	}
+
+	// Post actors v2, also check MinerEligibleForElection with base ts
+
+	pact, err := sm.LoadActor(ctx, power.Address, baseTs)
+	if err != nil {
+		return false, xerrors.Errorf("loading power actor state: %w", err)
+	}
+
+	pstate, err := power.Load(sm.cs.Store(ctx), pact)
+	if err != nil {
+		return false, err
+	}
+
+	mact, err := sm.LoadActor(ctx, addr, baseTs)
+	if err != nil {
+		return false, xerrors.Errorf("loading miner actor state: %w", err)
+	}
+
+	mstate, err := miner.Load(sm.cs.Store(ctx), mact)
+	if err != nil {
+		return false, err
+	}
+
+	// Non-empty power claim.
+	if claim, found, err := pstate.MinerPower(addr); err != nil {
+		return false, err
+	} else if !found {
+		return false, err
+	} else if claim.QualityAdjPower.LessThanEqual(big.Zero()) {
+		return false, err
+	}
+
+	// No fee debt.
+	if debt, err := mstate.FeeDebt(); err != nil {
+		return false, err
+	} else if !debt.IsZero() {
+		return false, err
+	}
+
+	// No active consensus faults.
+	if mInfo, err := mstate.Info(); err != nil {
+		return false, err
+	} else if baseTs.Height() <= mInfo.ConsensusFaultElapsed {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {

@@ -827,13 +827,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 			return xerrors.Errorf("block is not claiming to be a winner")
 		}
 
-		hp, err := stmgr.MinerHasMinPower(ctx, syncer.sm, h.Miner, lbts)
+		eligible, err := stmgr.MinerEligibleToMine(ctx, syncer.sm, h.Miner, baseTs, lbts)
 		if err != nil {
 			return xerrors.Errorf("determining if miner has min power failed: %w", err)
 		}
 
-		if !hp {
-			return xerrors.New("block's miner does not meet minimum power threshold")
+		if !eligible {
+			return xerrors.New("block's miner is ineligible to mine")
 		}
 
 		rBeacon := *prevBeacon

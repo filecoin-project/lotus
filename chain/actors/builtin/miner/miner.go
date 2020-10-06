@@ -58,6 +58,7 @@ type State interface {
 	VestedFunds(abi.ChainEpoch) (abi.TokenAmount, error)
 	// Funds locked for various reasons.
 	LockedFunds() (LockedFunds, error)
+	FeeDebt() (abi.TokenAmount, error)
 
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
@@ -144,6 +145,7 @@ type MinerInfo struct {
 	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
+	ConsensusFaultElapsed      abi.ChainEpoch
 }
 
 type SectorExpiration struct {
