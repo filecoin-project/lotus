@@ -1279,9 +1279,12 @@ func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
 	}
 
-	filReserveDisbursed, err := GetFilReserveDisbursed(ctx, st)
-	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)
+	filReserveDisbursed := big.Zero()
+	if height > build.UpgradeActorsV2Height {
+		filReserveDisbursed, err = GetFilReserveDisbursed(ctx, st)
+		if err != nil {
+			return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)
+		}
 	}
 
 	filMined, err := GetFilMined(ctx, st)
