@@ -81,7 +81,7 @@ func (w *Wallet) findKey(addr address.Address) (*Key, error) {
 		return nil, nil
 	}
 
-	ki, err := w.keystore.Get(KNamePrefix + addr.String())
+	ki, err := w.tryFind(addr)
 	if err != nil {
 		if xerrors.Is(err, types.ErrKeyInfoNotFound) {
 			return nil, nil
@@ -94,6 +94,42 @@ func (w *Wallet) findKey(addr address.Address) (*Key, error) {
 	}
 	w.keys[k.Address] = k
 	return k, nil
+}
+
+func (w *Wallet) tryFind(addr address.Address) (types.KeyInfo, error) {
+
+	ki, err := w.keystore.Get(KNamePrefix + addr.String())
+	if err == nil {
+		return ki, err
+	}
+
+	if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+		return types.KeyInfo{}, err
+	}
+
+	// We got an ErrKeyInfoNotFound error
+	// Try again, this time with the testnet prefix
+
+	aChars := []rune(addr.String())
+	prefixRunes := []rune(address.TestnetPrefix)
+	if len(prefixRunes) != 1 {
+		return types.KeyInfo{}, xerrors.Errorf("unexpected prefix length: %d", len(prefixRunes))
+	}
+
+	aChars[0] = prefixRunes[0]
+	ki, err = w.keystore.Get(KNamePrefix + string(aChars))
+	if err != nil {
+		return types.KeyInfo{}, err
+	}
+
+	// We found it with the testnet prefix
+	// Add this KeyInfo with the mainnet prefix address string
+	err = w.keystore.Put(KNamePrefix+addr.String(), ki)
+	if err != nil {
+		return types.KeyInfo{}, err
+	}
+
+	return ki, nil
 }
 
 func (w *Wallet) Export(addr address.Address) (*types.KeyInfo, error) {
