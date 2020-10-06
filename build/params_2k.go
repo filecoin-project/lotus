@@ -14,6 +14,7 @@ const BreezeGasTampingDuration = 0
 const UpgradeSmokeHeight = -1
 const UpgradeIgnitionHeight = -2
 const UpgradeLiftoffHeight = -3
+const UpgradeActorsV2Height = 10
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,

@@ -17,19 +17,12 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/rt"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
-	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -534,40 +527,21 @@ type MethodMeta struct {
 var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 
 func init() {
-	cidToMethods := map[cid.Cid][2]interface{}{
-		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
-		builtin0.InitActorCodeID:             {builtin0.MethodsInit, init0.Actor{}},
-		builtin0.CronActorCodeID:             {builtin0.MethodsCron, cron0.Actor{}},
-		builtin0.AccountActorCodeID:          {builtin0.MethodsAccount, account0.Actor{}},
-		builtin0.StoragePowerActorCodeID:     {builtin0.MethodsPower, power0.Actor{}},
-		builtin0.StorageMinerActorCodeID:     {builtin0.MethodsMiner, miner0.Actor{}},
-		builtin0.StorageMarketActorCodeID:    {builtin0.MethodsMarket, market0.Actor{}},
-		builtin0.PaymentChannelActorCodeID:   {builtin0.MethodsPaych, paych0.Actor{}},
-		builtin0.MultisigActorCodeID:         {builtin0.MethodsMultisig, msig0.Actor{}},
-		builtin0.RewardActorCodeID:           {builtin0.MethodsReward, reward0.Actor{}},
-		builtin0.VerifiedRegistryActorCodeID: {builtin0.MethodsVerifiedRegistry, verifreg0.Actor{}},
-	}
+	// TODO: combine with the runtime actor registry.
+	var actors []rt.VMActor
+	actors = append(actors, exported0.BuiltinActors()...)
+	actors = append(actors, exported2.BuiltinActors()...)
 
-	for c, m := range cidToMethods {
-		exports := m[1].(vm.Invokee).Exports()
+	for _, actor := range actors {
+		exports := actor.Exports()
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
 		// Explicitly add send, it's special.
+		// Note that builtin2.MethodSend = builtin0.MethodSend = 0.
 		methods[builtin0.MethodSend] = MethodMeta{
 			Name:   "Send",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
 			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
-		}
-
-		// Learn method names from the builtin.Methods* structs.
-		rv := reflect.ValueOf(m[0])
-		rt := rv.Type()
-		nf := rt.NumField()
-		methodToName := make([]string, len(exports))
-		for i := 0; i < nf; i++ {
-			name := rt.Field(i).Name
-			number := rv.Field(i).Interface().(abi.MethodNum)
-			methodToName[number] = name
 		}
 
 		// Iterate over exported methods. Some of these _may_ be nil and
@@ -580,22 +554,19 @@ func init() {
 			ev := reflect.ValueOf(export)
 			et := ev.Type()
 
-			// Make sure the method name is correct.
-			// This is just a nice sanity check.
+			// Extract the method names using reflection. These
+			// method names always match the field names in the
+			// `builtin.Method*` structs (tested in the specs-actors
+			// tests).
 			fnName := runtime.FuncForPC(ev.Pointer()).Name()
 			fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
-			mName := methodToName[number]
-			if mName != fnName {
-				panic(fmt.Sprintf(
-					"actor method name is %s but exported method name is %s",
-					fnName, mName,
-				))
-			}
 
 			switch abi.MethodNum(number) {
 			case builtin0.MethodSend:
+				// Note that builtin2.MethodSend = builtin0.MethodSend = 0.
 				panic("method 0 is reserved for Send")
 			case builtin0.MethodConstructor:
+				// Note that builtin2.MethodConstructor = builtin0.MethodConstructor = 1.
 				if fnName != "Constructor" {
 					panic("method 1 is reserved for Constructor")
 				}
@@ -607,7 +578,7 @@ func init() {
 				Ret:    et.Out(0),
 			}
 		}
-		MethodsMap[c] = methods
+		MethodsMap[actor.Code()] = methods
 	}
 }
 

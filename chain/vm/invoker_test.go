@@ -77,7 +77,7 @@ func (basicContract) InvokeSomething10(rt runtime.Runtime, params *basicParams) 
 }
 
 func TestInvokerBasic(t *testing.T) {
-	inv := Invoker{}
+	inv := ActorRegistry{}
 	code, err := inv.transform(basicContract{})
 	assert.NoError(t, err)
 

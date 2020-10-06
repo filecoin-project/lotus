@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"reflect"
 
-	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 )
 
 func main() {
@@ -17,6 +16,7 @@ func main() {
 		panic(err) // note: must run in lotuspond/front/src/chain
 	}
 
+	// TODO: ActorUpgrade: this is going to be a problem.
 	names := map[string]string{
 		"system":   "fil/1/system",
 		"init":     "fil/1/init",
@@ -42,33 +42,25 @@ func main() {
 		}
 	}
 
-	methods := map[cid.Cid]interface{}{
-		// builtin.SystemActorCodeID:        builtin.MethodsSystem - apparently it doesn't have methods
-		builtin.InitActorCodeID:             builtin.MethodsInit,
-		builtin.CronActorCodeID:             builtin.MethodsCron,
-		builtin.AccountActorCodeID:          builtin.MethodsAccount,
-		builtin.StoragePowerActorCodeID:     builtin.MethodsPower,
-		builtin.StorageMinerActorCodeID:     builtin.MethodsMiner,
-		builtin.StorageMarketActorCodeID:    builtin.MethodsMarket,
-		builtin.PaymentChannelActorCodeID:   builtin.MethodsPaych,
-		builtin.MultisigActorCodeID:         builtin.MethodsMultisig,
-		builtin.RewardActorCodeID:           builtin.MethodsReward,
-		builtin.VerifiedRegistryActorCodeID: builtin.MethodsVerifiedRegistry,
-	}
-
 	out := map[string][]string{}
-	for c, methods := range methods {
+
+	for c, methods := range stmgr.MethodsMap {
 		cmh, err := multihash.Decode(c.Hash())
 		if err != nil {
 			panic(err)
 		}
 
-		rt := reflect.TypeOf(methods)
-		nf := rt.NumField()
+		name := string(cmh.Digest)
+		remaining := len(methods)
 
-		out[string(cmh.Digest)] = append(out[string(cmh.Digest)], "Send")
-		for i := 0; i < nf; i++ {
-			out[string(cmh.Digest)] = append(out[string(cmh.Digest)], rt.Field(i).Name)
+		// iterate over actor methods in order.
+		for i := abi.MethodNum(0); remaining > 0; i++ {
+			m, ok := methods[i]
+			if !ok {
+				continue
+			}
+			out[name] = append(out[name], m.Name)
+			remaining--
 		}
 	}
 

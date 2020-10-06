@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"golang.org/x/xerrors"
 
@@ -60,7 +59,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 		return nil, 0, nil
 	}
 
-	ticketEpoch := epoch - SealRandomnessLookback
+	ticketEpoch := epoch - policy.SealRandomnessLookback
 	buf := new(bytes.Buffer)
 	if err := m.maddr.MarshalCBOR(buf); err != nil {
 		return nil, 0, err
@@ -189,13 +188,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
 	}
 
-	var msd abi.ChainEpoch
-	if nv < build.ActorUpgradeNetworkVersion {
-		msd = miner0.MaxSealDuration[sector.SectorType]
-	} else {
-		// TODO: ActorUpgrade(use MaxProveCommitDuration)
-		msd = 0
-	}
+	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
 
 	if minExpiration := height + msd + miner.MinSectorExpiration + 10; expiration < minExpiration {
 		expiration = minExpiration

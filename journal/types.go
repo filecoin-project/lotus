@@ -22,7 +22,7 @@ var (
 // DisabledEvents is the set of event types whose journaling is suppressed.
 type DisabledEvents []EventType
 
-// ParseDisabledEvents parses a string of the form: "system1:event1,system2:event2[,...]"
+// ParseDisabledEvents parses a string of the form: "system1:event1,system1:event2[,...]"
 // into a DisabledEvents object, returning an error if the string failed to parse.
 //
 // It sanitizes strings via strings.TrimSpace.

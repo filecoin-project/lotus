@@ -6,10 +6,12 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -39,7 +41,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 		return nil, aerrors.Escalate(err, "registering actor address")
 	}
 
-	act, aerr := makeActor(addr)
+	act, aerr := makeActor(actors.VersionForNetwork(rt.NetworkVersion()), addr)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -54,7 +56,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 	}
 	// call constructor on account
 
-	_, aerr = rt.internalSend(builtin.SystemActorAddr, addrID, builtin.MethodsAccount.Constructor, big.Zero(), p)
+	_, aerr = rt.internalSend(builtin0.SystemActorAddr, addrID, builtin0.MethodsAccount.Constructor, big.Zero(), p)
 	if aerr != nil {
 		return nil, aerrors.Wrap(aerr, "failed to invoke account constructor")
 	}
@@ -66,12 +68,10 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 	return act, nil
 }
 
-func makeActor(addr address.Address) (*types.Actor, aerrors.ActorError) {
+func makeActor(ver actors.Version, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	switch addr.Protocol() {
-	case address.BLS:
-		return NewBLSAccountActor(), nil
-	case address.SECP256K1:
-		return NewSecp256k1AccountActor(), nil
+	case address.BLS, address.SECP256K1:
+		return newAccountActor(ver), nil
 	case address.ID:
 		return nil, aerrors.Newf(exitcode.SysErrInvalidReceiver, "no actor with given ID: %s", addr)
 	case address.Actor:
@@ -81,19 +81,19 @@ func makeActor(addr address.Address) (*types.Actor, aerrors.ActorError) {
 	}
 }
 
-func NewBLSAccountActor() *types.Actor {
-	nact := &types.Actor{
-		Code:    builtin.AccountActorCodeID,
-		Balance: types.NewInt(0),
-		Head:    EmptyObjectCid,
+func newAccountActor(ver actors.Version) *types.Actor {
+	// TODO: ActorsUpgrade use a global actor registry?
+	var code cid.Cid
+	switch ver {
+	case actors.Version0:
+		code = builtin0.AccountActorCodeID
+	case actors.Version2:
+		code = builtin2.AccountActorCodeID
+	default:
+		panic("unsupported actors version")
 	}
-
-	return nact
-}
-
-func NewSecp256k1AccountActor() *types.Actor {
 	nact := &types.Actor{
-		Code:    builtin.AccountActorCodeID,
+		Code:    code,
 		Balance: types.NewInt(0),
 		Head:    EmptyObjectCid,
 	}

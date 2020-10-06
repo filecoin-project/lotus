@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
@@ -18,14 +17,26 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight abi.ChainEpoch) (*api.InvocResult, error) {
-	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
+func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
+
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	bstate := ts.ParentState()
+	bheight := ts.Height()
+
+	bstate, err := sm.handleStateForks(ctx, bstate, bheight-1, nil, ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to handle fork: %w", err)
+	}
 
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
 		Epoch:          bheight,
-		Rand:           r,
+		Rand:           store.NewChainRand(sm.cs, ts.Cids()),
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetCirculatingSupply,
@@ -89,18 +100,6 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 
 }
 
-func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
-	if ts == nil {
-		ts = sm.cs.GetHeaviestTipSet()
-	}
-
-	state := ts.ParentState()
-
-	r := store.NewChainRand(sm.cs, ts.Cids())
-
-	return sm.CallRaw(ctx, msg, state, r, ts.Height())
-}
-
 func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallWithGas")
 	defer span.End()
@@ -112,6 +111,11 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	state, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state: %w", err)
+	}
+
+	state, err = sm.handleStateForks(ctx, state, ts.Height(), nil, ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids())

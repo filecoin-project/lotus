@@ -1,7 +1,6 @@
 package paychmgr
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -85,6 +82,15 @@ func newChannelAccessor(pm *Manager, from address.Address, to address.Address) *
 	}
 }
 
+func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Address) (paych.MessageBuilder, error) {
+	nwVersion, err := ca.api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	return paych.Message(actors.VersionForNetwork(nwVersion), from), nil
+}
+
 func (ca *channelAccessor) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
@@ -103,7 +109,7 @@ func (ca *channelAccessor) outboundActiveByFromTo(from, to address.Address) (*Ch
 // nonce, signing the voucher and storing it in the local datastore.
 // If there are not enough funds in the channel to create the voucher, returns
 // the shortfall in funds.
-func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher paych0.SignedVoucher) (*api.VoucherCreateResult, error) {
+func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*api.VoucherCreateResult, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -133,7 +139,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 	sv.Signature = sig
 
 	// Store the voucher
-	if _, err := ca.addVoucherUnlocked(ctx, ch, sv, nil, types.NewInt(0)); err != nil {
+	if _, err := ca.addVoucherUnlocked(ctx, ch, sv, types.NewInt(0)); err != nil {
 		// If there are not enough funds in the channel to cover the voucher,
 		// return a voucher create result with the shortfall
 		var ife insufficientFundsErr
@@ -162,14 +168,14 @@ func (ca *channelAccessor) nextNonceForLane(ci *ChannelInfo, lane uint64) uint64
 	return maxnonce + 1
 }
 
-func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]paych.LaneState, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	return ca.checkVoucherValidUnlocked(ctx, ch, sv)
 }
 
-func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]paych.LaneState, error) {
 	if sv.ChannelAddr != ch {
 		return nil, xerrors.Errorf("voucher ChannelAddr doesn't match channel address, got %s, expected %s", sv.ChannelAddr, ch)
 	}
@@ -265,7 +271,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	return laneStates, nil
 }
 
-func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (bool, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -288,37 +294,17 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, nil
 	}
 
-	// If proof is needed and wasn't supplied as a parameter, get it from the
-	// datastore
-	if sv.Extra != nil && proof == nil {
-		vi, err := ci.infoForVoucher(sv)
-		if err != nil {
-			return false, err
-		}
-
-		if vi.Proof != nil {
-			log.Info("CheckVoucherSpendable: using stored proof")
-			proof = vi.Proof
-		} else {
-			log.Warn("CheckVoucherSpendable: nil proof for voucher with validation")
-		}
-	}
-
-	enc, err := actors.SerializeParams(&paych0.UpdateChannelStateParams{
-		Sv:     *sv,
-		Secret: secret,
-		Proof:  proof,
-	})
+	mb, err := ca.messageBuilder(ctx, recipient)
 	if err != nil {
 		return false, err
 	}
 
-	ret, err := ca.api.Call(ctx, &types.Message{
-		From:   recipient,
-		To:     ch,
-		Method: builtin.MethodsPaych.UpdateChannelState,
-		Params: enc,
-	}, nil)
+	mes, err := mb.Update(ch, sv, secret)
+	if err != nil {
+		return false, err
+	}
+
+	ret, err := ca.api.Call(ctx, mes, nil)
 	if err != nil {
 		return false, err
 	}
@@ -339,44 +325,31 @@ func (ca *channelAccessor) getPaychRecipient(ctx context.Context, ch address.Add
 	return state.To()
 }
 
-func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (ca *channelAccessor) addVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, minDelta types.BigInt) (types.BigInt, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
-	return ca.addVoucherUnlocked(ctx, ch, sv, proof, minDelta)
+	return ca.addVoucherUnlocked(ctx, ch, sv, minDelta)
 }
 
-func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, minDelta types.BigInt) (types.BigInt, error) {
 	ci, err := ca.store.ByAddress(ch)
 	if err != nil {
 		return types.BigInt{}, err
 	}
 
 	// Check if the voucher has already been added
-	for i, v := range ci.Vouchers {
+	for _, v := range ci.Vouchers {
 		eq, err := cborutil.Equals(sv, v.Voucher)
 		if err != nil {
 			return types.BigInt{}, err
 		}
-		if !eq {
-			continue
+		if eq {
+			// Ignore the duplicate voucher.
+			log.Warnf("AddVoucher: voucher re-added")
+			return types.NewInt(0), nil
 		}
 
-		// This is a duplicate voucher.
-		// Update the proof on the existing voucher
-		if len(proof) > 0 && !bytes.Equal(v.Proof, proof) {
-			log.Warnf("AddVoucher: adding proof to stored voucher")
-			ci.Vouchers[i] = &VoucherInfo{
-				Voucher: v.Voucher,
-				Proof:   proof,
-			}
-
-			return types.NewInt(0), ca.store.putChannelInfo(ci)
-		}
-
-		// Otherwise just ignore the duplicate voucher
-		log.Warnf("AddVoucher: voucher re-added with matching proof")
-		return types.NewInt(0), nil
 	}
 
 	// Check voucher validity
@@ -403,7 +376,6 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 
 	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
 		Voucher: sv,
-		Proof:   proof,
 	})
 
 	if ci.NextLane <= sv.Lane {
@@ -413,28 +385,13 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 	return delta, ca.store.putChannelInfo(ci)
 }
 
-func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *paych0.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte) (cid.Cid, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	ci, err := ca.store.ByAddress(ch)
 	if err != nil {
 		return cid.Undef, err
-	}
-
-	// If voucher needs proof, and none was supplied, check datastore for proof
-	if sv.Extra != nil && proof == nil {
-		vi, err := ci.infoForVoucher(sv)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		if vi.Proof != nil {
-			log.Info("SubmitVoucher: using stored proof")
-			proof = vi.Proof
-		} else {
-			log.Warn("SubmitVoucher: nil proof for voucher with validation")
-		}
 	}
 
 	has, err := ci.hasVoucher(sv)
@@ -454,21 +411,14 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		}
 	}
 
-	enc, err := actors.SerializeParams(&paych0.UpdateChannelStateParams{
-		Sv:     *sv,
-		Secret: secret,
-		Proof:  proof,
-	})
+	mb, err := ca.messageBuilder(ctx, ci.Control)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	msg := &types.Message{
-		From:   ci.Control,
-		To:     ch,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.UpdateChannelState,
-		Params: enc,
+	msg, err := mb.Update(ch, sv, secret)
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
@@ -481,7 +431,6 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		// Add the voucher to the channel
 		ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
 			Voucher: sv,
-			Proof:   proof,
 		})
 	}
 
@@ -568,7 +517,7 @@ func (ca *channelAccessor) laneState(state paych.State, ch address.Address) (map
 }
 
 // Get the total redeemed amount across all lanes, after applying the voucher
-func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]paych.LaneState, sv *paych0.SignedVoucher) (big.Int, error) {
+func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]paych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
 	// TODO: merges
 	if len(sv.Merges) != 0 {
 		return big.Int{}, xerrors.Errorf("dont currently support paych lane merges")
@@ -621,11 +570,13 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 		return cid.Undef, err
 	}
 
-	msg := &types.Message{
-		To:     ch,
-		From:   ci.Control,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.Settle,
+	mb, err := ca.messageBuilder(ctx, ci.Control)
+	if err != nil {
+		return cid.Undef, err
+	}
+	msg, err := mb.Settle(ch)
+	if err != nil {
+		return cid.Undef, err
 	}
 	smgs, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
@@ -650,11 +601,14 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 		return cid.Undef, err
 	}
 
-	msg := &types.Message{
-		To:     ch,
-		From:   ci.Control,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsPaych.Collect,
+	mb, err := ca.messageBuilder(ctx, ci.Control)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	msg, err := mb.Collect(ch)
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)

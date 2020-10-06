@@ -9,6 +9,10 @@ import (
 	"strconv"
 	"text/tabwriter"
 
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -20,7 +24,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
@@ -356,7 +359,7 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("failed to look up multisig %s: %w", msig, err)
 		}
 
-		if !act.IsMultisigActor() {
+		if !builtin.IsMultisigActor(act.Code) {
 			return fmt.Errorf("actor %s is not a multisig actor", msig)
 		}
 
@@ -1029,7 +1032,7 @@ var msigLockProposeCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		msgCid, err := api.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
 		if err != nil {
 			return err
 		}
@@ -1126,7 +1129,7 @@ var msigLockApproveCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigApprove(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		msgCid, err := api.MsigApprove(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
 		if err != nil {
 			return err
 		}
@@ -1218,7 +1221,7 @@ var msigLockCancelCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(builtin.MethodsMultisig.LockBalance), params)
+		msgCid, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
 		if err != nil {
 			return err
 		}

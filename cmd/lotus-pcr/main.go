@@ -14,7 +14,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -850,14 +852,14 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			continue
 		}
 
-		if !a.IsStorageMinerActor() {
+		if !builtin.IsStorageMinerActor(a.Code) {
 			continue
 		}
 
 		var messageMethod string
 
 		switch m.Method {
-		case builtin.MethodsMiner.ProveCommitSector:
+		case builtin0.MethodsMiner.ProveCommitSector:
 			if !r.proveCommitEnabled {
 				continue
 			}
@@ -904,7 +906,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			}
 
 			refundValue = collateral
-		case builtin.MethodsMiner.PreCommitSector:
+		case builtin0.MethodsMiner.PreCommitSector:
 			if !r.preCommitEnabled {
 				continue
 			}

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/multiformats/go-multiaddr"
 
@@ -30,8 +30,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
@@ -1534,28 +1532,18 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		return nil, nil
 	}
 
-	var target runtime.Invokee
-	for _, actor := range exported.BuiltinActors() {
-		if actor.Code() == act {
-			target = actor
-		}
-	}
-	if target == nil {
+	// TODO: consider moving this to a dedicated helper
+	actMeta, ok := stmgr.MethodsMap[act]
+	if !ok {
 		return nil, fmt.Errorf("unknown actor %s", act)
 	}
-	methods := target.Exports()
-	if uint64(len(methods)) <= method || methods[method] == nil {
+
+	methodMeta, ok := actMeta[abi.MethodNum(method)]
+	if !ok {
 		return nil, fmt.Errorf("unknown method %d for actor %s", method, act)
 	}
 
-	f := methods[method]
-
-	rf := reflect.TypeOf(f)
-	if rf.NumIn() != 2 {
-		return nil, fmt.Errorf("expected referenced method to have three arguments")
-	}
-
-	paramObj := rf.In(1).Elem()
+	paramObj := methodMeta.Params
 	if paramObj.NumField() != len(args) {
 		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
 	}
