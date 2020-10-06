@@ -340,6 +340,18 @@ var runCmd = &cli.Command{
 			Usage:   "process ProveCommitSector messages",
 			Value:   true,
 		},
+		&cli.BoolFlag{
+			Name:    "windowed-post",
+			EnvVars: []string{"LOTUS_PCR_WINDOWED_POST"},
+			Usage:   "process SubmitWindowedPoSt messages and refund gas fees",
+			Value:   false,
+		},
+		&cli.BoolFlag{
+			Name:    "storage-deals",
+			EnvVars: []string{"LOTUS_PCR_STORAGE_DEALS"},
+			Usage:   "process PublishStorageDeals messages and refund gas fees",
+			Value:   false,
+		},
 		&cli.IntFlag{
 			Name:    "head-delay",
 			EnvVars: []string{"LOTUS_PCR_HEAD_DELAY"},
@@ -431,6 +443,8 @@ var runCmd = &cli.Command{
 		dryRun := cctx.Bool("dry-run")
 		preCommitEnabled := cctx.Bool("pre-commit")
 		proveCommitEnabled := cctx.Bool("prove-commit")
+		windowedPoStEnabled := cctx.Bool("windowed-post")
+		publishStorageDealsEnabled := cctx.Bool("storage-deals")
 		aggregateTipsets := cctx.Int("aggregate-tipsets")
 		minerRecoveryEnabled := cctx.Bool("miner-recovery")
 		minerRecoveryPeriod := abi.ChainEpoch(int64(cctx.Int("miner-recovery-period")))
@@ -458,6 +472,8 @@ var runCmd = &cli.Command{
 			dryRun:                     dryRun,
 			preCommitEnabled:           preCommitEnabled,
 			proveCommitEnabled:         proveCommitEnabled,
+			windowedPoStEnabled:        windowedPoStEnabled,
+			publishStorageDealsEnabled: publishStorageDealsEnabled,
 			preFeeCapMax:               types.BigInt(preFeeCapMax),
 			proveFeeCapMax:             types.BigInt(proveFeeCapMax),
 		}
@@ -611,6 +627,8 @@ type refunder struct {
 	dryRun                     bool
 	preCommitEnabled           bool
 	proveCommitEnabled         bool
+	windowedPoStEnabled        bool
+	publishStorageDealsEnabled bool
 	threshold                  big.Int
 
 	preFeeCapMax   big.Int
@@ -842,6 +860,147 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 	return refunds, nil
 }
 
+func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *types.TipSet, msg api.Message, recp *types.MessageReceipt) (bool, string, types.BigInt, error) {
+
+	m := msg.Message
+	refundValue := types.NewInt(0)
+	var messageMethod string
+
+	switch m.Method {
+	case builtin.MethodsMarket.PublishStorageDeals:
+		if !r.publishStorageDealsEnabled {
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		messageMethod = "PublishStorageDeals"
+
+		if recp.ExitCode != exitcode.Ok {
+			log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recp.ExitCode)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		refundValue = types.BigMul(types.NewInt(uint64(recp.GasUsed)), tipset.Blocks()[0].ParentBaseFee)
+	}
+
+	return true, messageMethod, refundValue, nil
+}
+
+func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *types.TipSet, msg api.Message, recp *types.MessageReceipt) (bool, string, types.BigInt, error) {
+
+	m := msg.Message
+	refundValue := types.NewInt(0)
+	var messageMethod string
+
+	switch m.Method {
+	case builtin.MethodsMiner.SubmitWindowedPoSt:
+		if !r.windowedPoStEnabled {
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		messageMethod = "SubmitWindowedPoSt"
+
+		if recp.ExitCode != exitcode.Ok {
+			log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recp.ExitCode)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		refundValue = types.BigMul(types.NewInt(uint64(recp.GasUsed)), tipset.Blocks()[0].ParentBaseFee)
+	case builtin.MethodsMiner.ProveCommitSector:
+		if !r.proveCommitEnabled {
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		messageMethod = "ProveCommitSector"
+
+		if recp.ExitCode != exitcode.Ok {
+			log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recp.ExitCode)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		if m.GasFeeCap.GreaterThan(r.proveFeeCapMax) {
+			log.Debugw("skipping high fee cap message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "gas_fee_cap", m.GasFeeCap, "fee_cap_max", r.proveFeeCapMax)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		var sn abi.SectorNumber
+
+		var proveCommitSector miner0.ProveCommitSectorParams
+		if err := proveCommitSector.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
+			log.Warnw("failed to decode provecommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		sn = proveCommitSector.SectorNumber
+
+		// We use the parent tipset key because precommit information is removed when ProveCommitSector is executed
+		precommitChainInfo, err := r.api.StateSectorPreCommitInfo(ctx, m.To, sn, tipset.Parents())
+		if err != nil {
+			log.Warnw("failed to get precommit info for sector", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		precommitTipset, err := r.api.ChainGetTipSetByHeight(ctx, precommitChainInfo.PreCommitEpoch, tipset.Key())
+		if err != nil {
+			log.Warnf("failed to lookup precommit epoch", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		collateral, err := r.api.StateMinerInitialPledgeCollateral(ctx, m.To, precommitChainInfo.Info, precommitTipset.Key())
+		if err != nil {
+			log.Warnw("failed to get initial pledge collateral", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		collateral = big.Sub(collateral, precommitChainInfo.PreCommitDeposit)
+		if collateral.LessThan(big.Zero()) {
+			log.Debugw("skipping zero pledge collateral difference", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		refundValue = collateral
+		if r.refundPercent > 0 {
+			refundValue = types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.refundPercent)))
+		}
+	case builtin.MethodsMiner.PreCommitSector:
+		if !r.preCommitEnabled {
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		messageMethod = "PreCommitSector"
+
+		if recp.ExitCode != exitcode.Ok {
+			log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recp.ExitCode)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		if m.GasFeeCap.GreaterThan(r.preFeeCapMax) {
+			log.Debugw("skipping high fee cap message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "gas_fee_cap", m.GasFeeCap, "fee_cap_max", r.preFeeCapMax)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		var precommitInfo miner.SectorPreCommitInfo
+		if err := precommitInfo.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
+			log.Warnw("failed to decode precommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		collateral, err := r.api.StateMinerInitialPledgeCollateral(ctx, m.To, precommitInfo, tipset.Key())
+		if err != nil {
+			log.Warnw("failed to calculate initial pledge collateral", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", precommitInfo.SectorNumber)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		refundValue = collateral
+		if r.refundPercent > 0 {
+			refundValue = types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.refundPercent)))
+		}
+	default:
+		return false, messageMethod, types.NewInt(0), nil
+	}
+
+	return true, messageMethod, refundValue, nil
+}
+
 func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund) (*MinersRefund, error) {
 	cids := tipset.Cids()
 	if len(cids) == 0 {
@@ -877,101 +1036,30 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			continue
 		}
 
-		if !a.IsStorageMinerActor() {
-			continue
-		}
-
 		var messageMethod string
 
-		switch m.Method {
-		case builtin.MethodsMiner.ProveCommitSector:
-			if !r.proveCommitEnabled {
-				continue
-			}
-
-			messageMethod = "ProveCommitSector"
-
-			if recps[i].ExitCode != exitcode.Ok {
-				log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recps[i].ExitCode)
-				continue
-			}
-
-			if m.GasFeeCap.GreaterThan(r.proveFeeCapMax) {
-				log.Debugw("skipping high fee cap message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "gas_fee_cap", m.GasFeeCap, "fee_cap_max", r.proveFeeCapMax)
-				continue
-			}
-
-			var sn abi.SectorNumber
-
-			var proveCommitSector miner0.ProveCommitSectorParams
-			if err := proveCommitSector.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
-				log.Warnw("failed to decode provecommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
-				continue
-			}
-
-			sn = proveCommitSector.SectorNumber
-
-			// We use the parent tipset key because precommit information is removed when ProveCommitSector is executed
-			precommitChainInfo, err := r.api.StateSectorPreCommitInfo(ctx, m.To, sn, tipset.Parents())
+		if m.To == builtin.StorageMarketActorAddr {
+			var err error
+			var processed bool
+			processed, messageMethod, refundValue, err = r.processTipsetStorageMarketActor(ctx, tipset, msg, recps[i])
 			if err != nil {
-				log.Warnw("failed to get precommit info for sector", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
 				continue
 			}
-
-			precommitTipset, err := r.api.ChainGetTipSetByHeight(ctx, precommitChainInfo.PreCommitEpoch, tipset.Key())
-			if err != nil {
-				log.Warnf("failed to lookup precommit epoch", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
+			if !processed {
 				continue
 			}
-
-			collateral, err := r.api.StateMinerInitialPledgeCollateral(ctx, m.To, precommitChainInfo.Info, precommitTipset.Key())
-			if err != nil {
-				log.Warnw("failed to get initial pledge collateral", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
-			}
-
-			collateral = big.Sub(collateral, precommitChainInfo.PreCommitDeposit)
-			if collateral.LessThan(big.Zero()) {
-				log.Debugw("skipping zero pledge collateral difference", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", sn)
-				continue
-			}
-
-			refundValue = collateral
-		case builtin.MethodsMiner.PreCommitSector:
-			if !r.preCommitEnabled {
-				continue
-			}
-
-			messageMethod = "PreCommitSector"
-
-			if recps[i].ExitCode != exitcode.Ok {
-				log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recps[i].ExitCode)
-				continue
-			}
-
-			if m.GasFeeCap.GreaterThan(r.preFeeCapMax) {
-				log.Debugw("skipping high fee cap message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "gas_fee_cap", m.GasFeeCap, "fee_cap_max", r.preFeeCapMax)
-				continue
-			}
-
-			var precommitInfo miner.SectorPreCommitInfo
-			if err := precommitInfo.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
-				log.Warnw("failed to decode precommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
-				continue
-			}
-
-			collateral, err := r.api.StateMinerInitialPledgeCollateral(ctx, m.To, precommitInfo, tipset.Key())
-			if err != nil {
-				log.Warnw("failed to calculate initial pledge collateral", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To, "sector_number", precommitInfo.SectorNumber)
-				continue
-			}
-
-			refundValue = collateral
-		default:
-			continue
 		}
 
-		if r.refundPercent > 0 {
-			refundValue = types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.refundPercent)))
+		if a.IsStorageMinerActor() {
+			var err error
+			var processed bool
+			processed, messageMethod, refundValue, err = r.processTipsetStorageMinerActor(ctx, tipset, msg, recps[i])
+			if err != nil {
+				continue
+			}
+			if !processed {
+				continue
+			}
 		}
 
 		log.Debugw(
