@@ -249,18 +249,6 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 
 	syncer.incoming.Pub(fts.TipSet().Blocks(), LocalIncoming)
 
-	if from == syncer.self {
-		// TODO: this is kindof a hack...
-		log.Debug("got block from ourselves")
-
-		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
-			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
-			return false
-		}
-
-		return true
-	}
-
 	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
 	// the blockstore
 	if err := syncer.store.PersistBlockHeaders(fts.TipSet().Blocks()...); err != nil {
