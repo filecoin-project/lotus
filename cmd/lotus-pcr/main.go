@@ -376,6 +376,18 @@ var runCmd = &cli.Command{
 			Usage:   "percent of refund to issue",
 			Value:   110,
 		},
+		&cli.StringFlag{
+			Name:    "pre-fee-cap-max",
+			EnvVars: []string{"LOTUS_PCR_PRE_FEE_CAP_MAX"},
+			Usage:   "messages with a fee cap larger than this will be skipped when processing pre commit messages",
+			Value:   "0.0000000001",
+		},
+		&cli.StringFlag{
+			Name:    "prove-fee-cap-max",
+			EnvVars: []string{"LOTUS_PCR_PROVE_FEE_CAP_MAX"},
+			Usage:   "messages with a prove cap larger than this will be skipped when processing pre commit messages",
+			Value:   "0.0000000001",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		go func() {
@@ -426,6 +438,16 @@ var runCmd = &cli.Command{
 		minerRecoveryCutoff := uint64(cctx.Int("miner-recovery-cutoff"))
 		minerRecoveryBonus := uint64(cctx.Int("miner-recovery-bonus"))
 
+		preFeeCapMax, err := types.ParseFIL(cctx.String("pre-fee-cap-max"))
+		if err != nil {
+			return err
+		}
+
+		proveFeeCapMax, err := types.ParseFIL(cctx.String("prove-fee-cap-max"))
+		if err != nil {
+			return err
+		}
+
 		rf := &refunder{
 			api:                        api,
 			wallet:                     from,
@@ -436,6 +458,8 @@ var runCmd = &cli.Command{
 			dryRun:                     dryRun,
 			preCommitEnabled:           preCommitEnabled,
 			proveCommitEnabled:         proveCommitEnabled,
+			preFeeCapMax:               types.BigInt(preFeeCapMax),
+			proveFeeCapMax:             types.BigInt(proveFeeCapMax),
 		}
 
 		var refunds *MinersRefund = NewMinersRefund()
@@ -588,6 +612,9 @@ type refunder struct {
 	preCommitEnabled           bool
 	proveCommitEnabled         bool
 	threshold                  big.Int
+
+	preFeeCapMax   big.Int
+	proveFeeCapMax big.Int
 }
 
 func (r *refunder) FindMiners(ctx context.Context, tipset *types.TipSet, refunds *MinersRefund, owner, worker, control bool) (*MinersRefund, error) {
@@ -869,6 +896,11 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 				continue
 			}
 
+			if m.GasFeeCap.GreaterThan(r.proveFeeCapMax) {
+				log.Debugw("skipping high fee cap message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "gas_fee_cap", m.GasFeeCap, "fee_cap_max", r.proveFeeCapMax)
+				continue
+			}
+
 			var sn abi.SectorNumber
 
 			var proveCommitSector miner0.ProveCommitSectorParams
@@ -913,6 +945,11 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 
 			if recps[i].ExitCode != exitcode.Ok {
 				log.Debugw("skipping non-ok exitcode message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "exitcode", recps[i].ExitCode)
+				continue
+			}
+
+			if m.GasFeeCap.GreaterThan(r.preFeeCapMax) {
+				log.Debugw("skipping high fee cap message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "gas_fee_cap", m.GasFeeCap, "fee_cap_max", r.preFeeCapMax)
 				continue
 			}
 
