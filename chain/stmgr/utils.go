@@ -506,14 +506,14 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 	}
 
 	return &api.MiningBaseInfo{
-		MinerPower:      mpow.QualityAdjPower,
-		NetworkPower:    tpow.QualityAdjPower,
-		Sectors:         sectors,
-		WorkerKey:       worker,
-		SectorSize:      info.SectorSize,
-		PrevBeaconEntry: *prev,
-		BeaconEntries:   entries,
-		HasMinPower:     hmp,
+		MinerPower:        mpow.QualityAdjPower,
+		NetworkPower:      tpow.QualityAdjPower,
+		Sectors:           sectors,
+		WorkerKey:         worker,
+		SectorSize:        info.SectorSize,
+		PrevBeaconEntry:   *prev,
+		BeaconEntries:     entries,
+		EligibleForMining: hmp,
 	}, nil
 }
 
