@@ -23,8 +23,20 @@ var (
 	ErrLookbackTooLong = fmt.Errorf("lookbacks of more than %s are disallowed", LookbackCap)
 )
 
+type rpcAPI interface {
+	ChainHead(ctx context.Context) (*types.TipSet, error)
+	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
+	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
+	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
+	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error)
+}
+
 type GatewayAPI struct {
-	api api.FullNode
+	rpc rpcAPI
 }
 
 func (a *GatewayAPI) checkTipsetKey(ctx context.Context, tsk types.TipSetKey) error {
@@ -32,7 +44,7 @@ func (a *GatewayAPI) checkTipsetKey(ctx context.Context, tsk types.TipSetKey) er
 		return nil
 	}
 
-	ts, err := a.api.ChainGetTipSet(ctx, tsk)
+	ts, err := a.rpc.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return err
 	}
@@ -48,7 +60,6 @@ func (a *GatewayAPI) checkTipset(ts *types.TipSet) error {
 	return nil
 }
 
-// TODO: write tests for this check
 func (a *GatewayAPI) checkTipsetHeight(ts *types.TipSet, h abi.ChainEpoch) error {
 	tsBlock := ts.Blocks()[0]
 	heightDelta := time.Duration(uint64(tsBlock.Height-h)*build.BlockDelaySecs) * time.Second
@@ -71,15 +82,15 @@ func (a *GatewayAPI) checkTimestamp(at time.Time) error {
 func (a *GatewayAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	// TODO: cache and invalidate cache when timestamp is up (or have internal ChainNotify)
 
-	return a.api.ChainHead(ctx)
+	return a.rpc.ChainHead(ctx)
 }
 
 func (a *GatewayAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
-	return a.api.ChainGetTipSet(ctx, tsk)
+	return a.rpc.ChainGetTipSet(ctx, tsk)
 }
 
 func (a *GatewayAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := a.api.ChainGetTipSet(ctx, tsk)
+	ts, err := a.rpc.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -94,21 +105,7 @@ func (a *GatewayAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoc
 		return nil, err
 	}
 
-	return a.api.ChainGetTipSetByHeight(ctx, h, tsk)
-}
-
-func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
-	// TODO: additional anti-spam checks
-
-	return a.api.MpoolPushUntrusted(ctx, sm)
-}
-
-func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	if err := a.checkTipsetKey(ctx, tsk); err != nil {
-		return address.Undef, err
-	}
-
-	return a.api.StateAccountKey(ctx, addr, tsk)
+	return a.rpc.ChainGetTipSetByHeight(ctx, h, tsk)
 }
 
 func (a *GatewayAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
@@ -116,7 +113,20 @@ func (a *GatewayAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Messa
 		return nil, err
 	}
 
-	return a.api.GasEstimateMessageGas(ctx, msg, spec, tsk)
+	return a.rpc.GasEstimateMessageGas(ctx, msg, spec, tsk)
+}
+
+func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
+	// TODO: additional anti-spam checks
+	return a.rpc.MpoolPushUntrusted(ctx, sm)
+}
+
+func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return address.Undef, err
+	}
+
+	return a.rpc.StateAccountKey(ctx, addr, tsk)
 }
 
 func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
@@ -124,7 +134,7 @@ func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, t
 		return nil, err
 	}
 
-	return a.api.StateGetActor(ctx, actor, tsk)
+	return a.rpc.StateGetActor(ctx, actor, tsk)
 }
 
 func (a *GatewayAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
@@ -132,11 +142,11 @@ func (a *GatewayAPI) StateLookupID(ctx context.Context, addr address.Address, ts
 		return address.Undef, err
 	}
 
-	return a.api.StateLookupID(ctx, addr, tsk)
+	return a.rpc.StateLookupID(ctx, addr, tsk)
 }
 
 func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	return a.api.StateWaitMsgLimited(ctx, msg, confidence, stateWaitLookbackLimit)
+	return a.rpc.StateWaitMsgLimited(ctx, msg, confidence, stateWaitLookbackLimit)
 }
 
 var _ api.GatewayAPI = (*GatewayAPI)(nil)
