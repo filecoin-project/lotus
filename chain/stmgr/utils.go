@@ -387,7 +387,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
-	vmi, err := vm.NewVM(ctx, vmopt)
+	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
