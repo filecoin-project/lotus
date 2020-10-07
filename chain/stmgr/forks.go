@@ -25,7 +25,6 @@ import (
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -518,8 +517,7 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 	}
 
 	newRoot, err := store.Put(ctx, &types.StateRoot{
-		// TODO: ActorUpgrade: should be state-tree specific, not just the actors version.
-		Version: actors.Version2,
+		Version: types.StateTreeVersion1,
 		Actors:  newHamtRoot,
 		Info:    info,
 	})
