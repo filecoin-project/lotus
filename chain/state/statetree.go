@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -26,7 +27,7 @@ var log = logging.Logger("statetree")
 // StateTree stores actors state by their ID.
 type StateTree struct {
 	root    adt.Map
-	version actors.Version // TODO
+	version types.StateTreeVersion
 	info    cid.Cid
 	Store   cbor.IpldStore
 
@@ -120,21 +121,41 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 	ss.layers[len(ss.layers)-1].actors[addr] = streeOp{Delete: true}
 }
 
-func NewStateTree(cst cbor.IpldStore, version actors.Version) (*StateTree, error) {
+// VersionForNetwork returns the state tree version for the given network
+// version.
+func VersionForNetwork(ver network.Version) types.StateTreeVersion {
+	if actors.VersionForNetwork(ver) == actors.Version0 {
+		return types.StateTreeVersion0
+	}
+	return types.StateTreeVersion1
+}
+
+func adtForSTVersion(ver types.StateTreeVersion) actors.Version {
+	switch ver {
+	case types.StateTreeVersion0:
+		return actors.Version0
+	case types.StateTreeVersion1:
+		return actors.Version2
+	default:
+		panic("unhandled state tree version")
+	}
+}
+
+func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, error) {
 	var info cid.Cid
-	switch version {
-	case actors.Version0:
+	switch ver {
+	case types.StateTreeVersion0:
 		// info is undefined
-	case actors.Version2:
+	case types.StateTreeVersion1:
 		var err error
-		info, err = cst.Put(context.TODO(), new(types.StateInfo))
+		info, err = cst.Put(context.TODO(), new(types.StateInfo0))
 		if err != nil {
 			return nil, err
 		}
 	default:
-		return nil, xerrors.Errorf("unsupported state tree version: %d", version)
+		return nil, xerrors.Errorf("unsupported state tree version: %d", ver)
 	}
-	root, err := adt.NewMap(adt.WrapStore(context.TODO(), cst), version)
+	root, err := adt.NewMap(adt.WrapStore(context.TODO(), cst), adtForSTVersion(ver))
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +163,7 @@ func NewStateTree(cst cbor.IpldStore, version actors.Version) (*StateTree, error
 	return &StateTree{
 		root:    root,
 		info:    info,
-		version: version,
+		version: ver,
 		Store:   cst,
 		snaps:   newStateSnaps(),
 	}, nil
@@ -154,13 +175,16 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 	if err := cst.Get(context.TODO(), c, &root); err != nil {
 		// We failed to decode as the new version, must be an old version.
 		root.Actors = c
-		root.Version = actors.Version0
+		root.Version = types.StateTreeVersion0
 	}
 
 	switch root.Version {
-	case actors.Version0, actors.Version2:
+	case types.StateTreeVersion0, types.StateTreeVersion1:
 		// Load the actual state-tree HAMT.
-		nd, err := adt.AsMap(adt.WrapStore(context.TODO(), cst), root.Actors, actors.Version(root.Version))
+		nd, err := adt.AsMap(
+			adt.WrapStore(context.TODO(), cst), root.Actors,
+			adtForSTVersion(root.Version),
+		)
 		if err != nil {
 			log.Errorf("loading hamt node %s failed: %s", c, err)
 			return nil, err
@@ -169,7 +193,7 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 		return &StateTree{
 			root:    nd,
 			info:    root.Info,
-			version: actors.Version(root.Version),
+			version: root.Version,
 			Store:   cst,
 			snaps:   newStateSnaps(),
 		}, nil
@@ -309,11 +333,11 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("failed to flush state-tree hamt: %w", err)
 	}
 	// If we're version 0, return a raw tree.
-	if st.version == actors.Version0 {
+	if st.version == types.StateTreeVersion0 {
 		return root, nil
 	}
 	// Otherwise, return a versioned tree.
-	return st.Store.Put(ctx, &types.StateRoot{Version: uint64(st.version), Actors: root, Info: st.info})
+	return st.Store.Put(ctx, &types.StateRoot{Version: st.version, Actors: root, Info: st.info})
 }
 
 func (st *StateTree) Snapshot(ctx context.Context) error {
@@ -400,7 +424,7 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 }
 
 // Version returns the version of the StateTree data structure in use.
-func (st *StateTree) Version() actors.Version {
+func (st *StateTree) Version() types.StateTreeVersion {
 	return st.version
 }
 

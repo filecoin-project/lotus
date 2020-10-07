@@ -13,13 +13,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func BenchmarkStateTreeSet(b *testing.B) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, actors.VersionForNetwork(build.NewestNetworkVersion))
+	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -46,7 +45,7 @@ func BenchmarkStateTreeSet(b *testing.B) {
 
 func BenchmarkStateTreeSetFlush(b *testing.B) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, actors.VersionForNetwork(build.NewestNetworkVersion))
+	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -76,7 +75,7 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 
 func BenchmarkStateTree10kGetActor(b *testing.B) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, actors.VersionForNetwork(build.NewestNetworkVersion))
+	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -118,7 +117,7 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 
 func TestSetCache(t *testing.T) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, actors.VersionForNetwork(build.NewestNetworkVersion))
+	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +154,7 @@ func TestSetCache(t *testing.T) {
 func TestSnapshots(t *testing.T) {
 	ctx := context.Background()
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, actors.VersionForNetwork(build.NewestNetworkVersion))
+	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +238,7 @@ func assertNotHas(t *testing.T, st *StateTree, addr address.Address) {
 func TestStateTreeConsistency(t *testing.T) {
 	cst := cbor.NewMemCborStore()
 	// TODO: ActorUpgrade: this test tests pre actors v2
-	st, err := NewStateTree(cst, actors.VersionForNetwork(network.Version3))
+	st, err := NewStateTree(cst, VersionForNetwork(network.Version3))
 	if err != nil {
 		t.Fatal(err)
 	}

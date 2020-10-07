@@ -1648,7 +1648,7 @@ func (t *StateRoot) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Version (uint64) (uint64)
+	// t.Version (types.StateTreeVersion) (uint64)
 
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.Version)); err != nil {
 		return err
@@ -1687,7 +1687,7 @@ func (t *StateRoot) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Version (uint64) (uint64)
+	// t.Version (types.StateTreeVersion) (uint64)
 
 	{
 
@@ -1698,7 +1698,7 @@ func (t *StateRoot) UnmarshalCBOR(r io.Reader) error {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.Version = uint64(extra)
+		t.Version = StateTreeVersion(extra)
 
 	}
 	// t.Actors (cid.Cid) (struct)
@@ -1728,22 +1728,22 @@ func (t *StateRoot) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufStateInfo = []byte{128}
+var lengthBufStateInfo0 = []byte{128}
 
-func (t *StateInfo) MarshalCBOR(w io.Writer) error {
+func (t *StateInfo0) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write(lengthBufStateInfo); err != nil {
+	if _, err := w.Write(lengthBufStateInfo0); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (t *StateInfo) UnmarshalCBOR(r io.Reader) error {
-	*t = StateInfo{}
+func (t *StateInfo0) UnmarshalCBOR(r io.Reader) error {
+	*t = StateInfo0{}
 
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
