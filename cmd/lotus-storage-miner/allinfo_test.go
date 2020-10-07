@@ -64,8 +64,8 @@ func TestMinerAllInfo(t *testing.T) {
 		require.NoError(t, infoAllCmd.Action(cctx))
 	}
 
-	bp := func(t *testing.T, nFull int, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
-		n, sn = builder.Builder(t, nFull, storage, opts...)
+	bp := func(t *testing.T, fullOpts []test.OptionGenerator, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
+		n, sn = builder.Builder(t, fullOpts, storage, opts...)
 
 		t.Run("pre-info-all", run)
 

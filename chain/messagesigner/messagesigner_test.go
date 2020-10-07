@@ -177,7 +177,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mpool := newMockMpool()
 			ds := ds_sync.MutexWrap(datastore.NewMapDatastore())
-			ms := newMessageSigner(w, mpool, ds)
+			ms := NewMessageSigner(w, mpool, ds)
 
 			for _, m := range tt.msgs {
 				if len(m.mpoolNonce) == 1 {

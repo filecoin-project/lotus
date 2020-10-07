@@ -39,7 +39,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
@@ -255,20 +254,7 @@ var DaemonCmd = &cli.Command{
 			}
 
 			defer closer()
-
-			liteMode = node.Options(
-				node.Override(new(api.GatewayAPI), gapi),
-				node.Override(new(full.ChainModuleAPI), node.From(new(api.GatewayAPI))),
-				node.Override(new(full.GasModuleAPI), node.From(new(api.GatewayAPI))),
-				node.Override(new(full.MpoolModuleAPI), node.From(new(api.GatewayAPI))),
-				node.Override(new(full.StateModuleAPI), node.From(new(api.GatewayAPI))),
-				node.Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),
-				node.Unset(node.RunHelloKey),
-				node.Unset(node.RunChainExchangeKey),
-				node.Unset(node.RunPeerMgrKey),
-				node.Unset(node.HandleIncomingBlocksKey),
-				node.Unset(node.HandleIncomingMessagesKey),
-			)
+			liteMode = node.LiteModeOverrides(gapi)
 		}
 
 		var api api.FullNode

@@ -34,7 +34,7 @@ func init() {
 
 func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	ctx := context.Background()
-	n, sn := b(t, 1, OneMiner)
+	n, sn := b(t, OneFull, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -133,7 +133,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, 1, OneMiner, node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
+	n, sn := b(t, OneFull, OneMiner, node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
 		Network:   build.ActorUpgradeNetworkVersion,
 		Height:    upgradeHeight,
 		Migration: stmgr.UpgradeActorsV2,

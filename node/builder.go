@@ -264,6 +264,7 @@ func Online() Option {
 			Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
 			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
+			Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
 			Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
@@ -398,6 +399,23 @@ func StorageMiner(out *api.StorageMiner) Option {
 			*out = resAPI
 			return nil
 		},
+	)
+}
+
+func LiteModeOverrides(gapi api.GatewayAPI) Option {
+	return Options(
+		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
+		Override(new(api.GatewayAPI), gapi),
+		Override(new(full.ChainModuleAPI), From(new(api.GatewayAPI))),
+		Override(new(full.GasModuleAPI), From(new(api.GatewayAPI))),
+		Override(new(full.MpoolModuleAPI), From(new(api.GatewayAPI))),
+		Override(new(full.StateModuleAPI), From(new(api.GatewayAPI))),
+		Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),
+		Unset(RunHelloKey),
+		Unset(RunChainExchangeKey),
+		Unset(RunPeerMgrKey),
+		Unset(HandleIncomingBlocksKey),
+		Unset(HandleIncomingMessagesKey),
 	)
 }
 

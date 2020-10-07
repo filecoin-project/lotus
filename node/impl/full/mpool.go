@@ -180,7 +180,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 
 	// Sign and push the message
 	return a.MessageSigner.SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {
-		if _, err := a.Mpool.Push(smsg); err != nil {
+		if _, err := a.MpoolModuleAPI.MpoolPush(ctx, smsg); err != nil {
 			return xerrors.Errorf("mpool push: failed to push message: %w", err)
 		}
 		return nil
