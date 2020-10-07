@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -17,16 +18,36 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
+var ErrWouldFork = errors.New("refusing explicit call due to state fork at epoch")
+
 func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 
+	// If no tipset is provided, try to find one without a fork.
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
+
+		// Search back till we find a height with no fork, or we reach the beginning.
+		for ts.Height() > 0 && sm.hasStateFork(ctx, ts.Height()-1) {
+			var err error
+			ts, err = sm.cs.GetTipSetFromKey(ts.Parents())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+			}
+		}
 	}
 
 	bstate := ts.ParentState()
 	bheight := ts.Height()
+
+	// If we have to run a migration, and we're not at genesis, return an
+	// error because the migration will take too long.
+	//
+	// We allow this at height 0 for at-genesis migrations (for testing).
+	if bheight-1 > 0 && sm.hasStateFork(ctx, bheight-1) {
+		return nil, ErrWouldFork
+	}
 
 	bstate, err := sm.handleStateForks(ctx, bstate, bheight-1, nil, ts)
 	if err != nil {
@@ -106,6 +127,24 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
+
+		// Search back till we find a height with no fork, or we reach the beginning.
+		// We need the _previous_ height to have no fork, because we'll
+		// run the fork logic in `sm.TipSetState`. We need the _current_
+		// height to have no fork, because we'll run it inside this
+		// function before executing the given message.
+		for ts.Height() > 0 && (sm.hasStateFork(ctx, ts.Height()) || sm.hasStateFork(ctx, ts.Height()-1)) {
+			var err error
+			ts, err = sm.cs.GetTipSetFromKey(ts.Parents())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+			}
+		}
+	}
+
+	// When we're not at the genesis block, make sure we're at a migration height.
+	if ts.Height() > 0 && (sm.hasStateFork(ctx, ts.Height()) || sm.hasStateFork(ctx, ts.Height()-1)) {
+		return nil, ErrWouldFork
 	}
 
 	state, _, err := sm.TipSetState(ctx, ts)

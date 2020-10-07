@@ -124,6 +124,11 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 	return retCid, nil
 }
 
+func (sm *StateManager) hasStateFork(ctx context.Context, height abi.ChainEpoch) bool {
+	_, ok := sm.stateMigrations[height]
+	return ok
+}
+
 func doTransfer(cb ExecCallback, tree types.StateTree, from, to address.Address, amt abi.TokenAmount) error {
 	fromAct, err := tree.GetActor(from)
 	if err != nil {
