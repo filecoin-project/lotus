@@ -31,8 +31,11 @@ import (
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
 
 // UpgradeFunc is a migration function run at every upgrade.
@@ -533,6 +536,7 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 }
 
 func UpgradeRefuel(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+
 	store := sm.cs.Store(ctx)
 	tree, err := sm.StateTree(root)
 	if err != nil {
@@ -563,7 +567,8 @@ func UpgradeRefuel(ctx context.Context, sm *StateManager, cb ExecCallback, root 
 }
 
 func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	store := sm.cs.Store(ctx)
+	buf := bufbstore.NewTieredBstore(sm.cs.Blockstore(), bstore.NewTemporarySync())
+	store := store.ActorStore(ctx, buf)
 
 	info, err := store.Put(ctx, new(types.StateInfo0))
 	if err != nil {
@@ -606,6 +611,15 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
 	} else if _, err := newSm.GetActor(builtin0.InitActorAddr); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %w", err)
+	}
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
+		}
 	}
 
 	return newRoot, nil
