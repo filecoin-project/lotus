@@ -33,7 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-// UpgradeFunc is a migration function run ate very upgrade.
+// UpgradeFunc is a migration function run at every upgrade.
 //
 // - The oldState is the state produced by the upgrade epoch.
 // - The returned newState is the new state that will be used by the next epoch.
