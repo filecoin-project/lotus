@@ -1025,9 +1025,9 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 		return nil, nil
 	}
 
-	refundValue := types.NewInt(0)
 	tipsetRefunds := NewMinersRefund()
 	for i, msg := range msgs {
+		refundValue := types.NewInt(0)
 		m := msg.Message
 
 		a, err := r.api.StateGetActor(ctx, m.To, tipset.Key())
