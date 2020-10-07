@@ -47,6 +47,8 @@ type StateModuleAPI interface {
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
+	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
+	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
 }
 
 // StateModule provides a default implementation of StateModuleAPI.
@@ -828,17 +830,17 @@ func (a *StateAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs
 	}, nil
 }
 
-func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	act, err := a.StateManager.LoadActor(ctx, addr, ts)
+	act, err := m.StateManager.LoadActor(ctx, addr, ts)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor: %w", err)
 	}
-	msas, err := multisig.Load(a.Chain.Store(ctx), act)
+	msas, err := multisig.Load(m.Chain.Store(ctx), act)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
@@ -887,13 +889,13 @@ func (a *StateAPI) MsigGetVestingSchedule(ctx context.Context, addr address.Addr
 	}, nil
 }
 
-func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
-	startTs, err := a.Chain.GetTipSetFromKey(start)
+func (m *StateModule) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	startTs, err := m.Chain.GetTipSetFromKey(start)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
 	}
 
-	endTs, err := a.Chain.GetTipSetFromKey(end)
+	endTs, err := m.Chain.GetTipSetFromKey(end)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
 	}
@@ -904,12 +906,12 @@ func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, star
 		return big.Zero(), nil
 	}
 
-	act, err := a.StateManager.LoadActor(ctx, addr, endTs)
+	act, err := m.StateManager.LoadActor(ctx, addr, endTs)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor at end epoch: %w", err)
 	}
 
-	msas, err := multisig.Load(a.Chain.Store(ctx), act)
+	msas, err := multisig.Load(m.Chain.Store(ctx), act)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}

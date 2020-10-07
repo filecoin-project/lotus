@@ -31,6 +31,8 @@ type gatewayDepsAPI interface {
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
+	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
+	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
@@ -121,6 +123,25 @@ func (a *GatewayAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Messa
 func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
 	// TODO: additional anti-spam checks
 	return a.api.MpoolPushUntrusted(ctx, sm)
+}
+
+func (a *GatewayAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return types.NewInt(0), err
+	}
+
+	return a.api.MsigGetAvailableBalance(ctx, addr, tsk)
+}
+
+func (a *GatewayAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	if err := a.checkTipsetKey(ctx, start); err != nil {
+		return types.NewInt(0), err
+	}
+	if err := a.checkTipsetKey(ctx, end); err != nil {
+		return types.NewInt(0), err
+	}
+
+	return a.api.MsigGetVested(ctx, addr, start, end)
 }
 
 func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {

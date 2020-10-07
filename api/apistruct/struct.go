@@ -365,15 +365,17 @@ type WorkerStruct struct {
 type GatewayStruct struct {
 	Internal struct {
 		// TODO: does the gateway need perms?
-		ChainGetTipSet         func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
-		ChainGetTipSetByHeight func(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
-		ChainHead              func(ctx context.Context) (*types.TipSet, error)
-		GasEstimateMessageGas  func(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
-		MpoolPush              func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
-		StateAccountKey        func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
-		StateGetActor          func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
-		StateLookupID          func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
-		StateWaitMsg           func(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
+		ChainGetTipSet          func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+		ChainGetTipSetByHeight  func(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+		ChainHead               func(ctx context.Context) (*types.TipSet, error)
+		GasEstimateMessageGas   func(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
+		MpoolPush               func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
+		MsigGetAvailableBalance func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
+		MsigGetVested           func(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
+		StateAccountKey         func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+		StateGetActor           func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
+		StateLookupID           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+		StateWaitMsg            func(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 	}
 }
 
@@ -1410,6 +1412,14 @@ func (g GatewayStruct) GasEstimateMessageGas(ctx context.Context, msg *types.Mes
 
 func (g GatewayStruct) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
 	return g.Internal.MpoolPush(ctx, sm)
+}
+
+func (g GatewayStruct) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	return g.Internal.MsigGetAvailableBalance(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	return g.Internal.MsigGetVested(ctx, addr, start, end)
 }
 
 func (g GatewayStruct) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {

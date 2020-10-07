@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
 	"golang.org/x/xerrors"
 
@@ -77,6 +82,67 @@ func TestEndToEnd(t *testing.T) {
 	ok, err := lite.WalletVerify(ctx, liteWalletAddr, data, sig)
 	require.NoError(t, err)
 	require.True(t, ok)
+
+	// Create some wallets on the lite node to use for testing multisig
+	var walletAddrs []address.Address
+	for i := 0; i < 4; i++ {
+		addr, err := lite.WalletNew(ctx, wallet.ActSigType("secp256k1"))
+		require.NoError(t, err)
+
+		walletAddrs = append(walletAddrs, addr)
+
+		err = sendFunds(ctx, t, lite, liteWalletAddr, addr, types.NewInt(1e15))
+		require.NoError(t, err)
+	}
+
+	// Create an msig with three of the addresses and threshold of two sigs
+	msigAddrs := walletAddrs[:3]
+	amt := types.NewInt(1000)
+	addProposal, err := lite.MsigCreate(ctx, 2, msigAddrs, abi.ChainEpoch(50), amt, liteWalletAddr, types.NewInt(0))
+	require.NoError(t, err)
+
+	res, err := lite.StateWaitMsg(ctx, addProposal, 1)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	var execReturn init0.ExecReturn
+	err = execReturn.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return))
+	require.NoError(t, err)
+
+	// Get available balance of msig: should be greater than zero and less
+	// than initial amount
+	msig := execReturn.IDAddress
+	msigBalance, err := lite.MsigGetAvailableBalance(ctx, msig, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Greater(t, msigBalance.Int64(), int64(0))
+	require.Less(t, msigBalance.Int64(), amt.Int64())
+
+	// Propose to add a new address to the msig
+	addProposal, err = lite.MsigAddPropose(ctx, msig, walletAddrs[0], walletAddrs[3], false)
+	require.NoError(t, err)
+
+	res, err = lite.StateWaitMsg(ctx, addProposal, 1)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	var proposeReturn multisig.ProposeReturn
+	err = proposeReturn.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return))
+	require.NoError(t, err)
+
+	// Approve proposal (proposer is first (implicit) signer, approver is
+	// second signer
+	txnID := uint64(proposeReturn.TxnID)
+	approval1, err := lite.MsigAddApprove(ctx, msig, walletAddrs[1], txnID, walletAddrs[0], walletAddrs[3], false)
+	require.NoError(t, err)
+
+	res, err = lite.StateWaitMsg(ctx, approval1, 1)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	var approveReturn multisig.ApproveReturn
+	err = approveReturn.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return))
+	require.NoError(t, err)
+	require.True(t, approveReturn.Applied)
 }
 
 func sendFunds(ctx context.Context, t *testing.T, fromNode test.TestNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {

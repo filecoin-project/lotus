@@ -166,6 +166,14 @@ func (m *mockGatewayDepsAPI) MpoolPushUntrusted(ctx context.Context, sm *types.S
 	panic("implement me")
 }
 
+func (m *mockGatewayDepsAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	panic("implement me")
+}
+
 func (m *mockGatewayDepsAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	panic("implement me")
 }
