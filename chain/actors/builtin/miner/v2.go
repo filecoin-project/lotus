@@ -46,7 +46,7 @@ type partition2 struct {
 }
 
 func (s *state2) AvailableBalance(bal abi.TokenAmount) (abi.TokenAmount, error) {
-	return s.GetAvailableBalance(bal), nil
+	return s.GetAvailableBalance(bal)
 }
 
 func (s *state2) VestedFunds(epoch abi.ChainEpoch) (abi.TokenAmount, error) {
