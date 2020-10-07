@@ -70,6 +70,7 @@ var stateCmd = &cli.Command{
 		stateMsgCostCmd,
 		stateMinerInfo,
 		stateMarketCmd,
+		stateExecTraceCmd,
 	},
 }
 
@@ -309,6 +310,74 @@ var stateActiveSectorsCmd = &cli.Command{
 			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
+		return nil
+	},
+}
+
+var stateExecTraceCmd = &cli.Command{
+	Name:      "exec-trace",
+	Usage:     "Get the execution trace of a given message",
+	ArgsUsage: "<messageCid>",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return ShowHelp(cctx, fmt.Errorf("must pass message cid"))
+		}
+
+		mcid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("message cid was invalid: %s", err)
+		}
+
+		capi, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		msg, err := capi.ChainGetMessage(ctx, mcid)
+		if err != nil {
+			return err
+		}
+
+		lookup, err := capi.StateSearchMsg(ctx, mcid)
+		if err != nil {
+			return err
+		}
+
+		ts, err := capi.ChainGetTipSet(ctx, lookup.TipSet)
+		if err != nil {
+			return err
+		}
+
+		pts, err := capi.ChainGetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return err
+		}
+
+		cso, err := capi.StateCompute(ctx, pts.Height(), nil, pts.Key())
+		if err != nil {
+			return err
+		}
+
+		var trace *api.InvocResult
+		for _, t := range cso.Trace {
+			if t.Msg.From == msg.From && t.Msg.Nonce == msg.Nonce {
+				trace = t
+				break
+			}
+		}
+		if trace == nil {
+			return fmt.Errorf("failed to find message in tipset trace output")
+		}
+
+		out, err := json.MarshalIndent(trace, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(out))
 		return nil
 	},
 }

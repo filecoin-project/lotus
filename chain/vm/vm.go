@@ -236,7 +236,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	}
 
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
-	if enableTracing {
+	if EnableGasTracing {
 		rt.lastGasChargeTime = start
 		if parent != nil {
 			rt.lastGasChargeTime = parent.lastGasChargeTime

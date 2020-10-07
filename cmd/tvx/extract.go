@@ -198,8 +198,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Preroot:    root,
 			Epoch:      execTs.Height(),
 			Message:    m,
-			CircSupply: &circSupplyDetail.FilCirculating,
-			BaseFee:    &basefee,
+			CircSupply: circSupplyDetail.FilCirculating,
+			BaseFee:    basefee,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute precursor message: %w", err)
@@ -229,8 +229,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Preroot:    preroot,
 			Epoch:      execTs.Height(),
 			Message:    msg,
-			CircSupply: &circSupplyDetail.FilCirculating,
-			BaseFee:    &basefee,
+			CircSupply: circSupplyDetail.FilCirculating,
+			BaseFee:    basefee,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
@@ -260,8 +260,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Preroot:    preroot,
 			Epoch:      execTs.Height(),
 			Message:    msg,
-			CircSupply: &circSupplyDetail.FilCirculating,
-			BaseFee:    &basefee,
+			CircSupply: circSupplyDetail.FilCirculating,
+			BaseFee:    basefee,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
