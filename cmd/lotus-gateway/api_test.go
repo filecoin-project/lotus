@@ -87,8 +87,8 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockRPCAPI{}
-			a := &GatewayAPI{rpc: mock}
+			mock := &mockGatewayDepsAPI{}
+			a := &GatewayAPI{api: mock}
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -104,19 +104,19 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 	}
 }
 
-type mockRPCAPI struct {
+type mockGatewayDepsAPI struct {
 	lk      sync.RWMutex
 	tipsets []*types.TipSet
 }
 
-func (m *mockRPCAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
+func (m *mockGatewayDepsAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	m.lk.RLock()
 	defer m.lk.RUnlock()
 
 	return m.tipsets[len(m.tipsets)-1], nil
 }
 
-func (m *mockRPCAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+func (m *mockGatewayDepsAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	m.lk.RLock()
 	defer m.lk.RUnlock()
 
@@ -130,7 +130,7 @@ func (m *mockRPCAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*
 }
 
 // createTipSets creates tipsets from genesis up to tskh and returns the highest
-func (m *mockRPCAPI) createTipSets(h abi.ChainEpoch, genesisTimestamp uint64) *types.TipSet {
+func (m *mockGatewayDepsAPI) createTipSets(h abi.ChainEpoch, genesisTimestamp uint64) *types.TipSet {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -151,33 +151,33 @@ func (m *mockRPCAPI) createTipSets(h abi.ChainEpoch, genesisTimestamp uint64) *t
 	return m.tipsets[len(m.tipsets)-1]
 }
 
-func (m *mockRPCAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+func (m *mockGatewayDepsAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
 	return m.tipsets[h], nil
 }
 
-func (m *mockRPCAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
+func (m *mockGatewayDepsAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
 	panic("implement me")
 }
 
-func (m *mockRPCAPI) MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
+func (m *mockGatewayDepsAPI) MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
 	panic("implement me")
 }
 
-func (m *mockRPCAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+func (m *mockGatewayDepsAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	panic("implement me")
 }
 
-func (m *mockRPCAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
+func (m *mockGatewayDepsAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
 	panic("implement me")
 }
 
-func (m *mockRPCAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+func (m *mockGatewayDepsAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	panic("implement me")
 }
 
-func (m *mockRPCAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error) {
+func (m *mockGatewayDepsAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error) {
 	panic("implement me")
 }

@@ -157,10 +157,6 @@ func RPCMockSbBuilder(t *testing.T, fullOpts []test.OptionGenerator, storage []t
 	return mockSbBuilderOpts(t, fullOpts, storage, []node.Option{}, true)
 }
 
-func RPCMockSbBuilderWithOpts(t *testing.T, fullOpts []test.OptionGenerator, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-	return mockSbBuilderOpts(t, fullOpts, storage, []node.Option{}, true)
-}
-
 func mockBuilderOpts(t *testing.T, fullOpts []test.OptionGenerator, storage []test.StorageMiner, opts []node.Option, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)

@@ -37,6 +37,8 @@ func init() {
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
+// TestEndToEnd tests that API calls can be made on a lite node that is
+// connected through a gateway to a full API node
 func TestEndToEnd(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
@@ -66,10 +68,12 @@ func TestEndToEnd(t *testing.T) {
 	err = sendFunds(ctx, t, lite, liteWalletAddr, fullWalletAddr, types.NewInt(100))
 	require.NoError(t, err)
 
+	// Sign some data with the lite node wallet address
 	data := []byte("hello")
 	sig, err := lite.WalletSign(ctx, liteWalletAddr, data)
 	require.NoError(t, err)
 
+	// Verify the signature
 	ok, err := lite.WalletVerify(ctx, liteWalletAddr, data, sig)
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -101,6 +105,10 @@ func sendFunds(ctx context.Context, t *testing.T, fromNode test.TestNode, fromAd
 func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration) (test.TestNode, test.TestNode, jsonrpc.ClientCloser) {
 	var closer jsonrpc.ClientCloser
 
+	// Create one miner and two full nodes.
+	// - Put a gateway server in front of full node 1
+	// - Start full node 2 in lite mode
+	// - Connect lite node -> gateway server -> full node
 	opts := append(
 		// Full node
 		test.OneFull,
@@ -108,17 +116,20 @@ func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration) (tes
 		func(nodes []test.TestNode) node.Option {
 			fullNode := nodes[0]
 
-			addr, err := builder.WSMultiAddrToString(fullNode.ListenAddr)
+			// Create a gateway server in front of the full node
+			_, addr, err := builder.CreateRPCServer(&GatewayAPI{api: fullNode})
 			require.NoError(t, err)
 
-			// Create a gateway API that connects to the full node
+			// Create a gateway client API that connects to the gateway server
 			var gapi api.GatewayAPI
 			gapi, closer, err = client.NewGatewayRPC(ctx, addr, nil)
 			require.NoError(t, err)
+
+			// Override this node with lite-mode options
 			return node.LiteModeOverrides(gapi)
 		},
 	)
-	n, sn := builder.RPCMockSbBuilderWithOpts(t, opts, test.OneMiner)
+	n, sn := builder.RPCMockSbBuilder(t, opts, test.OneMiner)
 
 	full := n[0]
 	lite := n[1]
