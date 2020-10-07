@@ -307,12 +307,22 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 	}, nil
 }
 
-func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
+func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.StateManager.Call(ctx, msg, ts)
+	for {
+		res, err = a.StateManager.Call(ctx, msg, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
+	return res, err
 }
 
 func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {

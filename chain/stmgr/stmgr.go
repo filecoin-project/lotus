@@ -53,6 +53,10 @@ type StateManager struct {
 
 	// Maps chain epochs to upgrade functions.
 	stateMigrations map[abi.ChainEpoch]UpgradeFunc
+	// A set of potentially expensive/time consuming upgrades. Explicit
+	// calls for, e.g., gas estimation fail against this epoch with
+	// ErrExpensiveFork.
+	expensiveUpgrades map[abi.ChainEpoch]struct{}
 
 	stCache              map[string][]cid.Cid
 	compWait             map[string]chan struct{}
@@ -78,6 +82,7 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 	}
 
 	stateMigrations := make(map[abi.ChainEpoch]UpgradeFunc, len(us))
+	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))
 	var networkVersions []versionSpec
 	lastVersion := network.Version0
 	if len(us) > 0 {
@@ -86,6 +91,9 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 		for _, upgrade := range us {
 			if upgrade.Migration != nil {
 				stateMigrations[upgrade.Height] = upgrade.Migration
+			}
+			if upgrade.Expensive {
+				expensiveUpgrades[upgrade.Height] = struct{}{}
 			}
 			networkVersions = append(networkVersions, versionSpec{
 				networkVersion: lastVersion,
@@ -99,13 +107,14 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 	}
 
 	return &StateManager{
-		networkVersions: networkVersions,
-		latestVersion:   lastVersion,
-		stateMigrations: stateMigrations,
-		newVM:           vm.NewVM,
-		cs:              cs,
-		stCache:         make(map[string][]cid.Cid),
-		compWait:        make(map[string]chan struct{}),
+		networkVersions:   networkVersions,
+		latestVersion:     lastVersion,
+		stateMigrations:   stateMigrations,
+		expensiveUpgrades: expensiveUpgrades,
+		newVM:             vm.NewVM,
+		cs:                cs,
+		stCache:           make(map[string][]cid.Cid),
+		compWait:          make(map[string]chan struct{}),
 	}, nil
 }
 
