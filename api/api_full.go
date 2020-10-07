@@ -271,6 +271,8 @@ type FullNode interface {
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	// ClientGetDealUpdates returns the status of updated deals
 	ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error)
+	// ClientGetDealStatus returns status given a code
+	ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error)
 	// ClientHasLocal indicates whether a certain CID is locally stored.
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	// ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).

@@ -146,14 +146,15 @@ type FullNodeStruct struct {
 		WalletDelete          func(context.Context, address.Address) error                                         `perm:"write"`
 		WalletValidateAddress func(context.Context, string) (address.Address, error)                               `perm:"read"`
 
-		ClientImport                              func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                                `perm:"admin"`
-		ClientListImports                         func(ctx context.Context) ([]api.Import, error)                                                                   `perm:"write"`
-		ClientRemoveImport                        func(ctx context.Context, importID multistore.StoreID) error                                                      `perm:"admin"`
-		ClientHasLocal                            func(ctx context.Context, root cid.Cid) (bool, error)                                                             `perm:"write"`
-		ClientFindData                            func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error)                                 `perm:"read"`
-		ClientMinerQueryOffer                     func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error)            `perm:"read"`
-		ClientStartDeal                           func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                                          `perm:"admin"`
-		ClientGetDealInfo                         func(context.Context, cid.Cid) (*api.DealInfo, error)                                                             `perm:"read"`
+		ClientImport                              func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                     `perm:"admin"`
+		ClientListImports                         func(ctx context.Context) ([]api.Import, error)                                                        `perm:"write"`
+		ClientRemoveImport                        func(ctx context.Context, importID multistore.StoreID) error                                           `perm:"admin"`
+		ClientHasLocal                            func(ctx context.Context, root cid.Cid) (bool, error)                                                  `perm:"write"`
+		ClientFindData                            func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error)                      `perm:"read"`
+		ClientMinerQueryOffer                     func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error) `perm:"read"`
+		ClientStartDeal                           func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                               `perm:"admin"`
+		ClientGetDealInfo                         func(context.Context, cid.Cid) (*api.DealInfo, error)                                                  `perm:"read"`
+		ClientGetDealStatus                       func(context.Context, uint64) (string, error)
 		ClientListDeals                           func(ctx context.Context) ([]api.DealInfo, error)                                                                 `perm:"write"`
 		ClientGetDealUpdates                      func(ctx context.Context) (<-chan api.DealInfo, error)                                                            `perm:"read"`
 		ClientRetrieve                            func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                                       `perm:"admin"`
@@ -476,6 +477,10 @@ func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, params *api.StartD
 
 func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*api.DealInfo, error) {
 	return c.Internal.ClientGetDealInfo(ctx, deal)
+}
+
+func (c *FullNodeStruct) ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error) {
+	return c.Internal.ClientGetDealStatus(ctx, statusCode)
 }
 
 func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
