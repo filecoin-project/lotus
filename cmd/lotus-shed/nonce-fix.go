@@ -89,7 +89,6 @@ var noncefix = &cli.Command{
 				From:  addr,
 				To:    addr,
 				Value: types.NewInt(1),
-				Nonce: i,
 			}
 
 			_, err = api.MpoolPushMessage(ctx, msg, nil)
