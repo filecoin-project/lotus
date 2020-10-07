@@ -1037,29 +1037,22 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 		}
 
 		var messageMethod string
+		var processed bool
 
 		if m.To == builtin.StorageMarketActorAddr {
-			var err error
-			var processed bool
 			processed, messageMethod, refundValue, err = r.processTipsetStorageMarketActor(ctx, tipset, msg, recps[i])
-			if err != nil {
-				continue
-			}
-			if !processed {
-				continue
-			}
 		}
 
 		if a.IsStorageMinerActor() {
-			var err error
-			var processed bool
 			processed, messageMethod, refundValue, err = r.processTipsetStorageMinerActor(ctx, tipset, msg, recps[i])
-			if err != nil {
-				continue
-			}
-			if !processed {
-				continue
-			}
+		}
+
+		if err != nil {
+			log.Errorw("error while processing message", "cid", msg.Cid)
+			continue
+		}
+		if !processed {
+			continue
 		}
 
 		log.Debugw(
