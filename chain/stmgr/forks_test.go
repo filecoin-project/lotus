@@ -120,7 +120,7 @@ func TestForkHeightTriggers(t *testing.T) {
 			Network: 1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
-				root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
+				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				cst := ipldcbor.NewCborStore(sm.ChainStore().Blockstore())
 
 				st, err := sm.StateTree(root)

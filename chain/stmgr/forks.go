@@ -33,7 +33,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-type UpgradeFunc func(context.Context, *StateManager, ExecCallback, cid.Cid, *types.TipSet) (cid.Cid, error)
+// UpgradeFunc is a migration function run ate very upgrade.
+//
+// - The oldState is the state produced by the upgrade epoch.
+// - The returned newState is the new state that will be used by the next epoch.
+// - The height is the upgrade epoch height (already executed).
+// - The tipset is the tipset for the last non-null block before the upgrade. Do
+//   not assume that ts.Height() is the upgrade height.
+type UpgradeFunc func(ctx context.Context, sm *StateManager, cb ExecCallback, oldState cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (newState cid.Cid, err error)
 
 type Upgrade struct {
 	Height    abi.ChainEpoch
@@ -108,7 +115,7 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 	var err error
 	f, ok := sm.stateMigrations[height]
 	if ok {
-		retCid, err = f(ctx, sm, cb, root, ts)
+		retCid, err = f(ctx, sm, cb, root, height, ts)
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -179,7 +186,7 @@ func doTransfer(cb ExecCallback, tree types.StateTree, from, to address.Address,
 	return nil
 }
 
-func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
+func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Some initial parameters
 	FundsForMiners := types.FromFil(1_000_000)
 	LookbackEpoch := abi.ChainEpoch(32000)
@@ -431,10 +438,8 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 	return tree.Flush(ctx)
 }
 
-func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
+func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	store := sm.cs.Store(ctx)
-
-	epoch := ts.Height() - 1
 
 	if build.UpgradeLiftoffHeight <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
@@ -488,10 +493,8 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 	return tree.Flush(ctx)
 }
 
-func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
+func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	store := sm.cs.Store(ctx)
-
-	epoch := ts.Height() - 1
 
 	info, err := store.Put(ctx, new(types.StateInfo0))
 	if err != nil {
@@ -539,7 +542,7 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 	return newRoot, nil
 }
 
-func UpgradeLiftoff(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
+func UpgradeLiftoff(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	tree, err := sm.StateTree(root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
