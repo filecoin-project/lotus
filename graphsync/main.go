@@ -56,6 +56,10 @@ type networkParams struct {
 	bandwidth uint64
 }
 
+func (p networkParams) String() string {
+	return fmt.Sprintf("<lat: %s, bandwidth: %d>", p.latency, p.bandwidth)
+}
+
 func runStress(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	var (
 		size        = runenv.SizeParam("size")
@@ -64,6 +68,7 @@ func runStress(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 		networkParams = parseNetworkConfig(runenv)
 	)
 	runenv.RecordMessage("started test instance")
+	runenv.RecordMessage("network params: %v", networkParams)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()

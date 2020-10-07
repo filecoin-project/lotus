@@ -6,7 +6,13 @@
   case = "stress"
   total_instances = 2
   builder = "docker:go"
-  runner = "local:docker"
+  runner = "cluster:k8s"
+
+[global.build_config]
+  push_registry=true
+  go_proxy_mode="remote"
+  go_proxy_url="http://localhost:8081"
+  registry_type="aws"
 
 [global.run.test_params]
 size      = "10MB"
@@ -17,7 +23,13 @@ concurrency = "10"
 [[groups]]
   id = "providers"
   instances = { count = 1 }
+  [groups.resources]
+    memory = "4096Mi"
+    cpu = "1000m"
 
 [[groups]]
   id = "requestors"
   instances = { count = 1 }
+  [groups.resources]
+    memory = "4096Mi"
+    cpu = "1000m"

@@ -21,6 +21,6 @@ require (
 	github.com/libp2p/go-libp2p-noise v0.1.1
 	github.com/libp2p/go-libp2p-secio v0.2.2
 	github.com/libp2p/go-libp2p-tls v0.1.3
-	github.com/testground/sdk-go v0.2.3
+	github.com/testground/sdk-go v0.2.6-0.20201006133708-6fc40ca67865
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 )
