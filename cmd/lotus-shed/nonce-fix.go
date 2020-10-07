@@ -91,12 +91,8 @@ var noncefix = &cli.Command{
 				Value: types.NewInt(1),
 				Nonce: i,
 			}
-			smsg, err := api.WalletSignMessage(ctx, addr, msg)
-			if err != nil {
-				return err
-			}
 
-			_, err = api.MpoolPush(ctx, smsg)
+			_, err = api.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {
 				return err
 			}
