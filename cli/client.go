@@ -1040,6 +1040,10 @@ var clientListDeals = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
+			Name:  "show-failed",
+			Usage: "show failed/failing deals",
+		},
+		&cli.BoolFlag{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
@@ -1055,6 +1059,7 @@ var clientListDeals = &cli.Command{
 		verbose := cctx.Bool("verbose")
 		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
+		showFailed := cctx.Bool("show-failed")
 
 		localDeals, err := api.ClientListDeals(ctx)
 		if err != nil {
@@ -1071,7 +1076,7 @@ var clientListDeals = &cli.Command{
 				tm.Clear()
 				tm.MoveCursor(1, 1)
 
-				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color)
+				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color, showFailed)
 				if err != nil {
 					return err
 				}
@@ -1097,7 +1102,7 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
-		return outputStorageDeals(ctx, os.Stdout, api, localDeals, cctx.Bool("verbose"), cctx.Bool("color"))
+		return outputStorageDeals(ctx, os.Stdout, api, localDeals, cctx.Bool("verbose"), cctx.Bool("color"), showFailed)
 	},
 }
 
@@ -1120,7 +1125,7 @@ func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet
 	}
 }
 
-func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, localDeals []api.DealInfo, verbose bool, color bool) error {
+func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
 	sort.Slice(localDeals, func(i, j int) bool {
 		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
 	})
@@ -1132,7 +1137,9 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 
 	var deals []deal
 	for _, localDeal := range localDeals {
-		deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
+		if showFailed || localDeal.State != storagemarket.StorageDealError {
+			deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
+		}
 	}
 
 	if verbose {
