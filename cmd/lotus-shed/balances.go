@@ -117,7 +117,7 @@ var chainBalanceCmd = &cli.Command{
 
 		fmt.Printf("Address,Balance,Type,Power,Worker,Owner\n")
 		for _, acc := range infos {
-			fmt.Printf("%s,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance, acc.Type, acc.Power, acc.Worker, acc.Owner)
+			fmt.Printf("%s,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type, acc.Power, acc.Worker, acc.Owner)
 		}
 		return nil
 	},
@@ -244,12 +244,12 @@ var chainBalanceStateCmd = &cli.Command{
 		if minerInfo {
 			fmt.Printf("Address,Balance,Type,Sectors,Worker,Owner,InitialPledge,Locked,PreCommits\n")
 			for _, acc := range infos {
-				fmt.Printf("%s,%s,%s,%d,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance, acc.Type, acc.Sectors, acc.Worker, acc.Owner, acc.InitialPledge, acc.LockedFunds, acc.PreCommits)
+				fmt.Printf("%s,%s,%s,%d,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type, acc.Sectors, acc.Worker, acc.Owner, acc.InitialPledge, acc.LockedFunds, acc.PreCommits)
 			}
 		} else {
 			fmt.Printf("Address,Balance,Type\n")
 			for _, acc := range infos {
-				fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance, acc.Type)
+				fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type)
 			}
 		}
 
