@@ -56,7 +56,7 @@ type UpgradeSchedule []Upgrade
 func DefaultUpgradeSchedule() UpgradeSchedule {
 	var us UpgradeSchedule
 
-	for _, u := range []Upgrade{{
+	updates := []Upgrade{{
 		Height:    build.UpgradeBreezeHeight,
 		Network:   network.Version1,
 		Migration: UpgradeFaucetBurnRecovery,
@@ -81,7 +81,33 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version4,
 		Migration: UpgradeLiftoff,
-	}} {
+	}}
+
+	if build.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
+		updates = []Upgrade{{
+			Height:    build.UpgradeBreezeHeight,
+			Network:   network.Version1,
+			Migration: UpgradeFaucetBurnRecovery,
+		}, {
+			Height:    build.UpgradeSmokeHeight,
+			Network:   network.Version2,
+			Migration: nil,
+		}, {
+			Height:    build.UpgradeIgnitionHeight,
+			Network:   network.Version3,
+			Migration: UpgradeIgnition,
+		}, {
+			Height:    build.UpgradeRefuelHeight,
+			Network:   network.Version3,
+			Migration: UpgradeRefuel,
+		}, {
+			Height:    build.UpgradeLiftoffHeight,
+			Network:   network.Version3,
+			Migration: UpgradeLiftoff,
+		}}
+	}
+
+	for _, u := range updates {
 		if u.Height < 0 {
 			// upgrade disabled
 			continue

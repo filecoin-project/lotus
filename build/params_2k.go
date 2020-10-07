@@ -3,6 +3,9 @@
 package build
 
 import (
+	"math"
+	"os"
+
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -14,8 +17,9 @@ const BreezeGasTampingDuration = 0
 const UpgradeSmokeHeight = -1
 const UpgradeIgnitionHeight = -2
 const UpgradeRefuelHeight = -3
-const UpgradeActorsV2Height = 10
-const UpgradeLiftoffHeight = -4
+
+var UpgradeActorsV2Height = abi.ChainEpoch(10)
+var UpgradeLiftoffHeight = abi.ChainEpoch(-4)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -25,6 +29,11 @@ func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
+
+	if os.Getenv("LOTUS_DISABLE_V2_ACTOR_MIGRATION") == "1" {
+		UpgradeActorsV2Height = math.MaxInt64
+		UpgradeLiftoffHeight = 11
+	}
 
 	BuildType |= Build2k
 }
