@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -126,32 +127,46 @@ func (e *hcEvents) processHeadChangeEvent(rev, app []*types.TipSet) error {
 	for _, ts := range app {
 		// Check if the head change caused any state changes that we were
 		// waiting for
+		start := time.Now()
 		stateChanges := e.watcherEvents.checkStateChanges(e.lastTs, ts)
-
+		elapsed := time.Since(start)
+		log.Debugf("checkStateChanges, elapsed: %d", elapsed.Milliseconds())
 		// Queue up calls until there have been enough blocks to reach
 		// confidence on the state changes
+		start = time.Now()
 		for tid, data := range stateChanges {
 			e.queueForConfidence(tid, data, e.lastTs, ts)
 		}
+		elapsed = time.Since(start)
+		log.Debugf("queueForConfidence, elapsed: %d", elapsed.Milliseconds())
 
 		// Check if the head change included any new message calls
+		start = time.Now()
 		newCalls, err := e.messageEvents.checkNewCalls(ts)
 		if err != nil {
 			return err
 		}
+		elapsed = time.Since(start)
+		log.Debugf("checkNewCalls, elapsed: %d", elapsed.Milliseconds())
 
 		// Queue up calls until there have been enough blocks to reach
 		// confidence on the message calls
+		start = time.Now()
 		for tid, data := range newCalls {
 			e.queueForConfidence(tid, data, nil, ts)
 		}
+		elapsed = time.Since(start)
+		log.Debugf("for1, elapsed: %d", elapsed.Milliseconds())
 
+		start = time.Now()
 		for at := e.lastTs.Height(); at <= ts.Height(); at++ {
 			// Apply any queued events and timeouts that were targeted at the
 			// current chain height
 			e.applyWithConfidence(ts, at)
 			e.applyTimeouts(ts)
 		}
+		elapsed = time.Since(start)
+		log.Debugf("for2, elapsed: %d", elapsed.Milliseconds())
 
 		// Update the latest known tipset
 		e.lastTs = ts
@@ -376,17 +391,24 @@ func (we *watcherEvents) checkStateChanges(oldState, newState *types.TipSet) map
 	defer we.lk.RUnlock()
 
 	res := make(map[triggerID]eventData)
+	wg := sync.WaitGroup{}
 	for tid, matchFn := range we.matchers {
-		ok, data, err := matchFn(oldState, newState)
-		if err != nil {
-			log.Errorf("event diff fn failed: %s", err)
-			continue
-		}
+		wg.Add(1)
+		go func(tid uint64, matchFn StateMatchFunc) {
+			ok, data, err := matchFn(oldState, newState)
+			if err != nil {
+				log.Errorf("event diff fn failed: %s", err)
+				wg.Done()
+				return
+			}
 
-		if ok {
-			res[tid] = data
-		}
+			if ok {
+				res[tid] = data
+			}
+			wg.Done()
+		}(tid, matchFn)
 	}
+	wg.Wait()
 	return res
 }
 
