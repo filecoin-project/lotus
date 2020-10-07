@@ -850,18 +850,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 			return xerrors.Errorf("validating block election proof failed: %w", err)
 		}
 
-		slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
-		if err != nil {
-			return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
-		}
-
-		if slashed {
-			return xerrors.Errorf("received block was from slashed or invalid miner")
-		}
-
-		mpow, tpow, _, err := stmgr.GetPowerRaw(ctx, syncer.sm, lbst, h.Miner)
+		mpow, tpow, hmp, err := stmgr.GetPowerRaw(ctx, syncer.sm, lbst, h.Miner)
 		if err != nil {
 			return xerrors.Errorf("failed getting power: %w", err)
+		}
+		if !hmp {
+			return xerrors.Errorf("received block was from slashed or invalid miner")
 		}
 
 		j := h.ElectionProof.ComputeWinCount(mpow.QualityAdjPower, tpow.QualityAdjPower)
