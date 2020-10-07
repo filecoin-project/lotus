@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"github.com/filecoin-project/lotus/chain/store"
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"math"
 
 	"github.com/filecoin-project/go-address"
@@ -33,8 +30,11 @@ import (
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
 
 type UpgradeFunc func(context.Context, *StateManager, ExecCallback, cid.Cid, *types.TipSet) (cid.Cid, error)
@@ -547,7 +547,7 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 		to := buf.Read()
 
 		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
-		   return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
 		}
 	}
 
