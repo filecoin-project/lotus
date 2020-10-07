@@ -49,6 +49,10 @@ func (m *mockStorageMinerAPI) StateMinerInfo(ctx context.Context, a address.Addr
 	}, nil
 }
 
+func (m *mockStorageMinerAPI) StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error) {
+	return build.NewestNetworkVersion, nil
+}
+
 func (m *mockStorageMinerAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return abi.Randomness("ticket rand"), nil
 }
@@ -92,10 +96,6 @@ func (m *mockStorageMinerAPI) StateWaitMsg(ctx context.Context, cid cid.Cid, con
 			ExitCode: 0,
 		},
 	}, nil
-}
-
-func (m *mockStorageMinerAPI) StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error) {
-	return build.NewestNetworkVersion, nil
 }
 
 type mockProver struct {

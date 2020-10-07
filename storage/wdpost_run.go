@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -781,14 +782,34 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 	}
 	*msg = *gm
 
-	minFunds := big.Add(msg.RequiredFunds(), msg.Value)
+	// estimate
+	minGasFeeMsg := *msg
 
-	pa, err := AddressFor(ctx, s.api, mi, PoStAddr, minFunds)
+	minGasFeeMsg.GasPremium, err = s.api.GasEstimateGasPremium(ctx, 5, msg.From, msg.GasLimit, types.TipSetKey{})
+	if err != nil {
+		log.Errorf("failed to estimate minimum gas premium: %+v", err)
+		minGasFeeMsg.GasPremium = msg.GasPremium
+	}
+
+	minGasFeeMsg.GasFeeCap, err = s.api.GasEstimateFeeCap(ctx, &minGasFeeMsg, 4, types.EmptyTSK)
+	if err != nil {
+		log.Errorf("failed to estimate minimum gas fee cap: %+v", err)
+		minGasFeeMsg.GasFeeCap = msg.GasFeeCap
+	}
+
+	goodFunds := big.Add(msg.RequiredFunds(), msg.Value)
+	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
+
+	pa, avail, err := AddressFor(ctx, s.api, mi, PoStAddr, goodFunds, minFunds)
 	if err != nil {
 		log.Errorw("error selecting address for window post", "error", err)
 		return nil
 	}
 
 	msg.From = pa
+	bestReq := big.Add(msg.RequiredFunds(), msg.Value)
+	if avail.LessThan(bestReq) {
+		messagepool.CapGasFee(msg, big.Min(big.Sub(avail, msg.Value), msg.RequiredFunds()))
+	}
 	return nil
 }
