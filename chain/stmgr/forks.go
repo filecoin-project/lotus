@@ -45,6 +45,7 @@ type UpgradeFunc func(ctx context.Context, sm *StateManager, cb ExecCallback, ol
 type Upgrade struct {
 	Height    abi.ChainEpoch
 	Network   network.Version
+	Expensive bool
 	Migration UpgradeFunc
 }
 
@@ -68,6 +69,7 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeActorsV2Height,
 		Network:   network.Version4,
+		Expensive: true,
 		Migration: UpgradeActorsV2,
 	}, {
 		Height:    build.UpgradeLiftoffHeight,
@@ -124,8 +126,8 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 	return retCid, nil
 }
 
-func (sm *StateManager) hasStateFork(ctx context.Context, height abi.ChainEpoch) bool {
-	_, ok := sm.stateMigrations[height]
+func (sm *StateManager) hasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
+	_, ok := sm.expensiveUpgrades[height]
 	return ok
 }
 

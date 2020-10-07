@@ -164,7 +164,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 	var res *api.InvocResult
 	for {
 		res, err = a.Stmgr.CallWithGas(ctx, &msg, priorMsgs, ts)
-		if err != stmgr.ErrWouldFork {
+		if err != stmgr.ErrExpensiveFork {
 			break
 		}
 		ts, err = a.Chain.GetTipSetFromKey(ts.Parents())

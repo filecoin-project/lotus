@@ -247,8 +247,9 @@ func TestForkRefuseCall(t *testing.T) {
 
 	sm, err := NewStateManagerWithUpgradeSchedule(
 		cg.ChainStore(), UpgradeSchedule{{
-			Network: 1,
-			Height:  testForkHeight,
+			Network:   1,
+			Expensive: true,
+			Height:    testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				return root, nil
@@ -297,7 +298,7 @@ func TestForkRefuseCall(t *testing.T) {
 		switch ts.TipSet.TipSet().Height() {
 		case testForkHeight, testForkHeight + 1:
 			// If I had a fork, or I _will_ have a fork, it should fail.
-			require.Equal(t, ErrWouldFork, err)
+			require.Equal(t, ErrExpensiveFork, err)
 		default:
 			require.NoError(t, err)
 			require.True(t, ret.MsgRct.ExitCode.IsSuccess())
@@ -307,7 +308,7 @@ func TestForkRefuseCall(t *testing.T) {
 		ret, err = sm.Call(ctx, m, ts.TipSet.TipSet())
 		switch ts.TipSet.TipSet().Height() {
 		case testForkHeight + 1:
-			require.Equal(t, ErrWouldFork, err)
+			require.Equal(t, ErrExpensiveFork, err)
 		default:
 			require.NoError(t, err)
 			require.True(t, ret.MsgRct.ExitCode.IsSuccess())

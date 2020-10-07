@@ -314,7 +314,7 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 	}
 	for {
 		res, err = a.StateManager.Call(ctx, msg, ts)
-		if err != stmgr.ErrWouldFork {
+		if err != stmgr.ErrExpensiveFork {
 			break
 		}
 		ts, err = a.Chain.GetTipSetFromKey(ts.Parents())
