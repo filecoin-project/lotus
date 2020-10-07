@@ -2,21 +2,28 @@ package conformance
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
+	"github.com/filecoin-project/test-vectors/schema"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/test-vectors/schema"
 )
 
 type RecordingRand struct {
 	reporter Reporter
 	api      api.FullNode
 
+	// once guards the loading of the head tipset.
+	// can be removed when https://github.com/filecoin-project/lotus/issues/4223
+	// is fixed.
+	once     sync.Once
+	head     types.TipSetKey
 	lk       sync.Mutex
 	recorded schema.Randomness
 }
@@ -30,8 +37,17 @@ func NewRecordingRand(reporter Reporter, api api.FullNode) *RecordingRand {
 	return &RecordingRand{reporter: reporter, api: api}
 }
 
+func (r *RecordingRand) loadHead() {
+	head, err := r.api.ChainHead(context.Background())
+	if err != nil {
+		panic(fmt.Sprintf("could not fetch chain head while fetching randomness: %s", err))
+	}
+	r.head = head.Key()
+}
+
 func (r *RecordingRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	ret, err := r.api.ChainGetRandomnessFromTickets(ctx, types.EmptyTSK, pers, round, entropy)
+	r.once.Do(r.loadHead)
+	ret, err := r.api.ChainGetRandomnessFromTickets(ctx, r.head, pers, round, entropy)
 	if err != nil {
 		return ret, err
 	}
@@ -55,7 +71,8 @@ func (r *RecordingRand) GetChainRandomness(ctx context.Context, pers crypto.Doma
 }
 
 func (r *RecordingRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	ret, err := r.api.ChainGetRandomnessFromBeacon(ctx, types.EmptyTSK, pers, round, entropy)
+	r.once.Do(r.loadHead)
+	ret, err := r.api.ChainGetRandomnessFromBeacon(ctx, r.head, pers, round, entropy)
 	if err != nil {
 		return ret, err
 	}
