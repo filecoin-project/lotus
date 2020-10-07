@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"math"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -54,7 +56,7 @@ type UpgradeSchedule []Upgrade
 func DefaultUpgradeSchedule() UpgradeSchedule {
 	var us UpgradeSchedule
 
-	for _, u := range []Upgrade{{
+	updates := []Upgrade{{
 		Height:    build.UpgradeBreezeHeight,
 		Network:   network.Version1,
 		Migration: UpgradeFaucetBurnRecovery,
@@ -67,6 +69,10 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Network:   network.Version3,
 		Migration: UpgradeIgnition,
 	}, {
+		Height:    build.UpgradeRefuelHeight,
+		Network:   network.Version3,
+		Migration: UpgradeRefuel,
+	}, {
 		Height:    build.UpgradeActorsV2Height,
 		Network:   network.Version4,
 		Expensive: true,
@@ -75,7 +81,33 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version4,
 		Migration: UpgradeLiftoff,
-	}} {
+	}}
+
+	if build.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
+		updates = []Upgrade{{
+			Height:    build.UpgradeBreezeHeight,
+			Network:   network.Version1,
+			Migration: UpgradeFaucetBurnRecovery,
+		}, {
+			Height:    build.UpgradeSmokeHeight,
+			Network:   network.Version2,
+			Migration: nil,
+		}, {
+			Height:    build.UpgradeIgnitionHeight,
+			Network:   network.Version3,
+			Migration: UpgradeIgnition,
+		}, {
+			Height:    build.UpgradeRefuelHeight,
+			Network:   network.Version3,
+			Migration: UpgradeRefuel,
+		}, {
+			Height:    build.UpgradeLiftoffHeight,
+			Network:   network.Version3,
+			Migration: UpgradeLiftoff,
+		}}
+	}
+
+	for _, u := range updates {
 		if u.Height < 0 {
 			// upgrade disabled
 			continue
@@ -500,6 +532,36 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 	return tree.Flush(ctx)
 }
 
+func UpgradeRefuel(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	store := sm.cs.Store(ctx)
+	tree, err := sm.StateTree(root)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
+	}
+
+	addr, err := address.NewFromString("t0122")
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("getting address: %w", err)
+	}
+
+	err = resetMultisigVesting(ctx, store, tree, addr, 0, 0, big.Zero())
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("tweaking msig vesting: %w", err)
+	}
+
+	err = resetMultisigVesting(ctx, store, tree, builtin.ReserveAddress, 0, 0, big.Zero())
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("tweaking msig vesting: %w", err)
+	}
+
+	err = resetMultisigVesting(ctx, store, tree, builtin.RootVerifierAddress, 0, 0, big.Zero())
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("tweaking msig vesting: %w", err)
+	}
+
+	return tree.Flush(ctx)
+}
+
 func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	store := sm.cs.Store(ctx)
 
@@ -707,6 +769,7 @@ func makeKeyAddr(splitAddr address.Address, count uint64) (address.Address, erro
 	return addr, nil
 }
 
+// TODO: After the Liftoff epoch, refactor this to use resetMultisigVesting
 func resetGenesisMsigs(ctx context.Context, sm *StateManager, store adt0.Store, tree *state.StateTree, startEpoch abi.ChainEpoch) error {
 	gb, err := sm.cs.GetGenesis()
 	if err != nil {
@@ -752,6 +815,37 @@ func resetGenesisMsigs(ctx context.Context, sm *StateManager, store adt0.Store, 
 
 	if err != nil {
 		return xerrors.Errorf("iterating over genesis actors: %w", err)
+	}
+
+	return nil
+}
+
+func resetMultisigVesting(ctx context.Context, store adt0.Store, tree *state.StateTree, addr address.Address, startEpoch abi.ChainEpoch, duration abi.ChainEpoch, balance abi.TokenAmount) error {
+	act, err := tree.GetActor(addr)
+	if err != nil {
+		return xerrors.Errorf("getting actor: %w", err)
+	}
+
+	if !builtin.IsMultisigActor(act.Code) {
+		return xerrors.Errorf("actor wasn't msig: %w", err)
+	}
+
+	var msigState multisig0.State
+	if err := store.Get(ctx, act.Head, &msigState); err != nil {
+		return xerrors.Errorf("reading multisig state: %w", err)
+	}
+
+	msigState.StartEpoch = startEpoch
+	msigState.UnlockDuration = duration
+	msigState.InitialBalance = balance
+
+	act.Head, err = store.Put(ctx, &msigState)
+	if err != nil {
+		return xerrors.Errorf("writing new multisig state: %w", err)
+	}
+
+	if err := tree.SetActor(addr, act); err != nil {
+		return xerrors.Errorf("setting multisig actor: %w", err)
 	}
 
 	return nil

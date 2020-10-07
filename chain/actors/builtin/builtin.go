@@ -22,6 +22,7 @@ import (
 var SystemActorAddr = builtin0.SystemActorAddr
 var BurntFundsActorAddr = builtin0.BurntFundsActorAddr
 var ReserveAddress = makeAddress("t090")
+var RootVerifierAddress = makeAddress("t080")
 
 // TODO: Why does actors have 2 different versions of this?
 type SectorInfo = proof0.SectorInfo
