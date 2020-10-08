@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -38,7 +42,34 @@ func (c *LoggedWallet) WalletList(ctx context.Context) ([]address.Address, error
 }
 
 func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {
-	log.Infow("WalletSign", "address", k)
+	switch meta.Type {
+	case api.MTChainMsg:
+		var cmsg types.Message
+		if err := cmsg.UnmarshalCBOR(bytes.NewReader(meta.Extra)); err != nil {
+			return nil, xerrors.Errorf("unmarshalling message: %w", err)
+		}
+
+		_, bc, err := cid.CidFromBytes(msg)
+		if err != nil {
+			return nil, xerrors.Errorf("getting cid from signing bytes: %w", err)
+		}
+
+		if !cmsg.Cid().Equals(bc) {
+			return nil, xerrors.Errorf("cid(meta.Extra).bytes() != msg")
+		}
+
+		log.Infow("WalletSign",
+			"address", k,
+			"type", meta.Type,
+			"from", cmsg.From,
+			"to", cmsg.To,
+			"value", types.FIL(cmsg.Value),
+			"feecap", types.FIL(cmsg.RequiredFunds()),
+			"method", cmsg.Method,
+			"params", hex.EncodeToString(cmsg.Params))
+	default:
+		log.Infow("WalletSign", "address", k, "type", meta.Type)
+	}
 
 	return c.under.WalletSign(ctx, k, msg, meta)
 }
