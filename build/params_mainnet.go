@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -57,6 +57,6 @@ func init() {
 	Devnet = false
 }
 
-const BlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
+const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)

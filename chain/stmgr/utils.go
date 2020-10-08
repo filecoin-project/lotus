@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
 	cid "github.com/ipfs/go-cid"
@@ -26,7 +27,6 @@ import (
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
@@ -159,7 +159,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return mas.LoadSectors(snos)
 }
 
-func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof0.SectorInfo, error) {
+func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	act, err := sm.LoadActorRaw(ctx, maddr, st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -244,9 +244,9 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("loading proving sectors: %w", err)
 	}
 
-	out := make([]proof0.SectorInfo, len(sectors))
+	out := make([]builtin.SectorInfo, len(sectors))
 	for i, sinfo := range sectors {
-		out[i] = proof0.SectorInfo{
+		out[i] = builtin.SectorInfo{
 			SealProof:    spt,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,

@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/ipfs/go-datastore"
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -78,15 +78,16 @@ func (cv cachingVerifier) withCache(execute func() (bool, error), param cbg.CBOR
 	}
 }
 
-func (cv *cachingVerifier) VerifySeal(svi proof.SealVerifyInfo) (bool, error) {
+func (cv *cachingVerifier) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 	return cv.withCache(func() (bool, error) {
 		return cv.backend.VerifySeal(svi)
 	}, &svi)
 }
-func (cv *cachingVerifier) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error) {
+
+func (cv *cachingVerifier) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
 	return cv.backend.VerifyWinningPoSt(ctx, info)
 }
-func (cv *cachingVerifier) VerifyWindowPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) (bool, error) {
+func (cv *cachingVerifier) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error) {
 	return cv.withCache(func() (bool, error) {
 		return cv.backend.VerifyWindowPoSt(ctx, info)
 	}, &info)

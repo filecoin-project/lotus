@@ -6,16 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
-
-	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -28,15 +18,24 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	// Used for genesis.
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -254,14 +253,14 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	runCron := func(epoch abi.ChainEpoch) error {
 
 		cronMsg := &types.Message{
-			To:         builtin0.CronActorAddr,
-			From:       builtin0.SystemActorAddr,
+			To:         builtin2.CronActorAddr,
+			From:       builtin2.SystemActorAddr,
 			Nonce:      uint64(epoch),
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
 			GasLimit:   build.BlockGasLimit * 10000, // Make super sure this is never too little
-			Method:     builtin0.MethodsCron.EpochTick,
+			Method:     builtin2.MethodsCron.EpochTick,
 			Params:     nil,
 		}
 		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
@@ -350,14 +349,14 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 
 		rwMsg := &types.Message{
-			From:       builtin0.SystemActorAddr,
+			From:       builtin2.SystemActorAddr,
 			To:         reward.Address,
 			Nonce:      uint64(epoch),
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
 			GasLimit:   1 << 30,
-			Method:     builtin0.MethodsReward.AwardBlockReward,
+			Method:     builtin2.MethodsReward.AwardBlockReward,
 			Params:     params,
 		}
 		ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
@@ -974,7 +973,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		} else if builtin.IsAccountActor(act.Code) {
 			// should exclude burnt funds actor and "remainder account actor"
 			// should only ever be "faucet" accounts in testnets
-			if kaddr == builtin0.BurntFundsActorAddr {
+			if kaddr == builtin2.BurntFundsActorAddr {
 				return nil
 			}
 
@@ -1052,24 +1051,24 @@ func (sm *StateManager) setupPreIgnitionGenesisActorsTestnet(ctx context.Context
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin0.EpochsInDay)
+	sixMonths := abi.ChainEpoch(183 * builtin2.EpochsInDay)
 	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
 	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
 
 	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin0.EpochsInDay)
+	oneYear := abi.ChainEpoch(365 * builtin2.EpochsInDay)
 	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
 
 	// 2 years
-	twoYears := abi.ChainEpoch(2 * 365 * builtin0.EpochsInDay)
+	twoYears := abi.ChainEpoch(2 * 365 * builtin2.EpochsInDay)
 	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
 
 	// 3 years
-	threeYears := abi.ChainEpoch(3 * 365 * builtin0.EpochsInDay)
+	threeYears := abi.ChainEpoch(3 * 365 * builtin2.EpochsInDay)
 	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
 
 	// 6 years
-	sixYears := abi.ChainEpoch(6 * 365 * builtin0.EpochsInDay)
+	sixYears := abi.ChainEpoch(6 * 365 * builtin2.EpochsInDay)
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
@@ -1129,24 +1128,24 @@ func (sm *StateManager) setupPostIgnitionGenesisActors(ctx context.Context) erro
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin0.EpochsInDay)
+	sixMonths := abi.ChainEpoch(183 * builtin2.EpochsInDay)
 	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
 	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
 
 	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin0.EpochsInDay)
+	oneYear := abi.ChainEpoch(365 * builtin2.EpochsInDay)
 	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
 
 	// 2 years
-	twoYears := abi.ChainEpoch(2 * 365 * builtin0.EpochsInDay)
+	twoYears := abi.ChainEpoch(2 * 365 * builtin2.EpochsInDay)
 	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
 
 	// 3 years
-	threeYears := abi.ChainEpoch(3 * 365 * builtin0.EpochsInDay)
+	threeYears := abi.ChainEpoch(3 * 365 * builtin2.EpochsInDay)
 	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
 
 	// 6 years
-	sixYears := abi.ChainEpoch(6 * 365 * builtin0.EpochsInDay)
+	sixYears := abi.ChainEpoch(6 * 365 * builtin2.EpochsInDay)
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
@@ -1280,7 +1279,7 @@ func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (
 }
 
 func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	burnt, err := st.GetActor(builtin0.BurntFundsActorAddr)
+	burnt, err := st.GetActor(builtin2.BurntFundsActorAddr)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %w", err)
 	}

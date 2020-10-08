@@ -28,8 +28,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
@@ -167,7 +167,7 @@ var msigCreateCmd = &cli.Command{
 
 		// get address of newly created miner
 
-		var execreturn init0.ExecReturn
+		var execreturn init2.ExecReturn
 		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
@@ -427,7 +427,7 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		var retval msig0.ProposeReturn
+		var retval msig2.ProposeReturn
 		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
 		}
@@ -1160,7 +1160,7 @@ var msigLockProposeCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1257,7 +1257,7 @@ var msigLockApproveCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1349,7 +1349,7 @@ var msigLockCancelCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1488,7 +1488,7 @@ var msigProposeThresholdCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&msig0.ChangeNumApprovalsThresholdParams{
+		params, actErr := actors.SerializeParams(&msig2.ChangeNumApprovalsThresholdParams{
 			NewThreshold: newM,
 		})
 

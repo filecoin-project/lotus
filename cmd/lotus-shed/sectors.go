@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	"github.com/urfave/cli/v2"
 )
@@ -106,7 +106,7 @@ var terminateSectorCmd = &cli.Command{
 		smsg, err := nodeApi.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.TerminateSectors,
+			Method: builtin2.MethodsMiner.TerminateSectors,
 
 			Value:  big.Zero(),
 			Params: sp,

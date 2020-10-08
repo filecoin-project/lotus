@@ -19,12 +19,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
@@ -815,7 +815,7 @@ func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) 
 func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	ctx := context.TODO()
 	// block headers use adt0, for now.
-	a, err := adt0.AsArray(cs.Store(ctx), root)
+	a, err := blockadt.AsArray(cs.Store(ctx), root)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -1009,7 +1009,7 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	ctx := context.TODO()
 	// block headers use adt0, for now.
-	a, err := adt0.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
+	a, err := blockadt.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}

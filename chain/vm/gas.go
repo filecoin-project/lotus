@@ -3,13 +3,13 @@ package vm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	vmr2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 )
 
@@ -78,8 +78,8 @@ type Pricelist interface {
 	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
 	OnHashing(dataSize int) GasCharge
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
-	OnVerifySeal(info proof.SealVerifyInfo) GasCharge
-	OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge
+	OnVerifySeal(info proof2.SealVerifyInfo) GasCharge
+	OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
 }
 
@@ -150,7 +150,7 @@ func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 }
 
 type pricedSyscalls struct {
-	under     vmr.Syscalls
+	under     vmr2.Syscalls
 	pl        Pricelist
 	chargeGas func(GasCharge)
 }
@@ -184,7 +184,7 @@ func (ps pricedSyscalls) ComputeUnsealedSectorCID(reg abi.RegisteredSealProof, p
 }
 
 // Verifies a sector seal proof.
-func (ps pricedSyscalls) VerifySeal(vi proof.SealVerifyInfo) error {
+func (ps pricedSyscalls) VerifySeal(vi proof2.SealVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifySeal(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -192,7 +192,7 @@ func (ps pricedSyscalls) VerifySeal(vi proof.SealVerifyInfo) error {
 }
 
 // Verifies a proof of spacetime.
-func (ps pricedSyscalls) VerifyPoSt(vi proof.WindowPoStVerifyInfo) error {
+func (ps pricedSyscalls) VerifyPoSt(vi proof2.WindowPoStVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifyPost(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -209,14 +209,14 @@ func (ps pricedSyscalls) VerifyPoSt(vi proof.WindowPoStVerifyInfo) error {
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr.ConsensusFault, error) {
+func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr2.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.VerifyConsensusFault(h1, h2, extra)
 }
 
-func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof2.SealVerifyInfo) (map[address.Address][]bool, error) {
 	count := int64(0)
 	for _, svis := range inp {
 		count += int64(len(svis))

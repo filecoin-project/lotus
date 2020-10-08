@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -51,7 +51,7 @@ func addFundsMsg(toAdd abi.TokenAmount, addr address.Address, wallet address.Add
 		To:     market.Address,
 		From:   wallet,
 		Value:  toAdd,
-		Method: builtin.MethodsMarket.AddBalance,
+		Method: builtin2.MethodsMarket.AddBalance,
 		Params: params,
 	}
 }

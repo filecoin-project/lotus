@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -181,8 +181,8 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 	}, nil
 }
 
-func toArray(store adt.Store, cids []cid.Cid) (cid.Cid, error) {
-	arr := adt.MakeEmptyArray(store)
+func toArray(store blockadt.Store, cids []cid.Cid) (cid.Cid, error) {
+	arr := blockadt.MakeEmptyArray(store)
 	for i, c := range cids {
 		oc := cbg.CborCid(c)
 		if err := arr.Set(uint64(i), &oc); err != nil {

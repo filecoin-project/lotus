@@ -22,7 +22,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -252,7 +253,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 
 func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for i, sector := range m.Sectors {
-		proposal := &market.DealProposal{
+		proposal := &market2.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
