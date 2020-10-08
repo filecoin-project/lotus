@@ -6,6 +6,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/exchange"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/node/hello"
+
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -29,9 +36,7 @@ import (
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -39,10 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -56,7 +58,6 @@ import (
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -159,7 +160,7 @@ type Settings struct {
 
 	Online bool // Online option applied
 	Config bool // Config option applied
-
+	Lite   bool // Start node in "lite" mode
 }
 
 func defaults() []Option {
@@ -233,6 +234,10 @@ func isType(t repo.RepoType) func(s *Settings) bool {
 
 // Online sets up basic libp2p node
 func Online() Option {
+	isFullOrLiteNode := func(s *Settings) bool { return s.nodeType == repo.FullNode }
+	isFullNode := func(s *Settings) bool { return s.nodeType == repo.FullNode && !s.Lite }
+	isLiteNode := func(s *Settings) bool { return s.nodeType == repo.FullNode && s.Lite }
+
 	return Options(
 		// make sure that online is applied before Config.
 		// This is important because Config overrides some of Online units
@@ -246,16 +251,13 @@ func Online() Option {
 		// common
 		Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
 
-		// Full node
-
-		ApplyIf(isType(repo.FullNode),
+		// Full node or lite node
+		ApplyIf(isFullOrLiteNode,
 			// TODO: Fix offline mode
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 			Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 			Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
-
-			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
 			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 			Override(new(vm.SyscallBuilder), vm.Syscalls),
@@ -264,14 +266,7 @@ func Online() Option {
 			Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
 			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
-			Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
-
-			Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
-			Override(new(full.GasModuleAPI), From(new(full.GasModule))),
-			Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
-			Override(new(full.StateModuleAPI), From(new(full.StateModule))),
-			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
 			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
@@ -297,12 +292,6 @@ func Online() Option {
 
 			Override(new(dtypes.Graphsync), modules.Graphsync),
 			Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
-
-			Override(RunHelloKey, modules.RunHello),
-			Override(RunChainExchangeKey, modules.RunChainExchange),
-			Override(RunPeerMgrKey, modules.RunPeerMgr),
-			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
-
 			Override(new(*discoveryimpl.Local), modules.NewLocalDiscovery),
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
 
@@ -321,8 +310,34 @@ func Online() Option {
 			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 		),
 
+		// Lite node
+		ApplyIf(isLiteNode,
+			Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
+			Override(new(full.ChainModuleAPI), From(new(api.GatewayAPI))),
+			Override(new(full.GasModuleAPI), From(new(api.GatewayAPI))),
+			Override(new(full.MpoolModuleAPI), From(new(api.GatewayAPI))),
+			Override(new(full.StateModuleAPI), From(new(api.GatewayAPI))),
+			Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),
+		),
+
+		// Full node
+		ApplyIf(isFullNode,
+			Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
+			Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
+			Override(new(full.GasModuleAPI), From(new(full.GasModule))),
+			Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
+			Override(new(full.StateModuleAPI), From(new(full.StateModule))),
+			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
+
+			Override(RunHelloKey, modules.RunHello),
+			Override(RunChainExchangeKey, modules.RunChainExchange),
+			Override(RunPeerMgrKey, modules.RunPeerMgr),
+			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
+			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+		),
+
 		// miner
-		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
+		ApplyIf(isType(repo.StorageMiner),
 			Override(new(api.Common), From(new(common.CommonAPI))),
 			Override(new(sectorstorage.StorageAuth), modules.StorageAuth),
 
@@ -399,23 +414,6 @@ func StorageMiner(out *api.StorageMiner) Option {
 			*out = resAPI
 			return nil
 		},
-	)
-}
-
-func LiteModeOverrides(gapi api.GatewayAPI) Option {
-	return Options(
-		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
-		Override(new(api.GatewayAPI), gapi),
-		Override(new(full.ChainModuleAPI), From(new(api.GatewayAPI))),
-		Override(new(full.GasModuleAPI), From(new(api.GatewayAPI))),
-		Override(new(full.MpoolModuleAPI), From(new(api.GatewayAPI))),
-		Override(new(full.StateModuleAPI), From(new(api.GatewayAPI))),
-		Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),
-		Unset(RunHelloKey),
-		Unset(RunChainExchangeKey),
-		Unset(RunPeerMgrKey),
-		Unset(HandleIncomingBlocksKey),
-		Unset(HandleIncomingMessagesKey),
 	)
 }
 
@@ -533,10 +531,11 @@ func Repo(r repo.Repo) Option {
 	}
 }
 
-func FullAPI(out *api.FullNode) Option {
+func FullAPI(out *api.FullNode, lite bool) Option {
 	return Options(
 		func(s *Settings) error {
 			s.nodeType = repo.FullNode
+			s.Lite = lite
 			return nil
 		},
 		func(s *Settings) error {

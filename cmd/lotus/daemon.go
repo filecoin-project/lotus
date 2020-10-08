@@ -136,6 +136,8 @@ var DaemonCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		isLite := cctx.Bool("lite")
+
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
 			EnableCPU:    true,
 			EnableMemory: true,
@@ -195,8 +197,10 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
+		if !isLite {
+			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
+				return xerrors.Errorf("fetching proof parameters: %w", err)
+			}
 		}
 
 		var genBytes []byte
@@ -243,10 +247,9 @@ var DaemonCmd = &cli.Command{
 
 		shutdownChan := make(chan struct{})
 
-		// If the daemon is started in "lite mode", replace key APIs
-		// with a thin client to a gateway server
-		liteMode := node.Options()
-		isLite := cctx.Bool("lite")
+		// If the daemon is started in "lite mode", provide a  GatewayAPI
+		// for RPC calls
+		liteModeDeps := node.Options()
 		if isLite {
 			gapi, closer, err := lcli.GetGatewayAPI(cctx)
 			if err != nil {
@@ -254,13 +257,13 @@ var DaemonCmd = &cli.Command{
 			}
 
 			defer closer()
-			liteMode = node.LiteModeOverrides(gapi)
+			liteModeDeps = node.Override(new(api.GatewayAPI), gapi)
 		}
 
 		var api api.FullNode
 
 		stop, err := node.New(ctx,
-			node.FullAPI(&api),
+			node.FullAPI(&api, isLite),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
@@ -268,7 +271,7 @@ var DaemonCmd = &cli.Command{
 			node.Repo(r),
 
 			genesis,
-			liteMode,
+			liteModeDeps,
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {

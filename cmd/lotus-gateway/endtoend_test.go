@@ -8,32 +8,23 @@ import (
 	"testing"
 	"time"
 
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/lotus/api"
-
-	"github.com/filecoin-project/lotus/node"
-
-	"github.com/filecoin-project/lotus/api/client"
-
 	"github.com/filecoin-project/go-jsonrpc"
-
-	"github.com/filecoin-project/lotus/chain/wallet"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/filecoin-project/go-state-types/abi"
-	builder "github.com/filecoin-project/lotus/node/test"
-
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/node"
+	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 func init() {
@@ -179,20 +170,23 @@ func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration) (tes
 		// Full node
 		test.OneFull,
 		// Lite node
-		func(nodes []test.TestNode) node.Option {
-			fullNode := nodes[0]
+		test.FullNodeOpts{
+			Lite: true,
+			Opts: func(nodes []test.TestNode) node.Option {
+				fullNode := nodes[0]
 
-			// Create a gateway server in front of the full node
-			_, addr, err := builder.CreateRPCServer(&GatewayAPI{api: fullNode})
-			require.NoError(t, err)
+				// Create a gateway server in front of the full node
+				_, addr, err := builder.CreateRPCServer(&GatewayAPI{api: fullNode})
+				require.NoError(t, err)
 
-			// Create a gateway client API that connects to the gateway server
-			var gapi api.GatewayAPI
-			gapi, closer, err = client.NewGatewayRPC(ctx, addr, nil)
-			require.NoError(t, err)
+				// Create a gateway client API that connects to the gateway server
+				var gapi api.GatewayAPI
+				gapi, closer, err = client.NewGatewayRPC(ctx, addr, nil)
+				require.NoError(t, err)
 
-			// Override this node with lite-mode options
-			return node.LiteModeOverrides(gapi)
+				// Provide the gateway API to dependency injection
+				return node.Override(new(api.GatewayAPI), gapi)
+			},
 		},
 	)
 	n, sn := builder.RPCMockSbBuilder(t, opts, test.OneMiner)

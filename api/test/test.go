@@ -35,6 +35,7 @@ var PresealGenesis = -1
 
 const GenesisPreseals = 2
 
+// Options for setting up a mock storage miner
 type StorageMiner struct {
 	Full    int
 	Preseal int
@@ -42,12 +43,19 @@ type StorageMiner struct {
 
 type OptionGenerator func([]TestNode) node.Option
 
+// Options for setting up a mock full node
+type FullNodeOpts struct {
+	Lite bool            // run node in "lite" mode
+	Opts OptionGenerator // generate dependency injection options
+}
+
 // APIBuilder is a function which is invoked in test suite to provide
 // test nodes and networks
 //
+// fullOpts array defines options for each full node
 // storage array defines storage nodes, numbers in the array specify full node
 // index the storage node 'belongs' to
-type APIBuilder func(t *testing.T, full []OptionGenerator, storage []StorageMiner, opts ...node.Option) ([]TestNode, []TestStorageNode)
+type APIBuilder func(t *testing.T, full []FullNodeOpts, storage []StorageMiner, opts ...node.Option) ([]TestNode, []TestStorageNode)
 type testSuite struct {
 	makeNodes APIBuilder
 }
@@ -65,11 +73,13 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("testMiningReal", ts.testMiningReal)
 }
 
-func DefaultFullOpts(nFull int) []OptionGenerator {
-	full := make([]OptionGenerator, nFull)
+func DefaultFullOpts(nFull int) []FullNodeOpts {
+	full := make([]FullNodeOpts, nFull)
 	for i := range full {
-		full[i] = func(nodes []TestNode) node.Option {
-			return node.Options()
+		full[i] = FullNodeOpts{
+			Opts: func(nodes []TestNode) node.Option {
+				return node.Options()
+			},
 		}
 	}
 	return full
