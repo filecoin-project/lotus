@@ -40,7 +40,9 @@ func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byt
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
-	return a.WalletSign(ctx, keyAddr, msg)
+	return a.WalletAPI.WalletSign(ctx, keyAddr, msg, api.MsgMeta{
+		Type:  api.MTUnknown,
+	})
 }
 
 func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {

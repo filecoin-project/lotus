@@ -13,6 +13,10 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/build"
@@ -21,12 +25,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 
+	"github.com/filecoin-project/lotus/api"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
-	logging "github.com/ipfs/go-log"
 )
 
 func init() {
@@ -45,7 +47,7 @@ func makeTestMessage(w *wallet.LocalWallet, from, to address.Address, nonce uint
 		GasFeeCap:  types.NewInt(100 + gasPrice),
 		GasPremium: types.NewInt(gasPrice),
 	}
-	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes())
+	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -744,7 +746,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -754,7 +756,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1330,7 +1332,7 @@ readLoop:
 	}
 
 	actorMap := make(map[address.Address]address.Address)
-	actorWallets := make(map[address.Address]*wallet.Wallet)
+	actorWallets := make(map[address.Address]api.WalletAPI)
 
 	for _, m := range msgs {
 		baseNonce := baseNonces[m.Message.From]
@@ -1342,7 +1344,7 @@ readLoop:
 				t.Fatal(err)
 			}
 
-			a, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+			a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1360,7 +1362,7 @@ readLoop:
 		m.Message.From = localActor
 		m.Message.Nonce -= baseNonce
 
-		sig, err := w.Sign(context.TODO(), localActor, m.Message.Cid().Bytes())
+		sig, err := w.WalletSign(context.TODO(), localActor, m.Message.Cid().Bytes(), api.MsgMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}
