@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -507,16 +508,7 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 		return nil, fmt.Errorf("failed to load message: %w", err)
 	}
 
-	r, _, err := sm.tipsetExecutedMessage(ts, msg, m.VMMessage())
-	if err != nil {
-		return nil, err
-	}
-
-	if r != nil {
-		return r, nil
-	}
-
-	_, r, _, err = sm.searchBackForMsg(ctx, ts, m)
+	_, r, _, err := sm.searchBackForMsg(ctx, ts, m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to look back through chain for message: %w", err)
 	}
@@ -674,6 +666,18 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*ty
 func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 
 	cur := from
+	curActor, err := sm.LoadActor(ctx, m.VMMessage().From, cur)
+	if err != nil {
+		return nil, nil, cid.Undef, xerrors.Errorf("failed to load initital tipset")
+	}
+
+	mFromId, err := sm.LookupID(ctx, m.VMMessage().From, from)
+	if err != nil {
+		return nil, nil, cid.Undef, xerrors.Errorf("looking up From id address: %w", err)
+	}
+
+	mNonce := m.VMMessage().Nonce
+
 	for {
 		if cur.Height() == 0 {
 			// it ain't here!
@@ -686,32 +690,37 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 		default:
 		}
 
-		act, err := sm.LoadActor(ctx, m.VMMessage().From, cur)
-		if err != nil {
-			return nil, nil, cid.Cid{}, err
-		}
-
 		// we either have no messages from the sender, or the latest message we found has a lower nonce than the one being searched for,
 		// either way, no reason to lookback, it ain't there
-		if act.Nonce == 0 || act.Nonce < m.VMMessage().Nonce {
+		if curActor == nil || curActor.Nonce == 0 || curActor.Nonce < mNonce {
 			return nil, nil, cid.Undef, nil
 		}
 
-		ts, err := sm.cs.LoadTipSet(cur.Parents())
+		pts, err := sm.cs.LoadTipSet(cur.Parents())
 		if err != nil {
-			return nil, nil, cid.Undef, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
+			return nil, nil, cid.Undef, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		r, foundMsg, err := sm.tipsetExecutedMessage(ts, m.Cid(), m.VMMessage())
-		if err != nil {
-			return nil, nil, cid.Undef, fmt.Errorf("checking for message execution during lookback: %w", err)
+		act, err := sm.LoadActor(ctx, mFromId, pts)
+		actorNoExist := errors.Is(err, types.ErrActorNotFound)
+		if err != nil && !actorNoExist {
+			return nil, nil, cid.Cid{}, xerrors.Errorf("failed to load the actor: %w", err)
 		}
 
-		if r != nil {
-			return ts, r, foundMsg, nil
+		// check that between cur and parent tipset the nonce fell into range of our message
+		if actorNoExist || (curActor.Nonce > mNonce && act.Nonce <= mNonce) {
+			r, foundMsg, err := sm.tipsetExecutedMessage(cur, m.Cid(), m.VMMessage())
+			if err != nil {
+				return nil, nil, cid.Undef, xerrors.Errorf("checking for message execution during lookback: %w", err)
+			}
+
+			if r != nil {
+				return pts, r, foundMsg, nil
+			}
 		}
 
-		cur = ts
+		cur = pts
+		curActor = act
 	}
 }
 
