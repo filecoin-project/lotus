@@ -149,13 +149,13 @@ loop:
 
 	if len(msgs) > 0 {
 		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
-			msgs := make([]MessagePoolEvtMessage, 0, len(msgs))
+			msgsEv := make([]MessagePoolEvtMessage, 0, len(msgs))
 			for _, m := range msgs {
-				msgs = append(msgs, MessagePoolEvtMessage{Message: m.Message, CID: m.Cid()})
+				msgsEv = append(msgsEv, MessagePoolEvtMessage{Message: m.Message, CID: m.Cid()})
 			}
 			return MessagePoolEvt{
 				Action:   "repub",
-				Messages: msgs,
+				Messages: msgsEv,
 			}
 		})
 	}
