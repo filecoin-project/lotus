@@ -439,12 +439,12 @@ type mockCLI struct {
 }
 
 func newMockCLI(t *testing.T) *mockCLI {
-	// Create a CLI App with an --api flag so that we can specify which node
+	// Create a CLI App with an --api-url flag so that we can specify which node
 	// the command should be executed against
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:   "api",
+			Name:   "api-url",
 			Hidden: true,
 		},
 	}
@@ -476,8 +476,8 @@ func (c *mockCLIClient) runCmd(cmd *cli.Command, input []string) string {
 }
 
 func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, error) {
-	// prepend --api=<node api listener address>
-	apiFlag := "--api=" + c.addr.String()
+	// prepend --api-url=<node api listener address>
+	apiFlag := "--api-url=" + c.addr.String()
 	input = append([]string{apiFlag}, input...)
 
 	fs := c.flagSet(cmd)
@@ -493,7 +493,7 @@ func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, err
 }
 
 func (c *mockCLIClient) flagSet(cmd *cli.Command) *flag.FlagSet {
-	// Apply app level flags (so we can process --api flag)
+	// Apply app level flags (so we can process --api-url flag)
 	fs := &flag.FlagSet{}
 	for _, f := range c.cctx.App.Flags {
 		err := f.Apply(fs)
