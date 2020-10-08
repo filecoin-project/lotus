@@ -8,17 +8,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -133,17 +137,26 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal("Unable to settle payment channel")
 	}
 
+	creatorStore := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(paymentCreator)))
+
 	// wait for the receiver to submit their vouchers
 	ev := events.NewEvents(ctx, paymentCreator)
 	preds := state.NewStatePredicates(paymentCreator)
 	finished := make(chan struct{})
 	err = ev.StateChanged(func(ts *types.TipSet) (done bool, more bool, err error) {
-		act, err := paymentCreator.StateReadState(ctx, channel, ts.Key())
+		act, err := paymentCreator.StateGetActor(ctx, channel, ts.Key())
 		if err != nil {
 			return false, false, err
 		}
-		state := act.State.(paych.State)
-		if state.ToSend.GreaterThanEqual(abi.NewTokenAmount(6000)) {
+		state, err := paych.Load(creatorStore, act)
+		if err != nil {
+			return false, false, err
+		}
+		toSend, err := state.ToSend()
+		if err != nil {
+			return false, false, err
+		}
+		if toSend.GreaterThanEqual(abi.NewTokenAmount(6000)) {
 			return true, false, nil
 		}
 		return false, true, nil
@@ -156,7 +169,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		return true, nil
 	}, func(ctx context.Context, ts *types.TipSet) error {
 		return nil
-	}, int(build.MessageConfidence)+1, build.SealRandomnessLookbackLimit, func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
+	}, int(build.MessageConfidence)+1, build.Finality, func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
 		return preds.OnPaymentChannelActorChanged(channel, preds.OnToSendAmountChanges())(ctx, oldTs.Key(), newTs.Key())
 	})
 	if err != nil {
@@ -215,7 +228,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	}
 
 	// wait for the settlement period to pass before collecting
-	waitForBlocks(ctx, t, bm, paymentReceiver, receiverAddr, paych.SettleDelay)
+	waitForBlocks(ctx, t, bm, paymentReceiver, receiverAddr, paych0.SettleDelay)
 
 	creatorPreCollectBalance, err := paymentCreator.WalletBalance(ctx, createrAddr)
 	if err != nil {
@@ -271,7 +284,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *BlockMiner, paymentRec
 
 		// Add a real block
 		m, err := paymentReceiver.MpoolPushMessage(ctx, &types.Message{
-			To:    builtin.BurntFundsActorAddr,
+			To:    builtin0.BurntFundsActorAddr,
 			From:  receiverAddr,
 			Value: types.NewInt(0),
 		}, nil)

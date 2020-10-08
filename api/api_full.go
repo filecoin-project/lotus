@@ -812,14 +812,14 @@ type CirculatingSupply struct {
 }
 
 type MiningBaseInfo struct {
-	MinerPower      types.BigInt
-	NetworkPower    types.BigInt
-	Sectors         []builtin.SectorInfo
-	WorkerKey       address.Address
-	SectorSize      abi.SectorSize
-	PrevBeaconEntry types.BeaconEntry
-	BeaconEntries   []types.BeaconEntry
-	HasMinPower     bool
+	MinerPower        types.BigInt
+	NetworkPower      types.BigInt
+	Sectors           []builtin.SectorInfo
+	WorkerKey         address.Address
+	SectorSize        abi.SectorSize
+	PrevBeaconEntry   types.BeaconEntry
+	BeaconEntries     []types.BeaconEntry
+	EligibleForMining bool
 }
 
 type BlockTemplate struct {

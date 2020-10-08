@@ -327,17 +327,22 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 	}
 
 	for partIdx, partition := range partitions {
-		good, err := s.checkSectors(ctx, partition.ActiveSectors)
+		nonFaulty, err := bitfield.SubtractBitField(partition.LiveSectors, partition.FaultySectors)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("determining non faulty sectors: %w", err)
+		}
+
+		good, err := s.checkSectors(ctx, nonFaulty)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("checking sectors: %w", err)
 		}
 
-		faulty, err := bitfield.SubtractBitField(partition.ActiveSectors, good)
+		newFaulty, err := bitfield.SubtractBitField(nonFaulty, good)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("calculating faulty sector set: %w", err)
 		}
 
-		c, err := faulty.Count()
+		c, err := newFaulty.Count()
 		if err != nil {
 			return nil, nil, xerrors.Errorf("counting faulty sectors: %w", err)
 		}
@@ -351,7 +356,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 		params.Faults = append(params.Faults, miner.FaultDeclaration{
 			Deadline:  dlIdx,
 			Partition: uint64(partIdx),
-			Sectors:   faulty,
+			Sectors:   newFaulty,
 		})
 	}
 
@@ -509,7 +514,11 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 			var sinfos []proof.SectorInfo
 			for partIdx, partition := range batch {
 				// TODO: Can do this in parallel
-				toProve, err := bitfield.MergeBitFields(partition.ActiveSectors, partition.RecoveringSectors)
+				toProve, err := bitfield.SubtractBitField(partition.LiveSectors, partition.FaultySectors)
+				if err != nil {
+					return nil, xerrors.Errorf("removing faults from set of sectors to prove: %w", err)
+				}
+				toProve, err = bitfield.MergeBitFields(toProve, partition.RecoveringSectors)
 				if err != nil {
 					return nil, xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
 				}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
@@ -24,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
@@ -38,8 +39,24 @@ import (
 
 var log = logging.Logger("statemgr")
 
+type versionSpec struct {
+	networkVersion network.Version
+	atOrBelow      abi.ChainEpoch
+}
+
 type StateManager struct {
 	cs *store.ChainStore
+
+	// Determines the network version at any given epoch.
+	networkVersions []versionSpec
+	latestVersion   network.Version
+
+	// Maps chain epochs to upgrade functions.
+	stateMigrations map[abi.ChainEpoch]UpgradeFunc
+	// A set of potentially expensive/time consuming upgrades. Explicit
+	// calls for, e.g., gas estimation fail against this epoch with
+	// ErrExpensiveFork.
+	expensiveUpgrades map[abi.ChainEpoch]struct{}
 
 	stCache              map[string][]cid.Cid
 	compWait             map[string]chan struct{}
@@ -51,12 +68,54 @@ type StateManager struct {
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
-	return &StateManager{
-		newVM:    vm.NewVM,
-		cs:       cs,
-		stCache:  make(map[string][]cid.Cid),
-		compWait: make(map[string]chan struct{}),
+	sm, err := NewStateManagerWithUpgradeSchedule(cs, DefaultUpgradeSchedule())
+	if err != nil {
+		panic(fmt.Sprintf("default upgrade schedule is invalid: %s", err))
 	}
+	return sm
+}
+
+func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule) (*StateManager, error) {
+	// If we have upgrades, make sure they're in-order and make sense.
+	if err := us.Validate(); err != nil {
+		return nil, err
+	}
+
+	stateMigrations := make(map[abi.ChainEpoch]UpgradeFunc, len(us))
+	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))
+	var networkVersions []versionSpec
+	lastVersion := network.Version0
+	if len(us) > 0 {
+		// If we have any upgrades, process them and create a version
+		// schedule.
+		for _, upgrade := range us {
+			if upgrade.Migration != nil {
+				stateMigrations[upgrade.Height] = upgrade.Migration
+			}
+			if upgrade.Expensive {
+				expensiveUpgrades[upgrade.Height] = struct{}{}
+			}
+			networkVersions = append(networkVersions, versionSpec{
+				networkVersion: lastVersion,
+				atOrBelow:      upgrade.Height,
+			})
+			lastVersion = upgrade.Network
+		}
+	} else {
+		// Otherwise, go directly to the latest version.
+		lastVersion = build.NewestNetworkVersion
+	}
+
+	return &StateManager{
+		networkVersions:   networkVersions,
+		latestVersion:     lastVersion,
+		stateMigrations:   stateMigrations,
+		expensiveUpgrades: expensiveUpgrades,
+		newVM:             vm.NewVM,
+		cs:                cs,
+		stCache:           make(map[string][]cid.Cid),
+		compWait:          make(map[string]chan struct{}),
+	}, nil
 }
 
 func cidsToKey(cids []cid.Cid) string {
@@ -279,7 +338,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 
 		sysAct, actErr := vmi.StateTree().GetActor(builtin0.SystemActorAddr)
 		if actErr != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", actErr)
 		}
 
 		rwMsg := &types.Message{
@@ -295,7 +354,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 		ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
 		if actErr != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, err)
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, actErr)
 		}
 		if cb != nil {
 			if err := cb(rwMsg.Cid(), rwMsg, ret); err != nil {
@@ -313,7 +372,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	}
 
 	// XXX: Is the height correct? Or should it be epoch-1?
-	rectarr, err := adt.NewArray(sm.cs.Store(ctx), builtin.VersionForNetwork(sm.GetNtwkVersion(ctx, epoch)))
+	rectarr, err := adt.NewArray(sm.cs.Store(ctx), actors.VersionForNetwork(sm.GetNtwkVersion(ctx, epoch)))
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to create receipts amt: %w", err)
 	}
@@ -859,7 +918,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 	err = sTree.ForEach(func(kaddr address.Address, act *types.Actor) error {
-		if act.IsMultisigActor() {
+		if builtin.IsMultisigActor(act.Code) {
 			s, err := multisig.Load(sm.cs.Store(ctx), act)
 			if err != nil {
 				return err
@@ -891,7 +950,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 				totalsByEpoch[ud] = ib
 			}
 
-		} else if act.IsAccountActor() {
+		} else if builtin.IsAccountActor(act.Code) {
 			// should exclude burnt funds actor and "remainder account actor"
 			// should only ever be "faucet" accounts in testnets
 			if kaddr == builtin0.BurntFundsActorAddr {
@@ -1121,12 +1180,25 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch,
 		}
 	}
 
-	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-	vf = big.Add(vf, sm.preIgnitionGenInfos.genesisPledge)
-	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-	vf = big.Add(vf, sm.preIgnitionGenInfos.genesisMarketFunds)
+	// After UpgradeActorsV2Height these funds are accounted for in GetFilReserveDisbursed
+	if height <= build.UpgradeActorsV2Height {
+		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+		vf = big.Add(vf, sm.preIgnitionGenInfos.genesisPledge)
+		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+		vf = big.Add(vf, sm.preIgnitionGenInfos.genesisMarketFunds)
+	}
 
 	return vf, nil
+}
+
+func GetFilReserveDisbursed(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+	ract, err := st.GetActor(builtin.ReserveAddress)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get reserve actor: %w", err)
+	}
+
+	// If money enters the reserve actor, this could lead to a negative term
+	return big.Sub(big.NewFromGo(build.InitialFilReserved), ract.Balance), nil
 }
 
 func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
@@ -1216,6 +1288,14 @@ func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
 	}
 
+	filReserveDisbursed := big.Zero()
+	if height > build.UpgradeActorsV2Height {
+		filReserveDisbursed, err = GetFilReserveDisbursed(ctx, st)
+		if err != nil {
+			return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)
+		}
+	}
+
 	filMined, err := GetFilMined(ctx, st)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
@@ -1232,6 +1312,7 @@ func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height
 	}
 
 	ret := types.BigAdd(filVested, filMined)
+	ret = types.BigAdd(ret, filReserveDisbursed)
 	ret = types.BigSub(ret, filBurnt)
 	ret = types.BigSub(ret, filLocked)
 
@@ -1258,25 +1339,14 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 }
 
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
-	// TODO: move hard fork epoch checks to a schedule defined in build/
-
-	if build.UseNewestNetwork() {
-		return build.NewestNetworkVersion
+	// The epochs here are the _last_ epoch for every version, or -1 if the
+	// version is disabled.
+	for _, spec := range sm.networkVersions {
+		if height <= spec.atOrBelow {
+			return spec.networkVersion
+		}
 	}
-
-	if height <= build.UpgradeBreezeHeight {
-		return network.Version0
-	}
-
-	if height <= build.UpgradeSmokeHeight {
-		return network.Version1
-	}
-
-	if height <= build.UpgradeIgnitionHeight {
-		return network.Version2
-	}
-
-	return build.NewestNetworkVersion
+	return sm.latestVersion
 }
 
 func (sm *StateManager) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {

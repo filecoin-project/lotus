@@ -7,12 +7,12 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 // /////
@@ -25,7 +25,7 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version3
+const NewestNetworkVersion = network.Version4
 const ActorUpgradeNetworkVersion = network.Version4
 
 // Epochs
@@ -35,7 +35,7 @@ const ForkLengthThreshold = Finality
 var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = miner0.ChainFinality
+const Finality = policy.ChainFinality
 const MessageConfidence = uint64(5)
 
 // constants for Weight calculation
@@ -47,21 +47,14 @@ const WRatioDen = uint64(2)
 // Proofs
 
 // Epochs
-const SealRandomnessLookback = Finality
-
-// Epochs
-const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000 // TODO: Get from spec specs-actors
-
-// Maximum lookback that randomness can be sourced from for a seal proof submission
-const MaxSealLookback = SealRandomnessLookbackLimit + 2000 // TODO: Get from specs-actors
+// TODO: unused
+const SealRandomnessLookback = policy.SealRandomnessLookback
 
 // /////
 // Mining
 
 // Epochs
 const TicketRandomnessLookback = abi.ChainEpoch(1)
-
-const WinningPoStSectorSetLookback = abi.ChainEpoch(10)
 
 // /////
 // Address
@@ -77,14 +70,19 @@ const FilBase = uint64(2_000_000_000)
 const FilAllocStorageMining = uint64(1_100_000_000)
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
+const FilReserved = uint64(300_000_000)
 
 var InitialRewardBalance *big.Int
+var InitialFilReserved *big.Int
 
 // TODO: Move other important consts here
 
 func init() {
 	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
+
+	InitialFilReserved = big.NewInt(int64(FilReserved))
+	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
 
 	if os.Getenv("LOTUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
 		SetAddressNetwork(address.Mainnet)

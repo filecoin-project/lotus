@@ -14,7 +14,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -35,6 +38,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/tools/stats"
@@ -867,7 +871,7 @@ func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *
 	var messageMethod string
 
 	switch m.Method {
-	case builtin.MethodsMarket.PublishStorageDeals:
+	case builtin0.MethodsMarket.PublishStorageDeals:
 		if !r.publishStorageDealsEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -892,7 +896,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 	var messageMethod string
 
 	switch m.Method {
-	case builtin.MethodsMiner.SubmitWindowedPoSt:
+	case builtin0.MethodsMiner.SubmitWindowedPoSt:
 		if !r.windowedPoStEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -905,7 +909,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 		}
 
 		refundValue = types.BigMul(types.NewInt(uint64(recp.GasUsed)), tipset.Blocks()[0].ParentBaseFee)
-	case builtin.MethodsMiner.ProveCommitSector:
+	case builtin0.MethodsMiner.ProveCommitSector:
 		if !r.proveCommitEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -961,7 +965,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 		if r.refundPercent > 0 {
 			refundValue = types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.refundPercent)))
 		}
-	case builtin.MethodsMiner.PreCommitSector:
+	case builtin0.MethodsMiner.PreCommitSector:
 		if !r.preCommitEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -1025,9 +1029,9 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 		return nil, nil
 	}
 
-	refundValue := types.NewInt(0)
 	tipsetRefunds := NewMinersRefund()
 	for i, msg := range msgs {
+		refundValue := types.NewInt(0)
 		m := msg.Message
 
 		a, err := r.api.StateGetActor(ctx, m.To, tipset.Key())
@@ -1037,29 +1041,22 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 		}
 
 		var messageMethod string
+		var processed bool
 
-		if m.To == builtin.StorageMarketActorAddr {
-			var err error
-			var processed bool
+		if m.To == market.Address {
 			processed, messageMethod, refundValue, err = r.processTipsetStorageMarketActor(ctx, tipset, msg, recps[i])
-			if err != nil {
-				continue
-			}
-			if !processed {
-				continue
-			}
 		}
 
-		if a.IsStorageMinerActor() {
-			var err error
-			var processed bool
+		if builtin.IsStorageMinerActor(a.Code) {
 			processed, messageMethod, refundValue, err = r.processTipsetStorageMinerActor(ctx, tipset, msg, recps[i])
-			if err != nil {
-				continue
-			}
-			if !processed {
-				continue
-			}
+		}
+
+		if err != nil {
+			log.Errorw("error while processing message", "cid", msg.Cid)
+			continue
+		}
+		if !processed {
+			continue
 		}
 
 		log.Debugw(

@@ -9,6 +9,11 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -17,22 +22,14 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/rt"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
-	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -390,7 +387,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 	}
-	vmi, err := vm.NewVM(ctx, vmopt)
+	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -416,8 +413,9 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 
 func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.TipSet, round abi.ChainEpoch) (*types.TipSet, error) {
 	var lbr abi.ChainEpoch
-	if round > build.WinningPoStSectorSetLookback {
-		lbr = round - build.WinningPoStSectorSetLookback
+	lb := policy.GetWinningPoStSectorSetLookback(sm.GetNtwkVersion(ctx, round))
+	if round > lb {
+		lbr = round - lb
 	}
 
 	// more null blocks than our lookback
@@ -497,7 +495,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, nil
 	}
 
-	mpow, tpow, hmp, err := GetPowerRaw(ctx, sm, lbst, maddr)
+	mpow, tpow, _, err := GetPowerRaw(ctx, sm, lbst, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %w", err)
 	}
@@ -512,15 +510,21 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}
 
+	// TODO: Not ideal performance...This method reloads miner and power state (already looked up here and in GetPowerRaw)
+	eligible, err := MinerEligibleToMine(ctx, sm, maddr, ts, lbts)
+	if err != nil {
+		return nil, xerrors.Errorf("determining miner eligibility: %w", err)
+	}
+
 	return &api.MiningBaseInfo{
-		MinerPower:      mpow.QualityAdjPower,
-		NetworkPower:    tpow.QualityAdjPower,
-		Sectors:         sectors,
-		WorkerKey:       worker,
-		SectorSize:      info.SectorSize,
-		PrevBeaconEntry: *prev,
-		BeaconEntries:   entries,
-		HasMinPower:     hmp,
+		MinerPower:        mpow.QualityAdjPower,
+		NetworkPower:      tpow.QualityAdjPower,
+		Sectors:           sectors,
+		WorkerKey:         worker,
+		SectorSize:        info.SectorSize,
+		PrevBeaconEntry:   *prev,
+		BeaconEntries:     entries,
+		EligibleForMining: eligible,
 	}, nil
 }
 
@@ -534,40 +538,21 @@ type MethodMeta struct {
 var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 
 func init() {
-	cidToMethods := map[cid.Cid][2]interface{}{
-		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
-		builtin0.InitActorCodeID:             {builtin0.MethodsInit, init0.Actor{}},
-		builtin0.CronActorCodeID:             {builtin0.MethodsCron, cron0.Actor{}},
-		builtin0.AccountActorCodeID:          {builtin0.MethodsAccount, account0.Actor{}},
-		builtin0.StoragePowerActorCodeID:     {builtin0.MethodsPower, power0.Actor{}},
-		builtin0.StorageMinerActorCodeID:     {builtin0.MethodsMiner, miner0.Actor{}},
-		builtin0.StorageMarketActorCodeID:    {builtin0.MethodsMarket, market0.Actor{}},
-		builtin0.PaymentChannelActorCodeID:   {builtin0.MethodsPaych, paych0.Actor{}},
-		builtin0.MultisigActorCodeID:         {builtin0.MethodsMultisig, msig0.Actor{}},
-		builtin0.RewardActorCodeID:           {builtin0.MethodsReward, reward0.Actor{}},
-		builtin0.VerifiedRegistryActorCodeID: {builtin0.MethodsVerifiedRegistry, verifreg0.Actor{}},
-	}
+	// TODO: combine with the runtime actor registry.
+	var actors []rt.VMActor
+	actors = append(actors, exported0.BuiltinActors()...)
+	actors = append(actors, exported2.BuiltinActors()...)
 
-	for c, m := range cidToMethods {
-		exports := m[1].(vm.Invokee).Exports()
+	for _, actor := range actors {
+		exports := actor.Exports()
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
 		// Explicitly add send, it's special.
+		// Note that builtin2.MethodSend = builtin0.MethodSend = 0.
 		methods[builtin0.MethodSend] = MethodMeta{
 			Name:   "Send",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
 			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
-		}
-
-		// Learn method names from the builtin.Methods* structs.
-		rv := reflect.ValueOf(m[0])
-		rt := rv.Type()
-		nf := rt.NumField()
-		methodToName := make([]string, len(exports))
-		for i := 0; i < nf; i++ {
-			name := rt.Field(i).Name
-			number := rv.Field(i).Interface().(abi.MethodNum)
-			methodToName[number] = name
 		}
 
 		// Iterate over exported methods. Some of these _may_ be nil and
@@ -580,22 +565,19 @@ func init() {
 			ev := reflect.ValueOf(export)
 			et := ev.Type()
 
-			// Make sure the method name is correct.
-			// This is just a nice sanity check.
+			// Extract the method names using reflection. These
+			// method names always match the field names in the
+			// `builtin.Method*` structs (tested in the specs-actors
+			// tests).
 			fnName := runtime.FuncForPC(ev.Pointer()).Name()
 			fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
-			mName := methodToName[number]
-			if mName != fnName {
-				panic(fmt.Sprintf(
-					"actor method name is %s but exported method name is %s",
-					fnName, mName,
-				))
-			}
 
 			switch abi.MethodNum(number) {
 			case builtin0.MethodSend:
+				// Note that builtin2.MethodSend = builtin0.MethodSend = 0.
 				panic("method 0 is reserved for Send")
 			case builtin0.MethodConstructor:
+				// Note that builtin2.MethodConstructor = builtin0.MethodConstructor = 1.
 				if fnName != "Constructor" {
 					panic("method 1 is reserved for Constructor")
 				}
@@ -607,7 +589,7 @@ func init() {
 				Ret:    et.Out(0),
 			}
 		}
-		MethodsMap[c] = methods
+		MethodsMap[actor.Code()] = methods
 	}
 }
 
@@ -624,7 +606,7 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
 
-func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
+func minerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
 	pact, err := sm.LoadActor(ctx, power.Address, ts)
 	if err != nil {
 		return false, xerrors.Errorf("loading power actor state: %w", err)
@@ -636,6 +618,70 @@ func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Addres
 	}
 
 	return ps.MinerNominalPowerMeetsConsensusMinimum(addr)
+}
+
+func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Address, baseTs *types.TipSet, lookbackTs *types.TipSet) (bool, error) {
+	hmp, err := minerHasMinPower(ctx, sm, addr, lookbackTs)
+
+	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
+	if sm.GetNtwkVersion(ctx, baseTs.Height()) <= network.Version3 {
+		return hmp, err
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	if !hmp {
+		return false, nil
+	}
+
+	// Post actors v2, also check MinerEligibleForElection with base ts
+
+	pact, err := sm.LoadActor(ctx, power.Address, baseTs)
+	if err != nil {
+		return false, xerrors.Errorf("loading power actor state: %w", err)
+	}
+
+	pstate, err := power.Load(sm.cs.Store(ctx), pact)
+	if err != nil {
+		return false, err
+	}
+
+	mact, err := sm.LoadActor(ctx, addr, baseTs)
+	if err != nil {
+		return false, xerrors.Errorf("loading miner actor state: %w", err)
+	}
+
+	mstate, err := miner.Load(sm.cs.Store(ctx), mact)
+	if err != nil {
+		return false, err
+	}
+
+	// Non-empty power claim.
+	if claim, found, err := pstate.MinerPower(addr); err != nil {
+		return false, err
+	} else if !found {
+		return false, err
+	} else if claim.QualityAdjPower.LessThanEqual(big.Zero()) {
+		return false, err
+	}
+
+	// No fee debt.
+	if debt, err := mstate.FeeDebt(); err != nil {
+		return false, err
+	} else if !debt.IsZero() {
+		return false, err
+	}
+
+	// No active consensus faults.
+	if mInfo, err := mstate.Info(); err != nil {
+		return false, err
+	} else if baseTs.Height() <= mInfo.ConsensusFaultElapsed {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
