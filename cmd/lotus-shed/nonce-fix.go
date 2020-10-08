@@ -5,6 +5,8 @@ import (
 	"math"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -31,6 +33,10 @@ var noncefix = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name: "auto",
+		},
+		&cli.Int64Flag{
+			Name:  "gas-fee-cap",
+			Usage: "specify gas fee cap for nonce filling messages",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -84,12 +90,25 @@ var noncefix = &cli.Command{
 		}
 		fmt.Printf("Creating %d filler messages (%d ~ %d)\n", end-start, start, end)
 
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		feeCap := big.Mul(ts.Blocks()[0].ParentBaseFee, big.NewInt(2)) // default fee cap to 2 * parent base fee
+		if fcf := cctx.Int64("gas-fee-cap"); fcf != 0 {
+			feeCap = abi.NewTokenAmount(fcf)
+		}
+
 		for i := start; i < end; i++ {
 			msg := &types.Message{
-				From:  addr,
-				To:    addr,
-				Value: types.NewInt(1),
-				Nonce: i,
+				From:       addr,
+				To:         addr,
+				Value:      types.NewInt(0),
+				Nonce:      i,
+				GasLimit:   1000000,
+				GasFeeCap:  feeCap,
+				GasPremium: abi.NewTokenAmount(5),
 			}
 			smsg, err := api.WalletSignMessage(ctx, addr, msg)
 			if err != nil {

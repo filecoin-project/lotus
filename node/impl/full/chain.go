@@ -254,11 +254,31 @@ func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) 
 }
 
 func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	newHeadTs, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.Chain.SetHead(ts)
+
+	currentTs, err := a.ChainHead(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting head: %w", err)
+	}
+
+	for currentTs.Height() >= newHeadTs.Height() {
+		for _, blk := range currentTs.Key().Cids() {
+			err = a.Chain.UnmarkBlockAsValidated(ctx, blk)
+			if err != nil {
+				return xerrors.Errorf("unmarking block as validated %s: %w", blk, err)
+			}
+		}
+
+		currentTs, err = a.ChainGetTipSet(ctx, currentTs.Parents())
+		if err != nil {
+			return xerrors.Errorf("loading tipset: %w", err)
+		}
+	}
+
+	return a.Chain.SetHead(newHeadTs)
 }
 
 func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
@@ -285,6 +305,8 @@ func (s stringKey) Key() string {
 	return (string)(s)
 }
 
+// TODO: ActorUpgrade: this entire function is a problem (in theory) as we don't know the HAMT version.
+// In practice, hamt v0 should work "just fine" for reading.
 func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
 	return func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
 		store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
@@ -422,7 +444,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				return nil, nil, xerrors.Errorf("getting actor head for @state: %w", err)
 			}
 
-			m, err := vm.DumpActorState(act.Code, head.RawData())
+			m, err := vm.DumpActorState(&act, head.RawData())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -507,15 +529,11 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipo
 	r, w := io.Pipe()
 	out := make(chan []byte)
 	go func() {
-		defer w.Close() //nolint:errcheck // it is a pipe
-
 		bw := bufio.NewWriterSize(w, 1<<20)
-		defer bw.Flush() //nolint:errcheck // it is a write to a pipe
 
-		if err := a.Chain.Export(ctx, ts, nroots, skipoldmsgs, bw); err != nil {
-			log.Errorf("chain export call failed: %s", err)
-			return
-		}
+		err := a.Chain.Export(ctx, ts, nroots, skipoldmsgs, bw)
+		bw.Flush()            //nolint:errcheck // it is a write to a pipe
+		w.CloseWithError(err) //nolint:errcheck // it is a pipe
 	}()
 
 	go func() {
@@ -527,13 +545,23 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipo
 				log.Errorf("chain export pipe read failed: %s", err)
 				return
 			}
-			select {
-			case out <- buf[:n]:
-			case <-ctx.Done():
-				log.Warnf("export writer failed: %s", ctx.Err())
-				return
+			if n > 0 {
+				select {
+				case out <- buf[:n]:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
 			}
 			if err == io.EOF {
+				// send empty slice to indicate correct eof
+				select {
+				case out <- []byte{}:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+
 				return
 			}
 		}

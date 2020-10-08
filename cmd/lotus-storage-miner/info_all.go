@@ -10,6 +10,8 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
+var _test = false
+
 var infoAllCmd = &cli.Command{
 	Name:  "all",
 	Usage: "dump all related miner info",
@@ -150,9 +152,11 @@ var infoAllCmd = &cli.Command{
 			}
 		}
 
-		fmt.Println("\n#: Goroutines")
-		if err := lcli.PprofGoroutines.Action(cctx); err != nil {
-			return err
+		if !_test {
+			fmt.Println("\n#: Goroutines")
+			if err := lcli.PprofGoroutines.Action(cctx); err != nil {
+				return err
+			}
 		}
 
 		return nil

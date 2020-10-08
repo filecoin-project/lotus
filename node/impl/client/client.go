@@ -42,7 +42,6 @@ import (
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
@@ -88,7 +87,7 @@ func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.Chain
 	minExp := startEpoch + abi.ChainEpoch(minDuration)
 
 	// Align on miners ProvingPeriodBoundary
-	return minExp + miner0.WPoStProvingPeriod - (minExp % miner0.WPoStProvingPeriod) + (md.PeriodStart % miner0.WPoStProvingPeriod) - 1
+	return minExp + md.WPoStProvingPeriod - (minExp % md.WPoStProvingPeriod) + (md.PeriodStart % md.WPoStProvingPeriod) - 1
 }
 
 func (a *API) imgr() *importmgr.Mgr {
@@ -117,7 +116,13 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 			}
 		}
 	}
-	exist, err := a.WalletHas(ctx, params.Wallet)
+
+	walletKey, err := a.StateAPI.StateManager.ResolveToKeyAddress(ctx, params.Wallet, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed resolving params.Wallet addr: %w", params.Wallet)
+	}
+
+	exist, err := a.WalletHas(ctx, walletKey)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting addr from wallet: %w", params.Wallet)
 	}
@@ -200,6 +205,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 			Duration:      uint64(v.Proposal.Duration()),
 			DealID:        v.DealID,
 			CreationTime:  v.CreationTime.Time(),
+			Verified:      v.Proposal.VerifiedDeal,
 		}
 	}
 
@@ -223,6 +229,7 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 		Duration:      uint64(v.Proposal.Duration()),
 		DealID:        v.DealID,
 		CreationTime:  v.CreationTime.Time(),
+		Verified:      v.Proposal.VerifiedDeal,
 	}, nil
 }
 
@@ -848,6 +855,7 @@ func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
 		Duration:      uint64(v.Proposal.Duration()),
 		DealID:        v.DealID,
 		CreationTime:  v.CreationTime.Time(),
+		Verified:      v.Proposal.VerifiedDeal,
 	}
 }
 

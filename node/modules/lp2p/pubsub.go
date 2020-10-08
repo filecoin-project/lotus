@@ -223,8 +223,8 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				},
 				AppSpecificWeight: 1,
 
-				// This sets the IP colocation threshold to 1 peer per
-				IPColocationFactorThreshold: 1,
+				// This sets the IP colocation threshold to 5 peers before we apply penalties
+				IPColocationFactorThreshold: 5,
 				IPColocationFactorWeight:    -100,
 				// TODO we want to whitelist IPv6 /64s that belong to datacenters etc
 				// IPColocationFactorWhitelist: map[string]struct{}{},

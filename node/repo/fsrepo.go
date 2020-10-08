@@ -226,11 +226,23 @@ func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
 	}, nil
 }
 
+// Like Lock, except datastores will work in read-only mode
+func (fsr *FsRepo) LockRO(repoType RepoType) (LockedRepo, error) {
+	lr, err := fsr.Lock(repoType)
+	if err != nil {
+		return nil, err
+	}
+
+	lr.(*fsLockedRepo).readonly = true
+	return lr, nil
+}
+
 type fsLockedRepo struct {
 	path       string
 	configPath string
 	repoType   RepoType
 	closer     io.Closer
+	readonly   bool
 
 	ds     map[string]datastore.Batching
 	dsErr  error

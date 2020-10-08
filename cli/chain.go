@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -27,9 +28,10 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -50,6 +52,7 @@ var chainCmd = &cli.Command{
 		chainExportCmd,
 		slashConsensusFault,
 		chainGasPriceCmd,
+		chainInspectUsage,
 	},
 }
 
@@ -159,7 +162,7 @@ var chainGetBlock = &cli.Command{
 	},
 }
 
-func apiMsgCids(in []api.Message) []cid.Cid {
+func apiMsgCids(in []lapi.Message) []cid.Cid {
 	out := make([]cid.Cid, len(in))
 	for k, v := range in {
 		out[k] = v.Cid
@@ -369,6 +372,143 @@ var chainSetHeadCmd = &cli.Command{
 
 		if err := api.ChainSetHead(ctx, ts.Key()); err != nil {
 			return err
+		}
+
+		return nil
+	},
+}
+
+var chainInspectUsage = &cli.Command{
+	Name:  "inspect-usage",
+	Usage: "Inspect block space usage of a given tipset",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset to view block space usage of",
+			Value: "@head",
+		},
+		&cli.IntFlag{
+			Name:  "length",
+			Usage: "length of chain to inspect block space usage for",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "num-results",
+			Usage: "number of results to print per category",
+			Value: 10,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		cur := ts
+		var msgs []lapi.Message
+		for i := 0; i < cctx.Int("length"); i++ {
+			pmsgs, err := api.ChainGetParentMessages(ctx, cur.Blocks()[0].Cid())
+			if err != nil {
+				return err
+			}
+
+			msgs = append(msgs, pmsgs...)
+
+			next, err := api.ChainGetTipSet(ctx, cur.Parents())
+			if err != nil {
+				return err
+			}
+
+			cur = next
+		}
+
+		codeCache := make(map[address.Address]cid.Cid)
+
+		lookupActorCode := func(a address.Address) (cid.Cid, error) {
+			c, ok := codeCache[a]
+			if ok {
+				return c, nil
+			}
+
+			act, err := api.StateGetActor(ctx, a, ts.Key())
+			if err != nil {
+				return cid.Undef, err
+			}
+
+			codeCache[a] = act.Code
+			return act.Code, nil
+		}
+
+		bySender := make(map[string]int64)
+		byDest := make(map[string]int64)
+		byMethod := make(map[string]int64)
+
+		var sum int64
+		for _, m := range msgs {
+			bySender[m.Message.From.String()] += m.Message.GasLimit
+			byDest[m.Message.To.String()] += m.Message.GasLimit
+			sum += m.Message.GasLimit
+
+			code, err := lookupActorCode(m.Message.To)
+			if err != nil {
+				return err
+			}
+
+			mm := stmgr.MethodsMap[code][m.Message.Method]
+
+			byMethod[mm.Name] += m.Message.GasLimit
+
+		}
+
+		type keyGasPair struct {
+			Key string
+			Gas int64
+		}
+
+		mapToSortedKvs := func(m map[string]int64) []keyGasPair {
+			var vals []keyGasPair
+			for k, v := range m {
+				vals = append(vals, keyGasPair{
+					Key: k,
+					Gas: v,
+				})
+			}
+			sort.Slice(vals, func(i, j int) bool {
+				return vals[i].Gas > vals[j].Gas
+			})
+			return vals
+		}
+
+		senderVals := mapToSortedKvs(bySender)
+		destVals := mapToSortedKvs(byDest)
+		methodVals := mapToSortedKvs(byMethod)
+
+		numRes := cctx.Int("num-results")
+
+		fmt.Printf("Total Gas Limit: %d\n", sum)
+		fmt.Printf("By Sender:\n")
+		for i := 0; i < numRes && i < len(senderVals); i++ {
+			sv := senderVals[i]
+			fmt.Printf("%s\t%0.2f%%\t(%d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas)
+		}
+		fmt.Println()
+		fmt.Printf("By Receiver:\n")
+		for i := 0; i < numRes && i < len(destVals); i++ {
+			sv := destVals[i]
+			fmt.Printf("%s\t%0.2f%%\t(%d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas)
+		}
+		fmt.Println()
+		fmt.Printf("By Method:\n")
+		for i := 0; i < numRes && i < len(methodVals); i++ {
+			sv := methodVals[i]
+			fmt.Printf("%s\t%0.2f%%\t(%d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas)
 		}
 
 		return nil
@@ -648,7 +788,7 @@ var chainGetCmd = &cli.Command{
 
 type apiIpldStore struct {
 	ctx context.Context
-	api api.FullNode
+	api lapi.FullNode
 }
 
 func (ht *apiIpldStore) Context() context.Context {
@@ -676,7 +816,7 @@ func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error)
 	panic("No mutations allowed")
 }
 
-func handleAmt(ctx context.Context, api api.FullNode, r cid.Cid) error {
+func handleAmt(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsArray(s, r)
 	if err != nil {
@@ -689,7 +829,7 @@ func handleAmt(ctx context.Context, api api.FullNode, r cid.Cid) error {
 	})
 }
 
-func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
+func handleHamtEpoch(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsMap(s, r)
 	if err != nil {
@@ -707,7 +847,7 @@ func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
 	})
 }
 
-func handleHamtAddress(ctx context.Context, api api.FullNode, r cid.Cid) error {
+func handleHamtAddress(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsMap(s, r)
 	if err != nil {
@@ -930,11 +1070,18 @@ var chainExportCmd = &cli.Command{
 			return err
 		}
 
+		var last bool
 		for b := range stream {
+			last = len(b) == 0
+
 			_, err := fi.Write(b)
 			if err != nil {
 				return err
 			}
+		}
+
+		if !last {
+			return xerrors.Errorf("incomplete export (remote connection lost?)")
 		}
 
 		return nil

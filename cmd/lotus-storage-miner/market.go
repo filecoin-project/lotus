@@ -165,12 +165,6 @@ var setAskCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:        "duration",
-			Usage:       "Set duration of ask (a quantity of time after which the ask expires) `DURATION`",
-			DefaultText: "720h0m0s",
-			Value:       "720h0m0s",
-		},
-		&cli.StringFlag{
 			Name:        "min-piece-size",
 			Usage:       "Set minimum piece size (w/bit-padding, in bytes) in ask to `SIZE`",
 			DefaultText: "256B",
@@ -194,7 +188,7 @@ var setAskCmd = &cli.Command{
 		pri := types.NewInt(cctx.Uint64("price"))
 		vpri := types.NewInt(cctx.Uint64("verified-price"))
 
-		dur, err := time.ParseDuration(cctx.String("duration"))
+		dur, err := time.ParseDuration("720h0m0s")
 		if err != nil {
 			return xerrors.Errorf("cannot parse duration: %w", err)
 		}

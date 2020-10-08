@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 type scalingCost struct {
@@ -112,14 +112,14 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 	if big.Cmp(value, abi.NewTokenAmount(0)) != 0 {
 		ret += pl.sendTransferFunds
-		if methodNum == builtin.MethodSend {
+		if methodNum == builtin0.MethodSend {
 			// transfer only
 			ret += pl.sendTransferOnlyPremium
 		}
 		extra += "t"
 	}
 
-	if methodNum != builtin.MethodSend {
+	if methodNum != builtin0.MethodSend {
 		extra += "i"
 		// running actors is cheaper becase we hand over to actors
 		ret += pl.sendInvokeMethod

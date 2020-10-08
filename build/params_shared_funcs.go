@@ -41,7 +41,7 @@ func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
 
 func UseNewestNetwork() bool {
 	// TODO: Put these in a container we can iterate over
-	if UpgradeBreezeHeight <= 0 && UpgradeSmokeHeight <= 0 {
+	if UpgradeBreezeHeight <= 0 && UpgradeSmokeHeight <= 0 && UpgradeActorsV2Height <= 0 {
 		return true
 	}
 	return false

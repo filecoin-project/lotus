@@ -12,10 +12,14 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
@@ -118,6 +122,8 @@ func runExtractMany(c *cli.Context) error {
 		log.Println(color.GreenString("csv sanity check succeeded; header contains fields: %v", header))
 	}
 
+	codeCidBuilder := cid.V1Builder{Codec: cid.Raw, MhType: multihash.IDENTITY}
+
 	var (
 		generated []string
 		merr      = new(multierror.Error)
@@ -133,7 +139,7 @@ func runExtractMany(c *cli.Context) error {
 			return fmt.Errorf("failed to read row: %w", err)
 		}
 		var (
-			cid          = row[0]
+			mcid         = row[0]
 			actorcode    = row[1]
 			methodnumstr = row[2]
 			exitcodestr  = row[3]
@@ -155,13 +161,18 @@ func runExtractMany(c *cli.Context) error {
 			return fmt.Errorf("invalid method number: %s", methodnumstr)
 		}
 
+		codeCid, err := codeCidBuilder.Sum([]byte(actorcode))
+		if err != nil {
+			return fmt.Errorf("failed to compute actor code CID")
+		}
+
 		// Lookup the method in actor method table.
-		if m, ok := ActorMethodTable[actorcode]; !ok {
+		if m, ok := stmgr.MethodsMap[codeCid]; !ok {
 			return fmt.Errorf("unrecognized actor: %s", actorcode)
 		} else if methodnum >= len(m) {
 			return fmt.Errorf("unrecognized method number for actor %s: %d", actorcode, methodnum)
 		} else {
-			methodname = m[methodnum]
+			methodname = m[abi.MethodNum(methodnum)].Name
 		}
 
 		// exitcode string representations are of kind ErrType(0); strip out
@@ -181,14 +192,14 @@ func runExtractMany(c *cli.Context) error {
 			id:        id,
 			block:     block,
 			class:     "message",
-			cid:       cid,
+			cid:       mcid,
 			file:      file,
 			retain:    "accessed-cids",
 			precursor: PrecursorSelectSender,
 		}
 
 		if err := doExtract(ctx, fapi, opts); err != nil {
-			log.Println(color.RedString("failed to extract vector for message %s: %s; queuing for 'canonical' precursor selection", cid, err))
+			log.Println(color.RedString("failed to extract vector for message %s: %s; queuing for 'canonical' precursor selection", mcid, err))
 			retry = append(retry, opts)
 			continue
 		}

@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"context"
+	gobig "math/big"
 	"os"
 
 	"github.com/filecoin-project/lotus/chain/state"
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/test-vectors/schema"
@@ -80,7 +82,7 @@ type ExecuteTipsetResult struct {
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset) (*ExecuteTipsetResult, error) {
 	var (
 		syscalls = mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier))
-		vmRand   = new(testRand)
+		vmRand   = NewFixedRand()
 
 		cs = store.NewChainStore(bs, ds, syscalls)
 		sm = stmgr.NewStateManager(cs)
@@ -143,8 +145,12 @@ type ExecuteMessageParams struct {
 	Preroot    cid.Cid
 	Epoch      abi.ChainEpoch
 	Message    *types.Message
-	CircSupply *abi.TokenAmount
-	BaseFee    *abi.TokenAmount
+	CircSupply abi.TokenAmount
+	BaseFee    abi.TokenAmount
+
+	// Rand is an optional vm.Rand implementation to use. If nil, the driver
+	// will use a vm.Rand that returns a fixed value for all calls.
+	Rand vm.Rand
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
@@ -155,30 +161,24 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
 	}
 
-	basefee := DefaultBaseFee
-	if params.BaseFee != nil {
-		basefee = *params.BaseFee
-	}
-
-	circSupply := DefaultCirculatingSupply
-	if params.CircSupply != nil {
-		circSupply = *params.CircSupply
+	if params.Rand == nil {
+		params.Rand = NewFixedRand()
 	}
 
 	// dummy state manager; only to reference the GetNetworkVersion method,
 	// which does not depend on state.
-	sm := new(stmgr.StateManager)
+	sm := stmgr.NewStateManager(nil)
 
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
 		Epoch:     params.Epoch,
-		Rand:      &testRand{}, // TODO always succeeds; need more flexibility.
 		Bstore:    bs,
 		Syscalls:  mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), // TODO always succeeds; need more flexibility.
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
-			return circSupply, nil
+			return params.CircSupply, nil
 		},
-		BaseFee:     basefee,
+		Rand:        params.Rand,
+		BaseFee:     params.BaseFee,
 		NtwkVersion: sm.GetNtwkVersion,
 	}
 
@@ -187,11 +187,11 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		return nil, cid.Undef, err
 	}
 
-	invoker := vm.NewInvoker()
+	invoker := vm.NewActorRegistry()
 
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
-		invoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
+		invoker.Register(nil, chaos.Actor{})
 	}
 
 	lvm.SetInvoker(invoker)
@@ -230,4 +230,23 @@ func toChainMsg(msg *types.Message) (ret types.ChainMsg) {
 		}
 	}
 	return ret
+}
+
+// BaseFeeOrDefault converts a basefee as passed in a test vector (go *big.Int
+// type) to an abi.TokenAmount, or if nil it returns the DefaultBaseFee.
+func BaseFeeOrDefault(basefee *gobig.Int) abi.TokenAmount {
+	if basefee == nil {
+		return DefaultBaseFee
+	}
+	return big.NewFromGo(basefee)
+}
+
+// CircSupplyOrDefault converts a circulating supply as passed in a test vector
+// (go *big.Int type) to an abi.TokenAmount, or if nil it returns the
+// DefaultCirculatingSupply.
+func CircSupplyOrDefault(circSupply *gobig.Int) abi.TokenAmount {
+	if circSupply == nil {
+		return DefaultBaseFee
+	}
+	return big.NewFromGo(circSupply)
 }

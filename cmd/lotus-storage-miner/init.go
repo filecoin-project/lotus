@@ -116,6 +116,9 @@ var initCmd = &cli.Command{
 			Usage: "select which address to send actor creation message from",
 		},
 	},
+	Subcommands: []*cli.Command{
+		initRestoreCmd,
+	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus miner")
 

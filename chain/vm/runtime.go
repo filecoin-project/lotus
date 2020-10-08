@@ -9,14 +9,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
@@ -28,8 +27,33 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+type Message struct {
+	msg types.Message
+}
+
+func (m *Message) Caller() address.Address {
+	if m.msg.From.Protocol() != address.ID {
+		panic("runtime message has a non-ID caller")
+	}
+	return m.msg.From
+}
+
+func (m *Message) Receiver() address.Address {
+	if m.msg.To != address.Undef && m.msg.To.Protocol() != address.ID {
+		panic("runtime message has a non-ID receiver")
+	}
+	return m.msg.To
+}
+
+func (m *Message) ValueReceived() abi.TokenAmount {
+	return m.msg.Value
+}
+
+// EnableGasTracing, if true, outputs gas tracing in execution traces.
+var EnableGasTracing = false
+
 type Runtime struct {
-	types.Message
+	rt0.Message
 	rt0.Syscalls
 
 	ctx context.Context
@@ -110,6 +134,7 @@ func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 }
 
 var _ rt0.Runtime = (*Runtime)(nil)
+var _ rt2.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -122,7 +147,11 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 			//log.Desugar().WithOptions(zap.AddStacktrace(zapcore.ErrorLevel)).
 			//Sugar().Errorf("spec actors failure: %s", r)
 			log.Errorf("spec actors failure: %s", r)
-			aerr = aerrors.Newf(1, "spec actors failure: %s", r)
+			if rt.NetworkVersion() <= network.Version3 {
+				aerr = aerrors.Newf(1, "spec actors failure: %s", r)
+			} else {
+				aerr = aerrors.Newf(exitcode.SysErrReserved1, "spec actors failure: %s", r)
+			}
 		}
 	}()
 
@@ -215,12 +244,9 @@ func (rt *Runtime) NewActorAddress() address.Address {
 }
 
 func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
-	if !builtin.IsBuiltinActor(codeID) {
-		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
-	}
-
-	if builtin.IsSingletonActor(codeID) {
-		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
+	act, aerr := rt.vm.areg.Create(codeID, rt)
+	if aerr != nil {
+		rt.Abortf(aerr.RetCode(), aerr.Error())
 	}
 
 	_, err := rt.state.GetActor(address)
@@ -230,12 +256,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 
 	rt.chargeGas(rt.Pricelist().OnCreateActor())
 
-	err = rt.state.SetActor(address, &types.Actor{
-		Code:    codeID,
-		Head:    EmptyObjectCid,
-		Nonce:   0,
-		Balance: big.Zero(),
-	})
+	err = rt.state.SetActor(address, act)
 	if err != nil {
 		panic(aerrors.Fatalf("creating actor entry: %v", err))
 	}
@@ -459,7 +480,7 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 }
 
 func (rt *Runtime) finilizeGasTracing() {
-	if enableTracing {
+	if EnableGasTracing {
 		if rt.lastGasCharge != nil {
 			rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
 		}
@@ -491,11 +512,9 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 
 }
 
-var enableTracing = false
-
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
-	if enableTracing {
+	if EnableGasTracing {
 		var callers [10]uintptr
 
 		cout := 0 //gruntime.Callers(2+skip, callers[:])

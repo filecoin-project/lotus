@@ -5,6 +5,10 @@
 package build
 
 import (
+	"math"
+	"os"
+
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
@@ -22,6 +26,9 @@ const BreezeGasTampingDuration = 120
 const UpgradeSmokeHeight = 51000
 
 const UpgradeIgnitionHeight = 94000
+const UpgradeRefuelHeight = 130800
+
+var UpgradeActorsV2Height = abi.ChainEpoch(138720)
 
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
@@ -34,6 +41,15 @@ func init() {
 		abi.RegisteredSealProof_StackedDrg32GiBV1,
 		abi.RegisteredSealProof_StackedDrg64GiBV1,
 	)
+
+	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
+		SetAddressNetwork(address.Mainnet)
+	}
+
+	if os.Getenv("LOTUS_DISABLE_V2_ACTOR_MIGRATION") == "1" {
+		UpgradeActorsV2Height = math.MaxInt64
+	}
+
 	Devnet = false
 }
 

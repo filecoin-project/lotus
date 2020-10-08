@@ -29,7 +29,7 @@ func main() {
 		types.ExpTipSet{},
 		types.BeaconEntry{},
 		types.StateRoot{},
-		types.StateInfo{},
+		types.StateInfo0{},
 	)
 	if err != nil {
 		fmt.Println(err)

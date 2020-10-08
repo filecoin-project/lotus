@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -122,7 +123,7 @@ var mpoolStatsCmd = &cli.Command{
 				return false, err
 			}
 
-			ism := act.IsStorageMinerActor()
+			ism := builtin.IsStorageMinerActor(act.Code)
 			mcache[addr] = ism
 			return ism, nil
 		}

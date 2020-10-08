@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/docker/go-units"
-	lotusbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 
@@ -97,7 +97,7 @@ var chainBalanceCmd = &cli.Command{
 				Type:    string(act.Code.Hash()[2:]),
 			}
 
-			if act.IsStorageMinerActor() {
+			if builtin.IsStorageMinerActor(act.Code) {
 				pow, err := api.StateMinerPower(ctx, addr, tsk)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
@@ -198,7 +198,7 @@ var chainBalanceStateCmd = &cli.Command{
 				PreCommits:    types.FIL(big.NewInt(0)),
 			}
 
-			if minerInfo && act.IsStorageMinerActor() {
+			if minerInfo && builtin.IsStorageMinerActor(act.Code) {
 				pow, _, _, err := stmgr.GetPowerRaw(ctx, sm, sroot, addr)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
@@ -322,7 +322,7 @@ var chainPledgeCmd = &cli.Command{
 		}
 
 		var (
-			powerSmoothed    lotusbuiltin.FilterEstimate
+			powerSmoothed    builtin.FilterEstimate
 			pledgeCollateral abi.TokenAmount
 		)
 		if act, err := state.GetActor(power.Address); err != nil {

@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -23,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -130,7 +131,15 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
 	}
 	vmm.From = resF
-	rt.Message = vmm
+
+	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+		rt.Message = &vmm
+	} else {
+		resT, _ := rt.ResolveAddress(msg.To)
+		// may be set to undef if recipient doesn't exist yet
+		vmm.To = resT
+		rt.Message = &Message{msg: vmm}
+	}
 
 	return rt
 }
@@ -152,7 +161,7 @@ type VM struct {
 	cst            *cbor.BasicIpldStore
 	buf            *bufbstore.BufferedBS
 	blockHeight    abi.ChainEpoch
-	inv            *Invoker
+	areg           *ActorRegistry
 	rand           Rand
 	circSupplyCalc CircSupplyCalculator
 	ntwkVersion    NtwkVersionGetter
@@ -186,7 +195,7 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		cst:            cst,
 		buf:            buf,
 		blockHeight:    opts.Epoch,
-		inv:            NewInvoker(),
+		areg:           NewActorRegistry(),
 		rand:           opts.Rand, // TODO: Probably should be a syscall
 		circSupplyCalc: opts.CircSupplyCalc,
 		ntwkVersion:    opts.NtwkVersion,
@@ -227,7 +236,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 	}
 
 	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
-	if enableTracing {
+	if EnableGasTracing {
 		rt.lastGasChargeTime = start
 		if parent != nil {
 			rt.lastGasChargeTime = parent.lastGasChargeTime
@@ -256,11 +265,24 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		toActor, err := st.GetActor(msg.To)
 		if err != nil {
 			if xerrors.Is(err, types.ErrActorNotFound) {
-				a, err := TryCreateAccountActor(rt, msg.To)
+				a, aid, err := TryCreateAccountActor(rt, msg.To)
 				if err != nil {
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
+				if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+					// Leave the rt.Message as is
+				} else {
+					nmsg := Message{
+						msg: types.Message{
+							To:    aid,
+							From:  rt.Message.Caller(),
+							Value: rt.Message.ValueReceived(),
+						},
+					}
+
+					rt.Message = &nmsg
+				}
 			} else {
 				return nil, aerrors.Escalate(err, "getting actor")
 			}
@@ -403,7 +425,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 
 	// this should never happen, but is currently still exercised by some tests
-	if !fromActor.IsAccountActor() {
+	if !builtin.IsAccountActor(fromActor.Code) {
 		gasOutputs := ZeroGasOutputs()
 		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
@@ -741,15 +763,15 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	defer func() {
 		rt.ctx = oldCtx
 	}()
-	ret, err := vm.inv.Invoke(act.Code, rt, method, params)
+	ret, err := vm.areg.Invoke(act.Code, rt, method, params)
 	if err != nil {
 		return nil, err
 	}
 	return ret, nil
 }
 
-func (vm *VM) SetInvoker(i *Invoker) {
-	vm.inv = i
+func (vm *VM) SetInvoker(i *ActorRegistry) {
+	vm.areg = i
 }
 
 func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
