@@ -40,6 +40,8 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -47,7 +49,7 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/miner"
+	storageminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -471,7 +473,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return fmt.Errorf("failed to open filesystem journal: %w", err)
 			}
 
-			m := miner.NewMiner(api, epp, a, slashfilter.New(mds))
+			m := storageminer.NewMiner(api, epp, a, slashfilter.New(mds))
 			{
 				if err := m.Start(ctx); err != nil {
 					return xerrors.Errorf("failed to start up genesis miner: %w", err)
@@ -579,7 +581,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	msg := &types.Message{
 		To:         addr,
 		From:       mi.Worker,
-		Method:     builtin2.MethodsMiner.ChangePeerID,
+		Method:     miner.Methods.ChangePeerID,
 		Params:     enc,
 		Value:      types.NewInt(0),
 		GasPremium: gasPrice,
@@ -662,7 +664,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		From:  sender,
 		Value: big.Zero(),
 
-		Method: builtin2.MethodsPower.CreateMiner,
+		Method: power.Methods.CreateMiner,
 		Params: params,
 
 		GasLimit:   0,

@@ -17,7 +17,6 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
@@ -291,7 +290,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin2.MethodsMiner.DeclareFaultsRecovered,
+		Method: miner.Methods.DeclareFaultsRecovered,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}
@@ -375,7 +374,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin2.MethodsMiner.DeclareFaults,
+		Method: miner.Methods.DeclareFaults,
 		Params: enc,
 		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
@@ -715,7 +714,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin2.MethodsMiner.SubmitWindowedPoSt,
+		Method: miner.Methods.SubmitWindowedPoSt,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}

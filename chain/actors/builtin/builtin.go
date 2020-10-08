@@ -33,6 +33,11 @@ const (
 	EpochsInDay          = builtin0.EpochsInDay
 )
 
+const (
+	MethodSend        = builtin2.MethodSend
+	MethodConstructor = builtin2.MethodConstructor
+)
+
 // TODO: Why does actors have 2 different versions of this?
 type SectorInfo = proof0.SectorInfo
 type PoStProof = proof0.PoStProof

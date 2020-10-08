@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/rt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/ipfs/go-cid"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -56,7 +57,7 @@ const (
 
 const (
 	_                      = 0 // skip zero iota value; first usage of iota gets 1.
-	MethodCallerValidation = builtin2.MethodConstructor + iota
+	MethodCallerValidation = builtin.MethodConstructor + iota
 	MethodCreateActor
 	MethodResolveAddress
 	// MethodDeleteActor is the identifier for the method that deletes this actor.
@@ -77,15 +78,15 @@ const (
 // Exports defines the methods this actor exposes publicly.
 func (a Actor) Exports() []interface{} {
 	return []interface{}{
-		builtin2.MethodConstructor: a.Constructor,
-		MethodCallerValidation:     a.CallerValidation,
-		MethodCreateActor:          a.CreateActor,
-		MethodResolveAddress:       a.ResolveAddress,
-		MethodDeleteActor:          a.DeleteActor,
-		MethodSend:                 a.Send,
-		MethodMutateState:          a.MutateState,
-		MethodAbortWith:            a.AbortWith,
-		MethodInspectRuntime:       a.InspectRuntime,
+		builtin.MethodConstructor: a.Constructor,
+		MethodCallerValidation:    a.CallerValidation,
+		MethodCreateActor:         a.CreateActor,
+		MethodResolveAddress:      a.ResolveAddress,
+		MethodDeleteActor:         a.DeleteActor,
+		MethodSend:                a.Send,
+		MethodMutateState:         a.MutateState,
+		MethodAbortWith:           a.AbortWith,
+		MethodInspectRuntime:      a.InspectRuntime,
 	}
 }
 

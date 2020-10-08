@@ -24,7 +24,10 @@ func init() {
 	})
 }
 
-var Address = builtin0.VerifiedRegistryActorAddr
+var (
+	Address = builtin2.VerifiedRegistryActorAddr
+	Methods = builtin2.MethodsVerifiedRegistry
+)
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {

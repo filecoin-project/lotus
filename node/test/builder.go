@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
@@ -37,7 +38,6 @@ import (
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -90,7 +90,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	msg := &types.Message{
 		To:     act,
 		From:   waddr,
-		Method: builtin2.MethodsMiner.ChangePeerID,
+		Method: miner.Methods.ChangePeerID,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
@@ -27,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
@@ -236,20 +235,20 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 
 	runCron := func() error {
 		// TODO: this nonce-getting is a tiny bit ugly
-		ca, err := vmi.StateTree().GetActor(builtin2.SystemActorAddr)
+		ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
 		if err != nil {
 			return err
 		}
 
 		cronMsg := &types.Message{
-			To:         builtin2.CronActorAddr,
-			From:       builtin2.SystemActorAddr,
+			To:         cron.Address,
+			From:       builtin.SystemActorAddr,
 			Nonce:      ca.Nonce,
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
 			GasLimit:   build.BlockGasLimit * 10000, // Make super sure this is never too little
-			Method:     builtin2.MethodsCron.EpochTick,
+			Method:     cron.Methods.EpochTick,
 			Params:     nil,
 		}
 		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
@@ -337,20 +336,20 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
 		}
 
-		sysAct, actErr := vmi.StateTree().GetActor(builtin2.SystemActorAddr)
+		sysAct, actErr := vmi.StateTree().GetActor(builtin.SystemActorAddr)
 		if actErr != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", actErr)
 		}
 
 		rwMsg := &types.Message{
-			From:       builtin2.SystemActorAddr,
+			From:       builtin.SystemActorAddr,
 			To:         reward.Address,
 			Nonce:      sysAct.Nonce,
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
 			GasLimit:   1 << 30,
-			Method:     builtin2.MethodsReward.AwardBlockReward,
+			Method:     reward.Methods.AwardBlockReward,
 			Params:     params,
 		}
 		ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
@@ -954,7 +953,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		} else if builtin.IsAccountActor(act.Code) {
 			// should exclude burnt funds actor and "remainder account actor"
 			// should only ever be "faucet" accounts in testnets
-			if kaddr == builtin2.BurntFundsActorAddr {
+			if kaddr == builtin.BurntFundsActorAddr {
 				return nil
 			}
 
@@ -1032,24 +1031,24 @@ func (sm *StateManager) setupPreIgnitionGenesisActorsTestnet(ctx context.Context
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin2.EpochsInDay)
+	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
 	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
 	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
 
 	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin2.EpochsInDay)
+	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
 	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
 
 	// 2 years
-	twoYears := abi.ChainEpoch(2 * 365 * builtin2.EpochsInDay)
+	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
 
 	// 3 years
-	threeYears := abi.ChainEpoch(3 * 365 * builtin2.EpochsInDay)
+	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
 
 	// 6 years
-	sixYears := abi.ChainEpoch(6 * 365 * builtin2.EpochsInDay)
+	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
@@ -1109,24 +1108,24 @@ func (sm *StateManager) setupPostIgnitionGenesisActors(ctx context.Context) erro
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin2.EpochsInDay)
+	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
 	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
 	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
 
 	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin2.EpochsInDay)
+	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
 	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
 
 	// 2 years
-	twoYears := abi.ChainEpoch(2 * 365 * builtin2.EpochsInDay)
+	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
 
 	// 3 years
-	threeYears := abi.ChainEpoch(3 * 365 * builtin2.EpochsInDay)
+	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
 
 	// 6 years
-	sixYears := abi.ChainEpoch(6 * 365 * builtin2.EpochsInDay)
+	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
@@ -1260,7 +1259,7 @@ func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (
 }
 
 func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	burnt, err := st.GetActor(builtin2.BurntFundsActorAddr)
+	burnt, err := st.GetActor(builtin.BurntFundsActorAddr)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %w", err)
 	}
