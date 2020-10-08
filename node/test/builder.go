@@ -141,23 +141,23 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne}
 }
 
-func Builder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
-	return mockBuilderOpts(t, fullOpts, storage, opts, false)
+func Builder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+	return mockBuilderOpts(t, fullOpts, storage, false)
 }
 
-func MockSbBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
-	return mockSbBuilderOpts(t, fullOpts, storage, opts, false)
+func MockSbBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+	return mockSbBuilderOpts(t, fullOpts, storage, false)
 }
 
-func RPCBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
-	return mockBuilderOpts(t, fullOpts, storage, opts, true)
+func RPCBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+	return mockBuilderOpts(t, fullOpts, storage, true)
 }
 
 func RPCMockSbBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-	return mockSbBuilderOpts(t, fullOpts, storage, []node.Option{}, true)
+	return mockSbBuilderOpts(t, fullOpts, storage, true)
 }
 
-func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, opts []node.Option, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
+func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
@@ -246,7 +246,6 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 			genesis,
 
 			fullOpts[i].Opts(fulls),
-			node.Options(opts...),
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -316,7 +315,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 	return fulls, storers
 }
 
-func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, options []node.Option, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
+func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
@@ -406,7 +405,6 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			genesis,
 
 			fullOpts[i].Opts(fulls),
-			node.Options(options...),
 		)
 		if err != nil {
 			t.Fatalf("%+v", err)
