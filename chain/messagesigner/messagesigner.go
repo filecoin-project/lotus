@@ -3,12 +3,12 @@ package messagesigner
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/api"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -28,17 +28,17 @@ type mpoolAPI interface {
 // MessageSigner keeps track of nonces per address, and increments the nonce
 // when signing a message
 type MessageSigner struct {
-	wallet *wallet.Wallet
+	wallet api.WalletAPI
 	lk     sync.Mutex
 	mpool  mpoolAPI
 	ds     datastore.Batching
 }
 
-func NewMessageSigner(wallet *wallet.Wallet, mpool *messagepool.MessagePool, ds dtypes.MetadataDS) *MessageSigner {
+func NewMessageSigner(wallet api.WalletAPI, mpool *messagepool.MessagePool, ds dtypes.MetadataDS) *MessageSigner {
 	return newMessageSigner(wallet, mpool, ds)
 }
 
-func newMessageSigner(wallet *wallet.Wallet, mpool mpoolAPI, ds dtypes.MetadataDS) *MessageSigner {
+func newMessageSigner(wallet api.WalletAPI, mpool mpoolAPI, ds dtypes.MetadataDS) *MessageSigner {
 	ds = namespace.Wrap(ds, datastore.NewKey("/message-signer/"))
 	return &MessageSigner{
 		wallet: wallet,
@@ -61,7 +61,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 
 	// Sign the message with the nonce
 	msg.Nonce = nonce
-	sig, err := ms.wallet.Sign(ctx, msg.From, msg.Cid().Bytes())
+	sig, err := ms.wallet.WalletSign(ctx, msg.From, msg.Cid().Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}
