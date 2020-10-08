@@ -14,6 +14,9 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -81,7 +84,7 @@ type ExecuteTipsetResult struct {
 // and reward withdrawal per miner.
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset) (*ExecuteTipsetResult, error) {
 	var (
-		syscalls = mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier))
+		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 		vmRand   = NewFixedRand()
 
 		cs = store.NewChainStore(bs, ds, syscalls)
@@ -173,7 +176,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		StateBase: params.Preroot,
 		Epoch:     params.Epoch,
 		Bstore:    bs,
-		Syscalls:  mkFakedSigSyscalls(vm.Syscalls(ffiwrapper.ProofVerifier)), // TODO always succeeds; need more flexibility.
+		Syscalls:  vm.Syscalls(ffiwrapper.ProofVerifier),
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
 			return params.CircSupply, nil
 		},
