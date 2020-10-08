@@ -3,10 +3,10 @@ package full
 import (
 	"context"
 
-	"github.com/filecoin-project/go-address"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -48,7 +48,18 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
-	return a.WalletAPI.WalletSignMessage(ctx, keyAddr, msg)
+
+	mcid := msg.Cid()
+
+	sig, err := a.WalletAPI.WalletSign(ctx, k, mcid.Bytes())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to sign message: %w", err)
+	}
+
+	return &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}, nil
 }
 
 func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {

@@ -43,12 +43,6 @@ func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []
 	return c.under.WalletSign(ctx, k, msg)
 }
 
-func (c *LoggedWallet) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
-	log.Infow("WalletSignMessage", "address", k)
-
-	return c.under.WalletSignMessage(ctx, k, msg)
-}
-
 func (c *LoggedWallet) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
 	log.Infow("WalletExport", "address", a)
 

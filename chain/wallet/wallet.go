@@ -74,20 +74,6 @@ func (w *LocalWallet) WalletSign(ctx context.Context, addr address.Address, msg 
 	return sigs.Sign(ActSigType(ki.Type), ki.PrivateKey, msg)
 }
 
-func (w *LocalWallet) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
-	mcid := msg.Cid()
-
-	sig, err := w.WalletSign(ctx, k, mcid.Bytes())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to sign message: %w", err)
-	}
-
-	return &types.SignedMessage{
-		Message:   *msg,
-		Signature: *sig,
-	}, nil
-}
-
 func (w *LocalWallet) findKey(addr address.Address) (*Key, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
