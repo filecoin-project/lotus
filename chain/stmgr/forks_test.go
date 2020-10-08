@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -174,7 +174,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	var msgs []*types.SignedMessage
 
-	enc, err := actors.SerializeParams(&init0.ExecParams{CodeCID: (testActor{}).Code()})
+	enc, err := actors.SerializeParams(&init2.ExecParams{CodeCID: (testActor{}).Code()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +272,7 @@ func TestForkRefuseCall(t *testing.T) {
 
 	cg.SetStateManager(sm)
 
-	enc, err := actors.SerializeParams(&init0.ExecParams{CodeCID: (testActor{}).Code()})
+	enc, err := actors.SerializeParams(&init2.ExecParams{CodeCID: (testActor{}).Code()})
 	if err != nil {
 		t.Fatal(err)
 	}

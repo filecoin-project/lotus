@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/lotus/build"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/fatih/color"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -18,8 +17,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -92,7 +91,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner0.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
+		params, err := actors.SerializeParams(&miner2.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
 		}
@@ -104,7 +103,7 @@ var actorSetAddrsCmd = &cli.Command{
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   builtin.MethodsMiner.ChangeMultiaddrs,
+			Method:   builtin2.MethodsMiner.ChangeMultiaddrs,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -157,7 +156,7 @@ var actorSetPeeridCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner0.ChangePeerIDParams{NewID: abi.PeerID(pid)})
+		params, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(pid)})
 		if err != nil {
 			return err
 		}
@@ -169,7 +168,7 @@ var actorSetPeeridCmd = &cli.Command{
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   builtin.MethodsMiner.ChangePeerID,
+			Method:   builtin2.MethodsMiner.ChangePeerID,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -230,7 +229,7 @@ var actorWithdrawCmd = &cli.Command{
 			}
 		}
 
-		params, err := actors.SerializeParams(&miner0.WithdrawBalanceParams{
+		params, err := actors.SerializeParams(&miner2.WithdrawBalanceParams{
 			AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
 		})
 		if err != nil {
@@ -241,7 +240,7 @@ var actorWithdrawCmd = &cli.Command{
 			To:     maddr,
 			From:   mi.Owner,
 			Value:  types.NewInt(0),
-			Method: builtin.MethodsMiner.WithdrawBalance,
+			Method: builtin2.MethodsMiner.WithdrawBalance,
 			Params: params,
 		}, nil)
 		if err != nil {
@@ -455,7 +454,7 @@ var actorControlSet = &cli.Command{
 			return nil
 		}
 
-		cwp := &miner0.ChangeWorkerAddressParams{
+		cwp := &miner2.ChangeWorkerAddressParams{
 			NewWorker:       mi.Worker,
 			NewControlAddrs: toSet,
 		}
@@ -468,7 +467,7 @@ var actorControlSet = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ChangeWorkerAddress,
+			Method: builtin2.MethodsMiner.ChangeWorkerAddress,
 
 			Value:  big.Zero(),
 			Params: sp,

@@ -10,7 +10,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -18,7 +18,7 @@ import (
 
 func BenchmarkStateTreeSet(b *testing.B) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
+	st, err := NewStateTree(cst, types.StateTreeVersion1)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -33,8 +33,8 @@ func BenchmarkStateTreeSet(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523),
-			Code:    builtin.StorageMinerActorCodeID,
-			Head:    builtin.AccountActorCodeID,
+			Code:    builtin2.StorageMinerActorCodeID,
+			Head:    builtin2.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -60,8 +60,8 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523),
-			Code:    builtin.StorageMinerActorCodeID,
-			Head:    builtin.AccountActorCodeID,
+			Code:    builtin2.StorageMinerActorCodeID,
+			Head:    builtin2.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -86,8 +86,8 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523 + uint64(i)),
-			Code:    builtin.StorageMinerActorCodeID,
-			Head:    builtin.AccountActorCodeID,
+			Code:    builtin2.StorageMinerActorCodeID,
+			Head:    builtin2.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -129,8 +129,8 @@ func TestSetCache(t *testing.T) {
 
 	act := &types.Actor{
 		Balance: types.NewInt(0),
-		Code:    builtin.StorageMinerActorCodeID,
-		Head:    builtin.AccountActorCodeID,
+		Code:    builtin2.StorageMinerActorCodeID,
+		Head:    builtin2.AccountActorCodeID,
 		Nonce:   0,
 	}
 
@@ -173,7 +173,7 @@ func TestSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := st.SetActor(addrs[0], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(55)}); err != nil {
+	if err := st.SetActor(addrs[0], &types.Actor{Code: builtin2.AccountActorCodeID, Head: builtin2.AccountActorCodeID, Balance: types.NewInt(55)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -182,7 +182,7 @@ func TestSnapshots(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := st.SetActor(addrs[1], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(77)}); err != nil {
+		if err := st.SetActor(addrs[1], &types.Actor{Code: builtin2.AccountActorCodeID, Head: builtin2.AccountActorCodeID, Balance: types.NewInt(77)}); err != nil {
 			t.Fatal(err)
 		}
 
@@ -193,7 +193,7 @@ func TestSnapshots(t *testing.T) {
 	}
 
 	// more operations in top level call...
-	if err := st.SetActor(addrs[2], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(123)}); err != nil {
+	if err := st.SetActor(addrs[2], &types.Actor{Code: builtin2.AccountActorCodeID, Head: builtin2.AccountActorCodeID, Balance: types.NewInt(123)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -202,7 +202,7 @@ func TestSnapshots(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := st.SetActor(addrs[3], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(5)}); err != nil {
+		if err := st.SetActor(addrs[3], &types.Actor{Code: builtin2.AccountActorCodeID, Head: builtin2.AccountActorCodeID, Balance: types.NewInt(5)}); err != nil {
 			t.Fatal(err)
 		}
 

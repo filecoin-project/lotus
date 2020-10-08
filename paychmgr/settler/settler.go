@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -107,7 +107,7 @@ func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *types.T
 
 func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matchOnce bool, matched bool, err error) {
 	// Check if this is a settle payment channel message
-	if msg.Method != builtin0.MethodsPaych.Settle {
+	if msg.Method != builtin2.MethodsPaych.Settle {
 		return false, false, nil
 	}
 	// Check if this payment channel is of concern to this node (i.e. tracked in payment channel store),

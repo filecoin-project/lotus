@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/urfave/cli/v2"
 
@@ -84,7 +84,7 @@ var verifySealProofCmd = &cli.Command{
 
 		snum := abi.SectorNumber(cctx.Uint64("sector-id"))
 
-		ok, err := ffi.VerifySeal(saproof.SealVerifyInfo{
+		ok, err := ffi.VerifySeal(proof2.SealVerifyInfo{
 			SectorID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: snum,

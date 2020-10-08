@@ -17,7 +17,7 @@ import (
 	"github.com/fatih/color"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -529,8 +529,8 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
-			if days < int(build.MinDealDuration/builtin.EpochsInDay) {
-				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin.EpochsInDay)))
+			if days < int(build.MinDealDuration/builtin0.EpochsInDay) {
+				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin0.EpochsInDay)))
 				continue
 			}
 

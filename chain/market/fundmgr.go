@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 
@@ -155,7 +155,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		To:     market.Address,
 		From:   wallet,
 		Value:  toAdd,
-		Method: builtin.MethodsMarket.AddBalance,
+		Method: builtin2.MethodsMarket.AddBalance,
 		Params: params,
 	}, nil)
 	if err != nil {

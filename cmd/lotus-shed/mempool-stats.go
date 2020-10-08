@@ -14,7 +14,7 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
@@ -145,7 +145,7 @@ var mpoolStatsCmd = &cli.Command{
 						seen: time.Now(),
 					}
 
-					if u.Message.Message.Method == builtin0.MethodsMiner.SubmitWindowedPoSt {
+					if u.Message.Message.Method == builtin2.MethodsMiner.SubmitWindowedPoSt {
 
 						miner, err := isMiner(u.Message.Message.To)
 						if err != nil {

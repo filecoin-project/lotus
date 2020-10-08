@@ -7,12 +7,12 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 // /////
@@ -32,7 +32,7 @@ const ActorUpgradeNetworkVersion = network.Version4
 const ForkLengthThreshold = Finality
 
 // Blocks (e)
-var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
+var BlocksPerEpoch = uint64(builtin2.ExpectedLeadersPerEpoch)
 
 // Epochs
 const Finality = policy.ChainFinality
@@ -116,4 +116,4 @@ const PackingEfficiencyDenom = 5
 
 // Actor consts
 // TODO: Pull from actors when its made not private
-var MinDealDuration = abi.ChainEpoch(180 * builtin.EpochsInDay)
+var MinDealDuration = abi.ChainEpoch(180 * builtin2.EpochsInDay)

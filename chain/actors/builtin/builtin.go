@@ -24,6 +24,15 @@ var BurntFundsActorAddr = builtin0.BurntFundsActorAddr
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
 
+var (
+	ExpectedLeadersPerEpoch = builtin0.ExpectedLeadersPerEpoch
+)
+
+const (
+	EpochDurationSeconds = builtin0.EpochDurationSeconds
+	EpochsInDay          = builtin0.EpochsInDay
+)
+
 // TODO: Why does actors have 2 different versions of this?
 type SectorInfo = proof0.SectorInfo
 type PoStProof = proof0.PoStProof
