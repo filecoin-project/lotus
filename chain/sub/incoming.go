@@ -172,25 +172,24 @@ func fetchCids(
 	cids []cid.Cid,
 	cb func(int, blocks.Block) error,
 ) error {
-	fetchedBlocks := bserv.GetBlocks(ctx, cids)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	cidIndex := make(map[cid.Cid]int)
 	for i, c := range cids {
 		cidIndex[c] = i
 	}
+	if len(cids) != len(cidIndex) {
+		return fmt.Errorf("duplicate CIDs in fetchCids input")
+	}
+
+	fetchedBlocks := bserv.GetBlocks(ctx, cids)
 
 	for i := 0; i < len(cids); i++ {
 		select {
 		case block, ok := <-fetchedBlocks:
 			if !ok {
-				// Closed channel, no more blocks fetched, check if we have all
-				// of the CIDs requested.
-				// FIXME: Review this check. We don't call the callback on the
-				//  last index?
-				if i == len(cids)-1 {
-					break
-				}
-
 				return fmt.Errorf("failed to fetch all messages")
 			}
 
