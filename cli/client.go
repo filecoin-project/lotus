@@ -536,7 +536,7 @@ func interactiveDeal(cctx *cli.Context) error {
 
 			state = "miner"
 		case "miner":
-			fmt.Print("Miner Address (t0..): ")
+			fmt.Print("Miner Address (f0..): ")
 			var maddrStr string
 
 			_, err := fmt.Scan(&maddrStr)
