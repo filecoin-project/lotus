@@ -17,11 +17,10 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	dsq "github.com/ipfs/go-datastore/query"
 
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
-
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -49,8 +48,8 @@ const (
 )
 
 type VoucherInfo struct {
-	Voucher   *paych0.SignedVoucher
-	Proof     []byte
+	Voucher   *paych.SignedVoucher
+	Proof     []byte // ignored
 	Submitted bool
 }
 
@@ -103,7 +102,7 @@ func (ci *ChannelInfo) to() address.Address {
 
 // infoForVoucher gets the VoucherInfo for the given voucher.
 // returns nil if the channel doesn't have the voucher.
-func (ci *ChannelInfo) infoForVoucher(sv *paych0.SignedVoucher) (*VoucherInfo, error) {
+func (ci *ChannelInfo) infoForVoucher(sv *paych.SignedVoucher) (*VoucherInfo, error) {
 	for _, v := range ci.Vouchers {
 		eq, err := cborutil.Equals(sv, v.Voucher)
 		if err != nil {
@@ -116,7 +115,7 @@ func (ci *ChannelInfo) infoForVoucher(sv *paych0.SignedVoucher) (*VoucherInfo, e
 	return nil, nil
 }
 
-func (ci *ChannelInfo) hasVoucher(sv *paych0.SignedVoucher) (bool, error) {
+func (ci *ChannelInfo) hasVoucher(sv *paych.SignedVoucher) (bool, error) {
 	vi, err := ci.infoForVoucher(sv)
 	return vi != nil, err
 }
@@ -124,7 +123,7 @@ func (ci *ChannelInfo) hasVoucher(sv *paych0.SignedVoucher) (bool, error) {
 // markVoucherSubmitted marks the voucher, and any vouchers of lower nonce
 // in the same lane, as being submitted.
 // Note: This method doesn't write anything to the store.
-func (ci *ChannelInfo) markVoucherSubmitted(sv *paych0.SignedVoucher) error {
+func (ci *ChannelInfo) markVoucherSubmitted(sv *paych.SignedVoucher) error {
 	vi, err := ci.infoForVoucher(sv)
 	if err != nil {
 		return err
@@ -148,7 +147,7 @@ func (ci *ChannelInfo) markVoucherSubmitted(sv *paych0.SignedVoucher) error {
 }
 
 // wasVoucherSubmitted returns true if the voucher has been submitted
-func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych0.SignedVoucher) (bool, error) {
+func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error) {
 	vi, err := ci.infoForVoucher(sv)
 	if err != nil {
 		return false, err
@@ -277,7 +276,7 @@ func (ps *Store) VouchersForPaych(ch address.Address) ([]*VoucherInfo, error) {
 	return ci.Vouchers, nil
 }
 
-func (ps *Store) MarkVoucherSubmitted(ci *ChannelInfo, sv *paych0.SignedVoucher) error {
+func (ps *Store) MarkVoucherSubmitted(ci *ChannelInfo, sv *paych.SignedVoucher) error {
 	err := ci.markVoucherSubmitted(sv)
 	if err != nil {
 		return err

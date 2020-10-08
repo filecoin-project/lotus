@@ -167,7 +167,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 
 	// dummy state manager; only to reference the GetNetworkVersion method,
 	// which does not depend on state.
-	sm := new(stmgr.StateManager)
+	sm := stmgr.NewStateManager(nil)
 
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
@@ -187,11 +187,11 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		return nil, cid.Undef, err
 	}
 
-	invoker := vm.NewInvoker()
+	invoker := vm.NewActorRegistry()
 
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
-		invoker.Register(chaos.ChaosActorCodeCID, chaos.Actor{}, chaos.State{})
+		invoker.Register(nil, chaos.Actor{})
 	}
 
 	lvm.SetInvoker(invoker)

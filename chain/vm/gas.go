@@ -9,7 +9,6 @@ import (
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 )
@@ -210,7 +209,7 @@ func (ps pricedSyscalls) VerifyPoSt(vi proof.WindowPoStVerifyInfo) error {
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*runtime.ConsensusFault, error) {
+func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
 	defer ps.chargeGas(gasOnActorExec)
 

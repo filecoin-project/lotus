@@ -14,7 +14,7 @@ func TestDisabledEvents(t *testing.T) {
 			registry := NewEventTypeRegistry(dis)
 
 			reg1 := registry.RegisterEventType("system1", "disabled1")
-			reg2 := registry.RegisterEventType("system2", "disabled2")
+			reg2 := registry.RegisterEventType("system1", "disabled2")
 
 			req.False(reg1.Enabled())
 			req.False(reg2.Enabled())
@@ -29,21 +29,21 @@ func TestDisabledEvents(t *testing.T) {
 
 	t.Run("direct", test(DisabledEvents{
 		EventType{System: "system1", Event: "disabled1"},
-		EventType{System: "system2", Event: "disabled2"},
+		EventType{System: "system1", Event: "disabled2"},
 	}))
 
-	dis, err := ParseDisabledEvents("system1:disabled1,system2:disabled2")
+	dis, err := ParseDisabledEvents("system1:disabled1,system1:disabled2")
 	req.NoError(err)
 
 	t.Run("parsed", test(dis))
 
-	dis, err = ParseDisabledEvents("  system1:disabled1 , system2:disabled2  ")
+	dis, err = ParseDisabledEvents("  system1:disabled1 , system1:disabled2  ")
 	req.NoError(err)
 
 	t.Run("parsed_spaces", test(dis))
 }
 
 func TestParseDisableEvents(t *testing.T) {
-	_, err := ParseDisabledEvents("system1:disabled1:failed,system2:disabled2")
+	_, err := ParseDisabledEvents("system1:disabled1:failed,system1:disabled2")
 	require.Error(t, err)
 }

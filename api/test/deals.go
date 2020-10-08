@@ -402,9 +402,12 @@ func testRetrieval(t *testing.T, ctx context.Context, client *impl.FullNodeAPI, 
 		IsCAR: carExport,
 	}
 	updates, err := client.ClientRetrieveWithEvents(ctx, offers[0].Order(caddr), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for update := range updates {
 		if update.Err != "" {
-			t.Fatalf("%v", err)
+			t.Fatalf("retrieval failed: %s", update.Err)
 		}
 	}
 

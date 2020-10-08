@@ -5,10 +5,8 @@ import (
 	"context"
 	"strconv"
 
-	lotusbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
-
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 
@@ -309,12 +307,22 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 	}, nil
 }
 
-func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
+func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.StateManager.Call(ctx, msg, ts)
+	for {
+		res, err = a.StateManager.Call(ctx, msg, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
+	return res, err
 }
 
 func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
@@ -411,7 +419,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 		return nil, xerrors.Errorf("getting actor head: %w", err)
 	}
 
-	oif, err := vm.DumpActorState(act.Code, blk.RawData())
+	oif, err := vm.DumpActorState(act, blk.RawData())
 	if err != nil {
 		return nil, xerrors.Errorf("dumping actor state (a:%s): %w", actor, err)
 	}
@@ -883,10 +891,10 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - ts.Height()
-		sectorWeight = lotusbuiltin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
-	var powerSmoothed lotusbuiltin.FilterEstimate
+	var powerSmoothed builtin.FilterEstimate
 	if act, err := state.GetActor(power.Address); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading power actor: %w", err)
 	} else if s, err := power.Load(store, act); err != nil {
@@ -944,11 +952,11 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - ts.Height()
-		sectorWeight = lotusbuiltin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
 	var (
-		powerSmoothed    lotusbuiltin.FilterEstimate
+		powerSmoothed    builtin.FilterEstimate
 		pledgeCollateral abi.TokenAmount
 	)
 	if act, err := state.GetActor(power.Address); err != nil {
@@ -1108,12 +1116,12 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	pact, err := a.StateGetActor(ctx, builtin0.StoragePowerActorAddr, tsk)
+	pact, err := a.StateGetActor(ctx, power.Address, tsk)
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	ract, err := a.StateGetActor(ctx, builtin0.RewardActorAddr, tsk)
+	ract, err := a.StateGetActor(ctx, reward.Address, tsk)
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor: %w", err)
 	}
@@ -1143,7 +1151,7 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %w", err)
 	}
 
-	min, max := market0.DealProviderCollateralBounds(size,
+	min, max := policy.DealProviderCollateralBounds(size,
 		verified,
 		powClaim.RawBytePower,
 		powClaim.QualityAdjPower,

@@ -8,9 +8,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -18,7 +20,6 @@ import (
 	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -26,7 +27,7 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
@@ -41,6 +42,10 @@ const testForkHeight = 40
 
 type testActor struct {
 }
+
+// must use existing actor that an account is allowed to exec.
+func (testActor) Code() cid.Cid  { return builtin.PaymentChannelActorCodeID }
+func (testActor) State() cbor.Er { return new(testActorState) }
 
 type testActorState struct {
 	HasUpgraded uint64
@@ -62,7 +67,7 @@ func (tas *testActorState) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (ta *testActor) Exports() []interface{} {
+func (ta testActor) Exports() []interface{} {
 	return []interface{}{
 		1: ta.Constructor,
 		2: ta.TestMethod,
@@ -72,7 +77,7 @@ func (ta *testActor) Exports() []interface{} {
 func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	rt.StateCreate(&testActorState{11})
-	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Receiver())
+	//fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Receiver())
 
 	return abi.Empty
 }
@@ -105,51 +110,57 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sm := NewStateManager(cg.ChainStore())
-
-	inv := vm.NewInvoker()
-
 	// predicting the address here... may break if other assumptions change
 	taddr, err := address.NewIDAddress(1002)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, ts *types.TipSet) (cid.Cid, error) {
-		cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
+	sm, err := NewStateManagerWithUpgradeSchedule(
+		cg.ChainStore(), UpgradeSchedule{{
+			Network: 1,
+			Height:  testForkHeight,
+			Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
+				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				cst := ipldcbor.NewCborStore(sm.ChainStore().Blockstore())
 
-		st, err := sm.StateTree(root)
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
-		}
+				st, err := sm.StateTree(root)
+				if err != nil {
+					return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
+				}
 
-		act, err := st.GetActor(taddr)
-		if err != nil {
-			return cid.Undef, err
-		}
+				act, err := st.GetActor(taddr)
+				if err != nil {
+					return cid.Undef, err
+				}
 
-		var tas testActorState
-		if err := cst.Get(ctx, act.Head, &tas); err != nil {
-			return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
-		}
+				var tas testActorState
+				if err := cst.Get(ctx, act.Head, &tas); err != nil {
+					return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
+				}
 
-		tas.HasUpgraded = 55
+				tas.HasUpgraded = 55
 
-		ns, err := cst.Put(ctx, &tas)
-		if err != nil {
-			return cid.Undef, err
-		}
+				ns, err := cst.Put(ctx, &tas)
+				if err != nil {
+					return cid.Undef, err
+				}
 
-		act.Head = ns
+				act.Head = ns
 
-		if err := st.SetActor(taddr, act); err != nil {
-			return cid.Undef, err
-		}
+				if err := st.SetActor(taddr, act); err != nil {
+					return cid.Undef, err
+				}
 
-		return st.Flush(ctx)
+				return st.Flush(ctx)
+			}}})
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	inv.Register(builtin.PaymentChannelActorCodeID, &testActor{}, &testActorState{})
+	inv := vm.NewActorRegistry()
+	inv.Register(nil, testActor{})
+
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
 		nvm, err := vm.NewVM(ctx, vmopt)
 		if err != nil {
@@ -163,7 +174,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	var msgs []*types.SignedMessage
 
-	enc, err := actors.SerializeParams(&init_.ExecParams{CodeCID: builtin.PaymentChannelActorCodeID})
+	enc, err := actors.SerializeParams(&init0.ExecParams{CodeCID: (testActor{}).Code()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,6 +231,87 @@ func TestForkHeightTriggers(t *testing.T) {
 		_, err = cg.NextTipSet()
 		if err != nil {
 			t.Fatal(err)
+		}
+	}
+}
+
+func TestForkRefuseCall(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelInfo)
+
+	ctx := context.TODO()
+
+	cg, err := gen.NewGenerator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sm, err := NewStateManagerWithUpgradeSchedule(
+		cg.ChainStore(), UpgradeSchedule{{
+			Network:   1,
+			Expensive: true,
+			Height:    testForkHeight,
+			Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
+				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				return root, nil
+			}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inv := vm.NewActorRegistry()
+	inv.Register(nil, testActor{})
+
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
+		nvm, err := vm.NewVM(ctx, vmopt)
+		if err != nil {
+			return nil, err
+		}
+		nvm.SetInvoker(inv)
+		return nvm, nil
+	})
+
+	cg.SetStateManager(sm)
+
+	enc, err := actors.SerializeParams(&init0.ExecParams{CodeCID: (testActor{}).Code()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m := &types.Message{
+		From:       cg.Banker(),
+		To:         lotusinit.Address,
+		Method:     builtin.MethodsInit.Exec,
+		Params:     enc,
+		GasLimit:   types.TestGasLimit,
+		Value:      types.NewInt(0),
+		GasPremium: types.NewInt(0),
+		GasFeeCap:  types.NewInt(0),
+	}
+
+	for i := 0; i < 50; i++ {
+		ts, err := cg.NextTipSet()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		ret, err := sm.CallWithGas(ctx, m, nil, ts.TipSet.TipSet())
+		switch ts.TipSet.TipSet().Height() {
+		case testForkHeight, testForkHeight + 1:
+			// If I had a fork, or I _will_ have a fork, it should fail.
+			require.Equal(t, ErrExpensiveFork, err)
+		default:
+			require.NoError(t, err)
+			require.True(t, ret.MsgRct.ExitCode.IsSuccess())
+		}
+		// Call just runs on the parent state for a tipset, so we only
+		// expect an error at the fork height.
+		ret, err = sm.Call(ctx, m, ts.TipSet.TipSet())
+		switch ts.TipSet.TipSet().Height() {
+		case testForkHeight + 1:
+			require.Equal(t, ErrExpensiveFork, err)
+		default:
+			require.NoError(t, err)
+			require.True(t, ret.MsgRct.ExitCode.IsSuccess())
 		}
 	}
 }
