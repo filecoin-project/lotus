@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -158,7 +160,18 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 		priorMsgs = append(priorMsgs, m)
 	}
 
-	res, err := a.Stmgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+	// Try calling until we find a height with no migration.
+	var res *api.InvocResult
+	for {
+		res, err = a.Stmgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ts.Parents())
+		if err != nil {
+			return -1, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
 	if err != nil {
 		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
@@ -182,7 +195,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 		return res.MsgRct.GasUsed, nil
 	}
 
-	if !act.IsPaymentChannelActor() {
+	if !builtin.IsPaymentChannelActor(act.Code) {
 		return res.MsgRct.GasUsed, nil
 	}
 	if msgIn.Method != builtin0.MethodsPaych.Collect {

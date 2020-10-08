@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -224,7 +225,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		},
 		VerifregRootKey:  DefaultVerifregRootkeyActor,
 		RemainderAccount: DefaultRemainderAccountActor,
-		NetworkName:      "",
+		NetworkName:      uuid.New().String(),
 		Timestamp:        uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 

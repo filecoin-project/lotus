@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
@@ -14,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/multiformats/go-multiaddr"
 
@@ -30,10 +31,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -894,6 +894,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "json",
 			Usage: "generate json output",
 		},
+		&cli.StringFlag{
+			Name:  "compute-state-output",
+			Usage: "a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -933,9 +937,26 @@ var stateComputeStateCmd = &cli.Command{
 			}
 		}
 
-		stout, err := api.StateCompute(ctx, h, msgs, ts.Key())
-		if err != nil {
-			return err
+		var stout *lapi.ComputeStateOutput
+		if csofile := cctx.String("compute-state-output"); csofile != "" {
+			data, err := ioutil.ReadFile(csofile)
+			if err != nil {
+				return err
+			}
+
+			var o lapi.ComputeStateOutput
+			if err := json.Unmarshal(data, &o); err != nil {
+				return err
+			}
+
+			stout = &o
+		} else {
+			o, err := api.StateCompute(ctx, h, msgs, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			stout = o
 		}
 
 		if cctx.Bool("json") {
@@ -1603,28 +1624,18 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		return nil, nil
 	}
 
-	var target runtime.Invokee
-	for _, actor := range exported.BuiltinActors() {
-		if actor.Code() == act {
-			target = actor
-		}
-	}
-	if target == nil {
+	// TODO: consider moving this to a dedicated helper
+	actMeta, ok := stmgr.MethodsMap[act]
+	if !ok {
 		return nil, fmt.Errorf("unknown actor %s", act)
 	}
-	methods := target.Exports()
-	if uint64(len(methods)) <= method || methods[method] == nil {
+
+	methodMeta, ok := actMeta[abi.MethodNum(method)]
+	if !ok {
 		return nil, fmt.Errorf("unknown method %d for actor %s", method, act)
 	}
 
-	f := methods[method]
-
-	rf := reflect.TypeOf(f)
-	if rf.NumIn() != 2 {
-		return nil, fmt.Errorf("expected referenced method to have three arguments")
-	}
-
-	paramObj := rf.In(1).Elem()
+	paramObj := methodMeta.Params
 	if paramObj.NumField() != len(args) {
 		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
 	}

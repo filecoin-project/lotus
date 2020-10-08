@@ -5,17 +5,29 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 var _ State = (*state0)(nil)
 
+func load0(store adt.Store, root cid.Cid) (State, error) {
+	out := state0{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 type state0 struct {
-	market.State
+	market0.State
 	store adt.Store
 }
 
@@ -90,7 +102,7 @@ func (s *state0) LockedTable() (BalanceTable, error) {
 func (s *state0) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
 ) (weight, verifiedWeight abi.DealWeight, err error) {
-	return market.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return market0.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
 }
 
 type balanceTable0 struct {
@@ -114,7 +126,7 @@ type dealStates0 struct {
 }
 
 func (s *dealStates0) Get(dealID abi.DealID) (*DealState, bool, error) {
-	var deal0 market.DealState
+	var deal0 market0.DealState
 	found, err := s.Array.Get(uint64(dealID), &deal0)
 	if err != nil {
 		return nil, false, err
@@ -127,14 +139,14 @@ func (s *dealStates0) Get(dealID abi.DealID) (*DealState, bool, error) {
 }
 
 func (s *dealStates0) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
-	var ds0 market.DealState
+	var ds0 market0.DealState
 	return s.Array.ForEach(&ds0, func(idx int64) error {
 		return cb(abi.DealID(idx), fromV0DealState(ds0))
 	})
 }
 
 func (s *dealStates0) decode(val *cbg.Deferred) (*DealState, error) {
-	var ds0 market.DealState
+	var ds0 market0.DealState
 	if err := ds0.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
@@ -146,7 +158,7 @@ func (s *dealStates0) array() adt.Array {
 	return s.Array
 }
 
-func fromV0DealState(v0 market.DealState) DealState {
+func fromV0DealState(v0 market0.DealState) DealState {
 	return (DealState)(v0)
 }
 
@@ -155,7 +167,7 @@ type dealProposals0 struct {
 }
 
 func (s *dealProposals0) Get(dealID abi.DealID) (*DealProposal, bool, error) {
-	var proposal0 market.DealProposal
+	var proposal0 market0.DealProposal
 	found, err := s.Array.Get(uint64(dealID), &proposal0)
 	if err != nil {
 		return nil, false, err
@@ -168,14 +180,14 @@ func (s *dealProposals0) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 }
 
 func (s *dealProposals0) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
-	var dp0 market.DealProposal
+	var dp0 market0.DealProposal
 	return s.Array.ForEach(&dp0, func(idx int64) error {
 		return cb(abi.DealID(idx), fromV0DealProposal(dp0))
 	})
 }
 
 func (s *dealProposals0) decode(val *cbg.Deferred) (*DealProposal, error) {
-	var dp0 market.DealProposal
+	var dp0 market0.DealProposal
 	if err := dp0.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
@@ -187,6 +199,6 @@ func (s *dealProposals0) array() adt.Array {
 	return s.Array
 }
 
-func fromV0DealProposal(v0 market.DealProposal) DealProposal {
+func fromV0DealProposal(v0 market0.DealProposal) DealProposal {
 	return (DealProposal)(v0)
 }

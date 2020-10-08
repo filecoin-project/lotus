@@ -5,6 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/lotus/build"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/fatih/color"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -32,6 +35,7 @@ var actorCmd = &cli.Command{
 		actorSetAddrsCmd,
 		actorWithdrawCmd,
 		actorSetPeeridCmd,
+		actorSetOwnerCmd,
 		actorControl,
 	},
 }
@@ -474,6 +478,120 @@ var actorControlSet = &cli.Command{
 		}
 
 		fmt.Println("Message CID:", smsg.Cid())
+
+		return nil
+	},
+}
+
+var actorSetOwnerCmd = &cli.Command{
+	Name:      "set-owner",
+	Usage:     "Set owner address",
+	ArgsUsage: "[address]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			fmt.Println("Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of new owner address")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		na, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		sp, err := actors.SerializeParams(&newAddr)
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:   mi.Owner,
+			To:     maddr,
+			Method: builtin2.MethodsMiner.ChangeOwnerAddress,
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Println("Propose Message CID:", smsg.Cid())
+
+		// wait for it to get mined into a block
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println("Propose owner change failed!")
+			return err
+		}
+
+		smsg, err = api.MpoolPushMessage(ctx, &types.Message{
+			From:   newAddr,
+			To:     maddr,
+			Method: builtin2.MethodsMiner.ChangeOwnerAddress,
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Println("Approve Message CID:", smsg.Cid())
+
+		// wait for it to get mined into a block
+		wait, err = api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println("Approve owner change failed!")
+			return err
+		}
 
 		return nil
 	},

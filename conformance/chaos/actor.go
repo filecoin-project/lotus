@@ -3,7 +3,9 @@ package chaos
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/rt"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
@@ -86,7 +88,11 @@ func (a Actor) Exports() []interface{} {
 	}
 }
 
-var _ runtime.Invokee = Actor{}
+func (a Actor) Code() cid.Cid     { return ChaosActorCodeCID }
+func (a Actor) State() cbor.Er    { return new(State) }
+func (a Actor) IsSingleton() bool { return true }
+
+var _ rt.VMActor = Actor{}
 
 // SendArgs are the arguments for the Send method.
 type SendArgs struct {
