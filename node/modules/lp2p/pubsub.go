@@ -187,14 +187,15 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		build.MessagesTopic(in.Nn): 1,
 	}
 
-	var drandTopic string
+	var drandTopics []string
 	for _, d := range in.Dr {
-		drandTopic, err = getDrandTopic(d.Config.ChainInfoJSON)
+		topic, err := getDrandTopic(d.Config.ChainInfoJSON)
 		if err != nil {
 			return nil, err
 		}
-		topicParams[drandTopic] = drandTopicParams
-		pgTopicWeights[drandTopic] = 5
+		topicParams[topic] = drandTopicParams
+		pgTopicWeights[topic] = 5
+		drandTopics = append(drandTopics, topic)
 	}
 
 	options := []pubsub.Option{
@@ -309,13 +310,16 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	}
 
 	options = append(options, pubsub.WithPeerGater(pgParams))
+
+	allowTopics := []string{
+		build.BlocksTopic(in.Nn),
+		build.MessagesTopic(in.Nn),
+	}
+	allowTopics = append(allowTopics, drandTopics...)
 	options = append(options,
 		pubsub.WithSubscriptionFilter(
 			pubsub.WrapLimitSubscriptionFilter(
-				pubsub.NewAllowlistSubscriptionFilter(
-					build.BlocksTopic(in.Nn),
-					build.MessagesTopic(in.Nn),
-					drandTopic),
+				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
 				100)))
 
 	// tracer
