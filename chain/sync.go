@@ -731,7 +731,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 
 	lbst, _, err := syncer.sm.TipSetState(ctx, lbts)
 	if err != nil {
-		return xerrors.Errorf("failed to compute lookback tipset state: %w", err)
+		return xerrors.Errorf("failed to compute lookback tipset state (epoch %d): %w", lbts.Height(), err)
 	}
 
 	prevBeacon, err := syncer.store.GetLatestBeaconEntry(baseTs)
