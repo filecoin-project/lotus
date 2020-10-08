@@ -203,6 +203,15 @@ type FullNode interface {
 	// based on current chain conditions
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *MessageSendSpec) (*types.SignedMessage, error)
 
+	// MpoolBatchPush batch pushes a signed message to mempool.
+	MpoolBatchPush(context.Context, []*types.SignedMessage) ([]cid.Cid, error)
+
+	// MpoolBatchPushUntrusted batch pushes a signed message to mempool from untrusted sources.
+	MpoolBatchPushUntrusted(context.Context, []*types.SignedMessage) ([]cid.Cid, error)
+
+	// MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+	MpoolBatchPushMessage(context.Context, []*types.Message, *MessageSendSpec) ([]*types.SignedMessage, error)
+
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
