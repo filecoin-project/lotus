@@ -254,11 +254,31 @@ func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) 
 }
 
 func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	newHeadTs, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.Chain.SetHead(ts)
+
+	currentTs, err := a.ChainHead(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting head: %w", err)
+	}
+
+	for currentTs.Height() >= newHeadTs.Height() {
+		for _, blk := range currentTs.Key().Cids() {
+			err = a.Chain.UnmarkBlockAsValidated(ctx, blk)
+			if err != nil {
+				return xerrors.Errorf("unmarking block as validated %s: %w", blk, err)
+			}
+		}
+
+		currentTs, err = a.ChainGetTipSet(ctx, currentTs.Parents())
+		if err != nil {
+			return xerrors.Errorf("loading tipset: %w", err)
+		}
+	}
+
+	return a.Chain.SetHead(newHeadTs)
 }
 
 func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
