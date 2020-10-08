@@ -2,9 +2,10 @@ package remotewallet
 
 import (
 	"context"
+	"net/http"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-	"net/http"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
