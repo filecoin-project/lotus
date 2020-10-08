@@ -49,9 +49,15 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
 
-	mcid := msg.Cid()
+	mb, err := msg.ToStorageBlock()
+	if err != nil {
+		return nil, xerrors.Errorf("serializing message: %w", err)
+	}
 
-	sig, err := a.WalletAPI.WalletSign(ctx, k, mcid.Bytes())
+	sig, err := a.WalletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), api.MsgMeta{
+		Type:  api.MTChainMsg,
+		Extra: mb.RawData(),
+	})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}

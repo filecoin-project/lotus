@@ -366,7 +366,7 @@ type WalletStruct struct {
 		WalletNew            func(context.Context, crypto.SigType) (address.Address, error)                       `perm:"write"`
 		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
 		WalletList           func(context.Context) ([]address.Address, error)                                     `perm:"write"`
-		WalletSign           func(context.Context, address.Address, []byte) (*crypto.Signature, error)            `perm:"sign"`
+		WalletSign           func(context.Context, address.Address, []byte, api.MsgMeta) (*crypto.Signature, error)            `perm:"sign"`
 		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
@@ -1397,8 +1397,8 @@ func (c *WalletStruct) WalletList(ctx context.Context) ([]address.Address, error
 	return c.Internal.WalletList(ctx)
 }
 
-func (c *WalletStruct) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
-	return c.Internal.WalletSign(ctx, k, msg)
+func (c *WalletStruct) WalletSign(ctx context.Context, k address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {
+	return c.Internal.WalletSign(ctx, k, msg, meta)
 }
 
 func (c *WalletStruct) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {

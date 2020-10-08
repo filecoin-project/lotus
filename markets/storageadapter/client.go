@@ -5,6 +5,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/api"
 
 	"github.com/filecoin-project/go-state-types/big"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -422,7 +423,9 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	sig, err := c.Wallet.WalletSign(ctx, signer, buf)
+	sig, err := c.Wallet.WalletSign(ctx, signer, buf, api.MsgMeta{
+		Type:  api.MTDealProposal,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -434,7 +437,7 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 }
 
 func (c *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	addr, err := c.Wallet.GetDefault()
+	addr, err := c.DefWallet.GetDefault()
 	return addr, err
 }
 
@@ -475,7 +478,9 @@ func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Addres
 		return nil, err
 	}
 
-	localSignature, err := c.Wallet.WalletSign(ctx, signer, b)
+	localSignature, err := c.Wallet.WalletSign(ctx, signer, b, api.MsgMeta{
+		Type:  api.MTUnknown, // TODO: pass type here
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -62,7 +62,7 @@ func KeyWallet(keys ...*Key) *LocalWallet {
 	}
 }
 
-func (w *LocalWallet) WalletSign(ctx context.Context, addr address.Address, msg []byte) (*crypto.Signature, error) {
+func (w *LocalWallet) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {
 	ki, err := w.findKey(addr)
 	if err != nil {
 		return nil, err

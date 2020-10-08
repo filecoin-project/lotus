@@ -61,7 +61,16 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 
 	// Sign the message with the nonce
 	msg.Nonce = nonce
-	sig, err := ms.wallet.WalletSign(ctx, msg.From, msg.Cid().Bytes())
+
+	mb, err := msg.ToStorageBlock()
+	if err != nil {
+		return nil, xerrors.Errorf("serializing message: %w", err)
+	}
+
+	sig, err := ms.wallet.WalletSign(ctx, msg.From, mb.Cid().Bytes(), api.MsgMeta{
+		Type:  api.MTChainMsg,
+		Extra: mb.RawData(),
+	})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}

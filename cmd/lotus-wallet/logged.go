@@ -37,10 +37,10 @@ func (c *LoggedWallet) WalletList(ctx context.Context) ([]address.Address, error
 	return c.under.WalletList(ctx)
 }
 
-func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
+func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {
 	log.Infow("WalletSign", "address", k)
 
-	return c.under.WalletSign(ctx, k, msg)
+	return c.under.WalletSign(ctx, k, msg, meta)
 }
 
 func (c *LoggedWallet) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
