@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 
@@ -33,16 +34,19 @@ import (
 )
 
 type accountInfo struct {
-	Address       address.Address
-	Balance       types.FIL
-	Type          string
-	Power         abi.StoragePower
-	Worker        address.Address
-	Owner         address.Address
-	InitialPledge types.FIL
-	PreCommits    types.FIL
-	LockedFunds   types.FIL
-	Sectors       uint64
+	Address         address.Address
+	Balance         types.FIL
+	Type            string
+	Power           abi.StoragePower
+	Worker          address.Address
+	Owner           address.Address
+	InitialPledge   types.FIL
+	PreCommits      types.FIL
+	LockedFunds     types.FIL
+	Sectors         uint64
+	VestingStart    abi.ChainEpoch
+	VestingDuration abi.ChainEpoch
+	VestingAmount   types.FIL
 }
 
 var auditsCmd = &cli.Command{
@@ -115,10 +119,8 @@ var chainBalanceCmd = &cli.Command{
 			infos = append(infos, ai)
 		}
 
-		fmt.Printf("Address,Balance,Type,Power,Worker,Owner\n")
-		for _, acc := range infos {
-			fmt.Printf("%s,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance, acc.Type, acc.Power, acc.Worker, acc.Owner)
-		}
+		printAccountInfos(infos, false)
+
 		return nil
 	},
 }
@@ -196,6 +198,7 @@ var chainBalanceStateCmd = &cli.Command{
 				LockedFunds:   types.FIL(big.NewInt(0)),
 				InitialPledge: types.FIL(big.NewInt(0)),
 				PreCommits:    types.FIL(big.NewInt(0)),
+				VestingAmount: types.FIL(big.NewInt(0)),
 			}
 
 			if minerInfo && builtin.IsStorageMinerActor(act.Code) {
@@ -234,6 +237,32 @@ var chainBalanceStateCmd = &cli.Command{
 				ai.Worker = minfo.Worker
 				ai.Owner = minfo.Owner
 			}
+
+			if builtin.IsMultisigActor(act.Code) {
+				mst, err := multisig.Load(store, act)
+				if err != nil {
+					return err
+				}
+
+				ai.VestingStart, err = mst.StartEpoch()
+				if err != nil {
+					return err
+				}
+
+				ib, err := mst.InitialBalance()
+				if err != nil {
+					return err
+				}
+
+				ai.VestingAmount = types.FIL(ib)
+
+				ai.VestingDuration, err = mst.UnlockDuration()
+				if err != nil {
+					return err
+				}
+
+			}
+
 			infos = append(infos, ai)
 			return nil
 		})
@@ -241,20 +270,25 @@ var chainBalanceStateCmd = &cli.Command{
 			return xerrors.Errorf("failed to loop over actors: %w", err)
 		}
 
-		if minerInfo {
-			fmt.Printf("Address,Balance,Type,Sectors,Worker,Owner,InitialPledge,Locked,PreCommits\n")
-			for _, acc := range infos {
-				fmt.Printf("%s,%s,%s,%d,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance, acc.Type, acc.Sectors, acc.Worker, acc.Owner, acc.InitialPledge, acc.LockedFunds, acc.PreCommits)
-			}
-		} else {
-			fmt.Printf("Address,Balance,Type\n")
-			for _, acc := range infos {
-				fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance, acc.Type)
-			}
-		}
+		printAccountInfos(infos, minerInfo)
 
 		return nil
 	},
+}
+
+func printAccountInfos(infos []accountInfo, minerInfo bool) {
+	if minerInfo {
+		fmt.Printf("Address,Balance,Type,Sectors,Worker,Owner,InitialPledge,Locked,PreCommits,VestingStart,VestingDuration,VestingAmount\n")
+		for _, acc := range infos {
+			fmt.Printf("%s,%s,%s,%d,%s,%s,%s,%s,%s,%d,%d,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type, acc.Sectors, acc.Worker, acc.Owner, acc.InitialPledge.Unitless(), acc.LockedFunds.Unitless(), acc.PreCommits.Unitless(), acc.VestingStart, acc.VestingDuration, acc.VestingAmount.Unitless())
+		}
+	} else {
+		fmt.Printf("Address,Balance,Type\n")
+		for _, acc := range infos {
+			fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type)
+		}
+	}
+
 }
 
 var chainPledgeCmd = &cli.Command{
