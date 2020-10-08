@@ -3,12 +3,13 @@ package vm
 import (
 	"fmt"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 type scalingCost struct {
@@ -112,14 +113,14 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 	if big.Cmp(value, abi.NewTokenAmount(0)) != 0 {
 		ret += pl.sendTransferFunds
-		if methodNum == builtin2.MethodSend {
+		if methodNum == builtin.MethodSend {
 			// transfer only
 			ret += pl.sendTransferOnlyPremium
 		}
 		extra += "t"
 	}
 
-	if methodNum != builtin2.MethodSend {
+	if methodNum != builtin.MethodSend {
 		extra += "i"
 		// running actors is cheaper becase we hand over to actors
 		ret += pl.sendInvokeMethod

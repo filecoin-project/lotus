@@ -188,7 +188,7 @@ func TestWDPostDoPost(t *testing.T) {
 	// Read the window PoST messages
 	for i := 0; i < expectedMsgCount; i++ {
 		msg := <-mockStgMinerAPI.pushedMessages
-		require.Equal(t, builtin2.MethodsMiner.SubmitWindowedPoSt, msg.Method)
+		require.Equal(t, miner.Methods.SubmitWindowedPoSt, msg.Method)
 		var params miner.SubmitWindowedPoStParams
 		err := params.UnmarshalCBOR(bytes.NewReader(msg.Params))
 		require.NoError(t, err)

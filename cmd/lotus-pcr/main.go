@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -870,7 +869,7 @@ func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *
 	var messageMethod string
 
 	switch m.Method {
-	case builtin2.MethodsMarket.PublishStorageDeals:
+	case market.Methods.PublishStorageDeals:
 		if !r.publishStorageDealsEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -897,7 +896,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 	var messageMethod string
 
 	switch m.Method {
-	case builtin2.MethodsMiner.SubmitWindowedPoSt:
+	case miner.Methods.SubmitWindowedPoSt:
 		if !r.windowedPoStEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -910,7 +909,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 		}
 
 		refundValue = types.BigMul(types.NewInt(uint64(recp.GasUsed)), tipset.Blocks()[0].ParentBaseFee)
-	case builtin2.MethodsMiner.ProveCommitSector:
+	case miner.Methods.ProveCommitSector:
 		if !r.proveCommitEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -966,7 +965,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 		if r.refundPercent > 0 {
 			refundValue = types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.refundPercent)))
 		}
-	case builtin2.MethodsMiner.PreCommitSector:
+	case miner.Methods.PreCommitSector:
 		if !r.preCommitEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}

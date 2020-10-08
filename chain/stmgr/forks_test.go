@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
@@ -183,8 +183,8 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	m := &types.Message{
 		From:     cg.Banker(),
-		To:       lotusinit.Address,
-		Method:   builtin2.MethodsInit.Exec,
+		To:       _init.Address,
+		Method:   _init.Methods.Exec,
 		Params:   enc,
 		GasLimit: types.TestGasLimit,
 	}
@@ -281,8 +281,8 @@ func TestForkRefuseCall(t *testing.T) {
 
 	m := &types.Message{
 		From:       cg.Banker(),
-		To:         lotusinit.Address,
-		Method:     builtin2.MethodsInit.Exec,
+		To:         _init.Address,
+		Method:     _init.Methods.Exec,
 		Params:     enc,
 		GasLimit:   types.TestGasLimit,
 		Value:      types.NewInt(0),

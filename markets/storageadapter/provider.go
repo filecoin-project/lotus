@@ -12,7 +12,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/go-address"
@@ -92,7 +91,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		To:     market.Address,
 		From:   mi.Worker,
 		Value:  types.NewInt(0),
-		Method: builtin2.MethodsMarket.PublishStorageDeals,
+		Method: market.Methods.PublishStorageDeals,
 		Params: params,
 	}, n.publishSpec)
 	if err != nil {
@@ -192,7 +191,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		To:     market.Address,
 		From:   addr,
 		Value:  amount,
-		Method: builtin2.MethodsMarket.AddBalance,
+		Method: market.Methods.AddBalance,
 	}, n.addBalanceSpec)
 	if err != nil {
 		return cid.Undef, err
@@ -314,7 +313,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 		}
 
 		switch msg.Method {
-		case builtin2.MethodsMiner.PreCommitSector:
+		case miner.Methods.PreCommitSector:
 			var params miner.SectorPreCommitInfo
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 				return true, false, xerrors.Errorf("unmarshal pre commit: %w", err)
@@ -329,7 +328,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 			}
 
 			return true, false, nil
-		case builtin2.MethodsMiner.ProveCommitSector:
+		case miner.Methods.ProveCommitSector:
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 				return true, false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)

@@ -5,12 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/lotus/build"
 
 	"github.com/fatih/color"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -22,10 +17,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
@@ -109,7 +107,7 @@ var actorSetAddrsCmd = &cli.Command{
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   builtin2.MethodsMiner.ChangeMultiaddrs,
+			Method:   miner.Methods.ChangeMultiaddrs,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -174,7 +172,7 @@ var actorSetPeeridCmd = &cli.Command{
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   builtin2.MethodsMiner.ChangePeerID,
+			Method:   miner.Methods.ChangePeerID,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -246,7 +244,7 @@ var actorWithdrawCmd = &cli.Command{
 			To:     maddr,
 			From:   mi.Owner,
 			Value:  types.NewInt(0),
-			Method: builtin2.MethodsMiner.WithdrawBalance,
+			Method: miner.Methods.WithdrawBalance,
 			Params: params,
 		}, nil)
 		if err != nil {
@@ -345,7 +343,7 @@ var actorRepayDebtCmd = &cli.Command{
 			To:     maddr,
 			From:   fromId,
 			Value:  amount,
-			Method: builtin2.MethodsMiner.RepayDebt,
+			Method: miner.Methods.RepayDebt,
 			Params: nil,
 		}, nil)
 		if err != nil {
@@ -572,7 +570,7 @@ var actorControlSet = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin2.MethodsMiner.ChangeWorkerAddress,
+			Method: miner.Methods.ChangeWorkerAddress,
 
 			Value:  big.Zero(),
 			Params: sp,
@@ -650,7 +648,7 @@ var actorSetOwnerCmd = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin2.MethodsMiner.ChangeOwnerAddress,
+			Method: miner.Methods.ChangeOwnerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -675,7 +673,7 @@ var actorSetOwnerCmd = &cli.Command{
 		smsg, err = api.MpoolPushMessage(ctx, &types.Message{
 			From:   newAddr,
 			To:     maddr,
-			Method: builtin2.MethodsMiner.ChangeOwnerAddress,
+			Method: miner.Methods.ChangeOwnerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)

@@ -7,7 +7,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
+
+var Methods = builtin2.MethodsPaych
 
 func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {

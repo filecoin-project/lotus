@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
@@ -80,7 +79,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return err
 		}
 
-		smsg, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(builtin2.MethodsVerifiedRegistry.AddVerifier), params)
+		smsg, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.AddVerifier), params)
 		if err != nil {
 			return err
 		}
@@ -151,7 +150,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 		msg := &types.Message{
 			To:     verifreg.Address,
 			From:   fromk,
-			Method: builtin2.MethodsVerifiedRegistry.AddVerifiedClient,
+			Method: verifreg.Methods.AddVerifiedClient,
 			Params: params,
 		}
 
