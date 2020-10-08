@@ -418,6 +418,9 @@ type FullNode interface {
 
 	// MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	// MsigGetLockedBalance returns the locked balance of an msig at a vien epoch.
+	// The return may be greater than the multisig actor's actual balance.
+	MsigGetVestingSchedule(context.Context, address.Address, types.TipSetKey) (MsigVesting, error)
 	// MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
 	// It takes the following params: <multisig address>, <start epoch>, <end epoch>
 	MsigGetVested(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (types.BigInt, error)
@@ -870,4 +873,16 @@ type Partition struct {
 type Fault struct {
 	Miner address.Address
 	Epoch abi.ChainEpoch
+}
+
+var EmptyVesting = MsigVesting{
+	InitialBalance: types.EmptyInt,
+	StartEpoch:     -1,
+	UnlockDuration: -1,
+}
+
+type MsigVesting struct {
+	InitialBalance abi.TokenAmount
+	StartEpoch     abi.ChainEpoch
+	UnlockDuration abi.ChainEpoch
 }

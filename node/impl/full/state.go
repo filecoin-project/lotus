@@ -820,6 +820,44 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 	return types.BigSub(act.Balance, locked), nil
 }
 
+func (a *StateAPI) MsigGetVestingSchedule(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MsigVesting, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := a.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig actor: %w", err)
+	}
+
+	msas, err := multisig.Load(a.Chain.Store(ctx), act)
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	ib, err := msas.InitialBalance()
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig initial balance: %w", err)
+	}
+
+	se, err := msas.StartEpoch()
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig start epoch: %w", err)
+	}
+
+	ud, err := msas.UnlockDuration()
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig unlock duration: %w", err)
+	}
+
+	return api.MsigVesting{
+		InitialBalance: ib,
+		StartEpoch:     se,
+		UnlockDuration: ud,
+	}, nil
+}
+
 func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
 	startTs, err := a.Chain.GetTipSetFromKey(start)
 	if err != nil {

@@ -87,6 +87,7 @@
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
   * [MsigGetVested](#MsigGetVested)
+  * [MsigGetVestingSchedule](#MsigGetVestingSchedule)
   * [MsigPropose](#MsigPropose)
   * [MsigSwapApprove](#MsigSwapApprove)
   * [MsigSwapCancel](#MsigSwapCancel)
@@ -2142,6 +2143,37 @@ Inputs:
 ```
 
 Response: `"0"`
+
+### MsigGetVestingSchedule
+MsigGetLockedBalance returns the locked balance of an msig at a vien epoch.
+The return may be greater than the multisig actor's actual balance.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "InitialBalance": "0",
+  "StartEpoch": 10101,
+  "UnlockDuration": 10101
+}
+```
 
 ### MsigPropose
 MsigPropose proposes a multisig message
