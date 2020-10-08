@@ -233,7 +233,13 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 
 	samples := 8
 	i := 0
-	var app, lastApp uint64
+	var firstApp, app, lastApp uint64
+
+	state, err := napi.SyncState(ctx)
+	if err != nil {
+		return err
+	}
+	firstApp = state.VMApplied
 
 	for {
 		state, err := napi.SyncState(ctx)
@@ -286,10 +292,10 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 
 		if i%samples == 0 {
 			lastApp = app
-			app = state.VMApplied
+			app = state.VMApplied - firstApp
 		}
 		if i > 0 {
-			fmt.Printf("Validated %d messages (%d per second)\n", state.VMApplied, (app-lastApp)*uint64(time.Second/tick)/uint64(samples))
+			fmt.Printf("Validated %d messages (%d per second)\n", state.VMApplied-firstApp, (app-lastApp)*uint64(time.Second/tick)/uint64(samples))
 			lastLines++
 		}
 
