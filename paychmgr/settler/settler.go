@@ -12,12 +12,13 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -106,7 +107,7 @@ func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *types.T
 
 func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matchOnce bool, matched bool, err error) {
 	// Check if this is a settle payment channel message
-	if msg.Method != builtin.MethodsPaych.Settle {
+	if msg.Method != builtin0.MethodsPaych.Settle {
 		return false, false, nil
 	}
 	// Check if this payment channel is of concern to this node (i.e. tracked in payment channel store),

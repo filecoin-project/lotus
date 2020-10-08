@@ -1,10 +1,9 @@
 package utils
 
 import (
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 
@@ -28,13 +27,6 @@ func NewStorageProviderInfo(address address.Address, miner address.Address, sect
 		SectorSize: uint64(sectorSize),
 		PeerID:     peer,
 		Addrs:      multiaddrs,
-	}
-}
-
-func FromOnChainDeal(prop market.DealProposal, state market.DealState) storagemarket.StorageDeal {
-	return storagemarket.StorageDeal{
-		DealProposal: prop,
-		DealState:    state,
 	}
 }
 

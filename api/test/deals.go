@@ -20,11 +20,11 @@ import (
 	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -402,9 +402,12 @@ func testRetrieval(t *testing.T, ctx context.Context, client *impl.FullNodeAPI, 
 		IsCAR: carExport,
 	}
 	updates, err := client.ClientRetrieveWithEvents(ctx, offers[0].Order(caddr), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for update := range updates {
 		if update.Err != "" {
-			t.Fatalf("%v", err)
+			t.Fatalf("retrieval failed: %s", update.Err)
 		}
 	}
 

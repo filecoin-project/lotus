@@ -3,7 +3,7 @@ package marketevents
 import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -27,6 +27,17 @@ func RetrievalClientLogger(event retrievalmarket.ClientEvent, deal retrievalmark
 // RetrievalProviderLogger logs events from the retrieval provider
 func RetrievalProviderLogger(event retrievalmarket.ProviderEvent, deal retrievalmarket.ProviderDealState) {
 	log.Infow("retrieval event", "name", retrievalmarket.ProviderEvents[event], "deal ID", deal.ID, "receiver", deal.Receiver, "state", retrievalmarket.DealStatuses[deal.Status], "message", deal.Message)
+}
+
+// ReadyLogger returns a function to log the results of module initialization
+func ReadyLogger(module string) func(error) {
+	return func(err error) {
+		if err != nil {
+			log.Errorw("module initialization error", "module", module, "err", err)
+		} else {
+			log.Infow("module ready", "module", module)
+		}
+	}
 }
 
 type RetrievalEvent struct {

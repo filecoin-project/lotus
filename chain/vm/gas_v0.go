@@ -3,10 +3,12 @@ package vm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 type scalingCost struct {
@@ -110,14 +112,14 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 	if big.Cmp(value, abi.NewTokenAmount(0)) != 0 {
 		ret += pl.sendTransferFunds
-		if methodNum == builtin.MethodSend {
+		if methodNum == builtin0.MethodSend {
 			// transfer only
 			ret += pl.sendTransferOnlyPremium
 		}
 		extra += "t"
 	}
 
-	if methodNum != builtin.MethodSend {
+	if methodNum != builtin0.MethodSend {
 		extra += "i"
 		// running actors is cheaper becase we hand over to actors
 		ret += pl.sendInvokeMethod
@@ -173,14 +175,14 @@ func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealPr
 }
 
 // OnVerifySeal
-func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifySeal(info proof.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
 	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
 // OnVerifyPost
-func (pl *pricelistV0) OnVerifyPost(info abi.WindowPoStVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
 	sectorSize := "unknown"
 	var proofType abi.RegisteredPoStProof
 

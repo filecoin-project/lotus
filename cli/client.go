@@ -17,6 +17,7 @@ import (
 	"github.com/fatih/color"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -27,13 +28,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -474,6 +475,7 @@ func interactiveDeal(cctx *cli.Context) error {
 	var ask storagemarket.StorageAsk
 	var epochPrice big.Int
 	var epochs abi.ChainEpoch
+	var verified bool
 
 	var a address.Address
 	if from := cctx.String("from"); from != "" {
@@ -527,9 +529,14 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
+			if days < int(build.MinDealDuration/builtin.EpochsInDay) {
+				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin.EpochsInDay)))
+				continue
+			}
+
 			state = "miner"
 		case "miner":
-			fmt.Print("Miner Address (t0..): ")
+			fmt.Print("Miner Address (f0..): ")
 			var maddrStr string
 
 			_, err := fmt.Scan(&maddrStr)
@@ -562,9 +569,56 @@ func interactiveDeal(cctx *cli.Context) error {
 				continue
 			}
 
-			ask = *a.Ask
+			ask = *a
 
 			// TODO: run more validation
+			state = "verified"
+		case "verified":
+			ts, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			dcap, err := api.StateVerifiedClientStatus(ctx, a, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			if dcap == nil {
+				state = "confirm"
+				continue
+			}
+
+			color.Blue(".. checking verified deal eligibility\n")
+			ds, err := api.ClientDealSize(ctx, data)
+			if err != nil {
+				return err
+			}
+
+			if dcap.Uint64() < uint64(ds.PieceSize) {
+				color.Yellow(".. not enough DataCap available for a verified deal\n")
+				state = "confirm"
+				continue
+			}
+
+			fmt.Print("\nMake this a verified deal? (yes/no): ")
+
+			var yn string
+			_, err = fmt.Scan(&yn)
+			if err != nil {
+				return err
+			}
+
+			switch yn {
+			case "yes":
+				verified = true
+			case "no":
+				verified = false
+			default:
+				fmt.Println("Type in full 'yes' or 'no'")
+				continue
+			}
+
 			state = "confirm"
 		case "confirm":
 			fromBal, err := api.WalletBalance(ctx, a)
@@ -583,10 +637,15 @@ func interactiveDeal(cctx *cli.Context) error {
 			epochs = abi.ChainEpoch(dur / (time.Duration(build.BlockDelaySecs) * time.Second))
 			// TODO: do some more or epochs math (round to miner PP, deal start buffer)
 
+			pricePerGib := ask.Price
+			if verified {
+				pricePerGib = ask.VerifiedPrice
+			}
+
 			gib := types.NewInt(1 << 30)
 
 			// TODO: price is based on PaddedPieceSize, right?
-			epochPrice = types.BigDiv(types.BigMul(ask.Price, types.NewInt(uint64(ds.PieceSize))), gib)
+			epochPrice = types.BigDiv(types.BigMul(pricePerGib, types.NewInt(uint64(ds.PieceSize))), gib)
 			totalPrice := types.BigMul(epochPrice, types.NewInt(uint64(epochs)))
 
 			fmt.Printf("-----\n")
@@ -596,6 +655,7 @@ func interactiveDeal(cctx *cli.Context) error {
 			fmt.Printf("Piece size: %s (Payload size: %s)\n", units.BytesSize(float64(ds.PieceSize)), units.BytesSize(float64(ds.PayloadSize)))
 			fmt.Printf("Duration: %s\n", dur)
 			fmt.Printf("Total price: ~%s (%s per epoch)\n", types.FIL(totalPrice), types.FIL(epochPrice))
+			fmt.Printf("Verified: %v\n", verified)
 
 			state = "accept"
 		case "accept":
@@ -630,7 +690,7 @@ func interactiveDeal(cctx *cli.Context) error {
 				MinBlocksDuration: uint64(epochs),
 				DealStartEpoch:    abi.ChainEpoch(cctx.Int64("start-epoch")),
 				FastRetrieval:     cctx.Bool("fast-retrieval"),
-				VerifiedDeal:      false, // TODO: Allow setting
+				VerifiedDeal:      verified,
 			})
 			if err != nil {
 				return err
@@ -944,15 +1004,15 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Ask.Price))
-		fmt.Printf("Verified Price per GiB: %s\n", types.FIL(ask.Ask.VerifiedPrice))
-		fmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.Ask.MaxPieceSize))))
+		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Price))
+		fmt.Printf("Verified Price per GiB: %s\n", types.FIL(ask.VerifiedPrice))
+		fmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))))
 
 		size := cctx.Int64("size")
 		if size == 0 {
 			return nil
 		}
-		perEpoch := types.BigDiv(types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))), types.NewInt(1<<30))
+		perEpoch := types.BigDiv(types.BigMul(ask.Price, types.NewInt(uint64(size))), types.NewInt(1<<30))
 		fmt.Printf("Price per Block: %s\n", types.FIL(perEpoch))
 
 		duration := cctx.Int64("duration")
@@ -980,6 +1040,10 @@ var clientListDeals = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
+			Name:  "show-failed",
+			Usage: "show failed/failing deals",
+		},
+		&cli.BoolFlag{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
@@ -995,6 +1059,7 @@ var clientListDeals = &cli.Command{
 		verbose := cctx.Bool("verbose")
 		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
+		showFailed := cctx.Bool("show-failed")
 
 		localDeals, err := api.ClientListDeals(ctx)
 		if err != nil {
@@ -1011,7 +1076,7 @@ var clientListDeals = &cli.Command{
 				tm.Clear()
 				tm.MoveCursor(1, 1)
 
-				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color)
+				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color, showFailed)
 				if err != nil {
 					return err
 				}
@@ -1037,19 +1102,15 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
-		return outputStorageDeals(ctx, os.Stdout, api, localDeals, cctx.Bool("verbose"), cctx.Bool("color"))
+		return outputStorageDeals(ctx, os.Stdout, api, localDeals, cctx.Bool("verbose"), cctx.Bool("color"), showFailed)
 	},
 }
 
 func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet, v api.DealInfo) deal {
 	if v.DealID == 0 {
 		return deal{
-			LocalDeal: v,
-			OnChainDealState: market.DealState{
-				SectorStartEpoch: -1,
-				LastUpdatedEpoch: -1,
-				SlashEpoch:       -1,
-			},
+			LocalDeal:        v,
+			OnChainDealState: *market.EmptyDealState(),
 		}
 	}
 
@@ -1064,7 +1125,7 @@ func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet
 	}
 }
 
-func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, localDeals []api.DealInfo, verbose bool, color bool) error {
+func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
 	sort.Slice(localDeals, func(i, j int) bool {
 		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
 	})
@@ -1076,12 +1137,14 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 
 	var deals []deal
 	for _, localDeal := range localDeals {
-		deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
+		if showFailed || localDeal.State != storagemarket.StorageDealError {
+			deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
+		}
 	}
 
 	if verbose {
 		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
+		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tVerified\tMessage\n")
 		for _, d := range deals {
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch != -1 {
@@ -1094,7 +1157,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 			}
 
 			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
+			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%v\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Verified, d.LocalDeal.Message)
 		}
 		return w.Flush()
 	}
@@ -1109,6 +1172,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 		tablewriter.Col("Size"),
 		tablewriter.Col("Price"),
 		tablewriter.Col("Duration"),
+		tablewriter.Col("Verified"),
 		tablewriter.NewLineCol("Message"))
 
 	for _, d := range deals {
@@ -1138,6 +1202,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 			"PieceCID":  piece,
 			"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
 			"Price":     price,
+			"Verified":  d.LocalDeal.Verified,
 			"Duration":  d.LocalDeal.Duration,
 			"Message":   d.LocalDeal.Message,
 		})
@@ -1420,7 +1485,7 @@ func toChannelOutput(useColor bool, otherPartyColumn string, channel lapi.DataTr
 		otherPartyColumn: otherParty,
 		"Root Cid":       rootCid,
 		"Initiated?":     initiated,
-		"Transferred":    channel.Transferred,
+		"Transferred":    units.BytesSize(float64(channel.Transferred)),
 		"Voucher":        voucher,
 		"Message":        channel.Message,
 	}

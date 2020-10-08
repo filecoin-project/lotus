@@ -9,9 +9,9 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	full "github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -39,8 +39,12 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt t
 	}, nil
 }
 
-func (a *PaychAPI) PaychAvailableFunds(from, to address.Address) (*api.ChannelAvailableFunds, error) {
-	return a.PaychMgr.AvailableFunds(from, to)
+func (a *PaychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
+	return a.PaychMgr.AvailableFunds(ch)
+}
+
+func (a *PaychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error) {
+	return a.PaychMgr.AvailableFundsByFromTo(from, to)
 }
 
 func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) {

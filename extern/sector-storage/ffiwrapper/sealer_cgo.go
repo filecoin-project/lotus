@@ -17,7 +17,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
@@ -410,7 +410,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector abi.Se
 		return false, xerrors.Errorf("closing partial file: %w", err)
 	}
 
-	return false, nil
+	return true, nil
 }
 
 func (sb *Sealer) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
@@ -546,34 +546,37 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector abi.SectorID, keepU
 		defer done()
 
 		pf, err := openPartialFile(maxPieceSize, paths.Unsealed)
-		if xerrors.Is(err, os.ErrNotExist) {
-			return xerrors.Errorf("opening partial file: %w", err)
-		}
+		if err == nil {
+			var at uint64
+			for sr.HasNext() {
+				r, err := sr.NextRun()
+				if err != nil {
+					_ = pf.Close()
+					return err
+				}
 
-		var at uint64
-		for sr.HasNext() {
-			r, err := sr.NextRun()
-			if err != nil {
-				_ = pf.Close()
+				offset := at
+				at += r.Len
+				if !r.Val {
+					continue
+				}
+
+				err = pf.Free(storiface.PaddedByteIndex(abi.UnpaddedPieceSize(offset).Padded()), abi.UnpaddedPieceSize(r.Len).Padded())
+				if err != nil {
+					_ = pf.Close()
+					return xerrors.Errorf("free partial file range: %w", err)
+				}
+			}
+
+			if err := pf.Close(); err != nil {
 				return err
 			}
-
-			offset := at
-			at += r.Len
-			if !r.Val {
-				continue
-			}
-
-			err = pf.Free(storiface.PaddedByteIndex(abi.UnpaddedPieceSize(offset).Padded()), abi.UnpaddedPieceSize(r.Len).Padded())
-			if err != nil {
-				_ = pf.Close()
-				return xerrors.Errorf("free partial file range: %w", err)
+		} else {
+			if !xerrors.Is(err, os.ErrNotExist) {
+				return xerrors.Errorf("opening partial file: %w", err)
 			}
 		}
 
-		if err := pf.Close(); err != nil {
-			return err
-		}
 	}
 
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, stores.FTCache, 0, stores.PathStorage)

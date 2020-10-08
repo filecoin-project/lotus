@@ -1,33 +1,15 @@
 package chain
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-func SyncStageString(v api.SyncStateStage) string {
-	switch v {
-	case api.StageHeaders:
-		return "header sync"
-	case api.StagePersistHeaders:
-		return "persisting headers"
-	case api.StageMessages:
-		return "message sync"
-	case api.StageSyncComplete:
-		return "complete"
-	case api.StageSyncErrored:
-		return "error"
-	default:
-		return fmt.Sprintf("<unknown: %d>", v)
-	}
-}
 
 type SyncerState struct {
 	lk      sync.Mutex

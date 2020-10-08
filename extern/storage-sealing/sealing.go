@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -16,17 +17,19 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	padreader "github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	statemachine "github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
 const SectorStorePrefix = "/sectors"
+
+var ErrTooManySectorsSealing = xerrors.New("too many sectors sealing")
 
 var log = logging.Logger("sectors")
 
@@ -48,16 +51,18 @@ type SealingAPI interface {
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
 	StateMinerSectorSize(context.Context, address.Address, TipSetToken) (abi.SectorSize, error)
 	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok TipSetToken) (address.Address, error)
-	StateMinerDeadlines(ctx context.Context, maddr address.Address, tok TipSetToken) ([]*miner.Deadline, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
+	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
+
+type SectorStateNotifee func(before, after SectorInfo)
 
 type Sealing struct {
 	api    SealingAPI
@@ -76,6 +81,8 @@ type Sealing struct {
 
 	upgradeLk sync.Mutex
 	toUpgrade map[abi.SectorNumber]struct{}
+
+	notifee SectorStateNotifee
 
 	stats SectorStats
 
@@ -99,7 +106,7 @@ type UnsealedSectorInfo struct {
 	pieceSizes []abi.UnpaddedPieceSize
 }
 
-func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gc GetSealingConfigFunc) *Sealing {
+func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee) *Sealing {
 	s := &Sealing{
 		api:    api,
 		feeCfg: fc,
@@ -116,6 +123,9 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		},
 
 		toUpgrade: map[abi.SectorNumber]struct{}{},
+
+		notifee: notifee,
+
 		getConfig: gc,
 
 		stats: SectorStats{
@@ -280,7 +290,7 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 
 	if cfg.MaxSealingSectorsForDeals > 0 {
 		if m.stats.curSealing() > cfg.MaxSealingSectorsForDeals {
-			return 0, xerrors.Errorf("too many sectors sealing")
+			return 0, ErrTooManySectorsSealing
 		}
 	}
 

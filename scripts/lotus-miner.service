@@ -2,7 +2,7 @@
 Description=Lotus Miner
 After=network.target
 After=lotus-daemon.service
-Requires=lotus-daemon.service
+Wants=lotus-daemon.service
 
 [Service]
 ExecStart=/usr/local/bin/lotus-miner run

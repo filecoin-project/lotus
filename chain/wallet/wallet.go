@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/crypto"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -101,7 +101,7 @@ func (w *LocalWallet) findKey(addr address.Address) (*Key, error) {
 		return nil, nil
 	}
 
-	ki, err := w.keystore.Get(KNamePrefix + addr.String())
+	ki, err := w.tryFind(addr)
 	if err != nil {
 		if xerrors.Is(err, types.ErrKeyInfoNotFound) {
 			return nil, nil
@@ -116,7 +116,43 @@ func (w *LocalWallet) findKey(addr address.Address) (*Key, error) {
 	return k, nil
 }
 
-func (w *LocalWallet) WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {
+func (w *LocalWallet) tryFind(addr address.Address) (types.KeyInfo, error) {
+
+	ki, err := w.keystore.Get(KNamePrefix + addr.String())
+	if err == nil {
+		return ki, err
+	}
+
+	if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+		return types.KeyInfo{}, err
+	}
+
+	// We got an ErrKeyInfoNotFound error
+	// Try again, this time with the testnet prefix
+
+	aChars := []rune(addr.String())
+	prefixRunes := []rune(address.TestnetPrefix)
+	if len(prefixRunes) != 1 {
+		return types.KeyInfo{}, xerrors.Errorf("unexpected prefix length: %d", len(prefixRunes))
+	}
+
+	aChars[0] = prefixRunes[0]
+	ki, err = w.keystore.Get(KNamePrefix + string(aChars))
+	if err != nil {
+		return types.KeyInfo{}, err
+	}
+
+	// We found it with the testnet prefix
+	// Add this KeyInfo with the mainnet prefix address string
+	err = w.keystore.Put(KNamePrefix+addr.String(), ki)
+	if err != nil {
+		return types.KeyInfo{}, err
+	}
+
+	return ki, nil
+}
+
+func (w *LocalWallet) Export(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {
 	k, err := w.findKey(addr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to find key to export: %w", err)
@@ -149,6 +185,7 @@ func (w *LocalWallet) WalletList(ctx context.Context) ([]address.Address, error)
 
 	sort.Strings(all)
 
+	seen := map[address.Address]struct{}{}
 	out := make([]address.Address, 0, len(all))
 	for _, a := range all {
 		if strings.HasPrefix(a, KNamePrefix) {
@@ -157,9 +194,18 @@ func (w *LocalWallet) WalletList(ctx context.Context) ([]address.Address, error)
 			if err != nil {
 				return nil, xerrors.Errorf("converting name to address: %w", err)
 			}
+			if _, ok := seen[addr]; ok {
+				continue // got duplicate with a different prefix
+			}
+			seen[addr] = struct{}{}
+
 			out = append(out, addr)
 		}
 	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].String() < out[j].String()
+	})
 
 	return out, nil
 }

@@ -68,7 +68,8 @@ var ErrRepoExists = xerrors.New("repo exists")
 
 // FsRepo is struct for repo, use NewFS to create
 type FsRepo struct {
-	path string
+	path       string
+	configPath string
 }
 
 var _ Repo = &FsRepo{}
@@ -81,8 +82,13 @@ func NewFS(path string) (*FsRepo, error) {
 	}
 
 	return &FsRepo{
-		path: path,
+		path:       path,
+		configPath: filepath.Join(path, fsConfig),
 	}, nil
+}
+
+func (fsr *FsRepo) SetConfigPath(cfgPath string) {
+	fsr.configPath = cfgPath
 }
 
 func (fsr *FsRepo) Exists() (bool, error) {
@@ -110,7 +116,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 	}
 
 	log.Infof("Initializing repo at '%s'", fsr.path)
-	err = os.Mkdir(fsr.path, 0755) //nolint: gosec
+	err = os.MkdirAll(fsr.path, 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -124,9 +130,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 }
 
 func (fsr *FsRepo) initConfig(t RepoType) error {
-	cfgP := filepath.Join(fsr.path, fsConfig)
-
-	_, err := os.Stat(cfgP)
+	_, err := os.Stat(fsr.configPath)
 	if err == nil {
 		// exists
 		return nil
@@ -134,7 +138,7 @@ func (fsr *FsRepo) initConfig(t RepoType) error {
 		return err
 	}
 
-	c, err := os.Create(cfgP)
+	c, err := os.Create(fsr.configPath)
 	if err != nil {
 		return err
 	}
@@ -224,16 +228,30 @@ func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
 		return nil, xerrors.Errorf("could not lock the repo: %w", err)
 	}
 	return &fsLockedRepo{
-		path:     fsr.path,
-		repoType: repoType,
-		closer:   closer,
+		path:       fsr.path,
+		configPath: fsr.configPath,
+		repoType:   repoType,
+		closer:     closer,
 	}, nil
 }
 
+// Like Lock, except datastores will work in read-only mode
+func (fsr *FsRepo) LockRO(repoType RepoType) (LockedRepo, error) {
+	lr, err := fsr.Lock(repoType)
+	if err != nil {
+		return nil, err
+	}
+
+	lr.(*fsLockedRepo).readonly = true
+	return lr, nil
+}
+
 type fsLockedRepo struct {
-	path     string
-	repoType RepoType
-	closer   io.Closer
+	path       string
+	configPath string
+	repoType   RepoType
+	closer     io.Closer
+	readonly   bool
 
 	ds     map[string]datastore.Batching
 	dsErr  error
@@ -286,7 +304,7 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 }
 
 func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
-	return config.FromFile(fsr.join(fsConfig), defConfForType(fsr.repoType))
+	return config.FromFile(fsr.configPath, defConfForType(fsr.repoType))
 }
 
 func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
@@ -315,7 +333,7 @@ func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
 	}
 
 	// write buffer of TOML bytes to config file
-	err = ioutil.WriteFile(fsr.join(fsConfig), buf.Bytes(), 0644)
+	err = ioutil.WriteFile(fsr.configPath, buf.Bytes(), 0644)
 	if err != nil {
 		return err
 	}

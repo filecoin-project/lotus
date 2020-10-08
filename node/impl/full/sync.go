@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"sync/atomic"
 
 	cid "github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -28,7 +30,9 @@ type SyncAPI struct {
 func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 	states := a.Syncer.State()
 
-	out := &api.SyncState{}
+	out := &api.SyncState{
+		VMApplied: atomic.LoadUint64(&vm.StatApplied),
+	}
 
 	for i := range states {
 		ss := &states[i]
@@ -97,9 +101,20 @@ func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHe
 	return a.Syncer.IncomingBlocks(ctx)
 }
 
+func (a *SyncAPI) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
+	log.Warnf("Marking tipset %s as checkpoint", tsk)
+	return a.Syncer.SetCheckpoint(tsk)
+}
+
 func (a *SyncAPI) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
 	log.Warnf("Marking block %s as bad", bcid)
 	a.Syncer.MarkBad(bcid)
+	return nil
+}
+
+func (a *SyncAPI) SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error {
+	log.Warnf("Unmarking block %s as bad", bcid)
+	a.Syncer.UnmarkBad(bcid)
 	return nil
 }
 
@@ -110,4 +125,23 @@ func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error
 	}
 
 	return reason, nil
+}
+
+func (a *SyncAPI) SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error) {
+	ts, err := a.Syncer.ChainStore().LoadTipSet(tsk)
+	if err != nil {
+		return false, err
+	}
+
+	fts, err := a.Syncer.ChainStore().TryFillTipSet(ts)
+	if err != nil {
+		return false, err
+	}
+
+	err = a.Syncer.ValidateTipSet(ctx, fts, false)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

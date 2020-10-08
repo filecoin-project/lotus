@@ -3,11 +3,12 @@ package sealing
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 func (m *Sealing) IsMarkedForUpgrade(id abi.SectorNumber) bool {
@@ -66,6 +67,8 @@ func (m *Sealing) tryUpgradeSector(ctx context.Context, params *miner.SectorPreC
 		params.ReplaceSectorNumber = *replace
 		params.ReplaceSectorDeadline = loc.Deadline
 		params.ReplaceSectorPartition = loc.Partition
+
+		log.Infof("replacing sector %d with %d", *replace, params.SectorNumber)
 
 		ri, err := m.api.StateSectorGetInfo(ctx, m.maddr, *replace, nil)
 		if err != nil {

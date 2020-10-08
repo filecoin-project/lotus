@@ -9,16 +9,22 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
 	"text/template"
 
 	"github.com/urfave/cli/v2"
+
+	"golang.org/x/xerrors"
+
+	"github.com/multiformats/go-base32"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/repo"
 
@@ -43,6 +49,90 @@ var keyinfoCmd = &cli.Command{
 		keyinfoNewCmd,
 		keyinfoInfoCmd,
 		keyinfoImportCmd,
+		keyinfoVerifyCmd,
+	},
+}
+
+var keyinfoVerifyCmd = &cli.Command{
+	Name:  "verify",
+	Usage: "verify the filename of a keystore object on disk with it's contents",
+	Description: `Keystore objects are base32 enocded strings, with wallets being dynamically named via
+   the wallet address. This command can ensure that the naming of these keystore objects are correct`,
+	Action: func(cctx *cli.Context) error {
+		filePath := cctx.Args().First()
+		fileName := path.Base(filePath)
+
+		inputFile, err := os.Open(filePath)
+		if err != nil {
+			return err
+		}
+		defer inputFile.Close() //nolint:errcheck
+		input := bufio.NewReader(inputFile)
+
+		keyContent, err := ioutil.ReadAll(input)
+		if err != nil {
+			return err
+		}
+
+		var keyInfo types.KeyInfo
+		if err := json.Unmarshal(keyContent, &keyInfo); err != nil {
+			return err
+		}
+
+		switch keyInfo.Type {
+		case lp2p.KTLibp2pHost:
+			name, err := base32.RawStdEncoding.DecodeString(fileName)
+			if err != nil {
+				return xerrors.Errorf("decoding key: '%s': %w", fileName, err)
+			}
+
+			if string(name) != keyInfo.Type {
+				return fmt.Errorf("%s of type %s is incorrect", fileName, keyInfo.Type)
+			}
+		case modules.KTJwtHmacSecret:
+			name, err := base32.RawStdEncoding.DecodeString(fileName)
+			if err != nil {
+				return xerrors.Errorf("decoding key: '%s': %w", fileName, err)
+			}
+
+			if string(name) != modules.JWTSecretName {
+				return fmt.Errorf("%s of type %s is incorrect", fileName, keyInfo.Type)
+			}
+		case wallet.KTSecp256k1, wallet.KTBLS:
+			keystore := wallet.NewMemKeyStore()
+			w, err := wallet.NewWallet(keystore)
+			if err != nil {
+				return err
+			}
+
+			if _, err := w.Import(&keyInfo); err != nil {
+				return err
+			}
+
+			list, err := keystore.List()
+			if err != nil {
+				return err
+			}
+
+			if len(list) != 1 {
+				return fmt.Errorf("Unexpected number of keys, expected 1, found %d", len(list))
+			}
+
+			name, err := base32.RawStdEncoding.DecodeString(fileName)
+			if err != nil {
+				return xerrors.Errorf("decoding key: '%s': %w", fileName, err)
+			}
+
+			if string(name) != list[0] {
+				return fmt.Errorf("%s of type %s; file is named for %s, but key is actually %s", fileName, keyInfo.Type, string(name), list[0])
+			}
+
+			break
+		default:
+			return fmt.Errorf("Unknown keytype %s", keyInfo.Type)
+		}
+
+		return nil
 	},
 }
 

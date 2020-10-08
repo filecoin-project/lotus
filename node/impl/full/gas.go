@@ -6,21 +6,24 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 type GasAPI struct {
@@ -50,16 +53,40 @@ func (a *GasAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxq
 	return out, nil
 }
 
+type gasMeta struct {
+	price big.Int
+	limit int64
+}
+
+func medianGasPremium(prices []gasMeta, blocks int) abi.TokenAmount {
+	sort.Slice(prices, func(i, j int) bool {
+		// sort desc by price
+		return prices[i].price.GreaterThan(prices[j].price)
+	})
+
+	at := build.BlockGasTarget * int64(blocks) / 2
+	prev1, prev2 := big.Zero(), big.Zero()
+	for _, price := range prices {
+		prev1, prev2 = price.price, prev1
+		at -= price.limit
+		if at < 0 {
+			break
+		}
+	}
+
+	premium := prev1
+	if prev2.Sign() != 0 {
+		premium = big.Div(types.BigAdd(prev1, prev2), types.NewInt(2))
+	}
+
+	return premium
+}
+
 func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 	sender address.Address, gaslimit int64, _ types.TipSetKey) (types.BigInt, error) {
 
 	if nblocksincl == 0 {
 		nblocksincl = 1
-	}
-
-	type gasMeta struct {
-		price big.Int
-		limit int64
 	}
 
 	var prices []gasMeta
@@ -92,25 +119,7 @@ func (a *GasAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 		ts = pts
 	}
 
-	sort.Slice(prices, func(i, j int) bool {
-		// sort desc by price
-		return prices[i].price.GreaterThan(prices[j].price)
-	})
-
-	at := build.BlockGasTarget * int64(blocks) / 2
-	prev1, prev2 := big.Zero(), big.Zero()
-	for _, price := range prices {
-		prev1, prev2 = price.price, prev1
-		at -= price.limit
-		if at > 0 {
-			continue
-		}
-	}
-
-	premium := prev1
-	if prev2.Sign() != 0 {
-		premium = big.Div(types.BigAdd(prev1, prev2), types.NewInt(2))
-	}
+	premium := medianGasPremium(prices, blocks)
 
 	if types.BigCmp(premium, types.NewInt(MinGasPremium)) < 0 {
 		switch nblocksincl {
@@ -151,7 +160,18 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 		priorMsgs = append(priorMsgs, m)
 	}
 
-	res, err := a.Stmgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+	// Try calling until we find a height with no migration.
+	var res *api.InvocResult
+	for {
+		res, err = a.Stmgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ts.Parents())
+		if err != nil {
+			return -1, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
 	if err != nil {
 		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
@@ -160,8 +180,14 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 	}
 
 	// Special case for PaymentChannel collect, which is deleting actor
-	var act types.Actor
-	err = a.Stmgr.WithParentState(ts, a.Stmgr.WithActor(msg.To, stmgr.GetActor(&act)))
+	st, err := a.Stmgr.ParentState(ts)
+	if err != nil {
+		_ = err
+		// somewhat ignore it as it can happen and we just want to detect
+		// an existing PaymentChannel actor
+		return res.MsgRct.GasUsed, nil
+	}
+	act, err := st.GetActor(msg.To)
 	if err != nil {
 		_ = err
 		// somewhat ignore it as it can happen and we just want to detect
@@ -169,10 +195,10 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 		return res.MsgRct.GasUsed, nil
 	}
 
-	if !act.Code.Equals(builtin.PaymentChannelActorCodeID) {
+	if !builtin.IsPaymentChannelActor(act.Code) {
 		return res.MsgRct.GasUsed, nil
 	}
-	if msgIn.Method != builtin.MethodsPaych.Collect {
+	if msgIn.Method != builtin0.MethodsPaych.Collect {
 		return res.MsgRct.GasUsed, nil
 	}
 
@@ -198,30 +224,14 @@ func (a *GasAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, 
 	}
 
 	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 10, types.EmptyTSK)
+		feeCap, err := a.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
 		msg.GasFeeCap = feeCap
 	}
 
-	capGasFee(msg, spec.Get().MaxFee)
+	messagepool.CapGasFee(msg, spec.Get().MaxFee)
 
 	return msg, nil
-}
-
-func capGasFee(msg *types.Message, maxFee abi.TokenAmount) {
-	if maxFee.Equals(big.Zero()) {
-		maxFee = types.NewInt(build.FilecoinPrecision / 10)
-	}
-
-	gl := types.NewInt(uint64(msg.GasLimit))
-	totalFee := types.BigMul(msg.GasFeeCap, gl)
-
-	if totalFee.LessThanEqual(maxFee) {
-		return
-	}
-
-	msg.GasFeeCap = big.Div(maxFee, gl)
-	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type BlockMiner struct {

@@ -3,8 +3,11 @@ package sealing
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 type PreCommitPolicy interface {
@@ -13,6 +16,7 @@ type PreCommitPolicy interface {
 
 type Chain interface {
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
+	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 }
 
 // BasicPreCommitPolicy satisfies PreCommitPolicy. It has two modes:
@@ -50,7 +54,7 @@ func NewBasicPreCommitPolicy(api Chain, duration abi.ChainEpoch, provingBoundary
 func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi.ChainEpoch, error) {
 	_, epoch, err := p.api.ChainHead(ctx)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	var end *abi.ChainEpoch

@@ -3,8 +3,8 @@ package types
 import (
 	"bytes"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 )

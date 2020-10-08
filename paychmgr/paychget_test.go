@@ -6,33 +6,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-
 	cborrpc "github.com/filecoin-project/go-cbor-util"
-
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+
+	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt {
-	createChannelRet := init_.ExecReturn{
+	createChannelRet := init2.ExecReturn{
 		IDAddress:     ch,
 		RobustAddress: ch,
 	}
@@ -67,7 +61,7 @@ func TestPaychGetCreateChannelMsg(t *testing.T) {
 
 	pushedMsg := mock.pushedMessages(mcid)
 	require.Equal(t, from, pushedMsg.Message.From)
-	require.Equal(t, builtin.InitActorAddr, pushedMsg.Message.To)
+	require.Equal(t, lotusinit.Address, pushedMsg.Message.To)
 	require.Equal(t, amt, pushedMsg.Message.Value)
 }
 
@@ -719,7 +713,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 	// Check create message amount is correct
 	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
-	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, lotusinit.Address, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
 
 	// Check merged add funds amount is the sum of the individual
@@ -815,7 +809,7 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 	// Check create message amount is correct
 	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
-	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, lotusinit.Address, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
 
 	// Check merged add funds amount only includes the second add funds amount
@@ -897,7 +891,7 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 	// Check create message amount is correct
 	createMsg := mock.pushedMessages(createMsgCid)
 	require.Equal(t, from, createMsg.Message.From)
-	require.Equal(t, builtin.InitActorAddr, createMsg.Message.To)
+	require.Equal(t, lotusinit.Address, createMsg.Message.To)
 	require.Equal(t, createAmt, createMsg.Message.Value)
 }
 
@@ -921,7 +915,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// No channel created yet so available funds should be all zeroes
-	av, err := mgr.AvailableFunds(from, to)
+	av, err := mgr.AvailableFundsByFromTo(from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)
@@ -936,7 +930,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Available funds should reflect create channel message sent
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFundsByFromTo(from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.EqualValues(t, 0, av.ConfirmedAmt.Int64())
@@ -964,7 +958,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	waitForQueueSize(t, mgr, from, to, 1)
 
 	// Available funds should now include queued funds
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFundsByFromTo(from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.NotNil(t, av.PendingWaitSentinel)
@@ -976,25 +970,15 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.EqualValues(t, 0, av.VoucherReedeemedAmt.Int64())
 
 	// Create channel in state
-	arr, err := adt.MakeEmptyArray(mock.store).Root()
-	require.NoError(t, err)
-	mock.setAccountState(fromAcct, account.State{Address: from})
-	mock.setAccountState(toAcct, account.State{Address: to})
+	mock.setAccountAddress(fromAcct, from)
+	mock.setAccountAddress(toAcct, to)
 	act := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
 		Head:    cid.Cid{},
 		Nonce:   0,
 		Balance: createAmt,
 	}
-	mock.setPaychState(ch, act, paych.State{
-		From:            fromAcct,
-		To:              toAcct,
-		ToSend:          big.NewInt(0),
-		SettlingAt:      abi.ChainEpoch(0),
-		MinSettleHeight: abi.ChainEpoch(0),
-		LaneStates:      arr,
-	})
-
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 	// Send create channel response
 	response := testChannelResponse(t, ch)
 	mock.receiveMsgResponse(createMsgCid, response)
@@ -1009,7 +993,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 
 	// Available funds should now include the channel and also a wait sentinel
 	// for the add funds message
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFunds(ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.NotNil(t, av.PendingWaitSentinel)
@@ -1031,7 +1015,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Available funds should no longer have a wait sentinel
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFunds(ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)
@@ -1052,7 +1036,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	_, err = mgr.AddVoucherOutbound(ctx, ch, voucher, nil, types.NewInt(0))
 	require.NoError(t, err)
 
-	av, err = mgr.AvailableFunds(from, to)
+	av, err = mgr.AvailableFunds(ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)

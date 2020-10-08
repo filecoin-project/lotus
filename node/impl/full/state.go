@@ -3,32 +3,33 @@ package full
 import (
 	"bytes"
 	"context"
-	"errors"
-	"fmt"
 	"strconv"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
+
+	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -41,8 +42,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-var errBreakForeach = errors.New("break")
-
 type StateAPI struct {
 	fx.In
 
@@ -53,130 +52,184 @@ type StateAPI struct {
 	ProofVerifier ffiwrapper.Verifier
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
-	Beacon        beacon.RandomBeacon
+	Beacon        beacon.Schedule
 }
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, filter *abi.BitField, filterOut bool, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, filter, filterOut)
+	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, sectorNos)
 }
 
-func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	var out []*api.ChainSectorInfo
-
-	err := a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(maddr,
-			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []abi.BitField
-
-				err := a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
-							active, err := partition.ActiveSectors()
-							if err != nil {
-								return xerrors.Errorf("partition.ActiveSectors: %w", err)
-							}
-
-							allActive = append(allActive, active)
-							return nil
-						})))(store, mas)
-				if err != nil {
-					return xerrors.Errorf("with deadlines: %w", err)
-				}
-
-				active, err := bitfield.MultiMerge(allActive...)
-				if err != nil {
-					return xerrors.Errorf("merging active sector bitfields: %w", err)
-				}
-
-				out, err = stmgr.LoadSectorsFromSet(ctx, a.Chain.Blockstore(), mas.Sectors, &active, false)
-				return err
-			})))
+func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) { // TODO: only used in cli
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("getting active sectors from partitions: %w", err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
+	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	if err != nil {
+		return nil, xerrors.Errorf("merge partition active sets: %w", err)
+	}
+
+	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, maddr, &activeSectors)
+}
+
+func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, actor, tsk)
+	if err != nil {
+		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return mas.Info()
+}
+
+func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, m, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	deadlines, err := mas.NumDeadlines()
+	if err != nil {
+		return nil, xerrors.Errorf("getting deadline count: %w", err)
+	}
+
+	out := make([]api.Deadline, deadlines)
+	if err := mas.ForEachDeadline(func(i uint64, dl miner.Deadline) error {
+		ps, err := dl.PostSubmissions()
+		if err != nil {
+			return err
+		}
+
+		out[i] = api.Deadline{
+			PostSubmissions: ps,
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
-func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, m, tsk)
 	if err != nil {
-		return api.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	mi, err := stmgr.StateMinerInfo(ctx, a.StateManager, ts, actor)
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
 	if err != nil {
-		return api.MinerInfo{}, err
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
-	return api.NewApiMinerInfo(mi), nil
+
+	dl, err := mas.LoadDeadline(dlIdx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load the deadline: %w", err)
+	}
+
+	var out []api.Partition
+	err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+		allSectors, err := part.AllSectors()
+		if err != nil {
+			return xerrors.Errorf("getting AllSectors: %w", err)
+		}
+
+		faultySectors, err := part.FaultySectors()
+		if err != nil {
+			return xerrors.Errorf("getting FaultySectors: %w", err)
+		}
+
+		recoveringSectors, err := part.RecoveringSectors()
+		if err != nil {
+			return xerrors.Errorf("getting RecoveringSectors: %w", err)
+		}
+
+		liveSectors, err := part.LiveSectors()
+		if err != nil {
+			return xerrors.Errorf("getting LiveSectors: %w", err)
+		}
+
+		activeSectors, err := part.ActiveSectors()
+		if err != nil {
+			return xerrors.Errorf("getting ActiveSectors: %w", err)
+		}
+
+		out = append(out, api.Partition{
+			AllSectors:        allSectors,
+			FaultySectors:     faultySectors,
+			RecoveringSectors: recoveringSectors,
+			LiveSectors:       liveSectors,
+			ActiveSectors:     activeSectors,
+		})
+		return nil
+	})
+
+	return out, err
 }
 
-func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]*miner.Deadline, error) {
-	var out []*miner.Deadline
-	return out, a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(m,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						func(store adt.Store, idx uint64, deadline *miner.Deadline) error {
-							out = append(out, deadline)
-							return nil
-						})))))
-}
-
-func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]*miner.Partition, error) {
-	var out []*miner.Partition
-	return out, a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(m,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(
-					a.StateManager.WithDeadline(dlIdx,
-						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
-							out = append(out, partition)
-							return nil
-						}))))))
-}
-
-func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*miner.DeadlineInfo, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
+	ts, err := a.StateManager.ChainStore().GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var mas miner.State
-	_, err = a.StateManager.LoadActorState(ctx, addr, &mas, ts)
+	act, err := a.StateManager.LoadActor(ctx, addr, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	return mas.DeadlineInfo(ts.Height()).NextNotElapsed(), nil
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	di, err := mas.DeadlineInfo(ts.Height())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get deadline info: %w", err)
+	}
+
+	return di.NextNotElapsed(), nil
 }
 
-func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.BitField, error) {
-	out := bitfield.New()
-
-	err := a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(addr,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						a.StateManager.WithEachPartition(func(store adt.Store, idx uint64, partition *miner.Partition) (err error) {
-							out, err = bitfield.MergeBitFields(out, partition.Faults)
-							return err
-						}))))))
+func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
-		return bitfield.BitField{}, err
+		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	return out, err
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return miner.AllPartSectors(mas, miner.Partition.FaultySectors)
 }
 
 func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, endTsk types.TipSetKey) ([]*api.Fault, error) {
@@ -222,23 +275,18 @@ func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEp
 	return allFaults, nil*/
 }
 
-func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (abi.BitField, error) {
-	out := bitfield.New()
-
-	err := a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(addr,
-			a.StateManager.WithActorState(ctx,
-				a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						a.StateManager.WithEachPartition(func(store adt.Store, idx uint64, partition *miner.Partition) (err error) {
-							out, err = bitfield.MergeBitFields(out, partition.Recoveries)
-							return err
-						}))))))
+func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
-		return bitfield.BitField{}, err
+		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	return out, err
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return miner.AllPartSectors(mas, miner.Partition.RecoveringSectors)
 }
 
 func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
@@ -247,23 +295,34 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	m, net, err := stmgr.GetPower(ctx, a.StateManager, ts, addr)
+	m, net, hmp, err := stmgr.GetPower(ctx, a.StateManager, ts, addr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.MinerPower{
-		MinerPower: m,
-		TotalPower: net,
+		MinerPower:  m,
+		TotalPower:  net,
+		HasMinPower: hmp,
 	}, nil
 }
 
-func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
+func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.StateManager.Call(ctx, msg, ts)
+	for {
+		res, err = a.StateManager.Call(ctx, msg, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
+	return res, err
 }
 
 func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
@@ -360,7 +419,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 		return nil, xerrors.Errorf("getting actor head: %w", err)
 	}
 
-	oif, err := vm.DumpActorState(act.Code, blk.RawData())
+	oif, err := vm.DumpActorState(act, blk.RawData())
 	if err != nil {
 		return nil, xerrors.Errorf("dumping actor state (a:%s): %w", actor, err)
 	}
@@ -482,35 +541,29 @@ func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address,
 func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketBalance, error) {
 	out := map[string]api.MarketBalance{}
 
-	var state market.State
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	if _, err := a.StateManager.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
-		return nil, err
-	}
-	store := a.StateManager.ChainStore().Store(ctx)
-	escrow, err := adt.AsMap(store, state.EscrowTable)
+
+	state, err := a.StateManager.GetMarketState(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
-	locked, err := adt.AsMap(store, state.LockedTable)
+	escrow, err := state.EscrowTable()
+	if err != nil {
+		return nil, err
+	}
+	locked, err := state.LockedTable()
 	if err != nil {
 		return nil, err
 	}
 
-	var es, lk abi.TokenAmount
-	err = escrow.ForEach(&es, func(k string) error {
-		a, err := address.NewFromBytes([]byte(k))
+	err = escrow.ForEach(func(a address.Address, es abi.TokenAmount) error {
+
+		lk, err := locked.Get(a)
 		if err != nil {
 			return err
-		}
-
-		if found, err := locked.Get(adt.AddrKey(a), &lk); err != nil {
-			return err
-		} else if !found {
-			return fmt.Errorf("locked funds not found")
 		}
 
 		out[a.String()] = api.MarketBalance{
@@ -528,37 +581,36 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketDeal, error) {
 	out := map[string]api.MarketDeal{}
 
-	var state market.State
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	if _, err := a.StateManager.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
-		return nil, err
-	}
 
-	store := a.StateManager.ChainStore().Store(ctx)
-	da, err := adt.AsArray(store, state.Proposals)
+	state, err := a.StateManager.GetMarketState(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	sa, err := adt.AsArray(store, state.States)
+	da, err := state.Proposals()
 	if err != nil {
 		return nil, err
 	}
 
-	var d market.DealProposal
-	if err := da.ForEach(&d, func(i int64) error {
-		var s market.DealState
-		if found, err := sa.Get(uint64(i), &s); err != nil {
+	sa, err := state.States()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := da.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
+		s, found, err := sa.Get(dealID)
+		if err != nil {
 			return xerrors.Errorf("failed to get state for deal in proposals array: %w", err)
 		} else if !found {
-			s.SectorStartEpoch = -1
+			s = market.EmptyDealState()
 		}
-		out[strconv.FormatInt(i, 10)] = api.MarketDeal{
+		out[strconv.FormatInt(int64(dealID), 10)] = api.MarketDeal{
 			Proposal: d,
-			State:    s,
+			State:    *s,
 		}
 		return nil
 	}); err != nil {
@@ -576,106 +628,60 @@ func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID
 }
 
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
-	store := adt.WrapStore(ctx, cbor.NewCborStore(a.Chain.Blockstore()))
+	store := a.Chain.Store(ctx)
 
-	nh, err := adt.AsMap(store, new)
+	oldTree, err := state.LoadStateTree(store, old)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to load old state tree: %w", err)
 	}
 
-	oh, err := adt.AsMap(store, old)
+	newTree, err := state.LoadStateTree(store, new)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to load new state tree: %w", err)
 	}
 
-	out := map[string]types.Actor{}
-
-	var (
-		ncval, ocval cbg.Deferred
-		buf          = bytes.NewReader(nil)
-	)
-	err = nh.ForEach(&ncval, func(k string) error {
-		var act types.Actor
-
-		addr, err := address.NewFromBytes([]byte(k))
-		if err != nil {
-			return xerrors.Errorf("address in state tree was not valid: %w", err)
-		}
-
-		found, err := oh.Get(adt.AddrKey(addr), &ocval)
-		if err != nil {
-			return err
-		}
-
-		if found && bytes.Equal(ocval.Raw, ncval.Raw) {
-			return nil // not changed
-		}
-
-		buf.Reset(ncval.Raw)
-		err = act.UnmarshalCBOR(buf)
-		buf.Reset(nil)
-
-		if err != nil {
-			return err
-		}
-
-		out[addr.String()] = act
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
+	return state.Diff(oldTree, newTree)
 }
 
 func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
-	var out api.MinerSectors
-
-	err := a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(addr,
-			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				var allActive []abi.BitField
-
-				err := a.StateManager.WithDeadlines(
-					a.StateManager.WithEachDeadline(
-						a.StateManager.WithEachPartition(func(store adt.Store, partIdx uint64, partition *miner.Partition) error {
-							active, err := partition.ActiveSectors()
-							if err != nil {
-								return xerrors.Errorf("partition.ActiveSectors: %w", err)
-							}
-
-							allActive = append(allActive, active)
-							return nil
-						})))(store, mas)
-				if err != nil {
-					return xerrors.Errorf("with deadlines: %w", err)
-				}
-
-				active, err := bitfield.MultiMerge(allActive...)
-				if err != nil {
-					return xerrors.Errorf("merging active sector bitfields: %w", err)
-				}
-
-				out.Active, err = active.Count()
-				if err != nil {
-					return xerrors.Errorf("counting active sectors: %w", err)
-				}
-
-				sarr, err := adt.AsArray(store, mas.Sectors)
-				if err != nil {
-					return err
-				}
-
-				out.Sectors = sarr.Length()
-				return nil
-			})))
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
 		return api.MinerSectors{}, err
 	}
-
-	return out, nil
+	mas, err := miner.Load(a.Chain.Store(ctx), act)
+	if err != nil {
+		return api.MinerSectors{}, err
+	}
+	var activeCount, liveCount, faultyCount uint64
+	if err := mas.ForEachDeadline(func(_ uint64, dl miner.Deadline) error {
+		return dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+			if active, err := part.ActiveSectors(); err != nil {
+				return err
+			} else if count, err := active.Count(); err != nil {
+				return err
+			} else {
+				activeCount += count
+			}
+			if live, err := part.LiveSectors(); err != nil {
+				return err
+			} else if count, err := live.Count(); err != nil {
+				return err
+			} else {
+				liveCount += count
+			}
+			if faulty, err := part.FaultySectors(); err != nil {
+				return err
+			} else if count, err := faulty.Count(); err != nil {
+				return err
+			} else {
+				faultyCount += count
+			}
+			return nil
+		})
+	}); err != nil {
+		return api.MinerSectors{}, err
+	}
+	return api.MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
 }
 
 func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
@@ -683,7 +689,13 @@ func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.A
 	if err != nil {
 		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.PreCommitInfo(ctx, a.StateManager, maddr, n, ts)
+
+	pci, err := stmgr.PreCommitInfo(ctx, a.StateManager, maddr, n, ts)
+	if err != nil {
+		return miner.SectorPreCommitOnChainInfo{}, err
+	}
+
+	return *pci, err
 }
 
 func (a *StateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
@@ -694,97 +706,28 @@ func (a *StateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address
 	return stmgr.MinerSectorInfo(ctx, a.StateManager, maddr, n, ts)
 }
 
-type sectorPartitionCb func(store adt.Store, mas *miner.State, di uint64, pi uint64, part *miner.Partition) error
-
-func (a *StateAPI) sectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey, cb sectorPartitionCb) error {
-	return a.StateManager.WithParentStateTsk(tsk,
-		a.StateManager.WithActor(maddr,
-			a.StateManager.WithActorState(ctx, func(store adt.Store, mas *miner.State) error {
-				return a.StateManager.WithDeadlines(func(store adt.Store, deadlines *miner.Deadlines) error {
-					err := a.StateManager.WithEachDeadline(func(store adt.Store, di uint64, deadline *miner.Deadline) error {
-						return a.StateManager.WithEachPartition(func(store adt.Store, pi uint64, partition *miner.Partition) error {
-							set, err := partition.Sectors.IsSet(uint64(sectorNumber))
-							if err != nil {
-								return xerrors.Errorf("is set: %w", err)
-							}
-							if set {
-								if err := cb(store, mas, di, pi, partition); err != nil {
-									return err
-								}
-
-								return errBreakForeach
-							}
-							return nil
-						})(store, di, deadline)
-					})(store, deadlines)
-					if err == errBreakForeach {
-						err = nil
-					}
-					return err
-				})(store, mas)
-			})))
-}
-
-func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*api.SectorExpiration, error) {
-	var onTimeEpoch, earlyEpoch abi.ChainEpoch
-
-	err := a.sectorPartition(ctx, maddr, sectorNumber, tsk, func(store adt.Store, mas *miner.State, di uint64, pi uint64, part *miner.Partition) error {
-		quant := mas.QuantSpecForDeadline(di)
-		expirations, err := miner.LoadExpirationQueue(store, part.ExpirationsEpochs, quant)
-		if err != nil {
-			return xerrors.Errorf("loading expiration queue: %w", err)
-		}
-
-		var eset miner.ExpirationSet
-		return expirations.Array.ForEach(&eset, func(epoch int64) error {
-			set, err := eset.OnTimeSectors.IsSet(uint64(sectorNumber))
-			if err != nil {
-				return xerrors.Errorf("checking if sector is in onTime set: %w", err)
-			}
-			if set {
-				onTimeEpoch = abi.ChainEpoch(epoch)
-			}
-
-			set, err = eset.EarlySectors.IsSet(uint64(sectorNumber))
-			if err != nil {
-				return xerrors.Errorf("checking if sector is in early set: %w", err)
-			}
-			if set {
-				earlyEpoch = abi.ChainEpoch(epoch)
-			}
-
-			return nil
-		})
-	})
+func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
 	if err != nil {
 		return nil, err
 	}
-
-	if onTimeEpoch == 0 {
-		return nil, xerrors.Errorf("expiration for sector %d not found", sectorNumber)
-	}
-
-	return &api.SectorExpiration{
-		OnTime: onTimeEpoch,
-		Early:  earlyEpoch,
-	}, nil
-}
-
-func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*api.SectorLocation, error) {
-	var found *api.SectorLocation
-
-	err := a.sectorPartition(ctx, maddr, sectorNumber, tsk, func(store adt.Store, mas *miner.State, di, pi uint64, partition *miner.Partition) error {
-		found = &api.SectorLocation{
-			Deadline:  di,
-			Partition: pi,
-		}
-		return errBreakForeach
-	})
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
 	if err != nil {
 		return nil, err
 	}
+	return mas.GetSectorExpiration(sectorNumber)
+}
 
-	return found, nil
+func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return mas.FindSector(sectorNumber)
 }
 
 func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toheight abi.ChainEpoch) ([]cid.Cid, error) {
@@ -862,28 +805,97 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var st samsig.State
-	act, err := a.StateManager.LoadActorState(ctx, addr, &st, ts)
+	act, err := a.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor: %w", err)
+	}
+	msas, err := multisig.Load(a.Chain.Store(ctx), act)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
+	}
+	locked, err := msas.LockedBalance(ts.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked multisig balance: %w", err)
+	}
+	return types.BigSub(act.Balance, locked), nil
+}
+
+func (a *StateAPI) MsigGetVestingSchedule(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MsigVesting, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := a.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig actor: %w", err)
+	}
+
+	msas, err := multisig.Load(a.Chain.Store(ctx), act)
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	ib, err := msas.InitialBalance()
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig initial balance: %w", err)
+	}
+
+	se, err := msas.StartEpoch()
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig start epoch: %w", err)
+	}
+
+	ud, err := msas.UnlockDuration()
+	if err != nil {
+		return api.EmptyVesting, xerrors.Errorf("failed to load multisig unlock duration: %w", err)
+	}
+
+	return api.MsigVesting{
+		InitialBalance: ib,
+		StartEpoch:     se,
+		UnlockDuration: ud,
+	}, nil
+}
+
+func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	startTs, err := a.Chain.GetTipSetFromKey(start)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
+	}
+
+	endTs, err := a.Chain.GetTipSetFromKey(end)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
+	}
+
+	if startTs.Height() > endTs.Height() {
+		return types.EmptyInt, xerrors.Errorf("start tipset %d is after end tipset %d", startTs.Height(), endTs.Height())
+	} else if startTs.Height() == endTs.Height() {
+		return big.Zero(), nil
+	}
+
+	act, err := a.StateManager.LoadActor(ctx, addr, endTs)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor at end epoch: %w", err)
+	}
+
+	msas, err := multisig.Load(a.Chain.Store(ctx), act)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
 
-	if act.Code != builtin.MultisigActorCodeID {
-		return types.EmptyInt, fmt.Errorf("given actor was not a multisig")
+	startLk, err := msas.LockedBalance(startTs.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at start height: %w", err)
 	}
 
-	if st.UnlockDuration == 0 {
-		return act.Balance, nil
+	endLk, err := msas.LockedBalance(endTs.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at end height: %w", err)
 	}
 
-	offset := ts.Height() - st.StartEpoch
-	if offset > st.UnlockDuration {
-		return act.Balance, nil
-	}
-
-	minBalance := types.BigDiv(st.InitialBalance, types.NewInt(uint64(st.UnlockDuration)))
-	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
-	return types.BigSub(act.Balance, minBalance), nil
+	return types.BigSub(startLk, endLk), nil
 }
 
 var initialPledgeNum = types.NewInt(110)
@@ -895,160 +907,133 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var minerState miner.State
-	var powerState power.State
-	var rewardState reward.State
-
-	err = a.StateManager.WithParentStateTsk(tsk, func(state *state.StateTree) error {
-		if err := a.StateManager.WithActor(maddr, a.StateManager.WithActorState(ctx, &minerState))(state); err != nil {
-			return xerrors.Errorf("getting miner state: %w", err)
-		}
-
-		if err := a.StateManager.WithActor(builtin.StoragePowerActorAddr, a.StateManager.WithActorState(ctx, &powerState))(state); err != nil {
-			return xerrors.Errorf("getting power state: %w", err)
-		}
-
-		if err := a.StateManager.WithActor(builtin.RewardActorAddr, a.StateManager.WithActorState(ctx, &rewardState))(state); err != nil {
-			return xerrors.Errorf("getting reward state: %w", err)
-		}
-
-		return nil
-	})
+	state, err := a.StateManager.ParentState(ts)
 	if err != nil {
-		return types.EmptyInt, err
+		return types.EmptyInt, xerrors.Errorf("loading state %s: %w", tsk, err)
 	}
 
-	dealWeights := market.VerifyDealsForActivationReturn{
-		DealWeight:         big.Zero(),
-		VerifiedDealWeight: big.Zero(),
-	}
-
-	if len(pci.DealIDs) != 0 {
-		var err error
-		params, err := actors.SerializeParams(&market.VerifyDealsForActivationParams{
-			DealIDs:      pci.DealIDs,
-			SectorExpiry: pci.Expiration,
-		})
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		ret, err := a.StateManager.Call(ctx, &types.Message{
-			From:   maddr,
-			To:     builtin.StorageMarketActorAddr,
-			Method: builtin.MethodsMarket.VerifyDealsForActivation,
-			Params: params,
-		}, ts)
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
-			return types.BigInt{}, err
-		}
-	}
-
-	mi, err := a.StateMinerInfo(ctx, maddr, tsk)
+	ssize, err := pci.SealProof.SectorSize()
 	if err != nil {
-		return types.EmptyInt, err
+		return types.EmptyInt, xerrors.Errorf("failed to get resolve size: %w", err)
 	}
 
-	ssize := mi.SectorSize
+	store := a.Chain.Store(ctx)
 
-	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+	var sectorWeight abi.StoragePower
+	if act, err := state.GetActor(market.Address); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading market actor %s: %w", maddr, err)
+	} else if s, err := market.Load(store, act); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
+	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
+		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+	} else {
+		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
+		duration := pci.Expiration - ts.Height()
+		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+	}
 
-	sectorWeight := miner.QAPowerForWeight(ssize, duration, dealWeights.DealWeight, dealWeights.VerifiedDealWeight)
-	deposit := miner.PreCommitDepositForPower(
-		rewardState.ThisEpochRewardSmoothed,
-		powerState.ThisEpochQAPowerSmoothed,
-		sectorWeight,
-	)
+	var powerSmoothed builtin.FilterEstimate
+	if act, err := state.GetActor(power.Address); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading power actor: %w", err)
+	} else if s, err := power.Load(store, act); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading power actor state: %w", err)
+	} else if p, err := s.TotalPowerSmoothed(); err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to determine total power: %w", err)
+	} else {
+		powerSmoothed = p
+	}
+
+	rewardActor, err := state.GetActor(reward.Address)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
+	}
+
+	rewardState, err := reward.Load(store, rewardActor)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
+	}
+
+	deposit, err := rewardState.PreCommitDepositForPower(powerSmoothed, sectorWeight)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("calculating precommit deposit: %w", err)
+	}
 
 	return types.BigDiv(types.BigMul(deposit, initialPledgeNum), initialPledgeDen), nil
 }
 
 func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+	// TODO: this repeats a lot of the previous function. Fix that.
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var minerState miner.State
-	var powerState power.State
-	var rewardState reward.State
-
-	err = a.StateManager.WithParentStateTsk(tsk, func(state *state.StateTree) error {
-		if err := a.StateManager.WithActor(maddr, a.StateManager.WithActorState(ctx, &minerState))(state); err != nil {
-			return xerrors.Errorf("getting miner state: %w", err)
-		}
-
-		if err := a.StateManager.WithActor(builtin.StoragePowerActorAddr, a.StateManager.WithActorState(ctx, &powerState))(state); err != nil {
-			return xerrors.Errorf("getting power state: %w", err)
-		}
-
-		if err := a.StateManager.WithActor(builtin.RewardActorAddr, a.StateManager.WithActorState(ctx, &rewardState))(state); err != nil {
-			return xerrors.Errorf("getting reward state: %w", err)
-		}
-
-		return nil
-	})
+	state, err := a.StateManager.ParentState(ts)
 	if err != nil {
-		return types.EmptyInt, err
+		return types.EmptyInt, xerrors.Errorf("loading state %s: %w", tsk, err)
 	}
 
-	dealWeights := market.VerifyDealsForActivationReturn{
-		DealWeight:         big.Zero(),
-		VerifiedDealWeight: big.Zero(),
-	}
-
-	if len(pci.DealIDs) != 0 {
-		var err error
-		params, err := actors.SerializeParams(&market.VerifyDealsForActivationParams{
-			DealIDs:      pci.DealIDs,
-			SectorExpiry: pci.Expiration,
-		})
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		ret, err := a.StateManager.Call(ctx, &types.Message{
-			From:   maddr,
-			To:     builtin.StorageMarketActorAddr,
-			Method: builtin.MethodsMarket.VerifyDealsForActivation,
-			Params: params,
-		}, ts)
-		if err != nil {
-			return types.EmptyInt, err
-		}
-
-		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret.MsgRct.Return)); err != nil {
-			return types.BigInt{}, err
-		}
-	}
-
-	mi, err := a.StateMinerInfo(ctx, maddr, tsk)
+	ssize, err := pci.SealProof.SectorSize()
 	if err != nil {
-		return types.EmptyInt, err
+		return types.EmptyInt, xerrors.Errorf("failed to get resolve size: %w", err)
 	}
 
-	ssize := mi.SectorSize
+	store := a.Chain.Store(ctx)
 
-	duration := pci.Expiration - ts.Height() // NB: not exactly accurate, but should always lead us to *over* estimate, not under
+	var sectorWeight abi.StoragePower
+	if act, err := state.GetActor(market.Address); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading miner actor %s: %w", maddr, err)
+	} else if s, err := market.Load(store, act); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
+	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
+		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+	} else {
+		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
+		duration := pci.Expiration - ts.Height()
+		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+	}
+
+	var (
+		powerSmoothed    builtin.FilterEstimate
+		pledgeCollateral abi.TokenAmount
+	)
+	if act, err := state.GetActor(power.Address); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
+	} else if s, err := power.Load(store, act); err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading power actor state: %w", err)
+	} else if p, err := s.TotalPowerSmoothed(); err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to determine total power: %w", err)
+	} else if c, err := s.TotalLocked(); err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to determine pledge collateral: %w", err)
+	} else {
+		powerSmoothed = p
+		pledgeCollateral = c
+	}
+
+	rewardActor, err := state.GetActor(reward.Address)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
+	}
+
+	rewardState, err := reward.Load(store, rewardActor)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
+	}
 
 	circSupply, err := a.StateCirculatingSupply(ctx, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
 
-	sectorWeight := miner.QAPowerForWeight(ssize, duration, dealWeights.DealWeight, dealWeights.VerifiedDealWeight)
-	initialPledge := miner.InitialPledgeForPower(
+	initialPledge, err := rewardState.InitialPledgeForPower(
 		sectorWeight,
-		rewardState.ThisEpochBaselinePower,
-		powerState.ThisEpochPledgeCollateral,
-		rewardState.ThisEpochRewardSmoothed,
-		powerState.ThisEpochQAPowerSmoothed,
+		pledgeCollateral,
+		&powerSmoothed,
 		circSupply.FilCirculating,
 	)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("calculating initial pledge: %w", err)
+	}
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }
@@ -1059,30 +1044,34 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var act *types.Actor
-	var mas miner.State
-
-	if err := a.StateManager.WithParentState(ts, a.StateManager.WithActor(maddr, func(actor *types.Actor) error {
-		act = actor
-		return a.StateManager.WithActorState(ctx, &mas)(actor)
-	})); err != nil {
-		return types.BigInt{}, xerrors.Errorf("getting miner state: %w", err)
+	act, err := a.StateManager.LoadActor(ctx, maddr, ts)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
-	as := store.ActorStore(ctx, a.Chain.Blockstore())
 
-	vested, err := mas.CheckVestedFunds(as, ts.Height())
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	vested, err := mas.VestedFunds(ts.Height())
 	if err != nil {
 		return types.EmptyInt, err
 	}
 
-	return types.BigAdd(mas.GetAvailableBalance(act.Balance), vested), nil
+	abal, err := mas.AvailableBalance(act.Balance)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	return types.BigAdd(abal, vested), nil
 }
 
 // StateVerifiedClientStatus returns the data cap for the given address.
-// Returns nil if there is no entry in the data cap table for the
+// Returns zero if there is no entry in the data cap table for the
 // address.
-func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*verifreg.DataCap, error) {
-	act, err := a.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, tsk)
+func (a *StateAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	act, err := a.StateGetActor(ctx, verifreg.Address, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -1093,26 +1082,65 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 		return nil, err
 	}
 
-	store := a.StateManager.ChainStore().Store(ctx)
-
-	var st verifreg.State
-	if err := store.Get(ctx, act.Head, &st); err != nil {
-		return nil, err
-	}
-
-	vh, err := adt.AsMap(store, st.VerifiedClients)
+	vrs, err := verifreg.Load(a.StateManager.ChainStore().Store(ctx), act)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
 	}
 
-	var dcap verifreg.DataCap
-	if found, err := vh.Get(adt.AddrKey(aid), &dcap); err != nil {
-		return nil, err
-	} else if !found {
+	verified, dcap, err := vrs.VerifierDataCap(aid)
+	if err != nil {
+		return nil, xerrors.Errorf("looking up verifier: %w", err)
+	}
+	if !verified {
 		return nil, nil
 	}
 
 	return &dcap, nil
+}
+
+// StateVerifiedClientStatus returns the data cap for the given address.
+// Returns zero if there is no entry in the data cap table for the
+// address.
+func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	act, err := a.StateGetActor(ctx, verifreg.Address, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	aid, err := a.StateLookupID(ctx, addr, tsk)
+	if err != nil {
+		log.Warnf("lookup failure %v", err)
+		return nil, err
+	}
+
+	vrs, err := verifreg.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
+	}
+
+	verified, dcap, err := vrs.VerifiedClientDataCap(aid)
+	if err != nil {
+		return nil, xerrors.Errorf("looking up verified client: %w", err)
+	}
+	if !verified {
+		return nil, nil
+	}
+
+	return &dcap, nil
+}
+
+func (a *StateAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {
+	vact, err := a.StateGetActor(ctx, verifreg.Address, tsk)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	vst, err := verifreg.Load(a.StateManager.ChainStore().Store(ctx), vact)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return vst.RootKey()
 }
 
 var dealProviderCollateralNum = types.NewInt(110)
@@ -1126,23 +1154,24 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var powerState power.State
-	var rewardState reward.State
-
-	err = a.StateManager.WithParentStateTsk(ts.Key(), func(state *state.StateTree) error {
-		if err := a.StateManager.WithActor(builtin.StoragePowerActorAddr, a.StateManager.WithActorState(ctx, &powerState))(state); err != nil {
-			return xerrors.Errorf("getting power state: %w", err)
-		}
-
-		if err := a.StateManager.WithActor(builtin.RewardActorAddr, a.StateManager.WithActorState(ctx, &rewardState))(state); err != nil {
-			return xerrors.Errorf("getting reward state: %w", err)
-		}
-
-		return nil
-	})
-
+	pact, err := a.StateGetActor(ctx, power.Address, tsk)
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("getting power and reward actor states: %w", err)
+		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load power actor: %w", err)
+	}
+
+	ract, err := a.StateGetActor(ctx, reward.Address, tsk)
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor: %w", err)
+	}
+
+	pst, err := power.Load(a.StateManager.ChainStore().Store(ctx), pact)
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load power actor state: %w", err)
+	}
+
+	rst, err := reward.Load(a.StateManager.ChainStore().Store(ctx), ract)
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor state: %w", err)
 	}
 
 	circ, err := a.StateCirculatingSupply(ctx, ts.Key())
@@ -1150,7 +1179,23 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
 
-	min, max := market.DealProviderCollateralBounds(size, verified, powerState.ThisEpochQualityAdjPower, rewardState.ThisEpochBaselinePower, circ.FilCirculating)
+	powClaim, err := pst.TotalPower()
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting total power: %w", err)
+	}
+
+	rewPow, err := rst.ThisEpochBaselinePower()
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %w", err)
+	}
+
+	min, max := policy.DealProviderCollateralBounds(size,
+		verified,
+		powClaim.RawBytePower,
+		powClaim.QualityAdjPower,
+		rewPow,
+		circ.FilCirculating,
+		a.StateManager.GetNtwkVersion(ctx, ts.Height()))
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,
@@ -1163,16 +1208,67 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	sTree, err := a.stateForTs(ctx, ts)
 	if err != nil {
 		return api.CirculatingSupply{}, err
 	}
-
-	cst := cbor.NewCborStore(a.Chain.Blockstore())
-	sTree, err := state.LoadStateTree(cst, st)
-	if err != nil {
-		return api.CirculatingSupply{}, err
-	}
-
 	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
+}
+
+func (a *StateAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return network.VersionMax, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	return a.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
+}
+
+func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk types.TipSetKey) (*api.MsgGasCost, error) {
+	var msg cid.Cid
+	var ts *types.TipSet
+	var err error
+	if tsk != types.EmptyTSK {
+		msg = inputMsg
+		ts, err = a.Chain.LoadTipSet(tsk)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		}
+	} else {
+		mlkp, err := a.StateSearchMsg(ctx, inputMsg)
+		if err != nil {
+			return nil, xerrors.Errorf("searching for msg %s: %w", inputMsg, err)
+		}
+		if mlkp == nil {
+			return nil, xerrors.Errorf("didn't find msg %s", inputMsg)
+		}
+
+		executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		ts, err = a.Chain.LoadTipSet(executionTs.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		msg = mlkp.Message
+	}
+
+	m, r, err := a.StateManager.Replay(ctx, ts, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.MsgGasCost{
+		Message:            msg,
+		GasUsed:            big.NewInt(r.GasUsed),
+		BaseFeeBurn:        r.GasCosts.BaseFeeBurn,
+		OverEstimationBurn: r.GasCosts.OverEstimationBurn,
+		MinerPenalty:       r.GasCosts.MinerPenalty,
+		MinerTip:           r.GasCosts.MinerTip,
+		Refund:             r.GasCosts.Refund,
+		TotalCost:          big.Sub(m.RequiredFunds(), r.GasCosts.Refund),
+	}, nil
 }

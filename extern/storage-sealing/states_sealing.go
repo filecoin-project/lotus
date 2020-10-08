@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
@@ -56,7 +59,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 		return nil, 0, nil
 	}
 
-	ticketEpoch := epoch - SealRandomnessLookback
+	ticketEpoch := epoch - policy.SealRandomnessLookback
 	buf := new(bytes.Buffer)
 	if err := m.maddr.MarshalCBOR(buf); err != nil {
 		return nil, 0, err
@@ -180,7 +183,14 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 	// Sectors must last _at least_ MinSectorExpiration + MaxSealDuration.
 	// TODO: The "+10" allows the pre-commit to take 10 blocks to be accepted.
-	if minExpiration := height + miner.MaxSealDuration[sector.SectorType] + miner.MinSectorExpiration + 10; expiration < minExpiration {
+	nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
+	if err != nil {
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
+	}
+
+	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
+
+	if minExpiration := height + msd + miner.MinSectorExpiration + 10; expiration < minExpiration {
 		expiration = minExpiration
 	}
 	// TODO: enforce a reasonable _maximum_ sector lifetime?
@@ -253,7 +263,7 @@ func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInf
 func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
-		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+		log.Errorf("handleWaitSeed: api error, not proceeding: %+v", err)
 		return nil
 	}
 
@@ -265,7 +275,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		return ctx.Send(SectorChainPreCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
 	}
 
-	randHeight := pci.PreCommitEpoch + miner.PreCommitChallengeDelay
+	randHeight := pci.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
 
 	err = m.events.ChainAt(func(ectx context.Context, _ TipSetToken, curH abi.ChainEpoch) error {
 		// in case of null blocks the randomness can land after the tipset we
@@ -356,12 +366,12 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 	}
 
+	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sector.SectorNumber,
 		Proof:        sector.Proof,
 	}
 
-	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", err)})
 	}

@@ -20,7 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -154,21 +154,15 @@ var setAskCmd = &cli.Command{
 	Name:  "set-ask",
 	Usage: "Configure the miner's ask",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{
+		&cli.StringFlag{
 			Name:     "price",
-			Usage:    "Set the price of the ask for unverified deals (specified as FIL / GiB / Epoch) to `PRICE`",
-			Required: true,
-		},
-		&cli.Uint64Flag{
-			Name:     "verified-price",
-			Usage:    "Set the price of the ask for verified deals (specified as FIL / GiB / Epoch) to `PRICE`",
+			Usage:    "Set the price of the ask for unverified deals (specified as FIL / GiB / Epoch) to `PRICE`.",
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:        "duration",
-			Usage:       "Set duration of ask (a quantity of time after which the ask expires) `DURATION`",
-			DefaultText: "720h0m0s",
-			Value:       "720h0m0s",
+			Name:     "verified-price",
+			Usage:    "Set the price of the ask for verified deals (specified as FIL / GiB / Epoch) to `PRICE`",
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:        "min-piece-size",
@@ -191,10 +185,17 @@ var setAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		pri := types.NewInt(cctx.Uint64("price"))
-		vpri := types.NewInt(cctx.Uint64("verified-price"))
+		pri, err := types.ParseFIL(cctx.String("price"))
+		if err != nil {
+			return err
+		}
 
-		dur, err := time.ParseDuration(cctx.String("duration"))
+		vpri, err := types.ParseFIL(cctx.String("verified-price"))
+		if err != nil {
+			return err
+		}
+
+		dur, err := time.ParseDuration("720h0m0s")
 		if err != nil {
 			return xerrors.Errorf("cannot parse duration: %w", err)
 		}
@@ -235,7 +236,7 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-		return api.MarketSetAsk(ctx, pri, vpri, abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
+		return api.MarketSetAsk(ctx, types.BigInt(pri), types.BigInt(vpri), abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
 	},
 }
 
@@ -287,7 +288,7 @@ var getAskCmd = &cli.Command{
 			rem = (time.Second * time.Duration(int64(dlt)*int64(build.BlockDelaySecs))).String()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\n", ask.Price, ask.VerifiedPrice, types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\n", types.FIL(ask.Price), types.FIL(ask.VerifiedPrice), types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
 
 		return w.Flush()
 	},

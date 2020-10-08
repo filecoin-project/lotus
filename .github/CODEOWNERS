@@ -1,0 +1,16 @@
+## filecoin-project/lotus CODEOWNERS
+## Refer to https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners.
+##
+## These users or groups will be automatically assigned as reviewers every time
+## a PR is submitted that modifies code in the specified locations.
+##
+## The Lotus repo configuration requires that at least ONE codeowner approves
+## the PR before merging.
+
+### Global owners.
+*                       @magik6k @whyrusleeping @Kubuxu
+
+### Conformance testing.
+conformance/            @raulk
+extern/test-vectors     @raulk
+cmd/tvx                 @raulk

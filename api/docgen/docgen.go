@@ -28,9 +28,9 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -105,7 +105,7 @@ func init() {
 	addExample(network.Connected)
 	addExample(dtypes.NetworkName("lotus"))
 	addExample(api.SyncStateStage(1))
-	addExample(build.APIVersion)
+	addExample(build.FullAPIVersion)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
 	addExample(datatransfer.TransferID(3))
@@ -114,6 +114,7 @@ func init() {
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)
+	addExample(build.NewestNetworkVersion)
 	addExample(&types.ExecutionTrace{
 		Msg:    exampleValue(reflect.TypeOf(&types.Message{}), nil).(*types.Message),
 		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),

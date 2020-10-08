@@ -18,9 +18,10 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -33,7 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainGCBlockstore) dtypes.ChainExchange {
+func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainGCBlockstore) dtypes.ChainBitswap {
 	// prefix protocol for chain bitswap
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
 	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
@@ -83,7 +84,7 @@ func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtyp
 	return blockstore.NewGCBlockstore(bs, gcl)
 }
 
-func ChainBlockservice(bs dtypes.ChainBlockstore, rem dtypes.ChainExchange) dtypes.ChainBlockService {
+func ChainBlockService(bs dtypes.ChainBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
 	return blockservice.New(bs, rem)
 }
 
@@ -157,14 +158,41 @@ func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error)
 }
 
 func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
+	if !build.Devnet {
+		return "testnetnet", nil
+	}
+
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	netName, err := stmgr.GetNetworkName(ctx, stmgr.NewStateManager(cs), cs.GetHeaviestTipSet().ParentState())
 	return netName, err
 }
 
-func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSync, h host.Host, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*chain.Syncer, error) {
-	syncer, err := chain.NewSyncer(sm, bsync, h.ConnManager(), h.ID(), beacon, verifier)
+type SyncerParams struct {
+	fx.In
+
+	Lifecycle    fx.Lifecycle
+	MetadataDS   dtypes.MetadataDS
+	StateManager *stmgr.StateManager
+	ChainXchg    exchange.Client
+	SyncMgrCtor  chain.SyncManagerCtor
+	Host         host.Host
+	Beacon       beacon.Schedule
+	Verifier     ffiwrapper.Verifier
+}
+
+func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
+	var (
+		lc     = params.Lifecycle
+		ds     = params.MetadataDS
+		sm     = params.StateManager
+		ex     = params.ChainXchg
+		smCtor = params.SyncMgrCtor
+		h      = params.Host
+		b      = params.Beacon
+		v      = params.Verifier
+	)
+	syncer, err := chain.NewSyncer(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, v)
 	if err != nil {
 		return nil, err
 	}

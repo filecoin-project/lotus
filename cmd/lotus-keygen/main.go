@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/urfave/cli/v2"
 )
 

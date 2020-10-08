@@ -6,8 +6,8 @@ import (
 	"encoding/binary"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 )
@@ -53,11 +53,7 @@ func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, to types.BeaconEntry) 
 	return nil
 }
 
-func (mb *mockBeacon) IsEntryForEpoch(e types.BeaconEntry, epoch abi.ChainEpoch, nulls int) (bool, error) {
-	return int64(e.Round) <= int64(epoch) && int64(epoch)-int64(nulls) >= int64(e.Round), nil
-}
-
-func (mb *mockBeacon) MaxBeaconRoundForEpoch(epoch abi.ChainEpoch, prevEntry types.BeaconEntry) uint64 {
+func (mb *mockBeacon) MaxBeaconRoundForEpoch(epoch abi.ChainEpoch) uint64 {
 	return uint64(epoch)
 }
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	manet "github.com/multiformats/go-multiaddr/net"
 
 	"golang.org/x/xerrors"
@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -72,7 +71,7 @@ sync_complete:
 						"target_height", w.Target.Height(),
 						"height", w.Height,
 						"error", w.Message,
-						"stage", chain.SyncStageString(w.Stage),
+						"stage", w.Stage.String(),
 					)
 				} else {
 					log.Infow(
@@ -82,7 +81,7 @@ sync_complete:
 						"target", w.Target.Key(),
 						"target_height", w.Target.Height(),
 						"height", w.Height,
-						"stage", chain.SyncStageString(w.Stage),
+						"stage", w.Stage.String(),
 					)
 				}
 

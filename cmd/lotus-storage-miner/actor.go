@@ -5,6 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/lotus/build"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/fatih/color"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -12,10 +15,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -31,6 +35,7 @@ var actorCmd = &cli.Command{
 		actorSetAddrsCmd,
 		actorWithdrawCmd,
 		actorSetPeeridCmd,
+		actorSetOwnerCmd,
 		actorControl,
 	},
 }
@@ -87,7 +92,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
+		params, err := actors.SerializeParams(&miner0.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
 		}
@@ -152,7 +157,7 @@ var actorSetPeeridCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner.ChangePeerIDParams{NewID: abi.PeerID(pid)})
+		params, err := actors.SerializeParams(&miner0.ChangePeerIDParams{NewID: abi.PeerID(pid)})
 		if err != nil {
 			return err
 		}
@@ -225,7 +230,7 @@ var actorWithdrawCmd = &cli.Command{
 			}
 		}
 
-		params, err := actors.SerializeParams(&miner.WithdrawBalanceParams{
+		params, err := actors.SerializeParams(&miner0.WithdrawBalanceParams{
 			AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
 		})
 		if err != nil {
@@ -450,7 +455,7 @@ var actorControlSet = &cli.Command{
 			return nil
 		}
 
-		cwp := &miner.ChangeWorkerAddressParams{
+		cwp := &miner0.ChangeWorkerAddressParams{
 			NewWorker:       mi.Worker,
 			NewControlAddrs: toSet,
 		}
@@ -473,6 +478,120 @@ var actorControlSet = &cli.Command{
 		}
 
 		fmt.Println("Message CID:", smsg.Cid())
+
+		return nil
+	},
+}
+
+var actorSetOwnerCmd = &cli.Command{
+	Name:      "set-owner",
+	Usage:     "Set owner address",
+	ArgsUsage: "[address]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			fmt.Println("Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of new owner address")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		na, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		sp, err := actors.SerializeParams(&newAddr)
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:   mi.Owner,
+			To:     maddr,
+			Method: builtin2.MethodsMiner.ChangeOwnerAddress,
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Println("Propose Message CID:", smsg.Cid())
+
+		// wait for it to get mined into a block
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println("Propose owner change failed!")
+			return err
+		}
+
+		smsg, err = api.MpoolPushMessage(ctx, &types.Message{
+			From:   newAddr,
+			To:     maddr,
+			Method: builtin2.MethodsMiner.ChangeOwnerAddress,
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Println("Approve Message CID:", smsg.Cid())
+
+		// wait for it to get mined into a block
+		wait, err = api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println("Approve owner change failed!")
+			return err
+		}
 
 		return nil
 	},

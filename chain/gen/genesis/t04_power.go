@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -30,7 +30,7 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 		return nil, err
 	}
 
-	sms := power.ConstructState(emptyMap, emptyMultiMap)
+	sms := power0.ConstructState(emptyMap, emptyMultiMap)
 
 	stcid, err := store.Put(store.Context(), sms)
 	if err != nil {

@@ -4,18 +4,25 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/build"
+
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 type fakeChain struct {
 	h abi.ChainEpoch
+}
+
+func (f *fakeChain) StateNetworkVersion(ctx context.Context, tok sealing.TipSetToken) (network.Version, error) {
+	return build.NewestNetworkVersion, nil
 }
 
 func (f *fakeChain) ChainHead(ctx context.Context) (sealing.TipSetToken, abi.ChainEpoch, error) {

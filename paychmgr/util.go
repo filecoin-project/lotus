@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 )
 
 type BestSpendableAPI interface {

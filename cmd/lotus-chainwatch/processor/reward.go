@@ -1,18 +1,19 @@
 package processor
 
 import (
-	"bytes"
 	"context"
 	"time"
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/util/smoothing"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
 )
 
 type rewardActorInfo struct {
@@ -21,14 +22,59 @@ type rewardActorInfo struct {
 	cumSumBaselinePower big.Int
 	cumSumRealizedPower big.Int
 
-	effectiveNetworkTime   int64
+	effectiveNetworkTime   abi.ChainEpoch
 	effectiveBaselinePower big.Int
 
+	// NOTE: These variables are wrong. Talk to @ZX about fixing. These _do
+	// not_ represent "new" anything.
 	newBaselinePower     big.Int
 	newBaseReward        big.Int
-	newSmoothingEstimate *smoothing.FilterEstimate
+	newSmoothingEstimate builtin.FilterEstimate
 
 	totalMinedReward big.Int
+}
+
+func (rw *rewardActorInfo) set(s reward.State) (err error) {
+	rw.cumSumBaselinePower, err = s.CumsumBaseline()
+	if err != nil {
+		return xerrors.Errorf("getting cumsum baseline power (@ %s): %w", rw.common.stateroot.String(), err)
+	}
+
+	rw.cumSumRealizedPower, err = s.CumsumRealized()
+	if err != nil {
+		return xerrors.Errorf("getting cumsum realized power (@ %s): %w", rw.common.stateroot.String(), err)
+	}
+
+	rw.effectiveNetworkTime, err = s.EffectiveNetworkTime()
+	if err != nil {
+		return xerrors.Errorf("getting effective network time (@ %s): %w", rw.common.stateroot.String(), err)
+	}
+
+	rw.effectiveBaselinePower, err = s.EffectiveBaselinePower()
+	if err != nil {
+		return xerrors.Errorf("getting effective baseline power (@ %s): %w", rw.common.stateroot.String(), err)
+	}
+
+	rw.totalMinedReward, err = s.TotalStoragePowerReward()
+	if err != nil {
+		return xerrors.Errorf("getting  total mined (@ %s): %w", rw.common.stateroot.String(), err)
+	}
+
+	rw.newBaselinePower, err = s.ThisEpochBaselinePower()
+	if err != nil {
+		return xerrors.Errorf("getting this epoch baseline power (@ %s): %w", rw.common.stateroot.String(), err)
+	}
+
+	rw.newBaseReward, err = s.ThisEpochReward()
+	if err != nil {
+		return xerrors.Errorf("getting this epoch baseline power (@ %s): %w", rw.common.stateroot.String(), err)
+	}
+
+	rw.newSmoothingEstimate, err = s.ThisEpochRewardSmoothed()
+	if err != nil {
+		return xerrors.Errorf("getting this epoch baseline power (@ %s): %w", rw.common.stateroot.String(), err)
+	}
+	return nil
 }
 
 func (p *Processor) setupRewards() error {
@@ -89,29 +135,19 @@ func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTip
 			rw.common = act
 
 			// get reward actor states at each tipset once for all updates
-			rewardActor, err := p.node.StateGetActor(ctx, builtin.RewardActorAddr, tipset)
+			rewardActor, err := p.node.StateGetActor(ctx, reward.Address, tipset)
 			if err != nil {
 				return nil, xerrors.Errorf("get reward state (@ %s): %w", rw.common.stateroot.String(), err)
 			}
 
-			rewardStateRaw, err := p.node.ChainReadObj(ctx, rewardActor.Head)
+			rewardActorState, err := reward.Load(cw_util.NewAPIIpldStore(ctx, p.node), rewardActor)
 			if err != nil {
 				return nil, xerrors.Errorf("read state obj (@ %s): %w", rw.common.stateroot.String(), err)
 			}
-
-			var rewardActorState reward.State
-			if err := rewardActorState.UnmarshalCBOR(bytes.NewReader(rewardStateRaw)); err != nil {
-				return nil, xerrors.Errorf("unmarshal state (@ %s): %w", rw.common.stateroot.String(), err)
+			if err := rw.set(rewardActorState); err != nil {
+				return nil, err
 			}
 
-			rw.cumSumBaselinePower = rewardActorState.CumsumBaseline
-			rw.cumSumRealizedPower = rewardActorState.CumsumRealized
-			rw.effectiveNetworkTime = int64(rewardActorState.EffectiveNetworkTime)
-			rw.effectiveBaselinePower = rewardActorState.EffectiveBaselinePower
-			rw.newBaselinePower = rewardActorState.ThisEpochBaselinePower
-			rw.newBaseReward = rewardActorState.ThisEpochReward
-			rw.newSmoothingEstimate = rewardActorState.ThisEpochRewardSmoothed
-			rw.totalMinedReward = rewardActorState.TotalMined
 			out = append(out, rw)
 		}
 	}
@@ -126,29 +162,19 @@ func (p *Processor) processRewardActors(ctx context.Context, rewardTips ActorTip
 		rw.common.stateroot = tipset.ParentState()
 		rw.common.parentTsKey = tipset.Parents()
 		// get reward actor states at each tipset once for all updates
-		rewardActor, err := p.node.StateGetActor(ctx, builtin.RewardActorAddr, tsKey)
+		rewardActor, err := p.node.StateGetActor(ctx, reward.Address, tsKey)
 		if err != nil {
 			return nil, err
 		}
 
-		rewardStateRaw, err := p.node.ChainReadObj(ctx, rewardActor.Head)
+		rewardActorState, err := reward.Load(cw_util.NewAPIIpldStore(ctx, p.node), rewardActor)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("read state obj (@ %s): %w", rw.common.stateroot.String(), err)
 		}
 
-		var rewardActorState reward.State
-		if err := rewardActorState.UnmarshalCBOR(bytes.NewReader(rewardStateRaw)); err != nil {
+		if err := rw.set(rewardActorState); err != nil {
 			return nil, err
 		}
-
-		rw.cumSumBaselinePower = rewardActorState.CumsumBaseline
-		rw.cumSumRealizedPower = rewardActorState.CumsumRealized
-		rw.effectiveNetworkTime = int64(rewardActorState.EffectiveNetworkTime)
-		rw.effectiveBaselinePower = rewardActorState.EffectiveBaselinePower
-		rw.newBaselinePower = rewardActorState.ThisEpochBaselinePower
-		rw.newBaseReward = rewardActorState.ThisEpochReward
-		rw.newSmoothingEstimate = rewardActorState.ThisEpochRewardSmoothed
-		rw.totalMinedReward = rewardActorState.TotalMined
 		out = append(out, rw)
 	}
 
@@ -180,7 +206,7 @@ func (p *Processor) persistRewardActors(ctx context.Context, rewards []rewardAct
 			rewardState.common.stateroot.String(),
 			rewardState.cumSumBaselinePower.String(),
 			rewardState.cumSumRealizedPower.String(),
-			rewardState.effectiveNetworkTime,
+			uint64(rewardState.effectiveNetworkTime),
 			rewardState.effectiveBaselinePower.String(),
 			rewardState.newBaselinePower.String(),
 			rewardState.newBaseReward.String(),

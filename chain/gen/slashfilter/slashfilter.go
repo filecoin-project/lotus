@@ -9,8 +9,8 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type SlashFilter struct {
@@ -103,6 +103,10 @@ func checkFault(t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType str
 		_, other, err := cid.CidFromBytes(cidb)
 		if err != nil {
 			return err
+		}
+
+		if other == bh.Cid() {
+			return nil
 		}
 
 		return xerrors.Errorf("produced block would trigger '%s' consensus fault; miner: %s; bh: %s, other: %s", faultType, bh.Miner, bh.Cid(), other)

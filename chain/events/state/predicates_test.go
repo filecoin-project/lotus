@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/stretchr/testify/require"
@@ -13,11 +15,14 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
@@ -69,22 +74,22 @@ func TestMarketPredicates(t *testing.T) {
 	bs := bstore.NewTemporarySync()
 	store := adt.WrapStore(ctx, cbornode.NewCborStore(bs))
 
-	oldDeal1 := &market.DealState{
+	oldDeal1 := &market0.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 2,
 		SlashEpoch:       0,
 	}
-	oldDeal2 := &market.DealState{
+	oldDeal2 := &market0.DealState{
 		SectorStartEpoch: 4,
 		LastUpdatedEpoch: 5,
 		SlashEpoch:       0,
 	}
-	oldDeals := map[abi.DealID]*market.DealState{
+	oldDeals := map[abi.DealID]*market0.DealState{
 		abi.DealID(1): oldDeal1,
 		abi.DealID(2): oldDeal2,
 	}
 
-	oldProp1 := &market.DealProposal{
+	oldProp1 := &market0.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -96,7 +101,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	oldProp2 := &market.DealProposal{
+	oldProp2 := &market0.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -108,7 +113,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	oldProps := map[abi.DealID]*market.DealProposal{
+	oldProps := map[abi.DealID]*market0.DealProposal{
 		abi.DealID(1): oldProp1,
 		abi.DealID(2): oldProp2,
 	}
@@ -122,7 +127,7 @@ func TestMarketPredicates(t *testing.T) {
 
 	oldStateC := createMarketState(ctx, t, store, oldDeals, oldProps, oldBalances)
 
-	newDeal1 := &market.DealState{
+	newDeal1 := &market0.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 3,
 		SlashEpoch:       0,
@@ -131,19 +136,19 @@ func TestMarketPredicates(t *testing.T) {
 	// deal 2 removed
 
 	// added
-	newDeal3 := &market.DealState{
+	newDeal3 := &market0.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 2,
 		SlashEpoch:       3,
 	}
-	newDeals := map[abi.DealID]*market.DealState{
+	newDeals := map[abi.DealID]*market0.DealState{
 		abi.DealID(1): newDeal1,
 		// deal 2 was removed
 		abi.DealID(3): newDeal3,
 	}
 
 	// added
-	newProp3 := &market.DealProposal{
+	newProp3 := &market0.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -155,7 +160,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	newProps := map[abi.DealID]*market.DealProposal{
+	newProps := map[abi.DealID]*market0.DealProposal{
 		abi.DealID(1): oldProp1, // 1 was persisted
 		// prop 2 was removed
 		abi.DealID(3): newProp3, // new
@@ -178,8 +183,8 @@ func TestMarketPredicates(t *testing.T) {
 	require.NoError(t, err)
 
 	api := newMockAPI(bs)
-	api.setActor(oldState.Key(), &types.Actor{Head: oldStateC})
-	api.setActor(newState.Key(), &types.Actor{Head: newStateC})
+	api.setActor(oldState.Key(), &types.Actor{Code: builtin0.StorageMarketActorCodeID, Head: oldStateC})
+	api.setActor(newState.Key(), &types.Actor{Code: builtin0.StorageMarketActorCodeID, Head: newStateC})
 
 	t.Run("deal ID predicate", func(t *testing.T) {
 		preds := NewStatePredicates(api)
@@ -221,7 +226,7 @@ func TestMarketPredicates(t *testing.T) {
 		// Test that OnActorStateChanged does not call the callback if the state has not changed
 		mockAddr, err := address.NewFromString("t01")
 		require.NoError(t, err)
-		actorDiffFn := preds.OnActorStateChanged(mockAddr, func(context.Context, cid.Cid, cid.Cid) (bool, UserData, error) {
+		actorDiffFn := preds.OnActorStateChanged(mockAddr, func(context.Context, *types.Actor, *types.Actor) (bool, UserData, error) {
 			t.Fatal("No state change so this should not be called")
 			return false, nil, nil
 		})
@@ -230,11 +235,18 @@ func TestMarketPredicates(t *testing.T) {
 		require.False(t, changed)
 
 		// Test that OnDealStateChanged does not call the callback if the state has not changed
-		diffDealStateFn := preds.OnDealStateChanged(func(context.Context, *adt.Array, *adt.Array) (bool, UserData, error) {
+		diffDealStateFn := preds.OnDealStateChanged(func(context.Context, market.DealStates, market.DealStates) (bool, UserData, error) {
 			t.Fatal("No state change so this should not be called")
 			return false, nil, nil
 		})
-		marketState := createEmptyMarketState(t, store)
+		marketState0 := createEmptyMarketState(t, store)
+		marketCid, err := store.Put(ctx, marketState0)
+		require.NoError(t, err)
+		marketState, err := market.Load(store, &types.Actor{
+			Code: builtin0.StorageMarketActorCodeID,
+			Head: marketCid,
+		})
+		require.NoError(t, err)
 		changed, _, err = diffDealStateFn(ctx, marketState, marketState)
 		require.NoError(t, err)
 		require.False(t, changed)
@@ -252,18 +264,18 @@ func TestMarketPredicates(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, changed)
 
-		changedDeals, ok := valArr.(*MarketDealStateChanges)
+		changedDeals, ok := valArr.(*market.DealStateChanges)
 		require.True(t, ok)
 		require.Len(t, changedDeals.Added, 1)
 		require.Equal(t, abi.DealID(3), changedDeals.Added[0].ID)
-		require.Equal(t, *newDeal3, changedDeals.Added[0].Deal)
+		require.True(t, dealEquality(*newDeal3, changedDeals.Added[0].Deal))
 
 		require.Len(t, changedDeals.Removed, 1)
 
 		require.Len(t, changedDeals.Modified, 1)
 		require.Equal(t, abi.DealID(1), changedDeals.Modified[0].ID)
-		require.Equal(t, newDeal1, changedDeals.Modified[0].To)
-		require.Equal(t, oldDeal1, changedDeals.Modified[0].From)
+		require.True(t, dealEquality(*newDeal1, *changedDeals.Modified[0].To))
+		require.True(t, dealEquality(*oldDeal1, *changedDeals.Modified[0].From))
 
 		require.Equal(t, abi.DealID(2), changedDeals.Removed[0].ID)
 	})
@@ -279,17 +291,15 @@ func TestMarketPredicates(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, changed)
 
-		changedProps, ok := valArr.(*MarketDealProposalChanges)
+		changedProps, ok := valArr.(*market.DealProposalChanges)
 		require.True(t, ok)
 		require.Len(t, changedProps.Added, 1)
 		require.Equal(t, abi.DealID(3), changedProps.Added[0].ID)
-		require.Equal(t, *newProp3, changedProps.Added[0].Proposal)
 
 		// proposals cannot be modified -- no modified testing
 
 		require.Len(t, changedProps.Removed, 1)
 		require.Equal(t, abi.DealID(2), changedProps.Removed[0].ID)
-		require.Equal(t, *oldProp2, changedProps.Removed[0].Proposal)
 	})
 
 	t.Run("balances predicate", func(t *testing.T) {
@@ -342,7 +352,14 @@ func TestMarketPredicates(t *testing.T) {
 			t.Fatal("No state change so this should not be called")
 			return false, nil, nil
 		})
-		marketState := createEmptyMarketState(t, store)
+		marketState0 := createEmptyMarketState(t, store)
+		marketCid, err := store.Put(ctx, marketState0)
+		require.NoError(t, err)
+		marketState, err := market.Load(store, &types.Actor{
+			Code: builtin0.StorageMarketActorCodeID,
+			Head: marketCid,
+		})
+		require.NoError(t, err)
 		changed, _, err = diffDealBalancesFn(ctx, marketState, marketState)
 		require.NoError(t, err)
 		require.False(t, changed)
@@ -362,12 +379,12 @@ func TestMinerSectorChange(t *testing.T) {
 	}
 
 	owner, worker := nextIDAddrF(), nextIDAddrF()
-	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0", &miner.SealedCIDPrefix), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
-	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1", &miner.SealedCIDPrefix), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
-	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2", &miner.SealedCIDPrefix), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
+	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0", &miner0.SealedCIDPrefix), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
+	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1", &miner0.SealedCIDPrefix), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
+	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2", &miner0.SealedCIDPrefix), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
 	oldMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si0, si1, si2})
 
-	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3", &miner.SealedCIDPrefix), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
+	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3", &miner0.SealedCIDPrefix), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
 	// 0 delete
 	// 1 extend
 	// 2 same
@@ -383,8 +400,8 @@ func TestMinerSectorChange(t *testing.T) {
 	require.NoError(t, err)
 
 	api := newMockAPI(bs)
-	api.setActor(oldState.Key(), &types.Actor{Head: oldMinerC})
-	api.setActor(newState.Key(), &types.Actor{Head: newMinerC})
+	api.setActor(oldState.Key(), &types.Actor{Head: oldMinerC, Code: builtin0.StorageMinerActorCodeID})
+	api.setActor(newState.Key(), &types.Actor{Head: newMinerC, Code: builtin0.StorageMinerActorCodeID})
 
 	preds := NewStatePredicates(api)
 
@@ -394,7 +411,7 @@ func TestMinerSectorChange(t *testing.T) {
 	require.True(t, change)
 	require.NotNil(t, val)
 
-	sectorChanges, ok := val.(*MinerSectorChanges)
+	sectorChanges, ok := val.(*miner.SectorChanges)
 	require.True(t, ok)
 
 	require.Equal(t, len(sectorChanges.Added), 1)
@@ -418,7 +435,7 @@ func TestMinerSectorChange(t *testing.T) {
 	require.True(t, change)
 	require.NotNil(t, val)
 
-	sectorChanges, ok = val.(*MinerSectorChanges)
+	sectorChanges, ok = val.(*miner.SectorChanges)
 	require.True(t, ok)
 
 	require.Equal(t, 1, len(sectorChanges.Added))
@@ -450,7 +467,7 @@ type balance struct {
 	locked    abi.TokenAmount
 }
 
-func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market.DealState, props map[abi.DealID]*market.DealProposal, balances map[address.Address]balance) cid.Cid {
+func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market0.DealState, props map[abi.DealID]*market0.DealProposal, balances map[address.Address]balance) cid.Cid {
 	dealRootCid := createDealAMT(ctx, t, store, deals)
 	propRootCid := createProposalAMT(ctx, t, store, props)
 	balancesCids := createBalanceTable(ctx, t, store, balances)
@@ -465,15 +482,15 @@ func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals
 	return stateC
 }
 
-func createEmptyMarketState(t *testing.T, store adt.Store) *market.State {
+func createEmptyMarketState(t *testing.T, store adt.Store) *market0.State {
 	emptyArrayCid, err := adt.MakeEmptyArray(store).Root()
 	require.NoError(t, err)
 	emptyMap, err := adt.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
-	return market.ConstructState(emptyArrayCid, emptyMap, emptyMap)
+	return market0.ConstructState(emptyArrayCid, emptyMap, emptyMap)
 }
 
-func createDealAMT(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market.DealState) cid.Cid {
+func createDealAMT(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market0.DealState) cid.Cid {
 	root := adt.MakeEmptyArray(store)
 	for dealID, dealState := range deals {
 		err := root.Set(uint64(dealID), dealState)
@@ -484,7 +501,7 @@ func createDealAMT(ctx context.Context, t *testing.T, store adt.Store, deals map
 	return rootCid
 }
 
-func createProposalAMT(ctx context.Context, t *testing.T, store adt.Store, props map[abi.DealID]*market.DealProposal) cid.Cid {
+func createProposalAMT(ctx context.Context, t *testing.T, store adt.Store, props map[abi.DealID]*market0.DealProposal) cid.Cid {
 	root := adt.MakeEmptyArray(store)
 	for dealID, prop := range props {
 		err := root.Set(uint64(dealID), prop)
@@ -532,20 +549,20 @@ func createMinerState(ctx context.Context, t *testing.T, store adt.Store, owner,
 	return stateC
 }
 
-func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, owner, worker address.Address) *miner.State {
+func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, owner, worker address.Address) *miner0.State {
 	emptyArrayCid, err := adt.MakeEmptyArray(store).Root()
 	require.NoError(t, err)
 	emptyMap, err := adt.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
 
-	emptyDeadline, err := store.Put(store.Context(), miner.ConstructDeadline(emptyArrayCid))
+	emptyDeadline, err := store.Put(store.Context(), miner0.ConstructDeadline(emptyArrayCid))
 	require.NoError(t, err)
 
-	emptyVestingFunds := miner.ConstructVestingFunds()
+	emptyVestingFunds := miner0.ConstructVestingFunds()
 	emptyVestingFundsCid, err := store.Put(store.Context(), emptyVestingFunds)
 	require.NoError(t, err)
 
-	emptyDeadlines := miner.ConstructDeadlines(emptyDeadline)
+	emptyDeadlines := miner0.ConstructDeadlines(emptyDeadline)
 	emptyDeadlinesCid, err := store.Put(store.Context(), emptyDeadlines)
 	require.NoError(t, err)
 
@@ -555,7 +572,7 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 	emptyBitfieldCid, err := store.Put(store.Context(), emptyBitfield)
 	require.NoError(t, err)
 
-	state, err := miner.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
+	state, err := miner0.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	require.NoError(t, err)
 	return state
 
@@ -564,7 +581,7 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 func createSectorsAMT(ctx context.Context, t *testing.T, store adt.Store, sectors []miner.SectorOnChainInfo) cid.Cid {
 	root := adt.MakeEmptyArray(store)
 	for _, sector := range sectors {
-		sector := sector
+		sector := (miner0.SectorOnChainInfo)(sector)
 		err := root.Set(uint64(sector.SectorNumber), &sector)
 		require.NoError(t, err)
 	}
@@ -597,8 +614,8 @@ const (
 )
 
 // returns a unique SectorPreCommitInfo with each invocation with SectorNumber set to `sectorNo`.
-func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiration abi.ChainEpoch) *miner.SectorPreCommitInfo {
-	return &miner.SectorPreCommitInfo{
+func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiration abi.ChainEpoch) *miner0.SectorPreCommitInfo {
+	return &miner0.SectorPreCommitInfo{
 		SealProof:     abi.RegisteredSealProof_StackedDrg32GiBV1,
 		SectorNumber:  sectorNo,
 		SealedCID:     sealed,
@@ -606,4 +623,10 @@ func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiratio
 		DealIDs:       nil,
 		Expiration:    expiration,
 	}
+}
+
+func dealEquality(expected market0.DealState, actual market.DealState) bool {
+	return expected.LastUpdatedEpoch == actual.LastUpdatedEpoch &&
+		expected.SectorStartEpoch == actual.SectorStartEpoch &&
+		expected.SlashEpoch == actual.SlashEpoch
 }

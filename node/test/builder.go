@@ -13,6 +13,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
@@ -34,10 +36,8 @@ import (
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -83,7 +83,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	peerid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
-	enc, err := actors.SerializeParams(&miner.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
+	enc, err := actors.SerializeParams(&miner0.ChangePeerIDParams{NewID: abi.PeerID(peerid)})
 	require.NoError(t, err)
 
 	msg := &types.Message{
@@ -137,7 +137,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne}
 }
 
-func Builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+func Builder(t *testing.T, nFull int, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
@@ -198,6 +198,7 @@ func Builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 	templ := &genesis.Template{
 		Accounts:         genaccs,
 		Miners:           genms,
+		NetworkName:      "test",
 		Timestamp:        uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
 		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
@@ -223,6 +224,7 @@ func Builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 			node.Test(),
 
 			genesis,
+			node.Options(opts...),
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -284,7 +286,7 @@ func Builder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestN
 	return fulls, storers
 }
 
-func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner, options ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
@@ -344,6 +346,7 @@ func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 	templ := &genesis.Template{
 		Accounts:         genaccs,
 		Miners:           genms,
+		NetworkName:      "test",
 		Timestamp:        uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
 		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
@@ -371,6 +374,7 @@ func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 
 			genesis,
+			node.Options(options...),
 		)
 		if err != nil {
 			t.Fatalf("%+v", err)
@@ -433,16 +437,16 @@ func MockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test
 	return fulls, storers
 }
 
-func RPCBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-	return rpcWithBuilder(t, Builder, nFull, storage)
+func RPCBuilder(t *testing.T, nFull int, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
+	return rpcWithBuilder(t, Builder, nFull, storage, opts...)
 }
 
-func RPCMockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-	return rpcWithBuilder(t, MockSbBuilder, nFull, storage)
+func RPCMockSbBuilder(t *testing.T, nFull int, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
+	return rpcWithBuilder(t, MockSbBuilder, nFull, storage, opts...)
 }
 
-func rpcWithBuilder(t *testing.T, b test.APIBuilder, nFull int, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-	fullApis, storaApis := b(t, nFull, storage)
+func rpcWithBuilder(t *testing.T, b test.APIBuilder, nFull int, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
+	fullApis, storaApis := b(t, nFull, storage, opts...)
 	fulls := make([]test.TestNode, nFull)
 	storers := make([]test.TestStorageNode, len(storage))
 

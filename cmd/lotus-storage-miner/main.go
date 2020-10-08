@@ -26,6 +26,8 @@ const FlagMinerRepo = "miner-repo"
 const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
+	build.RunningNodeType = build.NodeMiner
+
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
@@ -33,6 +35,7 @@ func main() {
 		runCmd,
 		stopCmd,
 		configCmd,
+		backupCmd,
 		lcli.WithCategory("chain", actorCmd),
 		lcli.WithCategory("chain", infoCmd),
 		lcli.WithCategory("market", storageDealsCmd),

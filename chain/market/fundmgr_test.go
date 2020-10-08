@@ -10,13 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -47,7 +48,7 @@ func (fapi *fakeAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, s
 func addFundsMsg(toAdd abi.TokenAmount, addr address.Address, wallet address.Address) *types.Message {
 	params, _ := actors.SerializeParams(&addr)
 	return &types.Message{
-		To:     builtin.StorageMarketActorAddr,
+		To:     market.Address,
 		From:   wallet,
 		Value:  toAdd,
 		Method: builtin.MethodsMarket.AddBalance,

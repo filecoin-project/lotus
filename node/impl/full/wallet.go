@@ -7,8 +7,8 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -26,16 +26,13 @@ type WalletAPI struct {
 }
 
 func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
-	var bal types.BigInt
-	err := a.StateManager.WithParentStateTsk(types.EmptyTSK, a.StateManager.WithActor(addr, func(act *types.Actor) error {
-		bal = act.Balance
-		return nil
-	}))
-
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, types.EmptyTSK)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return big.Zero(), nil
+	} else if err != nil {
+		return big.Zero(), err
 	}
-	return bal, err
+	return act.Balance, nil
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
@@ -54,8 +51,8 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 	return a.WalletAPI.WalletSignMessage(ctx, keyAddr, msg)
 }
 
-func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) bool {
-	return sigs.Verify(sig, k, msg) == nil
+func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
+	return sigs.Verify(sig, k, msg) == nil, nil
 }
 
 func (a *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
@@ -64,4 +61,8 @@ func (a *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, 
 
 func (a *WalletAPI) WalletSetDefault(ctx context.Context, addr address.Address) error {
 	return a.Default.SetDefault(addr)
+}
+
+func (a *WalletAPI) WalletValidateAddress(ctx context.Context, str string) (address.Address, error) {
+	return address.NewFromString(str)
 }

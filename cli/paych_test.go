@@ -12,38 +12,31 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
-	"github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/lotus/chain/events"
-
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	cbor "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/lotus/api/test"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	builder "github.com/filecoin-project/lotus/node/test"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
 // TestPaymentChannels does a basic test to exercise the payment channel CLI
@@ -88,7 +81,9 @@ func TestPaymentChannels(t *testing.T) {
 
 	// Wait for the chain to reach the settle height
 	chState := getPaychState(ctx, t, paymentReceiver, chAddr)
-	waitForHeight(ctx, t, paymentReceiver, chState.SettlingAt)
+	sa, err := chState.SettlingAt()
+	require.NoError(t, err)
+	waitForHeight(ctx, t, paymentReceiver, sa)
 
 	// receiver: paych collect <channel>
 	cmd = []string{chAddr.String()}
@@ -117,7 +112,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	creatorCLI := mockCLI.client(paymentCreator.ListenAddr)
 
 	cmd := []string{creatorAddr.String(), receiverAddr.String()}
-	out := creatorCLI.runCmd(paychStatusCmd, cmd)
+	out := creatorCLI.runCmd(paychStatusByFromToCmd, cmd)
 	fmt.Println(out)
 	noChannelState := "Channel does not exist"
 	require.Regexp(t, regexp.MustCompile(noChannelState), out)
@@ -133,7 +128,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	// Wait for the output to stop being "Channel does not exist"
 	for regexp.MustCompile(noChannelState).MatchString(out) {
 		cmd = []string{creatorAddr.String(), receiverAddr.String()}
-		out = creatorCLI.runCmd(paychStatusCmd, cmd)
+		out = creatorCLI.runCmd(paychStatusByFromToCmd, cmd)
 	}
 	fmt.Println(out)
 
@@ -153,7 +148,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	// Wait for create channel to complete
 	chstr := <-create
 
-	cmd = []string{creatorAddr.String(), receiverAddr.String()}
+	cmd = []string{chstr}
 	out = creatorCLI.runCmd(paychStatusCmd, cmd)
 	fmt.Println(out)
 	// Output should have the channel address
@@ -169,7 +164,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	cmd = []string{chAddr.String(), fmt.Sprintf("%d", voucherAmt)}
 	creatorCLI.runCmd(paychVoucherCreateCmd, cmd)
 
-	cmd = []string{creatorAddr.String(), receiverAddr.String()}
+	cmd = []string{chstr}
 	out = creatorCLI.runCmd(paychStatusCmd, cmd)
 	fmt.Println(out)
 	voucherAmtAtto := types.BigMul(types.NewInt(voucherAmt), types.NewInt(build.FilecoinPrecision))
@@ -444,12 +439,12 @@ type mockCLI struct {
 }
 
 func newMockCLI(t *testing.T) *mockCLI {
-	// Create a CLI App with an --api flag so that we can specify which node
+	// Create a CLI App with an --api-url flag so that we can specify which node
 	// the command should be executed against
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:   "api",
+			Name:   "api-url",
 			Hidden: true,
 		},
 	}
@@ -481,8 +476,8 @@ func (c *mockCLIClient) runCmd(cmd *cli.Command, input []string) string {
 }
 
 func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, error) {
-	// prepend --api=<node api listener address>
-	apiFlag := "--api=" + c.addr.String()
+	// prepend --api-url=<node api listener address>
+	apiFlag := "--api-url=" + c.addr.String()
 	input = append([]string{apiFlag}, input...)
 
 	fs := c.flagSet(cmd)
@@ -498,7 +493,7 @@ func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, err
 }
 
 func (c *mockCLIClient) flagSet(cmd *cli.Command) *flag.FlagSet {
-	// Apply app level flags (so we can process --api flag)
+	// Apply app level flags (so we can process --api-url flag)
 	fs := &flag.FlagSet{}
 	for _, f := range c.cctx.App.Flags {
 		err := f.Apply(fs)
@@ -540,8 +535,7 @@ func getPaychState(ctx context.Context, t *testing.T, node test.TestNode, chAddr
 	require.NoError(t, err)
 
 	store := cbor.NewCborStore(apibstore.NewAPIBlockstore(node))
-	var chState paych.State
-	err = store.Get(ctx, act.Head, &chState)
+	chState, err := paych.Load(adt.WrapStore(ctx, store), act)
 	require.NoError(t, err)
 
 	return chState

@@ -21,7 +21,7 @@ type worker struct {
 }
 
 func (w *worker) Version(context.Context) (build.Version, error) {
-	return build.APIVersion, nil
+	return build.WorkerAPIVersion, nil
 }
 
 func (w *worker) StorageAddLocal(ctx context.Context, path string) error {

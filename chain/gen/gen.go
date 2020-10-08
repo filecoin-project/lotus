@@ -8,11 +8,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/google/uuid"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -26,6 +28,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -46,7 +49,7 @@ const msgsPerBlock = 20
 //nolint:deadcode,varcheck
 var log = logging.Logger("gen")
 
-var ValidWpostForTesting = []abi.PoStProof{{
+var ValidWpostForTesting = []proof.PoStProof{{
 	ProofBytes: []byte("valid proof"),
 }}
 
@@ -57,7 +60,7 @@ type ChainGen struct {
 
 	cs *store.ChainStore
 
-	beacon beacon.RandomBeacon
+	beacon beacon.Schedule
 
 	sm *stmgr.StateManager
 
@@ -119,9 +122,8 @@ var DefaultRemainderAccountActor = genesis.Actor{
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
+	// TODO: we really shouldn't modify a global variable here.
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 
 	mr := repo.NewMemory(nil)
 	lr, err := mr.Lock(repo.StorageMiner)
@@ -223,7 +225,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		},
 		VerifregRootKey:  DefaultVerifregRootkeyActor,
 		RemainderAccount: DefaultRemainderAccountActor,
-		NetworkName:      "",
+		NetworkName:      uuid.New().String(),
 		Timestamp:        uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
@@ -250,7 +252,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 
 	miners := []address.Address{maddr1, maddr2}
 
-	beac := beacon.NewMockBeacon(time.Second)
+	beac := beacon.Schedule{{Start: 0, Beacon: beacon.NewMockBeacon(time.Second)}}
 	//beac, err := drand.NewDrandBeacon(tpl.Timestamp, build.BlockDelaySecs)
 	//if err != nil {
 	//return nil, xerrors.Errorf("creating drand beacon: %w", err)
@@ -336,7 +338,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 
 	prev := mbi.PrevBeaconEntry
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, round, prev)
+	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, round, pts.Height(), prev)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("get beacon entries for block: %w", err)
 	}
@@ -356,7 +358,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	if len(entries) == 0 {
+	if round > build.UpgradeSmokeHeight {
 		buf.Write(pts.MinTicket().VRFProof)
 	}
 
@@ -457,7 +459,7 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessages(base *types.TipSet, miners 
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
 	eticket *types.ElectionProof, bvals []types.BeaconEntry, height abi.ChainEpoch,
-	wpost []abi.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+	wpost []proof.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	var ts uint64
 	if cg.Timestamper != nil {
@@ -487,13 +489,16 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 // ResyncBankerNonce is used for dealing with messages made when
 // simulating forks
 func (cg *ChainGen) ResyncBankerNonce(ts *types.TipSet) error {
-	var act types.Actor
-	err := cg.sm.WithParentState(ts, cg.sm.WithActor(cg.banker, stmgr.GetActor(&act)))
+	st, err := cg.sm.ParentState(ts)
 	if err != nil {
 		return err
 	}
-
+	act, err := st.GetActor(cg.banker)
+	if err != nil {
+		return err
+	}
 	cg.bankerNonce = act.Nonce
+
 	return nil
 }
 
@@ -557,7 +562,7 @@ type mca struct {
 	w   *wallet.LocalWallet
 	sm  *stmgr.StateManager
 	pv  ffiwrapper.Verifier
-	bcn beacon.RandomBeacon
+	bcn beacon.Schedule
 }
 
 func (mca mca) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -588,7 +593,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 
 type WinningPoStProver interface {
 	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
-	ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error)
+	ComputeProof(context.Context, []proof.SectorInfo, abi.PoStRandomness) ([]proof.PoStProof, error)
 }
 
 type wppProvider struct{}
@@ -597,7 +602,7 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 	return []uint64{0}, nil
 }
 
-func (wpp *wppProvider) ComputeProof(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]abi.PoStProof, error) {
+func (wpp *wppProvider) ComputeProof(context.Context, []proof.SectorInfo, abi.PoStRandomness) ([]proof.PoStProof, error) {
 	return ValidWpostForTesting, nil
 }
 
@@ -664,15 +669,15 @@ type genFakeVerifier struct{}
 
 var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
 
-func (m genFakeVerifier) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifySeal(svi proof.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 
-func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 

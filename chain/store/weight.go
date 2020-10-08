@@ -4,12 +4,12 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+
+	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	big2 "github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
@@ -34,16 +34,22 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 			return types.NewInt(0), xerrors.Errorf("load state tree: %w", err)
 		}
 
-		act, err := state.GetActor(builtin.StoragePowerActorAddr)
+		act, err := state.GetActor(power.Address)
 		if err != nil {
 			return types.NewInt(0), xerrors.Errorf("get power actor: %w", err)
 		}
 
-		var st power.State
-		if err := cst.Get(ctx, act.Head, &st); err != nil {
-			return types.NewInt(0), xerrors.Errorf("get power actor head (%s, height=%d): %w", act.Head, ts.Height(), err)
+		powState, err := power.Load(cs.Store(ctx), act)
+		if err != nil {
+			return types.NewInt(0), xerrors.Errorf("failed to load power actor state: %w", err)
 		}
-		tpow = st.TotalQualityAdjPower // TODO: REVIEW: Is this correct?
+
+		claim, err := powState.TotalPower()
+		if err != nil {
+			return types.NewInt(0), xerrors.Errorf("failed to get total power: %w", err)
+		}
+
+		tpow = claim.QualityAdjPower // TODO: REVIEW: Is this correct?
 	}
 
 	log2P := int64(0)

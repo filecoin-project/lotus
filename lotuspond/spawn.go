@@ -11,24 +11,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/types"
-
+	"github.com/google/uuid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
 )
 
 func init() {
-	miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 }
 
 func (api *api) Spawn() (nodeInfo, error) {
@@ -71,6 +69,8 @@ func (api *api) Spawn() (nodeInfo, error) {
 			Meta:    (&genesis.AccountMeta{Owner: genm.Owner}).ActorMeta(),
 		})
 		template.VerifregRootKey = gen.DefaultVerifregRootkeyActor
+		template.RemainderAccount = gen.DefaultRemainderAccountActor
+		template.NetworkName = "pond-" + uuid.New().String()
 
 		tb, err := json.Marshal(&template)
 		if err != nil {
@@ -190,7 +190,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 
 	mux := newWsMux()
 
-	cmd = exec.Command("./lotus-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
+	cmd = exec.Command("./lotus-miner", "run", "--miner-api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
 	cmd.Env = append(os.Environ(), "LOTUS_MINER_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
@@ -250,7 +250,7 @@ func (api *api) RestartNode(id int32) (nodeInfo, error) {
 
 	var cmd *exec.Cmd
 	if nd.meta.Storage {
-		cmd = exec.Command("./lotus-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
+		cmd = exec.Command("./lotus-miner", "run", "--miner-api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	} else {
 		cmd = exec.Command("./lotus", "daemon", "--api", fmt.Sprintf("%d", 2500+id))
 	}

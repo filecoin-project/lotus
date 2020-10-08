@@ -27,7 +27,7 @@ type ChainBlockstore blockstore.Blockstore
 
 type ChainGCLocker blockstore.GCLocker
 type ChainGCBlockstore blockstore.GCBlockstore
-type ChainExchange exchange.Interface
+type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService
 
 type ClientMultiDstore *multistore.MultiStore

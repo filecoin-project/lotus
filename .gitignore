@@ -10,8 +10,9 @@
 /lotus-fountain
 /lotus-stats
 /lotus-bench
-/lotus-wallet
+/lotus-gateway
 /lotus-pcr
+/lotus-wallet
 /bench.json
 /lotuspond/front/node_modules
 /lotuspond/front/build

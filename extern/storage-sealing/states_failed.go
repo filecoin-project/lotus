@@ -6,11 +6,12 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 )
@@ -37,16 +38,16 @@ func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo)
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSealPrecommit1Failed(%d): temp error: %+v", sector.SectorNumber, err)
-		return nil, true
+		return nil, false
 	}
 
 	info, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
 	if err != nil {
 		log.Errorf("handleSealPrecommit1Failed(%d): temp error: %+v", sector.SectorNumber, err)
-		return nil, true
+		return nil, false
 	}
 
-	return info, false
+	return info, true
 }
 
 func (m *Sealing) handleSealPrecommit1Failed(ctx statemachine.Context, sector SectorInfo) error {
@@ -62,7 +63,7 @@ func (m *Sealing) handleSealPrecommit2Failed(ctx statemachine.Context, sector Se
 		return err
 	}
 
-	if sector.PreCommit2Fails > 1 {
+	if sector.PreCommit2Fails > 3 {
 		return ctx.Send(SectorRetrySealPreCommit1{})
 	}
 
@@ -107,7 +108,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	}
 
 	if pci, is := m.checkPreCommitted(ctx, sector); is && pci != nil {
-		if sector.PreCommitMessage != nil {
+		if sector.PreCommitMessage == nil {
 			log.Warn("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorNumber)
 			return ctx.Send(SectorPreCommitLanded{TipSet: tok})
 		}

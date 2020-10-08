@@ -1,7 +1,6 @@
 package sub
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,8 +10,6 @@ import (
 	"golang.org/x/xerrors"
 
 	address "github.com/filecoin-project/go-address"
-	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
@@ -26,8 +23,11 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -44,7 +44,11 @@ var log = logging.Logger("sub")
 var ErrSoftFailure = errors.New("soft validation failure")
 var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
 
-func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bserv bserv.BlockService, cmgr connmgr.ConnManager) {
+func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bs bserv.BlockService, cmgr connmgr.ConnManager) {
+	// Timeout after (block time + propagation delay). This is useless at
+	// this point.
+	timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
@@ -65,15 +69,22 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		src := msg.GetFrom()
 
 		go func() {
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+
+			// NOTE: we could also share a single session between
+			// all requests but that may have other consequences.
+			ses := bserv.NewSession(ctx, bs)
+
 			start := build.Clock.Now()
 			log.Debug("about to fetch messages for block from pubsub")
-			bmsgs, err := FetchMessagesByCids(context.TODO(), bserv, blk.BlsMessages)
+			bmsgs, err := FetchMessagesByCids(ctx, ses, blk.BlsMessages)
 			if err != nil {
 				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, src)
 				return
 			}
 
-			smsgs, err := FetchSignedMessagesByCids(context.TODO(), bserv, blk.SecpkMessages)
+			smsgs, err := FetchSignedMessagesByCids(ctx, ses, blk.SecpkMessages)
 			if err != nil {
 				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; source: %s", err, src)
 				return
@@ -98,7 +109,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 
 func FetchMessagesByCids(
 	ctx context.Context,
-	bserv bserv.BlockService,
+	bserv bserv.BlockGetter,
 	cids []cid.Cid,
 ) ([]*types.Message, error) {
 	out := make([]*types.Message, len(cids))
@@ -127,7 +138,7 @@ func FetchMessagesByCids(
 // FIXME: Duplicate of above.
 func FetchSignedMessagesByCids(
 	ctx context.Context,
-	bserv bserv.BlockService,
+	bserv bserv.BlockGetter,
 	cids []cid.Cid,
 ) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, len(cids))
@@ -157,30 +168,28 @@ func FetchSignedMessagesByCids(
 //  blocks we did not request.
 func fetchCids(
 	ctx context.Context,
-	bserv bserv.BlockService,
+	bserv bserv.BlockGetter,
 	cids []cid.Cid,
 	cb func(int, blocks.Block) error,
 ) error {
-	// FIXME: Why don't we use the context here?
-	fetchedBlocks := bserv.GetBlocks(context.TODO(), cids)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	cidIndex := make(map[cid.Cid]int)
 	for i, c := range cids {
 		cidIndex[c] = i
 	}
+	if len(cids) != len(cidIndex) {
+		return fmt.Errorf("duplicate CIDs in fetchCids input")
+	}
+
+	fetchedBlocks := bserv.GetBlocks(ctx, cids)
 
 	for i := 0; i < len(cids); i++ {
 		select {
 		case block, ok := <-fetchedBlocks:
 			if !ok {
-				// Closed channel, no more blocks fetched, check if we have all
-				// of the CIDs requested.
-				// FIXME: Review this check. We don't call the callback on the
-				//  last index?
-				if i == len(cids)-1 {
-					break
-				}
-
 				return fmt.Errorf("failed to fetch all messages")
 			}
 
@@ -369,16 +378,16 @@ func (bv *BlockValidator) decodeAndCheckBlock(msg *pubsub.Message) (*types.Block
 func (bv *BlockValidator) isChainNearSynced() bool {
 	ts := bv.chain.GetHeaviestTipSet()
 	timestamp := ts.MinTimestamp()
-	now := build.Clock.Now().UnixNano()
-	cutoff := uint64(now) - uint64(6*time.Hour)
-	return timestamp > cutoff
+	timestampTime := time.Unix(int64(timestamp), 0)
+	return build.Clock.Since(timestampTime) < 6*time.Hour
 }
 
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
 	// TODO there has to be a simpler way to do this without the blockstore dance
-	store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTemporary()))
-	bmArr := adt.MakeEmptyArray(store)
-	smArr := adt.MakeEmptyArray(store)
+	// block headers use adt0
+	store := adt0.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTemporary()))
+	bmArr := adt0.MakeEmptyArray(store)
+	smArr := adt0.MakeEmptyArray(store)
 
 	for i, m := range msg.BlsMessages {
 		c := cbg.CborCid(m)
@@ -433,6 +442,7 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 		if err != nil {
 			return address.Undef, err
 		}
+
 		buf := bufbstore.NewBufferedBstore(bv.chain.Blockstore())
 		cst := cbor.NewCborStore(buf)
 		state, err := state.LoadStateTree(cst, st)
@@ -444,19 +454,12 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 			return address.Undef, err
 		}
 
-		blk, err := bv.chain.Blockstore().Get(act.Head)
-		if err != nil {
-			return address.Undef, err
-		}
-		aso := blk.RawData()
-
-		var mst miner.State
-		err = mst.UnmarshalCBOR(bytes.NewReader(aso))
+		mst, err := miner.Load(bv.chain.Store(ctx), act)
 		if err != nil {
 			return address.Undef, err
 		}
 
-		info, err := mst.GetInfo(adt.WrapStore(ctx, cst))
+		info, err := mst.Info()
 		if err != nil {
 			return address.Undef, err
 		}
@@ -481,14 +484,14 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 		return address.Undef, ErrSoftFailure
 	}
 
-	hmp, err := stmgr.MinerHasMinPower(ctx, bv.stmgr, bh.Miner, lbts)
+	eligible, err := stmgr.MinerEligibleToMine(ctx, bv.stmgr, bh.Miner, baseTs, lbts)
 	if err != nil {
 		log.Warnf("failed to determine if incoming block's miner has minimum power: %s", err)
 		return address.Undef, ErrSoftFailure
 	}
 
-	if !hmp {
-		log.Warnf("incoming block's miner does not have minimum power")
+	if !eligible {
+		log.Warnf("incoming block's miner is ineligible")
 		return address.Undef, ErrInsufficientPower
 	}
 

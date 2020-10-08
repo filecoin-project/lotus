@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io"
 
-	abi "github.com/filecoin-project/specs-actors/actors/abi"
-	crypto "github.com/filecoin-project/specs-actors/actors/crypto"
-	exitcode "github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	abi "github.com/filecoin-project/go-state-types/abi"
+	crypto "github.com/filecoin-project/go-state-types/crypto"
+	exitcode "github.com/filecoin-project/go-state-types/exitcode"
+	proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -58,7 +59,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.WinPoStProof ([]abi.PoStProof) (slice)
+	// t.WinPoStProof ([]proof.PoStProof) (slice)
 	if len(t.WinPoStProof) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.WinPoStProof was too long")
 	}
@@ -243,7 +244,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.BeaconEntries[i] = v
 	}
 
-	// t.WinPoStProof ([]abi.PoStProof) (slice)
+	// t.WinPoStProof ([]proof.PoStProof) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -259,12 +260,12 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.WinPoStProof = make([]abi.PoStProof, extra)
+		t.WinPoStProof = make([]proof.PoStProof, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v abi.PoStProof
+		var v proof.PoStProof
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
 		}
@@ -1631,5 +1632,133 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.Data[:]); err != nil {
 		return err
 	}
+	return nil
+}
+
+var lengthBufStateRoot = []byte{131}
+
+func (t *StateRoot) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write(lengthBufStateRoot); err != nil {
+		return err
+	}
+
+	scratch := make([]byte, 9)
+
+	// t.Version (types.StateTreeVersion) (uint64)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.Version)); err != nil {
+		return err
+	}
+
+	// t.Actors (cid.Cid) (struct)
+
+	if err := cbg.WriteCidBuf(scratch, w, t.Actors); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Actors: %w", err)
+	}
+
+	// t.Info (cid.Cid) (struct)
+
+	if err := cbg.WriteCidBuf(scratch, w, t.Info); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Info: %w", err)
+	}
+
+	return nil
+}
+
+func (t *StateRoot) UnmarshalCBOR(r io.Reader) error {
+	*t = StateRoot{}
+
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 3 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Version (types.StateTreeVersion) (uint64)
+
+	{
+
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Version = StateTreeVersion(extra)
+
+	}
+	// t.Actors (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Actors: %w", err)
+		}
+
+		t.Actors = c
+
+	}
+	// t.Info (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Info: %w", err)
+		}
+
+		t.Info = c
+
+	}
+	return nil
+}
+
+var lengthBufStateInfo0 = []byte{128}
+
+func (t *StateInfo0) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write(lengthBufStateInfo0); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *StateInfo0) UnmarshalCBOR(r io.Reader) error {
+	*t = StateInfo0{}
+
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 0 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
 	return nil
 }

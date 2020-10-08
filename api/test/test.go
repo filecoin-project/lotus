@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node"
 )
 
 type TestNode struct {
@@ -44,7 +45,7 @@ type StorageMiner struct {
 //
 // storage array defines storage nodes, numbers in the array specify full node
 // index the storage node 'belongs' to
-type APIBuilder func(t *testing.T, nFull int, storage []StorageMiner) ([]TestNode, []TestStorageNode)
+type APIBuilder func(t *testing.T, nFull int, storage []StorageMiner, opts ...node.Option) ([]TestNode, []TestStorageNode)
 type testSuite struct {
 	makeNodes APIBuilder
 }
@@ -65,6 +66,8 @@ func TestApis(t *testing.T, b APIBuilder) {
 var OneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
 
 func (ts *testSuite) testVersion(t *testing.T) {
+	build.RunningNodeType = build.NodeFull
+
 	ctx := context.Background()
 	apis, _ := ts.makeNodes(t, 1, OneMiner)
 	api := apis[0]

@@ -10,15 +10,20 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"golang.org/x/sync/errgroup"
+
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
@@ -72,6 +77,20 @@ func init() {
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*types.TipSet) error
 
+// Journal event types.
+const (
+	evtTypeHeadChange = iota
+)
+
+type HeadChangeEvt struct {
+	From        types.TipSetKey
+	FromHeight  abi.ChainEpoch
+	To          types.TipSetKey
+	ToHeight    abi.ChainEpoch
+	RevertCount int
+	ApplyCount  int
+}
+
 // ChainStore is the main point of access to chain data.
 //
 // Raw chain data is stored in the Blockstore, with relevant markers (genesis,
@@ -103,6 +122,8 @@ type ChainStore struct {
 	tsCache *lru.ARCCache
 
 	vmcalls vm.SyscallBuilder
+
+	evtTypes [1]journal.EventType
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder) *ChainStore {
@@ -116,6 +137,10 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallB
 		mmCache:  c,
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
+	}
+
+	cs.evtTypes = [1]journal.EventType{
+		evtTypeHeadChange: journal.J.RegisterEventType("sync", "head_change"),
 	}
 
 	ci := NewChainIndex(cs.LoadTipSet)
@@ -263,6 +288,16 @@ func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) e
 	return nil
 }
 
+func (cs *ChainStore) UnmarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	if err := cs.ds.Delete(key); err != nil {
+		return xerrors.Errorf("removing from valid block cache: %w", err)
+	}
+
+	return nil
+}
+
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 	ts, err := types.NewTipSet([]*types.BlockHeader{b})
 	if err != nil {
@@ -344,12 +379,15 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					continue
 				}
 
-				journal.Add("sync", map[string]interface{}{
-					"op":    "headChange",
-					"from":  r.old.Key(),
-					"to":    r.new.Key(),
-					"rev":   len(revert),
-					"apply": len(apply),
+				journal.J.RecordEvent(cs.evtTypes[evtTypeHeadChange], func() interface{} {
+					return HeadChangeEvt{
+						From:        r.old.Key(),
+						FromHeight:  r.old.Height(),
+						To:          r.new.Key(),
+						ToHeight:    r.new.Height(),
+						RevertCount: len(revert),
+						ApplyCount:  len(apply),
+					}
 				})
 
 				// reverse the apply array
@@ -443,14 +481,25 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 		return v.(*types.TipSet), nil
 	}
 
-	var blks []*types.BlockHeader
-	for _, c := range tsk.Cids() {
-		b, err := cs.GetBlock(c)
-		if err != nil {
-			return nil, xerrors.Errorf("get block %s: %w", c, err)
-		}
+	// Fetch tipset block headers from blockstore in parallel
+	var eg errgroup.Group
+	cids := tsk.Cids()
+	blks := make([]*types.BlockHeader, len(cids))
+	for i, c := range cids {
+		i, c := i, c
+		eg.Go(func() error {
+			b, err := cs.GetBlock(c)
+			if err != nil {
+				return xerrors.Errorf("get block %s: %w", c, err)
+			}
 
-		blks = append(blks, b)
+			blks[i] = b
+			return nil
+		})
+	}
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	ts, err := types.NewTipSet(blks)
@@ -471,7 +520,7 @@ func (cs *ChainStore) IsAncestorOf(a, b *types.TipSet) (bool, error) {
 
 	cur := b
 	for !a.Equals(cur) && cur.Height() > a.Height() {
-		next, err := cs.LoadTipSet(b.Parents())
+		next, err := cs.LoadTipSet(cur.Parents())
 		if err != nil {
 			return false, err
 		}
@@ -710,7 +759,8 @@ func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) 
 
 func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	ctx := context.TODO()
-	a, err := adt.AsArray(cs.Store(ctx), root)
+	// block headers use adt0, for now.
+	a, err := adt0.AsArray(cs.Store(ctx), root)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -744,32 +794,16 @@ type BlockMessages struct {
 func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, error) {
 	applied := make(map[address.Address]uint64)
 
-	cst := cbor.NewCborStore(cs.bs)
-	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load state tree")
-	}
-
-	preloadAddr := func(a address.Address) error {
-		if _, ok := applied[a]; !ok {
-			act, err := st.GetActor(a)
-			if err != nil {
-				return err
-			}
-
-			applied[a] = act.Nonce
-		}
-		return nil
-	}
-
 	selectMsg := func(m *types.Message) (bool, error) {
-		if err := preloadAddr(m.From); err != nil {
-			return false, err
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[m.From]; !ok {
+			applied[m.From] = m.Nonce
 		}
 
 		if applied[m.From] != m.Nonce {
 			return false, nil
 		}
+
 		applied[m.From]++
 
 		return true, nil
@@ -919,7 +953,8 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 
 func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	ctx := context.TODO()
-	a, err := adt.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
+	// block headers use adt0, for now.
+	a, err := adt0.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -1159,14 +1194,7 @@ func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.
 	return in, rerr
 }
 
-func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, w io.Writer) error {
-	if ts == nil {
-		ts = cs.GetHeaviestTipSet()
-	}
-
-	seen := cid.NewSet()
-	walked := cid.NewSet()
-
+func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
 	h := &car.CarHeader{
 		Roots:   ts.Cids(),
 		Version: 1,
@@ -1176,11 +1204,38 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 		return xerrors.Errorf("failed to write car header: %s", err)
 	}
 
+	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, func(c cid.Cid) error {
+		blk, err := cs.bs.Get(c)
+		if err != nil {
+			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
+		}
+
+		if err := carutil.LdWrite(w, c.Bytes(), blk.RawData()); err != nil {
+			return xerrors.Errorf("failed to write block to car output: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, cb func(cid.Cid) error) error {
+	if ts == nil {
+		ts = cs.GetHeaviestTipSet()
+	}
+
+	seen := cid.NewSet()
+	walked := cid.NewSet()
+
 	blocksToWalk := ts.Cids()
+	currentMinHeight := ts.Height()
 
 	walkChain := func(blk cid.Cid) error {
 		if !seen.Visit(blk) {
 			return nil
+		}
+
+		if err := cb(blk); err != nil {
+			return err
 		}
 
 		data, err := cs.bs.Get(blk)
@@ -1188,18 +1243,25 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 			return xerrors.Errorf("getting block: %w", err)
 		}
 
-		if err := carutil.LdWrite(w, blk.Bytes(), data.RawData()); err != nil {
-			return xerrors.Errorf("failed to write block to car output: %w", err)
-		}
-
 		var b types.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
-		cids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
-		if err != nil {
-			return xerrors.Errorf("recursing messages failed: %w", err)
+		if currentMinHeight > b.Height {
+			currentMinHeight = b.Height
+			if currentMinHeight%builtin.EpochsInDay == 0 {
+				log.Infow("export", "height", currentMinHeight)
+			}
+		}
+
+		var cids []cid.Cid
+		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
+			mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
+			if err != nil {
+				return xerrors.Errorf("recursing messages failed: %w", err)
+			}
+			cids = mcids
 		}
 
 		if b.Height > 0 {
@@ -1227,19 +1289,19 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 				if c.Prefix().Codec != cid.DagCBOR {
 					continue
 				}
-				data, err := cs.bs.Get(c)
-				if err != nil {
-					return xerrors.Errorf("writing object to car (get %s): %w", c, err)
+
+				if err := cb(c); err != nil {
+					return err
 				}
 
-				if err := carutil.LdWrite(w, c.Bytes(), data.RawData()); err != nil {
-					return xerrors.Errorf("failed to write out car object: %w", err)
-				}
 			}
 		}
 
 		return nil
 	}
+
+	log.Infow("export started")
+	exportStart := build.Clock.Now()
 
 	for len(blocksToWalk) > 0 {
 		next := blocksToWalk[0]
@@ -1248,6 +1310,8 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 			return xerrors.Errorf("walk chain failed: %w", err)
 		}
 	}
+
+	log.Infow("export finished", "duration", build.Clock.Now().Sub(exportStart).Seconds())
 
 	return nil
 }
@@ -1291,7 +1355,7 @@ func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry
 		}, nil
 	}
 
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
 }
 
 type chainRand struct {

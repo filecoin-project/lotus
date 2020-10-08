@@ -33,6 +33,7 @@ func init() {
 	pubsub.GossipSubDirectConnectInitialDelay = 30 * time.Second
 	pubsub.GossipSubIWantFollowupTime = 5 * time.Second
 	pubsub.GossipSubHistoryLength = 10
+	pubsub.GossipSubGossipFactor = 0.1
 }
 func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
@@ -48,7 +49,7 @@ type GossipIn struct {
 	Db   dtypes.DrandBootstrap
 	Cfg  *config.Pubsub
 	Sk   *dtypes.ScoreKeeper
-	Dr   dtypes.DrandConfig
+	Dr   dtypes.DrandSchedule
 }
 
 func getDrandTopic(chainInfoJSON string) (string, error) {
@@ -73,9 +74,128 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	}
 
 	isBootstrapNode := in.Cfg.Bootstrapper
-	drandTopic, err := getDrandTopic(in.Dr.ChainInfoJSON)
-	if err != nil {
-		return nil, err
+
+	drandTopicParams := &pubsub.TopicScoreParams{
+		// expected 2 beaconsn/min
+		TopicWeight: 0.5, // 5x block topic; max cap is 62.5
+
+		// 1 tick per second, maxes at 1 after 1 hour
+		TimeInMeshWeight:  0.00027, // ~1/3600
+		TimeInMeshQuantum: time.Second,
+		TimeInMeshCap:     1,
+
+		// deliveries decay after 1 hour, cap at 25 beacons
+		FirstMessageDeliveriesWeight: 5, // max value is 125
+		FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+		FirstMessageDeliveriesCap:    25, // the maximum expected in an hour is ~26, including the decay
+
+		// Mesh Delivery Failure is currently turned off for beacons
+		// This is on purpose as
+		// - the traffic is very low for meaningful distribution of incoming edges.
+		// - the reaction time needs to be very slow -- in the order of 10 min at least
+		//   so we might as well let opportunistic grafting repair the mesh on its own
+		//   pace.
+		// - the network is too small, so large asymmetries can be expected between mesh
+		//   edges.
+		// We should revisit this once the network grows.
+
+		// invalid messages decay after 1 hour
+		InvalidMessageDeliveriesWeight: -1000,
+		InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+	}
+
+	topicParams := map[string]*pubsub.TopicScoreParams{
+		build.BlocksTopic(in.Nn): {
+			// expected 10 blocks/min
+			TopicWeight: 0.1, // max cap is 50, max mesh penalty is -10, single invalid message is -100
+
+			// 1 tick per second, maxes at 1 after 1 hour
+			TimeInMeshWeight:  0.00027, // ~1/3600
+			TimeInMeshQuantum: time.Second,
+			TimeInMeshCap:     1,
+
+			// deliveries decay after 1 hour, cap at 100 blocks
+			FirstMessageDeliveriesWeight: 5, // max value is 500
+			FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+			FirstMessageDeliveriesCap:    100, // 100 blocks in an hour
+
+			// Mesh Delivery Failure is currently turned off for blocks
+			// This is on purpose as
+			// - the traffic is very low for meaningful distribution of incoming edges.
+			// - the reaction time needs to be very slow -- in the order of 10 min at least
+			//   so we might as well let opportunistic grafting repair the mesh on its own
+			//   pace.
+			// - the network is too small, so large asymmetries can be expected between mesh
+			//   edges.
+			// We should revisit this once the network grows.
+			//
+			// // tracks deliveries in the last minute
+			// // penalty activates at 1 minute and expects ~0.4 blocks
+			// MeshMessageDeliveriesWeight:     -576, // max penalty is -100
+			// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+			// MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
+			// MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
+			// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
+			// MeshMessageDeliveriesActivation: time.Minute,
+			//
+			// // decays after 15 min
+			// MeshFailurePenaltyWeight: -576,
+			// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
+
+			// invalid messages decay after 1 hour
+			InvalidMessageDeliveriesWeight: -1000,
+			InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+		},
+		build.MessagesTopic(in.Nn): {
+			// expected > 1 tx/second
+			TopicWeight: 0.1, // max cap is 5, single invalid message is -100
+
+			// 1 tick per second, maxes at 1 hour
+			TimeInMeshWeight:  0.0002778, // ~1/3600
+			TimeInMeshQuantum: time.Second,
+			TimeInMeshCap:     1,
+
+			// deliveries decay after 10min, cap at 100 tx
+			FirstMessageDeliveriesWeight: 0.5, // max value is 50
+			FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
+			FirstMessageDeliveriesCap:    100, // 100 messages in 10 minutes
+
+			// Mesh Delivery Failure is currently turned off for messages
+			// This is on purpose as the network is still too small, which results in
+			// asymmetries and potential unmeshing from negative scores.
+			// // tracks deliveries in the last minute
+			// // penalty activates at 1 min and expects 2.5 txs
+			// MeshMessageDeliveriesWeight:     -16, // max penalty is -100
+			// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+			// MeshMessageDeliveriesCap:        100, // 100 txs in a minute
+			// MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
+			// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
+			// MeshMessageDeliveriesActivation: time.Minute,
+
+			// // decays after 5min
+			// MeshFailurePenaltyWeight: -16,
+			// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
+
+			// invalid messages decay after 1 hour
+			InvalidMessageDeliveriesWeight: -1000,
+			InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+		},
+	}
+
+	pgTopicWeights := map[string]float64{
+		build.BlocksTopic(in.Nn):   10,
+		build.MessagesTopic(in.Nn): 1,
+	}
+
+	var drandTopics []string
+	for _, d := range in.Dr {
+		topic, err := getDrandTopic(d.Config.ChainInfoJSON)
+		if err != nil {
+			return nil, err
+		}
+		topicParams[topic] = drandTopicParams
+		pgTopicWeights[topic] = 5
+		drandTopics = append(drandTopics, topic)
 	}
 
 	options := []pubsub.Option{
@@ -105,8 +225,8 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				},
 				AppSpecificWeight: 1,
 
-				// This sets the IP colocation threshold to 1 peer per
-				IPColocationFactorThreshold: 1,
+				// This sets the IP colocation threshold to 5 peers before we apply penalties
+				IPColocationFactorThreshold: 5,
 				IPColocationFactorWeight:    -100,
 				// TODO we want to whitelist IPv6 /64s that belong to datacenters etc
 				// IPColocationFactorWhitelist: map[string]struct{}{},
@@ -123,111 +243,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				RetainScore: 6 * time.Hour,
 
 				// topic parameters
-				Topics: map[string]*pubsub.TopicScoreParams{
-					drandTopic: {
-						// expected 2 beaconsn/min
-						TopicWeight: 0.5, // 5x block topic; max cap is 62.5
-
-						// 1 tick per second, maxes at 1 after 1 hour
-						TimeInMeshWeight:  0.00027, // ~1/3600
-						TimeInMeshQuantum: time.Second,
-						TimeInMeshCap:     1,
-
-						// deliveries decay after 1 hour, cap at 25 beacons
-						FirstMessageDeliveriesWeight: 5, // max value is 125
-						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-						FirstMessageDeliveriesCap:    25, // the maximum expected in an hour is ~26, including the decay
-
-						// Mesh Delivery Failure is currently turned off for beacons
-						// This is on purpose as
-						// - the traffic is very low for meaningful distribution of incoming edges.
-						// - the reaction time needs to be very slow -- in the order of 10 min at least
-						//   so we might as well let opportunistic grafting repair the mesh on its own
-						//   pace.
-						// - the network is too small, so large asymmetries can be expected between mesh
-						//   edges.
-						// We should revisit this once the network grows.
-
-						// invalid messages decay after 1 hour
-						InvalidMessageDeliveriesWeight: -1000,
-						InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-					},
-					build.BlocksTopic(in.Nn): {
-						// expected 10 blocks/min
-						TopicWeight: 0.1, // max cap is 50, max mesh penalty is -10, single invalid message is -100
-
-						// 1 tick per second, maxes at 1 after 1 hour
-						TimeInMeshWeight:  0.00027, // ~1/3600
-						TimeInMeshQuantum: time.Second,
-						TimeInMeshCap:     1,
-
-						// deliveries decay after 1 hour, cap at 100 blocks
-						FirstMessageDeliveriesWeight: 5, // max value is 500
-						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-						FirstMessageDeliveriesCap:    100, // 100 blocks in an hour
-
-						// Mesh Delivery Failure is currently turned off for blocks
-						// This is on purpose as
-						// - the traffic is very low for meaningful distribution of incoming edges.
-						// - the reaction time needs to be very slow -- in the order of 10 min at least
-						//   so we might as well let opportunistic grafting repair the mesh on its own
-						//   pace.
-						// - the network is too small, so large asymmetries can be expected between mesh
-						//   edges.
-						// We should revisit this once the network grows.
-						//
-						// // tracks deliveries in the last minute
-						// // penalty activates at 1 minute and expects ~0.4 blocks
-						// MeshMessageDeliveriesWeight:     -576, // max penalty is -100
-						// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
-						// MeshMessageDeliveriesCap:        10,      // 10 blocks in a minute
-						// MeshMessageDeliveriesThreshold:  0.41666, // 10/12/2 blocks/min
-						// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
-						// MeshMessageDeliveriesActivation: time.Minute,
-						//
-						// // decays after 15 min
-						// MeshFailurePenaltyWeight: -576,
-						// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(15 * time.Minute),
-
-						// invalid messages decay after 1 hour
-						InvalidMessageDeliveriesWeight: -1000,
-						InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-					},
-					build.MessagesTopic(in.Nn): {
-						// expected > 1 tx/second
-						TopicWeight: 0.1, // max cap is 5, single invalid message is -100
-
-						// 1 tick per second, maxes at 1 hour
-						TimeInMeshWeight:  0.0002778, // ~1/3600
-						TimeInMeshQuantum: time.Second,
-						TimeInMeshCap:     1,
-
-						// deliveries decay after 10min, cap at 100 tx
-						FirstMessageDeliveriesWeight: 0.5, // max value is 50
-						FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
-						FirstMessageDeliveriesCap:    100, // 100 messages in 10 minutes
-
-						// Mesh Delivery Failure is currently turned off for messages
-						// This is on purpose as the network is still too small, which results in
-						// asymmetries and potential unmeshing from negative scores.
-						// // tracks deliveries in the last minute
-						// // penalty activates at 1 min and expects 2.5 txs
-						// MeshMessageDeliveriesWeight:     -16, // max penalty is -100
-						// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
-						// MeshMessageDeliveriesCap:        100, // 100 txs in a minute
-						// MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
-						// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
-						// MeshMessageDeliveriesActivation: time.Minute,
-
-						// // decays after 5min
-						// MeshFailurePenaltyWeight: -16,
-						// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
-
-						// invalid messages decay after 1 hour
-						InvalidMessageDeliveriesWeight: -1000,
-						InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-					},
-				},
+				Topics: topicParams,
 			},
 			&pubsub.PeerScoreThresholds{
 				GossipThreshold:             -500,
@@ -248,8 +264,8 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		pubsub.GossipSubDlo = 0
 		pubsub.GossipSubDhi = 0
 		pubsub.GossipSubDout = 0
-		pubsub.GossipSubDlazy = 1024
-		pubsub.GossipSubGossipFactor = 0.5
+		pubsub.GossipSubDlazy = 64
+		pubsub.GossipSubGossipFactor = 0.25
 		pubsub.GossipSubPruneBackoff = 5 * time.Minute
 		// turn on PX
 		options = append(options, pubsub.WithPeerExchange(true))
@@ -275,6 +291,36 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 
 		options = append(options, pubsub.WithDirectPeers(directPeerInfo))
 	}
+
+	// validation queue RED
+	var pgParams *pubsub.PeerGaterParams
+
+	if isBootstrapNode {
+		pgParams = pubsub.NewPeerGaterParams(
+			0.33,
+			pubsub.ScoreParameterDecay(2*time.Minute),
+			pubsub.ScoreParameterDecay(10*time.Minute),
+		).WithTopicDeliveryWeights(pgTopicWeights)
+	} else {
+		pgParams = pubsub.NewPeerGaterParams(
+			0.33,
+			pubsub.ScoreParameterDecay(2*time.Minute),
+			pubsub.ScoreParameterDecay(time.Hour),
+		).WithTopicDeliveryWeights(pgTopicWeights)
+	}
+
+	options = append(options, pubsub.WithPeerGater(pgParams))
+
+	allowTopics := []string{
+		build.BlocksTopic(in.Nn),
+		build.MessagesTopic(in.Nn),
+	}
+	allowTopics = append(allowTopics, drandTopics...)
+	options = append(options,
+		pubsub.WithSubscriptionFilter(
+			pubsub.WrapLimitSubscriptionFilter(
+				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
+				100)))
 
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
@@ -326,14 +372,9 @@ type tracerWrapper struct {
 	topics map[string]struct{}
 }
 
-func (trw *tracerWrapper) traceMessage(topics []string) bool {
-	for _, topic := range topics {
-		_, ok := trw.topics[topic]
-		if ok {
-			return true
-		}
-	}
-	return false
+func (trw *tracerWrapper) traceMessage(topic string) bool {
+	_, ok := trw.topics[topic]
+	return ok
 }
 
 func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
@@ -346,12 +387,12 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 	switch evt.GetType() {
 	case pubsub_pb.TraceEvent_PUBLISH_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubPublishMessage.M(1))
-		if trw.tr != nil && trw.traceMessage(evt.GetPublishMessage().Topics) {
+		if trw.tr != nil && trw.traceMessage(evt.GetPublishMessage().GetTopic()) {
 			trw.tr.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_DELIVER_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubDeliverMessage.M(1))
-		if trw.tr != nil && trw.traceMessage(evt.GetDeliverMessage().Topics) {
+		if trw.tr != nil && trw.traceMessage(evt.GetDeliverMessage().GetTopic()) {
 			trw.tr.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_REJECT_MESSAGE:

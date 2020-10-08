@@ -45,6 +45,8 @@ const FlagWorkerRepo = "worker-repo"
 const FlagWorkerRepoDeprecation = "workerrepo"
 
 func main() {
+	build.RunningNodeType = build.NodeWorker
+
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
@@ -106,6 +108,11 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "no-local-storage",
 			Usage: "don't use storageminer repo for sector storage",
+		},
+		&cli.BoolFlag{
+			Name:  "no-swap",
+			Usage: "don't use swap",
+			Value: false,
 		},
 		&cli.BoolFlag{
 			Name:  "addpiece",
@@ -187,8 +194,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: local: %s", api.Version{APIVersion: build.APIVersion})
+		if v.APIVersion != build.MinerAPIVersion {
+			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.Version{APIVersion: build.MinerAPIVersion})
 		}
 		log.Infof("Remote version %s", v)
 
@@ -344,6 +351,7 @@ var runCmd = &cli.Command{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				SealProof: spt,
 				TaskTypes: taskTypes,
+				NoSwap:    cctx.Bool("no-swap"),
 			}, remote, localStore, nodeApi),
 			localStore: localStore,
 			ls:         lr,
@@ -463,6 +471,7 @@ func watchMinerConn(ctx context.Context, cctx *cli.Context, nodeApi api.StorageM
 			"run",
 			fmt.Sprintf("--listen=%s", cctx.String("listen")),
 			fmt.Sprintf("--no-local-storage=%t", cctx.Bool("no-local-storage")),
+			fmt.Sprintf("--no-swap=%t", cctx.Bool("no-swap")),
 			fmt.Sprintf("--addpiece=%t", cctx.Bool("addpiece")),
 			fmt.Sprintf("--precommit1=%t", cctx.Bool("precommit1")),
 			fmt.Sprintf("--unseal=%t", cctx.Bool("unseal")),

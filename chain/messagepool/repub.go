@@ -11,12 +11,13 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/ipfs/go-cid"
 )
 
 const repubMsgLimit = 30
 
-var RepublishBatchDelay = 200 * time.Millisecond
+var RepublishBatchDelay = 100 * time.Millisecond
 
 func (mp *MessagePool) republishPendingMessages() error {
 	mp.curTsLk.Lock()
@@ -27,6 +28,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 		mp.curTsLk.Unlock()
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
+	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
 	mp.lk.Lock()
@@ -55,7 +57,11 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		// We use the baseFee lower bound for createChange so that we optimistically include
+		// chains that might become profitable in the next 20 blocks.
+		// We still check the lowerBound condition for individual messages so that we don't send
+		// messages that will be rejected by the mpool spam protector, so this is safe to do.
+		next := mp.createMessageChains(actor, mset, baseFeeLowerBound, ts)
 		chains = append(chains, next...)
 	}
 
@@ -67,15 +73,10 @@ func (mp *MessagePool) republishPendingMessages() error {
 		return chains[i].Before(chains[j])
 	})
 
-	// we don't republish negative performing chains; this is an error that will be screamed
-	// at the user
-	if chains[0].gasPerf < 0 {
-		return xerrors.Errorf("skipping republish: all message chains have negative gas performance; best gas performance: %f", chains[0].gasPerf)
-	}
-
 	gasLimit := int64(build.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
+loop:
 	for i := 0; i < len(chains); {
 		chain := chains[i]
 
@@ -89,12 +90,6 @@ func (mp *MessagePool) republishPendingMessages() error {
 			break
 		}
 
-		// we don't republish negative performing chains, as they won't be included in
-		// a block anyway
-		if chain.gasPerf < 0 {
-			break
-		}
-
 		// has the chain been invalidated?
 		if !chain.valid {
 			i++
@@ -103,15 +98,25 @@ func (mp *MessagePool) republishPendingMessages() error {
 
 		// does it fit in a block?
 		if chain.gasLimit <= gasLimit {
-			gasLimit -= chain.gasLimit
-			msgs = append(msgs, chain.msgs...)
+			// check the baseFee lower bound -- only republish messages that can be included in the chain
+			// within the next 20 blocks.
+			for _, m := range chain.msgs {
+				if !allowNegativeChains(ts.Height()) && m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+					chain.Invalidate()
+					continue loop
+				}
+				gasLimit -= m.Message.GasLimit
+				msgs = append(msgs, m)
+			}
+
+			// we processed the whole chain, advance
 			i++
 			continue
 		}
 
 		// we can't fit the current chain but there is gas to spare
 		// trim it and push it down
-		chain.Trim(gasLimit, mp, baseFee, ts)
+		chain.Trim(gasLimit, mp, baseFee, true)
 		for j := i; j < len(chains)-1; j++ {
 			if chains[j].Before(chains[j+1]) {
 				break
@@ -140,6 +145,19 @@ func (mp *MessagePool) republishPendingMessages() error {
 			// and avoid creating nonce gaps because of concurrent validation.
 			time.Sleep(RepublishBatchDelay)
 		}
+	}
+
+	if len(msgs) > 0 {
+		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
+			msgsEv := make([]MessagePoolEvtMessage, 0, len(msgs))
+			for _, m := range msgs {
+				msgsEv = append(msgsEv, MessagePoolEvtMessage{Message: m.Message, CID: m.Cid()})
+			}
+			return MessagePoolEvt{
+				Action:   "repub",
+				Messages: msgsEv,
+			}
+		})
 	}
 
 	// track most recently republished messages

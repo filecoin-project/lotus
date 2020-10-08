@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -151,7 +152,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 	}
 
 	smsg, err := fm.api.MpoolPushMessage(ctx, &types.Message{
-		To:     builtin.StorageMarketActorAddr,
+		To:     market.Address,
 		From:   wallet,
 		Value:  toAdd,
 		Method: builtin.MethodsMarket.AddBalance,

@@ -1,8 +1,8 @@
 package vm
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 const (
@@ -20,6 +20,17 @@ type GasOutputs struct {
 
 	GasRefund int64
 	GasBurned int64
+}
+
+// ZeroGasOutputs returns a logically zeroed GasOutputs.
+func ZeroGasOutputs() GasOutputs {
+	return GasOutputs{
+		BaseFeeBurn:        big.Zero(),
+		OverEstimationBurn: big.Zero(),
+		MinerPenalty:       big.Zero(),
+		MinerTip:           big.Zero(),
+		Refund:             big.Zero(),
+	}
 }
 
 // ComputeGasOverestimationBurn computes amount of gas to be refunded and amount of gas to be burned
@@ -58,13 +69,7 @@ func ComputeGasOverestimationBurn(gasUsed, gasLimit int64) (int64, int64) {
 
 func ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) GasOutputs {
 	gasUsedBig := big.NewInt(gasUsed)
-	out := GasOutputs{
-		BaseFeeBurn:        big.Zero(),
-		OverEstimationBurn: big.Zero(),
-		MinerPenalty:       big.Zero(),
-		MinerTip:           big.Zero(),
-		Refund:             big.Zero(),
-	}
+	out := ZeroGasOutputs()
 
 	baseFeeToPay := baseFee
 	if baseFee.Cmp(feeCap.Int) > 0 {
