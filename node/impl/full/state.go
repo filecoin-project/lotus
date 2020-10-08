@@ -44,7 +44,7 @@ type StateAPI struct {
 
 	// TODO: the wallet here is only needed because we have the MinerCreateBlock
 	// API attached to the state API. It probably should live somewhere better
-	Wallet api.WalletAPI
+	Wallet    api.WalletAPI
 	DefWallet wallet.Default
 
 	ProofVerifier ffiwrapper.Verifier

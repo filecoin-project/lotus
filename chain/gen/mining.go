@@ -131,7 +131,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletA
 	}
 
 	sig, err := w.WalletSign(ctx, waddr, nosigbytes, api.MsgMeta{
-		Type:  api.MTBlock,
+		Type: api.MTBlock,
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign new block: %w", err)

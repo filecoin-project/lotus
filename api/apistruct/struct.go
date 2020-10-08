@@ -363,14 +363,14 @@ type WorkerStruct struct {
 
 type WalletStruct struct {
 	Internal struct {
-		WalletNew            func(context.Context, crypto.SigType) (address.Address, error)                       `perm:"write"`
-		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
-		WalletList           func(context.Context) ([]address.Address, error)                                     `perm:"write"`
-		WalletSign           func(context.Context, address.Address, []byte, api.MsgMeta) (*crypto.Signature, error)            `perm:"sign"`
-		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
-		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
-		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
-		WalletDelete         func(context.Context, address.Address) error                                         `perm:"write"`
+		WalletNew         func(context.Context, crypto.SigType) (address.Address, error)                         `perm:"write"`
+		WalletHas         func(context.Context, address.Address) (bool, error)                                   `perm:"write"`
+		WalletList        func(context.Context) ([]address.Address, error)                                       `perm:"write"`
+		WalletSign        func(context.Context, address.Address, []byte, api.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
+		WalletSignMessage func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)   `perm:"sign"`
+		WalletExport      func(context.Context, address.Address) (*types.KeyInfo, error)                         `perm:"admin"`
+		WalletImport      func(context.Context, *types.KeyInfo) (address.Address, error)                         `perm:"admin"`
+		WalletDelete      func(context.Context, address.Address) error                                           `perm:"write"`
 	}
 }
 

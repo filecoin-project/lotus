@@ -10,6 +10,7 @@ import (
 )
 
 type MsgType string
+
 const (
 	MTUnknown = "unknown"
 
