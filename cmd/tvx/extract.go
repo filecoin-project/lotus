@@ -200,6 +200,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Message:    m,
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
+			// recorded randomness will be discarded.
+			Rand: conformance.NewRecordingRand(new(conformance.LogReporter), fapi),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute precursor message: %w", err)
@@ -212,6 +214,9 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		applyret  *vm.ApplyRet
 		carWriter func(w io.Writer) error
 		retention = opts.retain
+
+		// recordingRand will record randomness so we can embed it in the test vector.
+		recordingRand = conformance.NewRecordingRand(new(conformance.LogReporter), fapi)
 	)
 
 	log.Printf("using state retention strategy: %s", retention)
@@ -231,6 +236,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Message:    msg,
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
+			Rand:       recordingRand,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
@@ -262,6 +268,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Message:    msg,
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
+			Rand:       recordingRand,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
@@ -356,7 +363,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 				{Source: fmt.Sprintf("execution_tipset:%s", execTs.Key().String())},
 				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
 		},
-		CAR: out.Bytes(),
+		Randomness: recordingRand.Recorded(),
+		CAR:        out.Bytes(),
 		Pre: &schema.Preconditions{
 			Epoch:      int64(execTs.Height()),
 			CircSupply: circSupply.Int,
