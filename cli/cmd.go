@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -47,14 +48,44 @@ func NewCliError(s string) error {
 type ApiConnector func() api.FullNode
 
 type APIInfo struct {
-	Addr  multiaddr.Multiaddr
+	Addr  string
 	Token []byte
 }
 
 func (a APIInfo) DialArgs() (string, error) {
-	_, addr, err := manet.DialArgs(a.Addr)
+	ma, err := multiaddr.NewMultiaddr(a.Addr)
+	if err == nil {
+		_, addr, err := manet.DialArgs(ma)
+		if err != nil {
+			return "", err
+		}
 
-	return "ws://" + addr + "/rpc/v0", err
+		return "ws://" + addr + "/rpc/v0", nil
+	}
+
+	_, err = url.Parse(a.Addr)
+	if err != nil {
+		return "", err
+	}
+	return a.Addr + "/rpc/v0", nil
+}
+
+func (a APIInfo) Host() (string, error) {
+	ma, err := multiaddr.NewMultiaddr(a.Addr)
+	if err == nil {
+		_, addr, err := manet.DialArgs(ma)
+		if err != nil {
+			return "", err
+		}
+
+		return addr, nil
+	}
+
+	spec, err := url.Parse(a.Addr)
+	if err != nil {
+		return "", err
+	}
+	return spec.Host, nil
 }
 
 func (a APIInfo) AuthHeader() http.Header {
@@ -72,11 +103,11 @@ func (a APIInfo) AuthHeader() http.Header {
 func flagForAPI(t repo.RepoType) string {
 	switch t {
 	case repo.FullNode:
-		return "api"
+		return "api-url"
 	case repo.StorageMiner:
-		return "miner-api"
+		return "miner-api-url"
 	case repo.Worker:
-		return "worker-api"
+		return "worker-api-url"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -130,11 +161,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		strma := ctx.String(apiFlag)
 		strma = strings.TrimSpace(strma)
 
-		apima, err := multiaddr.NewMultiaddr(strma)
-		if err != nil {
-			return APIInfo{}, err
-		}
-		return APIInfo{Addr: apima}, nil
+		return APIInfo{Addr: strma}, nil
 	}
 
 	envKey := envForRepo(t)
@@ -152,12 +179,8 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		if len(sp) != 2 {
 			log.Warnf("invalid env(%s) value, missing token or address", envKey)
 		} else {
-			ma, err := multiaddr.NewMultiaddr(sp[1])
-			if err != nil {
-				return APIInfo{}, xerrors.Errorf("could not parse multiaddr from env(%s): %w", envKey, err)
-			}
 			return APIInfo{
-				Addr:  ma,
+				Addr:  sp[1],
 				Token: []byte(sp[0]),
 			}, nil
 		}
@@ -186,7 +209,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	}
 
 	return APIInfo{
-		Addr:  ma,
+		Addr:  ma.String(),
 		Token: token,
 	}, nil
 }
