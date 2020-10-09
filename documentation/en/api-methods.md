@@ -190,7 +190,7 @@
   * [WalletSignMessage](#WalletSignMessage)
   * [WalletValidateAddress](#WalletValidateAddress)
   * [WalletVerify](#WalletVerify)
-## 
+##
 
 
 ### Closing
@@ -968,7 +968,7 @@ Response:
 ClientGetDealStatus returns status given a code
 
 
-Perms: 
+Perms:
 
 Inputs:
 ```json
