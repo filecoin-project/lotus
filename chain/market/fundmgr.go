@@ -120,9 +120,10 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		return cid.Undef, err
 	}
 	fm.lk.Lock()
+	defer fm.lk.Unlock()
+
 	bal, err := fm.api.StateMarketBalance(ctx, addr, types.EmptyTSK)
 	if err != nil {
-		fm.lk.Unlock()
 		return cid.Undef, err
 	}
 
@@ -138,7 +139,6 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		toAdd = types.NewInt(0)
 	}
 	fm.available[idAddr] = big.Add(avail, toAdd)
-	fm.lk.Unlock()
 
 	log.Infof("Funds operation w/ Expected Balance: %s, In State: %s, Requested: %s, Adding: %s", avail.String(), stateAvail.String(), amt.String(), toAdd.String())
 
@@ -148,6 +148,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 
 	params, err := actors.SerializeParams(&addr)
 	if err != nil {
+		fm.available[idAddr] = avail
 		return cid.Undef, err
 	}
 
@@ -159,6 +160,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		Params: params,
 	}, nil)
 	if err != nil {
+		fm.available[idAddr] = avail
 		return cid.Undef, err
 	}
 
