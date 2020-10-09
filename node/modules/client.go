@@ -113,7 +113,7 @@ func NewClientDealFunds(ds dtypes.MetadataDS) (ClientDealFunds, error) {
 	return funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/client"))
 }
 
-func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, dealFunds ClientDealFunds) (storagemarket.StorageClient, error) {
+func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, dealFunds ClientDealFunds, j journal.Journal) (storagemarket.StorageClient, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, dealFunds, storageimpl.DealPollingInterval(time.Second))
 	if err != nil {
@@ -124,8 +124,8 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 		OnStart: func(ctx context.Context) error {
 			c.SubscribeToEvents(marketevents.StorageClientLogger)
 
-			evtType := journal.J.RegisterEventType("markets/storage/client", "state_change")
-			c.SubscribeToEvents(markets.StorageClientJournaler(evtType))
+			evtType := j.RegisterEventType("markets/storage/client", "state_change")
+			c.SubscribeToEvents(markets.StorageClientJournaler(j, evtType))
 
 			return c.Start(ctx)
 		},
@@ -137,7 +137,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver, ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI) (retrievalmarket.RetrievalClient, error) {
+func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver, ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, chainAPI, stateAPI)
 	network := rmnet.NewFromLibp2pHost(h)
 	sc := storedcounter.New(ds, datastore.NewKey("/retr"))
@@ -150,8 +150,8 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore,
 		OnStart: func(ctx context.Context) error {
 			client.SubscribeToEvents(marketevents.RetrievalClientLogger)
 
-			evtType := journal.J.RegisterEventType("markets/retrieval/client", "state_change")
-			client.SubscribeToEvents(markets.RetrievalClientJournaler(evtType))
+			evtType := j.RegisterEventType("markets/retrieval/client", "state_change")
+			client.SubscribeToEvents(markets.RetrievalClientJournaler(j, evtType))
 
 			return client.Start(ctx)
 		},

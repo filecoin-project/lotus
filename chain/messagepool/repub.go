@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/journal"
 	"github.com/ipfs/go-cid"
 )
 
@@ -148,7 +147,7 @@ loop:
 	}
 
 	if len(msgs) > 0 {
-		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
+		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
 			msgsEv := make([]MessagePoolEvtMessage, 0, len(msgs))
 			for _, m := range msgs {
 				msgsEv = append(msgsEv, MessagePoolEvtMessage{Message: m.Message, CID: m.Cid()})

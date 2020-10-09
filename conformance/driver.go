@@ -87,7 +87,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 		vmRand   = NewFixedRand()
 
-		cs = store.NewChainStore(bs, ds, syscalls)
+		cs = store.NewChainStore(bs, ds, syscalls, nil)
 		sm = stmgr.NewStateManager(cs)
 	)
 

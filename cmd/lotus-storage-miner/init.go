@@ -464,13 +464,12 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			if jrnl, err := journal.OpenFSJournal(lr, journal.DefaultDisabledEvents); err == nil {
-				journal.J = jrnl
-			} else {
+			j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+			if err != nil {
 				return fmt.Errorf("failed to open filesystem journal: %w", err)
 			}
 
-			m := miner.NewMiner(api, epp, a, slashfilter.New(mds))
+			m := miner.NewMiner(api, epp, a, slashfilter.New(mds), j)
 			{
 				if err := m.Start(ctx); err != nil {
 					return xerrors.Errorf("failed to start up genesis miner: %w", err)

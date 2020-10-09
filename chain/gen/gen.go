@@ -39,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -122,6 +123,7 @@ var DefaultRemainderAccountActor = genesis.Actor{
 }
 
 func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
+	j := journal.NilJournal()
 	// TODO: we really shouldn't modify a global variable here.
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 
@@ -229,12 +231,12 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		Timestamp:        uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
 	}
 
-	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
+	genb, err := genesis2.MakeGenesisBlock(context.TODO(), j, bs, sys, tpl)
 	if err != nil {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
 
-	cs := store.NewChainStore(bs, ds, sys)
+	cs := store.NewChainStore(bs, ds, sys, j)
 
 	genfb := &types.FullBlock{Header: genb.Genesis}
 	gents := store.NewFullTipSet([]*types.FullBlock{genfb})

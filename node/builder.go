@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"os"
 	"time"
 
 	"github.com/filecoin-project/lotus/chain"
@@ -72,10 +71,6 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
-
-// EnvJournalDisabledEvents is the environment variable through which disabled
-// journal events can be customized.
-const EnvJournalDisabledEvents = "LOTUS_JOURNAL_DISABLED_EVENTS"
 
 //nolint:deadcode,varcheck
 var log = logging.Logger("builder")
@@ -166,19 +161,8 @@ type Settings struct {
 func defaults() []Option {
 	return []Option{
 		// global system journal.
-		Override(new(journal.DisabledEvents), func() journal.DisabledEvents {
-			if env, ok := os.LookupEnv(EnvJournalDisabledEvents); ok {
-				if ret, err := journal.ParseDisabledEvents(env); err == nil {
-					return ret
-				}
-			}
-			// fallback if env variable is not set, or if it failed to parse.
-			return journal.DefaultDisabledEvents
-		}),
+		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
-		Override(InitJournalKey, func(j journal.Journal) {
-			journal.J = j // eagerly sets the global journal through fx.Invoke.
-		}),
 
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),

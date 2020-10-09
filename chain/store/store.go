@@ -124,11 +124,15 @@ type ChainStore struct {
 	vmcalls vm.SyscallBuilder
 
 	evtTypes [1]journal.EventType
+	journal  journal.Journal
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
+	if j == nil {
+		j = journal.NilJournal()
+	}
 	cs := &ChainStore{
 		bs:       bs,
 		ds:       ds,
@@ -137,10 +141,11 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallB
 		mmCache:  c,
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
+		journal:  j,
 	}
 
 	cs.evtTypes = [1]journal.EventType{
-		evtTypeHeadChange: journal.J.RegisterEventType("sync", "head_change"),
+		evtTypeHeadChange: j.RegisterEventType("sync", "head_change"),
 	}
 
 	ci := NewChainIndex(cs.LoadTipSet)
@@ -379,7 +384,7 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					continue
 				}
 
-				journal.J.RecordEvent(cs.evtTypes[evtTypeHeadChange], func() interface{} {
+				cs.journal.RecordEvent(cs.evtTypes[evtTypeHeadChange], func() interface{} {
 					return HeadChangeEvt{
 						From:        r.old.Key(),
 						FromHeight:  r.old.Height(),
