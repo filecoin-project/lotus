@@ -20,13 +20,13 @@ import (
 type WalletAPI struct {
 	fx.In
 
-	StateManager *stmgr.StateManager
-	Default      wallet.Default
+	StateManagerAPI stmgr.StateManagerAPI
+	Default         wallet.Default
 	api.WalletAPI
 }
 
 func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
-	act, err := a.StateManager.LoadActorTsk(ctx, addr, types.EmptyTSK)
+	act, err := a.StateManagerAPI.LoadActorTsk(ctx, addr, types.EmptyTSK)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return big.Zero(), nil
 	} else if err != nil {
@@ -36,7 +36,7 @@ func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (ty
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
-	keyAddr, err := a.StateManager.ResolveToKeyAddress(ctx, k, nil)
+	keyAddr, err := a.StateManagerAPI.ResolveToKeyAddress(ctx, k, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
@@ -46,7 +46,7 @@ func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byt
 }
 
 func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
-	keyAddr, err := a.StateManager.ResolveToKeyAddress(ctx, k, nil)
+	keyAddr, err := a.StateManagerAPI.ResolveToKeyAddress(ctx, k, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}

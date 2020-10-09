@@ -15,11 +15,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/node"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	bminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -34,7 +32,7 @@ func init() {
 
 func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	ctx := context.Background()
-	n, sn := b(t, 1, OneMiner)
+	n, sn := b(t, OneFull, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -133,11 +131,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, 1, OneMiner, node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
-		Network:   build.ActorUpgradeNetworkVersion,
-		Height:    upgradeHeight,
-		Migration: stmgr.UpgradeActorsV2,
-	}}))
+	n, sn := b(t, []FullNodeOpts{FullNodeWithUpgradeAt(upgradeHeight)}, OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]

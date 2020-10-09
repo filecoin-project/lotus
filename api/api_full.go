@@ -367,6 +367,10 @@ type FullNode interface {
 	// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 	// message arrives on chain, and gets to the indicated confidence depth.
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*MsgLookup, error)
+	// StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
+	// If not found, it blocks until the message arrives on chain, and gets to the
+	// indicated confidence depth.
+	StateWaitMsgLimited(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch) (*MsgLookup, error)
 	// StateListMiners returns the addresses of every miner that has claimed power in the Power Actor
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error)
 	// StateListActors returns the addresses of every actor in the state

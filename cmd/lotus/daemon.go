@@ -15,8 +15,6 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	"github.com/filecoin-project/lotus/chain/types"
-
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -32,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -114,6 +113,11 @@ var DaemonCmd = &cli.Command{
 			Name:  "halt-after-import",
 			Usage: "halt the process after importing chain from file",
 		},
+		&cli.BoolFlag{
+			Name:   "lite",
+			Usage:  "start lotus in lite mode",
+			Hidden: true,
+		},
 		&cli.StringFlag{
 			Name:  "pprof",
 			Usage: "specify name of file for writing cpu profile to",
@@ -133,6 +137,8 @@ var DaemonCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		isLite := cctx.Bool("lite")
+
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
 			EnableCPU:    true,
 			EnableMemory: true,
@@ -192,8 +198,10 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
+		if !isLite {
+			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
+				return xerrors.Errorf("fetching proof parameters: %w", err)
+			}
 		}
 
 		var genBytes []byte
@@ -240,10 +248,23 @@ var DaemonCmd = &cli.Command{
 
 		shutdownChan := make(chan struct{})
 
+		// If the daemon is started in "lite mode", provide a  GatewayAPI
+		// for RPC calls
+		liteModeDeps := node.Options()
+		if isLite {
+			gapi, closer, err := lcli.GetGatewayAPI(cctx)
+			if err != nil {
+				return err
+			}
+
+			defer closer()
+			liteModeDeps = node.Override(new(api.GatewayAPI), gapi)
+		}
+
 		var api api.FullNode
 
 		stop, err := node.New(ctx,
-			node.FullAPI(&api),
+			node.FullAPI(&api, node.Lite(isLite)),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
@@ -251,6 +272,7 @@ var DaemonCmd = &cli.Command{
 			node.Repo(r),
 
 			genesis,
+			liteModeDeps,
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
