@@ -2,13 +2,13 @@ package remotewallet
 
 import (
 	"context"
-	"net/http"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
@@ -16,26 +16,16 @@ type RemoteWallet struct {
 	api.WalletAPI
 }
 
-func SetupRemoteWallet(url string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
+func SetupRemoteWallet(info string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
-		/*sp := strings.SplitN(env, ":", 2)
-		if len(sp) != 2 {
-			log.Warnf("invalid env(%s) value, missing token or address", envKey)
-		} else {
-			ma, err := multiaddr.NewMultiaddr(sp[1])
-			if err != nil {
-				return APIInfo{}, xerrors.Errorf("could not parse multiaddr from env(%s): %w", envKey, err)
-			}
-			return APIInfo{
-				Addr:  ma,
-				Token: []byte(sp[0]),
-			}, nil
-		}*/
+		ai := lcli.ParseApiInfo(info)
 
-		headers := http.Header{}
-		/*headers.Add("Authorization", "Bearer "+token)*/
+		url, err := ai.DialArgs()
+		if err != nil {
+			return nil, err
+		}
 
-		wapi, closer, err := client.NewWalletRPC(mctx, url, headers)
+		wapi, closer, err := client.NewWalletRPC(mctx, url, ai.AuthHeader())
 		if err != nil {
 			return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
 		}

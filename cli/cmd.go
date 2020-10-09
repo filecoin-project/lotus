@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -153,6 +154,24 @@ func envForRepoDeprecation(t repo.RepoType) string {
 	}
 }
 
+var (
+	infoWithToken = regexp.MustCompile("^[a-zA-Z0-9\\-_]+?\\.[a-zA-Z0-9\\-_]+?\\.([a-zA-Z0-9\\-_]+)?:.+$")
+)
+
+func ParseApiInfo(s string) APIInfo {
+	var tok []byte
+	if infoWithToken.Match([]byte(s)) {
+		sp := strings.SplitN(s, ":", 2)
+		tok = []byte(sp[0])
+		s = sp[1]
+	}
+
+	return APIInfo{
+		Addr:  s,
+		Token: tok,
+	}
+}
+
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)
@@ -175,15 +194,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		}
 	}
 	if ok {
-		sp := strings.SplitN(env, ":", 2)
-		if len(sp) != 2 {
-			log.Warnf("invalid env(%s) value, missing token or address", envKey)
-		} else {
-			return APIInfo{
-				Addr:  sp[1],
-				Token: []byte(sp[0]),
-			}, nil
-		}
+		return ParseApiInfo(env), nil
 	}
 
 	repoFlag := flagForRepo(t)

@@ -188,7 +188,7 @@ BINS+=lotus-health
 
 lotus-wallet:
 	rm -f lotus-wallet
-	go build -o lotus-stats ./cmd/lotus-wallet
+	go build -o lotus-wallet ./cmd/lotus-wallet
 .PHONY: lotus-wallet
 BINS+=lotus-wallet
 
