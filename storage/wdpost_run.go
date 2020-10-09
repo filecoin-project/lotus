@@ -26,11 +26,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/journal"
 )
 
 func (s *WindowPoStScheduler) failPost(err error, ts *types.TipSet, deadline *dline.Info) {
-	journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+	s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 		c := evtCommon{Error: err}
 		if ts != nil {
 			c.Deadline = deadline
@@ -54,7 +53,7 @@ func (s *WindowPoStScheduler) failPost(err error, ts *types.TipSet, deadline *dl
 // recordProofsEvent records a successful proofs_processed event in the
 // journal, even if it was a noop (no partitions).
 func (s *WindowPoStScheduler) recordProofsEvent(partitions []miner.PoStPartition, mcid cid.Cid) {
-	journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStProofs], func() interface{} {
+	s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStProofs], func() interface{} {
 		return &WdPoStProofsProcessedEvt{
 			evtCommon:  s.getEvtCommon(nil),
 			Partitions: partitions,
@@ -74,7 +73,7 @@ func (s *WindowPoStScheduler) startGeneratePoST(
 	go func() {
 		defer abort()
 
-		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+		s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 			return WdPoStSchedulerEvt{
 				evtCommon: s.getEvtCommon(nil),
 				State:     SchedulerStateStarted,
@@ -125,7 +124,7 @@ func (s *WindowPoStScheduler) startSubmitPoST(
 
 		err := s.runSubmitPoST(ctx, ts, deadline, posts)
 		if err == nil {
-			journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
+			s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 				return WdPoStSchedulerEvt{
 					evtCommon: s.getEvtCommon(nil),
 					State:     SchedulerStateSucceeded,
@@ -439,7 +438,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 			log.Errorf("checking sector recoveries: %v", err)
 		}
 
-		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStRecoveries], func() interface{} {
+		s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStRecoveries], func() interface{} {
 			j := WdPoStRecoveriesProcessedEvt{
 				evtCommon:    s.getEvtCommon(err),
 				Declarations: recoveries,
@@ -458,7 +457,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 			log.Errorf("checking sector faults: %v", err)
 		}
 
-		journal.J.RecordEvent(s.evtTypes[evtTypeWdPoStFaults], func() interface{} {
+		s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStFaults], func() interface{} {
 			return WdPoStFaultsProcessedEvt{
 				evtCommon:    s.getEvtCommon(err),
 				Declarations: faults,

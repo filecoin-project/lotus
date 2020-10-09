@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/lib/ulimit"
@@ -410,7 +411,11 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 
 	bs := blockstore.NewBlockstore(ds)
 
-	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+	j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+	if err != nil {
+		return xerrors.Errorf("failed to open journal: %w", err)
+	}
+	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
 
 	log.Infof("importing chain from %s...", fname)
 

@@ -173,7 +173,7 @@ var chainBalanceStateCmd = &cli.Command{
 
 		bs := blockstore.NewBlockstore(ds)
 
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
@@ -343,7 +343,7 @@ var chainPledgeCmd = &cli.Command{
 
 		bs := blockstore.NewBlockstore(ds)
 
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
