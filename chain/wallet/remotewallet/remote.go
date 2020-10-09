@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
@@ -18,7 +18,7 @@ type RemoteWallet struct {
 
 func SetupRemoteWallet(info string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
-		ai := lcli.ParseApiInfo(info)
+		ai := cliutil.ParseApiInfo(info)
 
 		url, err := ai.DialArgs()
 		if err != nil {
