@@ -121,13 +121,13 @@ func TestPaymentChannelStatus(t *testing.T) {
 	create := make(chan string)
 	go func() {
 		// creator: paych add-funds <creator> <receiver> <amount>
-		cmd = []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
+		cmd := []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
 		create <- creatorCLI.runCmd(paychAddFundsCmd, cmd)
 	}()
 
 	// Wait for the output to stop being "Channel does not exist"
 	for regexp.MustCompile(noChannelState).MatchString(out) {
-		cmd = []string{creatorAddr.String(), receiverAddr.String()}
+		cmd := []string{creatorAddr.String(), receiverAddr.String()}
 		out = creatorCLI.runCmd(paychStatusByFromToCmd, cmd)
 	}
 	fmt.Println(out)
