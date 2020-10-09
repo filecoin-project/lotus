@@ -1526,7 +1526,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 		ss.SetStage(api.StageMessages)
 
 		if batchErr != nil {
-			return xerrors.Errorf("failed to fetch messages: %w", err)
+			return xerrors.Errorf("failed to fetch messages: %w", batchErr)
 		}
 
 		for bsi := 0; bsi < len(bstout); bsi++ {
