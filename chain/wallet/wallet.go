@@ -110,14 +110,12 @@ func (w *Wallet) tryFind(addr address.Address) (types.KeyInfo, error) {
 	// We got an ErrKeyInfoNotFound error
 	// Try again, this time with the testnet prefix
 
-	aChars := []rune(addr.String())
-	prefixRunes := []rune(address.TestnetPrefix)
-	if len(prefixRunes) != 1 {
-		return types.KeyInfo{}, xerrors.Errorf("unexpected prefix length: %d", len(prefixRunes))
+	tAddress, err := swapMainnetForTestnetPrefix(addr.String())
+	if err != nil {
+		return types.KeyInfo{}, err
 	}
 
-	aChars[0] = prefixRunes[0]
-	ki, err = w.keystore.Get(KNamePrefix + string(aChars))
+	ki, err = w.keystore.Get(KNamePrefix + tAddress)
 	if err != nil {
 		return types.KeyInfo{}, err
 	}
@@ -291,6 +289,14 @@ func (w *Wallet) DeleteKey(addr address.Address) error {
 		return xerrors.Errorf("failed to delete key %s: %w", addr, err)
 	}
 
+	tAddr, err := swapMainnetForTestnetPrefix(addr.String())
+	if err != nil {
+		return xerrors.Errorf("failed to swap prefixes: %w", err)
+	}
+
+	// TODO: Does this always error in the not-found case? Just ignoring an error return for now.
+	_ = w.keystore.Delete(KNamePrefix + tAddr)
+
 	return nil
 }
 
@@ -350,4 +356,15 @@ func ActSigType(typ string) crypto.SigType {
 	default:
 		return 0
 	}
+}
+
+func swapMainnetForTestnetPrefix(addr string) (string, error) {
+	aChars := []rune(addr)
+	prefixRunes := []rune(address.TestnetPrefix)
+	if len(prefixRunes) != 1 {
+		return "", xerrors.Errorf("unexpected prefix length: %d", len(prefixRunes))
+	}
+
+	aChars[0] = prefixRunes[0]
+	return string(aChars), nil
 }
