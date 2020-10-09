@@ -120,12 +120,6 @@ func FetchMessagesByCids(
 			return err
 		}
 
-		// FIXME: We already sort in `fetchCids`, we are duplicating too much work,
-		//  we don't need to pass the index.
-		if out[i] != nil {
-			return fmt.Errorf("received duplicate message")
-		}
-
 		out[i] = msg
 		return nil
 	})
@@ -147,10 +141,6 @@ func FetchSignedMessagesByCids(
 		smsg, err := types.DecodeSignedMessage(b.RawData())
 		if err != nil {
 			return err
-		}
-
-		if out[i] != nil {
-			return fmt.Errorf("received duplicate message")
 		}
 
 		out[i] = smsg
@@ -184,24 +174,29 @@ func fetchCids(
 		return fmt.Errorf("duplicate CIDs in fetchCids input")
 	}
 
-	fetchedBlocks := bserv.GetBlocks(ctx, cids)
-
-	for i := 0; i < len(cids); i++ {
-		select {
-		case block, ok := <-fetchedBlocks:
-			if !ok {
-				return fmt.Errorf("failed to fetch all messages")
-			}
-
-			ix, ok := cidIndex[block.Cid()]
-			if !ok {
-				return fmt.Errorf("received message we didnt ask for")
-			}
-
-			if err := cb(ix, block); err != nil {
-				return err
-			}
+	for block := range bserv.GetBlocks(ctx, cids) {
+		ix, ok := cidIndex[block.Cid()]
+		if !ok {
+			// Ignore duplicate/unexpected blocks. This shouldn't
+			// happen, but we can be safe.
+			log.Errorw("received duplicate/unexpected block when syncing", "cid", block.Cid())
+			continue
 		}
+
+		// Record that we've received the block.
+		delete(cidIndex, block.Cid())
+
+		if err := cb(ix, block); err != nil {
+			return err
+		}
+	}
+
+	if len(cidIndex) > 0 {
+		err := ctx.Err()
+		if err == nil {
+			err = fmt.Errorf("failed to fetch %d messages for unknown reasons", len(cidIndex))
+		}
+		return err
 	}
 
 	return nil
