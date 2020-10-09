@@ -82,3 +82,17 @@ func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (
 
 	return &res, closer, err
 }
+
+// NewGatewayRPC creates a new http jsonrpc client for a gateway node.
+func NewGatewayRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.GatewayAPI, jsonrpc.ClientCloser, error) {
+	var res apistruct.GatewayStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
+		[]interface{}{
+			&res.Internal,
+		},
+		requestHeader,
+		opts...,
+	)
+
+	return &res, closer, err
+}

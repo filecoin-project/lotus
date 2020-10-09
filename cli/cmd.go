@@ -289,6 +289,15 @@ func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error)
 	return client.NewWorkerRPC(ctx.Context, addr, headers)
 }
 
+func GetGatewayAPI(ctx *cli.Context) (api.GatewayAPI, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewGatewayRPC(ctx.Context, addr, headers)
+}
+
 func DaemonContext(cctx *cli.Context) context.Context {
 	if mtCtx, ok := cctx.App.Metadata[metadataTraceContext]; ok {
 		return mtCtx.(context.Context)

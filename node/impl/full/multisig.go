@@ -23,9 +23,8 @@ import (
 type MsigAPI struct {
 	fx.In
 
-	WalletAPI WalletAPI
-	StateAPI  StateAPI
-	MpoolAPI  MpoolAPI
+	StateAPI StateAPI
+	MpoolAPI MpoolAPI
 }
 
 func (a *MsigAPI) messageBuilder(ctx context.Context, from address.Address) (multisig.MessageBuilder, error) {

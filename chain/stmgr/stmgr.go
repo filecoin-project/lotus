@@ -38,7 +38,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
+const LookbackNoLimit = abi.ChainEpoch(-1)
+
 var log = logging.Logger("statemgr")
+
+type StateManagerAPI interface {
+	LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
+	LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+}
 
 type versionSpec struct {
 	networkVersion network.Version
@@ -508,7 +516,7 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 		return nil, fmt.Errorf("failed to load message: %w", err)
 	}
 
-	_, r, _, err := sm.searchBackForMsg(ctx, ts, m)
+	_, r, _, err := sm.searchBackForMsg(ctx, ts, m, LookbackNoLimit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to look back through chain for message: %w", err)
 	}
@@ -517,9 +525,9 @@ func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 }
 
 // WaitForMessage blocks until a message appears on chain. It looks backwards in the chain to see if this has already
-// happened. It guarantees that the message has been on chain for at least confidence epochs without being reverted
-// before returning.
-func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+// happened, with an optional limit to how many epochs it will search. It guarantees that the message has been on
+// chain for at least confidence epochs without being reverted before returning.
+func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -557,7 +565,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 	var backFm cid.Cid
 	backSearchWait := make(chan struct{})
 	go func() {
-		fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head[0].Val, msg)
+		fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit)
 		if err != nil {
 			log.Warnf("failed to look back through chain for message: %w", err)
 			return
@@ -649,7 +657,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*ty
 		return head, r, foundMsg, nil
 	}
 
-	fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head, msg)
+	fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head, msg, LookbackNoLimit)
 
 	if err != nil {
 		log.Warnf("failed to look back through chain for message %s", mcid)
@@ -663,7 +671,15 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*ty
 	return fts, r, foundMsg, nil
 }
 
-func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+// searchBackForMsg searches up to limit tipsets backwards from the given
+// tipset for a message receipt.
+// If limit is
+// - 0 then no tipsets are searched
+// - 5 then five tipset are searched
+// - LookbackNoLimit then there is no limit
+func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg, limit abi.ChainEpoch) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+	limitHeight := from.Height() - limit
+	noLimit := limit == LookbackNoLimit
 
 	cur := from
 	curActor, err := sm.LoadActor(ctx, m.VMMessage().From, cur)
@@ -679,7 +695,9 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 	mNonce := m.VMMessage().Nonce
 
 	for {
-		if cur.Height() == 0 {
+		// If we've reached the genesis block, or we've reached the limit of
+		// how far back to look
+		if cur.Height() == 0 || !noLimit && cur.Height() <= limitHeight {
 			// it ain't here!
 			return nil, nil, cid.Undef, nil
 		}
@@ -1393,3 +1411,5 @@ func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (m
 	}
 	return actState, nil
 }
+
+var _ StateManagerAPI = (*StateManager)(nil)

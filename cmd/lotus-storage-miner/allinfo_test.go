@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/node"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -64,8 +62,8 @@ func TestMinerAllInfo(t *testing.T) {
 		require.NoError(t, infoAllCmd.Action(cctx))
 	}
 
-	bp := func(t *testing.T, nFull int, storage []test.StorageMiner, opts ...node.Option) ([]test.TestNode, []test.TestStorageNode) {
-		n, sn = builder.Builder(t, nFull, storage, opts...)
+	bp := func(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+		n, sn = builder.Builder(t, fullOpts, storage)
 
 		t.Run("pre-info-all", run)
 

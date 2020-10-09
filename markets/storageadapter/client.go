@@ -187,7 +187,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	_, ret, _, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage, build.MessageConfidence)
+	_, ret, _, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage, build.MessageConfidence, stmgr.LookbackNoLimit)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}

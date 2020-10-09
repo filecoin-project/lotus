@@ -59,9 +59,11 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 	var pcids []cid.Cid
 	var height abi.ChainEpoch
 	weight := types.NewInt(weightInc)
+	var timestamp uint64
 	if parents != nil {
 		pcids = parents.Cids()
 		height = parents.Height() + 1
+		timestamp = parents.MinTimestamp() + build.BlockDelaySecs
 		weight = types.BigAdd(parents.Blocks()[0].ParentWeight, weight)
 	}
 
@@ -79,6 +81,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 		ParentWeight:          weight,
 		Messages:              c,
 		Height:                height,
+		Timestamp:             timestamp,
 		ParentStateRoot:       pstateRoot,
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentBaseFee:         types.NewInt(uint64(build.MinimumBaseFee)),

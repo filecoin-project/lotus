@@ -42,12 +42,35 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+type StateModuleAPI interface {
+	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
+	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
+	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
+	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
+}
+
+// StateModule provides a default implementation of StateModuleAPI.
+// It can be swapped out with another implementation through Dependency
+// Injection (for example with a thin RPC client).
+type StateModule struct {
+	fx.In
+
+	StateManager *stmgr.StateManager
+	Chain        *store.ChainStore
+}
+
+var _ StateModuleAPI = (*StateModule)(nil)
+
 type StateAPI struct {
 	fx.In
 
 	// TODO: the wallet here is only needed because we have the MinerCreateBlock
 	// API attached to the state API. It probably should live somewhere better
 	Wallet *wallet.Wallet
+
+	StateModuleAPI
 
 	ProofVerifier ffiwrapper.Verifier
 	StateManager  *stmgr.StateManager
@@ -349,27 +372,33 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}, nil
 }
 
-func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.StateTree, error) {
+func stateForTs(ctx context.Context, ts *types.TipSet, cstore *store.ChainStore, smgr *stmgr.StateManager) (*state.StateTree, error) {
 	if ts == nil {
-		ts = a.Chain.GetHeaviestTipSet()
+		ts = cstore.GetHeaviestTipSet()
 	}
 
-	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	st, _, err := smgr.TipSetState(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	buf := bufbstore.NewBufferedBstore(a.Chain.Blockstore())
+	buf := bufbstore.NewBufferedBstore(cstore.Blockstore())
 	cst := cbor.NewCborStore(buf)
 	return state.LoadStateTree(cst, st)
 }
+func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.StateTree, error) {
+	return stateForTs(ctx, ts, a.Chain, a.StateManager)
+}
+func (m *StateModule) stateForTs(ctx context.Context, ts *types.TipSet) (*state.StateTree, error) {
+	return stateForTs(ctx, ts, m.Chain, m.StateManager)
+}
 
-func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	state, err := a.stateForTs(ctx, ts)
+	state, err := m.stateForTs(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state failed: %w", err)
 	}
@@ -377,26 +406,22 @@ func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, tsk
 	return state.GetActor(actor)
 }
 
-func (a *StateAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	state, err := a.stateForTs(ctx, ts)
-	if err != nil {
-		return address.Undef, err
-	}
 
-	return state.LookupID(addr)
+	return m.StateManager.LookupID(ctx, addr, ts)
 }
 
-func (a *StateAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return a.StateManager.ResolveToKeyAddress(ctx, addr, ts)
+	return m.StateManager.ResolveToKeyAddress(ctx, addr, ts)
 }
 
 func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
@@ -453,22 +478,28 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 	return &out, nil
 }
 
-func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	ts, recpt, found, err := a.StateManager.WaitForMessage(ctx, msg, confidence)
+func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+	return stateWaitMsgLimited(ctx, m.StateManager, m.Chain, msg, confidence, stmgr.LookbackNoLimit)
+}
+func (a *StateAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
+	return stateWaitMsgLimited(ctx, a.StateManager, a.Chain, msg, confidence, lookbackLimit)
+}
+func stateWaitMsgLimited(ctx context.Context, smgr *stmgr.StateManager, cstore *store.ChainStore, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
+	ts, recpt, found, err := smgr.WaitForMessage(ctx, msg, confidence, lookbackLimit)
 	if err != nil {
 		return nil, err
 	}
 
 	var returndec interface{}
 	if recpt.ExitCode == 0 && len(recpt.Return) > 0 {
-		cmsg, err := a.Chain.GetCMessage(msg)
+		cmsg, err := cstore.GetCMessage(msg)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load message after successful receipt search: %w", err)
 		}
 
 		vmsg := cmsg.VMMessage()
 
-		t, err := stmgr.GetReturnType(ctx, a.StateManager, vmsg.To, vmsg.Method, ts)
+		t, err := stmgr.GetReturnType(ctx, smgr, vmsg.To, vmsg.Method, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get return type: %w", err)
 		}
@@ -799,17 +830,17 @@ func (a *StateAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs
 	}, nil
 }
 
-func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	act, err := a.StateManager.LoadActor(ctx, addr, ts)
+	act, err := m.StateManager.LoadActor(ctx, addr, ts)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor: %w", err)
 	}
-	msas, err := multisig.Load(a.Chain.Store(ctx), act)
+	msas, err := multisig.Load(m.Chain.Store(ctx), act)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
@@ -858,13 +889,13 @@ func (a *StateAPI) MsigGetVestingSchedule(ctx context.Context, addr address.Addr
 	}, nil
 }
 
-func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
-	startTs, err := a.Chain.GetTipSetFromKey(start)
+func (m *StateModule) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	startTs, err := m.Chain.GetTipSetFromKey(start)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
 	}
 
-	endTs, err := a.Chain.GetTipSetFromKey(end)
+	endTs, err := m.Chain.GetTipSetFromKey(end)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
 	}
@@ -875,12 +906,12 @@ func (a *StateAPI) MsigGetVested(ctx context.Context, addr address.Address, star
 		return big.Zero(), nil
 	}
 
-	act, err := a.StateManager.LoadActor(ctx, addr, endTs)
+	act, err := m.StateManager.LoadActor(ctx, addr, endTs)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor at end epoch: %w", err)
 	}
 
-	msas, err := multisig.Load(a.Chain.Store(ctx), act)
+	msas, err := multisig.Load(m.Chain.Store(ctx), act)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}

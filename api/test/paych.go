@@ -33,7 +33,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
-	n, sn := b(t, 2, OneMiner)
+	n, sn := b(t, TwoFull, OneMiner)
 
 	paymentCreator := n[0]
 	paymentReceiver := n[1]

@@ -390,7 +390,7 @@ func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 }
 
 func startTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]test.TestNode, []address.Address) {
-	n, sn := builder.RPCMockSbBuilder(t, 2, test.OneMiner)
+	n, sn := builder.RPCMockSbBuilder(t, test.TwoFull, test.OneMiner)
 
 	paymentCreator := n[0]
 	paymentReceiver := n[1]
