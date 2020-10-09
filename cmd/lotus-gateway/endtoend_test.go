@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/cli"
 	clitest "github.com/filecoin-project/lotus/cli/test"
+	logging "github.com/ipfs/go-log/v2"
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
@@ -25,12 +26,14 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node"
 	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 const maxLookbackCap = time.Duration(math.MaxInt64)
+const maxStateWaitLookbackLimit = stmgr.LookbackNoLimit
 
 func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
@@ -38,15 +41,18 @@ func init() {
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
-// TestEndToEndWalletMsig tests that wallet and msig API calls can be made
-// on a lite node that is connected through a gateway to a full API node
-func TestEndToEndWalletMsig(t *testing.T) {
+// TestWalletMsig tests that API calls to wallet and msig can be made on a lite
+// node that is connected through a gateway to a full API node
+func TestWalletMsig(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	full, lite, closer := startNodes(ctx, t, blocktime, maxLookbackCap)
-	defer closer()
+	nodes := startNodes(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	defer nodes.closer()
+
+	lite := nodes.lite
+	full := nodes.full
 
 	// The full node starts with a wallet
 	fullWalletAddr, err := full.WalletDefaultAddress(ctx)
@@ -141,16 +147,19 @@ func TestEndToEndWalletMsig(t *testing.T) {
 	require.True(t, approveReturn.Applied)
 }
 
-// TestEndToEndMsigCLI tests that msig CLI calls can be made
+// TestMsigCLI tests that msig CLI calls can be made
 // on a lite node that is connected through a gateway to a full API node
-func TestEndToEndMsigCLI(t *testing.T) {
+func TestMsigCLI(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	full, lite, closer := startNodes(ctx, t, blocktime, maxLookbackCap)
-	defer closer()
+	nodes := startNodes(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	defer nodes.closer()
+
+	lite := nodes.lite
+	full := nodes.full
 
 	// The full node starts with a wallet
 	fullWalletAddr, err := full.WalletDefaultAddress(ctx)
@@ -190,7 +199,52 @@ func sendFunds(ctx context.Context, fromNode test.TestNode, fromAddr address.Add
 	return nil
 }
 
-func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration, lookbackCap time.Duration) (test.TestNode, test.TestNode, jsonrpc.ClientCloser) {
+func TestDealFlow(t *testing.T) {
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	blocktime := 5 * time.Millisecond
+	ctx := context.Background()
+	nodes := startNodes(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	defer nodes.closer()
+
+	full := nodes.full
+	lite := nodes.lite
+
+	// The full node starts with a wallet
+	fullWalletAddr, err := full.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
+	// Create a wallet on the lite node
+	liteWalletAddr, err := lite.WalletNew(ctx, types.KTSecp256k1)
+	require.NoError(t, err)
+
+	// Send some funds from the full node to the lite node
+	err = sendFunds(ctx, full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
+	require.NoError(t, err)
+
+	test.MakeDeal(t, ctx, 6, lite, nodes.miner, false, false)
+}
+
+type testNodes struct {
+	lite   test.TestNode
+	full   test.TestNode
+	miner  test.TestStorageNode
+	closer jsonrpc.ClientCloser
+}
+
+func startNodes(
+	ctx context.Context,
+	t *testing.T,
+	blocktime time.Duration,
+	lookbackCap time.Duration,
+	stateWaitLookbackLimit abi.ChainEpoch,
+) *testNodes {
 	var closer jsonrpc.ClientCloser
 
 	// Create one miner and two full nodes.
@@ -207,7 +261,8 @@ func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration, look
 				fullNode := nodes[0]
 
 				// Create a gateway server in front of the full node
-				_, addr, err := builder.CreateRPCServer(newGatewayAPI(fullNode, lookbackCap))
+				gapiImpl := newGatewayAPI(fullNode, lookbackCap, stateWaitLookbackLimit)
+				_, addr, err := builder.CreateRPCServer(gapiImpl)
 				require.NoError(t, err)
 
 				// Create a gateway client API that connects to the gateway server
@@ -234,9 +289,16 @@ func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration, look
 	err = miner.NetConnect(ctx, fullAddr)
 	require.NoError(t, err)
 
+	// Connect the miner and the lite node (so that the lite node can send
+	// data to the miner)
+	liteAddr, err := lite.NetAddrsListen(ctx)
+	require.NoError(t, err)
+	err = miner.NetConnect(ctx, liteAddr)
+	require.NoError(t, err)
+
 	// Start mining blocks
 	bm := test.NewBlockMiner(ctx, t, miner, blocktime)
 	bm.MineBlocks()
 
-	return full, lite, closer
+	return &testNodes{lite: lite, full: full, miner: miner, closer: closer}
 }

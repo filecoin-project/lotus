@@ -27,8 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/market"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
@@ -40,8 +38,6 @@ type ClientNodeAdapter struct {
 	full.ChainAPI
 	full.MpoolAPI
 
-	sm *stmgr.StateManager
-	cs *store.ChainStore
 	fm *market.FundMgr
 	ev *events.Events
 }
@@ -51,14 +47,12 @@ type clientApi struct {
 	full.StateAPI
 }
 
-func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, sm *stmgr.StateManager, cs *store.ChainStore, fm *market.FundMgr) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fm *market.FundMgr) storagemarket.StorageClientNode {
 	return &ClientNodeAdapter{
 		StateAPI: state,
 		ChainAPI: chain,
 		MpoolAPI: mpool,
 
-		sm: sm,
-		cs: cs,
 		fm: fm,
 		ev: events.NewEvents(context.TODO(), &clientApi{chain, state}),
 	}
@@ -138,12 +132,12 @@ func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address
 func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (abi.DealID, error) {
 	log.Infow("DEAL ACCEPTED!")
 
-	pubmsg, err := c.cs.GetMessage(*deal.PublishMessage)
+	pubmsg, err := c.ChainGetMessage(ctx, *deal.PublishMessage)
 	if err != nil {
 		return 0, xerrors.Errorf("getting deal publish message: %w", err)
 	}
 
-	mi, err := stmgr.StateMinerInfo(ctx, c.sm, c.cs.GetHeaviestTipSet(), deal.Proposal.Provider)
+	mi, err := c.StateMinerInfo(ctx, deal.Proposal.Provider, types.EmptyTSK)
 	if err != nil {
 		return 0, xerrors.Errorf("getting miner worker failed: %w", err)
 	}
@@ -189,16 +183,16 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	_, ret, _, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage, build.MessageConfidence, stmgr.LookbackNoLimit)
+	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
-	if ret.ExitCode != 0 {
-		return 0, xerrors.Errorf("deal publish failed: exit=%d", ret.ExitCode)
+	if ret.Receipt.ExitCode != 0 {
+		return 0, xerrors.Errorf("deal publish failed: exit=%d", ret.Receipt.ExitCode)
 	}
 
 	var res market2.PublishStorageDealsReturn
-	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Return)); err != nil {
+	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Receipt.Return)); err != nil {
 		return 0, err
 	}
 
@@ -218,7 +212,7 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
+		sd, err := c.StateMarketStorageDeal(ctx, dealId, ts.Key())
 
 		if err != nil {
 			// TODO: This may be fine for some errors
@@ -245,7 +239,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, nil
 		}
 
-		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
+		sd, err := c.StateMarketStorageDeal(ctx, dealId, ts.Key())
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}

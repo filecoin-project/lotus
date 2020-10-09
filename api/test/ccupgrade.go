@@ -89,7 +89,7 @@ func testCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeH
 		t.Fatal(err)
 	}
 
-	makeDeal(t, ctx, 6, client, miner, false, false)
+	MakeDeal(t, ctx, 6, client, miner, false, false)
 
 	// Validate upgrade
 
