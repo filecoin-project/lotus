@@ -484,7 +484,7 @@ var msigApproveCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigApprove(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
+		msgCid, err := api.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
 		if err != nil {
 			return err
 		}
@@ -1129,7 +1129,7 @@ var msigLockApproveCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigApprove(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
+		msgCid, err := api.MsigApproveTxnHash(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
 		if err != nil {
 			return err
 		}

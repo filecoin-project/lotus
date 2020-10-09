@@ -432,12 +432,21 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <recipient address>, <value to transfer>,
 	// <sender address of the propose msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	MsigPropose(context.Context, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
-	// MsigApprove approves a previously-proposed multisig message
+
+	// MsigApprove approves a previously-proposed multisig message by transaction ID
+	// It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
+	MsigApprove(context.Context, address.Address, uint64, address.Address) (cid.Cid, error)
+
+	// MsigApproveTxnHash approves a previously-proposed multisig message, specified
+	// using both transaction ID and a hash of the parameters used in the
+	// proposal. This method of approval can be used to ensure you only approve
+	// exactly the transaction you think you are.
 	// It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
 	// <sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
-	MsigApprove(context.Context, address.Address, uint64, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
+	MsigApproveTxnHash(context.Context, address.Address, uint64, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
+
 	// MsigCancel cancels a previously-proposed multisig message
-	// It takes the following params: <multisig address>, <proposed message ID>, <recipient address>, <value to transfer>,
+	// It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	MsigCancel(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
 	// MsigAddPropose proposes adding a signer in the multisig
@@ -464,6 +473,13 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
 	// <old signer>, <new signer>
 	MsigSwapCancel(context.Context, address.Address, address.Address, uint64, address.Address, address.Address) (cid.Cid, error)
+
+	// MsigRemoveSigner proposes the removal of a signer from the multisig.
+	// It accepts the multisig to make the change on, the proposer address to
+	// send the message from, the address to be removed, and a boolean
+	// indicating whether or not the signing threshold should be lowered by one
+	// along with the address removal.
+	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)
 	// MarketFreeBalance
