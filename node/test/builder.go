@@ -237,7 +237,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		}
 
 		stop, err := node.New(ctx,
-			node.FullAPI(&fulls[i].FullNode, fullOpts[i].Lite),
+			node.FullAPI(&fulls[i].FullNode, node.Lite(fullOpts[i].Lite)),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
 			node.MockHost(mn),
@@ -394,7 +394,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		}
 
 		stop, err := node.New(ctx,
-			node.FullAPI(&fulls[i].FullNode, fullOpts[i].Lite),
+			node.FullAPI(&fulls[i].FullNode, node.Lite(fullOpts[i].Lite)),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
 			node.MockHost(mn),

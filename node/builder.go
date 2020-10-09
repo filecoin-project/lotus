@@ -531,13 +531,22 @@ func Repo(r repo.Repo) Option {
 	}
 }
 
-func FullAPI(out *api.FullNode, lite bool) Option {
+type FullOption = Option
+
+func Lite(enable bool) FullOption {
+	return func(s *Settings) error {
+		s.Lite = enable
+		return nil
+	}
+}
+
+func FullAPI(out *api.FullNode, fopts ...FullOption) Option {
 	return Options(
 		func(s *Settings) error {
 			s.nodeType = repo.FullNode
-			s.Lite = lite
 			return nil
 		},
+		Options(fopts...),
 		func(s *Settings) error {
 			resAPI := &impl.FullNodeAPI{}
 			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
