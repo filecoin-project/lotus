@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -249,7 +250,9 @@ func Online() Option {
 			Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule()),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
 			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
-			Override(new(*wallet.Wallet), wallet.NewWallet),
+			Override(new(*wallet.LocalWallet), wallet.NewWallet),
+			Override(new(api.WalletAPI), From(new(*wallet.LocalWallet))),
+			Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
@@ -455,6 +458,9 @@ func ConfigFullNode(c interface{}) Option {
 		),
 		If(cfg.Metrics.HeadNotifs,
 			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+		),
+		If(cfg.Wallet.RemoteBackend != "",
+			Override(new(api.WalletAPI), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
 		),
 	)
 }

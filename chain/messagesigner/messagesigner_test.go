@@ -47,13 +47,13 @@ func TestMessageSignerSignMessage(t *testing.T) {
 	ctx := context.Background()
 
 	w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
-	from1, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	from1, err := w.WalletNew(ctx, crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
-	from2, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	from2, err := w.WalletNew(ctx, crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
-	to1, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	to1, err := w.WalletNew(ctx, crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
-	to2, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	to2, err := w.WalletNew(ctx, crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
 
 	type msgSpec struct {

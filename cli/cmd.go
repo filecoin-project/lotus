@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -12,8 +11,6 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -21,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -46,57 +44,6 @@ func NewCliError(s string) error {
 
 // ApiConnector returns API instance
 type ApiConnector func() api.FullNode
-
-type APIInfo struct {
-	Addr  string
-	Token []byte
-}
-
-func (a APIInfo) DialArgs() (string, error) {
-	ma, err := multiaddr.NewMultiaddr(a.Addr)
-	if err == nil {
-		_, addr, err := manet.DialArgs(ma)
-		if err != nil {
-			return "", err
-		}
-
-		return "ws://" + addr + "/rpc/v0", nil
-	}
-
-	_, err = url.Parse(a.Addr)
-	if err != nil {
-		return "", err
-	}
-	return a.Addr + "/rpc/v0", nil
-}
-
-func (a APIInfo) Host() (string, error) {
-	ma, err := multiaddr.NewMultiaddr(a.Addr)
-	if err == nil {
-		_, addr, err := manet.DialArgs(ma)
-		if err != nil {
-			return "", err
-		}
-
-		return addr, nil
-	}
-
-	spec, err := url.Parse(a.Addr)
-	if err != nil {
-		return "", err
-	}
-	return spec.Host, nil
-}
-
-func (a APIInfo) AuthHeader() http.Header {
-	if len(a.Token) != 0 {
-		headers := http.Header{}
-		headers.Add("Authorization", "Bearer "+string(a.Token))
-		return headers
-	}
-	log.Warn("API Token not set and requested, capabilities might be limited.")
-	return nil
-}
 
 // The flag passed on the command line with the listen address of the API
 // server (only used by the tests)
@@ -153,7 +100,7 @@ func envForRepoDeprecation(t repo.RepoType) string {
 	}
 }
 
-func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
+func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (cliutil.APIInfo, error) {
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)
 	apiFlag := flagForAPI(t)
@@ -161,7 +108,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		strma := ctx.String(apiFlag)
 		strma = strings.TrimSpace(strma)
 
-		return APIInfo{Addr: strma}, nil
+		return cliutil.APIInfo{Addr: strma}, nil
 	}
 
 	envKey := envForRepo(t)
@@ -175,32 +122,24 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		}
 	}
 	if ok {
-		sp := strings.SplitN(env, ":", 2)
-		if len(sp) != 2 {
-			log.Warnf("invalid env(%s) value, missing token or address", envKey)
-		} else {
-			return APIInfo{
-				Addr:  sp[1],
-				Token: []byte(sp[0]),
-			}, nil
-		}
+		return cliutil.ParseApiInfo(env), nil
 	}
 
 	repoFlag := flagForRepo(t)
 
 	p, err := homedir.Expand(ctx.String(repoFlag))
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
+		return cliutil.APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
 	}
 
 	r, err := repo.NewFS(p)
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+		return cliutil.APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
 	}
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+		return cliutil.APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
 	}
 
 	token, err := r.APIToken()
@@ -208,7 +147,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
 	}
 
-	return APIInfo{
+	return cliutil.APIInfo{
 		Addr:  ma.String(),
 		Token: token,
 	}, nil

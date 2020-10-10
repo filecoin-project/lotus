@@ -15,11 +15,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/sigs/bls"
 )
 
-func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
+func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletAPI, bt *api.BlockTemplate) (*types.FullBlock, error) {
 
 	pts, err := sm.ChainStore().LoadTipSet(bt.Parents)
 	if err != nil {
@@ -131,7 +130,9 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		return nil, xerrors.Errorf("failed to get signing bytes for block: %w", err)
 	}
 
-	sig, err := w.Sign(ctx, waddr, nosigbytes)
+	sig, err := w.WalletSign(ctx, waddr, nosigbytes, api.MsgMeta{
+		Type: api.MTBlock,
+	})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign new block: %w", err)
 	}

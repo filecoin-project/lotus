@@ -105,7 +105,7 @@ var keyinfoVerifyCmd = &cli.Command{
 				return err
 			}
 
-			if _, err := w.Import(&keyInfo); err != nil {
+			if _, err := w.WalletImport(cctx.Context, &keyInfo); err != nil {
 				return err
 			}
 
@@ -220,7 +220,7 @@ var keyinfoImportCmd = &cli.Command{
 				return err
 			}
 
-			addr, err := w.Import(&keyInfo)
+			addr, err := w.WalletImport(cctx.Context, &keyInfo)
 			if err != nil {
 				return err
 			}

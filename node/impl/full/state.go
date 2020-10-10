@@ -5,14 +5,6 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
-
-	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/go-state-types/network"
-
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"go.uber.org/fx"
@@ -22,14 +14,19 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -68,7 +65,8 @@ type StateAPI struct {
 
 	// TODO: the wallet here is only needed because we have the MinerCreateBlock
 	// API attached to the state API. It probably should live somewhere better
-	Wallet *wallet.Wallet
+	Wallet    api.WalletAPI
+	DefWallet wallet.Default
 
 	StateModuleAPI
 

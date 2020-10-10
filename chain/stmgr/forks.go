@@ -24,7 +24,6 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	m2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
-	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -578,19 +577,6 @@ func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 	newHamtRoot, err := m2.MigrateStateTree(ctx, store, root, epoch, m2.DefaultConfig())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %w", err)
-	}
-
-	newStateTree, err := states2.LoadTree(store, newHamtRoot)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to load new state tree: %w", err)
-	}
-
-	// Check all state-tree invariants.
-	if msgs, err := states2.CheckStateInvariants(newStateTree, types.TotalFilecoinInt); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to check new state tree: %w", err)
-	} else if !msgs.IsEmpty() {
-		// This error is going to be really nasty.
-		return cid.Undef, xerrors.Errorf("network upgrade failed: %v", msgs.Messages())
 	}
 
 	newRoot, err := store.Put(ctx, &types.StateRoot{
