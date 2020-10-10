@@ -436,6 +436,10 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
 
+	if err := cst.FlushValidationCache(); err != nil {
+		return xerrors.Errorf("flushing validation cache failed: %w", err)
+	}
+
 	gb, err := cst.GetTipsetByHeight(context.TODO(), 0, ts, true)
 	if err != nil {
 		return err
@@ -455,7 +459,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 		}
 	}
 
-	log.Info("accepting %s as new head", ts.Cids())
+	log.Infof("accepting %s as new head", ts.Cids())
 	if err := cst.SetHead(ts); err != nil {
 		return err
 	}
