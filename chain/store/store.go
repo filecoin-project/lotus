@@ -454,7 +454,17 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 func (cs *ChainStore) FlushValidationCache() error {
 	log.Infof("clearing block validation cache...")
 
-	dsWalk, err := cs.ds.Query(query.Query{KeysOnly: true})
+	dsWalk, err := cs.ds.Query(query.Query{
+		// Potential TODO: the validation cache is not a namespace on its own
+		// but is rather constructed as prefixed-key `foo:bar` via .Instance(), which
+		// in turn does not work with the filter, which can match only on `foo/bar`
+		//
+		// If this is addressed (blockcache goes into its own sub-namespace) then
+		// strings.HasPrefix(...) below can be skipped
+		//
+		//Prefix: blockValidationCacheKeyPrefix.String()
+		KeysOnly: true,
+	})
 	if err != nil {
 		return xerrors.Errorf("failed to initialize key listing query: %w", err)
 	}
