@@ -1,5 +1,25 @@
 # Lotus changelog
 
+# 0.9.1 / 2020-10-10
+
+This release fixes an issue which may cause the actors v2 migration to compute the state incorrectly when more than one migration is running in parallel.
+
+## Changes
+
+- Make concurrent actor migrations safe (https://github.com/filecoin-project/lotus/pull/4293)
+- Remote wallet backends (https://github.com/filecoin-project/lotus/pull/3583)
+- Track funds in FundMgr correctly in case of AddFunds failing (https://github.com/filecoin-project/lotus/pull/4273)
+- Partial lite-node mode (https://github.com/filecoin-project/lotus/pull/4095)
+- Fix potential infinite loop in GetBestMiningCandidate (https://github.com/filecoin-project/lotus/pull/3444)
+- sync wait: Handle processed message offset (https://github.com/filecoin-project/lotus/pull/4253)
+- Add some new endpoints for querying Msig info (https://github.com/filecoin-project/lotus/pull/4250)
+- Update markets v0.7.1 (https://github.com/filecoin-project/lotus/pull/4254)
+- Optimize SearchForMessage and GetReceipt (https://github.com/filecoin-project/lotus/pull/4246)
+- Use FIL instead of attoFIL in CLI more consistently (https://github.com/filecoin-project/lotus/pull/4249)
+- fix: clash between daemon --api flag and cli tests (https://github.com/filecoin-project/lotus/pull/4241)
+- add more info to chain sync lookback failure (https://github.com/filecoin-project/lotus/pull/4245)
+- Add message counts to inspect chain output (https://github.com/filecoin-project/lotus/pull/4230)
+
 # 0.9.0 / 2020-10-07
 
 This consensus-breaking release of Lotus upgrades the actors version to v2.0.0. This requires migrating actor state from v0 to v2. The changes that break consensus are:
