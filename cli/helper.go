@@ -35,7 +35,7 @@ func RunApp(app *cli.App) {
 		if os.Getenv("LOTUS_DEV") != "" {
 			log.Warnf("%+v", err)
 		} else {
-			fmt.Printf("ERROR: %s\n\n", err)
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n\n", err) // nolint:errcheck
 		}
 		var phe *PrintHelpErr
 		if xerrors.As(err, &phe) {
