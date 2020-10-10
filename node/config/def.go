@@ -110,6 +110,8 @@ type Client struct {
 
 type Wallet struct {
 	RemoteBackend string
+	EnableLedger  bool
+	DisableLocal  bool
 }
 
 func defCommon() Common {

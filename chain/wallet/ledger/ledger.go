@@ -17,13 +17,14 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type LedgerWallet struct {
 	ds datastore.Datastore
 }
 
-func NewWallet(ds datastore.Datastore) *LedgerWallet {
+func NewWallet(ds dtypes.MetadataDS) *LedgerWallet {
 	return &LedgerWallet{ds}
 }
 
@@ -127,7 +128,7 @@ func (lw LedgerWallet) WalletImport(ctx context.Context, kinfo *types.KeyInfo) (
 }
 
 func (lw LedgerWallet) WalletList(ctx context.Context) ([]address.Address, error) {
-	res, err := lw.ds.Query(query.Query{Prefix: "ledgerkey/"})
+	res, err := lw.ds.Query(query.Query{Prefix: "/ledgerkey/"})
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +154,14 @@ func (lw LedgerWallet) WalletNew(ctx context.Context, t crypto.SigType) (address
 	return address.Undef, fmt.Errorf("cannot create new address on ledger")
 }
 
+func (lw *LedgerWallet) Get() api.WalletAPI {
+	if lw == nil {
+		return nil
+	}
+
+	return lw
+}
+
 func keyForAddr(addr address.Address) datastore.Key {
-	return datastore.NewKey("ledgerkey/" + addr.String())
+	return datastore.NewKey("/ledgerkey/" + addr.String())
 }

@@ -300,6 +300,14 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 	return nil
 }
 
+func (w *LocalWallet) Get() api.WalletAPI {
+	if w == nil {
+		return nil
+	}
+
+	return w
+}
+
 var _ api.WalletAPI = &LocalWallet{}
 
 func swapMainnetForTestnetPrefix(addr string) (string, error) {
@@ -312,3 +320,16 @@ func swapMainnetForTestnetPrefix(addr string) (string, error) {
 	aChars[0] = prefixRunes[0]
 	return string(aChars), nil
 }
+
+type nilDefault struct{}
+
+func (n nilDefault) GetDefault() (address.Address, error) {
+	return address.Undef, nil
+}
+
+func (n nilDefault) SetDefault(a address.Address) error {
+	return xerrors.Errorf("not supported; local wallet disabled")
+}
+
+var NilDefault nilDefault
+var _ Default = NilDefault
