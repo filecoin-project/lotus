@@ -141,6 +141,9 @@ func (w *LocalWallet) WalletExport(ctx context.Context, addr address.Address) (*
 	if err != nil {
 		return nil, xerrors.Errorf("failed to find key to export: %w", err)
 	}
+	if k == nil {
+		return nil, xerrors.Errorf("key not found")
+	}
 
 	return &k.KeyInfo, nil
 }
@@ -273,6 +276,9 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 	k, err := w.findKey(addr)
 	if err != nil {
 		return xerrors.Errorf("failed to delete key %s : %w", addr, err)
+	}
+	if k == nil {
+		return nil // already not there
 	}
 
 	if err := w.keystore.Put(KTrashPrefix+k.Address.String(), k.KeyInfo); err != nil {
