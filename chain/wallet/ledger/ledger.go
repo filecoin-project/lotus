@@ -1,9 +1,12 @@
 package ledgerwallet
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -27,7 +30,7 @@ type LedgerKeyInfo struct {
 	Path    []uint32
 }
 
-var _ (api.WalletAPI) = (*LedgerWallet)(nil)
+var _ api.WalletAPI = (*LedgerWallet)(nil)
 
 func (lw LedgerWallet) WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta api.MsgMeta) (*crypto.Signature, error) {
 	ki, err := lw.getKeyInfo(signer)
@@ -44,7 +47,21 @@ func (lw LedgerWallet) WalletSign(ctx context.Context, signer address.Address, t
 		return nil, fmt.Errorf("ledger can only sign chain messages")
 	}
 
-	// TODO: assert meta matches the 'toSign' bits
+	{
+		var cmsg types.Message
+		if err := cmsg.UnmarshalCBOR(bytes.NewReader(meta.Extra)); err != nil {
+			return nil, xerrors.Errorf("unmarshalling message: %w", err)
+		}
+
+		_, bc, err := cid.CidFromBytes(toSign)
+		if err != nil {
+			return nil, xerrors.Errorf("getting cid from signing bytes: %w", err)
+		}
+
+		if !cmsg.Cid().Equals(bc) {
+			return nil, xerrors.Errorf("cid(meta.Extra).bytes() != toSign")
+		}
+	}
 
 	sig, err := fl.SignSECP256K1(ki.Path, meta.Extra)
 	if err != nil {

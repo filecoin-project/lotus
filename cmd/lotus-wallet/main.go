@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api"
 	"net"
 	"net/http"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-jsonrpc"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
@@ -63,7 +64,7 @@ var runCmd = &cli.Command{
 			Value: "0.0.0.0:1777",
 		},
 		&cli.BoolFlag{
-			Name: "ledger",
+			Name:  "ledger",
 			Usage: "use a ledger device instead of an on-disk wallet",
 		},
 	},
@@ -114,7 +115,6 @@ var runCmd = &cli.Command{
 
 			w = ledgerwallet.NewWallet(ds)
 		}
-
 
 		address := cctx.String("listen")
 		mux := mux.NewRouter()
