@@ -81,6 +81,7 @@ require (
 	github.com/ipfs/go-log v1.0.4
 	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
 	github.com/ipfs/go-merkledag v0.3.2
+	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
@@ -115,6 +116,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
+	github.com/prometheus/client_golang v1.6.0
 	github.com/raulk/clock v1.1.0
 	github.com/stretchr/testify v1.6.1
 	github.com/supranational/blst v0.1.1

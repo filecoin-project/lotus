@@ -26,7 +26,9 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
 	"github.com/ipld/go-car"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -95,6 +97,7 @@ var importBenchCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		metricsprometheus.Inject()
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 		if !cctx.Args().Present() {
 			fmt.Println("must pass car file of chain to benchmark importing")
@@ -108,6 +111,7 @@ var importBenchCmd = &cli.Command{
 		defer cfi.Close() //nolint:errcheck // read only file
 
 		go func() {
+			http.Handle("/debug/metrics/prometheus", promhttp.Handler())
 			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
 		}()
 
@@ -159,7 +163,6 @@ var importBenchCmd = &cli.Command{
 		}
 		defer bds.Close() //nolint:errcheck
 
-		under := bds
 		bds = measure.New("dsbench", bds)
 
 		bs := blockstore.NewBlockstore(bds)
