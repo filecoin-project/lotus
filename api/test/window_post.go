@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"os"
 	"strings"
@@ -31,7 +32,9 @@ func init() {
 }
 
 func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	n, sn := b(t, OneFull, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
@@ -46,11 +49,11 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 	}
 	build.Clock.Sleep(time.Second)
 
-	mine := true
+	mine := int64(1)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for mine {
+		for atomic.LoadInt64(&mine) != 0 {
 			build.Clock.Sleep(blocktime)
 			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
 
@@ -62,7 +65,7 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 
 	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
 
-	mine = false
+	atomic.StoreInt64(&mine, 0)
 	<-done
 }
 
