@@ -1740,6 +1740,10 @@ func (syncer *Syncer) UnmarkBad(blk cid.Cid) {
 	syncer.bad.Remove(blk)
 }
 
+func (syncer *Syncer) UnmarkAllBad() {
+	syncer.bad.Purge()
+}
+
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
 	bbr, ok := syncer.bad.Has(blk)
 	return bbr.String(), ok

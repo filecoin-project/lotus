@@ -122,8 +122,14 @@ var syncMarkBadCmd = &cli.Command{
 }
 
 var syncUnmarkBadCmd = &cli.Command{
-	Name:      "unmark-bad",
-	Usage:     "Unmark the given block as bad, makes it possible to sync to a chain containing it",
+	Name:  "unmark-bad",
+	Usage: "Unmark the given block as bad, makes it possible to sync to a chain containing it",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "all",
+			Usage: "drop the entire bad block cache",
+		},
+	},
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
 		napi, closer, err := GetFullNodeAPI(cctx)
@@ -132,6 +138,10 @@ var syncUnmarkBadCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.Bool("all") {
+			return napi.SyncUnmarkAllBad(ctx)
+		}
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify block cid to unmark")
