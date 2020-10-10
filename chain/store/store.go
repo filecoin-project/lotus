@@ -473,7 +473,7 @@ func (cs *ChainStore) FlushValidationCache() error {
 	for _, k := range allKeys {
 		if strings.HasPrefix(k.Key, blockValidationCacheKeyPrefix.String()) {
 			delCnt++
-			batch.Delete(datastore.RawKey(k.Key))
+			batch.Delete(datastore.RawKey(k.Key)) // nolint:errcheck
 		}
 	}
 
