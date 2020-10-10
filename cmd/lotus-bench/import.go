@@ -34,6 +34,7 @@ import (
 	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
+	measure "github.com/ipfs/go-ds-measure"
 	pebbleds "github.com/ipfs/go-ds-pebble"
 
 	"github.com/urfave/cli/v2"
@@ -89,6 +90,9 @@ var importBenchCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "only-import",
 		},
+		&cli.BoolFlag{
+			Name: "use-pebble",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
@@ -126,7 +130,7 @@ var importBenchCmd = &cli.Command{
 		bdgOpt.Options.DetectConflicts = false
 
 		var bds datastore.Batching
-		if false {
+		if cctx.Bool("use-pebble") {
 			cache := 512
 			bds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
 				// Pebble has a single combined cache area and the write
@@ -154,6 +158,9 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 		defer bds.Close() //nolint:errcheck
+
+		under := bds
+		bds = measure.New("dsbench", bds)
 
 		bs := blockstore.NewBlockstore(bds)
 		cacheOpts := blockstore.DefaultCacheOpts()

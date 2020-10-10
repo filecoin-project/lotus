@@ -12,7 +12,7 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/cockroachdb/pebble v0.0.0-20200916222308-4e219a90ba5b
+	github.com/cockroachdb/pebble v0.0.0-20201001221639-879f3bfeef07
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.2007.2
