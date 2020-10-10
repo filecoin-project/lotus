@@ -175,6 +175,7 @@
   * [SyncMarkBad](#SyncMarkBad)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
+  * [SyncUnmarkAllBad](#SyncUnmarkAllBad)
   * [SyncUnmarkBad](#SyncUnmarkBad)
   * [SyncValidateTipset](#SyncValidateTipset)
 * [Wallet](#Wallet)
@@ -4543,6 +4544,16 @@ Inputs:
   }
 ]
 ```
+
+Response: `{}`
+
+### SyncUnmarkAllBad
+SyncUnmarkAllBad purges bad block cache, making it possible to sync to chains previously marked as bad
+
+
+Perms: admin
+
+Inputs: `null`
 
 Response: `{}`
 

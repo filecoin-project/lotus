@@ -122,11 +122,11 @@ var syncMarkBadCmd = &cli.Command{
 }
 
 var syncUnmarkBadCmd = &cli.Command{
-	Name:      "unmark-bad",
-	Usage:     "Unmark the given block as bad, makes it possible to sync to a chain containing it",
+	Name:  "unmark-bad",
+	Usage: "Unmark the given block as bad, makes it possible to sync to a chain containing it",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "all",
+			Name:  "all",
 			Usage: "drop the entire bad block cache",
 		},
 	},
