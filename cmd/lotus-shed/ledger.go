@@ -65,7 +65,7 @@ var ledgerListAddressesCmd = &cli.Command{
 				return err
 			}
 
-			p := []uint32{hdHard | 44, hdHard | 461, hdHard | 0, 0, uint32(i)}
+			p := []uint32{hdHard | 44, hdHard | 461, hdHard, 0, uint32(i)}
 			pubk, err := fl.GetPublicKeySECP256K1(p)
 			if err != nil {
 				return err
