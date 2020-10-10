@@ -120,6 +120,7 @@ require (
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163
+	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542

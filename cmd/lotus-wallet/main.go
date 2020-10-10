@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -98,6 +99,14 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		_ = w
+
+		ds, err := lr.Datastore("/metadata")
+		if err != nil {
+			return err
+		}
+
+		lw := ledgerwallet.NewWallet(ds)
 
 		address := cctx.String("listen")
 		mux := mux.NewRouter()
@@ -105,7 +114,7 @@ var runCmd = &cli.Command{
 		log.Info("Setting up API endpoint at " + address)
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", &LoggedWallet{under: w})
+		rpcServer.Register("Filecoin", &LoggedWallet{under: lw})
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
