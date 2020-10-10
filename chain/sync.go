@@ -1726,7 +1726,7 @@ func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []b
 	return gen.VerifyVRF(ctx, worker, rand, evrf)
 }
 
-func (syncer *Syncer) State() []SyncerState {
+func (syncer *Syncer) State() []SyncerStateSnapshot {
 	return syncer.syncmgr.State()
 }
 
