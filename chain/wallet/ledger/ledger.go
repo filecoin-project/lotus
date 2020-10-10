@@ -5,16 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/query"
+	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
-	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
 )
 
 type LedgerWallet struct {
@@ -42,7 +44,7 @@ func (lw LedgerWallet) WalletSign(ctx context.Context, signer address.Address, t
 	if err != nil {
 		return nil, err
 	}
-	defer fl.Close()
+	defer fl.Close() // nolint:errcheck
 	if meta.Type != api.MTChainMsg {
 		return nil, fmt.Errorf("ledger can only sign chain messages")
 	}
@@ -82,7 +84,7 @@ func (lw LedgerWallet) getKeyInfo(addr address.Address) (*LedgerKeyInfo, error) 
 
 	var out LedgerKeyInfo
 	if err := json.Unmarshal(kib, &out); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("unmarshalling ledger key info: %w", err)
 	}
 
 	return &out, nil

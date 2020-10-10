@@ -33,8 +33,8 @@ var ledgerListAddressesCmd = &cli.Command{
 	Name: "list",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "print-balances",
-			Usage: "print balances",
+			Name:    "print-balances",
+			Usage:   "print balances",
 			Aliases: []string{"b"},
 		},
 	},
@@ -137,19 +137,11 @@ func printHDPath(pth []uint32) string {
 	return strings.TrimRight(s, "/")
 }
 
-func numlist(p []uint32) string {
-	var out []string
-	for _, v := range p {
-		out = append(out, fmt.Sprint(v))
-	}
-	return strings.Join(out, ",")
-}
-
 var ledgerKeyInfoCmd = &cli.Command{
 	Name: "key-info",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "verbose",
+			Name:    "verbose",
 			Aliases: []string{"v"},
 		},
 	},
