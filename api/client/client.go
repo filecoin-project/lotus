@@ -96,3 +96,15 @@ func NewGatewayRPC(ctx context.Context, addr string, requestHeader http.Header, 
 
 	return &res, closer, err
 }
+
+func NewWalletRPC(ctx context.Context, addr string, requestHeader http.Header) (api.WalletAPI, jsonrpc.ClientCloser, error) {
+	var res apistruct.WalletStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
+		[]interface{}{
+			&res.Internal,
+		},
+		requestHeader,
+	)
+
+	return &res, closer, err
+}

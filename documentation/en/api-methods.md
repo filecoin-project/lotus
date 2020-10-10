@@ -2146,8 +2146,7 @@ Inputs:
 Response: `"0"`
 
 ### MsigGetVestingSchedule
-MsigGetLockedBalance returns the locked balance of an msig at a vien epoch.
-The return may be greater than the multisig actor's actual balance.
+MsigGetVestingSchedule returns the vesting details of a given multisig.
 
 
 Perms: read

@@ -593,7 +593,7 @@ func TestDuplicateNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -685,7 +685,7 @@ func TestBadNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
