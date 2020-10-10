@@ -7,11 +7,15 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/urfave/cli/v2"
+	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
-	"github.com/urfave/cli/v2"
-	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var ledgerCmd = &cli.Command{
@@ -27,7 +31,26 @@ var ledgerCmd = &cli.Command{
 
 var ledgerListAddressesCmd = &cli.Command{
 	Name: "list",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "print-balances",
+			Usage: "print balances",
+			Aliases: []string{"b"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
+		var api api.FullNode
+		if cctx.Bool("print-balances") {
+			a, closer, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return err
+			}
+
+			api = a
+
+			defer closer()
+		}
+		ctx := lcli.ReqContext(cctx)
 
 		fl, err := ledgerfil.FindLedgerFilecoinApp()
 		if err != nil {
@@ -35,6 +58,10 @@ var ledgerListAddressesCmd = &cli.Command{
 		}
 
 		for i := 0; i < 20; i++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
 			p := []uint32{0x80000000 + 44, 0x80000000 + 461, 0x80000000, 0, uint32(i)}
 			pubk, err := fl.GetPublicKeySECP256K1(p)
 			if err != nil {
@@ -46,7 +73,17 @@ var ledgerListAddressesCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Printf("%s: %s\n", addr, printHDPath(p))
+			if cctx.Bool("print-balances") && api != nil { // api check makes linter happier
+				b, err := api.WalletBalance(ctx, addr)
+				if err != nil {
+					return xerrors.Errorf("getting balance: %w", err)
+				}
+
+				fmt.Printf("%s %s %s\n", addr, printHDPath(p), types.FIL(b))
+			} else {
+				fmt.Printf("%s %s\n", addr, printHDPath(p))
+			}
+
 		}
 
 		return nil
@@ -110,6 +147,12 @@ func numlist(p []uint32) string {
 
 var ledgerKeyInfoCmd = &cli.Command{
 	Name: "key-info",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "verbose",
+			Aliases: []string{"v"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
@@ -129,8 +172,10 @@ var ledgerKeyInfoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(addr)
-		fmt.Println(pubk)
+		if cctx.Bool("verbose") {
+			fmt.Println(addr)
+			fmt.Println(pubk)
+		}
 
 		a, err := address.NewFromString(addr)
 		if err != nil {
