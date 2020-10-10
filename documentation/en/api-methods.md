@@ -83,12 +83,14 @@
   * [MsigAddCancel](#MsigAddCancel)
   * [MsigAddPropose](#MsigAddPropose)
   * [MsigApprove](#MsigApprove)
+  * [MsigApproveTxnHash](#MsigApproveTxnHash)
   * [MsigCancel](#MsigCancel)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
   * [MsigGetVested](#MsigGetVested)
   * [MsigGetVestingSchedule](#MsigGetVestingSchedule)
   * [MsigPropose](#MsigPropose)
+  * [MsigRemoveSigner](#MsigRemoveSigner)
   * [MsigSwapApprove](#MsigSwapApprove)
   * [MsigSwapCancel](#MsigSwapCancel)
   * [MsigSwapPropose](#MsigSwapPropose)
@@ -2007,7 +2009,33 @@ Response:
 ```
 
 ### MsigApprove
-MsigApprove approves a previously-proposed multisig message
+MsigApprove approves a previously-proposed multisig message by transaction ID
+It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  42,
+  "f01234"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigApproveTxnHash
+MsigApproveTxnHash approves a previously-proposed multisig message, specified
+using both transaction ID and a hash of the parameters used in the
+proposal. This method of approval can be used to ensure you only approve
+exactly the transaction you think you are.
 It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
 <sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
 
@@ -2037,7 +2065,7 @@ Response:
 
 ### MsigCancel
 MsigCancel cancels a previously-proposed multisig message
-It takes the following params: <multisig address>, <proposed message ID>, <recipient address>, <value to transfer>,
+It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 
 
@@ -2192,6 +2220,33 @@ Inputs:
   "f01234",
   42,
   "Ynl0ZSBhcnJheQ=="
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigRemoveSigner
+MsigRemoveSigner proposes the removal of a signer from the multisig.
+It accepts the multisig to make the change on, the proposer address to
+send the message from, the address to be removed, and a boolean
+indicating whether or not the signing threshold should be lowered by one
+along with the address removal.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "f01234",
+  true
 ]
 ```
 
