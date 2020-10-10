@@ -172,6 +172,9 @@ type FullNode interface {
 	// SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
 	SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error
 
+	// SyncUnmarkAllBad purges bad block cache, making it possible to sync to chains previously marked as bad
+	SyncUnmarkAllBad(ctx context.Context) error
+
 	// SyncCheckBad checks if a block was marked as bad, and if it was, returns
 	// the reason.
 	SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error)

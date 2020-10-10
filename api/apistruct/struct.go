@@ -111,6 +111,7 @@ type FullNodeStruct struct {
 		SyncCheckpoint     func(ctx context.Context, key types.TipSetKey) error         `perm:"admin"`
 		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
 		SyncUnmarkBad      func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
+		SyncUnmarkAllBad   func(ctx context.Context) error                `perm:"admin"`
 		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
 		SyncValidateTipset func(ctx context.Context, tsk types.TipSetKey) (bool, error) `perm:"read"`
 
@@ -778,6 +779,10 @@ func (c *FullNodeStruct) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
 
 func (c *FullNodeStruct) SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error {
 	return c.Internal.SyncUnmarkBad(ctx, bcid)
+}
+
+func (c *FullNodeStruct) SyncUnmarkAllBad(ctx context.Context) error {
+	return c.Internal.SyncUnmarkAllBad(ctx)
 }
 
 func (c *FullNodeStruct) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) {
