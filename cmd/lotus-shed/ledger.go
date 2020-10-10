@@ -29,6 +29,8 @@ var ledgerCmd = &cli.Command{
 	},
 }
 
+const hdHard = 0x80000000
+
 var ledgerListAddressesCmd = &cli.Command{
 	Name: "list",
 	Flags: []cli.Flag{
@@ -57,12 +59,13 @@ var ledgerListAddressesCmd = &cli.Command{
 			return err
 		}
 
-		for i := 0; i < 20; i++ {
+		end := 20
+		for i := 0; i < end; i++ {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
 
-			p := []uint32{0x80000000 + 44, 0x80000000 + 461, 0x80000000, 0, uint32(i)}
+			p := []uint32{hdHard | 44, hdHard | 461, hdHard | 0, 0, uint32(i)}
 			pubk, err := fl.GetPublicKeySECP256K1(p)
 			if err != nil {
 				return err
@@ -77,6 +80,9 @@ var ledgerListAddressesCmd = &cli.Command{
 				b, err := api.WalletBalance(ctx, addr)
 				if err != nil {
 					return xerrors.Errorf("getting balance: %w", err)
+				}
+				if !b.IsZero() {
+					end = i + 21 // BIP32 spec, stop after 20 empty addresses
 				}
 
 				fmt.Printf("%s %s %s\n", addr, printHDPath(p), types.FIL(b))
@@ -108,12 +114,12 @@ func parseHDPath(s string) ([]uint32, error) {
 		if err != nil {
 			return nil, err
 		}
-		if v >= 0x80000000 {
+		if v >= hdHard {
 			return nil, fmt.Errorf("path element %s too large", p)
 		}
 
 		if hard {
-			v += 0x80000000
+			v += hdHard
 		}
 		out = append(out, uint32(v))
 	}
@@ -121,20 +127,20 @@ func parseHDPath(s string) ([]uint32, error) {
 }
 
 func printHDPath(pth []uint32) string {
-	s := "m/"
+	s := "m"
 	for _, p := range pth {
-		var hard bool
-		if p >= 0x80000000 {
-			p -= 0x80000000
-		}
+		s += "/"
+
+		hard := p&hdHard != 0
+		p &^= hdHard // remove hdHard bit
+
 		s += fmt.Sprint(p)
 		if hard {
 			s += "'"
 		}
-		s += "/"
 	}
 
-	return strings.TrimRight(s, "/")
+	return s
 }
 
 var ledgerKeyInfoCmd = &cli.Command{
@@ -164,6 +170,7 @@ var ledgerKeyInfoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
 		if cctx.Bool("verbose") {
 			fmt.Println(addr)
 			fmt.Println(pubk)
