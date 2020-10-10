@@ -42,11 +42,13 @@ func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.
 		return xerrors.Errorf("failed to subscribe to event bus: %w", err)
 	}
 
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
 	go func() {
 		for evt := range sub.Out() {
 			pic := evt.(event.EvtPeerIdentificationCompleted)
 			go func() {
-				if err := svc.SayHello(helpers.LifecycleCtx(mctx, lc), pic.Peer); err != nil {
+				if err := svc.SayHello(ctx, pic.Peer); err != nil {
 					protos, _ := h.Peerstore().GetProtocols(pic.Peer)
 					agent, _ := h.Peerstore().Get(pic.Peer, "AgentVersion")
 					if protosContains(protos, hello.ProtocolID) {
