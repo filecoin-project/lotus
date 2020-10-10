@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/api"
 	"net"
 	"net/http"
 	"os"
@@ -61,6 +62,10 @@ var runCmd = &cli.Command{
 			Usage: "host address and port the wallet api will listen on",
 			Value: "0.0.0.0:1777",
 		},
+		&cli.BoolFlag{
+			Name: "ledger",
+			Usage: "use a ledger device instead of an on-disk wallet",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus wallet")
@@ -95,18 +100,21 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		w, err := wallet.NewWallet(ks)
-		if err != nil {
-			return err
-		}
-		_ = w
+		var w api.WalletAPI
+		if !cctx.Bool("ledger") {
+			w, err = wallet.NewWallet(ks)
+			if err != nil {
+				return err
+			}
+		} else {
+			ds, err := lr.Datastore("/metadata")
+			if err != nil {
+				return err
+			}
 
-		ds, err := lr.Datastore("/metadata")
-		if err != nil {
-			return err
+			w = ledgerwallet.NewWallet(ds)
 		}
 
-		lw := ledgerwallet.NewWallet(ds)
 
 		address := cctx.String("listen")
 		mux := mux.NewRouter()
@@ -114,7 +122,7 @@ var runCmd = &cli.Command{
 		log.Info("Setting up API endpoint at " + address)
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", &LoggedWallet{under: lw})
+		rpcServer.Register("Filecoin", &LoggedWallet{under: w})
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
