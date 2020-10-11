@@ -2,6 +2,7 @@ package power
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -59,4 +60,11 @@ type Claim struct {
 
 	// Sum of quality adjusted power for a miner's sectors.
 	QualityAdjPower abi.StoragePower
+}
+
+func AddClaims(a Claim, b Claim) Claim {
+	return Claim{
+		RawBytePower:    big.Add(a.RawBytePower, b.RawBytePower),
+		QualityAdjPower: big.Add(a.QualityAdjPower, b.QualityAdjPower),
+	}
 }
