@@ -40,7 +40,7 @@ var log = logging.Logger("lotus-bench")
 
 type BenchResults struct {
 	SectorSize   abi.SectorSize
-	SectorNumber abi.SectorNumber
+	SectorNumber int
 
 	SealingSum     SealingResult
 	SealingResults []SealingResult
@@ -315,7 +315,7 @@ var sealBenchCmd = &cli.Command{
 
 		bo := BenchResults{
 			SectorSize:     sectorSize,
-			SectorNumber:   abi.SectorNumber(sectorNumber),
+			SectorNumber:   sectorNumber,
 			SealingResults: sealTimings,
 		}
 		if err := bo.SumSealingTime(); err != nil {
@@ -464,19 +464,19 @@ var sealBenchCmd = &cli.Command{
 		} else {
 			fmt.Printf("----\nresults (v28) SectorSize:(%d), SectorNumber:(%d)\n", sectorSize, sectorNumber)
 			if robench == "" {
-				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingSum.AddPiece, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.AddPiece))
-				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingSum.PreCommit1, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.PreCommit1))
-				fmt.Printf("seal: preCommit phase 2: %s (%s)\n", bo.SealingSum.PreCommit2, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.PreCommit2))
-				fmt.Printf("seal: commit phase 1: %s (%s)\n", bo.SealingSum.Commit1, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Commit1))
-				fmt.Printf("seal: commit phase 2: %s (%s)\n", bo.SealingSum.Commit2, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Commit2))
+				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingSum.AddPiece, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.AddPiece))
+				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingSum.PreCommit1, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.PreCommit1))
+				fmt.Printf("seal: preCommit phase 2: %s (%s)\n", bo.SealingSum.PreCommit2, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.PreCommit2))
+				fmt.Printf("seal: commit phase 1: %s (%s)\n", bo.SealingSum.Commit1, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Commit1))
+				fmt.Printf("seal: commit phase 2: %s (%s)\n", bo.SealingSum.Commit2, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Commit2))
 				fmt.Printf("seal: verify: %s\n", bo.SealingSum.Verify)
 				if !c.Bool("skip-unseal") {
-					fmt.Printf("unseal: %s  (%s)\n", bo.SealingSum.Unseal, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Unseal))
+					fmt.Printf("unseal: %s  (%s)\n", bo.SealingSum.Unseal, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Unseal))
 				}
 				fmt.Println("")
 			}
 			if !skipc2 {
-				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*abi.SectorSize(len(bo.SealingResults)), bo.PostGenerateCandidates))
+				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize, len(bo.SealingResults), bo.PostGenerateCandidates))
 				fmt.Printf("compute winning post proof (cold): %s\n", bo.PostWinningProofCold)
 				fmt.Printf("compute winning post proof (hot): %s\n", bo.PostWinningProofHot)
 				fmt.Printf("verify winning post proof (cold): %s\n", bo.VerifyWinningPostCold)
@@ -771,21 +771,14 @@ var proveCmd = &cli.Command{
 		fmt.Printf("----\nresults (v28) (%d)\n", c2in.SectorSize)
 		dur := sealCommit2.Sub(start)
 
-		fmt.Printf("seal: commit phase 2: %s (%s)\n", dur, bps(abi.SectorSize(c2in.SectorSize), dur))
+		fmt.Printf("seal: commit phase 2: %s (%s)\n", dur, bps(abi.SectorSize(c2in.SectorSize), 1, dur))
 		return nil
 	},
 }
 
-func bps(data abi.SectorSize, d time.Duration) string {
-	bdata := new(big.Int).SetUint64(uint64(data))
-	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
-	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
-	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
-}
-
-func bPS(sectorSize abi.SectorSize, sectorNum abi.SectorNumber, d time.Duration) string {
+func bps(sectorSize abi.SectorSize, sectorNum int, d time.Duration) string {
 	bdata := new(big.Int).SetUint64(uint64(sectorSize))
-	bdata = bdata.Mul(bdata, new(big.Int).SetUint64(uint64(sectorNum)))
+	bdata = bdata.Mul(bdata, big.NewInt(int64(sectorNum)))
 	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
 	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
 	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
