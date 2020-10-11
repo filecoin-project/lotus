@@ -122,7 +122,7 @@ var sealBenchCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "storage-dir",
 			Value: "~/.lotus-bench",
-			Usage: "Path to the storage directory that will store sectors long term",
+			Usage: "path to the storage directory that will store sectors long term",
 		},
 		&cli.StringFlag{
 			Name:  "sector-size",
@@ -155,15 +155,21 @@ var sealBenchCmd = &cli.Command{
 			Usage: "skip the unseal portion of the benchmark",
 		},
 		&cli.StringFlag{
+			Name:  "ticket-preimage",
+			Usage: "ticket random",
+		},
+		&cli.StringFlag{
 			Name:  "save-commit2-input",
-			Usage: "Save commit2 input to a file",
+			Usage: "save commit2 input to a file",
 		},
 		&cli.IntFlag{
 			Name:  "num-sectors",
+			Usage: "select number of sectors to seal",
 			Value: 1,
 		},
 		&cli.IntFlag{
 			Name:  "parallel",
+			Usage: "num run in parallel",
 			Value: 1,
 		},
 	},
@@ -244,7 +250,8 @@ var sealBenchCmd = &cli.Command{
 		}
 
 		// Only fetch parameters if actually needed
-		if !c.Bool("skip-commit2") {
+		skipc2 := c.Bool("skip-commit2")
+		if !skipc2 {
 			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
@@ -271,7 +278,7 @@ var sealBenchCmd = &cli.Command{
 				PreCommit2: 1,
 				Commit:     1,
 			}
-			sealTimings, sealedSectors, err = runSeals(sb, sbfs, sectorNumber, parCfg, mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), c.Bool("skip-commit2"), c.Bool("skip-unseal"))
+			sealTimings, sealedSectors, err = runSeals(sb, sbfs, sectorNumber, parCfg, mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), skipc2, c.Bool("skip-unseal"))
 			if err != nil {
 				return xerrors.Errorf("failed to run seals: %w", err)
 			}
@@ -320,7 +327,7 @@ var sealBenchCmd = &cli.Command{
 
 		beforePost := time.Now()
 
-		if !c.Bool("skip-commit2") {
+		if !skipc2 {
 			log.Info("generating winning post candidates")
 			wipt, err := spt.RegisteredWinningPoStProof()
 			if err != nil {
@@ -468,7 +475,7 @@ var sealBenchCmd = &cli.Command{
 				}
 				fmt.Println("")
 			}
-			if !c.Bool("skip-commit2") {
+			if !skipc2 {
 				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*abi.SectorSize(len(bo.SealingResults)), bo.PostGenerateCandidates))
 				fmt.Printf("compute winning post proof (cold): %s\n", bo.PostWinningProofCold)
 				fmt.Printf("compute winning post proof (hot): %s\n", bo.PostWinningProofHot)
