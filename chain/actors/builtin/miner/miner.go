@@ -148,6 +148,20 @@ type MinerInfo struct {
 	ConsensusFaultElapsed      abi.ChainEpoch
 }
 
+func (mi MinerInfo) IsController(addr address.Address) bool {
+	if addr == mi.Owner || addr == mi.Worker {
+		return true
+	}
+
+	for _, ca := range mi.ControlAddresses {
+		if addr == ca {
+			return true
+		}
+	}
+
+	return false
+}
+
 type SectorExpiration struct {
 	OnTime abi.ChainEpoch
 

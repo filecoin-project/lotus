@@ -5,6 +5,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	cbor "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/filecoin-project/lotus/build"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -34,6 +39,7 @@ var actorCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		actorSetAddrsCmd,
 		actorWithdrawCmd,
+		actorRepayDebtCmd,
 		actorSetPeeridCmd,
 		actorSetOwnerCmd,
 		actorControl,
@@ -249,6 +255,105 @@ var actorWithdrawCmd = &cli.Command{
 		}
 
 		fmt.Printf("Requested rewards withdrawal in message %s\n", smsg.Cid())
+
+		return nil
+	},
+}
+
+var actorRepayDebtCmd = &cli.Command{
+	Name:      "repay-debt",
+	Usage:     "pay down a miner's debt",
+	ArgsUsage: "[amount (FIL)]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to send funds from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		var amount abi.TokenAmount
+		if cctx.Args().Present() {
+			f, err := types.ParseFIL(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("parsing 'amount' argument: %w", err)
+			}
+
+			amount = abi.TokenAmount(f)
+		} else {
+			mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api)))
+
+			mst, err := miner.Load(store, mact)
+			if err != nil {
+				return err
+			}
+
+			amount, err = mst.FeeDebt()
+			if err != nil {
+				return err
+			}
+
+		}
+
+		fromAddr := mi.Worker
+		if from := cctx.String("from"); from != "" {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		fromId, err := api.StateLookupID(ctx, fromAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		if !mi.IsController(fromId) {
+			return xerrors.Errorf("sender isn't a controller of miner: %s", fromId)
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			To:     maddr,
+			From:   fromId,
+			Value:  amount,
+			Method: builtin2.MethodsMiner.RepayDebt,
+			Params: nil,
+		}, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Sent repay debt message %s\n", smsg.Cid())
 
 		return nil
 	},
