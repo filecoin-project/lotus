@@ -193,16 +193,13 @@ func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.
 			maxi = int64(i)
 		}
 	}
-	if maxi == -1 {
-		maxi = 0
-	}
 
 	fl, err := ledgerfil.FindLedgerFilecoinApp()
 	if err != nil {
 		return address.Undef, xerrors.Errorf("finding ledger: %w", err)
 	}
 
-	path := append(append([]uint32(nil), filHDBasePath...), uint32(maxi))
+	path := append(append([]uint32(nil), filHDBasePath...), uint32(maxi+1))
 	_, _, addr, err := fl.GetAddressPubKeySECP256K1(path)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting public key from ledger: %w", err)
