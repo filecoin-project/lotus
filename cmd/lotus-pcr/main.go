@@ -926,6 +926,11 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 			return false, messageMethod, types.NewInt(0), nil
 		}
 
+		if tipset.Blocks()[0].ParentBaseFee.GreaterThan(r.proveFeeCapMax) {
+			log.Debugw("skipping high base fee message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "basefee", tipset.Blocks()[0].ParentBaseFee, "fee_cap_max", r.proveFeeCapMax)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
 		var sn abi.SectorNumber
 
 		var proveCommitSector miner0.ProveCommitSectorParams
@@ -979,6 +984,11 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 
 		if m.GasFeeCap.GreaterThan(r.preFeeCapMax) {
 			log.Debugw("skipping high fee cap message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "gas_fee_cap", m.GasFeeCap, "fee_cap_max", r.preFeeCapMax)
+			return false, messageMethod, types.NewInt(0), nil
+		}
+
+		if tipset.Blocks()[0].ParentBaseFee.GreaterThan(r.preFeeCapMax) {
+			log.Debugw("skipping high base fee message", "method", messageMethod, "cid", msg.Cid, "miner", m.To, "basefee", tipset.Blocks()[0].ParentBaseFee, "fee_cap_max", r.preFeeCapMax)
 			return false, messageMethod, types.NewInt(0), nil
 		}
 
