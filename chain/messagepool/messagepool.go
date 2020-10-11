@@ -1249,9 +1249,6 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 }
 
 func (mp *MessagePool) loadLocal() error {
-	return nil
-	// TODO: this causes super slow startup...
-
 	res, err := mp.localMsgs.Query(query.Query{})
 	if err != nil {
 		return xerrors.Errorf("query local messages: %w", err)
