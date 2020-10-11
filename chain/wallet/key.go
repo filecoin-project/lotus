@@ -13,7 +13,7 @@ import (
 func GenerateKey(typ types.KeyType) (*Key, error) {
 	ctyp := ActSigType(typ)
 	if ctyp == crypto.SigTypeUnknown {
-		return nil, xerrors.Errorf("unknown key type: %s", typ)
+		return nil, xerrors.Errorf("unknown sig type: %s", typ)
 	}
 	pk, err := sigs.Generate(ctyp)
 	if err != nil {
@@ -56,21 +56,10 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 			return nil, xerrors.Errorf("converting BLS to address: %w", err)
 		}
 	default:
-		return nil, xerrors.Errorf("unknown key type: %s", k.Type)
+		return nil, xerrors.Errorf("unsupported key type: %s", k.Type)
 	}
 	return k, nil
 
-}
-
-func kstoreSigType(typ crypto.SigType) types.KeyType {
-	switch typ {
-	case crypto.SigTypeBLS:
-		return types.KTBLS
-	case crypto.SigTypeSecp256k1:
-		return types.KTSecp256k1
-	default:
-		return ""
-	}
 }
 
 func ActSigType(typ types.KeyType) crypto.SigType {

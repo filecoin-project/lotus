@@ -115,12 +115,22 @@ func (lw LedgerWallet) WalletImport(ctx context.Context, kinfo *types.KeyInfo) (
 	if err := json.Unmarshal(kinfo.PrivateKey, &ki); err != nil {
 		return address.Undef, err
 	}
+	return lw.importKey(ki)
+}
 
+func (lw LedgerWallet) importKey(ki LedgerKeyInfo) (address.Address, error) {
 	if ki.Address == address.Undef {
 		return address.Undef, fmt.Errorf("no address given in imported key info")
 	}
+	if len(ki.Path) != filHdPathLen {
+		return address.Undef, fmt.Errorf("bad hd path len: %d, expected: %d", len(ki.Path), filHdPathLen)
+	}
+	bb, err := json.Marshal(ki)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("marshaling key info: %w", err)
+	}
 
-	if err := lw.ds.Put(keyForAddr(ki.Address), kinfo.PrivateKey); err != nil {
+	if err := lw.ds.Put(keyForAddr(ki.Address), bb); err != nil {
 		return address.Undef, err
 	}
 
@@ -128,10 +138,11 @@ func (lw LedgerWallet) WalletImport(ctx context.Context, kinfo *types.KeyInfo) (
 }
 
 func (lw LedgerWallet) WalletList(ctx context.Context) ([]address.Address, error) {
-	res, err := lw.ds.Query(query.Query{Prefix: "/ledgerkey/"})
+	res, err := lw.ds.Query(query.Query{Prefix: dsLedgerPrefix})
 	if err != nil {
 		return nil, err
 	}
+	defer res.Close()
 
 	var out []address.Address
 	for {
@@ -150,8 +161,63 @@ func (lw LedgerWallet) WalletList(ctx context.Context) ([]address.Address, error
 	return out, nil
 }
 
+const hdHard = 0x80000000
+
+var filHDBasePath = []uint32{hdHard | 44, hdHard | 461, hdHard, 0}
+var filHdPathLen = 5
+
 func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.Address, error) {
-	return address.Undef, fmt.Errorf("cannot create new address on ledger")
+	if t != types.KTSecp256k1Ledger {
+		return address.Undef, fmt.Errorf("unsupported key type: '%s', only '%s' supported",
+			t, types.KTSecp256k1Ledger)
+	}
+
+	res, err := lw.ds.Query(query.Query{Prefix: dsLedgerPrefix})
+	if err != nil {
+		return address.Undef, err
+	}
+	defer res.Close()
+
+	var maxi int64 = -1
+	for {
+		res, ok := res.NextSync()
+		if !ok {
+			break
+		}
+
+		var ki LedgerKeyInfo
+		if err := json.Unmarshal(res.Value, &ki); err != nil {
+			return address.Undef, err
+		}
+		if i := ki.Path[filHdPathLen-1]; maxi == -1 || maxi < int64(i) {
+			maxi = int64(i)
+		}
+	}
+	if maxi == -1 {
+		maxi = 0
+	}
+
+	fl, err := ledgerfil.FindLedgerFilecoinApp()
+	if err != nil {
+		return address.Undef, xerrors.Errorf("finding ledger: %w", err)
+	}
+
+	path := append(append([]uint32(nil), filHDBasePath...), uint32(maxi))
+	_, _, addr, err := fl.GetAddressPubKeySECP256K1(path)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("getting public key from ledger: %w", err)
+	}
+
+	a, err := address.NewFromString(addr)
+	if err != nil {
+		return address.Undef, fmt.Errorf("parsing address: %w", err)
+	}
+
+	var lki LedgerKeyInfo
+	lki.Address = a
+	lki.Path = path
+
+	return lw.importKey(lki)
 }
 
 func (lw *LedgerWallet) Get() api.WalletAPI {
@@ -162,6 +228,8 @@ func (lw *LedgerWallet) Get() api.WalletAPI {
 	return lw
 }
 
+var dsLedgerPrefix = "/ledgerkey/"
+
 func keyForAddr(addr address.Address) datastore.Key {
-	return datastore.NewKey("/ledgerkey/" + addr.String())
+	return datastore.NewKey(dsLedgerPrefix + addr.String())
 }
