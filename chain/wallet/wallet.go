@@ -26,8 +26,6 @@ const (
 	KNamePrefix  = "wallet-"
 	KTrashPrefix = "trash-"
 	KDefault     = "default"
-	KTBLS        = "bls"
-	KTSecp256k1  = "secp256k1"
 )
 
 type LocalWallet struct {
@@ -236,7 +234,7 @@ func (w *LocalWallet) SetDefault(a address.Address) error {
 	return nil
 }
 
-func (w *LocalWallet) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
+func (w *LocalWallet) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 

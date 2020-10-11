@@ -19,13 +19,8 @@ type LoggedWallet struct {
 	under api.WalletAPI
 }
 
-func (c *LoggedWallet) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
-	n, err := typ.Name()
-	if err != nil {
-		return address.Address{}, err
-	}
-
-	log.Infow("WalletNew", "type", n)
+func (c *LoggedWallet) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {
+	log.Infow("WalletNew", "type", typ)
 
 	return c.under.WalletNew(ctx, typ)
 }

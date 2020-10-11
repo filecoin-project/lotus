@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-datastore"
@@ -33,7 +33,7 @@ func TestRepubMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestRepubMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}

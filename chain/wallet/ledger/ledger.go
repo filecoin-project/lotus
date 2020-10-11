@@ -150,7 +150,7 @@ func (lw LedgerWallet) WalletList(ctx context.Context) ([]address.Address, error
 	return out, nil
 }
 
-func (lw LedgerWallet) WalletNew(ctx context.Context, t crypto.SigType) (address.Address, error) {
+func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.Address, error) {
 	return address.Undef, fmt.Errorf("cannot create new address on ledger")
 }
 

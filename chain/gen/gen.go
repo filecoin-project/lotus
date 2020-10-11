@@ -155,14 +155,14 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, xerrors.Errorf("creating memrepo wallet failed: %w", err)
 	}
 
-	banker, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	banker, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate banker key: %w", err)
 	}
 
 	receievers := make([]address.Address, msgsPerBlock)
 	for r := range receievers {
-		receievers[r], err = w.WalletNew(context.Background(), crypto.SigTypeBLS)
+		receievers[r], err = w.WalletNew(context.Background(), types.KTBLS)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to generate receiver key: %w", err)
 		}

@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	builder "github.com/filecoin-project/lotus/node/test"
 )
 
@@ -415,7 +414,7 @@ func startTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Dur
 	bm.MineBlocks()
 
 	// Send some funds to register the receiver
-	receiverAddr, err := paymentReceiver.WalletNew(ctx, wallet.ActSigType("secp256k1"))
+	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}

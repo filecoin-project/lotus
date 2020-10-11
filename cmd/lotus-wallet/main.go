@@ -101,19 +101,22 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		var w api.WalletAPI
-		if !cctx.Bool("ledger") {
-			w, err = wallet.NewWallet(ks)
-			if err != nil {
-				return err
-			}
-		} else {
+		lw, err := wallet.NewWallet(ks)
+		if err != nil {
+			return err
+		}
+
+		var w api.WalletAPI = lw
+		if cctx.Bool("ledger") {
 			ds, err := lr.Datastore("/metadata")
 			if err != nil {
 				return err
 			}
 
-			w = ledgerwallet.NewWallet(ds)
+			w = wallet.MultiWallet{
+				Local:  lw,
+				Ledger: ledgerwallet.NewWallet(ds),
+			}
 		}
 
 		address := cctx.String("listen")

@@ -32,10 +32,10 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
-var validTypes = []string{wallet.KTBLS, wallet.KTSecp256k1, lp2p.KTLibp2pHost}
+var validTypes = []types.KeyType{types.KTBLS, types.KTSecp256k1, lp2p.KTLibp2pHost}
 
 type keyInfoOutput struct {
-	Type      string
+	Type      types.KeyType
 	Address   string
 	PublicKey string
 }
@@ -86,7 +86,7 @@ var keyinfoVerifyCmd = &cli.Command{
 				return xerrors.Errorf("decoding key: '%s': %w", fileName, err)
 			}
 
-			if string(name) != keyInfo.Type {
+			if types.KeyType(name) != keyInfo.Type {
 				return fmt.Errorf("%s of type %s is incorrect", fileName, keyInfo.Type)
 			}
 		case modules.KTJwtHmacSecret:
@@ -98,7 +98,7 @@ var keyinfoVerifyCmd = &cli.Command{
 			if string(name) != modules.JWTSecretName {
 				return fmt.Errorf("%s of type %s is incorrect", fileName, keyInfo.Type)
 			}
-		case wallet.KTSecp256k1, wallet.KTBLS:
+		case types.KTSecp256k1, types.KTBLS:
 			keystore := wallet.NewMemKeyStore()
 			w, err := wallet.NewWallet(keystore)
 			if err != nil {
@@ -214,7 +214,7 @@ var keyinfoImportCmd = &cli.Command{
 			fmt.Printf("%s\n", peerid.String())
 
 			break
-		case wallet.KTSecp256k1, wallet.KTBLS:
+		case types.KTSecp256k1, types.KTBLS:
 			w, err := wallet.NewWallet(keystore)
 			if err != nil {
 				return err
@@ -317,7 +317,7 @@ var keyinfoInfoCmd = &cli.Command{
 			kio.PublicKey = base64.StdEncoding.EncodeToString(pkBytes)
 
 			break
-		case wallet.KTSecp256k1, wallet.KTBLS:
+		case types.KTSecp256k1, types.KTBLS:
 			kio.Type = keyInfo.Type
 
 			key, err := wallet.NewKey(keyInfo)
@@ -366,7 +366,7 @@ var keyinfoNewCmd = &cli.Command{
 			return fmt.Errorf("please specify a type to generate")
 		}
 
-		keyType := cctx.Args().First()
+		keyType := types.KeyType(cctx.Args().First())
 		flagOutput := cctx.String("output")
 
 		if i := SliceIndex(len(validTypes), func(i int) bool {
@@ -404,8 +404,8 @@ var keyinfoNewCmd = &cli.Command{
 			keyInfo = ki
 
 			break
-		case wallet.KTSecp256k1, wallet.KTBLS:
-			key, err := wallet.GenerateKey(wallet.ActSigType(keyType))
+		case types.KTSecp256k1, types.KTBLS:
+			key, err := wallet.GenerateKey(keyType)
 			if err != nil {
 				return err
 			}
@@ -418,7 +418,7 @@ var keyinfoNewCmd = &cli.Command{
 
 		filename := flagOutput
 		filename = strings.ReplaceAll(filename, "<addr>", keyAddr)
-		filename = strings.ReplaceAll(filename, "<type>", keyType)
+		filename = strings.ReplaceAll(filename, "<type>", string(keyType))
 
 		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {

@@ -18,7 +18,7 @@ import (
 type MultiWallet struct {
 	fx.In // "constructed" with fx.In instead of normal constructor
 
-	Local *LocalWallet                `optional:"true"`
+	Local  *LocalWallet               `optional:"true"`
 	Remote *remotewallet.RemoteWallet `optional:"true"`
 	Ledger *ledgerwallet.LedgerWallet `optional:"true"`
 }
@@ -70,7 +70,7 @@ func (m MultiWallet) find(ctx context.Context, address address.Address, wallets 
 	return nil, nil
 }
 
-func (m MultiWallet) WalletNew(ctx context.Context, sigType crypto.SigType) (address.Address, error) {
+func (m MultiWallet) WalletNew(ctx context.Context, sigType types.KeyType) (address.Address, error) {
 	w := firstNonNil(m.Remote, m.Local)
 	if w == nil {
 		return address.Undef, xerrors.Errorf("no wallet backends configured")
@@ -133,7 +133,12 @@ func (m MultiWallet) WalletExport(ctx context.Context, address address.Address) 
 }
 
 func (m MultiWallet) WalletImport(ctx context.Context, info *types.KeyInfo) (address.Address, error) {
-	w := firstNonNil(m.Remote, m.Ledger, m.Local)
+	var local getif = m.Local
+	if info.Type == types.KTSecp256k1Ledger {
+		local = m.Ledger
+	}
+
+	w := firstNonNil(m.Remote, local)
 	if w == nil {
 		return address.Undef, xerrors.Errorf("no wallet backends configured")
 	}

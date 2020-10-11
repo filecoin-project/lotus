@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -191,7 +190,7 @@ var ledgerKeyInfoCmd = &cli.Command{
 		}
 
 		var ki types.KeyInfo
-		ki.Type = wallet.KTSecp256k1
+		ki.Type = types.KTSecp256k1Ledger
 		ki.PrivateKey = b
 
 		out, err := json.Marshal(ki)
