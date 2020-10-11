@@ -70,13 +70,18 @@ func (m MultiWallet) find(ctx context.Context, address address.Address, wallets 
 	return nil, nil
 }
 
-func (m MultiWallet) WalletNew(ctx context.Context, sigType types.KeyType) (address.Address, error) {
-	w := firstNonNil(m.Remote, m.Local)
-	if w == nil {
-		return address.Undef, xerrors.Errorf("no wallet backends configured")
+func (m MultiWallet) WalletNew(ctx context.Context, keyType types.KeyType) (address.Address, error) {
+	var local getif = m.Local
+	if keyType == types.KTSecp256k1Ledger {
+		local = m.Ledger
 	}
 
-	return w.WalletNew(ctx, sigType)
+	w := firstNonNil(m.Remote, local)
+	if w == nil {
+		return address.Undef, xerrors.Errorf("no wallet backends supporting key type: %s", keyType)
+	}
+
+	return w.WalletNew(ctx, keyType)
 }
 
 func (m MultiWallet) WalletHas(ctx context.Context, address address.Address) (bool, error) {

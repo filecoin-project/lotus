@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	logging "github.com/ipfs/go-log"
 	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
 	"golang.org/x/xerrors"
 
@@ -19,6 +20,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
+
+var log = logging.Logger("wallet-ledger")
 
 type LedgerWallet struct {
 	ds datastore.Datastore
@@ -203,6 +206,12 @@ func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.
 	_, _, addr, err := fl.GetAddressPubKeySECP256K1(path)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting public key from ledger: %w", err)
+	}
+
+	log.Warnf("creating key: %s, accept the key in ledger device", addr)
+	_, _, addr, err = fl.ShowAddressPubKeySECP256K1(path)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("verifying public key with ledger: %w", err)
 	}
 
 	a, err := address.NewFromString(addr)
