@@ -48,7 +48,7 @@ type TipSetExec struct {
 
 var importBenchCmd = &cli.Command{
 	Name:  "import",
-	Usage: "benchmark chain import and validation",
+	Usage: "Benchmark chain import and validation",
 	Subcommands: []*cli.Command{
 		importAnalyzeCmd,
 	},
