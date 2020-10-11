@@ -135,7 +135,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	}
 
 	// get the circulating supply before the message was executed.
-	circSupplyDetail, err := fapi.StateCirculatingSupply(ctx, incTs.Key())
+	circSupplyDetail, err := fapi.StateVMCirculatingSupply(ctx, incTs.Key())
 	if err != nil {
 		return fmt.Errorf("failed while fetching circulating supply: %w", err)
 	}

@@ -1049,7 +1049,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	circSupply, err := a.StateCirculatingSupply(ctx, ts.Key())
+	circSupply, err := a.StateVMCirculatingSupply(ctx, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
@@ -1203,7 +1203,7 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor state: %w", err)
 	}
 
-	circ, err := a.StateCirculatingSupply(ctx, ts.Key())
+	circ, err := a.StateVMCirculatingSupply(ctx, ts.Key())
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
@@ -1231,7 +1231,20 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 	}, nil
 }
 
-func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
+func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	sTree, err := a.stateForTs(ctx, ts)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+	return a.StateManager.GetCirculatingSupply(ctx, ts.Height(), sTree)
+}
+
+func (a *StateAPI) StateVMCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1241,7 +1254,7 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 	if err != nil {
 		return api.CirculatingSupply{}, err
 	}
-	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
+	return a.StateManager.GetVMCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }
 
 func (a *StateAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {

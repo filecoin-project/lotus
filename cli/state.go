@@ -1688,7 +1688,14 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 
 var stateCircSupplyCmd = &cli.Command{
 	Name:  "circulating-supply",
-	Usage: "Get the current circulating supply of filecoin",
+	Usage: "Get the exact current circulating supply of Filecoin",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "vm-supply",
+			Usage: "calculates the approximation of the circulating supply used internally by the VM (instead of the exact amount)",
+			Value: false,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -1703,16 +1710,26 @@ var stateCircSupplyCmd = &cli.Command{
 			return err
 		}
 
-		circ, err := api.StateCirculatingSupply(ctx, ts.Key())
-		if err != nil {
-			return err
-		}
+		if cctx.IsSet("vm-supply") {
+			circ, err := api.StateVMCirculatingSupply(ctx, ts.Key())
+			if err != nil {
+				return err
+			}
 
-		fmt.Println("Circulating supply: ", types.FIL(circ.FilCirculating))
-		fmt.Println("Mined: ", types.FIL(circ.FilMined))
-		fmt.Println("Vested: ", types.FIL(circ.FilVested))
-		fmt.Println("Burnt: ", types.FIL(circ.FilBurnt))
-		fmt.Println("Locked: ", types.FIL(circ.FilLocked))
+			fmt.Println("Circulating supply: ", types.FIL(circ.FilCirculating))
+			fmt.Println("Mined: ", types.FIL(circ.FilMined))
+			fmt.Println("Vested: ", types.FIL(circ.FilVested))
+			fmt.Println("Burnt: ", types.FIL(circ.FilBurnt))
+			fmt.Println("Locked: ", types.FIL(circ.FilLocked))
+		} else {
+			circ, err := api.StateCirculatingSupply(ctx, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("Exact circulating supply: ", types.FIL(circ))
+			return nil
+		}
 
 		return nil
 	},

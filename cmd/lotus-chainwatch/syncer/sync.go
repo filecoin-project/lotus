@@ -316,7 +316,7 @@ limit 1
 }
 
 func (s *Syncer) storeCirculatingSupply(ctx context.Context, tipset *types.TipSet) error {
-	supply, err := s.node.StateCirculatingSupply(ctx, tipset.Key())
+	supply, err := s.node.StateVMCirculatingSupply(ctx, tipset.Key())
 	if err != nil {
 		return err
 	}
