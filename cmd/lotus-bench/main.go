@@ -39,8 +39,10 @@ import (
 var log = logging.Logger("lotus-bench")
 
 type BenchResults struct {
-	SectorSize abi.SectorSize
+	SectorSize   abi.SectorSize
+	SectorNumber abi.SectorNumber
 
+	SealingSum     SealingResult
 	SealingResults []SealingResult
 
 	PostGenerateCandidates time.Duration
@@ -53,6 +55,26 @@ type BenchResults struct {
 	PostWindowProofHot   time.Duration
 	VerifyWindowPostCold time.Duration
 	VerifyWindowPostHot  time.Duration
+}
+
+func (bo *BenchResults) SumSealingTime() error {
+	if len(bo.SealingResults) <= 0 {
+		return xerrors.Errorf("BenchResults SealingResults len <= 0")
+	}
+	if len(bo.SealingResults) != int(bo.SectorNumber) {
+		return xerrors.Errorf("BenchResults SealingResults len(%d) != bo.SectorNumber(%d)", len(bo.SealingResults), int(bo.SectorNumber))
+	}
+
+	for _, sealing := range bo.SealingResults {
+		bo.SealingSum.AddPiece += sealing.AddPiece
+		bo.SealingSum.PreCommit1 += sealing.PreCommit1
+		bo.SealingSum.PreCommit2 += sealing.PreCommit2
+		bo.SealingSum.Commit1 += sealing.Commit1
+		bo.SealingSum.Commit2 += sealing.Commit2
+		bo.SealingSum.Verify += sealing.Verify
+		bo.SealingSum.Unseal += sealing.Unseal
+	}
+	return nil
 }
 
 type SealingResult struct {
@@ -237,6 +259,8 @@ var sealBenchCmd = &cli.Command{
 			return err
 		}
 
+		sectorNumber := c.Int("num-sectors")
+
 		var sealTimings []SealingResult
 		var sealedSectors []saproof.SectorInfo
 
@@ -247,18 +271,11 @@ var sealBenchCmd = &cli.Command{
 				PreCommit2: 1,
 				Commit:     1,
 			}
-			sealTimings, sealedSectors, err = runSeals(sb, sbfs, c.Int("num-sectors"), parCfg, mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), c.Bool("skip-commit2"), c.Bool("skip-unseal"))
+			sealTimings, sealedSectors, err = runSeals(sb, sbfs, sectorNumber, parCfg, mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), c.Bool("skip-commit2"), c.Bool("skip-unseal"))
 			if err != nil {
 				return xerrors.Errorf("failed to run seals: %w", err)
 			}
-		}
-
-		beforePost := time.Now()
-
-		var challenge [32]byte
-		rand.Read(challenge[:])
-
-		if robench != "" {
+		} else {
 			// TODO: implement sbfs.List() and use that for all cases (preexisting sectorbuilder or not)
 
 			// TODO: this assumes we only ever benchmark a preseal
@@ -291,8 +308,17 @@ var sealBenchCmd = &cli.Command{
 
 		bo := BenchResults{
 			SectorSize:     sectorSize,
+			SectorNumber:   abi.SectorNumber(sectorNumber),
 			SealingResults: sealTimings,
 		}
+		if err := bo.SumSealingTime(); err != nil {
+			return err
+		}
+
+		var challenge [32]byte
+		rand.Read(challenge[:])
+
+		beforePost := time.Now()
 
 		if !c.Bool("skip-commit2") {
 			log.Info("generating winning post candidates")
@@ -429,16 +455,16 @@ var sealBenchCmd = &cli.Command{
 
 			fmt.Println(string(data))
 		} else {
-			fmt.Printf("----\nresults (v28) (%d)\n", sectorSize)
+			fmt.Printf("----\nresults (v28) SectorSize:(%d), SectorNumber:(%d)\n", sectorSize, sectorNumber)
 			if robench == "" {
-				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
-				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingResults[0].PreCommit1, bps(bo.SectorSize, bo.SealingResults[0].PreCommit1))
-				fmt.Printf("seal: preCommit phase 2: %s (%s)\n", bo.SealingResults[0].PreCommit2, bps(bo.SectorSize, bo.SealingResults[0].PreCommit2))
-				fmt.Printf("seal: commit phase 1: %s (%s)\n", bo.SealingResults[0].Commit1, bps(bo.SectorSize, bo.SealingResults[0].Commit1))
-				fmt.Printf("seal: commit phase 2: %s (%s)\n", bo.SealingResults[0].Commit2, bps(bo.SectorSize, bo.SealingResults[0].Commit2))
-				fmt.Printf("seal: verify: %s\n", bo.SealingResults[0].Verify)
+				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingSum.AddPiece, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.AddPiece))
+				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingSum.PreCommit1, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.PreCommit1))
+				fmt.Printf("seal: preCommit phase 2: %s (%s)\n", bo.SealingSum.PreCommit2, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.PreCommit2))
+				fmt.Printf("seal: commit phase 1: %s (%s)\n", bo.SealingSum.Commit1, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Commit1))
+				fmt.Printf("seal: commit phase 2: %s (%s)\n", bo.SealingSum.Commit2, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Commit2))
+				fmt.Printf("seal: verify: %s\n", bo.SealingSum.Verify)
 				if !c.Bool("skip-unseal") {
-					fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
+					fmt.Printf("unseal: %s  (%s)\n", bo.SealingSum.Unseal, bPS(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Unseal))
 				}
 				fmt.Println("")
 			}
@@ -743,6 +769,14 @@ var proveCmd = &cli.Command{
 
 func bps(data abi.SectorSize, d time.Duration) string {
 	bdata := new(big.Int).SetUint64(uint64(data))
+	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
+	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
+	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
+}
+
+func bPS(sectorSize abi.SectorSize, sectorNum abi.SectorNumber, d time.Duration) string {
+	bdata := new(big.Int).SetUint64(uint64(sectorSize))
+	bdata = bdata.Mul(bdata, new(big.Int).SetUint64(uint64(sectorNum)))
 	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
 	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
 	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
