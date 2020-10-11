@@ -591,7 +591,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 
 					if !skipc2 {
 						svi := saproof.SealVerifyInfo{
-							SectorID:              abi.SectorID{Miner: mid, Number: i},
+							SectorID:              sid,
 							SealedCID:             cids.Sealed,
 							SealProof:             sb.SealProofType(),
 							Proof:                 proof,
@@ -615,7 +615,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 					if !skipunseal {
 						log.Infof("[%d] Unsealing sector", i)
 						{
-							p, done, err := sbfs.AcquireSector(context.TODO(), abi.SectorID{Miner: mid, Number: i}, stores.FTUnsealed, stores.FTNone, stores.PathSealing)
+							p, done, err := sbfs.AcquireSector(context.TODO(), sid, stores.FTUnsealed, stores.FTNone, stores.PathSealing)
 							if err != nil {
 								return xerrors.Errorf("acquire unsealed sector for removing: %w", err)
 							}
@@ -626,7 +626,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 							}
 						}
 
-						err := sb.UnsealPiece(context.TODO(), abi.SectorID{Miner: mid, Number: i}, 0, abi.PaddedPieceSize(sectorSize).Unpadded(), ticket, cids.Unsealed)
+						err := sb.UnsealPiece(context.TODO(), sid, 0, abi.PaddedPieceSize(sectorSize).Unpadded(), ticket, cids.Unsealed)
 						if err != nil {
 							return err
 						}
