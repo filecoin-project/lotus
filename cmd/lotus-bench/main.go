@@ -477,7 +477,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 		return nil, nil, fmt.Errorf("parallelism factor must cleanly divide numSectors")
 	}
 
-	for i := abi.SectorNumber(1); i <= abi.SectorNumber(numSectors); i++ {
+	for i := abi.SectorNumber(0); i < abi.SectorNumber(numSectors); i++ {
 		sid := abi.SectorID{
 			Miner:  mid,
 			Number: i,
@@ -495,7 +495,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 
 		pieces = append(pieces, pi)
 
-		sealTimings[i-1].AddPiece = time.Since(start)
+		sealTimings[i].AddPiece = time.Since(start)
 	}
 
 	sectorsPerWorker := numSectors / par.PreCommit1
@@ -504,10 +504,9 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 	for wid := 0; wid < par.PreCommit1; wid++ {
 		go func(worker int) {
 			sealerr := func() error {
-				start := 1 + (worker * sectorsPerWorker)
+				start := worker * sectorsPerWorker
 				end := start + sectorsPerWorker
 				for i := abi.SectorNumber(start); i < abi.SectorNumber(end); i++ {
-					ix := int(i - 1)
 					sid := abi.SectorID{
 						Miner:  mid,
 						Number: i,
@@ -519,8 +518,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 					ticket := abi.SealRandomness(trand[:])
 
 					log.Infof("[%d] Running replication(1)...", i)
-					pieces := []abi.PieceInfo{pieces[ix]}
-					pc1o, err := sb.SealPreCommit1(context.TODO(), sid, ticket, pieces)
+					piece := []abi.PieceInfo{pieces[i]}
+					pc1o, err := sb.SealPreCommit1(context.TODO(), sid, ticket, piece)
 					if err != nil {
 						return xerrors.Errorf("commit: %w", err)
 					}
@@ -538,7 +537,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 					precommit2 := time.Now()
 					<-preCommit2Sema
 
-					sealedSectors[ix] = saproof.SectorInfo{
+					sealedSectors[i] = saproof.SectorInfo{
 						SealProof:    sb.SealProofType(),
 						SectorNumber: i,
 						SealedCID:    cids.Sealed,
@@ -552,7 +551,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 					commitSema <- struct{}{}
 					commitStart := time.Now()
 					log.Infof("[%d] Generating PoRep for sector (1)", i)
-					c1o, err := sb.SealCommit1(context.TODO(), sid, ticket, seed.Value, pieces, cids)
+					c1o, err := sb.SealCommit1(context.TODO(), sid, ticket, seed.Value, piece, cids)
 					if err != nil {
 						return err
 					}
@@ -633,12 +632,12 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 					}
 					unseal := time.Now()
 
-					sealTimings[ix].PreCommit1 = precommit1.Sub(start)
-					sealTimings[ix].PreCommit2 = precommit2.Sub(pc2Start)
-					sealTimings[ix].Commit1 = sealcommit1.Sub(commitStart)
-					sealTimings[ix].Commit2 = sealcommit2.Sub(sealcommit1)
-					sealTimings[ix].Verify = verifySeal.Sub(sealcommit2)
-					sealTimings[ix].Unseal = unseal.Sub(verifySeal)
+					sealTimings[i].PreCommit1 = precommit1.Sub(start)
+					sealTimings[i].PreCommit2 = precommit2.Sub(pc2Start)
+					sealTimings[i].Commit1 = sealcommit1.Sub(commitStart)
+					sealTimings[i].Commit2 = sealcommit2.Sub(sealcommit1)
+					sealTimings[i].Verify = verifySeal.Sub(sealcommit2)
+					sealTimings[i].Unseal = unseal.Sub(verifySeal)
 				}
 				return nil
 			}()
