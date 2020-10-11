@@ -39,7 +39,7 @@ func dealsStress(t *testkit.TestEnvironment) error {
 
 	t.RecordMessage("selected %s as the miner", minerAddr.MinerActorAddr)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(12 * time.Second)
 
 	// prepare a number of concurrent data points
 	deals := t.IntParam("deals")

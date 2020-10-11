@@ -5,7 +5,7 @@
 [global]
   plan = "lotus-soup"
   case = "deals-stress"
-  total_instances = 9
+  total_instances = 6
   builder = "docker:go"
   runner = "cluster:k8s"
 
@@ -22,17 +22,18 @@
   registry_type="aws"
 
 [global.run.test_params]
-  clients = "6"
+  clients = "3"
   miners = "2"
   genesis_timestamp_offset = "0"
-  balance = "20000000" # These balances will work for maximum 100 nodes, as TotalFilecoin is 2B
-  sectors = "100"
+  balance = "90000000" # These balances will work for maximum 100 nodes, as TotalFilecoin is 2B
+  sectors = "10"
   random_beacon_type = "mock"
+  mining_mode = "natural"
 
 [[groups]]
   id = "bootstrapper"
   [groups.resources]
-    memory = "2048Mi"
+    memory = "512Mi"
     cpu = "100m"
   [groups.instances]
     count = 1
@@ -52,7 +53,6 @@
   [groups.run]
     [groups.run.test_params]
       role = "miner"
-      mining_mode = "natural"
 
 [[groups]]
   id = "clients"
@@ -60,10 +60,10 @@
     memory = "2048Mi"
     cpu = "100m"
   [groups.instances]
-    count = 6
+    count = 3
     percentage = 0.0
   [groups.run]
     [groups.run.test_params]
       role = "client"
-      deals = "5"
+      deals = "3"
       deal_mode = "concurrent"
