@@ -6,12 +6,14 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -251,6 +253,15 @@ var recoverMinersCmd = &cli.Command{
 		}
 		defer closer()
 
+		r, err := NewRepo(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		if err := r.Open(); err != nil {
+			return err
+		}
+
 		from, err := address.NewFromString(cctx.String("from"))
 		if err != nil {
 			return xerrors.Errorf("parsing source address (provide correct --from flag!): %w", err)
@@ -267,6 +278,12 @@ var recoverMinersCmd = &cli.Command{
 		minerRecoveryCutoff := uint64(cctx.Int("miner-recovery-cutoff"))
 		minerRecoveryBonus := uint64(cctx.Int("miner-recovery-bonus"))
 
+		blockmap := make(map[address.Address]struct{})
+
+		for _, addr := range r.Blocklist() {
+			blockmap[addr] = struct{}{}
+		}
+
 		rf := &refunder{
 			api:                        api,
 			wallet:                     from,
@@ -274,6 +291,7 @@ var recoverMinersCmd = &cli.Command{
 			minerRecoveryRefundPercent: minerRecoveryRefundPercent,
 			minerRecoveryCutoff:        types.FromFil(minerRecoveryCutoff),
 			minerRecoveryBonus:         types.FromFil(minerRecoveryBonus),
+			blockmap:                   blockmap,
 		}
 
 		refundTipset, err := api.ChainHead(ctx)
@@ -466,6 +484,12 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		blockmap := make(map[address.Address]struct{})
+
+		for _, addr := range r.Blocklist() {
+			blockmap[addr] = struct{}{}
+		}
+
 		rf := &refunder{
 			api:                        api,
 			wallet:                     from,
@@ -480,6 +504,7 @@ var runCmd = &cli.Command{
 			publishStorageDealsEnabled: publishStorageDealsEnabled,
 			preFeeCapMax:               types.BigInt(preFeeCapMax),
 			proveFeeCapMax:             types.BigInt(proveFeeCapMax),
+			blockmap:                   blockmap,
 		}
 
 		var refunds *MinersRefund = NewMinersRefund()
@@ -487,6 +512,10 @@ var runCmd = &cli.Command{
 		nextMinerRecovery := r.MinerRecoveryHeight() + minerRecoveryPeriod
 
 		for tipset := range tipsetsCh {
+			for k, _ := range rf.blockmap {
+				fmt.Printf("%s\n", k)
+			}
+
 			refunds, err = rf.ProcessTipset(ctx, tipset, refunds)
 			if err != nil {
 				return err
@@ -634,6 +663,7 @@ type refunder struct {
 	windowedPoStEnabled        bool
 	publishStorageDealsEnabled bool
 	threshold                  big.Int
+	blockmap                   map[address.Address]struct{}
 
 	preFeeCapMax   big.Int
 	proveFeeCapMax big.Int
@@ -738,6 +768,11 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 	}
 
 	for _, maddr := range miners {
+		if _, found := r.blockmap[maddr]; found {
+			log.Debugw("skipping blocked miner", "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
+			continue
+		}
+
 		mact, err := r.api.StateGetActor(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			log.Errorw("failed", "err", err, "height", tipset.Height(), "key", tipset.Key(), "miner", maddr)
@@ -896,6 +931,11 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 	m := msg.Message
 	refundValue := types.NewInt(0)
 	var messageMethod string
+
+	if _, found := r.blockmap[m.To]; found {
+		log.Debugw("skipping blocked miner", "height", tipset.Height(), "key", tipset.Key(), "miner", m.To)
+		return false, messageMethod, types.NewInt(0), nil
+	}
 
 	switch m.Method {
 	case builtin0.MethodsMiner.SubmitWindowedPoSt:
@@ -1177,6 +1217,7 @@ type Repo struct {
 	lastHeight              abi.ChainEpoch
 	lastMinerRecoveryHeight abi.ChainEpoch
 	path                    string
+	blocklist               []address.Address
 }
 
 func NewRepo(path string) (*Repo, error) {
@@ -1232,6 +1273,10 @@ func (r *Repo) Open() error {
 		return err
 	}
 
+	if err := r.loadBlockList(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1257,6 +1302,51 @@ func loadChainEpoch(fn string) (abi.ChainEpoch, error) {
 	return abi.ChainEpoch(height), nil
 }
 
+func (r *Repo) loadBlockList() error {
+	var err error
+	fpath := filepath.Join(r.path, "blocklist")
+	f, err := os.OpenFile(fpath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = f.Close()
+	}()
+
+	blocklist := []address.Address{}
+	input := bufio.NewReader(f)
+	for {
+		stra, errR := input.ReadString('\n')
+		stra = strings.TrimSpace(stra)
+
+		if len(stra) == 0 {
+			if errR == io.EOF {
+				break
+			}
+			continue
+		}
+
+		addr, err := address.NewFromString(stra)
+		if err != nil {
+			return err
+		}
+
+		blocklist = append(blocklist, addr)
+
+		if errR != nil && errR != io.EOF {
+			return err
+		}
+
+		if errR == io.EOF {
+			break
+		}
+	}
+
+	r.blocklist = blocklist
+
+	return nil
+}
+
 func (r *Repo) loadHeight() error {
 	var err error
 	r.lastHeight, err = loadChainEpoch(filepath.Join(r.path, "height"))
@@ -1267,6 +1357,10 @@ func (r *Repo) loadMinerRecoveryHeight() error {
 	var err error
 	r.lastMinerRecoveryHeight, err = loadChainEpoch(filepath.Join(r.path, "miner_recovery_height"))
 	return err
+}
+
+func (r *Repo) Blocklist() []address.Address {
+	return r.blocklist
 }
 
 func (r *Repo) Height() abi.ChainEpoch {
