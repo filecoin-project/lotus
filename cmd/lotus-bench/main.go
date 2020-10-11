@@ -693,8 +693,9 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 }
 
 var proveCmd = &cli.Command{
-	Name:  "prove",
-	Usage: "Benchmark a proof computation",
+	Name:      "prove",
+	Usage:     "Benchmark a proof computation",
+	ArgsUsage: "[input.json]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "no-gpu",
@@ -755,6 +756,7 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Printf("----\nstart proof computation\n")
 		start := time.Now()
 
 		proof, err := sb.SealCommit2(context.TODO(), abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(c2in.SectorNum)}, c2in.Phase1Out)
