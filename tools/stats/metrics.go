@@ -16,6 +16,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -269,22 +272,47 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	p = NewPoint("chain.power", totalPower.TotalPower.QualityAdjPower.Int64())
 	pl.AddPoint(p)
 
-	miners, err := api.StateListMiners(ctx, tipset.Key())
+	powerActor, err := api.StateGetActor(ctx, builtin.StoragePowerActorAddr, tipset.Key())
 	if err != nil {
 		return err
 	}
 
-	for _, addr := range miners {
-		mp, err := api.StateMinerPower(ctx, addr, tipset.Key())
+	powerRaw, err := api.ChainReadObj(ctx, powerActor.Head)
+	if err != nil {
+		return err
+	}
+
+	var powerActorState power.State
+
+	if err := powerActorState.UnmarshalCBOR(bytes.NewReader(powerRaw)); err != nil {
+		return fmt.Errorf("failed to unmarshal power actor state: %w", err)
+	}
+
+	s := &ApiIpldStore{ctx, api}
+	mp, err := adt.AsMap(s, powerActorState.Claims)
+	if err != nil {
+		return err
+	}
+
+	var claim power.Claim
+	err = mp.ForEach(&claim, func(key string) error {
+		addr, err := address.NewFromBytes([]byte(key))
 		if err != nil {
 			return err
 		}
 
-		if !mp.MinerPower.QualityAdjPower.IsZero() {
-			p = NewPoint("chain.miner_power", mp.MinerPower.QualityAdjPower.Int64())
-			p.AddTag("miner", addr.String())
-			pl.AddPoint(p)
+		if claim.QualityAdjPower.Int64() == 0 {
+			return nil
 		}
+
+		p = NewPoint("chain.miner_power", claim.QualityAdjPower.Int64())
+		p.AddTag("miner", addr.String())
+		pl.AddPoint(p)
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
