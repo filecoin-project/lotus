@@ -30,6 +30,8 @@ const UpgradeRefuelHeight = 130800
 
 var UpgradeActorsV2Height = abi.ChainEpoch(138720)
 
+const UpgradeTapeHeight = 140760
+
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
 // We still have upgrades and state changes to do, but can happen after signaling timing here.

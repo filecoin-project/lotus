@@ -80,8 +80,11 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Expensive: true,
 		Migration: UpgradeActorsV2,
 	}, {
+		Height:  build.UpgradeTapeHeight,
+		Network: network.Version5,
+	}, {
 		Height:    build.UpgradeLiftoffHeight,
-		Network:   network.Version4,
+		Network:   network.Version5,
 		Migration: UpgradeLiftoff,
 	}}
 
