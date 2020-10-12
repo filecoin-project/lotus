@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node"
 	builder "github.com/filecoin-project/lotus/node/test"
 )
@@ -53,7 +52,7 @@ func TestEndToEnd(t *testing.T) {
 	fmt.Println(balance)
 
 	// Create a wallet on the lite node
-	liteWalletAddr, err := lite.WalletNew(ctx, wallet.ActSigType("secp256k1"))
+	liteWalletAddr, err := lite.WalletNew(ctx, types.KTSecp256k1)
 	require.NoError(t, err)
 
 	// Send some funds from the full node to the lite node
@@ -77,7 +76,7 @@ func TestEndToEnd(t *testing.T) {
 	// Create some wallets on the lite node to use for testing multisig
 	var walletAddrs []address.Address
 	for i := 0; i < 4; i++ {
-		addr, err := lite.WalletNew(ctx, wallet.ActSigType("secp256k1"))
+		addr, err := lite.WalletNew(ctx, types.KTSecp256k1)
 		require.NoError(t, err)
 
 		walletAddrs = append(walletAddrs, addr)

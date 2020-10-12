@@ -229,7 +229,9 @@ type FullNode interface {
 	// MethodGroup: Wallet
 
 	// WalletNew creates a new address in the wallet with the given sigType.
-	WalletNew(context.Context, crypto.SigType) (address.Address, error)
+	// Available key types: bls, secp256k1, secp256k1-ledger
+	// Support for numerical types: 1 - secp256k1, 2 - BLS is deprecated
+	WalletNew(context.Context, types.KeyType) (address.Address, error)
 	// WalletHas indicates whether the given address is in the wallet.
 	WalletHas(context.Context, address.Address) (bool, error)
 	// WalletList lists all the addresses in the wallet.

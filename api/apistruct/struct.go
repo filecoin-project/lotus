@@ -133,7 +133,7 @@ type FullNodeStruct struct {
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
 
-		WalletNew             func(context.Context, crypto.SigType) (address.Address, error)                       `perm:"write"`
+		WalletNew             func(context.Context, types.KeyType) (address.Address, error)                        `perm:"write"`
 		WalletHas             func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
 		WalletList            func(context.Context) ([]address.Address, error)                                     `perm:"write"`
 		WalletBalance         func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
@@ -384,7 +384,7 @@ type GatewayStruct struct {
 
 type WalletStruct struct {
 	Internal struct {
-		WalletNew    func(context.Context, crypto.SigType) (address.Address, error)                         `perm:"write"`
+		WalletNew    func(context.Context, types.KeyType) (address.Address, error)                          `perm:"write"`
 		WalletHas    func(context.Context, address.Address) (bool, error)                                   `perm:"write"`
 		WalletList   func(context.Context) ([]address.Address, error)                                       `perm:"write"`
 		WalletSign   func(context.Context, address.Address, []byte, api.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
@@ -631,7 +631,7 @@ func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.Chain
 	return c.Internal.ChainGetTipSetByHeight(ctx, h, tsk)
 }
 
-func (c *FullNodeStruct) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
+func (c *FullNodeStruct) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {
 	return c.Internal.WalletNew(ctx, typ)
 }
 
@@ -1465,7 +1465,7 @@ func (g GatewayStruct) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence
 	return g.Internal.StateWaitMsg(ctx, msg, confidence)
 }
 
-func (c *WalletStruct) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
+func (c *WalletStruct) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {
 	return c.Internal.WalletNew(ctx, typ)
 }
 

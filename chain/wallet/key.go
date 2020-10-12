@@ -10,13 +10,17 @@ import (
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
-func GenerateKey(typ crypto.SigType) (*Key, error) {
-	pk, err := sigs.Generate(typ)
+func GenerateKey(typ types.KeyType) (*Key, error) {
+	ctyp := ActSigType(typ)
+	if ctyp == crypto.SigTypeUnknown {
+		return nil, xerrors.Errorf("unknown sig type: %s", typ)
+	}
+	pk, err := sigs.Generate(ctyp)
 	if err != nil {
 		return nil, err
 	}
 	ki := types.KeyInfo{
-		Type:       kstoreSigType(typ),
+		Type:       typ,
 		PrivateKey: pk,
 	}
 	return NewKey(ki)
@@ -41,41 +45,30 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 
 	switch k.Type {
-	case KTSecp256k1:
+	case types.KTSecp256k1:
 		k.Address, err = address.NewSecp256k1Address(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
 		}
-	case KTBLS:
+	case types.KTBLS:
 		k.Address, err = address.NewBLSAddress(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting BLS to address: %w", err)
 		}
 	default:
-		return nil, xerrors.Errorf("unknown key type")
+		return nil, xerrors.Errorf("unsupported key type: %s", k.Type)
 	}
 	return k, nil
 
 }
 
-func kstoreSigType(typ crypto.SigType) string {
+func ActSigType(typ types.KeyType) crypto.SigType {
 	switch typ {
-	case crypto.SigTypeBLS:
-		return KTBLS
-	case crypto.SigTypeSecp256k1:
-		return KTSecp256k1
-	default:
-		return ""
-	}
-}
-
-func ActSigType(typ string) crypto.SigType {
-	switch typ {
-	case KTBLS:
+	case types.KTBLS:
 		return crypto.SigTypeBLS
-	case KTSecp256k1:
+	case types.KTSecp256k1:
 		return crypto.SigTypeSecp256k1
 	default:
-		return 0
+		return crypto.SigTypeUnknown
 	}
 }

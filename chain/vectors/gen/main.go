@@ -11,7 +11,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -62,7 +61,7 @@ func MakeMessageSigningVectors() []vectors.MessageSigningVector {
 		panic(err)
 	}
 
-	blsk, err := w.WalletNew(context.Background(), crypto.SigTypeBLS)
+	blsk, err := w.WalletNew(context.Background(), types.KTBLS)
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +85,7 @@ func MakeMessageSigningVectors() []vectors.MessageSigningVector {
 		Signature:   &bmsg.Signature,
 	}
 
-	secpk, err := w.WalletNew(context.Background(), crypto.SigTypeBLS)
+	secpk, err := w.WalletNew(context.Background(), types.KTBLS)
 	if err != nil {
 		panic(err)
 	}
