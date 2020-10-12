@@ -13,12 +13,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -272,35 +270,17 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	p = NewPoint("chain.power", totalPower.TotalPower.QualityAdjPower.Int64())
 	pl.AddPoint(p)
 
-	powerActor, err := api.StateGetActor(ctx, builtin.StoragePowerActorAddr, tipset.Key())
+	powerActor, err := api.StateGetActor(ctx, power.Address, tipset.Key())
 	if err != nil {
 		return err
 	}
 
-	powerRaw, err := api.ChainReadObj(ctx, powerActor.Head)
+	powerActorState, err := power.Load(&ApiIpldStore{ctx, api}, powerActor)
 	if err != nil {
 		return err
 	}
 
-	var powerActorState power.State
-
-	if err := powerActorState.UnmarshalCBOR(bytes.NewReader(powerRaw)); err != nil {
-		return fmt.Errorf("failed to unmarshal power actor state: %w", err)
-	}
-
-	s := &ApiIpldStore{ctx, api}
-	mp, err := adt.AsMap(s, powerActorState.Claims)
-	if err != nil {
-		return err
-	}
-
-	var claim power.Claim
-	err = mp.ForEach(&claim, func(key string) error {
-		addr, err := address.NewFromBytes([]byte(key))
-		if err != nil {
-			return err
-		}
-
+	return powerActorState.ForEachClaim(func(addr address.Address, claim power.Claim) error {
 		if claim.QualityAdjPower.Int64() == 0 {
 			return nil
 		}
@@ -311,11 +291,6 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 type msgTag struct {
