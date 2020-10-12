@@ -22,10 +22,11 @@ const BreezeGasTampingDuration = 120
 const UpgradeSmokeHeight = -2
 
 const UpgradeIgnitionHeight = -3
+const UpgradeRefuelHeight = -4
 
 const UpgradeActorsV2Height = 500
 
-const UpgradeTapeHeight = 140760
+const UpgradeTapeHeight = 15000
 
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
