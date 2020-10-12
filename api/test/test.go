@@ -4,11 +4,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
+
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/miner"
@@ -35,17 +38,27 @@ var PresealGenesis = -1
 
 const GenesisPreseals = 2
 
+// Options for setting up a mock storage miner
 type StorageMiner struct {
 	Full    int
 	Preseal int
 }
 
+type OptionGenerator func([]TestNode) node.Option
+
+// Options for setting up a mock full node
+type FullNodeOpts struct {
+	Lite bool            // run node in "lite" mode
+	Opts OptionGenerator // generate dependency injection options
+}
+
 // APIBuilder is a function which is invoked in test suite to provide
 // test nodes and networks
 //
+// fullOpts array defines options for each full node
 // storage array defines storage nodes, numbers in the array specify full node
 // index the storage node 'belongs' to
-type APIBuilder func(t *testing.T, nFull int, storage []StorageMiner, opts ...node.Option) ([]TestNode, []TestStorageNode)
+type APIBuilder func(t *testing.T, full []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode)
 type testSuite struct {
 	makeNodes APIBuilder
 }
@@ -63,13 +76,39 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("testMiningReal", ts.testMiningReal)
 }
 
+func DefaultFullOpts(nFull int) []FullNodeOpts {
+	full := make([]FullNodeOpts, nFull)
+	for i := range full {
+		full[i] = FullNodeOpts{
+			Opts: func(nodes []TestNode) node.Option {
+				return node.Options()
+			},
+		}
+	}
+	return full
+}
+
 var OneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
+var OneFull = DefaultFullOpts(1)
+var TwoFull = DefaultFullOpts(2)
+
+var FullNodeWithUpgradeAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
+	return FullNodeOpts{
+		Opts: func(nodes []TestNode) node.Option {
+			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
+				Network:   build.ActorUpgradeNetworkVersion,
+				Height:    upgradeHeight,
+				Migration: stmgr.UpgradeActorsV2,
+			}})
+		},
+	}
+}
 
 func (ts *testSuite) testVersion(t *testing.T) {
 	build.RunningNodeType = build.NodeFull
 
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, OneMiner)
+	apis, _ := ts.makeNodes(t, OneFull, OneMiner)
 	api := apis[0]
 
 	v, err := api.Version(ctx)
@@ -81,7 +120,7 @@ func (ts *testSuite) testVersion(t *testing.T) {
 
 func (ts *testSuite) testID(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, OneMiner)
+	apis, _ := ts.makeNodes(t, OneFull, OneMiner)
 	api := apis[0]
 
 	id, err := api.ID(ctx)
@@ -93,7 +132,7 @@ func (ts *testSuite) testID(t *testing.T) {
 
 func (ts *testSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 2, OneMiner)
+	apis, _ := ts.makeNodes(t, TwoFull, OneMiner)
 
 	p, err := apis[0].NetPeers(ctx)
 	if err != nil {

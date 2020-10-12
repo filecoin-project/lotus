@@ -40,12 +40,12 @@ func main() {
 			return fmt.Errorf("unrecognized key type: %q", cctx.String("type"))
 		}
 
-		kaddr, err := w.GenerateKey(kt)
+		kaddr, err := w.WalletNew(cctx.Context, kt)
 		if err != nil {
 			return err
 		}
 
-		ki, err := w.Export(kaddr)
+		ki, err := w.WalletExport(cctx.Context, kaddr)
 		if err != nil {
 			return err
 		}

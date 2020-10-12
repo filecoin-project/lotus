@@ -49,6 +49,9 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 	return m.msg.Value
 }
 
+// EnableGasTracing, if true, outputs gas tracing in execution traces.
+var EnableGasTracing = false
+
 type Runtime struct {
 	rt0.Message
 	rt0.Syscalls
@@ -477,7 +480,7 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 }
 
 func (rt *Runtime) finilizeGasTracing() {
-	if enableTracing {
+	if EnableGasTracing {
 		if rt.lastGasCharge != nil {
 			rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
 		}
@@ -509,11 +512,9 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 
 }
 
-var enableTracing = false
-
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
-	if enableTracing {
+	if EnableGasTracing {
 		var callers [10]uintptr
 
 		cout := 0 //gruntime.Callers(2+skip, callers[:])

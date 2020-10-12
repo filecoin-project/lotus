@@ -96,3 +96,22 @@ func (s *state2) ListAllMiners() ([]address.Address, error) {
 
 	return miners, nil
 }
+
+func (s *state2) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
+	claims, err := adt2.AsMap(s.store, s.Claims)
+	if err != nil {
+		return err
+	}
+
+	var claim power2.Claim
+	return claims.ForEach(&claim, func(k string) error {
+		a, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return err
+		}
+		return cb(a, Claim{
+			RawBytePower:    claim.RawBytePower,
+			QualityAdjPower: claim.QualityAdjPower,
+		})
+	})
+}

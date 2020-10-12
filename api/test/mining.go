@@ -25,7 +25,7 @@ var log = logging.Logger("apitest")
 
 func (ts *testSuite) testMining(t *testing.T) {
 	ctx := context.Background()
-	apis, sn := ts.makeNodes(t, 1, OneMiner)
+	apis, sn := ts.makeNodes(t, OneFull, OneMiner)
 	api := apis[0]
 
 	newHeads, err := api.ChainNotify(ctx)
@@ -54,7 +54,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	apis, sn := ts.makeNodes(t, 1, OneMiner)
+	apis, sn := ts.makeNodes(t, OneFull, OneMiner)
 	api := apis[0]
 
 	newHeads, err := api.ChainNotify(ctx)
@@ -93,7 +93,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	// test making a deal with a fresh miner, and see if it starts to mine
 
 	ctx := context.Background()
-	n, sn := b(t, 1, []StorageMiner{
+	n, sn := b(t, OneFull, []StorageMiner{
 		{Full: 0, Preseal: PresealGenesis},
 		{Full: 0, Preseal: 0}, // TODO: Add support for miners on non-first full node
 	})

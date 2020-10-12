@@ -121,13 +121,13 @@ func TestPaymentChannelStatus(t *testing.T) {
 	create := make(chan string)
 	go func() {
 		// creator: paych add-funds <creator> <receiver> <amount>
-		cmd = []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
+		cmd := []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
 		create <- creatorCLI.runCmd(paychAddFundsCmd, cmd)
 	}()
 
 	// Wait for the output to stop being "Channel does not exist"
 	for regexp.MustCompile(noChannelState).MatchString(out) {
-		cmd = []string{creatorAddr.String(), receiverAddr.String()}
+		cmd := []string{creatorAddr.String(), receiverAddr.String()}
 		out = creatorCLI.runCmd(paychStatusByFromToCmd, cmd)
 	}
 	fmt.Println(out)
@@ -390,7 +390,7 @@ func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 }
 
 func startTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]test.TestNode, []address.Address) {
-	n, sn := builder.RPCMockSbBuilder(t, 2, test.OneMiner)
+	n, sn := builder.RPCMockSbBuilder(t, test.TwoFull, test.OneMiner)
 
 	paymentCreator := n[0]
 	paymentReceiver := n[1]
@@ -439,12 +439,12 @@ type mockCLI struct {
 }
 
 func newMockCLI(t *testing.T) *mockCLI {
-	// Create a CLI App with an --api flag so that we can specify which node
+	// Create a CLI App with an --api-url flag so that we can specify which node
 	// the command should be executed against
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:   "api",
+			Name:   "api-url",
 			Hidden: true,
 		},
 	}
@@ -476,8 +476,8 @@ func (c *mockCLIClient) runCmd(cmd *cli.Command, input []string) string {
 }
 
 func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, error) {
-	// prepend --api=<node api listener address>
-	apiFlag := "--api=" + c.addr.String()
+	// prepend --api-url=<node api listener address>
+	apiFlag := "--api-url=" + c.addr.String()
 	input = append([]string{apiFlag}, input...)
 
 	fs := c.flagSet(cmd)
@@ -493,7 +493,7 @@ func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, err
 }
 
 func (c *mockCLIClient) flagSet(cmd *cli.Command) *flag.FlagSet {
-	// Apply app level flags (so we can process --api flag)
+	// Apply app level flags (so we can process --api-url flag)
 	fs := &flag.FlagSet{}
 	for _, f := range c.cctx.App.Flags {
 		err := f.Apply(fs)

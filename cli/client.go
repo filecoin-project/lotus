@@ -536,7 +536,7 @@ func interactiveDeal(cctx *cli.Context) error {
 
 			state = "miner"
 		case "miner":
-			fmt.Print("Miner Address (t0..): ")
+			fmt.Print("Miner Address (f0..): ")
 			var maddrStr string
 
 			_, err := fmt.Scan(&maddrStr)
@@ -1040,6 +1040,10 @@ var clientListDeals = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
+			Name:  "show-failed",
+			Usage: "show failed/failing deals",
+		},
+		&cli.BoolFlag{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
@@ -1055,6 +1059,7 @@ var clientListDeals = &cli.Command{
 		verbose := cctx.Bool("verbose")
 		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
+		showFailed := cctx.Bool("show-failed")
 
 		localDeals, err := api.ClientListDeals(ctx)
 		if err != nil {
@@ -1071,7 +1076,7 @@ var clientListDeals = &cli.Command{
 				tm.Clear()
 				tm.MoveCursor(1, 1)
 
-				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color)
+				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color, showFailed)
 				if err != nil {
 					return err
 				}
@@ -1097,7 +1102,7 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
-		return outputStorageDeals(ctx, os.Stdout, api, localDeals, cctx.Bool("verbose"), cctx.Bool("color"))
+		return outputStorageDeals(ctx, os.Stdout, api, localDeals, cctx.Bool("verbose"), cctx.Bool("color"), showFailed)
 	},
 }
 
@@ -1120,7 +1125,7 @@ func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet
 	}
 }
 
-func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, localDeals []api.DealInfo, verbose bool, color bool) error {
+func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
 	sort.Slice(localDeals, func(i, j int) bool {
 		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
 	})
@@ -1132,12 +1137,14 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 
 	var deals []deal
 	for _, localDeal := range localDeals {
-		deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
+		if showFailed || localDeal.State != storagemarket.StorageDealError {
+			deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
+		}
 	}
 
 	if verbose {
 		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tMessage\n")
+		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tVerified\tMessage\n")
 		for _, d := range deals {
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch != -1 {
@@ -1150,7 +1157,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 			}
 
 			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Message)
+			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%v\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Verified, d.LocalDeal.Message)
 		}
 		return w.Flush()
 	}
@@ -1165,6 +1172,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 		tablewriter.Col("Size"),
 		tablewriter.Col("Price"),
 		tablewriter.Col("Duration"),
+		tablewriter.Col("Verified"),
 		tablewriter.NewLineCol("Message"))
 
 	for _, d := range deals {
@@ -1194,6 +1202,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full api.FullNode, l
 			"PieceCID":  piece,
 			"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
 			"Price":     price,
+			"Verified":  d.LocalDeal.Verified,
 			"Duration":  d.LocalDeal.Duration,
 			"Message":   d.LocalDeal.Message,
 		})

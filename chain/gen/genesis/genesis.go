@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/journal"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -26,7 +27,6 @@ import (
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -117,7 +117,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("putting empty object: %w", err)
 	}
 
-	state, err := state.NewStateTree(cst, actors.Version0)
+	state, err := state.NewStateTree(cst, types.StateTreeVersion0)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
@@ -467,7 +467,10 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	return st, nil
 }
 
-func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallBuilder, template genesis.Template) (*GenesisBootstrap, error) {
+func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blockstore, sys vm.SyscallBuilder, template genesis.Template) (*GenesisBootstrap, error) {
+	if j == nil {
+		j = journal.NilJournal()
+	}
 	st, keyIDs, err := MakeInitialStateTree(ctx, bs, template)
 	if err != nil {
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
@@ -479,7 +482,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys vm.SyscallB
 	}
 
 	// temp chainstore
-	cs := store.NewChainStore(bs, datastore.NewMapDatastore(), sys)
+	cs := store.NewChainStore(bs, datastore.NewMapDatastore(), sys, j)
 
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs)

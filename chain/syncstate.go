@@ -11,8 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type SyncerState struct {
-	lk      sync.Mutex
+type SyncerStateSnapshot struct {
 	Target  *types.TipSet
 	Base    *types.TipSet
 	Stage   api.SyncStateStage
@@ -22,6 +21,11 @@ type SyncerState struct {
 	End     time.Time
 }
 
+type SyncerState struct {
+	lk   sync.Mutex
+	data SyncerStateSnapshot
+}
+
 func (ss *SyncerState) SetStage(v api.SyncStateStage) {
 	if ss == nil {
 		return
@@ -29,9 +33,9 @@ func (ss *SyncerState) SetStage(v api.SyncStateStage) {
 
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
-	ss.Stage = v
+	ss.data.Stage = v
 	if v == api.StageSyncComplete {
-		ss.End = build.Clock.Now()
+		ss.data.End = build.Clock.Now()
 	}
 }
 
@@ -42,13 +46,13 @@ func (ss *SyncerState) Init(base, target *types.TipSet) {
 
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
-	ss.Target = target
-	ss.Base = base
-	ss.Stage = api.StageHeaders
-	ss.Height = 0
-	ss.Message = ""
-	ss.Start = build.Clock.Now()
-	ss.End = time.Time{}
+	ss.data.Target = target
+	ss.data.Base = base
+	ss.data.Stage = api.StageHeaders
+	ss.data.Height = 0
+	ss.data.Message = ""
+	ss.data.Start = build.Clock.Now()
+	ss.data.End = time.Time{}
 }
 
 func (ss *SyncerState) SetHeight(h abi.ChainEpoch) {
@@ -58,7 +62,7 @@ func (ss *SyncerState) SetHeight(h abi.ChainEpoch) {
 
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
-	ss.Height = h
+	ss.data.Height = h
 }
 
 func (ss *SyncerState) Error(err error) {
@@ -68,21 +72,13 @@ func (ss *SyncerState) Error(err error) {
 
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
-	ss.Message = err.Error()
-	ss.Stage = api.StageSyncErrored
-	ss.End = build.Clock.Now()
+	ss.data.Message = err.Error()
+	ss.data.Stage = api.StageSyncErrored
+	ss.data.End = build.Clock.Now()
 }
 
-func (ss *SyncerState) Snapshot() SyncerState {
+func (ss *SyncerState) Snapshot() SyncerStateSnapshot {
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
-	return SyncerState{
-		Base:    ss.Base,
-		Target:  ss.Target,
-		Stage:   ss.Stage,
-		Height:  ss.Height,
-		Message: ss.Message,
-		Start:   ss.Start,
-		End:     ss.End,
-	}
+	return ss.data
 }

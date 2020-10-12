@@ -1,6 +1,7 @@
 package messagepool
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -21,7 +22,7 @@ func TestRepubMessages(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest")
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +33,7 @@ func TestRepubMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.GenerateKey(crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +43,7 @@ func TestRepubMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.GenerateKey(crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}

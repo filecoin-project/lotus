@@ -3,8 +3,10 @@ package cli
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"text/tabwriter"
@@ -14,6 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -174,6 +178,10 @@ var msigInspectCmd = &cli.Command{
 			Name:  "vesting",
 			Usage: "Include vesting details",
 		},
+		&cli.BoolFlag{
+			Name:  "decode-params",
+			Usage: "Decode parameters of transaction proposals",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -200,6 +208,11 @@ var msigInspectCmd = &cli.Command{
 		}
 
 		act, err := api.StateGetActor(ctx, maddr, head.Key())
+		if err != nil {
+			return err
+		}
+
+		ownId, err := api.StateLookupID(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -256,6 +269,7 @@ var msigInspectCmd = &cli.Command{
 			return xerrors.Errorf("reading pending transactions: %w", err)
 		}
 
+		decParams := cctx.Bool("decode-params")
 		fmt.Println("Transactions: ", len(pending))
 		if len(pending) > 0 {
 			var txids []int64
@@ -266,11 +280,36 @@ var msigInspectCmd = &cli.Command{
 				return txids[i] < txids[j]
 			})
 
-			w := tabwriter.NewWriter(os.Stdout, 8, 4, 0, ' ', 0)
+			w := tabwriter.NewWriter(os.Stdout, 8, 4, 2, ' ', 0)
 			fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
 			for _, txid := range txids {
 				tx := pending[txid]
-				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%d\t%x\n", txid, "pending", len(tx.Approved), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
+				target := tx.To.String()
+				if tx.To == ownId {
+					target += " (self)"
+				}
+				targAct, err := api.StateGetActor(ctx, tx.To, types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("failed to resolve 'To' address of multisig transaction %d: %w", txid, err)
+				}
+				method := stmgr.MethodsMap[targAct.Code][tx.Method]
+
+				paramStr := fmt.Sprintf("%x", tx.Params)
+				if decParams && tx.Method != 0 {
+					ptyp := reflect.New(method.Params.Elem()).Interface().(cbg.CBORUnmarshaler)
+					if err := ptyp.UnmarshalCBOR(bytes.NewReader(tx.Params)); err != nil {
+						return xerrors.Errorf("failed to decode parameters of transaction %d: %w", txid, err)
+					}
+
+					b, err := json.Marshal(ptyp)
+					if err != nil {
+						return xerrors.Errorf("could not json marshal parameter type: %w", err)
+					}
+
+					paramStr = string(b)
+				}
+
+				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), method.Name, tx.Method, paramStr)
 			}
 			if err := w.Flush(); err != nil {
 				return xerrors.Errorf("flushing output: %+v", err)
@@ -398,7 +437,7 @@ var msigProposeCmd = &cli.Command{
 var msigApproveCmd = &cli.Command{
 	Name:      "approve",
 	Usage:     "Approve a multisig message",
-	ArgsUsage: "[multisigAddress messageId proposerAddress destination value <methodId methodParams> (optional)]",
+	ArgsUsage: "<multisigAddress messageId> [proposerAddress destination value [methodId methodParams]]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -484,7 +523,7 @@ var msigApproveCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigApprove(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
+		msgCid, err := api.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
 		if err != nil {
 			return err
 		}
@@ -1129,7 +1168,7 @@ var msigLockApproveCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigApprove(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
+		msgCid, err := api.MsigApproveTxnHash(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
 		if err != nil {
 			return err
 		}

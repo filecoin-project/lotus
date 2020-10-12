@@ -217,6 +217,12 @@ func (syncer *Syncer) Stop() {
 // This should be called when connecting to new peers, and additionally
 // when receiving new blocks from the network
 func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Errorf("panic in InformNewHead: ", err)
+		}
+	}()
+
 	ctx := context.Background()
 	if fts == nil {
 		log.Errorf("got nil tipset in InformNewHead")
@@ -731,7 +737,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 
 	lbst, _, err := syncer.sm.TipSetState(ctx, lbts)
 	if err != nil {
-		return xerrors.Errorf("failed to compute lookback tipset state: %w", err)
+		return xerrors.Errorf("failed to compute lookback tipset state (epoch %d): %w", lbts.Height(), err)
 	}
 
 	prevBeacon, err := syncer.store.GetLatestBeaconEntry(baseTs)
@@ -1281,9 +1287,11 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, incoming *types.TipSet
 
 	blockSet := []*types.TipSet{incoming}
 
+	// Parent of the new (possibly better) tipset that we need to fetch next.
 	at := incoming.Parents()
 
-	// we want to sync all the blocks until the height above the block we have
+	// we want to sync all the blocks until the height above our
+	// best tipset so far
 	untilHeight := known.Height() + 1
 
 	ss.SetHeight(blockSet[len(blockSet)-1].Height())
@@ -1377,13 +1385,17 @@ loop:
 	}
 
 	base := blockSet[len(blockSet)-1]
-	if base.Parents() == known.Parents() {
-		// common case: receiving a block thats potentially part of the same tipset as our best block
+	if base.IsChildOf(known) {
+		// common case: receiving blocks that are building on top of our best tipset
 		return blockSet, nil
 	}
 
-	if types.CidArrsEqual(base.Parents().Cids(), known.Cids()) {
-		// common case: receiving blocks that are building on top of our best tipset
+	knownParent, err := syncer.store.LoadTipSet(known.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
+	}
+	if base.IsChildOf(knownParent) {
+		// common case: receiving a block thats potentially part of the same tipset as our best block
 		return blockSet, nil
 	}
 
@@ -1514,7 +1526,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 		ss.SetStage(api.StageMessages)
 
 		if batchErr != nil {
-			return xerrors.Errorf("failed to fetch messages: %w", err)
+			return xerrors.Errorf("failed to fetch messages: %w", batchErr)
 		}
 
 		for bsi := 0; bsi < len(bstout); bsi++ {
@@ -1714,7 +1726,7 @@ func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []b
 	return gen.VerifyVRF(ctx, worker, rand, evrf)
 }
 
-func (syncer *Syncer) State() []SyncerState {
+func (syncer *Syncer) State() []SyncerStateSnapshot {
 	return syncer.syncmgr.State()
 }
 
@@ -1726,6 +1738,10 @@ func (syncer *Syncer) MarkBad(blk cid.Cid) {
 // UnmarkBad manually adds a block to the "bad blocks" cache.
 func (syncer *Syncer) UnmarkBad(blk cid.Cid) {
 	syncer.bad.Remove(blk)
+}
+
+func (syncer *Syncer) UnmarkAllBad() {
+	syncer.bad.Purge()
 }
 
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {

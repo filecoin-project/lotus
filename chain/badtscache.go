@@ -60,6 +60,10 @@ func (bts *BadBlockCache) Remove(c cid.Cid) {
 	bts.badBlocks.Remove(c)
 }
 
+func (bts *BadBlockCache) Purge() {
+	bts.badBlocks.Purge()
+}
+
 func (bts *BadBlockCache) Has(c cid.Cid) (BadBlockReason, bool) {
 	rval, ok := bts.badBlocks.Get(c)
 	if !ok {

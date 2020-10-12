@@ -187,6 +187,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		build.MessagesTopic(in.Nn): 1,
 	}
 
+	var drandTopics []string
 	for _, d := range in.Dr {
 		topic, err := getDrandTopic(d.Config.ChainInfoJSON)
 		if err != nil {
@@ -194,6 +195,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		}
 		topicParams[topic] = drandTopicParams
 		pgTopicWeights[topic] = 5
+		drandTopics = append(drandTopics, topic)
 	}
 
 	options := []pubsub.Option{
@@ -309,6 +311,17 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 
 	options = append(options, pubsub.WithPeerGater(pgParams))
 
+	allowTopics := []string{
+		build.BlocksTopic(in.Nn),
+		build.MessagesTopic(in.Nn),
+	}
+	allowTopics = append(allowTopics, drandTopics...)
+	options = append(options,
+		pubsub.WithSubscriptionFilter(
+			pubsub.WrapLimitSubscriptionFilter(
+				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
+				100)))
+
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
 		a, err := ma.NewMultiaddr(in.Cfg.RemoteTracer)
@@ -359,14 +372,9 @@ type tracerWrapper struct {
 	topics map[string]struct{}
 }
 
-func (trw *tracerWrapper) traceMessage(topics []string) bool {
-	for _, topic := range topics {
-		_, ok := trw.topics[topic]
-		if ok {
-			return true
-		}
-	}
-	return false
+func (trw *tracerWrapper) traceMessage(topic string) bool {
+	_, ok := trw.topics[topic]
+	return ok
 }
 
 func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
@@ -379,12 +387,12 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 	switch evt.GetType() {
 	case pubsub_pb.TraceEvent_PUBLISH_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubPublishMessage.M(1))
-		if trw.tr != nil && trw.traceMessage(evt.GetPublishMessage().Topics) {
+		if trw.tr != nil && trw.traceMessage(evt.GetPublishMessage().GetTopic()) {
 			trw.tr.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_DELIVER_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubDeliverMessage.M(1))
-		if trw.tr != nil && trw.traceMessage(evt.GetDeliverMessage().Topics) {
+		if trw.tr != nil && trw.traceMessage(evt.GetDeliverMessage().GetTopic()) {
 			trw.tr.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_REJECT_MESSAGE:
