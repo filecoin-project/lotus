@@ -473,7 +473,7 @@ func BasicDealFilter(user dtypes.DealFilter) func(onlineOk dtypes.ConsiderOnline
 
 			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg
-			maxStartEpoch := ht + abi.ChainEpoch(7*builtin.EpochsInDay)
+			maxStartEpoch := earliest + abi.ChainEpoch(7*builtin.EpochsInDay)
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}
