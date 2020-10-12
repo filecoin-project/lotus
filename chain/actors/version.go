@@ -9,8 +9,8 @@ import (
 type Version int
 
 const (
-	Version0 = 0
-	Version2 = 2
+	Version0 Version = 0
+	Version2 Version = 2
 )
 
 // Converts a network version into an actors adt version.

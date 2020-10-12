@@ -60,7 +60,7 @@ func (s *state2) CumsumBaseline() (abi.StoragePower, error) {
 }
 
 func (s *state2) CumsumRealized() (abi.StoragePower, error) {
-	return s.State.CumsumBaseline, nil
+	return s.State.CumsumRealized, nil
 }
 
 func (s *state2) InitialPledgeForPower(qaPower abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount) (abi.TokenAmount, error) {

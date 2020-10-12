@@ -221,8 +221,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	sourceRepo, genesis, blocks := tu.repoWithChain(tu.t, gen)
 	var out api.FullNode
 
-	// TODO: Don't ignore stop
-	_, err := node.New(tu.ctx,
+	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
 		node.Online(),
 		node.Repo(sourceRepo),
@@ -232,6 +231,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
 	)
 	require.NoError(tu.t, err)
+	tu.t.Cleanup(func() { _ = stop(context.Background()) })
 
 	lastTs := blocks[len(blocks)-1].Blocks
 	for _, lastB := range lastTs {
@@ -253,8 +253,7 @@ func (tu *syncTestUtil) addClientNode() int {
 
 	var out api.FullNode
 
-	// TODO: Don't ignore stop
-	_, err := node.New(tu.ctx,
+	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
@@ -264,6 +263,7 @@ func (tu *syncTestUtil) addClientNode() int {
 		node.Override(new(modules.Genesis), modules.LoadGenesis(tu.genesis)),
 	)
 	require.NoError(tu.t, err)
+	tu.t.Cleanup(func() { _ = stop(context.Background()) })
 
 	tu.nds = append(tu.nds, out)
 	return len(tu.nds) - 1
@@ -593,7 +593,7 @@ func TestDuplicateNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -685,7 +685,7 @@ func TestBadNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{

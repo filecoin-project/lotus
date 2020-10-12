@@ -176,7 +176,8 @@
     "CompactPartitions",
     "CompactSectorNumbers",
     "ConfirmUpdateWorkerKey",
-    "RepayDebt"
+    "RepayDebt",
+    "ChangeOwnerAddress"
   ],
   "fil/2/storagepower": [
     "Send",

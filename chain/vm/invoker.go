@@ -70,11 +70,11 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Receiver())
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", codeCid, method, hex.EncodeToString(params))
 	}
+	if err := act.predicate(rt, act.vmActor); err != nil {
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "unsupported actor: %s", err)
+	}
 	if method >= abi.MethodNum(len(act.methods)) || act.methods[method] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
-	}
-	if err := act.predicate(rt, act.vmActor); err != nil {
-		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "unsupported actor: %s", err)
 	}
 	return act.methods[method](rt, params)
 

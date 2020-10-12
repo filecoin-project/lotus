@@ -13,9 +13,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -23,6 +21,8 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
+
+	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -46,18 +46,6 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 	// Create a new Driver.
 	driver := NewDriver(ctx, vector.Selector, DriverOpts{DisableVMFlush: true})
 
-	var circSupply *abi.TokenAmount
-	if cs := vector.Pre.CircSupply; cs != nil {
-		ta := big.NewFromGo(cs)
-		circSupply = &ta
-	}
-
-	var basefee *abi.TokenAmount
-	if bf := vector.Pre.BaseFee; bf != nil {
-		ta := big.NewFromGo(bf)
-		basefee = &ta
-	}
-
 	// Apply every message.
 	for i, m := range vector.ApplyMessages {
 		msg, err := types.DecodeMessage(m.Bytes)
@@ -76,8 +64,9 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 			Preroot:    root,
 			Epoch:      abi.ChainEpoch(epoch),
 			Message:    msg,
-			CircSupply: circSupply,
-			BaseFee:    basefee,
+			BaseFee:    BaseFeeOrDefault(vector.Pre.BaseFee),
+			CircSupply: CircSupplyOrDefault(vector.Pre.CircSupply),
+			Rand:       NewReplayingRand(r, vector.Randomness),
 		})
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)

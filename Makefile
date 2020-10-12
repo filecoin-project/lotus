@@ -186,6 +186,12 @@ lotus-health:
 .PHONY: lotus-health
 BINS+=lotus-health
 
+lotus-wallet:
+	rm -f lotus-wallet
+	go build -o lotus-wallet ./cmd/lotus-wallet
+.PHONY: lotus-wallet
+BINS+=lotus-wallet
+
 testground:
 	go build -tags testground -o /dev/null ./cmd/lotus
 .PHONY: testground
