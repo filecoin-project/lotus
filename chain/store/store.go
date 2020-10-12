@@ -1312,11 +1312,13 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 
 		var cids []cid.Cid
 		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
-			mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
-			if err != nil {
-				return xerrors.Errorf("recursing messages failed: %w", err)
+			if walked.Visit(b.Messages) {
+				mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
+				if err != nil {
+					return xerrors.Errorf("recursing messages failed: %w", err)
+				}
+				cids = mcids
 			}
-			cids = mcids
 		}
 
 		if b.Height > 0 {
@@ -1331,12 +1333,14 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		out := cids
 
 		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
-			cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
-			if err != nil {
-				return xerrors.Errorf("recursing genesis state failed: %w", err)
-			}
+			if walked.Visit(b.ParentStateRoot) {
+				cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+				if err != nil {
+					return xerrors.Errorf("recursing genesis state failed: %w", err)
+				}
 
-			out = append(out, cids...)
+				out = append(out, cids...)
+			}
 		}
 
 		for _, c := range out {
