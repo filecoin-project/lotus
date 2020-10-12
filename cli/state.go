@@ -1711,7 +1711,7 @@ var stateCircSupplyCmd = &cli.Command{
 		}
 
 		if cctx.IsSet("vm-supply") {
-			circ, err := api.StateVMCirculatingSupply(ctx, ts.Key())
+			circ, err := api.StateVMCirculatingSupplyInternal(ctx, ts.Key())
 			if err != nil {
 				return err
 			}

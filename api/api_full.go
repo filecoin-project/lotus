@@ -419,9 +419,9 @@ type FullNode interface {
 	// StateCirculatingSupply returns the exact circulating supply of Filecoin at the given tipset.
 	// This is not used anywhere in the protocol itself, and is only for external consumption.
 	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
-	// StateVMCirculatingSupply returns an approximation of the circulating supply of Filecoin at the given tipset.
+	// StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
 	// This is the value reported by the runtime interface to actors code.
-	StateVMCirculatingSupply(context.Context, types.TipSetKey) (CirculatingSupply, error)
+	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error)
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 

@@ -165,7 +165,7 @@
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
   * [StateSectorPreCommitInfo](#StateSectorPreCommitInfo)
-  * [StateVMCirculatingSupply](#StateVMCirculatingSupply)
+  * [StateVMCirculatingSupplyInternal](#StateVMCirculatingSupplyInternal)
   * [StateVerifiedClientStatus](#StateVerifiedClientStatus)
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
@@ -4258,8 +4258,8 @@ Response:
 }
 ```
 
-### StateVMCirculatingSupply
-StateVMCirculatingSupply returns an approximation of the circulating supply of Filecoin at the given tipset.
+### StateVMCirculatingSupplyInternal
+StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
 This is the value reported by the runtime interface to actors code.
 
 

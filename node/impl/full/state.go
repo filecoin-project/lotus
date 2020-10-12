@@ -1049,7 +1049,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	circSupply, err := a.StateVMCirculatingSupply(ctx, ts.Key())
+	circSupply, err := a.StateVMCirculatingSupplyInternal(ctx, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
@@ -1203,7 +1203,7 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor state: %w", err)
 	}
 
-	circ, err := a.StateVMCirculatingSupply(ctx, ts.Key())
+	circ, err := a.StateVMCirculatingSupplyInternal(ctx, ts.Key())
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
@@ -1244,7 +1244,7 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 	return a.StateManager.GetCirculatingSupply(ctx, ts.Height(), sTree)
 }
 
-func (a *StateAPI) StateVMCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
+func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)

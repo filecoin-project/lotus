@@ -211,7 +211,7 @@ type FullNodeStruct struct {
 		StateVerifiedRegistryRootKey       func(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                             `perm:"read"`
 		StateDealProviderCollateralBounds  func(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (api.DealCollateralBounds, error)                 `perm:"read"`
 		StateCirculatingSupply             func(context.Context, types.TipSetKey) (abi.TokenAmount, error)                                                     `perm:"read"`
-		StateVMCirculatingSupply           func(context.Context, types.TipSetKey) (api.CirculatingSupply, error)                                               `perm:"read"`
+		StateVMCirculatingSupplyInternal   func(context.Context, types.TipSetKey) (api.CirculatingSupply, error)                                               `perm:"read"`
 		StateNetworkVersion                func(context.Context, types.TipSetKey) (stnetwork.Version, error)                                                   `perm:"read"`
 
 		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                                                    `perm:"read"`
@@ -968,8 +968,8 @@ func (c *FullNodeStruct) StateCirculatingSupply(ctx context.Context, tsk types.T
 	return c.Internal.StateCirculatingSupply(ctx, tsk)
 }
 
-func (c *FullNodeStruct) StateVMCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
-	return c.Internal.StateVMCirculatingSupply(ctx, tsk)
+func (c *FullNodeStruct) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
+	return c.Internal.StateVMCirculatingSupplyInternal(ctx, tsk)
 }
 
 func (c *FullNodeStruct) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (stnetwork.Version, error) {
