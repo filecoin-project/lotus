@@ -521,8 +521,9 @@ var chainInspectUsage = &cli.Command{
 }
 
 var chainListCmd = &cli.Command{
-	Name:  "list",
-	Usage: "View a segment of the chain",
+	Name:    "list",
+	Aliases: []string{"love"},
+	Usage:   "View a segment of the chain",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{Name: "height"},
 		&cli.IntFlag{Name: "count", Value: 30},
