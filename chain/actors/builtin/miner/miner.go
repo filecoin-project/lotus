@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -195,4 +196,8 @@ type LockedFunds struct {
 	VestingFunds             abi.TokenAmount
 	InitialPledgeRequirement abi.TokenAmount
 	PreCommitDeposits        abi.TokenAmount
+}
+
+func (lf LockedFunds) TotalLockedFunds() abi.TokenAmount {
+	return big.Add(lf.VestingFunds, big.Add(lf.InitialPledgeRequirement, lf.PreCommitDeposits))
 }

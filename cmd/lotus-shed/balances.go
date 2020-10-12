@@ -372,7 +372,7 @@ var chainPledgeCmd = &cli.Command{
 			pledgeCollateral = c
 		}
 
-		circ, err := sm.GetCirculatingSupplyDetailed(ctx, abi.ChainEpoch(epoch), state)
+		circ, err := sm.GetVMCirculatingSupplyDetailed(ctx, abi.ChainEpoch(epoch), state)
 		if err != nil {
 			return err
 		}
