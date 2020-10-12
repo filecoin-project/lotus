@@ -145,7 +145,7 @@ func (lw LedgerWallet) WalletList(ctx context.Context) ([]address.Address, error
 	if err != nil {
 		return nil, err
 	}
-	defer res.Close()
+	defer res.Close() // nolint:errcheck
 
 	var out []address.Address
 	for {
@@ -179,7 +179,7 @@ func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.
 	if err != nil {
 		return address.Undef, err
 	}
-	defer res.Close()
+	defer res.Close() // nolint:errcheck
 
 	var maxi int64 = -1
 	for {
