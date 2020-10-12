@@ -201,6 +201,7 @@ func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.
 	if err != nil {
 		return address.Undef, xerrors.Errorf("finding ledger: %w", err)
 	}
+	defer fl.Close() // nolint:errcheck
 
 	path := append(append([]uint32(nil), filHDBasePath...), uint32(maxi+1))
 	_, _, addr, err := fl.GetAddressPubKeySECP256K1(path)
