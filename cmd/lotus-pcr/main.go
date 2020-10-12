@@ -884,6 +884,8 @@ func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *
 		}
 
 		refundValue = types.BigMul(types.NewInt(uint64(recp.GasUsed)), tipset.Blocks()[0].ParentBaseFee)
+	default:
+		return false, messageMethod, types.NewInt(0), nil
 	}
 
 	return true, messageMethod, refundValue, nil
