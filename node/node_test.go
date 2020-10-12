@@ -117,6 +117,16 @@ func TestPledgeSectors(t *testing.T) {
 	})
 }
 
+func TestTapeFix(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestTapeFix(t, builder.MockSbBuilder, 2*time.Millisecond)
+}
+
 func TestWindowedPost(t *testing.T) {
 	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
