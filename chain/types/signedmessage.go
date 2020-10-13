@@ -78,7 +78,14 @@ func (sm *SignedMessage) MarshalJSON() ([]byte, error) {
 }
 
 func (sm *SignedMessage) ChainLength() int {
-	ser, err := sm.Serialize()
+	var ser []byte
+	var err error
+	if sm.Signature.Type == crypto.SigTypeBLS {
+		// BLS chain message length doesn't include signature
+		ser, err = sm.Message.Serialize()
+	} else {
+		ser, err = sm.Serialize()
+	}
 	if err != nil {
 		panic(err)
 	}
