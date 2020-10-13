@@ -96,7 +96,7 @@ var postFindCmd = &cli.Command{
 				minersToCheck[mAddr] = struct{}{}
 			}
 		}
-		fmt.Printf("Loaded %d miners with power\n", len(minersToCheck))
+		fmt.Printf("Loaded %d miners to check\n", len(minersToCheck))
 
 		postedMiners := make(map[address.Address]struct{})
 		for _, msg := range msgs {
