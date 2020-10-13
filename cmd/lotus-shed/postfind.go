@@ -90,7 +90,7 @@ var postFindCmd = &cli.Command{
 		fmt.Printf("Loaded %d miners with power\n", len(minersWithPower))
 
 		postedMiners := make(map[address.Address]struct{})
-		for i, msg := range msgs {
+		for _, msg := range msgs {
 			_, hasPower := minersWithPower[msg.To]
 			_, seenBefore := postedMiners[msg.To]
 
@@ -99,9 +99,6 @@ var postFindCmd = &cli.Command{
 					fmt.Printf("%s\n", msg.To)
 					postedMiners[msg.To] = struct{}{}
 				}
-			}
-			if verbose && int64(i)%1000 == 0 {
-				fmt.Printf("Searched through message %d of %d\n", i, len(msgs))
 			}
 		}
 		return nil
