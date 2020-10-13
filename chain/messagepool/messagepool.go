@@ -670,6 +670,10 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 
 	curTs := mp.curTs
 
+	if curTs == nil {
+		return xerrors.Errorf("current tipset not loaded")
+	}
+
 	snonce, err := mp.getStateNonce(m.Message.From, curTs)
 	if err != nil {
 		return xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
