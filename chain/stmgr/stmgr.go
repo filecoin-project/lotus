@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -100,8 +101,10 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 	var networkVersions []versionSpec
 	lastVersion := network.Version0
 	if len(us) > 0 {
-		// If we have any upgrades, process them and create a version
-		// schedule.
+		// If we have any upgrades, process them and create a version schedule.
+		sort.Slice(us, func(i, j int) bool {
+			return us[i].Height < us[j].Height
+		})
 		for _, upgrade := range us {
 			if upgrade.Migration != nil {
 				stateMigrations[upgrade.Height] = upgrade.Migration
