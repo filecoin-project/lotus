@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/ipfs/go-cid"
@@ -298,6 +299,8 @@ type FullNode interface {
 	// ClientListTransfers returns the status of all ongoing transfers of data
 	ClientListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
 	ClientDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
+	// ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+	ClientRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
 	// ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
 	// which are stuck due to insufficient funds
 	ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error

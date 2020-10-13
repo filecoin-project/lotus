@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -82,6 +83,7 @@ var clientCmd = &cli.Command{
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientInfoCmd),
 		WithCategory("util", clientListTransfers),
+		WithCategory("util", clientRestartTransfer),
 	},
 }
 
@@ -1323,6 +1325,66 @@ var clientInfoCmd = &cli.Command{
 		fmt.Printf("Escrowed Funds:\t%s\n", types.FIL(balance.Escrow))
 
 		return nil
+	},
+}
+
+var clientRestartTransfer = &cli.Command{
+	Name:  "restart-transfer",
+	Usage: "Force restart a stalled data transfer",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "peerid",
+			Usage: "narrow to transfer with specific peer",
+		},
+		&cli.BoolFlag{
+			Name:  "initiator",
+			Usage: "specify only transfers where peer is/is not initiator",
+			Value: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return fmt.Errorf("Error reading transfer ID: %w", err)
+		}
+		transferID := datatransfer.TransferID(transferUint)
+		initiator := cctx.Bool("initiator")
+		var other peer.ID
+		if pidstr := cctx.String("peerid"); pidstr != "" {
+			p, err := peer.Decode(pidstr)
+			if err != nil {
+				return err
+			}
+			other = p
+		} else {
+			channels, err := api.ClientListDataTransfers(ctx)
+			if err != nil {
+				return err
+			}
+			found := false
+			for _, channel := range channels {
+				if channel.IsInitiator == initiator && channel.TransferID == transferID {
+					other = channel.OtherPeer
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.New("unable to find matching data transfer")
+			}
+		}
+
+		return api.ClientRestartDataTransfer(ctx, transferID, other, initiator)
 	},
 }
 
