@@ -30,10 +30,10 @@ var postFindCmd = &cli.Command{
 			Usage: "only print addrs of miners with more than zero power",
 		},
 		&cli.IntFlag{
-			Name: "lookback",
+			Name:  "lookback",
 			Usage: "number of past epochs to search for post",
 			Value: 2880, //default 1 day
-		}
+		},
 	},
 	Action: func(c *cli.Context) error {
 		api, acloser, err := lcli.GetFullNodeAPI(c)
