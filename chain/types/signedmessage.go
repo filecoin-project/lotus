@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -60,6 +61,20 @@ func (sm *SignedMessage) Serialize() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+type smCid struct {
+	*RawSignedMessage
+	CID cid.Cid
+}
+
+type RawSignedMessage SignedMessage
+
+func (sm *SignedMessage) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&smCid{
+		RawSignedMessage: (*RawSignedMessage)(sm),
+		CID:              sm.Cid(),
+	})
 }
 
 func (sm *SignedMessage) ChainLength() int {
