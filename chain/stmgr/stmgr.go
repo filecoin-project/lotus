@@ -738,7 +738,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			}
 
 			if r != nil {
-				return pts, r, foundMsg, nil
+				return cur, r, foundMsg, nil
 			}
 		}
 

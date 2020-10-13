@@ -195,7 +195,7 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 
 	// since prices might vary with time, this is technically semantic validation
 	if m.GasLimit < minGas {
-		return xerrors.New("'GasLimit' field cannot be less than the cost of storing a message on chain")
+		return xerrors.Errorf("'GasLimit' field cannot be less than the cost of storing a message on chain %d < %d", m.GasLimit, minGas)
 	}
 
 	return nil
