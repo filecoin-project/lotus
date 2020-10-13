@@ -312,11 +312,13 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 				available = st.GetAvailableBalance(act.Balance)
 			}
 
-			transfers = append(transfers, transfer{
-				From: addr,
-				To:   builtin.ReserveAddress,
-				Amt:  available,
-			})
+			if !available.IsZero() {
+				transfers = append(transfers, transfer{
+					From: addr,
+					To:   builtin.ReserveAddress,
+					Amt:  available,
+				})
+			}
 		}
 		return nil
 	})
