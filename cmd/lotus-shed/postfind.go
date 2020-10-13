@@ -29,6 +29,11 @@ var postFindCmd = &cli.Command{
 			Name:  "withpower",
 			Usage: "only print addrs of miners with more than zero power",
 		},
+		&cli.IntFlag{
+			Name: "lookback",
+			Usage: "number of past epochs to search for post",
+			Value: 2880, //default 1 day
+		}
 	},
 	Action: func(c *cli.Context) error {
 		api, acloser, err := lcli.GetFullNodeAPI(c)
@@ -100,13 +105,13 @@ var postFindCmd = &cli.Command{
 
 		postedMiners := make(map[address.Address]struct{})
 		for _, msg := range msgs {
-			_, hasPower := minersToCheck[msg.To]
+			_, shouldCheck := minersToCheck[msg.To]
 			_, seenBefore := postedMiners[msg.To]
 
-			if hasPower && !seenBefore {
+			if shouldCheck && !seenBefore {
 				if msg.Method == builtin.MethodsMiner.SubmitWindowedPoSt {
 					fmt.Printf("%s\n", msg.To)
-					minersToCheck[msg.To] = struct{}{}
+					postedMiners[msg.To] = struct{}{}
 				}
 			}
 		}
