@@ -25,6 +25,10 @@ var postFindCmd = &cli.Command{
 			Name:  "verbose",
 			Usage: "get more frequent print updates",
 		},
+		&cli.BoolFlag{
+			Name:  "withpower",
+			Usage: "only print addrs of miners with more than zero power",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		api, acloser, err := lcli.GetFullNodeAPI(c)
@@ -34,6 +38,7 @@ var postFindCmd = &cli.Command{
 		defer acloser()
 		ctx := lcli.ReqContext(c)
 		verbose := c.Bool("verbose")
+		withpower := c.Bool("withpower")
 
 		ts, err := lcli.LoadTipSet(ctx, c, api)
 		if err != nil {
@@ -47,7 +52,7 @@ var postFindCmd = &cli.Command{
 		}
 		oneDayAgo := ts.Height() - abi.ChainEpoch(2880)
 		if verbose {
-			fmt.Printf("Collecting messages between %d and %d\n", ts.Height, oneDayAgo)
+			fmt.Printf("Collecting messages between %d and %d\n", ts.Height(), oneDayAgo)
 		}
 		// Get all messages over the last day
 		msgs := make([]*types.Message, 0)
@@ -75,29 +80,33 @@ var postFindCmd = &cli.Command{
 			return err
 		}
 
-		minersWithPower := make(map[address.Address]struct{})
+		minersToCheck := make(map[address.Address]struct{})
 		for _, mAddr := range mAddrs {
 			// if they have no power ignore. This filters out 14k inactive miners
 			// so we can do 100x fewer expensive message queries
-			power, err := api.StateMinerPower(ctx, mAddr, ts.Key())
-			if err != nil {
-				return err
-			}
-			if power.MinerPower.RawBytePower.GreaterThan(big.Zero()) {
-				minersWithPower[mAddr] = struct{}{}
+			if withpower {
+				power, err := api.StateMinerPower(ctx, mAddr, ts.Key())
+				if err != nil {
+					return err
+				}
+				if power.MinerPower.RawBytePower.GreaterThan(big.Zero()) {
+					minersToCheck[mAddr] = struct{}{}
+				}
+			} else {
+				minersToCheck[mAddr] = struct{}{}
 			}
 		}
-		fmt.Printf("Loaded %d miners with power\n", len(minersWithPower))
+		fmt.Printf("Loaded %d miners with power\n", len(minersToCheck))
 
 		postedMiners := make(map[address.Address]struct{})
 		for _, msg := range msgs {
-			_, hasPower := minersWithPower[msg.To]
+			_, hasPower := minersToCheck[msg.To]
 			_, seenBefore := postedMiners[msg.To]
 
 			if hasPower && !seenBefore {
 				if msg.Method == builtin.MethodsMiner.SubmitWindowedPoSt {
 					fmt.Printf("%s\n", msg.To)
-					postedMiners[msg.To] = struct{}{}
+					minersToCheck[msg.To] = struct{}{}
 				}
 			}
 		}
