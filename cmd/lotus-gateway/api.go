@@ -41,6 +41,7 @@ type gatewayDepsAPI interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error)
+	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error)
 }
 
 type GatewayAPI struct {
@@ -178,6 +179,10 @@ func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence u
 
 func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
 	return sigs.Verify(sig, k, msg) == nil, nil
+}
+
+func (a *GatewayAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
+	return a.api.StateReadState(ctx, actor, tsk)
 }
 
 var _ api.GatewayAPI = (*GatewayAPI)(nil)
