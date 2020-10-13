@@ -1096,6 +1096,25 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 	return types.BigAdd(abal, vested), nil
 }
 
+func (a *StateAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return false, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := a.StateManager.LoadActor(ctx, maddr, ts)
+	if err != nil {
+		return false, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return false, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return mas.IsAllocated(s)
+}
+
 // StateVerifiedClientStatus returns the data cap for the given address.
 // Returns zero if there is no entry in the data cap table for the
 // address.

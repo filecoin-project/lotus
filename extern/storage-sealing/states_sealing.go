@@ -87,6 +87,21 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) error {
 	ticketValue, ticketEpoch, err := m.getTicket(ctx, sector)
 	if err != nil {
+		allocated, aerr := m.api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+		if aerr == nil {
+			log.Errorf("error checking if sector is allocated: %+v", err)
+		}
+
+		if allocated {
+			if sector.CommitMessage != nil {
+				// Some recovery paths with unfortunate timing lead here
+				return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector %s is committed but got into the GetTicket state", sector.SectorNumber)})
+			}
+
+			log.Errorf("Sector %s precommitted but expired", sector.SectorNumber)
+			return ctx.Send(SectorRemove{})
+		}
+
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 

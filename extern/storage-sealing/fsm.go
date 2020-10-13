@@ -45,8 +45,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorAddPiece{}, WaitDeals),
 		on(SectorStartPacking{}, Packing),
 	),
-	Packing:   planOne(on(SectorPacked{}, GetTicket)),
-	GetTicket: planOne(on(SectorTicket{}, PreCommit1)),
+	Packing: planOne(on(SectorPacked{}, GetTicket)),
+	GetTicket: planOne(
+		on(SectorTicket{}, PreCommit1),
+		on(SectorCommitFailed{}, CommitFailed),
+	),
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
@@ -124,6 +127,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryCommitWait{}, CommitWait),
 		on(SectorDealsExpired{}, DealsExpired),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
+		on(SectorTicketExpired{}, Removing),
 	),
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),

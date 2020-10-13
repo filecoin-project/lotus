@@ -206,6 +206,11 @@ type SectorDealsExpired struct{ error }
 func (evt SectorDealsExpired) FormatError(xerrors.Printer) (next error) { return evt.error }
 func (evt SectorDealsExpired) apply(*SectorInfo)                        {}
 
+type SectorTicketExpired struct{ error }
+
+func (evt SectorTicketExpired) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorTicketExpired) apply(*SectorInfo)                        {}
+
 type SectorCommitted struct {
 	Proof []byte
 }
