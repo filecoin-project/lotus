@@ -313,7 +313,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	}
 
 	var receipts []cbg.CBORMarshaler
-	processedMsgs := map[cid.Cid]bool{}
+	processedMsgs := make(map[cid.Cid]struct{})
 	for _, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
@@ -337,7 +337,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 					return cid.Undef, cid.Undef, err
 				}
 			}
-			processedMsgs[m.Cid()] = true
+			processedMsgs[m.Cid()] = struct{}{}
 		}
 
 		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
