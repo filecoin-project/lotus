@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
+	"github.com/filecoin-project/lotus/lib/cachebs"
 )
 
 var log = logging.Logger("vm")
@@ -182,7 +183,8 @@ type VMOpts struct {
 }
 
 func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
-	buf := bufbstore.NewBufferedBstore(opts.Bstore)
+	bstore := cachebs.NewReadCacheBS(opts.Bstore)
+	buf := bufbstore.NewBufferedBstore(bstore)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, opts.StateBase)
 	if err != nil {

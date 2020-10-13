@@ -19,7 +19,7 @@ type CacheBS struct {
 	bs    bstore.Blockstore
 }
 
-func NewBufferedBstore(base bstore.Blockstore, size int) bstore.Blockstore {
+func NewCacheBS(base bstore.Blockstore, size int) bstore.Blockstore {
 	c, err := lru.NewARC(size)
 	if err != nil {
 		panic(err)
