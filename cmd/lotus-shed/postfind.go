@@ -21,6 +21,10 @@ var postFindCmd = &cli.Command{
 			Name:  "tipset",
 			Usage: "specify tipset state to search on",
 		},
+		&cli.BoolFlag{
+			Name:  "verbose",
+			Usage: "get more frequent print updates",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		api, acloser, err := lcli.GetFullNodeAPI(c)
@@ -29,6 +33,7 @@ var postFindCmd = &cli.Command{
 		}
 		defer acloser()
 		ctx := lcli.ReqContext(c)
+		verbose := c.Bool("verbose")
 
 		ts, err := lcli.LoadTipSet(ctx, c, api)
 		if err != nil {
@@ -41,7 +46,9 @@ var postFindCmd = &cli.Command{
 			}
 		}
 		oneDayAgo := ts.Height() - abi.ChainEpoch(2880)
-
+		if verbose {
+			fmt.Printf("Collecting messages between %d and %d\n", ts.Height, oneDayAgo)
+		}
 		// Get all messages over the last day
 		msgs := make([]*types.Message, 0)
 		for ts.Height() > oneDayAgo {
@@ -56,6 +63,9 @@ var postFindCmd = &cli.Command{
 			ts, err = api.ChainGetTipSet(ctx, ts.Parents())
 			if err != nil {
 				return err
+			}
+			if verbose && int64(ts.Height())%100 == 0 {
+				fmt.Printf("Collected messages back to height %d\n", ts.Height())
 			}
 		}
 		fmt.Printf("Loaded messages to height %d\n", ts.Height())
@@ -80,7 +90,7 @@ var postFindCmd = &cli.Command{
 		fmt.Printf("Loaded %d miners with power\n", len(minersWithPower))
 
 		postedMiners := make(map[address.Address]struct{})
-		for _, msg := range msgs {
+		for i, msg := range msgs {
 			_, hasPower := minersWithPower[msg.To]
 			_, seenBefore := postedMiners[msg.To]
 
@@ -89,6 +99,9 @@ var postFindCmd = &cli.Command{
 					fmt.Printf("%s\n", msg.To)
 					postedMiners[msg.To] = struct{}{}
 				}
+			}
+			if verbose && int64(i)%1000 == 0 {
+				fmt.Printf("Searched through message %d of %d\n", i, len(msgs))
 			}
 		}
 		return nil
