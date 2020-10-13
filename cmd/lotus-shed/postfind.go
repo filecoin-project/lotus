@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -12,7 +15,7 @@ import (
 
 var postFindCmd = &cli.Command{
 	Name:        "post-find",
-	Description: "return addresses of all miners who have posted in the last day",
+	Description: "return addresses of all miners who have over zero power and have posted in the last day",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tipset",
@@ -39,11 +42,30 @@ var postFindCmd = &cli.Command{
 		}
 		oneDayAgo := ts.Height() - abi.ChainEpoch(2880)
 
+		// Get all messages over the last day
+		msgs := make([]*types.Message, 0)
+		for ts.Height() > oneDayAgo {
+			// Get messages on ts parent
+			next, err := api.ChainGetParentMessages(ctx, ts.Cids()[0])
+			if err != nil {
+				return err
+			}
+			msgs = append(msgs, messagesFromAPIMessages(next)...)
+
+			// Next ts
+			ts, err = api.ChainGetTipSet(ctx, ts.Parents())
+			if err != nil {
+				return err
+			}
+		}
+		fmt.Printf("Loaded messages to height %d\n", ts.Height())
+
 		mAddrs, err := api.StateListMiners(ctx, ts.Key())
 		if err != nil {
 			return err
 		}
 
+		minersWithPower := make(map[address.Address]struct{})
 		for _, mAddr := range mAddrs {
 			// if they have no power ignore. This filters out 14k inactive miners
 			// so we can do 100x fewer expensive message queries
@@ -51,26 +73,32 @@ var postFindCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			if !power.HasMinPower {
-				continue
+			if power.MinerPower.RawBytePower.GreaterThan(big.Zero()) {
+				minersWithPower[mAddr] = struct{}{}
 			}
-			query := &types.Message{To: mAddr}
-			mCids, err := api.StateListMessages(ctx, query, ts.Key(), oneDayAgo)
-			if err != nil {
-				return err
-			}
-			for _, mCid := range mCids {
-				msg, err := api.ChainGetMessage(ctx, mCid)
-				if err != nil {
-					return err
-				}
+		}
+		fmt.Printf("Loaded %d miners with power\n", len(minersWithPower))
+
+		postedMiners := make(map[address.Address]struct{})
+		for _, msg := range msgs {
+			_, hasPower := minersWithPower[msg.To]
+			_, seenBefore := postedMiners[msg.To]
+
+			if hasPower && !seenBefore {
 				if msg.Method == builtin.MethodsMiner.SubmitWindowedPoSt {
-					fmt.Printf("%s\n", mAddr)
-					break // go to next mAddr
+					fmt.Printf("%s\n", msg.To)
+					postedMiners[msg.To] = struct{}{}
 				}
 			}
 		}
-
 		return nil
 	},
+}
+
+func messagesFromAPIMessages(apiMessages []lapi.Message) []*types.Message {
+	messages := make([]*types.Message, len(apiMessages))
+	for i, apiMessage := range apiMessages {
+		messages[i] = apiMessage.Message
+	}
+	return messages
 }
