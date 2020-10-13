@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/wallet"
 
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/stretchr/testify/require"
 
 	ds_sync "github.com/ipfs/go-datastore/sync"
@@ -47,13 +46,13 @@ func TestMessageSignerSignMessage(t *testing.T) {
 	ctx := context.Background()
 
 	w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
-	from1, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	from1, err := w.WalletNew(ctx, types.KTSecp256k1)
 	require.NoError(t, err)
-	from2, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	from2, err := w.WalletNew(ctx, types.KTSecp256k1)
 	require.NoError(t, err)
-	to1, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	to1, err := w.WalletNew(ctx, types.KTSecp256k1)
 	require.NoError(t, err)
-	to2, err := w.GenerateKey(crypto.SigTypeSecp256k1)
+	to2, err := w.WalletNew(ctx, types.KTSecp256k1)
 	require.NoError(t, err)
 
 	type msgSpec struct {
@@ -177,7 +176,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mpool := newMockMpool()
 			ds := ds_sync.MutexWrap(datastore.NewMapDatastore())
-			ms := newMessageSigner(w, mpool, ds)
+			ms := NewMessageSigner(w, mpool, ds)
 
 			for _, m := range tt.msgs {
 				if len(m.mpoolNonce) == 1 {

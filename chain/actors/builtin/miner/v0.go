@@ -47,8 +47,16 @@ type partition0 struct {
 	store adt.Store
 }
 
-func (s *state0) AvailableBalance(bal abi.TokenAmount) (abi.TokenAmount, error) {
-	return s.GetAvailableBalance(bal), nil
+func (s *state0) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = xerrors.Errorf("failed to get available balance: %w", r)
+			available = abi.NewTokenAmount(0)
+		}
+	}()
+	// this panics if the miner doesnt have enough funds to cover their locked pledge
+	available = s.GetAvailableBalance(bal)
+	return available, err
 }
 
 func (s *state0) VestedFunds(epoch abi.ChainEpoch) (abi.TokenAmount, error) {

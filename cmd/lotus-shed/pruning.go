@@ -162,7 +162,7 @@ var stateTreePruneCmd = &cli.Command{
 
 		bs := blockstore.NewBlockstore(ds)
 
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 		if err := cs.Load(); err != nil {
 			return fmt.Errorf("loading chainstore: %w", err)
 		}

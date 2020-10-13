@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -104,6 +105,20 @@ func (m *Message) Cid() cid.Cid {
 	}
 
 	return b.Cid()
+}
+
+type mCid struct {
+	*RawMessage
+	CID cid.Cid
+}
+
+type RawMessage Message
+
+func (m *Message) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&mCid{
+		RawMessage: (*RawMessage)(m),
+		CID:        m.Cid(),
+	})
 }
 
 func (m *Message) RequiredFunds() BigInt {

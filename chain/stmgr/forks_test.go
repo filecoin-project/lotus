@@ -6,15 +6,21 @@ import (
 	"io"
 	"testing"
 
+	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/require"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -25,11 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
-
-	"github.com/ipfs/go-cid"
-	ipldcbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 func init() {
@@ -186,7 +187,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		Params:   enc,
 		GasLimit: types.TestGasLimit,
 	}
-	sig, err := cg.Wallet().Sign(ctx, cg.Banker(), m.Cid().Bytes())
+	sig, err := cg.Wallet().WalletSign(ctx, cg.Banker(), m.Cid().Bytes(), api.MsgMeta{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +215,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		}
 		nonce++
 
-		sig, err := cg.Wallet().Sign(ctx, cg.Banker(), m.Cid().Bytes())
+		sig, err := cg.Wallet().WalletSign(ctx, cg.Banker(), m.Cid().Bytes(), api.MsgMeta{})
 		if err != nil {
 			return nil, err
 		}

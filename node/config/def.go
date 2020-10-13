@@ -22,6 +22,7 @@ type FullNode struct {
 	Common
 	Client  Client
 	Metrics Metrics
+	Wallet  Wallet
 }
 
 // // Common
@@ -105,6 +106,12 @@ type Client struct {
 	UseIpfs             bool
 	IpfsMAddr           string
 	IpfsUseForRetrieval bool
+}
+
+type Wallet struct {
+	RemoteBackend string
+	EnableLedger  bool
+	DisableLocal  bool
 }
 
 func defCommon() Common {

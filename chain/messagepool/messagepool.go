@@ -159,6 +159,7 @@ type MessagePool struct {
 	sigValCache *lru.TwoQueueCache
 
 	evtTypes [3]journal.EventType
+	journal  journal.Journal
 }
 
 type msgSet struct {
@@ -316,13 +317,17 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
 	return types.BigInt{Int: requiredFunds}
 }
 
-func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*MessagePool, error) {
+func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
 
 	cfg, err := loadConfig(ds)
 	if err != nil {
 		return nil, xerrors.Errorf("error loading mpool config: %w", err)
+	}
+
+	if j == nil {
+		j = journal.NilJournal()
 	}
 
 	mp := &MessagePool{
@@ -344,10 +349,11 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName) (*Messa
 		netName:       netName,
 		cfg:           cfg,
 		evtTypes: [...]journal.EventType{
-			evtTypeMpoolAdd:    journal.J.RegisterEventType("mpool", "add"),
-			evtTypeMpoolRemove: journal.J.RegisterEventType("mpool", "remove"),
-			evtTypeMpoolRepub:  journal.J.RegisterEventType("mpool", "repub"),
+			evtTypeMpoolAdd:    j.RegisterEventType("mpool", "add"),
+			evtTypeMpoolRemove: j.RegisterEventType("mpool", "remove"),
+			evtTypeMpoolRepub:  j.RegisterEventType("mpool", "repub"),
 		},
+		journal: j,
 	}
 
 	// enable initial prunes
@@ -744,7 +750,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 		Message: m,
 	}, localUpdates)
 
-	journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
+	mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
 		return MessagePoolEvt{
 			Action:   "add",
 			Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}},
@@ -865,7 +871,7 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 			Message: m,
 		}, localUpdates)
 
-		journal.J.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
+		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
 				Action:   "remove",
 				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}}}

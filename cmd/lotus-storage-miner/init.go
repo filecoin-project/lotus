@@ -27,7 +27,6 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	crypto2 "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-statestore"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -468,13 +467,12 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			if jrnl, err := journal.OpenFSJournal(lr, journal.DefaultDisabledEvents); err == nil {
-				journal.J = jrnl
-			} else {
+			j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+			if err != nil {
 				return fmt.Errorf("failed to open filesystem journal: %w", err)
 			}
 
-			m := miner.NewMiner(api, epp, a, slashfilter.New(mds))
+			m := miner.NewMiner(api, epp, a, slashfilter.New(mds), j)
 			{
 				if err := m.Start(ctx); err != nil {
 					return xerrors.Errorf("failed to start up genesis miner: %w", err)
@@ -629,7 +627,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	if cctx.String("worker") != "" {
 		worker, err = address.NewFromString(cctx.String("worker"))
 	} else if cctx.Bool("create-worker-key") { // TODO: Do we need to force this if owner is Secpk?
-		worker, err = api.WalletNew(ctx, crypto2.SigTypeBLS)
+		worker, err = api.WalletNew(ctx, types.KTBLS)
 	}
 	// TODO: Transfer some initial funds to worker
 	if err != nil {

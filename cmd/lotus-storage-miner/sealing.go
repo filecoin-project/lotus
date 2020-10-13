@@ -80,7 +80,8 @@ var sealingWorkersCmd = &cli.Command{
 			cpuBars := int(stat.CpuUse * barCols / stat.Info.Resources.CPUs)
 			cpuBar := strings.Repeat("|", cpuBars) + strings.Repeat(" ", int(barCols)-cpuBars)
 
-			fmt.Printf("\tCPU:  [%s] %d core(s) in use\n", color.GreenString(cpuBar), stat.CpuUse)
+			fmt.Printf("\tCPU:  [%s] %d/%d core(s) in use\n",
+				color.GreenString(cpuBar), stat.CpuUse, stat.Info.Resources.CPUs)
 
 			ramBarsRes := int(stat.Info.Resources.MemReserved * barCols / stat.Info.Resources.MemPhysical)
 			ramBarsUsed := int(stat.MemUsedMin * barCols / stat.Info.Resources.MemPhysical)

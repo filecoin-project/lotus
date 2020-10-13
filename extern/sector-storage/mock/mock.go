@@ -243,8 +243,8 @@ func (mgr *SectorMgr) SealCommit1(ctx context.Context, sid abi.SectorID, ticket 
 }
 
 func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid abi.SectorID, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
-	var out [32]byte
-	for i := range out {
+	var out [1920]byte
+	for i := range out[:len(phase1Out)] {
 		out[i] = phase1Out[i] ^ byte(sid.Number&0xff)
 	}
 
@@ -464,11 +464,12 @@ func (mgr *SectorMgr) ReturnFetch(ctx context.Context, callID storiface.CallID, 
 }
 
 func (m mockVerif) VerifySeal(svi proof.SealVerifyInfo) (bool, error) {
-	if len(svi.Proof) != 32 { // Real ones are longer, but this should be fine
+	if len(svi.Proof) != 1920 {
 		return false, nil
 	}
 
-	for i, b := range svi.Proof {
+	// only the first 32 bytes, the rest are 0.
+	for i, b := range svi.Proof[:32] {
 		if b != svi.UnsealedCID.Bytes()[i]+svi.SealedCID.Bytes()[31-i]-svi.InteractiveRandomness[i]*svi.Randomness[i] {
 			return false, nil
 		}

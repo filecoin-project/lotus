@@ -66,6 +66,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 			Message:    msg,
 			BaseFee:    BaseFeeOrDefault(vector.Pre.BaseFee),
 			CircSupply: CircSupplyOrDefault(vector.Pre.CircSupply),
+			Rand:       NewReplayingRand(r, vector.Randomness),
 		})
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)

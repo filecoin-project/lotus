@@ -162,6 +162,7 @@ type StorageMinerParams struct {
 	SectorIDCounter    sealing.SectorIDCounter
 	Verifier           ffiwrapper.Verifier
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
+	Journal            journal.Journal
 }
 
 func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
@@ -176,6 +177,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			sc     = params.SectorIDCounter
 			verif  = params.Verifier
 			gsd    = params.GetSealingConfigFn
+			j      = params.Journal
 		)
 
 		maddr, err := minerAddrFromDS(ds)
@@ -195,12 +197,12 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, maddr, worker)
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, j, maddr, worker)
 		if err != nil {
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc)
+		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, j)
 		if err != nil {
 			return nil, err
 		}
@@ -217,15 +219,15 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 	}
 }
 
-func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
+func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider, j journal.Journal) {
 	m.OnReady(marketevents.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{
 
 		OnStart: func(ctx context.Context) error {
 			m.SubscribeToEvents(marketevents.RetrievalProviderLogger)
 
-			evtType := journal.J.RegisterEventType("markets/retrieval/provider", "state_change")
-			m.SubscribeToEvents(markets.RetrievalProviderJournaler(evtType))
+			evtType := j.RegisterEventType("markets/retrieval/provider", "state_change")
+			m.SubscribeToEvents(markets.RetrievalProviderJournaler(j, evtType))
 
 			return m.Start(ctx)
 		},
@@ -235,15 +237,15 @@ func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.Retrieva
 	})
 }
 
-func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider) {
+func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	h.OnReady(marketevents.ReadyLogger("storage provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			h.SubscribeToEvents(marketevents.StorageProviderLogger)
 
-			evtType := journal.J.RegisterEventType("markets/storage/provider", "state_change")
-			h.SubscribeToEvents(markets.StorageProviderJournaler(evtType))
+			evtType := j.RegisterEventType("markets/storage/provider", "state_change")
+			h.SubscribeToEvents(markets.StorageProviderJournaler(j, evtType))
 
 			return h.Start(ctx)
 		},
@@ -355,13 +357,13 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, minerAddr, sf)
+	m := miner.NewMiner(api, epp, minerAddr, sf, j)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -472,7 +474,7 @@ func BasicDealFilter(user dtypes.DealFilter) func(onlineOk dtypes.ConsiderOnline
 
 			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg
-			maxStartEpoch := ht + abi.ChainEpoch(7*builtin.EpochsInDay)
+			maxStartEpoch := earliest + abi.ChainEpoch(7*builtin.EpochsInDay)
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}

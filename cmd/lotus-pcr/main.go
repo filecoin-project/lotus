@@ -396,13 +396,13 @@ var runCmd = &cli.Command{
 			Name:    "pre-fee-cap-max",
 			EnvVars: []string{"LOTUS_PCR_PRE_FEE_CAP_MAX"},
 			Usage:   "messages with a fee cap larger than this will be skipped when processing pre commit messages",
-			Value:   "0.0000000001",
+			Value:   "0.000000001",
 		},
 		&cli.StringFlag{
 			Name:    "prove-fee-cap-max",
 			EnvVars: []string{"LOTUS_PCR_PROVE_FEE_CAP_MAX"},
 			Usage:   "messages with a prove cap larger than this will be skipped when processing pre commit messages",
-			Value:   "0.0000000001",
+			Value:   "0.000000001",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -884,6 +884,8 @@ func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *
 		}
 
 		refundValue = types.BigMul(types.NewInt(uint64(recp.GasUsed)), tipset.Blocks()[0].ParentBaseFee)
+	default:
+		return false, messageMethod, types.NewInt(0), nil
 	}
 
 	return true, messageMethod, refundValue, nil
