@@ -55,7 +55,7 @@ var postFindCmd = &cli.Command{
 				return err
 			}
 		}
-		oneDayAgo := ts.Height() - abi.ChainEpoch(2880)
+		oneDayAgo := ts.Height() - abi.ChainEpoch(c.Int("lookback"))
 		if verbose {
 			fmt.Printf("Collecting messages between %d and %d\n", ts.Height(), oneDayAgo)
 		}
