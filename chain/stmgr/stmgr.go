@@ -1462,7 +1462,7 @@ func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoc
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
 	for _, spec := range sm.networkVersions {
-		if height <= spec.atOrBelow {
+		if height < spec.atOrBelow {
 			return spec.networkVersion
 		}
 	}
