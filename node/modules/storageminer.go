@@ -393,13 +393,13 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	if err != nil {
 		return nil, err
 	}
-	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress))
+	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
+		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 	if err != nil {
 		return nil, err
 	}
-	// Hacky way to set max piece size to the sector size
 	a := storedAsk.GetAsk().Ask
-	err = storedAsk.SetAsk(a.Price, a.VerifiedPrice, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+	err = storedAsk.SetAsk(a.Price, a.VerifiedPrice, a.Expiry-a.Timestamp)
 	if err != nil {
 		return storedAsk, err
 	}
