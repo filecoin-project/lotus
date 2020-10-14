@@ -45,23 +45,24 @@ var postFindCmd = &cli.Command{
 		verbose := c.Bool("verbose")
 		withpower := c.Bool("withpower")
 
-		ts, err := lcli.LoadTipSet(ctx, c, api)
+		startTs, err := lcli.LoadTipSet(ctx, c, api)
 		if err != nil {
 			return err
 		}
-		if ts == nil {
-			ts, err = api.ChainHead(ctx)
+		if startTs == nil {
+			startTs, err = api.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
 		}
-		oneDayAgo := ts.Height() - abi.ChainEpoch(c.Int("lookback"))
+		stopEpoch := startTs.Height() - abi.ChainEpoch(c.Int("lookback"))
 		if verbose {
-			fmt.Printf("Collecting messages between %d and %d\n", ts.Height(), oneDayAgo)
+			fmt.Printf("Collecting messages between %d and %d\n", startTs.Height(), stopEpoch)
 		}
 		// Get all messages over the last day
+		ts := startTs
 		msgs := make([]*types.Message, 0)
-		for ts.Height() > oneDayAgo {
+		for ts.Height() > stopEpoch {
 			// Get messages on ts parent
 			next, err := api.ChainGetParentMessages(ctx, ts.Cids()[0])
 			if err != nil {
@@ -80,7 +81,7 @@ var postFindCmd = &cli.Command{
 		}
 		fmt.Printf("Loaded messages to height %d\n", ts.Height())
 
-		mAddrs, err := api.StateListMiners(ctx, ts.Key())
+		mAddrs, err := api.StateListMiners(ctx, startTs.Key())
 		if err != nil {
 			return err
 		}
@@ -90,7 +91,7 @@ var postFindCmd = &cli.Command{
 			// if they have no power ignore. This filters out 14k inactive miners
 			// so we can do 100x fewer expensive message queries
 			if withpower {
-				power, err := api.StateMinerPower(ctx, mAddr, ts.Key())
+				power, err := api.StateMinerPower(ctx, mAddr, startTs.Key())
 				if err != nil {
 					return err
 				}
