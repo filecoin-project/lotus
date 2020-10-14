@@ -7,9 +7,9 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
-type DeadlinesDiff map[uint64]*DeadlineDiff
+type DeadlinesDiff map[uint64]DeadlineDiff
 
-func DiffDeadlines(pre, cur State) (*DeadlinesDiff, error) {
+func DiffDeadlines(pre, cur State) (DeadlinesDiff, error) {
 	changed, err := pre.DeadlinesChanged(cur)
 	if err != nil {
 		return nil, err
@@ -18,11 +18,7 @@ func DiffDeadlines(pre, cur State) (*DeadlinesDiff, error) {
 		return nil, nil
 	}
 
-	numDl, err := pre.NumDeadlines()
-	if err != nil {
-		return nil, err
-	}
-	dlDiff := make(DeadlinesDiff, numDl)
+	dlDiff := make(DeadlinesDiff)
 	if err := pre.ForEachDeadline(func(idx uint64, preDl Deadline) error {
 		curDl, err := cur.LoadDeadline(idx)
 		if err != nil {
@@ -39,12 +35,12 @@ func DiffDeadlines(pre, cur State) (*DeadlinesDiff, error) {
 	}); err != nil {
 		return nil, err
 	}
-	return &dlDiff, nil
+	return dlDiff, nil
 }
 
 type DeadlineDiff map[uint64]*PartitionDiff
 
-func DiffDeadline(pre, cur Deadline) (*DeadlineDiff, error) {
+func DiffDeadline(pre, cur Deadline) (DeadlineDiff, error) {
 	changed, err := pre.PartitionsChanged(cur)
 	if err != nil {
 		return nil, err
@@ -104,7 +100,7 @@ func DiffDeadline(pre, cur Deadline) (*DeadlineDiff, error) {
 		return nil, err
 	}
 
-	return &partDiff, nil
+	return partDiff, nil
 }
 
 type PartitionDiff struct {
