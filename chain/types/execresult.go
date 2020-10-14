@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -68,11 +69,10 @@ func (l Loc) String() string {
 	return fmt.Sprintf("%s@%s:%d", fnpkg, file[len(file)-1], l.Line)
 }
 
+var importantRegex = regexp.MustCompile(`github.com/filecoin-project/specs-actors/(v\d+/)?actors/builtin`)
+
 func (l Loc) Important() bool {
-	if strings.HasPrefix(l.Function, "github.com/filecoin-project/specs-actors/actors/builtin") {
-		return true
-	}
-	return false
+	return importantRegex.MatchString(l.Function)
 }
 
 func (gt *GasTrace) MarshalJSON() ([]byte, error) {
