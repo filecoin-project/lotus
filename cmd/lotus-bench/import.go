@@ -320,6 +320,21 @@ var importBenchCmd = &cli.Command{
 
 		pprof.StopCPUProfile()
 
+		if true {
+			resp, err := http.Get("http://localhost:6060/debug/metrics/prometheus")
+			if err != nil {
+				return err
+			}
+
+			metricsfi, err := os.Create("import-bench.metrics")
+			if err != nil {
+				return err
+			}
+
+			io.Copy(metricsfi, resp.Body)
+			metricsfi.Close()
+		}
+
 		return nil
 
 	},
