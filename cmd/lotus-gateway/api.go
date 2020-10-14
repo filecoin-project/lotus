@@ -182,6 +182,9 @@ func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []
 }
 
 func (a *GatewayAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
 	return a.api.StateReadState(ctx, actor, tsk)
 }
 
