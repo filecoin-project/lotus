@@ -44,7 +44,22 @@ func (a APIInfo) DialArgs() (string, error) {
 			return "", err
 		}
 
-		return "ws://" + addr + "/rpc/v0", nil
+		protocol := "ws"
+
+		// If the user specifies the multiaddress as
+		// /something/tcp/1234/http or/something/tcp/1234/https
+		// or /something/tcp/1234/wss then honor that.
+		for _, p := range []int{
+			multiaddr.P_HTTP,
+			multiaddr.P_HTTPS,
+			multiaddr.P_WSS,
+		} {
+			if _, err := ma.ValueForProtocol(p); err == nil {
+				protocol = multiaddr.ProtocolWithCode(p).Name
+				break
+			}
+		}
+		return protocol + "://" + addr + "/rpc/v0", nil
 	}
 
 	_, err = url.Parse(a.Addr)
