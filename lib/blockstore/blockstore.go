@@ -18,19 +18,18 @@ import (
 	"context"
 
 	ds "github.com/ipfs/go-datastore"
-	dssync "github.com/ipfs/go-datastore/sync"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 // NewTemporary returns a temporary blockstore.
-func NewTemporary() blockstore.Blockstore {
-	return NewBlockstore(ds.NewMapDatastore())
+func NewTemporary() MemStore {
+	return make(MemStore)
 }
 
 // NewTemporarySync returns a thread-safe temporary blockstore.
-func NewTemporarySync() blockstore.Blockstore {
-	return NewBlockstore(dssync.MutexWrap(ds.NewMapDatastore()))
+func NewTemporarySync() *SyncStore {
+	return &SyncStore{bs: make(MemStore)}
 }
 
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
