@@ -87,7 +87,7 @@ type proxyingBlockstore struct {
 	ctx context.Context
 	api api.FullNode
 
-	lk      sync.RWMutex
+	lk      sync.Mutex
 	tracing bool
 	traced  map[cid.Cid]struct{}
 
@@ -113,11 +113,11 @@ func (pb *proxyingBlockstore) FinishTracing() map[cid.Cid]struct{} {
 }
 
 func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
-	pb.lk.RLock()
+	pb.lk.Lock()
 	if pb.tracing {
 		pb.traced[cid] = struct{}{}
 	}
-	pb.lk.RUnlock()
+	pb.lk.Unlock()
 
 	if block, err := pb.Blockstore.Get(cid); err == nil {
 		return block, err
@@ -139,4 +139,13 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	}
 
 	return block, nil
+}
+
+func (pb *proxyingBlockstore) Put(block blocks.Block) error {
+	pb.lk.Lock()
+	if pb.tracing {
+		pb.traced[block.Cid()] = struct{}{}
+	}
+	pb.lk.Unlock()
+	return pb.Blockstore.Put(block)
 }
