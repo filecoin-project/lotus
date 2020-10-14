@@ -45,6 +45,7 @@ var multisigCmd = &cli.Command{
 		msigCreateCmd,
 		msigInspectCmd,
 		msigProposeCmd,
+		msigRemoveProposeCmd,
 		msigApproveCmd,
 		msigAddProposeCmd,
 		msigAddApproveCmd,
@@ -538,6 +539,84 @@ var msigApproveCmd = &cli.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
 		}
+
+		return nil
+	},
+}
+
+var msigRemoveProposeCmd = &cli.Command{
+	Name:      "propose-remove",
+	Usage:     "Propose to remove a signer",
+	ArgsUsage: "[multisigAddress signer]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "decrease-threshold",
+			Usage: "whether the number of required signers should be decreased",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the propose message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 2 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		addr, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		msgCid, err := api.MsigRemoveSigner(ctx, msig, from, addr, cctx.Bool("decrease-threshold"))
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("sent remove proposal in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("add proposal returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		var ret multisig.ProposeReturn
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
+		if err != nil {
+			return xerrors.Errorf("decoding proposal return: %w", err)
+		}
+		fmt.Printf("TxnID: %d", ret.TxnID)
 
 		return nil
 	},
