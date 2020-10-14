@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,8 +14,10 @@ import (
 
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -569,6 +572,67 @@ var dataTransfersCmd = &cli.Command{
 	Usage: "Manage data transfers",
 	Subcommands: []*cli.Command{
 		transfersListCmd,
+		minerRestartTransfer,
+	},
+}
+
+var minerRestartTransfer = &cli.Command{
+	Name:  "restart-transfer",
+	Usage: "Force restart a stalled data transfer",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "peerid",
+			Usage: "narrow to transfer with specific peer",
+		},
+		&cli.BoolFlag{
+			Name:  "initiator",
+			Usage: "specify only transfers where peer is/is not initiator",
+			Value: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return fmt.Errorf("Error reading transfer ID: %w", err)
+		}
+		transferID := datatransfer.TransferID(transferUint)
+		initiator := cctx.Bool("initiator")
+		var other peer.ID
+		if pidstr := cctx.String("peerid"); pidstr != "" {
+			p, err := peer.Decode(pidstr)
+			if err != nil {
+				return err
+			}
+			other = p
+		} else {
+			channels, err := nodeApi.MarketListDataTransfers(ctx)
+			if err != nil {
+				return err
+			}
+			found := false
+			for _, channel := range channels {
+				if channel.IsInitiator == initiator && channel.TransferID == transferID {
+					other = channel.OtherPeer
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.New("unable to find matching data transfer")
+			}
+		}
+
+		return nodeApi.MinerRestartDataTransfer(ctx, transferID, other, initiator)
 	},
 }
 

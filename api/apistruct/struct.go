@@ -334,6 +334,8 @@ type StorageMinerStruct struct {
 		PiecesGetPieceInfo func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
+		MinerRestartDataTransfer func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error `perm:"read"`
+
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 	}
 }
@@ -1352,6 +1354,10 @@ func (c *StorageMinerStruct) PiecesGetPieceInfo(ctx context.Context, pieceCid ci
 
 func (c *StorageMinerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
 	return c.Internal.PiecesGetCIDInfo(ctx, payloadCid)
+}
+
+func (c *StorageMinerStruct) MinerRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
+	return c.Internal.MinerRestartDataTransfer(ctx, transferID, otherPeer, isInitiator)
 }
 
 func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) error {

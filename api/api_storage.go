@@ -5,7 +5,9 @@ import (
 	"context"
 	"time"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -101,6 +103,9 @@ type StorageMiner interface {
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)
 	PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error)
 	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)
+
+	// MinerRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+	MinerRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus-miner is running with the
