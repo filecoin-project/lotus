@@ -273,7 +273,7 @@ func (s *state2) DeadlinesChanged(other State) (bool, error) {
 		return true, nil
 	}
 
-	return s.State.Deadlines.Equals(other2.Deadlines), nil
+	return !s.State.Deadlines.Equals(other2.Deadlines), nil
 }
 
 func (s *state2) Info() (MinerInfo, error) {
