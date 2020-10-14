@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -165,6 +166,7 @@ type FullNodeStruct struct {
 		ClientDealSize                            func(ctx context.Context, root cid.Cid) (api.DataSize, error)                                                     `perm:"read"`
 		ClientListDataTransfers                   func(ctx context.Context) ([]api.DataTransferChannel, error)                                                      `perm:"write"`
 		ClientDataTransferUpdates                 func(ctx context.Context) (<-chan api.DataTransferChannel, error)                                                 `perm:"write"`
+		ClientRestartDataTransfer                 func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error          `perm:"write"`
 		ClientRetrieveTryRestartInsufficientFunds func(ctx context.Context, paymentChannel address.Address) error                                                   `perm:"write"`
 
 		StateNetworkName                   func(context.Context) (dtypes.NetworkName, error)                                                                   `perm:"read"`
@@ -550,6 +552,10 @@ func (c *FullNodeStruct) ClientListDataTransfers(ctx context.Context) ([]api.Dat
 
 func (c *FullNodeStruct) ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTransferChannel, error) {
 	return c.Internal.ClientDataTransferUpdates(ctx)
+}
+
+func (c *FullNodeStruct) ClientRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
+	return c.Internal.ClientRestartDataTransfer(ctx, transferID, otherPeer, isInitiator)
 }
 
 func (c *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error {
