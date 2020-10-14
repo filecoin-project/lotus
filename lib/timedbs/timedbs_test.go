@@ -14,7 +14,7 @@ import (
 )
 
 func TestTimedBSSimple(t *testing.T) {
-	tc := timedbs.NewTimedCacheBS(3 * time.Millisecond)
+	tc := timedbs.NewTimedCacheBS(10 * time.Millisecond)
 	_ = tc.Start(context.Background())
 	defer func() {
 		_ = tc.Stop(context.Background())
@@ -36,7 +36,7 @@ func TestTimedBSSimple(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, has)
 
-	time.Sleep(4 * time.Millisecond)
+	time.Sleep(15 * time.Millisecond)
 
 	// We should still have everything.
 	has, err = tc.Has(b1.Cid())
@@ -60,7 +60,7 @@ func TestTimedBSSimple(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, ks, []cid.Cid{b1.Cid(), b2.Cid(), b3.Cid()})
 
-	time.Sleep(4 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// should still have b2, and b3, but not b1
 
