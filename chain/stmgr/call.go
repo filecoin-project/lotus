@@ -113,6 +113,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	}
 
 	return &api.InvocResult{
+		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,
 		ExecutionTrace: ret.ExecutionTrace,
@@ -228,6 +229,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	}
 
 	return &api.InvocResult{
+		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,
 		ExecutionTrace: ret.ExecutionTrace,

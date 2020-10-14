@@ -734,6 +734,7 @@ type RetrievalOrder struct {
 }
 
 type InvocResult struct {
+	MsgCid         cid.Cid
 	Msg            *types.Message
 	MsgRct         *types.MessageReceipt
 	ExecutionTrace types.ExecutionTrace

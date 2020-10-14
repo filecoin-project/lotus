@@ -3059,6 +3059,9 @@ Inputs:
 Response:
 ```json
 {
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Msg": {
     "Version": 42,
     "To": "f01234",
@@ -4079,6 +4082,9 @@ Inputs:
 Response:
 ```json
 {
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Msg": {
     "Version": 42,
     "To": "f01234",

@@ -362,6 +362,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}
 
 	return &api.InvocResult{
+		MsgCid:         mc,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
 		ExecutionTrace: r.ExecutionTrace,

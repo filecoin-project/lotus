@@ -200,6 +200,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 func traceFunc(trace *[]*api.InvocResult) func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 	return func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		ir := &api.InvocResult{
+			MsgCid:         mcid,
 			Msg:            msg,
 			MsgRct:         &ret.MessageReceipt,
 			ExecutionTrace: ret.ExecutionTrace,
