@@ -1,5 +1,28 @@
 # Lotus changelog
 
+# 0.10.1 / 2020-10-14
+
+This is an optional release of Lotus that updates markets to 0.9.0, which adds the ability to restart data transfers. This release also introduces Ledger support, and various UX improvements.
+
+## Changes
+
+- Test the tape upgrade (https://github.com/filecoin-project/lotus/pull/4328)
+- Adding in Ledger support (https://github.com/filecoin-project/lotus/pull/4290)
+- Improve the UX for lotus-miner sealing workers (https://github.com/filecoin-project/lotus/pull/4329)
+- Add a CLI tool for miner's to repay debt (https://github.com/filecoin-project/lotus/pull/4319)
+- Rename params_testnet to params_mainnet (https://github.com/filecoin-project/lotus/pull/4336)
+- Use seal-duration in calculating the earliest StartEpoch (https://github.com/filecoin-project/lotus/pull/4337)
+- Reject deals that are > 7 days in the future in the BasicDealFilter (https://github.com/filecoin-project/lotus/pull/4173)
+- Add an API endpoint to calculate the exact circulating supply (https://github.com/filecoin-project/lotus/pull/4148)
+- lotus-pcr: ignore all other market messages (https://github.com/filecoin-project/lotus/pull/4341)
+- Add message CID to InvocResult (https://github.com/filecoin-project/lotus/pull/4382)
+- types: Add CID fields to messages in json marshalers (https://github.com/filecoin-project/lotus/pull/4338)
+- fix(sync state): set state height to actual tipset height (https://github.com/filecoin-project/lotus/pull/4347)
+- Fix off by one tipset in searchBackForMsg (https://github.com/filecoin-project/lotus/pull/4367)
+- fix a panic on startup when we fail to load the tipset (https://github.com/filecoin-project/lotus/pull/4376)
+- Avoid having the same message CID show up in execution traces (https://github.com/filecoin-project/lotus/pull/4350)
+- feat(markets): update markets 0.9.0 and add data transfer restart (https://github.com/filecoin-project/lotus/pull/4363)
+
 # 0.10.0 / 2020-10-12
 
 This is a consensus-breaking hotfix that addresses an issue in specs-actors v2.0.3 that made it impossible to pledge new 32GiB sectors. The change in Lotus is to update to actors v2.1.0, behind the new network version 5.
