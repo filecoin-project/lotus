@@ -6,15 +6,12 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/sigs/bls"
 )
 
@@ -114,23 +111,12 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletA
 	}
 	next.ParentBaseFee = baseFee
 
-	cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
-	tree, err := state.LoadStateTree(cst, st)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load state tree: %w", err)
-	}
-
-	waddr, err := vm.ResolveToKeyAddr(tree, cst, worker)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to resolve miner address to key address: %w", err)
-	}
-
 	nosigbytes, err := next.SigningBytes()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get signing bytes for block: %w", err)
 	}
 
-	sig, err := w.WalletSign(ctx, waddr, nosigbytes, api.MsgMeta{
+	sig, err := w.WalletSign(ctx, worker, nosigbytes, api.MsgMeta{
 		Type: api.MTBlock,
 	})
 	if err != nil {
