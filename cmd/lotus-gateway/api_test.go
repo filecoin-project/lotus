@@ -88,7 +88,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := &GatewayAPI{api: mock}
+			a := NewGatewayAPI(mock)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
