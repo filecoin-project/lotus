@@ -740,6 +740,7 @@ type InvocResult struct {
 	MsgCid         cid.Cid
 	Msg            *types.Message
 	MsgRct         *types.MessageReceipt
+	GasCost        MsgGasCost
 	ExecutionTrace types.ExecutionTrace
 	Error          string
 	Duration       time.Duration

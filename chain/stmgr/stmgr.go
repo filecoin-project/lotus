@@ -203,6 +203,7 @@ func traceFunc(trace *[]*api.InvocResult) func(mcid cid.Cid, msg *types.Message,
 			MsgCid:         mcid,
 			Msg:            msg,
 			MsgRct:         &ret.MessageReceipt,
+			GasCost:        MakeMsgGasCost(msg, ret),
 			ExecutionTrace: ret.ExecutionTrace,
 			Duration:       ret.Duration,
 		}

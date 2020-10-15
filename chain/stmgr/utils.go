@@ -701,3 +701,16 @@ func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi
 
 	return sum, nil
 }
+
+func MakeMsgGasCost(msg *types.Message, ret *vm.ApplyRet) api.MsgGasCost {
+	return api.MsgGasCost{
+		Message:            msg.Cid(),
+		GasUsed:            big.NewInt(ret.GasUsed),
+		BaseFeeBurn:        ret.GasCosts.BaseFeeBurn,
+		OverEstimationBurn: ret.GasCosts.OverEstimationBurn,
+		MinerPenalty:       ret.GasCosts.MinerPenalty,
+		MinerTip:           ret.GasCosts.MinerTip,
+		Refund:             ret.GasCosts.Refund,
+		TotalCost:          big.Sub(msg.RequiredFunds(), ret.GasCosts.Refund),
+	}
+}

@@ -365,6 +365,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		MsgCid:         mc,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
+		GasCost:        stmgr.MakeMsgGasCost(m, r),
 		ExecutionTrace: r.ExecutionTrace,
 		Error:          errstr,
 		Duration:       r.Duration,
@@ -1304,14 +1305,6 @@ func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk ty
 		return nil, err
 	}
 
-	return &api.MsgGasCost{
-		Message:            msg,
-		GasUsed:            big.NewInt(r.GasUsed),
-		BaseFeeBurn:        r.GasCosts.BaseFeeBurn,
-		OverEstimationBurn: r.GasCosts.OverEstimationBurn,
-		MinerPenalty:       r.GasCosts.MinerPenalty,
-		MinerTip:           r.GasCosts.MinerTip,
-		Refund:             r.GasCosts.Refund,
-		TotalCost:          big.Sub(m.RequiredFunds(), r.GasCosts.Refund),
-	}, nil
+	gc := stmgr.MakeMsgGasCost(m, r)
+	return &gc, nil
 }
