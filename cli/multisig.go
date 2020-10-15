@@ -1469,7 +1469,7 @@ var msigProposeThresholdCmd = &cli.Command{
 			return err
 		}
 
-		newM, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		newM, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
 		if err != nil {
 			return err
 		}
