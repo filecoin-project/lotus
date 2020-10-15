@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -44,6 +46,12 @@ type gatewayDepsAPI interface {
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error)
 	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error)
+	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
+	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
+	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 }
 
 type GatewayAPI struct {
@@ -198,15 +206,56 @@ func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence u
 	return a.api.StateWaitMsgLimited(ctx, msg, confidence, stateWaitLookbackLimit)
 }
 
-func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
-	return sigs.Verify(sig, k, msg) == nil, nil
-}
-
 func (a *GatewayAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	if err := a.checkTipsetKey(ctx, tsk); err != nil {
 		return nil, err
 	}
 	return a.api.StateReadState(ctx, actor, tsk)
+}
+
+func (a *GatewayAPI) StateMinerPower(ctx context.Context, m address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return a.api.StateMinerPower(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerFaults(ctx context.Context, m address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return bitfield.BitField{}, err
+	}
+	return a.api.StateMinerFaults(ctx, m, tsk)
+}
+func (a *GatewayAPI) StateMinerRecoveries(ctx context.Context, m address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return bitfield.BitField{}, err
+	}
+	return a.api.StateMinerRecoveries(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerInfo(ctx context.Context, m address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return miner.MinerInfo{}, err
+	}
+	return a.api.StateMinerInfo(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return a.api.StateMinerDeadlines(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerAvailableBalance(ctx context.Context, m address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return types.BigInt{}, err
+	}
+	return a.api.StateMinerAvailableBalance(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
+	return sigs.Verify(sig, k, msg) == nil, nil
 }
 
 var _ api.GatewayAPI = (*GatewayAPI)(nil)
