@@ -315,13 +315,15 @@ type FullNode interface {
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
-	// All methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+	// Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
 	// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 	// StateCall runs the given message and returns its result without any persisted changes.
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error)
 	// StateTransplant returns the result of executing the indicated message, assuming it was executed in the indicated tipset.
 	StateTransplant(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error)
+	// StateReplay searches for where the given message was executed, and replays it in that tipset.
+	StateReplay(context.Context, cid.Cid) (*InvocResult, error)
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	// StateReadState returns the indicated actor's state.

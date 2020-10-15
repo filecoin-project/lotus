@@ -61,6 +61,7 @@ var stateCmd = &cli.Command{
 		stateGetActorCmd,
 		stateLookupIDCmd,
 		stateTransplantCmd,
+		stateReplayCmd,
 		stateSectorSizeCmd,
 		stateReadStateCmd,
 		stateListMessagesCmd,
@@ -388,6 +389,16 @@ var stateTransplantCmd = &cli.Command{
 	Name:      "transplant",
 	Usage:     "Play a particular message within a tipset",
 	ArgsUsage: "[tipsetKey messageCid]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "show-trace",
+			Usage: "print out full execution trace for given message",
+		},
+		&cli.BoolFlag{
+			Name:  "detailed-gas",
+			Usage: "print out detailed gas costs for given message",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() < 1 {
 			fmt.Println("usage: [tipset] <message cid>")
@@ -453,8 +464,88 @@ var stateTransplantCmd = &cli.Command{
 		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
 		fmt.Printf("Return: %x\n", res.MsgRct.Return)
 		fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
+
+		if cctx.Bool("detailed-gas") {
+			fmt.Printf("Base Fee Burn: %d\n", res.GasCost.BaseFeeBurn)
+			fmt.Printf("Overestimaton Burn: %d\n", res.GasCost.OverEstimationBurn)
+			fmt.Printf("Miner Penalty: %d\n", res.GasCost.MinerPenalty)
+			fmt.Printf("Miner Tip: %d\n", res.GasCost.MinerTip)
+			fmt.Printf("Refund: %d\n", res.GasCost.Refund)
+		}
+		fmt.Printf("Total Message Cost: %d\n", res.GasCost.TotalCost)
+
 		if res.MsgRct.ExitCode != 0 {
 			fmt.Printf("Error message: %q\n", res.Error)
+		}
+
+		if cctx.Bool("show-trace") {
+			fmt.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", res.Msg.From, res.Msg.To, res.Msg.Value, res.Msg.Method, res.Msg.Params, res.MsgRct.ExitCode, res.MsgRct.Return)
+			printInternalExecutions("\t", res.ExecutionTrace.Subcalls)
+		}
+
+		return nil
+	},
+}
+
+var stateReplayCmd = &cli.Command{
+	Name:      "replay",
+	Usage:     "Replay a particular message",
+	ArgsUsage: "<messageCid>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "show-trace",
+			Usage: "print out full execution trace for given message",
+		},
+		&cli.BoolFlag{
+			Name:  "detailed-gas",
+			Usage: "print out detailed gas costs for given message",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			fmt.Println("must provide cid of message to replay")
+			return nil
+		}
+
+		mcid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("message cid was invalid: %s", err)
+		}
+
+		fapi, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		res, err := fapi.StateReplay(ctx, mcid)
+		if err != nil {
+			return xerrors.Errorf("replay call failed: %w", err)
+		}
+
+		fmt.Println("Replay receipt:")
+		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
+		fmt.Printf("Return: %x\n", res.MsgRct.Return)
+		fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
+
+		if cctx.Bool("detailed-gas") {
+			fmt.Printf("Base Fee Burn: %d\n", res.GasCost.BaseFeeBurn)
+			fmt.Printf("Overestimaton Burn: %d\n", res.GasCost.OverEstimationBurn)
+			fmt.Printf("Miner Penalty: %d\n", res.GasCost.MinerPenalty)
+			fmt.Printf("Miner Tip: %d\n", res.GasCost.MinerTip)
+			fmt.Printf("Refund: %d\n", res.GasCost.Refund)
+		}
+		fmt.Printf("Total Message Cost: %d\n", res.GasCost.TotalCost)
+
+		if res.MsgRct.ExitCode != 0 {
+			fmt.Printf("Error message: %q\n", res.Error)
+		}
+
+		if cctx.Bool("show-trace") {
+			fmt.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", res.Msg.From, res.Msg.To, res.Msg.Value, res.Msg.Method, res.Msg.Params, res.MsgRct.ExitCode, res.MsgRct.Return)
+			printInternalExecutions("\t", res.ExecutionTrace.Subcalls)
 		}
 
 		return nil

@@ -372,6 +372,46 @@ func (a *StateAPI) StateTransplant(ctx context.Context, tsk types.TipSetKey, mc 
 	}, nil
 }
 
+func (a *StateAPI) StateReplay(ctx context.Context, mc cid.Cid) (*api.InvocResult, error) {
+	mlkp, err := a.StateSearchMsg(ctx, mc)
+	if err != nil {
+		return nil, xerrors.Errorf("searching for msg %s: %w", mc, err)
+	}
+	if mlkp == nil {
+		return nil, xerrors.Errorf("didn't find msg %s", mc)
+	}
+
+	executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
+	}
+
+	ts, err := a.Chain.LoadTipSet(executionTs.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
+	}
+
+	m, r, err := a.StateManager.Replay(ctx, ts, mlkp.Message)
+	if err != nil {
+		return nil, err
+	}
+
+	var errstr string
+	if r.ActorErr != nil {
+		errstr = r.ActorErr.Error()
+	}
+
+	return &api.InvocResult{
+		MsgCid:         mlkp.Message,
+		Msg:            m,
+		MsgRct:         &r.MessageReceipt,
+		GasCost:        stmgr.MakeMsgGasCost(m, r),
+		ExecutionTrace: r.ExecutionTrace,
+		Error:          errstr,
+		Duration:       r.Duration,
+	}, nil
+}
+
 func stateForTs(ctx context.Context, ts *types.TipSet, cstore *store.ChainStore, smgr *stmgr.StateManager) (*state.StateTree, error) {
 	if ts == nil {
 		ts = cstore.GetHeaviestTipSet()
