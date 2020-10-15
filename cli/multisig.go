@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -153,7 +152,7 @@ var msigCreateCmd = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode != 0 {
-			fmt.Println("actor creation failed!")
+			fmt.Fprintln(cctx.App.Writer, "actor creation failed!")
 			return err
 		}
 
@@ -163,7 +162,7 @@ var msigCreateCmd = &cli.Command{
 		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
-		fmt.Println("Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
+		fmt.Fprintln(cctx.App.Writer, "Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
 
 		// TODO: maybe register this somewhere
 		return nil
@@ -227,25 +226,25 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Balance: %s\n", types.FIL(act.Balance))
-		fmt.Printf("Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
+		fmt.Fprintf(cctx.App.Writer, "Balance: %s\n", types.FIL(act.Balance))
+		fmt.Fprintf(cctx.App.Writer, "Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
 
 		if cctx.Bool("vesting") {
 			ib, err := mstate.InitialBalance()
 			if err != nil {
 				return err
 			}
-			fmt.Printf("InitialBalance: %s\n", types.FIL(ib))
+			fmt.Fprintf(cctx.App.Writer, "InitialBalance: %s\n", types.FIL(ib))
 			se, err := mstate.StartEpoch()
 			if err != nil {
 				return err
 			}
-			fmt.Printf("StartEpoch: %d\n", se)
+			fmt.Fprintf(cctx.App.Writer, "StartEpoch: %d\n", se)
 			ud, err := mstate.UnlockDuration()
 			if err != nil {
 				return err
 			}
-			fmt.Printf("UnlockDuration: %d\n", ud)
+			fmt.Fprintf(cctx.App.Writer, "UnlockDuration: %d\n", ud)
 		}
 
 		signers, err := mstate.Signers()
@@ -256,10 +255,10 @@ var msigInspectCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Threshold: %d / %d\n", threshold, len(signers))
-		fmt.Println("Signers:")
+		fmt.Fprintf(cctx.App.Writer, "Threshold: %d / %d\n", threshold, len(signers))
+		fmt.Fprintln(cctx.App.Writer, "Signers:")
 		for _, s := range signers {
-			fmt.Printf("\t%s\n", s)
+			fmt.Fprintf(cctx.App.Writer, "\t%s\n", s)
 		}
 
 		pending := make(map[int64]multisig.Transaction)
@@ -271,7 +270,7 @@ var msigInspectCmd = &cli.Command{
 		}
 
 		decParams := cctx.Bool("decode-params")
-		fmt.Println("Transactions: ", len(pending))
+		fmt.Fprintln(cctx.App.Writer, "Transactions: ", len(pending))
 		if len(pending) > 0 {
 			var txids []int64
 			for txid := range pending {
@@ -281,7 +280,7 @@ var msigInspectCmd = &cli.Command{
 				return txids[i] < txids[j]
 			})
 
-			w := tabwriter.NewWriter(os.Stdout, 8, 4, 2, ' ', 0)
+			w := tabwriter.NewWriter(cctx.App.Writer, 8, 4, 2, ' ', 0)
 			fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
 			for _, txid := range txids {
 				tx := pending[txid]

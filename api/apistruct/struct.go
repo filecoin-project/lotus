@@ -371,9 +371,11 @@ type WorkerStruct struct {
 type GatewayStruct struct {
 	Internal struct {
 		// TODO: does the gateway need perms?
+		ChainHasObj             func(context.Context, cid.Cid) (bool, error)
 		ChainGetTipSet          func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 		ChainGetTipSetByHeight  func(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 		ChainHead               func(ctx context.Context) (*types.TipSet, error)
+		ChainReadObj            func(context.Context, cid.Cid) ([]byte, error)
 		GasEstimateMessageGas   func(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 		MpoolPush               func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 		MsigGetAvailableBalance func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
@@ -1432,6 +1434,10 @@ func (w *WorkerStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
 	return w.Internal.Closing(ctx)
 }
 
+func (g GatewayStruct) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
+	return g.Internal.ChainHasObj(ctx, c)
+}
+
 func (g GatewayStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return g.Internal.ChainHead(ctx)
 }
@@ -1442,6 +1448,10 @@ func (g GatewayStruct) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) 
 
 func (g GatewayStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	return g.Internal.ChainGetTipSetByHeight(ctx, h, tsk)
+}
+
+func (g GatewayStruct) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+	return g.Internal.ChainReadObj(ctx, c)
 }
 
 func (g GatewayStruct) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {

@@ -437,6 +437,7 @@ type mockCLI struct {
 	out  *bytes.Buffer
 }
 
+// TODO: refactor to use the methods in cli/test/mockcli.go
 func newMockCLI(t *testing.T) *mockCLI {
 	// Create a CLI App with an --api-url flag so that we can specify which node
 	// the command should be executed against

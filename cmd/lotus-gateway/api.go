@@ -26,9 +26,11 @@ var (
 // gatewayDepsAPI defines the API methods that the GatewayAPI depends on
 // (to make it easy to mock for tests)
 type gatewayDepsAPI interface {
+	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
@@ -40,7 +42,18 @@ type gatewayDepsAPI interface {
 }
 
 type GatewayAPI struct {
-	api gatewayDepsAPI
+	api         gatewayDepsAPI
+	lookbackCap time.Duration
+}
+
+// NewGatewayAPI creates a new GatewayAPI with the default lookback cap
+func NewGatewayAPI(api gatewayDepsAPI) *GatewayAPI {
+	return newGatewayAPI(api, LookbackCap)
+}
+
+// used by the tests
+func newGatewayAPI(api gatewayDepsAPI, lookbackCap time.Duration) *GatewayAPI {
+	return &GatewayAPI{api: api, lookbackCap: lookbackCap}
 }
 
 func (a *GatewayAPI) checkTipsetKey(ctx context.Context, tsk types.TipSetKey) error {
@@ -76,11 +89,15 @@ func (a *GatewayAPI) checkTipsetHeight(ts *types.TipSet, h abi.ChainEpoch) error
 }
 
 func (a *GatewayAPI) checkTimestamp(at time.Time) error {
-	if time.Since(at) > LookbackCap {
+	if time.Since(at) > a.lookbackCap {
 		return ErrLookbackTooLong
 	}
 
 	return nil
+}
+
+func (a *GatewayAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
+	return a.api.ChainHasObj(ctx, c)
 }
 
 func (a *GatewayAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
@@ -110,6 +127,10 @@ func (a *GatewayAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoc
 	}
 
 	return a.api.ChainGetTipSetByHeight(ctx, h, tsk)
+}
+
+func (a *GatewayAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+	return a.api.ChainReadObj(ctx, c)
 }
 
 func (a *GatewayAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
