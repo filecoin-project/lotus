@@ -76,7 +76,7 @@ func executeTestVector(tv schema.TestVector) error {
 	for _, v := range tv.Pre.Variants {
 		r := new(conformance.LogReporter)
 
-		switch class := tv.Class; class {
+		switch class, v := tv.Class, v; class {
 		case "message":
 			conformance.ExecuteMessageVector(r, &tv, &v)
 		case "tipset":
