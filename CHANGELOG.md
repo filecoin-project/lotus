@@ -1,5 +1,23 @@
 # Lotus changelog
 
+# 0.10.2 / 2020-10-14
+
+This is an optional release of Lotus that updates markets to 0.9.1, which fixes an issue affecting deals that were mid-transfer when the node was upgraded to 0.9.0. This release also includes some tweaks to default gas values and minor performance improvements.
+
+## Changes
+
+- Use updated stored ask API (https://github.com/filecoin-project/lotus/pull/4384)
+- tvx: trace puts to blockstore for inclusion in CAR. (https://github.com/filecoin-project/lotus/pull/4278)
+- Add propose remove (https://github.com/filecoin-project/lotus/pull/4311)
+- Update to 0.9.1 bugfix release (https://github.com/filecoin-project/lotus/pull/4402)
+- Update drand endpoints (https://github.com/filecoin-project/lotus/pull/4125)
+- fix: return true when deadlines changed (https://github.com/filecoin-project/lotus/pull/4403)
+- sync wait --watch (https://github.com/filecoin-project/lotus/pull/4396)
+- reduce garbage in blockstore (https://github.com/filecoin-project/lotus/pull/4406)
+- give the TimeCacheBS tests a bit more time (https://github.com/filecoin-project/lotus/pull/4407)
+- Improve gas defaults (https://github.com/filecoin-project/lotus/pull/4408)
+- Change default gas premium to for 10 block inclusion (https://github.com/filecoin-project/lotus/pull/4222)
+
 # 0.10.1 / 2020-10-14
 
 This is an optional release of Lotus that updates markets to 0.9.0, which adds the ability to restart data transfers. This release also introduces Ledger support, and various UX improvements.
