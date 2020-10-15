@@ -44,7 +44,7 @@ var multisigCmd = &cli.Command{
 	Usage: "Interact with a multisig wallet",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
-			Name:  "confirmations",
+			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
 			Value: int(build.MessageConfidence),
 		},
