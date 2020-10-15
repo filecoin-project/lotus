@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	LookbackCap            = time.Hour
+	LookbackCap            = time.Hour * 12
 	stateWaitLookbackLimit = abi.ChainEpoch(20)
 )
 
@@ -129,9 +129,19 @@ func (a *GatewayAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*
 }
 
 func (a *GatewayAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := a.api.ChainGetTipSet(ctx, tsk)
-	if err != nil {
-		return nil, err
+	var ts *types.TipSet
+	if tsk.IsEmpty() {
+		head, err := a.api.ChainHead(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ts = head
+	} else {
+		gts, err := a.api.ChainGetTipSet(ctx, tsk)
+		if err != nil {
+			return nil, err
+		}
+		ts = gts
 	}
 
 	// Check if the tipset key refers to a tipset that's too far in the past
