@@ -41,7 +41,7 @@ require (
 	github.com/filecoin-project/specs-actors v0.9.12
 	github.com/filecoin-project/specs-actors/v2 v2.1.0
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200907031224-ed2e5cd13796
-	github.com/filecoin-project/test-vectors/schema v0.0.4
+	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
