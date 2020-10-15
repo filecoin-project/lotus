@@ -65,6 +65,7 @@ var multisigCmd = &cli.Command{
 		msigLockApproveCmd,
 		msigLockCancelCmd,
 		msigVestedCmd,
+		msigProposeThresholdCmd,
 	},
 }
 
@@ -1436,6 +1437,81 @@ var msigVestedCmd = &cli.Command{
 		}
 
 		fmt.Printf("Vested: %s between %d and %d\n", types.FIL(ret), start.Height(), end.Height())
+
+		return nil
+	},
+}
+
+var msigProposeThresholdCmd = &cli.Command{
+	Name:      "propose-threshold",
+	Usage:     "Propose setting a different signing threshold on the account",
+	ArgsUsage: "<multisigAddress newM>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the proposal from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 2 {
+			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and new threshold value"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		newM, err := strconv.ParseUint(cctx.Args().Get(2), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		params, actErr := actors.SerializeParams(&msig0.ChangeNumApprovalsThresholdParams{
+			NewThreshold: newM,
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		msgCid, err := api.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(builtin2.MethodsMultisig.ChangeNumApprovalsThreshold), params)
+		if err != nil {
+			return fmt.Errorf("failed to propose change of threshold: %w", err)
+		}
+
+		fmt.Println("sent change threshold proposal in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("change threshold proposal returned exit %d", wait.Receipt.ExitCode)
+		}
 
 		return nil
 	},
