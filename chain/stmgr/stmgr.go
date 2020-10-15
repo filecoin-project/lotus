@@ -426,12 +426,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, ts *types.TipSet
 		parentEpoch = parent.Height
 	}
 
-	cids := make([]cid.Cid, len(blks))
-	for i, v := range blks {
-		cids[i] = v.Cid()
-	}
-
-	r := store.NewChainRand(sm.cs, cids)
+	r := store.NewChainRand(sm.cs, ts.Cids())
 
 	blkmsgs, err := sm.cs.BlockMsgsForTipset(ts)
 	if err != nil {
