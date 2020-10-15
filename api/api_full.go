@@ -320,8 +320,8 @@ type FullNode interface {
 
 	// StateCall runs the given message and returns its result without any persisted changes.
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error)
-	// StateReplay returns the result of executing the indicated message, assuming it was executed in the indicated tipset.
-	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error)
+	// StateTransplant returns the result of executing the indicated message, assuming it was executed in the indicated tipset.
+	StateTransplant(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error)
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	// StateReadState returns the indicated actor's state.

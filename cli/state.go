@@ -60,7 +60,7 @@ var stateCmd = &cli.Command{
 		stateSectorCmd,
 		stateGetActorCmd,
 		stateLookupIDCmd,
-		stateReplaySetCmd,
+		stateTransplantCmd,
 		stateSectorSizeCmd,
 		stateReadStateCmd,
 		stateListMessagesCmd,
@@ -384,9 +384,9 @@ var stateExecTraceCmd = &cli.Command{
 	},
 }
 
-var stateReplaySetCmd = &cli.Command{
-	Name:      "replay",
-	Usage:     "Replay a particular message within a tipset",
+var stateTransplantCmd = &cli.Command{
+	Name:      "transplant",
+	Usage:     "Play a particular message within a tipset",
 	ArgsUsage: "[tipsetKey messageCid]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() < 1 {
@@ -437,30 +437,19 @@ var stateReplaySetCmd = &cli.Command{
 					return err
 				}
 			} else {
-				var r *api.MsgLookup
-				r, err = fapi.StateWaitMsg(ctx, mcid, build.MessageConfidence)
-				if err != nil {
-					return xerrors.Errorf("finding message in chain: %w", err)
-				}
-
-				childTs, err := fapi.ChainGetTipSet(ctx, r.TipSet)
-				if err != nil {
-					return xerrors.Errorf("loading tipset: %w", err)
-				}
-				ts, err = fapi.ChainGetTipSet(ctx, childTs.Parents())
+				ts, err = fapi.ChainHead(ctx)
 				if err != nil {
 					return err
 				}
 			}
-
 		}
 
-		res, err := fapi.StateReplay(ctx, ts.Key(), mcid)
+		res, err := fapi.StateTransplant(ctx, ts.Key(), mcid)
 		if err != nil {
-			return xerrors.Errorf("replay call failed: %w", err)
+			return xerrors.Errorf("transplant call failed: %w", err)
 		}
 
-		fmt.Println("Replay receipt:")
+		fmt.Println("Transplant receipt:")
 		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
 		fmt.Printf("Return: %x\n", res.MsgRct.Return)
 		fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
