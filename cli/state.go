@@ -844,7 +844,7 @@ var stateListMessagesCmd = &cli.Command{
 			return err
 		}
 
-		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts.Key(), abi.ChainEpoch(toh))
+		msgs, err := api.StateListMessages(ctx, &lapi.MessageMatch{To: toa, From: froma}, ts.Key(), abi.ChainEpoch(toh))
 		if err != nil {
 			return err
 		}
