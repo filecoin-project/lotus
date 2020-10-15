@@ -197,3 +197,7 @@ func (m *mockGatewayDepsAPI) StateLookupID(ctx context.Context, addr address.Add
 func (m *mockGatewayDepsAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error) {
 	panic("implement me")
 }
+
+func (m *mockGatewayDepsAPI) StateReadState(ctx context.Context, act address.Address, ts types.TipSetKey) (*api.ActorState, error) {
+	panic("implement me")
+}
