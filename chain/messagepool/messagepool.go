@@ -370,11 +370,23 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 		return err
 	})
 
-	if err := mp.loadLocal(); err != nil {
-		log.Errorf("loading local messages: %+v", err)
-	}
+	mp.curTsLk.Lock()
+	mp.lk.Lock()
 
-	go mp.runLoop()
+	go func() {
+		err := mp.loadLocal()
+
+		mp.lk.Unlock()
+		mp.curTsLk.Unlock()
+
+		if err != nil {
+			log.Errorf("loading local messages: %+v", err)
+		}
+
+		log.Info("mpool ready")
+
+		mp.runLoop()
+	}()
 
 	return mp, nil
 }
@@ -667,9 +679,6 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 		return err
 	}
 
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
-
 	curTs := mp.curTs
 
 	if curTs == nil {
@@ -684,9 +693,6 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 	if snonce > m.Message.Nonce {
 		return xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
-
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
 
 	_, err = mp.verifyMsgBeforeAdd(m, curTs, true)
 	if err != nil {
