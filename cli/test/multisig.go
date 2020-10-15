@@ -68,10 +68,43 @@ func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNod
 	msigRobustAddr := parts[1]
 	fmt.Println("msig robust address:", msigRobustAddr)
 
-	// msig inspect <msig>
-	cmd = []string{"msig", "inspect", msigRobustAddr}
+	// Propose to add a new address to the msig
+	// msig add-propose --from=<addr> <msig> <addr>
+	paramFrom := fmt.Sprintf("--from=%s", walletAddrs[0])
+	cmd = []string{
+		"msig", "add-propose",
+		paramFrom,
+		msigRobustAddr,
+		walletAddrs[3].String(),
+	}
 	out = clientCLI.runCmd(cmd)
 	fmt.Println(out)
 
+	// msig inspect <msig>
+	cmd = []string{"msig", "inspect", "--vesting", "--decode-params", msigRobustAddr}
+	out = clientCLI.runCmd(cmd)
+	fmt.Println(out)
+
+	// Expect correct balance
 	require.Regexp(t, regexp.MustCompile("Balance: 0.000000000000001 FIL"), out)
+	// Expect 1 transaction
+	require.Regexp(t, regexp.MustCompile(`Transactions:\s*1`), out)
+	// Expect transaction to be "AddSigner"
+	require.Regexp(t, regexp.MustCompile(`AddSigner`), out)
+
+	// Approve adding the new address
+	// msig add-approve --from=<addr> <msig> <addr> 0 <addr> false
+	txnID := "0"
+	paramFrom = fmt.Sprintf("--from=%s", walletAddrs[1])
+	cmd = []string{
+		"msig", "add-approve",
+		paramFrom,
+		msigRobustAddr,
+		walletAddrs[0].String(),
+		txnID,
+		walletAddrs[3].String(),
+		"false",
+	}
+	out = clientCLI.runCmd(cmd)
+	fmt.Println(out)
 }

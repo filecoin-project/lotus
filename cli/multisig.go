@@ -677,7 +677,7 @@ var msigAddProposeCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("sent add proposal in message: ", msgCid)
+		fmt.Fprintln(cctx.App.Writer, "sent add proposal in message: ", msgCid)
 
 		wait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
 		if err != nil {
