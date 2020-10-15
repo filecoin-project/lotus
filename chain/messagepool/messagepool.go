@@ -59,6 +59,8 @@ var MaxUntrustedActorPendingMessages = 10
 
 var MaxNonceGap = uint64(4)
 
+var DefaultMaxFee = abi.TokenAmount(types.MustParseFIL("0.007"))
+
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
@@ -183,7 +185,7 @@ func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 
 func CapGasFee(msg *types.Message, maxFee abi.TokenAmount) {
 	if maxFee.Equals(big.Zero()) {
-		maxFee = types.NewInt(build.FilecoinPrecision / 10)
+		maxFee = DefaultMaxFee
 	}
 
 	gl := types.NewInt(uint64(msg.GasLimit))
