@@ -88,7 +88,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := &GatewayAPI{api: mock}
+			a := NewGatewayAPI(mock)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -107,6 +107,10 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 type mockGatewayDepsAPI struct {
 	lk      sync.RWMutex
 	tipsets []*types.TipSet
+}
+
+func (m *mockGatewayDepsAPI) ChainHasObj(context.Context, cid.Cid) (bool, error) {
+	panic("implement me")
 }
 
 func (m *mockGatewayDepsAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
@@ -156,6 +160,10 @@ func (m *mockGatewayDepsAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.C
 	defer m.lk.Unlock()
 
 	return m.tipsets[h], nil
+}
+
+func (m *mockGatewayDepsAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+	panic("implement me")
 }
 
 func (m *mockGatewayDepsAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {

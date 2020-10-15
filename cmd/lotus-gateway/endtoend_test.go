@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/lotus/cli"
+	clitest "github.com/filecoin-project/lotus/cli/test"
 
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -26,20 +30,22 @@ import (
 	builder "github.com/filecoin-project/lotus/node/test"
 )
 
+const maxLookbackCap = time.Duration(math.MaxInt64)
+
 func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
-// TestEndToEnd tests that API calls can be made on a lite node that is
-// connected through a gateway to a full API node
-func TestEndToEnd(t *testing.T) {
+// TestEndToEndWalletMsig tests that wallet and msig API calls can be made
+// on a lite node that is connected through a gateway to a full API node
+func TestEndToEndWalletMsig(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	full, lite, closer := startNodes(ctx, t, blocktime)
+	full, lite, closer := startNodes(ctx, t, blocktime, maxLookbackCap)
 	defer closer()
 
 	// The full node starts with a wallet
@@ -56,11 +62,11 @@ func TestEndToEnd(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send some funds from the full node to the lite node
-	err = sendFunds(ctx, t, full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
+	err = sendFunds(ctx, full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
 	require.NoError(t, err)
 
 	// Send some funds from the lite node back to the full node
-	err = sendFunds(ctx, t, lite, liteWalletAddr, fullWalletAddr, types.NewInt(100))
+	err = sendFunds(ctx, lite, liteWalletAddr, fullWalletAddr, types.NewInt(100))
 	require.NoError(t, err)
 
 	// Sign some data with the lite node wallet address
@@ -81,7 +87,7 @@ func TestEndToEnd(t *testing.T) {
 
 		walletAddrs = append(walletAddrs, addr)
 
-		err = sendFunds(ctx, t, lite, liteWalletAddr, addr, types.NewInt(1e15))
+		err = sendFunds(ctx, lite, liteWalletAddr, addr, types.NewInt(1e15))
 		require.NoError(t, err)
 	}
 
@@ -135,7 +141,33 @@ func TestEndToEnd(t *testing.T) {
 	require.True(t, approveReturn.Applied)
 }
 
-func sendFunds(ctx context.Context, t *testing.T, fromNode test.TestNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
+// TestEndToEndMsigCLI tests that msig CLI calls can be made
+// on a lite node that is connected through a gateway to a full API node
+func TestEndToEndMsigCLI(t *testing.T) {
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	clitest.QuietMiningLogs()
+
+	blocktime := 5 * time.Millisecond
+	ctx := context.Background()
+	full, lite, closer := startNodes(ctx, t, blocktime, maxLookbackCap)
+	defer closer()
+
+	// The full node starts with a wallet
+	fullWalletAddr, err := full.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
+	// Create a wallet on the lite node
+	liteWalletAddr, err := lite.WalletNew(ctx, types.KTSecp256k1)
+	require.NoError(t, err)
+
+	// Send some funds from the full node to the lite node
+	err = sendFunds(ctx, full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
+	require.NoError(t, err)
+
+	clitest.RunMultisigTest(t, cli.Commands, lite)
+}
+
+func sendFunds(ctx context.Context, fromNode test.TestNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
 	msg := &types.Message{
 		From:  fromAddr,
 		To:    toAddr,
@@ -158,7 +190,7 @@ func sendFunds(ctx context.Context, t *testing.T, fromNode test.TestNode, fromAd
 	return nil
 }
 
-func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration) (test.TestNode, test.TestNode, jsonrpc.ClientCloser) {
+func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration, lookbackCap time.Duration) (test.TestNode, test.TestNode, jsonrpc.ClientCloser) {
 	var closer jsonrpc.ClientCloser
 
 	// Create one miner and two full nodes.
@@ -175,7 +207,7 @@ func startNodes(ctx context.Context, t *testing.T, blocktime time.Duration) (tes
 				fullNode := nodes[0]
 
 				// Create a gateway server in front of the full node
-				_, addr, err := builder.CreateRPCServer(&GatewayAPI{api: fullNode})
+				_, addr, err := builder.CreateRPCServer(newGatewayAPI(fullNode, lookbackCap))
 				require.NoError(t, err)
 
 				// Create a gateway client API that connects to the gateway server
