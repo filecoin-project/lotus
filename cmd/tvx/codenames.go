@@ -16,9 +16,6 @@ var ProtocolCodenames = []struct {
 	name       string
 }{
 	{0, "genesis"},
-	// TODO there is some off-by-one trickery in GetNtwkVersion. Not sure if the
-	//  protocol version really kicks in at the designated height, or at the
-	//  following epoch.
 	{build.UpgradeBreezeHeight + 1, "breeze"},
 	{build.UpgradeSmokeHeight + 1, "smoke"},
 	{build.UpgradeIgnitionHeight + 1, "ignition"},
