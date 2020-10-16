@@ -346,52 +346,34 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 	return res, err
 }
 
-func (a *StateAPI) StateTransplant(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	m, r, err := a.StateManager.Replay(ctx, ts, mc)
-	if err != nil {
-		return nil, err
+func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
+	msgToReplay := mc
+	var ts *types.TipSet
+	if tsk == types.EmptyTSK {
+		mlkp, err := a.StateSearchMsg(ctx, mc)
+		if err != nil {
+			return nil, xerrors.Errorf("searching for msg %s: %w", mc, err)
+		}
+		if mlkp == nil {
+			return nil, xerrors.Errorf("didn't find msg %s", mc)
+		}
+
+		msgToReplay = mlkp.Message
+
+		executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		ts, err = a.Chain.LoadTipSet(executionTs.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
+		}
+	} else {
+		ts = a.Chain.GetHeaviestTipSet()
 	}
 
-	var errstr string
-	if r.ActorErr != nil {
-		errstr = r.ActorErr.Error()
-	}
-
-	return &api.InvocResult{
-		MsgCid:         mc,
-		Msg:            m,
-		MsgRct:         &r.MessageReceipt,
-		GasCost:        stmgr.MakeMsgGasCost(m, r),
-		ExecutionTrace: r.ExecutionTrace,
-		Error:          errstr,
-		Duration:       r.Duration,
-	}, nil
-}
-
-func (a *StateAPI) StateReplay(ctx context.Context, mc cid.Cid) (*api.InvocResult, error) {
-	mlkp, err := a.StateSearchMsg(ctx, mc)
-	if err != nil {
-		return nil, xerrors.Errorf("searching for msg %s: %w", mc, err)
-	}
-	if mlkp == nil {
-		return nil, xerrors.Errorf("didn't find msg %s", mc)
-	}
-
-	executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
-	}
-
-	ts, err := a.Chain.LoadTipSet(executionTs.Parents())
-	if err != nil {
-		return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
-	}
-
-	m, r, err := a.StateManager.Replay(ctx, ts, mlkp.Message)
+	m, r, err := a.StateManager.Replay(ctx, ts, msgToReplay)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +384,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, mc cid.Cid) (*api.InvocResul
 	}
 
 	return &api.InvocResult{
-		MsgCid:         mlkp.Message,
+		MsgCid:         msgToReplay,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
 		GasCost:        stmgr.MakeMsgGasCost(m, r),

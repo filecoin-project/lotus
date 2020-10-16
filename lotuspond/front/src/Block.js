@@ -26,7 +26,7 @@ class Block extends React.Component {
 
     messages = await Promise.all(messages.map(async (msg, i) => {
       if (msg.receipt.ExitCode !== 0) {
-        let reply = await this.props.conn.call('Filecoin.StateTransplant', [{Cids: [this.props.cid], Blocks: [header], Height: header.Height}, msg.Cid])
+        let reply = await this.props.conn.call('Filecoin.StateReplay', [{Cids: [this.props.cid], Blocks: [header], Height: header.Height}, msg.Cid])
         if(!reply.Error) {
           reply.Error = "reply: no error"
         }

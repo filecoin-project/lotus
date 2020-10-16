@@ -60,7 +60,6 @@ var stateCmd = &cli.Command{
 		stateSectorCmd,
 		stateGetActorCmd,
 		stateLookupIDCmd,
-		stateTransplantCmd,
 		stateReplayCmd,
 		stateSectorSizeCmd,
 		stateReadStateCmd,
@@ -384,108 +383,6 @@ var stateExecTraceCmd = &cli.Command{
 	},
 }
 
-var stateTransplantCmd = &cli.Command{
-	Name:      "transplant",
-	Usage:     "Play a particular message within a tipset",
-	ArgsUsage: "[tipsetKey messageCid]",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "show-trace",
-			Usage: "print out full execution trace for given message",
-		},
-		&cli.BoolFlag{
-			Name:  "detailed-gas",
-			Usage: "print out detailed gas costs for given message",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 1 {
-			fmt.Println("usage: [tipset] <message cid>")
-			fmt.Println("The last cid passed will be used as the message CID")
-			fmt.Println("All preceding ones will be used as the tipset")
-			return nil
-		}
-
-		args := cctx.Args().Slice()
-		mcid, err := cid.Decode(args[len(args)-1])
-		if err != nil {
-			return fmt.Errorf("message cid was invalid: %s", err)
-		}
-
-		fapi, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		ctx := ReqContext(cctx)
-
-		var ts *types.TipSet
-		{
-			var tscids []cid.Cid
-			for _, s := range args[:len(args)-1] {
-				c, err := cid.Decode(s)
-				if err != nil {
-					return fmt.Errorf("tipset cid was invalid: %s", err)
-				}
-				tscids = append(tscids, c)
-			}
-
-			if len(tscids) > 0 {
-				var headers []*types.BlockHeader
-				for _, c := range tscids {
-					h, err := fapi.ChainGetBlock(ctx, c)
-					if err != nil {
-						return err
-					}
-
-					headers = append(headers, h)
-				}
-
-				ts, err = types.NewTipSet(headers)
-				if err != nil {
-					return err
-				}
-			} else {
-				ts, err = fapi.ChainHead(ctx)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		res, err := fapi.StateTransplant(ctx, ts.Key(), mcid)
-		if err != nil {
-			return xerrors.Errorf("transplant call failed: %w", err)
-		}
-
-		fmt.Println("Transplant receipt:")
-		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
-		fmt.Printf("Return: %x\n", res.MsgRct.Return)
-		fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
-
-		if cctx.Bool("detailed-gas") {
-			fmt.Printf("Base Fee Burn: %d\n", res.GasCost.BaseFeeBurn)
-			fmt.Printf("Overestimaton Burn: %d\n", res.GasCost.OverEstimationBurn)
-			fmt.Printf("Miner Penalty: %d\n", res.GasCost.MinerPenalty)
-			fmt.Printf("Miner Tip: %d\n", res.GasCost.MinerTip)
-			fmt.Printf("Refund: %d\n", res.GasCost.Refund)
-		}
-		fmt.Printf("Total Message Cost: %d\n", res.GasCost.TotalCost)
-
-		if res.MsgRct.ExitCode != 0 {
-			fmt.Printf("Error message: %q\n", res.Error)
-		}
-
-		if cctx.Bool("show-trace") {
-			fmt.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", res.Msg.From, res.Msg.To, res.Msg.Value, res.Msg.Method, res.Msg.Params, res.MsgRct.ExitCode, res.MsgRct.Return)
-			printInternalExecutions("\t", res.ExecutionTrace.Subcalls)
-		}
-
-		return nil
-	},
-}
-
 var stateReplayCmd = &cli.Command{
 	Name:      "replay",
 	Usage:     "Replay a particular message",
@@ -519,7 +416,7 @@ var stateReplayCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		res, err := fapi.StateReplay(ctx, mcid)
+		res, err := fapi.StateReplay(ctx, types.EmptyTSK, mcid)
 		if err != nil {
 			return xerrors.Errorf("replay call failed: %w", err)
 		}

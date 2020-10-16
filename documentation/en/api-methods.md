@@ -165,7 +165,6 @@
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
   * [StateSectorPreCommitInfo](#StateSectorPreCommitInfo)
-  * [StateTransplant](#StateTransplant)
   * [StateVMCirculatingSupplyInternal](#StateVMCirculatingSupplyInternal)
   * [StateVerifiedClientStatus](#StateVerifiedClientStatus)
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
@@ -4048,7 +4047,8 @@ Response:
 ```
 
 ### StateReplay
-StateReplay searches for where the given message was executed, and replays it in that tipset.
+StateReplay replays a given message, assuming it was included in a block in the specified tipset.
+If no tipset key is provided, the appropriate tipset is looked up.
 
 
 Perms: read
@@ -4056,6 +4056,14 @@ Perms: read
 Inputs:
 ```json
 [
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
@@ -4316,98 +4324,6 @@ Response:
   "PreCommitEpoch": 10101,
   "DealWeight": "0",
   "VerifiedDealWeight": "0"
-}
-```
-
-### StateTransplant
-StateTransplant returns the result of executing the indicated message, assuming it was executed in the indicated tipset.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
-]
-```
-
-Response:
-```json
-{
-  "MsgCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "Msg": {
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ==",
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    }
-  },
-  "MsgRct": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
-  "GasCost": {
-    "Message": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "GasUsed": "0",
-    "BaseFeeBurn": "0",
-    "OverEstimationBurn": "0",
-    "MinerPenalty": "0",
-    "MinerTip": "0",
-    "Refund": "0",
-    "TotalCost": "0"
-  },
-  "ExecutionTrace": {
-    "Msg": {
-      "Version": 42,
-      "To": "f01234",
-      "From": "f01234",
-      "Nonce": 42,
-      "Value": "0",
-      "GasLimit": 9,
-      "GasFeeCap": "0",
-      "GasPremium": "0",
-      "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ==",
-      "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-      }
-    },
-    "MsgRct": {
-      "ExitCode": 0,
-      "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
-    },
-    "Error": "string value",
-    "Duration": 60000000000,
-    "GasCharges": null,
-    "Subcalls": null
-  },
-  "Error": "string value",
-  "Duration": 60000000000
 }
 ```
 
