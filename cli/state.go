@@ -813,33 +813,66 @@ var stateListMessagesCmd = &cli.Command{
 			froma = a
 		}
 
-		toh := cctx.Uint64("toheight")
+		toh := abi.ChainEpoch(cctx.Uint64("toheight"))
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
 
-		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts.Key(), abi.ChainEpoch(toh))
-		if err != nil {
-			return err
+		if ts == nil {
+			head, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+			ts = head
 		}
 
-		for _, c := range msgs {
-			if cctx.Bool("cids") {
-				fmt.Println(c.String())
-				continue
+		windowSize := abi.ChainEpoch(100)
+
+		cur := ts
+		for cur.Height() > toh {
+			if ctx.Err() != nil {
+				return ctx.Err()
 			}
 
-			m, err := api.ChainGetMessage(ctx, c)
+			end := toh
+			if cur.Height()-windowSize > end {
+				end = cur.Height() - windowSize
+			}
+
+			msgs, err := api.StateListMessages(ctx, &lapi.MessageMatch{To: toa, From: froma}, cur.Key(), end)
 			if err != nil {
 				return err
 			}
-			b, err := json.MarshalIndent(m, "", "  ")
+
+			for _, c := range msgs {
+				if cctx.Bool("cids") {
+					fmt.Println(c.String())
+					continue
+				}
+
+				m, err := api.ChainGetMessage(ctx, c)
+				if err != nil {
+					return err
+				}
+				b, err := json.MarshalIndent(m, "", "  ")
+				if err != nil {
+					return err
+				}
+				fmt.Println(string(b))
+			}
+
+			if end <= 0 {
+				break
+			}
+
+			next, err := api.ChainGetTipSetByHeight(ctx, end-1, cur.Key())
 			if err != nil {
 				return err
 			}
-			fmt.Println(string(b))
+
+			cur = next
 		}
 
 		return nil

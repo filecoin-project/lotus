@@ -328,7 +328,7 @@ type FullNode interface {
 	// StateReadState returns the indicated actor's state.
 	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*ActorState, error)
 	// StateListMessages looks back and returns all messages with a matching to or from address, stopping at the given height.
-	StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)
+	StateListMessages(ctx context.Context, match *MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)
 
 	// StateNetworkName returns the name of the network the node is synced to
 	StateNetworkName(context.Context) (dtypes.NetworkName, error)
@@ -917,4 +917,9 @@ type MsigVesting struct {
 	InitialBalance abi.TokenAmount
 	StartEpoch     abi.ChainEpoch
 	UnlockDuration abi.ChainEpoch
+}
+
+type MessageMatch struct {
+	To   address.Address
+	From address.Address
 }
