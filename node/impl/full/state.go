@@ -347,11 +347,33 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 }
 
 func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	msgToReplay := mc
+	var ts *types.TipSet
+	if tsk == types.EmptyTSK {
+		mlkp, err := a.StateSearchMsg(ctx, mc)
+		if err != nil {
+			return nil, xerrors.Errorf("searching for msg %s: %w", mc, err)
+		}
+		if mlkp == nil {
+			return nil, xerrors.Errorf("didn't find msg %s", mc)
+		}
+
+		msgToReplay = mlkp.Message
+
+		executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		ts, err = a.Chain.LoadTipSet(executionTs.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
+		}
+	} else {
+		ts = a.Chain.GetHeaviestTipSet()
 	}
-	m, r, err := a.StateManager.Replay(ctx, ts, mc)
+
+	m, r, err := a.StateManager.Replay(ctx, ts, msgToReplay)
 	if err != nil {
 		return nil, err
 	}
@@ -362,9 +384,10 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}
 
 	return &api.InvocResult{
-		MsgCid:         mc,
+		MsgCid:         msgToReplay,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
+		GasCost:        stmgr.MakeMsgGasCost(m, r),
 		ExecutionTrace: r.ExecutionTrace,
 		Error:          errstr,
 		Duration:       r.Duration,
@@ -1265,53 +1288,4 @@ func (a *StateAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey)
 	}
 
 	return a.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
-}
-
-func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk types.TipSetKey) (*api.MsgGasCost, error) {
-	var msg cid.Cid
-	var ts *types.TipSet
-	var err error
-	if tsk != types.EmptyTSK {
-		msg = inputMsg
-		ts, err = a.Chain.LoadTipSet(tsk)
-		if err != nil {
-			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-		}
-	} else {
-		mlkp, err := a.StateSearchMsg(ctx, inputMsg)
-		if err != nil {
-			return nil, xerrors.Errorf("searching for msg %s: %w", inputMsg, err)
-		}
-		if mlkp == nil {
-			return nil, xerrors.Errorf("didn't find msg %s", inputMsg)
-		}
-
-		executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
-		if err != nil {
-			return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
-		}
-
-		ts, err = a.Chain.LoadTipSet(executionTs.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
-		}
-
-		msg = mlkp.Message
-	}
-
-	m, r, err := a.StateManager.Replay(ctx, ts, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return &api.MsgGasCost{
-		Message:            msg,
-		GasUsed:            big.NewInt(r.GasUsed),
-		BaseFeeBurn:        r.GasCosts.BaseFeeBurn,
-		OverEstimationBurn: r.GasCosts.OverEstimationBurn,
-		MinerPenalty:       r.GasCosts.MinerPenalty,
-		MinerTip:           r.GasCosts.MinerTip,
-		Refund:             r.GasCosts.Refund,
-		TotalCost:          big.Sub(m.RequiredFunds(), r.GasCosts.Refund),
-	}, nil
 }

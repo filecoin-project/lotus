@@ -315,12 +315,13 @@ type FullNode interface {
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
-	// All methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+	// Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
 	// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 	// StateCall runs the given message and returns its result without any persisted changes.
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error)
-	// StateReplay returns the result of executing the indicated message, assuming it was executed in the indicated tipset.
+	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
+	// If no tipset key is provided, the appropriate tipset is looked up.
 	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error)
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
@@ -370,8 +371,6 @@ type FullNode interface {
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
 	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
-	// StateMsgGasCost searches for a message in the chain, and returns details of the messages gas costs, including the penalty and miner tip
-	StateMsgGasCost(context.Context, cid.Cid, types.TipSetKey) (*MsgGasCost, error)
 	// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 	// message arrives on chain, and gets to the indicated confidence depth.
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*MsgLookup, error)
@@ -740,6 +739,7 @@ type InvocResult struct {
 	MsgCid         cid.Cid
 	Msg            *types.Message
 	MsgRct         *types.MessageReceipt
+	GasCost        MsgGasCost
 	ExecutionTrace types.ExecutionTrace
 	Error          string
 	Duration       time.Duration

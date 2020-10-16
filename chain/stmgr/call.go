@@ -232,6 +232,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,
+		GasCost:        MakeMsgGasCost(msg, ret),
 		ExecutionTrace: ret.ExecutionTrace,
 		Error:          errs,
 		Duration:       ret.Duration,

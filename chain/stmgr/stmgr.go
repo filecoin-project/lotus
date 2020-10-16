@@ -209,6 +209,9 @@ func traceFunc(trace *[]*api.InvocResult) func(mcid cid.Cid, msg *types.Message,
 		if ret.ActorErr != nil {
 			ir.Error = ret.ActorErr.Error()
 		}
+		if ret.GasCosts != nil {
+			ir.GasCost = MakeMsgGasCost(msg, ret)
+		}
 		*trace = append(*trace, ir)
 		return nil
 	}
