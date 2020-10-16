@@ -486,7 +486,10 @@ func ConfigStorageMiner(c interface{}) Option {
 
 		If(cfg.Dealmaking.Filter != "",
 			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
-			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.Filter))),
+		),
+
+		If(cfg.Dealmaking.RetrievalFilter != "",
+			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 		),
 
 		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees)),
