@@ -1438,8 +1438,8 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFdE=
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
-github.com/testground/sdk-go v0.2.6-0.20201013134225-044f6f8ec366 h1:HE7kLHUjaEawE9MEaeSLSfuPlSQeBRKMphE8auw1ljk=
-github.com/testground/sdk-go v0.2.6-0.20201013134225-044f6f8ec366/go.mod h1:Q4dnWsUBH+dZ1u7aEGDBHWGUaLfhitjUq3UJQqxeTmk=
+github.com/testground/sdk-go v0.2.6-0.20201016180515-1e40e1b0ec3a h1:iQDLQpTGtdfatdQtGqQBuoXFrl2AQ0n3Q8mNKkqbmnw=
+github.com/testground/sdk-go v0.2.6-0.20201016180515-1e40e1b0ec3a/go.mod h1:Q4dnWsUBH+dZ1u7aEGDBHWGUaLfhitjUq3UJQqxeTmk=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tinylib/msgp v1.0.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tj/go-spin v1.1.0 h1:lhdWZsvImxvZ3q1C5OIB7d72DuOwP4O2NdBg9PyzNds=
