@@ -60,7 +60,7 @@ func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []
 			"from", cmsg.From,
 			"to", cmsg.To,
 			"value", types.FIL(cmsg.Value),
-			"feecap", types.FIL(cmsg.RequiredFunds()),
+			"cost", types.FIL(cmsg.RequiredCosts()),
 			"method", cmsg.Method,
 			"params", hex.EncodeToString(cmsg.Params))
 	default:

@@ -121,8 +121,12 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (m *Message) RequiredFunds() BigInt {
+func (m *Message) RequiredCosts() BigInt {
 	return BigMul(m.GasFeeCap, NewInt(uint64(m.GasLimit)))
+}
+
+func (m *Message) RequiredFunds() BigInt {
+	return BigAdd(m.Value, m.RequiredCosts())
 }
 
 func (m *Message) VMMessage() *Message {

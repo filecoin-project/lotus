@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
@@ -770,9 +769,7 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 	}
 	*msg = *gm
 
-	minFunds := big.Add(msg.RequiredFunds(), msg.Value)
-
-	pa, err := AddressFor(ctx, s.api, mi, PoStAddr, minFunds)
+	pa, err := AddressFor(ctx, s.api, mi, PoStAddr, msg.RequiredFunds())
 	if err != nil {
 		log.Errorw("error selecting address for window post", "error", err)
 		msg.From = s.worker

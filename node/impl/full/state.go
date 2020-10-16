@@ -1312,6 +1312,6 @@ func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk ty
 		MinerPenalty:       r.GasCosts.MinerPenalty,
 		MinerTip:           r.GasCosts.MinerTip,
 		Refund:             r.GasCosts.Refund,
-		TotalCost:          big.Sub(m.RequiredFunds(), r.GasCosts.Refund),
+		TotalCost:          big.Sub(m.RequiredCosts(), r.GasCosts.Refund),
 	}, nil
 }
