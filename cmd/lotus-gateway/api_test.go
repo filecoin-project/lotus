@@ -107,6 +107,9 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 type mockGatewayDepsAPI struct {
 	lk      sync.RWMutex
 	tipsets []*types.TipSet
+
+	gatewayDepsAPI // satisfies all interface requirements but will panic if
+	// methods are called. easier than filling out with panic stubs IMO
 }
 
 func (m *mockGatewayDepsAPI) ChainHasObj(context.Context, cid.Cid) (bool, error) {

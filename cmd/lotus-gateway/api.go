@@ -6,10 +6,13 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -19,7 +22,7 @@ import (
 )
 
 const (
-	LookbackCap            = time.Hour
+	LookbackCap            = time.Hour * 12
 	stateWaitLookbackLimit = abi.ChainEpoch(20)
 )
 
@@ -35,6 +38,7 @@ type gatewayDepsAPI interface {
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
@@ -44,6 +48,15 @@ type gatewayDepsAPI interface {
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error)
 	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error)
+	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
+	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
+	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
+	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
+	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error)
 }
 
 type GatewayAPI struct {
@@ -116,9 +129,19 @@ func (a *GatewayAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*
 }
 
 func (a *GatewayAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := a.api.ChainGetTipSet(ctx, tsk)
-	if err != nil {
-		return nil, err
+	var ts *types.TipSet
+	if tsk.IsEmpty() {
+		head, err := a.api.ChainHead(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ts = head
+	} else {
+		gts, err := a.api.ChainGetTipSet(ctx, tsk)
+		if err != nil {
+			return nil, err
+		}
+		ts = gts
 	}
 
 	// Check if the tipset key refers to a tipset that's too far in the past
@@ -136,6 +159,10 @@ func (a *GatewayAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoc
 
 func (a *GatewayAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 	return a.api.ChainReadObj(ctx, c)
+}
+
+func (a *GatewayAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error) {
+	return a.api.ChainGetNode(ctx, p)
 }
 
 func (a *GatewayAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
@@ -198,15 +225,78 @@ func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence u
 	return a.api.StateWaitMsgLimited(ctx, msg, confidence, stateWaitLookbackLimit)
 }
 
-func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
-	return sigs.Verify(sig, k, msg) == nil, nil
-}
-
 func (a *GatewayAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	if err := a.checkTipsetKey(ctx, tsk); err != nil {
 		return nil, err
 	}
 	return a.api.StateReadState(ctx, actor, tsk)
+}
+
+func (a *GatewayAPI) StateMinerPower(ctx context.Context, m address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return a.api.StateMinerPower(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerFaults(ctx context.Context, m address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return bitfield.BitField{}, err
+	}
+	return a.api.StateMinerFaults(ctx, m, tsk)
+}
+func (a *GatewayAPI) StateMinerRecoveries(ctx context.Context, m address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return bitfield.BitField{}, err
+	}
+	return a.api.StateMinerRecoveries(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerInfo(ctx context.Context, m address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return miner.MinerInfo{}, err
+	}
+	return a.api.StateMinerInfo(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return a.api.StateMinerDeadlines(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerAvailableBalance(ctx context.Context, m address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return types.BigInt{}, err
+	}
+	return a.api.StateMinerAvailableBalance(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateMinerProvingDeadline(ctx context.Context, m address.Address, tsk types.TipSetKey) (*dline.Info, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return a.api.StateMinerProvingDeadline(ctx, m, tsk)
+}
+
+func (a *GatewayAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return types.BigInt{}, err
+	}
+	return a.api.StateCirculatingSupply(ctx, tsk)
+
+}
+
+func (a *GatewayAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return api.CirculatingSupply{}, err
+	}
+	return a.api.StateVMCirculatingSupplyInternal(ctx, tsk)
+}
+
+func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
+	return sigs.Verify(sig, k, msg) == nil, nil
 }
 
 var _ api.GatewayAPI = (*GatewayAPI)(nil)
