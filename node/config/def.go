@@ -45,7 +45,8 @@ type DealmakingConfig struct {
 	PieceCidBlocklist             []cid.Cid
 	ExpectedSealDuration          Duration
 
-	Filter string
+	Filter          string
+	RetrievalFilter string
 }
 
 type SealingConfig struct {
