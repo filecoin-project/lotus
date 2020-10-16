@@ -733,7 +733,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 			continue
 		}
 
-		if types.CidArrsEqual(h.Parents, b.Parents) {
+		if types.CidsEqual(h.Parents, b.Parents) {
 			all = append(all, h)
 			inclMiners[h.Miner] = true
 		}
