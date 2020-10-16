@@ -384,12 +384,19 @@ var provingTeminateCmd = &cli.Command{
 	Name:  "terminate",
 	Usage: "terminate specied sector early",
 	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag if you know what you are doing",
+		},
 		&cli.StringFlag{
 			Name:  "sectors",
 			Usage: "specied sectors[xx,xx,xx]",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
