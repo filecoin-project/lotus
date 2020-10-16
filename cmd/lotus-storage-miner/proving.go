@@ -4,17 +4,24 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 )
 
 var provingCmd = &cli.Command{
@@ -25,6 +32,7 @@ var provingCmd = &cli.Command{
 		provingDeadlinesCmd,
 		provingDeadlineInfoCmd,
 		provingFaultsCmd,
+		provingTeminateCmd,
 	},
 }
 
@@ -368,6 +376,107 @@ var provingDeadlineInfoCmd = &cli.Command{
 			fmt.Printf("Faults:                   %d\n", faultsCount)
 			fmt.Printf("Faulty Sectors:           %d\n", fn)
 		}
+		return nil
+	},
+}
+
+var provingTeminateCmd = &cli.Command{
+	Name:  "terminate",
+	Usage: "terminate specied sector early",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sectors",
+			Usage: "specied sectors[xx,xx,xx]",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		if cctx.String("sectors") == "" {
+			return xerrors.Errorf("sectors must be specied")
+		}
+
+		var sectorStr []string
+		if strings.Contains(cctx.String("sectors"), ",") {
+			sectorStr = strings.Split(cctx.String("sectors"), ",")
+		} else {
+			sectorStr = append(sectorStr, cctx.String("sectors"))
+		}
+
+		if len(sectorStr) == 0 {
+			return xerrors.Errorf("sectors length is empty")
+		}
+
+		param := []miner0.TerminationDeclaration{}
+		for _, s := range sectorStr {
+			sint, err := strconv.ParseUint(s, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			sectorbit := bitfield.New()
+			sectorbit.Set(sint)
+
+			loca, err := api.StateSectorPartition(ctx, maddr, abi.SectorNumber(sint), types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("get sector partition %s", err)
+			}
+
+			para := miner0.TerminationDeclaration{
+				Deadline:  loca.Deadline,
+				Partition: loca.Partition,
+				Sectors:   sectorbit,
+			}
+
+			param = append(param, para)
+		}
+
+		paras := &miner0.TerminateSectorsParams{
+			Terminations: param,
+		}
+
+		sp, err := actors.SerializeParams(paras)
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:   mi.Owner,
+			To:     maddr,
+			Method: builtin.MethodsMiner.TerminateSectors,
+
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Println("Message CID:", smsg.Cid())
+
 		return nil
 	},
 }
