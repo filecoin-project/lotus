@@ -116,7 +116,6 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,
-		GasCost:        MakeMsgGasCost(msg, ret),
 		ExecutionTrace: ret.ExecutionTrace,
 		Error:          errs,
 		Duration:       ret.Duration,

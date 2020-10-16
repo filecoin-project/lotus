@@ -203,12 +203,14 @@ func traceFunc(trace *[]*api.InvocResult) func(mcid cid.Cid, msg *types.Message,
 			MsgCid:         mcid,
 			Msg:            msg,
 			MsgRct:         &ret.MessageReceipt,
-			GasCost:        MakeMsgGasCost(msg, ret),
 			ExecutionTrace: ret.ExecutionTrace,
 			Duration:       ret.Duration,
 		}
 		if ret.ActorErr != nil {
 			ir.Error = ret.ActorErr.Error()
+		}
+		if ret.GasCosts != nil {
+			ir.GasCost = MakeMsgGasCost(msg, ret)
 		}
 		*trace = append(*trace, ir)
 		return nil
