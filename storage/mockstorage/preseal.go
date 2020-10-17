@@ -7,7 +7,6 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -20,7 +19,7 @@ import (
 )
 
 func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, *types.KeyInfo, error) {
-	k, err := wallet.GenerateKey(crypto.SigTypeBLS)
+	k, err := wallet.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -37,12 +37,20 @@ import (
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/impl/client"
 )
 
 var log = logging.Logger("sub")
 
 var ErrSoftFailure = errors.New("soft validation failure")
 var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
+
+var msgCidPrefix = cid.Prefix{
+	Version:  1,
+	Codec:    cid.DagCBOR,
+	MhType:   client.DefaultHashFunction,
+	MhLength: 32,
+}
 
 func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bs bserv.BlockService, cmgr connmgr.ConnManager) {
 	// Timeout after (block time + propagation delay). This is useless at
@@ -120,12 +128,6 @@ func FetchMessagesByCids(
 			return err
 		}
 
-		// FIXME: We already sort in `fetchCids`, we are duplicating too much work,
-		//  we don't need to pass the index.
-		if out[i] != nil {
-			return fmt.Errorf("received duplicate message")
-		}
-
 		out[i] = msg
 		return nil
 	})
@@ -149,10 +151,6 @@ func FetchSignedMessagesByCids(
 			return err
 		}
 
-		if out[i] != nil {
-			return fmt.Errorf("received duplicate message")
-		}
-
 		out[i] = smsg
 		return nil
 	})
@@ -172,37 +170,44 @@ func fetchCids(
 	cids []cid.Cid,
 	cb func(int, blocks.Block) error,
 ) error {
-	fetchedBlocks := bserv.GetBlocks(ctx, cids)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	cidIndex := make(map[cid.Cid]int)
 	for i, c := range cids {
+		if c.Prefix() != msgCidPrefix {
+			return fmt.Errorf("invalid msg CID: %s", c)
+		}
 		cidIndex[c] = i
 	}
+	if len(cids) != len(cidIndex) {
+		return fmt.Errorf("duplicate CIDs in fetchCids input")
+	}
 
-	for i := 0; i < len(cids); i++ {
-		select {
-		case block, ok := <-fetchedBlocks:
-			if !ok {
-				// Closed channel, no more blocks fetched, check if we have all
-				// of the CIDs requested.
-				// FIXME: Review this check. We don't call the callback on the
-				//  last index?
-				if i == len(cids)-1 {
-					break
-				}
-
-				return fmt.Errorf("failed to fetch all messages")
-			}
-
-			ix, ok := cidIndex[block.Cid()]
-			if !ok {
-				return fmt.Errorf("received message we didnt ask for")
-			}
-
-			if err := cb(ix, block); err != nil {
-				return err
-			}
+	for block := range bserv.GetBlocks(ctx, cids) {
+		ix, ok := cidIndex[block.Cid()]
+		if !ok {
+			// Ignore duplicate/unexpected blocks. This shouldn't
+			// happen, but we can be safe.
+			log.Errorw("received duplicate/unexpected block when syncing", "cid", block.Cid())
+			continue
 		}
+
+		// Record that we've received the block.
+		delete(cidIndex, block.Cid())
+
+		if err := cb(ix, block); err != nil {
+			return err
+		}
+	}
+
+	if len(cidIndex) > 0 {
+		err := ctx.Err()
+		if err == nil {
+			err = fmt.Errorf("failed to fetch %d messages for unknown reasons", len(cidIndex))
+		}
+		return err
 	}
 
 	return nil

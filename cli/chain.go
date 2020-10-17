@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -53,6 +54,7 @@ var chainCmd = &cli.Command{
 		slashConsensusFault,
 		chainGasPriceCmd,
 		chainInspectUsage,
+		chainDecodeCmd,
 	},
 }
 
@@ -449,11 +451,16 @@ var chainInspectUsage = &cli.Command{
 		bySender := make(map[string]int64)
 		byDest := make(map[string]int64)
 		byMethod := make(map[string]int64)
+		bySenderC := make(map[string]int64)
+		byDestC := make(map[string]int64)
+		byMethodC := make(map[string]int64)
 
 		var sum int64
 		for _, m := range msgs {
 			bySender[m.Message.From.String()] += m.Message.GasLimit
+			bySenderC[m.Message.From.String()]++
 			byDest[m.Message.To.String()] += m.Message.GasLimit
+			byDestC[m.Message.To.String()]++
 			sum += m.Message.GasLimit
 
 			code, err := lookupActorCode(m.Message.To)
@@ -464,7 +471,7 @@ var chainInspectUsage = &cli.Command{
 			mm := stmgr.MethodsMap[code][m.Message.Method]
 
 			byMethod[mm.Name] += m.Message.GasLimit
-
+			byMethodC[mm.Name]++
 		}
 
 		type keyGasPair struct {
@@ -496,19 +503,19 @@ var chainInspectUsage = &cli.Command{
 		fmt.Printf("By Sender:\n")
 		for i := 0; i < numRes && i < len(senderVals); i++ {
 			sv := senderVals[i]
-			fmt.Printf("%s\t%0.2f%%\t(%d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas)
+			fmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, bySenderC[sv.Key])
 		}
 		fmt.Println()
 		fmt.Printf("By Receiver:\n")
 		for i := 0; i < numRes && i < len(destVals); i++ {
 			sv := destVals[i]
-			fmt.Printf("%s\t%0.2f%%\t(%d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas)
+			fmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, byDestC[sv.Key])
 		}
 		fmt.Println()
 		fmt.Printf("By Method:\n")
 		for i := 0; i < numRes && i < len(methodVals); i++ {
 			sv := methodVals[i]
-			fmt.Printf("%s\t%0.2f%%\t(%d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas)
+			fmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, byMethodC[sv.Key])
 		}
 
 		return nil
@@ -516,8 +523,9 @@ var chainInspectUsage = &cli.Command{
 }
 
 var chainListCmd = &cli.Command{
-	Name:  "list",
-	Usage: "View a segment of the chain",
+	Name:    "list",
+	Aliases: []string{"love"},
+	Usage:   "View a segment of the chain",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{Name: "height"},
 		&cli.IntFlag{Name: "count", Value: 30},
@@ -1224,6 +1232,71 @@ var chainGasPriceCmd = &cli.Command{
 
 			fmt.Printf("%d blocks: %s (%s)\n", nblocks, est, types.FIL(est))
 		}
+
+		return nil
+	},
+}
+
+var chainDecodeCmd = &cli.Command{
+	Name:  "decode",
+	Usage: "decode various types",
+	Subcommands: []*cli.Command{
+		chainDecodeParamsCmd,
+	},
+}
+
+var chainDecodeParamsCmd = &cli.Command{
+	Name:  "params",
+	Usage: "Decode message params",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "tipset",
+		},
+	},
+	ArgsUsage: "[toAddr method hexParams]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 3 {
+			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
+		}
+
+		to, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("parsing toAddr: %w", err)
+		}
+
+		method, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing method id: %w", err)
+		}
+
+		params, err := hex.DecodeString(cctx.Args().Get(2))
+		if err != nil {
+			return xerrors.Errorf("parsing hex params: %w", err)
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, to, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting actor: %w", err)
+		}
+
+		pstr, err := jsonParams(act.Code, abi.MethodNum(method), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(pstr)
 
 		return nil
 	},

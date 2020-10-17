@@ -11,6 +11,11 @@ import (
 	"github.com/filecoin-project/test-vectors/schema"
 )
 
+var invokees = map[schema.Class]func(Reporter, *schema.TestVector, *schema.Variant){
+	schema.ClassMessage: ExecuteMessageVector,
+	schema.ClassTipset:  ExecuteTipsetVector,
+}
+
 const (
 	// EnvSkipConformance, if 1, skips the conformance test suite.
 	EnvSkipConformance = "SKIP_CONFORMANCE"
@@ -120,13 +125,16 @@ func TestConformance(t *testing.T) {
 			}
 
 			// dispatch the execution depending on the vector class.
-			switch vector.Class {
-			case "message":
-				ExecuteMessageVector(t, &vector)
-			case "tipset":
-				ExecuteTipsetVector(t, &vector)
-			default:
-				t.Fatalf("test vector class not supported: %s", vector.Class)
+			invokee, ok := invokees[vector.Class]
+			if !ok {
+				t.Fatalf("unsupported test vector class: %s", vector.Class)
+			}
+
+			for _, variant := range vector.Pre.Variants {
+				variant := variant
+				t.Run(variant.ID, func(t *testing.T) {
+					invokee(t, &vector, &variant)
+				})
 			}
 		})
 	}

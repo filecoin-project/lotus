@@ -135,7 +135,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	}
 
 	// get the circulating supply before the message was executed.
-	circSupplyDetail, err := fapi.StateCirculatingSupply(ctx, incTs.Key())
+	circSupplyDetail, err := fapi.StateVMCirculatingSupplyInternal(ctx, incTs.Key())
 	if err != nil {
 		return fmt.Errorf("failed while fetching circulating supply: %w", err)
 	}
@@ -200,6 +200,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Message:    m,
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
+			// recorded randomness will be discarded.
+			Rand: conformance.NewRecordingRand(new(conformance.LogReporter), fapi),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute precursor message: %w", err)
@@ -212,6 +214,9 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		applyret  *vm.ApplyRet
 		carWriter func(w io.Writer) error
 		retention = opts.retain
+
+		// recordingRand will record randomness so we can embed it in the test vector.
+		recordingRand = conformance.NewRecordingRand(new(conformance.LogReporter), fapi)
 	)
 
 	log.Printf("using state retention strategy: %s", retention)
@@ -231,6 +236,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Message:    msg,
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
+			Rand:       recordingRand,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
@@ -262,6 +268,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			Message:    msg,
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
+			Rand:       recordingRand,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
@@ -340,6 +347,13 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		return err
 	}
 
+	nv, err := fapi.StateNetworkVersion(ctx, execTs.Key())
+	if err != nil {
+		return err
+	}
+
+	codename := GetProtocolCodename(execTs.Height())
+
 	// Write out the test vector.
 	vector := schema.TestVector{
 		Class: schema.ClassMessage,
@@ -356,9 +370,15 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 				{Source: fmt.Sprintf("execution_tipset:%s", execTs.Key().String())},
 				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
 		},
-		CAR: out.Bytes(),
+		Selector: schema.Selector{
+			schema.SelectorMinProtocolVersion: codename,
+		},
+		Randomness: recordingRand.Recorded(),
+		CAR:        out.Bytes(),
 		Pre: &schema.Preconditions{
-			Epoch:      int64(execTs.Height()),
+			Variants: []schema.Variant{
+				{ID: codename, Epoch: int64(execTs.Height()), NetworkVersion: uint(nv)},
+			},
 			CircSupply: circSupply.Int,
 			BaseFee:    basefee.Int,
 			StateTree: &schema.StateTree{

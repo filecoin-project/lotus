@@ -84,6 +84,12 @@ var syncStatusCmd = &cli.Command{
 var syncWaitCmd = &cli.Command{
 	Name:  "wait",
 	Usage: "Wait for sync to be complete",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "don't exit after node is synced",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -92,7 +98,7 @@ var syncWaitCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		return SyncWait(ctx, napi)
+		return SyncWait(ctx, napi, cctx.Bool("watch"))
 	},
 }
 
@@ -122,8 +128,14 @@ var syncMarkBadCmd = &cli.Command{
 }
 
 var syncUnmarkBadCmd = &cli.Command{
-	Name:      "unmark-bad",
-	Usage:     "Unmark the given block as bad, makes it possible to sync to a chain containing it",
+	Name:  "unmark-bad",
+	Usage: "Unmark the given block as bad, makes it possible to sync to a chain containing it",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "all",
+			Usage: "drop the entire bad block cache",
+		},
+	},
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
 		napi, closer, err := GetFullNodeAPI(cctx)
@@ -132,6 +144,10 @@ var syncUnmarkBadCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.Bool("all") {
+			return napi.SyncUnmarkAllBad(ctx)
+		}
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify block cid to unmark")
@@ -224,7 +240,7 @@ var syncCheckpointCmd = &cli.Command{
 	},
 }
 
-func SyncWait(ctx context.Context, napi api.FullNode) error {
+func SyncWait(ctx context.Context, napi api.FullNode, watch bool) error {
 	tick := time.Second / 4
 
 	lastLines := 0
@@ -233,7 +249,13 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 
 	samples := 8
 	i := 0
-	var app, lastApp uint64
+	var firstApp, app, lastApp uint64
+
+	state, err := napi.SyncState(ctx)
+	if err != nil {
+		return err
+	}
+	firstApp = state.VMApplied
 
 	for {
 		state, err := napi.SyncState(ctx)
@@ -286,16 +308,16 @@ func SyncWait(ctx context.Context, napi api.FullNode) error {
 
 		if i%samples == 0 {
 			lastApp = app
-			app = state.VMApplied
+			app = state.VMApplied - firstApp
 		}
 		if i > 0 {
-			fmt.Printf("Validated %d messages (%d per second)\n", state.VMApplied, (app-lastApp)*uint64(time.Second/tick)/uint64(samples))
+			fmt.Printf("Validated %d messages (%d per second)\n", state.VMApplied-firstApp, (app-lastApp)*uint64(time.Second/tick)/uint64(samples))
 			lastLines++
 		}
 
 		_ = target // todo: maybe print? (creates a bunch of line wrapping issues with most tipsets)
 
-		if time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
+		if !watch && time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
 			fmt.Println("\nDone!")
 			return nil
 		}

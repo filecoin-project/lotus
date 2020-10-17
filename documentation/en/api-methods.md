@@ -46,6 +46,7 @@
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
+  * [ClientRestartDataTransfer](#ClientRestartDataTransfer)
   * [ClientRetrieve](#ClientRetrieve)
   * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
   * [ClientRetrieveWithEvents](#ClientRetrieveWithEvents)
@@ -83,11 +84,14 @@
   * [MsigAddCancel](#MsigAddCancel)
   * [MsigAddPropose](#MsigAddPropose)
   * [MsigApprove](#MsigApprove)
+  * [MsigApproveTxnHash](#MsigApproveTxnHash)
   * [MsigCancel](#MsigCancel)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
   * [MsigGetVested](#MsigGetVested)
+  * [MsigGetVestingSchedule](#MsigGetVestingSchedule)
   * [MsigPropose](#MsigPropose)
+  * [MsigRemoveSigner](#MsigRemoveSigner)
   * [MsigSwapApprove](#MsigSwapApprove)
   * [MsigSwapCancel](#MsigSwapCancel)
   * [MsigSwapPropose](#MsigSwapPropose)
@@ -152,7 +156,6 @@
   * [StateMinerRecoveries](#StateMinerRecoveries)
   * [StateMinerSectorCount](#StateMinerSectorCount)
   * [StateMinerSectors](#StateMinerSectors)
-  * [StateMsgGasCost](#StateMsgGasCost)
   * [StateNetworkName](#StateNetworkName)
   * [StateNetworkVersion](#StateNetworkVersion)
   * [StateReadState](#StateReadState)
@@ -162,10 +165,12 @@
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
   * [StateSectorPreCommitInfo](#StateSectorPreCommitInfo)
+  * [StateVMCirculatingSupplyInternal](#StateVMCirculatingSupplyInternal)
   * [StateVerifiedClientStatus](#StateVerifiedClientStatus)
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
+  * [StateWaitMsgLimited](#StateWaitMsgLimited)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
@@ -173,6 +178,7 @@
   * [SyncMarkBad](#SyncMarkBad)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
+  * [SyncUnmarkAllBad](#SyncUnmarkAllBad)
   * [SyncUnmarkBad](#SyncUnmarkBad)
   * [SyncValidateTipset](#SyncValidateTipset)
 * [Wallet](#Wallet)
@@ -221,7 +227,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 4096,
+  "APIVersion": 4352,
   "BlockDelay": 42
 }
 ```
@@ -457,7 +463,10 @@ Response:
   "GasFeeCap": "0",
   "GasPremium": "0",
   "Method": 1,
-  "Params": "Ynl0ZSBhcnJheQ=="
+  "Params": "Ynl0ZSBhcnJheQ==",
+  "CID": {
+    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+  }
 }
 ```
 
@@ -1155,6 +1164,23 @@ Inputs:
 
 Response: `{}`
 
+### ClientRestartDataTransfer
+ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  3,
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  true
+]
+```
+
+Response: `{}`
+
 ### ClientRetrieve
 ClientRetrieve initiates the retrieval of a file, as specified in the order.
 
@@ -1328,7 +1354,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   9,
   [
@@ -1364,7 +1393,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   [
     {
@@ -1424,7 +1456,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   {
     "MaxFee": "0"
@@ -1452,7 +1487,10 @@ Response:
   "GasFeeCap": "0",
   "GasPremium": "0",
   "Method": 1,
-  "Params": "Ynl0ZSBhcnJheQ=="
+  "Params": "Ynl0ZSBhcnJheQ==",
+  "CID": {
+    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+  }
 }
 ```
 
@@ -1736,11 +1774,17 @@ Inputs:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     }
   }
 ]
@@ -1777,7 +1821,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   {
     "MaxFee": "0"
@@ -1798,11 +1845,17 @@ Response:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   "Signature": {
     "Type": 2,
     "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "CID": {
+    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   }
 }
 ```
@@ -1827,11 +1880,17 @@ Inputs:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     }
   }
 ]
@@ -1911,11 +1970,17 @@ Response:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     }
   }
 }
@@ -2005,7 +2070,33 @@ Response:
 ```
 
 ### MsigApprove
-MsigApprove approves a previously-proposed multisig message
+MsigApprove approves a previously-proposed multisig message by transaction ID
+It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  42,
+  "f01234"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigApproveTxnHash
+MsigApproveTxnHash approves a previously-proposed multisig message, specified
+using both transaction ID and a hash of the parameters used in the
+proposal. This method of approval can be used to ensure you only approve
+exactly the transaction you think you are.
 It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
 <sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
 
@@ -2035,7 +2126,7 @@ Response:
 
 ### MsigCancel
 MsigCancel cancels a previously-proposed multisig message
-It takes the following params: <multisig address>, <proposed message ID>, <recipient address>, <value to transfer>,
+It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 
 
@@ -2143,6 +2234,36 @@ Inputs:
 
 Response: `"0"`
 
+### MsigGetVestingSchedule
+MsigGetVestingSchedule returns the vesting details of a given multisig.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "InitialBalance": "0",
+  "StartEpoch": 10101,
+  "UnlockDuration": 10101
+}
+```
+
 ### MsigPropose
 MsigPropose proposes a multisig message
 It takes the following params: <multisig address>, <recipient address>, <value to transfer>,
@@ -2160,6 +2281,33 @@ Inputs:
   "f01234",
   42,
   "Ynl0ZSBhcnJheQ=="
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MsigRemoveSigner
+MsigRemoveSigner proposes the removal of a signer from the multisig.
+It accepts the multisig to make the change on, the proposer address to
+send the message from, the address to be removed, and a boolean
+indicating whether or not the signing threshold should be lowered by one
+along with the address removal.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "f01234",
+  true
 ]
 ```
 
@@ -2840,7 +2988,7 @@ Response:
 
 ## State
 The State methods are used to query, inspect, and interact with chain state.
-All methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
 A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 
@@ -2909,7 +3057,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   [
     {
@@ -2925,6 +3076,9 @@ Inputs:
 Response:
 ```json
 {
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Msg": {
     "Version": 42,
     "To": "f01234",
@@ -2935,12 +3089,27 @@ Response:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9
+  },
+  "GasCost": {
+    "Message": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "GasUsed": "0",
+    "BaseFeeBurn": "0",
+    "OverEstimationBurn": "0",
+    "MinerPenalty": "0",
+    "MinerTip": "0",
+    "Refund": "0",
+    "TotalCost": "0"
   },
   "ExecutionTrace": {
     "Msg": {
@@ -2953,7 +3122,10 @@ Response:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
@@ -3006,7 +3178,8 @@ Response:
 ```
 
 ### StateCirculatingSupply
-StateCirculatingSupply returns the circulating supply of Filecoin at the given tipset
+StateCirculatingSupply returns the exact circulating supply of Filecoin at the given tipset.
+This is not used anywhere in the protocol itself, and is only for external consumption.
 
 
 Perms: read
@@ -3025,16 +3198,7 @@ Inputs:
 ]
 ```
 
-Response:
-```json
-{
-  "FilVested": "0",
-  "FilMined": "0",
-  "FilBurnt": "0",
-  "FilLocked": "0",
-  "FilCirculating": "0"
-}
-```
+Response: `"0"`
 
 ### StateCompute
 StateCompute is a flexible command that applies the given messages on the given tipset.
@@ -3199,16 +3363,8 @@ Inputs:
 ```json
 [
   {
-    "Version": 42,
     "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "From": "f01234"
   },
   [
     {
@@ -3818,45 +3974,6 @@ Inputs:
 
 Response: `null`
 
-### StateMsgGasCost
-StateMsgGasCost searches for a message in the chain, and returns details of the messages gas costs, including the penalty and miner tip
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "GasUsed": "0",
-  "BaseFeeBurn": "0",
-  "OverEstimationBurn": "0",
-  "MinerPenalty": "0",
-  "MinerTip": "0",
-  "Refund": "0",
-  "TotalCost": "0"
-}
-```
-
 ### StateNetworkName
 StateNetworkName returns the name of the network the node is synced to
 
@@ -3887,7 +4004,7 @@ Inputs:
 ]
 ```
 
-Response: `4`
+Response: `6`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -3919,7 +4036,8 @@ Response:
 ```
 
 ### StateReplay
-StateReplay returns the result of executing the indicated message, assuming it was executed in the indicated tipset.
+StateReplay replays a given message, assuming it was included in a block in the specified tipset.
+If no tipset key is provided, the appropriate tipset is looked up.
 
 
 Perms: read
@@ -3944,6 +4062,9 @@ Inputs:
 Response:
 ```json
 {
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Msg": {
     "Version": 42,
     "To": "f01234",
@@ -3954,12 +4075,27 @@ Response:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9
+  },
+  "GasCost": {
+    "Message": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "GasUsed": "0",
+    "BaseFeeBurn": "0",
+    "OverEstimationBurn": "0",
+    "MinerPenalty": "0",
+    "MinerTip": "0",
+    "Refund": "0",
+    "TotalCost": "0"
   },
   "ExecutionTrace": {
     "Msg": {
@@ -3972,7 +4108,10 @@ Response:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
@@ -4177,6 +4316,38 @@ Response:
 }
 ```
 
+### StateVMCirculatingSupplyInternal
+StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
+This is the value reported by the runtime interface to actors code.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "FilVested": "0",
+  "FilMined": "0",
+  "FilBurnt": "0",
+  "FilLocked": "0",
+  "FilCirculating": "0"
+}
+```
+
 ### StateVerifiedClientStatus
 StateVerifiedClientStatus returns the data cap for the given address.
 Returns nil if there is no entry in the data cap table for the
@@ -4263,6 +4434,49 @@ Inputs:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   42
+]
+```
+
+Response:
+```json
+{
+  "Message": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Receipt": {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  },
+  "ReturnDec": {},
+  "TipSet": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  "Height": 10101
+}
+```
+
+### StateWaitMsgLimited
+StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
+If not found, it blocks until the message arrives on chain, and gets to the
+indicated confidence depth.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  42,
+  10101
 ]
 ```
 
@@ -4471,6 +4685,16 @@ Inputs:
 
 Response: `{}`
 
+### SyncUnmarkAllBad
+SyncUnmarkAllBad purges bad block cache, making it possible to sync to chains previously marked as bad
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
+
 ### SyncUnmarkBad
 SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
 
@@ -4569,7 +4793,7 @@ Inputs:
 Response:
 ```json
 {
-  "Type": "string value",
+  "Type": "bls",
   "PrivateKey": "Ynl0ZSBhcnJheQ=="
 }
 ```
@@ -4599,7 +4823,7 @@ Inputs:
 ```json
 [
   {
-    "Type": "string value",
+    "Type": "bls",
     "PrivateKey": "Ynl0ZSBhcnJheQ=="
   }
 ]
@@ -4619,6 +4843,8 @@ Response: `null`
 
 ### WalletNew
 WalletNew creates a new address in the wallet with the given sigType.
+Available key types: bls, secp256k1, secp256k1-ledger
+Support for numerical types: 1 - secp256k1, 2 - BLS is deprecated
 
 
 Perms: write
@@ -4626,7 +4852,7 @@ Perms: write
 Inputs:
 ```json
 [
-  2
+  "bls"
 ]
 ```
 
@@ -4689,7 +4915,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   }
 ]
 ```
@@ -4707,11 +4936,17 @@ Response:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   "Signature": {
     "Type": 2,
     "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "CID": {
+    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   }
 }
 ```

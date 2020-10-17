@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -148,6 +149,20 @@ type MinerInfo struct {
 	ConsensusFaultElapsed      abi.ChainEpoch
 }
 
+func (mi MinerInfo) IsController(addr address.Address) bool {
+	if addr == mi.Owner || addr == mi.Worker {
+		return true
+	}
+
+	for _, ca := range mi.ControlAddresses {
+		if addr == ca {
+			return true
+		}
+	}
+
+	return false
+}
+
 type SectorExpiration struct {
 	OnTime abi.ChainEpoch
 
@@ -181,4 +196,8 @@ type LockedFunds struct {
 	VestingFunds             abi.TokenAmount
 	InitialPledgeRequirement abi.TokenAmount
 	PreCommitDeposits        abi.TokenAmount
+}
+
+func (lf LockedFunds) TotalLockedFunds() abi.TokenAmount {
+	return big.Add(lf.VestingFunds, big.Add(lf.InitialPledgeRequirement, lf.PreCommitDeposits))
 }

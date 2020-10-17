@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/filecoin-project/lotus/chain/gen/genesis"
+
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+
 	"github.com/docker/go-units"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 
@@ -33,16 +38,19 @@ import (
 )
 
 type accountInfo struct {
-	Address       address.Address
-	Balance       types.FIL
-	Type          string
-	Power         abi.StoragePower
-	Worker        address.Address
-	Owner         address.Address
-	InitialPledge types.FIL
-	PreCommits    types.FIL
-	LockedFunds   types.FIL
-	Sectors       uint64
+	Address         address.Address
+	Balance         types.FIL
+	Type            string
+	Power           abi.StoragePower
+	Worker          address.Address
+	Owner           address.Address
+	InitialPledge   types.FIL
+	PreCommits      types.FIL
+	LockedFunds     types.FIL
+	Sectors         uint64
+	VestingStart    abi.ChainEpoch
+	VestingDuration abi.ChainEpoch
+	VestingAmount   types.FIL
 }
 
 var auditsCmd = &cli.Command{
@@ -115,10 +123,8 @@ var chainBalanceCmd = &cli.Command{
 			infos = append(infos, ai)
 		}
 
-		fmt.Printf("Address,Balance,Type,Power,Worker,Owner\n")
-		for _, acc := range infos {
-			fmt.Printf("%s,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance, acc.Type, acc.Power, acc.Worker, acc.Owner)
-		}
+		printAccountInfos(infos, false)
+
 		return nil
 	},
 }
@@ -133,6 +139,9 @@ var chainBalanceStateCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name: "miner-info",
+		},
+		&cli.BoolFlag{
+			Name: "robust-addresses",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -171,7 +180,7 @@ var chainBalanceStateCmd = &cli.Command{
 
 		bs := blockstore.NewBlockstore(ds)
 
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
@@ -185,6 +194,33 @@ var chainBalanceStateCmd = &cli.Command{
 
 		minerInfo := cctx.Bool("miner-info")
 
+		robustMap := make(map[address.Address]address.Address)
+		if cctx.Bool("robust-addresses") {
+			iact, err := tree.GetActor(_init.Address)
+			if err != nil {
+				return xerrors.Errorf("failed to load init actor: %w", err)
+			}
+
+			ist, err := _init.Load(store, iact)
+			if err != nil {
+				return xerrors.Errorf("failed to load init actor state: %w", err)
+			}
+
+			err = ist.ForEachActor(func(id abi.ActorID, addr address.Address) error {
+				idAddr, err := address.NewIDAddress(uint64(id))
+				if err != nil {
+					return xerrors.Errorf("failed to write to addr map: %w", err)
+				}
+
+				robustMap[idAddr] = addr
+
+				return nil
+			})
+			if err != nil {
+				return xerrors.Errorf("failed to invert init address map: %w", err)
+			}
+		}
+
 		var infos []accountInfo
 		err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
 
@@ -196,6 +232,24 @@ var chainBalanceStateCmd = &cli.Command{
 				LockedFunds:   types.FIL(big.NewInt(0)),
 				InitialPledge: types.FIL(big.NewInt(0)),
 				PreCommits:    types.FIL(big.NewInt(0)),
+				VestingAmount: types.FIL(big.NewInt(0)),
+			}
+
+			if cctx.Bool("robust-addresses") {
+				robust, found := robustMap[addr]
+				if found {
+					ai.Address = robust
+				} else {
+					id, err := address.IDFromAddress(addr)
+					if err != nil {
+						return xerrors.Errorf("failed to get ID address: %w", err)
+					}
+
+					// TODO: This is not the correctest way to determine whether a robust address should exist
+					if id >= genesis.MinerStart {
+						return xerrors.Errorf("address doesn't have a robust address: %s", addr)
+					}
+				}
 			}
 
 			if minerInfo && builtin.IsStorageMinerActor(act.Code) {
@@ -234,6 +288,32 @@ var chainBalanceStateCmd = &cli.Command{
 				ai.Worker = minfo.Worker
 				ai.Owner = minfo.Owner
 			}
+
+			if builtin.IsMultisigActor(act.Code) {
+				mst, err := multisig.Load(store, act)
+				if err != nil {
+					return err
+				}
+
+				ai.VestingStart, err = mst.StartEpoch()
+				if err != nil {
+					return err
+				}
+
+				ib, err := mst.InitialBalance()
+				if err != nil {
+					return err
+				}
+
+				ai.VestingAmount = types.FIL(ib)
+
+				ai.VestingDuration, err = mst.UnlockDuration()
+				if err != nil {
+					return err
+				}
+
+			}
+
 			infos = append(infos, ai)
 			return nil
 		})
@@ -241,20 +321,25 @@ var chainBalanceStateCmd = &cli.Command{
 			return xerrors.Errorf("failed to loop over actors: %w", err)
 		}
 
-		if minerInfo {
-			fmt.Printf("Address,Balance,Type,Sectors,Worker,Owner,InitialPledge,Locked,PreCommits\n")
-			for _, acc := range infos {
-				fmt.Printf("%s,%s,%s,%d,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance, acc.Type, acc.Sectors, acc.Worker, acc.Owner, acc.InitialPledge, acc.LockedFunds, acc.PreCommits)
-			}
-		} else {
-			fmt.Printf("Address,Balance,Type\n")
-			for _, acc := range infos {
-				fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance, acc.Type)
-			}
-		}
+		printAccountInfos(infos, minerInfo)
 
 		return nil
 	},
+}
+
+func printAccountInfos(infos []accountInfo, minerInfo bool) {
+	if minerInfo {
+		fmt.Printf("Address,Balance,Type,Sectors,Worker,Owner,InitialPledge,Locked,PreCommits,VestingStart,VestingDuration,VestingAmount\n")
+		for _, acc := range infos {
+			fmt.Printf("%s,%s,%s,%d,%s,%s,%s,%s,%s,%d,%d,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type, acc.Sectors, acc.Worker, acc.Owner, acc.InitialPledge.Unitless(), acc.LockedFunds.Unitless(), acc.PreCommits.Unitless(), acc.VestingStart, acc.VestingDuration, acc.VestingAmount.Unitless())
+		}
+	} else {
+		fmt.Printf("Address,Balance,Type\n")
+		for _, acc := range infos {
+			fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type)
+		}
+	}
+
 }
 
 var chainPledgeCmd = &cli.Command{
@@ -309,7 +394,7 @@ var chainPledgeCmd = &cli.Command{
 
 		bs := blockstore.NewBlockstore(ds)
 
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
@@ -338,7 +423,7 @@ var chainPledgeCmd = &cli.Command{
 			pledgeCollateral = c
 		}
 
-		circ, err := sm.GetCirculatingSupplyDetailed(ctx, abi.ChainEpoch(epoch), state)
+		circ, err := sm.GetVMCirculatingSupplyDetailed(ctx, abi.ChainEpoch(epoch), state)
 		if err != nil {
 			return err
 		}

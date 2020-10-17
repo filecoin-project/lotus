@@ -2,9 +2,7 @@
 
 ## Reporting a Vulnerability
 
-For *critical* bugs, please send an email to security@filecoin.org.
-
-The bug reporting process differs between bugs that are critical and may crash the network, and others that are unlikely to cause problems if malicious parties know about it. For non-critical bugs, please simply file a GitHub [issue](https://github.com/filecoin-project/lotus/issues/new?template=bug_report.md). 
+For *critical* bugs, please consult our Security Policy and Responsible Disclosure Program information at https://github.com/filecoin-project/community/blob/master/SECURITY.md
 
 Please try to provide a clear description of any bugs reported, along with how to reproduce the bug if possible. More detailed bug reports (especially those with a PoC included) will help us move forward much faster. Additionally, please avoid reporting bugs that already have open issues. Take a moment to search the issue list of the related GitHub repositories before writing up a new report.
 
@@ -20,10 +18,6 @@ Here are some examples of bugs we would consider 'critical':
 
 This is not an exhaustive list, but should provide some idea of what we consider 'critical'.
 
-## Supported Versions
+## Reporting a non security bug
 
-* TODO: This should be defined and set up by Mainnet launch.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| Testnet | :white_check_mark: |
+For non-critical bugs, please simply file a GitHub [issue](https://github.com/filecoin-project/lotus/issues/new?template=bug_report.md). 

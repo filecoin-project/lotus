@@ -29,10 +29,15 @@ const UpgradeRefuelHeight = -4
 
 var UpgradeActorsV2Height = abi.ChainEpoch(2 * 15)
 
+const UpgradeTapeHeight = 140760
+
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
 // We still have upgrades and state changes to do, but can happen after signaling timing here.
 const UpgradeLiftoffHeight = 148888
+
+// TODO: Better name, actual epoch
+const UpgradePostLiftoffHeight = 166200
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(1 << 30))

@@ -57,9 +57,10 @@ func addFundsMsg(toAdd abi.TokenAmount, addr address.Address, wallet address.Add
 }
 
 type expectedResult struct {
-	addAmt    abi.TokenAmount
-	shouldAdd bool
-	err       error
+	addAmt          abi.TokenAmount
+	shouldAdd       bool
+	err             error
+	cachedAvailable abi.TokenAmount
 }
 
 func TestAddFunds(t *testing.T) {
@@ -88,8 +89,9 @@ func TestAddFunds(t *testing.T) {
 			addAmounts:      []abi.TokenAmount{abi.NewTokenAmount(100)},
 			expectedResults: []expectedResult{
 				{
-					shouldAdd: false,
-					err:       nil,
+					shouldAdd:       false,
+					err:             nil,
+					cachedAvailable: abi.NewTokenAmount(100),
 				},
 			},
 		},
@@ -102,18 +104,21 @@ func TestAddFunds(t *testing.T) {
 					err:       nil,
 				},
 				{
-					addAmt:    abi.NewTokenAmount(100),
-					shouldAdd: true,
-					err:       nil,
+					addAmt:          abi.NewTokenAmount(100),
+					shouldAdd:       true,
+					err:             nil,
+					cachedAvailable: abi.NewTokenAmount(200),
 				},
 				{
-					addAmt:    abi.NewTokenAmount(50),
-					shouldAdd: true,
-					err:       nil,
+					addAmt:          abi.NewTokenAmount(50),
+					shouldAdd:       true,
+					err:             nil,
+					cachedAvailable: abi.NewTokenAmount(250),
 				},
 				{
-					shouldAdd: false,
-					err:       nil,
+					shouldAdd:       false,
+					err:             nil,
+					cachedAvailable: abi.NewTokenAmount(250),
 				},
 			},
 		},
@@ -132,7 +137,8 @@ func TestAddFunds(t *testing.T) {
 			addAmounts:      []abi.TokenAmount{abi.NewTokenAmount(100)},
 			expectedResults: []expectedResult{
 				{
-					err: errors.New("something went wrong"),
+					err:             errors.New("something went wrong"),
+					cachedAvailable: abi.NewTokenAmount(0),
 				},
 			},
 		},
@@ -182,6 +188,10 @@ func TestAddFunds(t *testing.T) {
 					}
 				} else {
 					require.EqualError(t, err, expected.err.Error())
+				}
+
+				if !expected.cachedAvailable.Nil() {
+					require.Equal(t, expected.cachedAvailable, fundMgr.available[addr])
 				}
 			}
 		})

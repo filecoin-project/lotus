@@ -38,7 +38,7 @@ type SyncManager interface {
 	SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet)
 
 	// State retrieves the state of the sync workers.
-	State() []SyncerState
+	State() []SyncerStateSnapshot
 }
 
 type syncManager struct {
@@ -79,7 +79,7 @@ type syncResult struct {
 const syncWorkerCount = 3
 
 func NewSyncManager(sync SyncFunc) SyncManager {
-	return &syncManager{
+	sm := &syncManager{
 		bspThresh:       1,
 		peerHeads:       make(map[peer.ID]*types.TipSet),
 		syncTargets:     make(chan *types.TipSet),
@@ -90,6 +90,10 @@ func NewSyncManager(sync SyncFunc) SyncManager {
 		doSync:          sync,
 		stop:            make(chan struct{}),
 	}
+	for i := range sm.syncStates {
+		sm.syncStates[i] = new(SyncerState)
+	}
+	return sm
 }
 
 func (sm *syncManager) Start() {
@@ -128,8 +132,8 @@ func (sm *syncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.Tip
 	sm.incomingTipSets <- ts
 }
 
-func (sm *syncManager) State() []SyncerState {
-	ret := make([]SyncerState, 0, len(sm.syncStates))
+func (sm *syncManager) State() []SyncerStateSnapshot {
+	ret := make([]SyncerStateSnapshot, 0, len(sm.syncStates))
 	for _, s := range sm.syncStates {
 		ret = append(ret, s.Snapshot())
 	}
@@ -405,8 +409,7 @@ func (sm *syncManager) scheduleWorkSent() {
 }
 
 func (sm *syncManager) syncWorker(id int) {
-	ss := &SyncerState{}
-	sm.syncStates[id] = ss
+	ss := sm.syncStates[id]
 	for {
 		select {
 		case ts, ok := <-sm.syncTargets:

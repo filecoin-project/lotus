@@ -3,8 +3,14 @@ package node
 import (
 	"context"
 	"errors"
-	"os"
 	"time"
+
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/exchange"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/node/hello"
 
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
@@ -29,9 +35,7 @@ import (
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -39,10 +43,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
+	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -56,9 +59,9 @@ import (
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/impl/common"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -70,10 +73,6 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
-
-// EnvJournalDisabledEvents is the environment variable through which disabled
-// journal events can be customized.
-const EnvJournalDisabledEvents = "LOTUS_JOURNAL_DISABLED_EVENTS"
 
 //nolint:deadcode,varcheck
 var log = logging.Logger("builder")
@@ -158,25 +157,14 @@ type Settings struct {
 
 	Online bool // Online option applied
 	Config bool // Config option applied
-
+	Lite   bool // Start node in "lite" mode
 }
 
 func defaults() []Option {
 	return []Option{
 		// global system journal.
-		Override(new(journal.DisabledEvents), func() journal.DisabledEvents {
-			if env, ok := os.LookupEnv(EnvJournalDisabledEvents); ok {
-				if ret, err := journal.ParseDisabledEvents(env); err == nil {
-					return ret
-				}
-			}
-			// fallback if env variable is not set, or if it failed to parse.
-			return journal.DefaultDisabledEvents
-		}),
+		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
-		Override(InitJournalKey, func(j journal.Journal) {
-			journal.J = j // eagerly sets the global journal through fx.Invoke.
-		}),
 
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
@@ -232,6 +220,10 @@ func isType(t repo.RepoType) func(s *Settings) bool {
 
 // Online sets up basic libp2p node
 func Online() Option {
+	isFullOrLiteNode := func(s *Settings) bool { return s.nodeType == repo.FullNode }
+	isFullNode := func(s *Settings) bool { return s.nodeType == repo.FullNode && !s.Lite }
+	isLiteNode := func(s *Settings) bool { return s.nodeType == repo.FullNode && s.Lite }
+
 	return Options(
 		// make sure that online is applied before Config.
 		// This is important because Config overrides some of Online units
@@ -245,23 +237,23 @@ func Online() Option {
 		// common
 		Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
 
-		// Full node
-
-		ApplyIf(isType(repo.FullNode),
+		// Full node or lite node
+		ApplyIf(isFullOrLiteNode,
 			// TODO: Fix offline mode
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 			Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 			Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 
-			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
-
 			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 			Override(new(vm.SyscallBuilder), vm.Syscalls),
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule()),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
-			Override(new(*wallet.Wallet), wallet.NewWallet),
+			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
+			Override(new(*wallet.LocalWallet), wallet.NewWallet),
+			Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
+			Override(new(api.WalletAPI), From(new(wallet.MultiWallet))),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
@@ -288,12 +280,6 @@ func Online() Option {
 
 			Override(new(dtypes.Graphsync), modules.Graphsync),
 			Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
-
-			Override(RunHelloKey, modules.RunHello),
-			Override(RunChainExchangeKey, modules.RunChainExchange),
-			Override(RunPeerMgrKey, modules.RunPeerMgr),
-			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
-
 			Override(new(*discoveryimpl.Local), modules.NewLocalDiscovery),
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
 
@@ -312,8 +298,34 @@ func Online() Option {
 			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 		),
 
+		// Lite node
+		ApplyIf(isLiteNode,
+			Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
+			Override(new(full.ChainModuleAPI), From(new(api.GatewayAPI))),
+			Override(new(full.GasModuleAPI), From(new(api.GatewayAPI))),
+			Override(new(full.MpoolModuleAPI), From(new(api.GatewayAPI))),
+			Override(new(full.StateModuleAPI), From(new(api.GatewayAPI))),
+			Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),
+		),
+
+		// Full node
+		ApplyIf(isFullNode,
+			Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
+			Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
+			Override(new(full.GasModuleAPI), From(new(full.GasModule))),
+			Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
+			Override(new(full.StateModuleAPI), From(new(full.StateModule))),
+			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
+
+			Override(RunHelloKey, modules.RunHello),
+			Override(RunChainExchangeKey, modules.RunChainExchange),
+			Override(RunPeerMgrKey, modules.RunPeerMgr),
+			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
+			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+		),
+
 		// miner
-		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
+		ApplyIf(isType(repo.StorageMiner),
 			Override(new(api.Common), From(new(common.CommonAPI))),
 			Override(new(sectorstorage.StorageAuth), modules.StorageAuth),
 
@@ -342,7 +354,8 @@ func Online() Option {
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
-			Override(new(dtypes.DealFilter), modules.BasicDealFilter(nil)),
+			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
+			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 			Override(new(modules.ProviderDealFunds), modules.NewProviderDealFunds),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(nil)),
@@ -448,6 +461,17 @@ func ConfigFullNode(c interface{}) Option {
 		If(cfg.Metrics.HeadNotifs,
 			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
 		),
+
+		If(cfg.Wallet.RemoteBackend != "",
+			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
+		),
+		If(cfg.Wallet.EnableLedger,
+			Override(new(*ledgerwallet.LedgerWallet), ledgerwallet.NewWallet),
+		),
+		If(cfg.Wallet.DisableLocal,
+			Unset(new(*wallet.LocalWallet)),
+			Override(new(wallet.Default), wallet.NilDefault),
+		),
 	)
 }
 
@@ -461,7 +485,11 @@ func ConfigStorageMiner(c interface{}) Option {
 		ConfigCommon(&cfg.Common),
 
 		If(cfg.Dealmaking.Filter != "",
-			Override(new(dtypes.DealFilter), modules.BasicDealFilter(dealfilter.CliDealFilter(cfg.Dealmaking.Filter))),
+			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
+		),
+
+		If(cfg.Dealmaking.RetrievalFilter != "",
+			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 		),
 
 		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees)),
@@ -507,12 +535,22 @@ func Repo(r repo.Repo) Option {
 	}
 }
 
-func FullAPI(out *api.FullNode) Option {
+type FullOption = Option
+
+func Lite(enable bool) FullOption {
+	return func(s *Settings) error {
+		s.Lite = enable
+		return nil
+	}
+}
+
+func FullAPI(out *api.FullNode, fopts ...FullOption) Option {
 	return Options(
 		func(s *Settings) error {
 			s.nodeType = repo.FullNode
 			return nil
 		},
+		Options(fopts...),
 		func(s *Settings) error {
 			resAPI := &impl.FullNodeAPI{}
 			s.invokes[ExtractApiKey] = fx.Populate(resAPI)

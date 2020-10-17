@@ -39,10 +39,30 @@ import (
 
 var log = logging.Logger("fullnode")
 
+type ChainModuleAPI interface {
+	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+}
+
+// ChainModule provides a default implementation of ChainModuleAPI.
+// It can be swapped out with another implementation through Dependency
+// Injection (for example with a thin RPC client).
+type ChainModule struct {
+	fx.In
+
+	Chain *store.ChainStore
+}
+
+var _ ChainModuleAPI = (*ChainModule)(nil)
+
 type ChainAPI struct {
 	fx.In
 
 	WalletAPI
+	ChainModuleAPI
 
 	Chain *store.ChainStore
 }
@@ -51,8 +71,8 @@ func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, e
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
-func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
-	return a.Chain.GetHeaviestTipSet(), nil
+func (m *ChainModule) ChainHead(context.Context) (*types.TipSet, error) {
+	return m.Chain.GetHeaviestTipSet(), nil
 }
 
 func (a *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -77,8 +97,8 @@ func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.Block
 	return a.Chain.GetBlock(msg)
 }
 
-func (a *ChainAPI) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
-	return a.Chain.LoadTipSet(key)
+func (m *ChainModule) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
+	return m.Chain.LoadTipSet(key)
 }
 
 func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
@@ -180,16 +200,16 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
-func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return a.Chain.GetTipsetByHeight(ctx, h, ts, true)
+	return m.Chain.GetTipsetByHeight(ctx, h, ts, true)
 }
 
-func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
-	blk, err := a.Chain.Blockstore().Get(obj)
+func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
+	blk, err := m.Chain.Blockstore().Get(obj)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}
@@ -201,8 +221,8 @@ func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
 	return a.Chain.Blockstore().DeleteBlock(obj)
 }
 
-func (a *ChainAPI) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
-	return a.Chain.Blockstore().Has(obj)
+func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
+	return m.Chain.Blockstore().Has(obj)
 }
 
 func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
