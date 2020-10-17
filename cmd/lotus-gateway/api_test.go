@@ -88,7 +88,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := &GatewayAPI{api: mock}
+			a := NewGatewayAPI(mock)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -107,6 +107,13 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 type mockGatewayDepsAPI struct {
 	lk      sync.RWMutex
 	tipsets []*types.TipSet
+
+	gatewayDepsAPI // satisfies all interface requirements but will panic if
+	// methods are called. easier than filling out with panic stubs IMO
+}
+
+func (m *mockGatewayDepsAPI) ChainHasObj(context.Context, cid.Cid) (bool, error) {
+	panic("implement me")
 }
 
 func (m *mockGatewayDepsAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
@@ -158,6 +165,10 @@ func (m *mockGatewayDepsAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.C
 	return m.tipsets[h], nil
 }
 
+func (m *mockGatewayDepsAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+	panic("implement me")
+}
+
 func (m *mockGatewayDepsAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
 	panic("implement me")
 }
@@ -187,5 +198,9 @@ func (m *mockGatewayDepsAPI) StateLookupID(ctx context.Context, addr address.Add
 }
 
 func (m *mockGatewayDepsAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateReadState(ctx context.Context, act address.Address, ts types.TipSetKey) (*api.ActorState, error) {
 	panic("implement me")
 }

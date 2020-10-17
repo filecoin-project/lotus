@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/filecoin-project/lotus/chain/gen/genesis"
+
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+
 	"github.com/docker/go-units"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -136,6 +140,9 @@ var chainBalanceStateCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "miner-info",
 		},
+		&cli.BoolFlag{
+			Name: "robust-addresses",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
@@ -187,6 +194,33 @@ var chainBalanceStateCmd = &cli.Command{
 
 		minerInfo := cctx.Bool("miner-info")
 
+		robustMap := make(map[address.Address]address.Address)
+		if cctx.Bool("robust-addresses") {
+			iact, err := tree.GetActor(_init.Address)
+			if err != nil {
+				return xerrors.Errorf("failed to load init actor: %w", err)
+			}
+
+			ist, err := _init.Load(store, iact)
+			if err != nil {
+				return xerrors.Errorf("failed to load init actor state: %w", err)
+			}
+
+			err = ist.ForEachActor(func(id abi.ActorID, addr address.Address) error {
+				idAddr, err := address.NewIDAddress(uint64(id))
+				if err != nil {
+					return xerrors.Errorf("failed to write to addr map: %w", err)
+				}
+
+				robustMap[idAddr] = addr
+
+				return nil
+			})
+			if err != nil {
+				return xerrors.Errorf("failed to invert init address map: %w", err)
+			}
+		}
+
 		var infos []accountInfo
 		err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
 
@@ -199,6 +233,23 @@ var chainBalanceStateCmd = &cli.Command{
 				InitialPledge: types.FIL(big.NewInt(0)),
 				PreCommits:    types.FIL(big.NewInt(0)),
 				VestingAmount: types.FIL(big.NewInt(0)),
+			}
+
+			if cctx.Bool("robust-addresses") {
+				robust, found := robustMap[addr]
+				if found {
+					ai.Address = robust
+				} else {
+					id, err := address.IDFromAddress(addr)
+					if err != nil {
+						return xerrors.Errorf("failed to get ID address: %w", err)
+					}
+
+					// TODO: This is not the correctest way to determine whether a robust address should exist
+					if id >= genesis.MinerStart {
+						return xerrors.Errorf("address doesn't have a robust address: %s", addr)
+					}
+				}
 			}
 
 			if minerInfo && builtin.IsStorageMinerActor(act.Code) {

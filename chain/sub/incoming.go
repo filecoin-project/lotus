@@ -37,12 +37,20 @@ import (
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/impl/client"
 )
 
 var log = logging.Logger("sub")
 
 var ErrSoftFailure = errors.New("soft validation failure")
 var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
+
+var msgCidPrefix = cid.Prefix{
+	Version:  1,
+	Codec:    cid.DagCBOR,
+	MhType:   client.DefaultHashFunction,
+	MhLength: 32,
+}
 
 func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bs bserv.BlockService, cmgr connmgr.ConnManager) {
 	// Timeout after (block time + propagation delay). This is useless at
@@ -168,6 +176,9 @@ func fetchCids(
 
 	cidIndex := make(map[cid.Cid]int)
 	for i, c := range cids {
+		if c.Prefix() != msgCidPrefix {
+			return fmt.Errorf("invalid msg CID: %s", c)
+		}
 		cidIndex[c] = i
 	}
 	if len(cids) != len(cidIndex) {

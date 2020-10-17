@@ -3,8 +3,10 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/multiformats/go-multiaddr"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -75,6 +78,7 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("testConnectTwo", ts.testConnectTwo)
 	t.Run("testMining", ts.testMining)
 	t.Run("testMiningReal", ts.testMiningReal)
+	t.Run("testSearchMsg", ts.testSearchMsg)
 }
 
 func DefaultFullOpts(nFull int) []FullNodeOpts {
@@ -118,6 +122,49 @@ func (ts *testSuite) testVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	require.Equal(t, v.Version, build.BuildVersion)
+}
+
+func (ts *testSuite) testSearchMsg(t *testing.T) {
+	apis, miners := ts.makeNodes(t, OneFull, OneMiner)
+
+	api := apis[0]
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	senderAddr, err := api.WalletDefaultAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := &types.Message{
+		From:  senderAddr,
+		To:    senderAddr,
+		Value: big.Zero(),
+	}
+	bm := NewBlockMiner(ctx, t, miners[0], 100*time.Millisecond)
+	bm.MineBlocks()
+	defer bm.Stop()
+
+	sm, err := api.MpoolPushMessage(ctx, msg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Receipt.ExitCode != 0 {
+		t.Fatal("did not successfully send message")
+	}
+
+	searchRes, err := api.StateSearchMsg(ctx, sm.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if searchRes.TipSet != res.TipSet {
+		t.Fatalf("search ts: %s, different from wait ts: %s", searchRes.TipSet, res.TipSet)
+	}
+
 }
 
 func (ts *testSuite) testID(t *testing.T) {

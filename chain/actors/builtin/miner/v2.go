@@ -273,7 +273,7 @@ func (s *state2) DeadlinesChanged(other State) (bool, error) {
 		return true, nil
 	}
 
-	return s.State.Deadlines.Equals(other2.Deadlines), nil
+	return !s.State.Deadlines.Equals(other2.Deadlines), nil
 }
 
 func (s *state2) Info() (MinerInfo, error) {
@@ -369,7 +369,7 @@ func (d *deadline2) PartitionsChanged(other Deadline) (bool, error) {
 		return true, nil
 	}
 
-	return d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
+	return !d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
 }
 
 func (d *deadline2) PostSubmissions() (bitfield.BitField, error) {

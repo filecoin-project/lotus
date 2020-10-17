@@ -72,20 +72,24 @@ func runExecLotus(_ *cli.Context) error {
 
 func executeTestVector(tv schema.TestVector) error {
 	log.Println("executing test vector:", tv.Meta.ID)
-	r := new(conformance.LogReporter)
-	switch class := tv.Class; class {
-	case "message":
-		conformance.ExecuteMessageVector(r, &tv)
-	case "tipset":
-		conformance.ExecuteTipsetVector(r, &tv)
-	default:
-		return fmt.Errorf("test vector class %s not supported", class)
-	}
 
-	if r.Failed() {
-		log.Println(color.HiRedString("❌ test vector failed"))
-	} else {
-		log.Println(color.GreenString("✅ test vector succeeded"))
+	for _, v := range tv.Pre.Variants {
+		r := new(conformance.LogReporter)
+
+		switch class, v := tv.Class, v; class {
+		case "message":
+			conformance.ExecuteMessageVector(r, &tv, &v)
+		case "tipset":
+			conformance.ExecuteTipsetVector(r, &tv, &v)
+		default:
+			return fmt.Errorf("test vector class %s not supported", class)
+		}
+
+		if r.Failed() {
+			log.Println(color.HiRedString("❌ test vector failed for variant %s", v.ID))
+		} else {
+			log.Println(color.GreenString("✅ test vector succeeded for variant %s", v.ID))
+		}
 	}
 
 	return nil
