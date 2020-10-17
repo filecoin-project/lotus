@@ -23,6 +23,7 @@ var ProtocolCodenames = []struct {
 	{build.UpgradeActorsV2Height + 1, "actorsv2"},
 	{build.UpgradeTapeHeight + 1, "tape"},
 	{build.UpgradeLiftoffHeight + 1, "liftoff"},
+	{build.UpgradePostLiftoffHeight + 1, "postliftoff"},
 }
 
 // GetProtocolCodename gets the protocol codename associated with a height.

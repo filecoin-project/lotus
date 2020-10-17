@@ -86,6 +86,10 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version5,
 		Migration: UpgradeLiftoff,
+	}, {
+		Height:    build.UpgradePostLiftoffHeight,
+		Network:   network.Version6,
+		Migration: nil,
 	}}
 
 	if build.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
