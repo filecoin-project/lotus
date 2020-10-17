@@ -5,8 +5,7 @@ import (
 	"io"
 	"time"
 
-	stnetwork "github.com/filecoin-project/go-state-types/network"
-
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	stnetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -67,6 +67,7 @@ type CommonStruct struct {
 		LogSetLevel func(context.Context, string, string) error `perm:"write"`
 
 		Shutdown func(context.Context) error                    `perm:"admin"`
+		Session  func(context.Context) (uuid.UUID, error)       `perm:"read"`
 		Closing  func(context.Context) (<-chan struct{}, error) `perm:"read"`
 	}
 }
@@ -485,6 +486,10 @@ func (c *CommonStruct) LogSetLevel(ctx context.Context, group, level string) err
 
 func (c *CommonStruct) Shutdown(ctx context.Context) error {
 	return c.Internal.Shutdown(ctx)
+}
+
+func (c *CommonStruct) Session(ctx context.Context) (uuid.UUID, error) {
+	return c.Internal.Session(ctx)
 }
 
 func (c *CommonStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
