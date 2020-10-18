@@ -75,7 +75,12 @@ var sealingWorkersCmd = &cli.Command{
 				gpuUse = ""
 			}
 
-			fmt.Printf("Worker %s, host %s\n", stat.id, color.MagentaString(stat.Info.Hostname))
+			var disabled string
+			if !stat.Enabled {
+				disabled = color.RedString(" (disabled)")
+			}
+
+			fmt.Printf("Worker %s, host %s%s\n", stat.id, color.MagentaString(stat.Info.Hostname), disabled)
 
 			var barCols = uint64(64)
 			cpuBars := int(stat.CpuUse * barCols / stat.Info.Resources.CPUs)
@@ -193,7 +198,14 @@ var sealingJobsCmd = &cli.Command{
 				dur = time.Now().Sub(l.Start).Truncate(time.Millisecond * 100).String()
 			}
 
-			_, _ = fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n", hex.EncodeToString(l.ID.ID[10:]), l.Sector.Number, l.wid, workerHostnames[l.wid], l.Task.Short(), state, dur)
+			_, _ = fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
+				hex.EncodeToString(l.ID.ID[10:]),
+				l.Sector.Number,
+				hex.EncodeToString(l.wid[5:]),
+				workerHostnames[l.wid],
+				l.Task.Short(),
+				state,
+				dur)
 		}
 
 		return tw.Flush()
