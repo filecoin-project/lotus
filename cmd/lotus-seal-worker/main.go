@@ -176,7 +176,7 @@ var runCmd = &cli.Command{
 		var closer func()
 		var err error
 		for {
-			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, jsonrpc.WithTimeout(30*time.Second))
+			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, lcli.StorageMinerUseHttp)
 			if err == nil {
 				break
 			}
@@ -456,11 +456,6 @@ var runCmd = &cli.Command{
 				}
 
 				log.Info("Worker registered successfully, waiting for tasks")
-
-				closing, err := nodeApi.Closing(ctx)
-				if err != nil {
-					log.Errorf("failed to get remote closing channel: %+v", err)
-				}
 
 				select {
 				case <-closing:
