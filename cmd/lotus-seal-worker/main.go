@@ -431,17 +431,33 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		minerSession, err := nodeApi.Session(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting miner session: %w", err)
+		}
+
 		go func() {
-			var reconnect bool
+			heartbeats := time.NewTicker(stores.HeartbeatInterval)
+			defer heartbeats.Stop()
+
+			var connected, reconnect bool
 			for {
+				// If we're reconnecting, redeclare storage first
 				if reconnect {
 					log.Info("Redeclaring local storage")
 
 					if err := localStore.Redeclare(ctx); err != nil {
 						log.Errorf("Redeclaring local storage failed: %+v", err)
-						cancel()
-						return
+
+						select {
+						case <-ctx.Done():
+							return // graceful shutdown
+						case <-heartbeats.C:
+						}
+						continue
 					}
+
+					connected = false
 				}
 
 				log.Info("Making sure no local tasks are running")
@@ -449,21 +465,33 @@ var runCmd = &cli.Command{
 				// TODO: we could get rid of this, but that requires tracking resources for restarted tasks correctly
 				workerApi.LocalWorker.WaitQuiet()
 
-				if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
-					log.Errorf("Registering worker failed: %+v", err)
-					cancel()
-					return
-				}
+				for {
+					curSession, err := nodeApi.Session(ctx)
+					if err != nil {
+						log.Errorf("heartbeat: checking remote session failed: %+v", err)
+					} else {
+						if curSession != minerSession {
+							minerSession = curSession
+							break
+						}
 
-				log.Info("Worker registered successfully, waiting for tasks")
+						if !connected {
+							if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
+								log.Errorf("Registering worker failed: %+v", err)
+								cancel()
+								return
+							}
 
-				select {
-				case <-closing:
-				case <-ctx.Done():
-				}
+							log.Info("Worker registered successfully, waiting for tasks")
+							connected = true
+						}
+					}
 
-				if ctx.Err() != nil {
-					return // graceful shutdown
+					select {
+					case <-ctx.Done():
+						return // graceful shutdown
+					case <-heartbeats.C:
+					}
 				}
 
 				log.Errorf("LOTUS-MINER CONNECTION LOST")
