@@ -27,6 +27,8 @@ type testWorker struct {
 	pc1s    int
 	pc1lk   sync.Mutex
 	pc1wait *sync.WaitGroup
+
+	session uuid.UUID
 }
 
 func newTestWorker(wcfg WorkerConfig, lstor *stores.Local, ret storiface.WorkerReturn) *testWorker {
@@ -46,6 +48,8 @@ func newTestWorker(wcfg WorkerConfig, lstor *stores.Local, ret storiface.WorkerR
 		ret:         ret,
 
 		mockSeal: mock.NewMockSectorMgr(ssize, nil),
+
+		session: uuid.New(),
 	}
 }
 
@@ -158,8 +162,8 @@ func (t *testWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 	}, nil
 }
 
-func (t *testWorker) Closing(ctx context.Context) (<-chan struct{}, error) {
-	return ctx.Done(), nil
+func (t *testWorker) Session(context.Context) (uuid.UUID, error) {
+	return t.session, nil
 }
 
 func (t *testWorker) Close() error {

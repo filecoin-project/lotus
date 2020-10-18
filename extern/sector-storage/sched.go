@@ -2,7 +2,6 @@ package sectorstorage
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"sort"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
@@ -53,17 +53,13 @@ type WorkerSelector interface {
 type scheduler struct {
 	spt abi.RegisteredSealProof
 
-	workersLk  sync.RWMutex
-	nextWorker WorkerID
-	workers    map[WorkerID]*workerHandle
-
-	newWorkers chan *workerHandle
-
-	watchClosing  chan WorkerID
-	workerClosing chan WorkerID
+	workersLk sync.RWMutex
+	workers   map[WorkerID]*workerHandle
 
 	schedule       chan *workerRequest
 	windowRequests chan *schedWindowRequest
+	workerChange   chan struct{} // worker added / changed/freed resources
+	workerDisable  chan workerDisableReq
 
 	// owned by the sh.runSched goroutine
 	schedQueue  *requestQueue
@@ -91,6 +87,8 @@ type workerHandle struct {
 	wndLk         sync.Mutex
 	activeWindows []*schedWindow
 
+	enabled bool
+
 	// for sync manager goroutine closing
 	cleanupStarted bool
 	closedMgr      chan struct{}
@@ -106,6 +104,12 @@ type schedWindowRequest struct {
 type schedWindow struct {
 	allocated activeResources
 	todo      []*workerRequest
+}
+
+type workerDisableReq struct {
+	activeWindows []*schedWindow
+	wid           WorkerID
+	done          func()
 }
 
 type activeResources struct {
@@ -143,16 +147,12 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 	return &scheduler{
 		spt: spt,
 
-		nextWorker: 0,
-		workers:    map[WorkerID]*workerHandle{},
-
-		newWorkers: make(chan *workerHandle),
-
-		watchClosing:  make(chan WorkerID),
-		workerClosing: make(chan WorkerID),
+		workers: map[WorkerID]*workerHandle{},
 
 		schedule:       make(chan *workerRequest),
 		windowRequests: make(chan *schedWindowRequest, 20),
+		workerChange:   make(chan struct{}, 20),
+		workerDisable:  make(chan workerDisableReq),
 
 		schedQueue: &requestQueue{},
 
@@ -224,21 +224,19 @@ type SchedDiagInfo struct {
 func (sh *scheduler) runSched() {
 	defer close(sh.closed)
 
-	go sh.runWorkerWatcher()
-
 	iw := time.After(InitWait)
 	var initialised bool
 
 	for {
 		var doSched bool
+		var toDisable []workerDisableReq
 
 		select {
-		case w := <-sh.newWorkers:
-			sh.newWorker(w)
-
-		case wid := <-sh.workerClosing:
-			sh.dropWorker(wid)
-
+		case <-sh.workerChange:
+			doSched = true
+		case dreq := <-sh.workerDisable:
+			toDisable = append(toDisable, dreq)
+			doSched = true
 		case req := <-sh.schedule:
 			sh.schedQueue.Push(req)
 			doSched = true
@@ -267,6 +265,9 @@ func (sh *scheduler) runSched() {
 		loop:
 			for {
 				select {
+				case <-sh.workerChange:
+				case dreq := <-sh.workerDisable:
+					toDisable = append(toDisable, dreq)
 				case req := <-sh.schedule:
 					sh.schedQueue.Push(req)
 					if sh.testSync != nil {
@@ -277,6 +278,28 @@ func (sh *scheduler) runSched() {
 				default:
 					break loop
 				}
+			}
+
+			for _, req := range toDisable {
+				for _, window := range req.activeWindows {
+					for _, request := range window.todo {
+						sh.schedQueue.Push(request)
+					}
+				}
+
+				openWindows := make([]*schedWindowRequest, 0, len(sh.openWindows))
+				for _, window := range sh.openWindows {
+					if window.worker != req.wid {
+						openWindows = append(openWindows, window)
+					}
+				}
+				sh.openWindows = openWindows
+
+				sh.workersLk.Lock()
+				sh.workers[req.wid].enabled = false
+				sh.workersLk.Unlock()
+
+				req.done()
 			}
 
 			sh.trySched()
@@ -297,6 +320,9 @@ func (sh *scheduler) diag() SchedDiagInfo {
 			Priority: task.priority,
 		})
 	}
+
+	sh.workersLk.RLock()
+	defer sh.workersLk.RUnlock()
 
 	for _, window := range sh.openWindows {
 		out.OpenWindows = append(out.OpenWindows, window.worker)
@@ -322,13 +348,14 @@ func (sh *scheduler) trySched() {
 
 	*/
 
+	sh.workersLk.RLock()
+	defer sh.workersLk.RUnlock()
+
 	windows := make([]schedWindow, len(sh.openWindows))
 	acceptableWindows := make([][]int, sh.schedQueue.Len())
 
 	log.Debugf("SCHED %d queued; %d open windows", sh.schedQueue.Len(), len(windows))
 
-	sh.workersLk.RLock()
-	defer sh.workersLk.RUnlock()
 	if len(sh.openWindows) == 0 {
 		// nothing to schedule on
 		return
@@ -357,8 +384,13 @@ func (sh *scheduler) trySched() {
 			for wnd, windowRequest := range sh.openWindows {
 				worker, ok := sh.workers[windowRequest.worker]
 				if !ok {
-					log.Errorf("worker referenced by windowRequest not found (worker: %d)", windowRequest.worker)
+					log.Errorf("worker referenced by windowRequest not found (worker: %s)", windowRequest.worker)
 					// TODO: How to move forward here?
+					continue
+				}
+
+				if !worker.enabled {
+					log.Debugw("skipping disabled worker", "worker", windowRequest.worker)
 					continue
 				}
 
@@ -499,21 +531,48 @@ func (sh *scheduler) trySched() {
 	sh.openWindows = newOpenWindows
 }
 
-func (sh *scheduler) runWorker(wid WorkerID) {
-	var ready sync.WaitGroup
-	ready.Add(1)
-	defer ready.Wait()
+// context only used for startup
+func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
+	info, err := w.Info(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker info: %w", err)
+	}
+
+	sessID, err := w.Session(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker session: %w", err)
+	}
+	if sessID == ClosedWorkerID {
+		return xerrors.Errorf("worker already closed")
+	}
+
+	worker := &workerHandle{
+		w:    w,
+		info: info,
+
+		preparing: &activeResources{},
+		active:    &activeResources{},
+		enabled:   true,
+
+		closingMgr: make(chan struct{}),
+		closedMgr:  make(chan struct{}),
+	}
+
+	wid := WorkerID(sessID)
+
+	sh.workersLk.Lock()
+	_, exist := sh.workers[wid]
+	if exist {
+		// this is ok, we're already handling this worker in a different goroutine
+		return nil
+	}
+
+	sh.workers[wid] = worker
+	sh.workersLk.Unlock()
 
 	go func() {
-		sh.workersLk.RLock()
-		worker, found := sh.workers[wid]
-		sh.workersLk.RUnlock()
-
-		ready.Done()
-
-		if !found {
-			panic(fmt.Sprintf("worker %d not found", wid))
-		}
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
 
 		defer close(worker.closedMgr)
 
@@ -521,23 +580,60 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 		taskDone := make(chan struct{}, 1)
 		windowsRequested := 0
 
-		ctx, cancel := context.WithCancel(context.TODO())
-		defer cancel()
+		disable := func(ctx context.Context) error {
+			done := make(chan struct{})
 
-		workerClosing, err := worker.w.Closing(ctx)
-		if err != nil {
-			return
+			// request cleanup in the main scheduler goroutine
+			select {
+			case sh.workerDisable <- workerDisableReq{
+				activeWindows: worker.activeWindows,
+				wid:           wid,
+				done: func() {
+					close(done)
+				},
+			}:
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-sh.closing:
+				return nil
+			}
+
+			// wait for cleanup to complete
+			select {
+			case <-done:
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-sh.closing:
+				return nil
+			}
+
+			worker.activeWindows = worker.activeWindows[:0]
+			windowsRequested = 0
+			return nil
 		}
 
 		defer func() {
-			log.Warnw("Worker closing", "workerid", wid)
+			log.Warnw("Worker closing", "workerid", sessID)
 
-			// TODO: close / return all queued tasks
+			if err := disable(ctx); err != nil {
+				log.Warnw("failed to disable worker", "worker", wid, "error", err)
+			}
+
+			sh.workersLk.Lock()
+			delete(sh.workers, wid)
+			sh.workersLk.Unlock()
 		}()
 
+		heartbeatTimer := time.NewTicker(stores.HeartbeatInterval)
+		defer heartbeatTimer.Stop()
+
 		for {
-			// ask for more windows if we need them
-			for ; windowsRequested < SchedWindows; windowsRequested++ {
+			sh.workersLk.Lock()
+			enabled := worker.enabled
+			sh.workersLk.Unlock()
+
+			// ask for more windows if we need them (non-blocking)
+			for ; enabled && windowsRequested < SchedWindows; windowsRequested++ {
 				select {
 				case sh.windowRequests <- &schedWindowRequest{
 					worker: wid,
@@ -545,33 +641,90 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 				}:
 				case <-sh.closing:
 					return
-				case <-workerClosing:
-					return
 				case <-worker.closingMgr:
 					return
 				}
 			}
 
-			select {
-			case w := <-scheduledWindows:
-				worker.wndLk.Lock()
-				worker.activeWindows = append(worker.activeWindows, w)
-				worker.wndLk.Unlock()
-			case <-taskDone:
-				log.Debugw("task done", "workerid", wid)
-			case <-sh.closing:
-				return
-			case <-workerClosing:
-				return
-			case <-worker.closingMgr:
-				return
+			// wait for more windows to come in, or for tasks to get finished (blocking)
+			for {
+
+				// first ping the worker and check session
+				{
+					sctx, scancel := context.WithTimeout(ctx, stores.HeartbeatInterval/2)
+					curSes, err := worker.w.Session(sctx)
+					scancel()
+					if err != nil {
+						// Likely temporary error
+
+						log.Warnw("failed to check worker session", "error", err)
+
+						if err := disable(ctx); err != nil {
+							log.Warnw("failed to disable worker with session error", "worker", wid, "error", err)
+						}
+
+						select {
+						case <-heartbeatTimer.C:
+							continue
+						case w := <-scheduledWindows:
+							// was in flight when initially disabled, return
+							worker.wndLk.Lock()
+							worker.activeWindows = append(worker.activeWindows, w)
+							worker.wndLk.Unlock()
+
+							if err := disable(ctx); err != nil {
+								log.Warnw("failed to disable worker with session error", "worker", wid, "error", err)
+							}
+						case <-sh.closing:
+							return
+						case <-worker.closingMgr:
+							return
+						}
+						continue
+					}
+
+					if curSes != sessID {
+						if curSes != ClosedWorkerID {
+							// worker restarted
+							log.Warnw("worker session changed (worker restarted?)", "initial", sessID, "current", curSes)
+						}
+
+						return
+					}
+
+					// session looks good
+					if !enabled {
+						sh.workersLk.Lock()
+						worker.enabled = true
+						sh.workersLk.Unlock()
+
+						// we'll send window requests on the next loop
+					}
+				}
+
+				select {
+				case <-heartbeatTimer.C:
+					continue
+				case w := <-scheduledWindows:
+					worker.wndLk.Lock()
+					worker.activeWindows = append(worker.activeWindows, w)
+					worker.wndLk.Unlock()
+				case <-taskDone:
+					log.Debugw("task done", "workerid", wid)
+				case <-sh.closing:
+					return
+				case <-worker.closingMgr:
+					return
+				}
+
+				break
 			}
 
+			// process assigned windows (non-blocking)
 			sh.workersLk.RLock()
 			worker.wndLk.Lock()
 
 			windowsRequested -= sh.workerCompactWindows(worker, wid)
-
 		assignLoop:
 			// process windows in order
 			for len(worker.activeWindows) > 0 {
@@ -622,6 +775,8 @@ func (sh *scheduler) runWorker(wid WorkerID) {
 			sh.workersLk.RUnlock()
 		}
 	}()
+
+	return nil
 }
 
 func (sh *scheduler) workerCompactWindows(worker *workerHandle, wid WorkerID) int {
@@ -743,38 +898,6 @@ func (sh *scheduler) assignWorker(taskDone chan struct{}, wid WorkerID, w *worke
 	}()
 
 	return nil
-}
-
-func (sh *scheduler) newWorker(w *workerHandle) {
-	w.closedMgr = make(chan struct{})
-	w.closingMgr = make(chan struct{})
-
-	sh.workersLk.Lock()
-
-	id := sh.nextWorker
-	sh.workers[id] = w
-	sh.nextWorker++
-
-	sh.workersLk.Unlock()
-
-	sh.runWorker(id)
-
-	select {
-	case sh.watchClosing <- id:
-	case <-sh.closing:
-		return
-	}
-}
-
-func (sh *scheduler) dropWorker(wid WorkerID) {
-	sh.workersLk.Lock()
-	defer sh.workersLk.Unlock()
-
-	w := sh.workers[wid]
-
-	sh.workerCleanup(wid, w)
-
-	delete(sh.workers, wid)
 }
 
 func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {

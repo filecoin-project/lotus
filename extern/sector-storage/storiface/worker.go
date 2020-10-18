@@ -32,7 +32,8 @@ type WorkerResources struct {
 }
 
 type WorkerStats struct {
-	Info WorkerInfo
+	Info    WorkerInfo
+	Enabled bool
 
 	MemUsedMin uint64
 	MemUsedMax uint64

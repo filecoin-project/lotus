@@ -48,6 +48,7 @@ type LocalWorker struct {
 	acceptTasks map[sealtasks.TaskType]struct{}
 	running     sync.WaitGroup
 
+	session uuid.UUID
 	closing chan struct{}
 }
 
@@ -73,6 +74,7 @@ func newLocalWorker(executor func() (ffiwrapper.Storage, error), wcfg WorkerConf
 		executor:    executor,
 		noSwap:      wcfg.NoSwap,
 
+		session: uuid.New(),
 		closing: make(chan struct{}),
 	}
 
@@ -465,8 +467,13 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	}, nil
 }
 
-func (l *LocalWorker) Closing(ctx context.Context) (<-chan struct{}, error) {
-	return l.closing, nil
+func (l *LocalWorker) Session(ctx context.Context) (uuid.UUID, error) {
+	select {
+	case <-l.closing:
+		return ClosedWorkerID, nil
+	default:
+		return l.session, nil
+	}
 }
 
 func (l *LocalWorker) Close() error {

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
@@ -43,7 +44,7 @@ type schedTestWorker struct {
 	paths     []stores.StoragePath
 
 	closed  bool
-	closing chan struct{}
+	session uuid.UUID
 }
 
 func (s *schedTestWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
@@ -121,15 +122,15 @@ func (s *schedTestWorker) Info(ctx context.Context) (storiface.WorkerInfo, error
 	}, nil
 }
 
-func (s *schedTestWorker) Closing(ctx context.Context) (<-chan struct{}, error) {
-	return s.closing, nil
+func (s *schedTestWorker) Session(context.Context) (uuid.UUID, error) {
+	return s.session, nil
 }
 
 func (s *schedTestWorker) Close() error {
 	if !s.closed {
 		log.Info("close schedTestWorker")
 		s.closed = true
-		close(s.closing)
+		s.session = uuid.UUID{}
 	}
 	return nil
 }
@@ -142,7 +143,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 		taskTypes: taskTypes,
 		paths:     []stores.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
 
-		closing: make(chan struct{}),
+		session: uuid.New(),
 	}
 
 	for _, path := range w.paths {
@@ -160,16 +161,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 		require.NoError(t, err)
 	}
 
-	info, err := w.Info(context.TODO())
-	require.NoError(t, err)
-
-	sched.newWorkers <- &workerHandle{
-		w: w,
-
-		info:      info,
-		preparing: &activeResources{},
-		active:    &activeResources{},
-	}
+	require.NoError(t, sched.runWorker(context.TODO(), w))
 }
 
 func TestSchedStartStop(t *testing.T) {
@@ -433,7 +425,7 @@ func TestSched(t *testing.T) {
 
 			type line struct {
 				storiface.WorkerJob
-				wid uint64
+				wid uuid.UUID
 			}
 
 			lines := make([]line, 0)
@@ -442,7 +434,7 @@ func TestSched(t *testing.T) {
 				for _, job := range jobs {
 					lines = append(lines, line{
 						WorkerJob: job,
-						wid:       uint64(wid),
+						wid:       wid,
 					})
 				}
 			}
@@ -537,7 +529,7 @@ func BenchmarkTrySched(b *testing.B) {
 				b.StopTimer()
 
 				sched := newScheduler(spt)
-				sched.workers[0] = &workerHandle{
+				sched.workers[WorkerID{}] = &workerHandle{
 					w: nil,
 					info: storiface.WorkerInfo{
 						Hostname:  "t",
@@ -549,7 +541,7 @@ func BenchmarkTrySched(b *testing.B) {
 
 				for i := 0; i < windows; i++ {
 					sched.openWindows = append(sched.openWindows, &schedWindowRequest{
-						worker: 0,
+						worker: WorkerID{},
 						done:   make(chan *schedWindow, 1000),
 					})
 				}
@@ -599,7 +591,7 @@ func TestWindowCompact(t *testing.T) {
 				wh.activeWindows = append(wh.activeWindows, window)
 			}
 
-			n := sh.workerCompactWindows(wh, 0)
+			n := sh.workerCompactWindows(wh, WorkerID{})
 			require.Equal(t, len(start)-len(expect), n)
 
 			for wi, tasks := range expect {

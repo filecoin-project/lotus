@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -40,8 +41,7 @@ type Worker interface {
 
 	Info(context.Context) (storiface.WorkerInfo, error)
 
-	// returns channel signalling worker shutdown
-	Closing(context.Context) (<-chan struct{}, error)
+	Session(context.Context) (uuid.UUID, error)
 
 	Close() error // TODO: do we need this?
 }
@@ -57,7 +57,8 @@ type SectorManager interface {
 	FaultTracker
 }
 
-type WorkerID int64
+type WorkerID uuid.UUID // worker session UUID
+var ClosedWorkerID = uuid.UUID{}
 
 type Manager struct {
 	scfg *ffiwrapper.Config
@@ -190,19 +191,7 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 }
 
 func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
-	info, err := w.Info(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting worker info: %w", err)
-	}
-
-	m.sched.newWorkers <- &workerHandle{
-		w: w,
-
-		info:      info,
-		preparing: &activeResources{},
-		active:    &activeResources{},
-	}
-	return nil
+	return m.sched.runWorker(ctx, w)
 }
 
 func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -3,18 +3,22 @@ package sectorstorage
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-func (m *Manager) WorkerStats() map[uint64]storiface.WorkerStats {
+func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 	m.sched.workersLk.RLock()
 	defer m.sched.workersLk.RUnlock()
 
-	out := map[uint64]storiface.WorkerStats{}
+	out := map[uuid.UUID]storiface.WorkerStats{}
 
 	for id, handle := range m.sched.workers {
-		out[uint64(id)] = storiface.WorkerStats{
-			Info:       handle.info,
+		out[uuid.UUID(id)] = storiface.WorkerStats{
+			Info:    handle.info,
+			Enabled: handle.enabled,
+
 			MemUsedMin: handle.active.memUsedMin,
 			MemUsedMax: handle.active.memUsedMax,
 			GpuUsed:    handle.active.gpuUsed,
@@ -25,12 +29,12 @@ func (m *Manager) WorkerStats() map[uint64]storiface.WorkerStats {
 	return out
 }
 
-func (m *Manager) WorkerJobs() map[int64][]storiface.WorkerJob {
-	out := map[int64][]storiface.WorkerJob{}
+func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
+	out := map[uuid.UUID][]storiface.WorkerJob{}
 	calls := map[storiface.CallID]struct{}{}
 
 	for _, t := range m.sched.wt.Running() {
-		out[int64(t.worker)] = append(out[int64(t.worker)], t.job)
+		out[uuid.UUID(t.worker)] = append(out[uuid.UUID(t.worker)], t.job)
 		calls[t.job.ID] = struct{}{}
 	}
 
@@ -40,7 +44,7 @@ func (m *Manager) WorkerJobs() map[int64][]storiface.WorkerJob {
 		handle.wndLk.Lock()
 		for wi, window := range handle.activeWindows {
 			for _, request := range window.todo {
-				out[int64(id)] = append(out[int64(id)], storiface.WorkerJob{
+				out[uuid.UUID(id)] = append(out[uuid.UUID(id)], storiface.WorkerJob{
 					ID:      storiface.UndefCall,
 					Sector:  request.sector,
 					Task:    request.taskType,
@@ -63,7 +67,7 @@ func (m *Manager) WorkerJobs() map[int64][]storiface.WorkerJob {
 			continue
 		}
 
-		out[-1] = append(out[-1], storiface.WorkerJob{
+		out[uuid.UUID{}] = append(out[uuid.UUID{}], storiface.WorkerJob{
 			ID:      id,
 			Sector:  id.Sector,
 			Task:    work.Method,

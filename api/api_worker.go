@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -26,5 +28,5 @@ type WorkerAPI interface {
 
 	StorageAddLocal(ctx context.Context, path string) error
 
-	Closing(context.Context) (<-chan struct{}, error)
+	Session(context.Context) (uuid.UUID, error)
 }

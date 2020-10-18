@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -53,7 +54,7 @@ var sealingWorkersCmd = &cli.Command{
 		}
 
 		type sortableStat struct {
-			id uint64
+			id uuid.UUID
 			storiface.WorkerStats
 		}
 
@@ -63,7 +64,7 @@ var sealingWorkersCmd = &cli.Command{
 		}
 
 		sort.Slice(st, func(i, j int) bool {
-			return st[i].id < st[j].id
+			return st[i].id.String() < st[j].id.String()
 		})
 
 		for _, stat := range st {
@@ -74,7 +75,7 @@ var sealingWorkersCmd = &cli.Command{
 				gpuUse = ""
 			}
 
-			fmt.Printf("Worker %d, host %s\n", stat.id, color.MagentaString(stat.Info.Hostname))
+			fmt.Printf("Worker %s, host %s\n", stat.id, color.MagentaString(stat.Info.Hostname))
 
 			var barCols = uint64(64)
 			cpuBars := int(stat.CpuUse * barCols / stat.Info.Resources.CPUs)
@@ -140,7 +141,7 @@ var sealingJobsCmd = &cli.Command{
 
 		type line struct {
 			storiface.WorkerJob
-			wid int64
+			wid uuid.UUID
 		}
 
 		lines := make([]line, 0)
@@ -165,7 +166,7 @@ var sealingJobsCmd = &cli.Command{
 			return lines[i].Start.Before(lines[j].Start)
 		})
 
-		workerHostnames := map[int64]string{}
+		workerHostnames := map[uuid.UUID]string{}
 
 		wst, err := nodeApi.WorkerStats(ctx)
 		if err != nil {
@@ -173,7 +174,7 @@ var sealingJobsCmd = &cli.Command{
 		}
 
 		for wid, st := range wst {
-			workerHostnames[int64(wid)] = st.Info.Hostname
+			workerHostnames[wid] = st.Info.Hostname
 		}
 
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
@@ -192,7 +193,7 @@ var sealingJobsCmd = &cli.Command{
 				dur = time.Now().Sub(l.Start).Truncate(time.Millisecond * 100).String()
 			}
 
-			_, _ = fmt.Fprintf(tw, "%s\t%d\t%d\t%s\t%s\t%s\t%s\n", hex.EncodeToString(l.ID.ID[10:]), l.Sector.Number, l.wid, workerHostnames[l.wid], l.Task.Short(), state, dur)
+			_, _ = fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n", hex.EncodeToString(l.ID.ID[10:]), l.Sector.Number, l.wid, workerHostnames[l.wid], l.Task.Short(), state, dur)
 		}
 
 		return tw.Flush()
