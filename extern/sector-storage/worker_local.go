@@ -215,10 +215,12 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector abi.SectorID, rt Ret
 	go func() {
 		defer l.running.Done()
 
-		res, err := work(&wctx{
+		ctx := &wctx{
 			vals:    ctx,
 			closing: l.closing,
-		}, ci)
+		}
+
+		res, err := work(ctx, ci)
 
 		{
 			rb, err := json.Marshal(res)
