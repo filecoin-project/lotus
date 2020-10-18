@@ -67,14 +67,13 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	pending, mpts := a.Mpool.Pending()
+	if ts == nil || mpts.Height() > ts.Height() {
+		return pending, nil
+	}
 
 	haveCids := map[cid.Cid]struct{}{}
 	for _, m := range pending {
 		haveCids[m.Cid()] = struct{}{}
-	}
-
-	if ts == nil || mpts.Height() > ts.Height() {
-		return pending, nil
 	}
 
 	for {
@@ -82,21 +81,11 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 			if mpts.Equals(ts) {
 				return pending, nil
 			}
-			// different blocks in tipsets
-
-			have, err := a.Mpool.MessagesForBlocks(ts.Blocks())
-			if err != nil {
-				return nil, xerrors.Errorf("getting messages for base ts: %w", err)
-			}
-
-			for _, m := range have {
-				haveCids[m.Cid()] = struct{}{}
-			}
 		}
 
 		msgs, err := a.Mpool.MessagesForBlocks(ts.Blocks())
 		if err != nil {
-			return nil, xerrors.Errorf(": %w", err)
+			return nil, xerrors.Errorf("getting messages for base ts: %w", err)
 		}
 
 		for _, m := range msgs {
