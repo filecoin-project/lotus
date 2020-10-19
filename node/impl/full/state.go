@@ -349,6 +349,7 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
 	msgToReplay := mc
 	var ts *types.TipSet
+	var err error
 	if tsk == types.EmptyTSK {
 		mlkp, err := a.StateSearchMsg(ctx, mc)
 		if err != nil {
@@ -370,7 +371,10 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 			return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
 		}
 	} else {
-		ts = a.Chain.GetHeaviestTipSet()
+		ts, err = a.Chain.LoadTipSet(tsk)
+		if err != nil {
+			return nil, xerrors.Errorf("loading specified tipset %s: %w", tsk, err)
+		}
 	}
 
 	m, r, err := a.StateManager.Replay(ctx, ts, msgToReplay)
