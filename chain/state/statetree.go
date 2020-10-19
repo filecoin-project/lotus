@@ -26,10 +26,11 @@ var log = logging.Logger("statetree")
 
 // StateTree stores actors state by their ID.
 type StateTree struct {
-	root    adt.Map
-	version types.StateTreeVersion
-	info    cid.Cid
-	Store   cbor.IpldStore
+	root        adt.Map
+	version     types.StateTreeVersion
+	info        cid.Cid
+	Store       cbor.IpldStore
+	lookupIDFun func(address.Address) (address.Address, error)
 
 	snaps *stateSnaps
 }
@@ -173,13 +174,15 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 		return nil, err
 	}
 
-	return &StateTree{
+	s := &StateTree{
 		root:    root,
 		info:    info,
 		version: ver,
 		Store:   cst,
 		snaps:   newStateSnaps(),
-	}, nil
+	}
+	s.lookupIDFun = s.lookupIDinternal
+	return s, nil
 }
 
 func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
@@ -203,13 +206,15 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 			return nil, err
 		}
 
-		return &StateTree{
+		s := &StateTree{
 			root:    nd,
 			info:    root.Info,
 			version: root.Version,
 			Store:   cst,
 			snaps:   newStateSnaps(),
-		}, nil
+		}
+		s.lookupIDFun = s.lookupIDinternal
+		return s, nil
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
 	}
@@ -226,17 +231,7 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 	return nil
 }
 
-// LookupID gets the ID address of this actor's `addr` stored in the `InitActor`.
-func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
-	if addr.Protocol() == address.ID {
-		return addr, nil
-	}
-
-	resa, ok := st.snaps.resolveAddress(addr)
-	if ok {
-		return resa, nil
-	}
-
+func (st *StateTree) lookupIDinternal(addr address.Address) (address.Address, error) {
 	act, err := st.GetActor(init_.Address)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
@@ -253,6 +248,23 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 	}
 	if err != nil {
 		return address.Undef, xerrors.Errorf("resolve address %s: %w", addr, err)
+	}
+	return a, err
+}
+
+// LookupID gets the ID address of this actor's `addr` stored in the `InitActor`.
+func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
+	if addr.Protocol() == address.ID {
+		return addr, nil
+	}
+
+	resa, ok := st.snaps.resolveAddress(addr)
+	if ok {
+		return resa, nil
+	}
+	a, err := st.lookupIDFun(addr)
+	if err != nil {
+		return a, err
 	}
 
 	st.snaps.cacheResolveAddress(addr, a)
