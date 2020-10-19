@@ -72,6 +72,7 @@ type Runtime struct {
 	originNonce uint64
 
 	executionTrace    types.ExecutionTrace
+	depth             uint64
 	numActorsCreated  uint64
 	allowInternal     bool
 	callerValidated   bool
