@@ -35,7 +35,8 @@ type StateTree struct {
 }
 
 type stateSnaps struct {
-	layers []*stateSnapLayer
+	layers                        []*stateSnapLayer
+	lastMaybeNonEmptyResolveCache int
 }
 
 type stateSnapLayer struct {
@@ -67,7 +68,12 @@ func (ss *stateSnaps) addLayer() {
 
 func (ss *stateSnaps) dropLayer() {
 	ss.layers[len(ss.layers)-1] = nil // allow it to be GCed
+
 	ss.layers = ss.layers[:len(ss.layers)-1]
+
+	if ss.lastMaybeNonEmptyResolveCache == len(ss.layers) {
+		ss.lastMaybeNonEmptyResolveCache = len(ss.layers) - 1
+	}
 }
 
 func (ss *stateSnaps) mergeLastLayer() {
@@ -86,7 +92,13 @@ func (ss *stateSnaps) mergeLastLayer() {
 }
 
 func (ss *stateSnaps) resolveAddress(addr address.Address) (address.Address, bool) {
-	for i := len(ss.layers) - 1; i >= 0; i-- {
+	for i := ss.lastMaybeNonEmptyResolveCache; i >= 0; i-- {
+		if len(ss.layers[i].resolveCache) == 0 {
+			if ss.lastMaybeNonEmptyResolveCache == i {
+				ss.lastMaybeNonEmptyResolveCache = i - 1
+			}
+			continue
+		}
 		resa, ok := ss.layers[i].resolveCache[addr]
 		if ok {
 			return resa, true
@@ -97,6 +109,7 @@ func (ss *stateSnaps) resolveAddress(addr address.Address) (address.Address, boo
 
 func (ss *stateSnaps) cacheResolveAddress(addr, resa address.Address) {
 	ss.layers[len(ss.layers)-1].resolveCache[addr] = resa
+	ss.lastMaybeNonEmptyResolveCache = len(ss.layers) - 1
 }
 
 func (ss *stateSnaps) getActor(addr address.Address) (*types.Actor, error) {
