@@ -85,9 +85,8 @@ func TestResolveCache(t *testing.T) {
 	st.lookupIDFun = func(a address.Address) (address.Address, error) {
 		if a == nonId {
 			return id, nil
-		} else {
-			return address.Undef, types.ErrActorNotFound
 		}
+		return address.Undef, types.ErrActorNotFound
 	}
 
 	err = st.SetActor(nonId, &types.Actor{Nonce: 1})
