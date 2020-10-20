@@ -1,5 +1,18 @@
 # Lotus changelog
 
+# 1.1.0 / 2020-10-20
+
+This is a mandatory release that introduces the first post-liftoff upgrade to the Filecoin network. The changes that break consensus are an upgrade to specs-actors v2.2.0 at epoch 170000.
+
+## Changes
+
+- Introduce Network version 6 (https://github.com/filecoin-project/lotus/pull/4506)
+- Update markets v1.0.0 (https://github.com/filecoin-project/lotus/pull/4505)
+- Add some extra logging to try and debug sync issues (https://github.com/filecoin-project/lotus/pull/4486)
+- Circle: Run tests for some subsystems separately (https://github.com/filecoin-project/lotus/pull/4496)
+- Add a terminate sectors command to lotus-shed (https://github.com/filecoin-project/lotus/pull/4507)
+- Add a comment to BlockMessages to address #4446 (https://github.com/filecoin-project/lotus/pull/4491)
+
 # 1.0.0 / 2020-10-19
 
 It's 1.0.0! This is an optional release of Lotus that introduces some UX improvements to the 0.10 series.
