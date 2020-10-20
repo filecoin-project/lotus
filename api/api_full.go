@@ -591,6 +591,8 @@ type MsgGasCost struct {
 	TotalCost          abi.TokenAmount
 }
 
+// BlsMessages[x].cid = Cids[x]
+// SecpkMessages[y].cid = Cids[BlsMessages.length + y]
 type BlockMessages struct {
 	BlsMessages   []*types.Message
 	SecpkMessages []*types.SignedMessage
