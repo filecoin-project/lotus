@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"golang.org/x/xerrors"
-	"strconv"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -114,7 +115,16 @@ var terminateSectorCmd = &cli.Command{
 			return xerrors.Errorf("mpool push message: %w", err)
 		}
 
-		fmt.Println("Message CID:", smsg.Cid())
+		fmt.Println("sent termination message:", smsg.Cid())
+
+		wait, err := nodeApi.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("terminate sectors message returned exit %d", wait.Receipt.ExitCode)
+		}
 
 		return nil
 	},
