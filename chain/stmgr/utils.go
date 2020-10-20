@@ -461,12 +461,21 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
 	}
 
+	// TODO: load the state instead of computing it?
 	lbst, _, err := sm.TipSetState(ctx, lbts)
 	if err != nil {
 		return nil, err
 	}
 
 	act, err := sm.LoadActorRaw(ctx, maddr, lbst)
+	if xerrors.Is(err, types.ErrActorNotFound) {
+		_, err := sm.LoadActor(ctx, maddr, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("loading miner in current state: %w", err)
+		}
+
+		return nil, nil
+	}
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
