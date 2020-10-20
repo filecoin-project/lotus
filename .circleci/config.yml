@@ -188,6 +188,14 @@ jobs:
                 command: |
                   bash <(curl -s https://codecov.io/bash)
 
+  test-chain:
+    <<: *test
+  test-node:
+    <<: *test
+  test-storage:
+    <<: *test
+  test-cli:
+    <<: *test
   test-short:
     <<: *test
   test-window-post:
@@ -428,6 +436,22 @@ workflows:
       - test:
           codecov-upload: true
           test-suite-name: full
+      - test-chain:
+          codecov-upload: true
+          test-suite-name: chain
+          packages: "./chain/..."
+      - test-node:
+          codecov-upload: true
+          test-suite-name: node
+          packages: "./node/..."
+      - test-storage:
+          codecov-upload: true
+          test-suite-name: storage
+          packages: "./storage/... ./extern/..."
+      - test-cli:
+          codecov-upload: true
+          test-suite-name: cli
+          packages: "./cli/... ./cmd/... ./api/..."
       - test-window-post:
           go-test-flags: "-run=TestWindowedPost"
           winpost-test: "1"
