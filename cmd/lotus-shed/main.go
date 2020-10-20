@@ -42,6 +42,7 @@ func main() {
 		stateTreePruneCmd,
 		datastoreCmd,
 		ledgerCmd,
+		sectorsCmd,
 	}
 
 	app := &cli.App{
