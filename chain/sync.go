@@ -268,14 +268,15 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 
 	syncer.Exchange.AddPeer(from)
 
-	bestPweight := syncer.store.GetHeaviestTipSet().ParentWeight()
+	hts := syncer.store.GetHeaviestTipSet()
+	bestPweight := hts.ParentWeight()
 	targetWeight := fts.TipSet().ParentWeight()
 	if targetWeight.LessThan(bestPweight) {
 		var miners []string
 		for _, blk := range fts.TipSet().Blocks() {
 			miners = append(miners, blk.Miner.String())
 		}
-		log.Infof("incoming tipset from %s does not appear to be better than our best chain, ignoring for now", miners)
+		log.Infow("incoming tipset does not appear to be better than our best chain, ignoring for now", "miners", miners, "bestPweight", bestPweight, "bestTS", hts.Cids(), "incomingWeight", targetWeight, "incomingTS", fts.TipSet().Cids())
 		return false
 	}
 
