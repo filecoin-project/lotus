@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
 func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
@@ -58,7 +57,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	bm.MineBlocks()
 
 	// send some funds to register the receiver
-	receiverAddr, err := paymentReceiver.WalletNew(ctx, wallet.ActSigType("secp256k1"))
+	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}

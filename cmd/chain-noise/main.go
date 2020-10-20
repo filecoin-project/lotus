@@ -7,8 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -61,7 +59,7 @@ var runCmd = &cli.Command{
 func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Address, rate int) error {
 	var sendSet []address.Address
 	for i := 0; i < 20; i++ {
-		naddr, err := api.WalletNew(ctx, crypto.SigTypeSecp256k1)
+		naddr, err := api.WalletNew(ctx, types.KTSecp256k1)
 		if err != nil {
 			return err
 		}

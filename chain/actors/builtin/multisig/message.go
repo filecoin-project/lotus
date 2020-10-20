@@ -45,6 +45,7 @@ type MessageBuilder interface {
 
 // this type is the same between v0 and v2
 type ProposalHashData = multisig2.ProposalHashData
+type ProposeReturn = multisig2.ProposeReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	params := multisig2.TxnIDParams{ID: multisig2.TxnID(id)}

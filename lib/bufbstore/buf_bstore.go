@@ -19,10 +19,12 @@ type BufferedBS struct {
 }
 
 func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
-	buf := bstore.NewTemporary()
+	var buf bstore.Blockstore
 	if os.Getenv("LOTUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
 		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
 		buf = base
+	} else {
+		buf = bstore.NewTemporary()
 	}
 
 	return &BufferedBS{

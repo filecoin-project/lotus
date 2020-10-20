@@ -86,6 +86,10 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version5,
 		Migration: UpgradeLiftoff,
+	}, {
+		Height:    build.UpgradeKumquatHeight,
+		Network:   network.Version6,
+		Migration: nil,
 	}}
 
 	if build.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
@@ -168,7 +172,7 @@ func (sm *StateManager) hasExpensiveFork(ctx context.Context, height abi.ChainEp
 	return ok
 }
 
-func doTransfer(cb ExecCallback, tree types.StateTree, from, to address.Address, amt abi.TokenAmount) error {
+func doTransfer(tree types.StateTree, from, to address.Address, amt abi.TokenAmount, cb func(trace types.ExecutionTrace)) error {
 	fromAct, err := tree.GetActor(from)
 	if err != nil {
 		return xerrors.Errorf("failed to get 'from' actor for transfer: %w", err)
@@ -201,7 +205,6 @@ func doTransfer(cb ExecCallback, tree types.StateTree, from, to address.Address,
 			From:  from,
 			To:    to,
 			Value: amt,
-			Nonce: math.MaxUint64,
 		}
 		fakeRct := &types.MessageReceipt{
 			ExitCode: 0,
@@ -209,22 +212,14 @@ func doTransfer(cb ExecCallback, tree types.StateTree, from, to address.Address,
 			GasUsed:  0,
 		}
 
-		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
-			MessageReceipt: *fakeRct,
-			ActorErr:       nil,
-			ExecutionTrace: types.ExecutionTrace{
-				Msg:        fakeMsg,
-				MsgRct:     fakeRct,
-				Error:      "",
-				Duration:   0,
-				GasCharges: nil,
-				Subcalls:   nil,
-			},
-			Duration: 0,
-			GasCosts: vm.ZeroGasOutputs(),
-		}); err != nil {
-			return xerrors.Errorf("recording transfer: %w", err)
-		}
+		cb(types.ExecutionTrace{
+			Msg:        fakeMsg,
+			MsgRct:     fakeRct,
+			Error:      "",
+			Duration:   0,
+			GasCharges: nil,
+			Subcalls:   nil,
+		})
 	}
 
 	return nil
@@ -265,11 +260,6 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 		return cid.Undef, xerrors.Errorf("loading state tree failed: %w", err)
 	}
 
-	ReserveAddress, err := address.NewFromString("t090")
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to parse reserve address: %w", err)
-	}
-
 	tree, err := sm.StateTree(root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
@@ -282,6 +272,10 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 	}
 
 	var transfers []transfer
+	subcalls := make([]types.ExecutionTrace, 0)
+	transferCb := func(trace types.ExecutionTrace) {
+		subcalls = append(subcalls, trace)
+	}
 
 	// Take all excess funds away, put them into the reserve account
 	err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
@@ -295,7 +289,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 			if !sysAcc {
 				transfers = append(transfers, transfer{
 					From: addr,
-					To:   ReserveAddress,
+					To:   builtin.ReserveAddress,
 					Amt:  act.Balance,
 				})
 			}
@@ -317,11 +311,13 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 				available = st.GetAvailableBalance(act.Balance)
 			}
 
-			transfers = append(transfers, transfer{
-				From: addr,
-				To:   ReserveAddress,
-				Amt:  available,
-			})
+			if !available.IsZero() {
+				transfers = append(transfers, transfer{
+					From: addr,
+					To:   builtin.ReserveAddress,
+					Amt:  available,
+				})
+			}
 		}
 		return nil
 	})
@@ -331,7 +327,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 
 	// Execute transfers from previous step
 	for _, t := range transfers {
-		if err := doTransfer(cb, tree, t.From, t.To, t.Amt); err != nil {
+		if err := doTransfer(tree, t.From, t.To, t.Amt, transferCb); err != nil {
 			return cid.Undef, xerrors.Errorf("transfer %s %s->%s failed: %w", t.Amt, t.From, t.To, err)
 		}
 	}
@@ -370,7 +366,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 			nbalance := big.Min(prevBalance, AccountCap)
 			if nbalance.Sign() != 0 {
 				transfersBack = append(transfersBack, transfer{
-					From: ReserveAddress,
+					From: builtin.ReserveAddress,
 					To:   addr,
 					Amt:  nbalance,
 				})
@@ -397,7 +393,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 
 			mfunds := minerFundsAlloc(power, totalPower)
 			transfersBack = append(transfersBack, transfer{
-				From: ReserveAddress,
+				From: builtin.ReserveAddress,
 				To:   minfo.Worker,
 				Amt:  mfunds,
 			})
@@ -417,7 +413,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 
 				if lbsectors.Length() > 0 {
 					transfersBack = append(transfersBack, transfer{
-						From: ReserveAddress,
+						From: builtin.ReserveAddress,
 						To:   minfo.Worker,
 						Amt:  BaseMinerBalance,
 					})
@@ -434,7 +430,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 	}
 
 	for _, t := range transfersBack {
-		if err := doTransfer(cb, tree, t.From, t.To, t.Amt); err != nil {
+		if err := doTransfer(tree, t.From, t.To, t.Amt, transferCb); err != nil {
 			return cid.Undef, xerrors.Errorf("transfer %s %s->%s failed: %w", t.Amt, t.From, t.To, err)
 		}
 	}
@@ -444,7 +440,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load burnt funds actor: %w", err)
 	}
-	if err := doTransfer(cb, tree, builtin0.BurntFundsActorAddr, ReserveAddress, burntAct.Balance); err != nil {
+	if err := doTransfer(tree, builtin0.BurntFundsActorAddr, builtin.ReserveAddress, burntAct.Balance, transferCb); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to unburn funds: %w", err)
 	}
 
@@ -460,7 +456,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 	}
 
 	difference := types.BigSub(DesiredReimbursementBalance, reimb.Balance)
-	if err := doTransfer(cb, tree, ReserveAddress, reimbAddr, difference); err != nil {
+	if err := doTransfer(tree, builtin.ReserveAddress, reimbAddr, difference, transferCb); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to top up reimbursement account: %w", err)
 	}
 
@@ -477,6 +473,39 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 	exp := types.FromFil(build.FilBase)
 	if !exp.Equals(total) {
 		return cid.Undef, xerrors.Errorf("resultant state tree account balance was not correct: %s", total)
+	}
+
+	if cb != nil {
+		// record the transfer in execution traces
+
+		fakeMsg := &types.Message{
+			From:  builtin.SystemActorAddr,
+			To:    builtin.SystemActorAddr,
+			Value: big.Zero(),
+			Nonce: uint64(epoch),
+		}
+		fakeRct := &types.MessageReceipt{
+			ExitCode: 0,
+			Return:   nil,
+			GasUsed:  0,
+		}
+
+		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
+			MessageReceipt: *fakeRct,
+			ActorErr:       nil,
+			ExecutionTrace: types.ExecutionTrace{
+				Msg:        fakeMsg,
+				MsgRct:     fakeRct,
+				Error:      "",
+				Duration:   0,
+				GasCharges: nil,
+				Subcalls:   subcalls,
+			},
+			Duration: 0,
+			GasCosts: nil,
+		}); err != nil {
+			return cid.Undef, xerrors.Errorf("recording transfers: %w", err)
+		}
 	}
 
 	return tree.Flush(ctx)
@@ -519,12 +548,12 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 		return cid.Undef, xerrors.Errorf("resetting genesis msig start epochs: %w", err)
 	}
 
-	err = splitGenesisMultisig(ctx, cb, split1, store, tree, 50)
+	err = splitGenesisMultisig(ctx, cb, split1, store, tree, 50, epoch)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("splitting first msig: %w", err)
 	}
 
-	err = splitGenesisMultisig(ctx, cb, split2, store, tree, 50)
+	err = splitGenesisMultisig(ctx, cb, split2, store, tree, 50, epoch)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("splitting second msig: %w", err)
 	}
@@ -545,12 +574,7 @@ func UpgradeRefuel(ctx context.Context, sm *StateManager, cb ExecCallback, root 
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
 	}
 
-	addr, err := address.NewFromString("t0122")
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("getting address: %w", err)
-	}
-
-	err = resetMultisigVesting(ctx, store, tree, addr, 0, 0, big.Zero())
+	err = resetMultisigVesting(ctx, store, tree, builtin.SaftAddress, 0, 0, big.Zero())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("tweaking msig vesting: %w", err)
 	}
@@ -655,7 +679,7 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *state.StateTree,
 	return nil
 }
 
-func splitGenesisMultisig(ctx context.Context, cb ExecCallback, addr address.Address, store adt0.Store, tree *state.StateTree, portions uint64) error {
+func splitGenesisMultisig(ctx context.Context, cb ExecCallback, addr address.Address, store adt0.Store, tree *state.StateTree, portions uint64, epoch abi.ChainEpoch) error {
 	if portions < 1 {
 		return xerrors.Errorf("cannot split into 0 portions")
 	}
@@ -724,6 +748,11 @@ func splitGenesisMultisig(ctx context.Context, cb ExecCallback, addr address.Add
 	}
 
 	i := uint64(0)
+	subcalls := make([]types.ExecutionTrace, 0, portions)
+	transferCb := func(trace types.ExecutionTrace) {
+		subcalls = append(subcalls, trace)
+	}
+
 	for i < portions {
 		keyAddr, err := makeKeyAddr(addr, i)
 		if err != nil {
@@ -740,11 +769,44 @@ func splitGenesisMultisig(ctx context.Context, cb ExecCallback, addr address.Add
 			return xerrors.Errorf("setting new msig actor state: %w", err)
 		}
 
-		if err := doTransfer(cb, tree, addr, idAddr, newIbal); err != nil {
+		if err := doTransfer(tree, addr, idAddr, newIbal, transferCb); err != nil {
 			return xerrors.Errorf("transferring split msig balance: %w", err)
 		}
 
 		i++
+	}
+
+	if cb != nil {
+		// record the transfer in execution traces
+
+		fakeMsg := &types.Message{
+			From:  builtin.SystemActorAddr,
+			To:    addr,
+			Value: big.Zero(),
+			Nonce: uint64(epoch),
+		}
+		fakeRct := &types.MessageReceipt{
+			ExitCode: 0,
+			Return:   nil,
+			GasUsed:  0,
+		}
+
+		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
+			MessageReceipt: *fakeRct,
+			ActorErr:       nil,
+			ExecutionTrace: types.ExecutionTrace{
+				Msg:        fakeMsg,
+				MsgRct:     fakeRct,
+				Error:      "",
+				Duration:   0,
+				GasCharges: nil,
+				Subcalls:   subcalls,
+			},
+			Duration: 0,
+			GasCosts: nil,
+		}); err != nil {
+			return xerrors.Errorf("recording transfers: %w", err)
+		}
 	}
 
 	return nil

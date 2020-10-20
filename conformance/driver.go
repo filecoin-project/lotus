@@ -82,7 +82,7 @@ type ExecuteTipsetResult struct {
 // This method returns the the receipts root, the poststate root, and the VM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
-func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset) (*ExecuteTipsetResult, error) {
+func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
 	var (
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 		vmRand   = NewFixedRand()
@@ -121,11 +121,10 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 		messages []*types.Message
 		results  []*vm.ApplyRet
 
-		epoch   = abi.ChainEpoch(tipset.Epoch)
 		basefee = abi.NewTokenAmount(tipset.BaseFee.Int64())
 	)
 
-	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(), parentEpoch, preroot, blocks, epoch, vmRand, func(_ cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(), parentEpoch, preroot, blocks, execEpoch, vmRand, func(_ cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		messages = append(messages, msg)
 		results = append(results, ret)
 		return nil

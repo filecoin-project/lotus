@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -53,6 +54,7 @@ var chainCmd = &cli.Command{
 		slashConsensusFault,
 		chainGasPriceCmd,
 		chainInspectUsage,
+		chainDecodeCmd,
 	},
 }
 
@@ -1230,6 +1232,71 @@ var chainGasPriceCmd = &cli.Command{
 
 			fmt.Printf("%d blocks: %s (%s)\n", nblocks, est, types.FIL(est))
 		}
+
+		return nil
+	},
+}
+
+var chainDecodeCmd = &cli.Command{
+	Name:  "decode",
+	Usage: "decode various types",
+	Subcommands: []*cli.Command{
+		chainDecodeParamsCmd,
+	},
+}
+
+var chainDecodeParamsCmd = &cli.Command{
+	Name:  "params",
+	Usage: "Decode message params",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "tipset",
+		},
+	},
+	ArgsUsage: "[toAddr method hexParams]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 3 {
+			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
+		}
+
+		to, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("parsing toAddr: %w", err)
+		}
+
+		method, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing method id: %w", err)
+		}
+
+		params, err := hex.DecodeString(cctx.Args().Get(2))
+		if err != nil {
+			return xerrors.Errorf("parsing hex params: %w", err)
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, to, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting actor: %w", err)
+		}
+
+		pstr, err := jsonParams(act.Code, abi.MethodNum(method), params)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(pstr)
 
 		return nil
 	},

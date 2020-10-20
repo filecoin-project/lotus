@@ -267,6 +267,7 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 		return nil, err
 	}
 
+	dt.OnReady(marketevents.ReadyLogger("provider data transfer"))
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return dt.Start(ctx)
@@ -392,13 +393,11 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	if err != nil {
 		return nil, err
 	}
-	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress))
+	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
+		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 	if err != nil {
 		return nil, err
 	}
-	// Hacky way to set max piece size to the sector size
-	a := storedAsk.GetAsk().Ask
-	err = storedAsk.SetAsk(a.Price, a.VerifiedPrice, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 	if err != nil {
 		return storedAsk, err
 	}
@@ -411,16 +410,16 @@ func NewProviderDealFunds(ds dtypes.MetadataDS) (ProviderDealFunds, error) {
 	return funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/provider"))
 }
 
-func BasicDealFilter(user dtypes.DealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
+func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
-	spn storagemarket.StorageProviderNode) dtypes.DealFilter {
+	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
-		spn storagemarket.StorageProviderNode) dtypes.DealFilter {
+		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 			b, err := onlineOk()
@@ -473,7 +472,7 @@ func BasicDealFilter(user dtypes.DealFilter) func(onlineOk dtypes.ConsiderOnline
 
 			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg
-			maxStartEpoch := ht + abi.ChainEpoch(7*builtin.EpochsInDay)
+			maxStartEpoch := earliest + abi.ChainEpoch(7*builtin.SecondsInDay/build.BlockDelaySecs)
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}
@@ -496,7 +495,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	pieceStore dtypes.ProviderPieceStore,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
-	df dtypes.DealFilter,
+	df dtypes.StorageDealFilter,
 	funds ProviderDealFunds,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
@@ -510,8 +509,52 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk, funds, opt)
 }
 
+func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
+	return func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+		offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
+		return func(ctx context.Context, state retrievalmarket.ProviderDealState) (bool, string, error) {
+			b, err := onlineOk()
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if !b {
+				log.Warn("online retrieval deal consideration disabled; rejecting retrieval deal proposal from client")
+				return false, "miner is not accepting online retrieval deals", nil
+			}
+
+			b, err = offlineOk()
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if !b {
+				log.Info("offline retrieval has not been implemented yet")
+			}
+
+			if userFilter != nil {
+				return userFilter(ctx, state)
+			}
+
+			return true, "", nil
+		}
+	}
+}
+
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, mds dtypes.StagingMultiDstore, dt dtypes.ProviderDataTransfer, onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc, offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) (retrievalmarket.RetrievalProvider, error) {
+func RetrievalProvider(h host.Host,
+	miner *storage.Miner,
+	sealer sectorstorage.SectorManager,
+	full lapi.FullNode,
+	ds dtypes.MetadataDS,
+	pieceStore dtypes.ProviderPieceStore,
+	mds dtypes.StagingMultiDstore,
+	dt dtypes.ProviderDataTransfer,
+	onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
+	userFilter dtypes.RetrievalDealFilter,
+) (retrievalmarket.RetrievalProvider, error) {
 	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
 
 	maddr, err := minerAddrFromDS(ds)
@@ -520,29 +563,7 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 	}
 
 	netwk := rmnet.NewFromLibp2pHost(h)
-
-	opt := retrievalimpl.DealDeciderOpt(func(ctx context.Context, state retrievalmarket.ProviderDealState) (bool, string, error) {
-		b, err := onlineOk()
-		if err != nil {
-			return false, "miner error", err
-		}
-
-		if !b {
-			log.Warn("online retrieval deal consideration disabled; rejecting retrieval deal proposal from client")
-			return false, "miner is not accepting online retrieval deals", nil
-		}
-
-		b, err = offlineOk()
-		if err != nil {
-			return false, "miner error", err
-		}
-
-		if !b {
-			log.Info("offline retrieval has not been implemented yet")
-		}
-
-		return true, "", nil
-	})
+	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
 
 	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
 }

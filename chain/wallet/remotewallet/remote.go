@@ -40,3 +40,11 @@ func SetupRemoteWallet(info string) func(mctx helpers.MetricsCtx, lc fx.Lifecycl
 		return &RemoteWallet{wapi}, nil
 	}
 }
+
+func (w *RemoteWallet) Get() api.WalletAPI {
+	if w == nil {
+		return nil
+	}
+
+	return w
+}

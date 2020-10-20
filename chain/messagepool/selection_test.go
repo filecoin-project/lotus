@@ -18,7 +18,6 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -77,7 +76,7 @@ func TestMessageChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +86,7 @@ func TestMessageChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +314,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,7 +324,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +390,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +400,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -535,7 +534,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,7 +544,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -598,7 +597,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -608,7 +607,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -677,7 +676,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -687,7 +686,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -746,7 +745,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -756,7 +755,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -843,7 +842,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -853,7 +852,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -910,7 +909,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -920,7 +919,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -994,7 +993,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+		a, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1074,7 +1073,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 			t.Fatal(err)
 		}
 
-		a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+		a, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1344,7 +1343,7 @@ readLoop:
 				t.Fatal(err)
 			}
 
-			a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+			a, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 			if err != nil {
 				t.Fatal(err)
 			}

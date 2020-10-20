@@ -135,7 +135,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	}
 
 	// get the circulating supply before the message was executed.
-	circSupplyDetail, err := fapi.StateCirculatingSupply(ctx, incTs.Key())
+	circSupplyDetail, err := fapi.StateVMCirculatingSupplyInternal(ctx, incTs.Key())
 	if err != nil {
 		return fmt.Errorf("failed while fetching circulating supply: %w", err)
 	}
@@ -347,6 +347,13 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		return err
 	}
 
+	nv, err := fapi.StateNetworkVersion(ctx, execTs.Key())
+	if err != nil {
+		return err
+	}
+
+	codename := GetProtocolCodename(execTs.Height())
+
 	// Write out the test vector.
 	vector := schema.TestVector{
 		Class: schema.ClassMessage,
@@ -363,10 +370,15 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 				{Source: fmt.Sprintf("execution_tipset:%s", execTs.Key().String())},
 				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
 		},
+		Selector: schema.Selector{
+			schema.SelectorMinProtocolVersion: codename,
+		},
 		Randomness: recordingRand.Recorded(),
 		CAR:        out.Bytes(),
 		Pre: &schema.Preconditions{
-			Epoch:      int64(execTs.Height()),
+			Variants: []schema.Variant{
+				{ID: codename, Epoch: int64(execTs.Height()), NetworkVersion: uint(nv)},
+			},
 			CircSupply: circSupply.Int,
 			BaseFee:    basefee.Int,
 			StateTree: &schema.StateTree{

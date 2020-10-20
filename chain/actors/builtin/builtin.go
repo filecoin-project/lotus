@@ -2,8 +2,12 @@ package builtin
 
 import (
 	"github.com/filecoin-project/go-address"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -11,16 +15,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 )
 
 var SystemActorAddr = builtin0.SystemActorAddr
 var BurntFundsActorAddr = builtin0.BurntFundsActorAddr
+var CronActorAddr = builtin0.CronActorAddr
+var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
 

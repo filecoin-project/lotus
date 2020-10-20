@@ -76,7 +76,7 @@ var runCmd = &cli.Command{
 		log.Info("Setting up API endpoint at " + address)
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", &GatewayAPI{api: api})
+		rpcServer.Register("Filecoin", NewGatewayAPI(api))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux)

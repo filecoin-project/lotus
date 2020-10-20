@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -251,8 +252,8 @@ func Online() Option {
 			Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
 			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 			Override(new(*wallet.LocalWallet), wallet.NewWallet),
-			Override(new(api.WalletAPI), From(new(*wallet.LocalWallet))),
 			Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
+			Override(new(api.WalletAPI), From(new(wallet.MultiWallet))),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
@@ -353,7 +354,8 @@ func Online() Option {
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
-			Override(new(dtypes.DealFilter), modules.BasicDealFilter(nil)),
+			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
+			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 			Override(new(modules.ProviderDealFunds), modules.NewProviderDealFunds),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(nil)),
@@ -459,8 +461,16 @@ func ConfigFullNode(c interface{}) Option {
 		If(cfg.Metrics.HeadNotifs,
 			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
 		),
+
 		If(cfg.Wallet.RemoteBackend != "",
-			Override(new(api.WalletAPI), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
+			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
+		),
+		If(cfg.Wallet.EnableLedger,
+			Override(new(*ledgerwallet.LedgerWallet), ledgerwallet.NewWallet),
+		),
+		If(cfg.Wallet.DisableLocal,
+			Unset(new(*wallet.LocalWallet)),
+			Override(new(wallet.Default), wallet.NilDefault),
 		),
 	)
 }
@@ -475,7 +485,11 @@ func ConfigStorageMiner(c interface{}) Option {
 		ConfigCommon(&cfg.Common),
 
 		If(cfg.Dealmaking.Filter != "",
-			Override(new(dtypes.DealFilter), modules.BasicDealFilter(dealfilter.CliDealFilter(cfg.Dealmaking.Filter))),
+			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
+		),
+
+		If(cfg.Dealmaking.RetrievalFilter != "",
+			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 		),
 
 		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees)),

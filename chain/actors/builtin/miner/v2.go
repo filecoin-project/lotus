@@ -45,8 +45,16 @@ type partition2 struct {
 	store adt.Store
 }
 
-func (s *state2) AvailableBalance(bal abi.TokenAmount) (abi.TokenAmount, error) {
-	return s.GetAvailableBalance(bal)
+func (s *state2) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = xerrors.Errorf("failed to get available balance: %w", r)
+			available = abi.NewTokenAmount(0)
+		}
+	}()
+	// this panics if the miner doesnt have enough funds to cover their locked pledge
+	available, err = s.GetAvailableBalance(bal)
+	return available, err
 }
 
 func (s *state2) VestedFunds(epoch abi.ChainEpoch) (abi.TokenAmount, error) {
@@ -265,7 +273,7 @@ func (s *state2) DeadlinesChanged(other State) (bool, error) {
 		return true, nil
 	}
 
-	return s.State.Deadlines.Equals(other2.Deadlines), nil
+	return !s.State.Deadlines.Equals(other2.Deadlines), nil
 }
 
 func (s *state2) Info() (MinerInfo, error) {
@@ -361,7 +369,7 @@ func (d *deadline2) PartitionsChanged(other Deadline) (bool, error) {
 		return true, nil
 	}
 
-	return d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
+	return !d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
 }
 
 func (d *deadline2) PostSubmissions() (bitfield.BitField, error) {

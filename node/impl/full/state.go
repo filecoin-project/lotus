@@ -347,11 +347,37 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 }
 
 func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	msgToReplay := mc
+	var ts *types.TipSet
+	var err error
+	if tsk == types.EmptyTSK {
+		mlkp, err := a.StateSearchMsg(ctx, mc)
+		if err != nil {
+			return nil, xerrors.Errorf("searching for msg %s: %w", mc, err)
+		}
+		if mlkp == nil {
+			return nil, xerrors.Errorf("didn't find msg %s", mc)
+		}
+
+		msgToReplay = mlkp.Message
+
+		executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		ts, err = a.Chain.LoadTipSet(executionTs.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
+		}
+	} else {
+		ts, err = a.Chain.LoadTipSet(tsk)
+		if err != nil {
+			return nil, xerrors.Errorf("loading specified tipset %s: %w", tsk, err)
+		}
 	}
-	m, r, err := a.StateManager.Replay(ctx, ts, mc)
+
+	m, r, err := a.StateManager.Replay(ctx, ts, msgToReplay)
 	if err != nil {
 		return nil, err
 	}
@@ -362,8 +388,10 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}
 
 	return &api.InvocResult{
+		MsgCid:         msgToReplay,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
+		GasCost:        stmgr.MakeMsgGasCost(m, r),
 		ExecutionTrace: r.ExecutionTrace,
 		Error:          errstr,
 		Duration:       r.Duration,
@@ -759,7 +787,7 @@ func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Addre
 	return mas.FindSector(sectorNumber)
 }
 
-func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toheight abi.ChainEpoch) ([]cid.Cid, error) {
+func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatch, tsk types.TipSetKey, toheight abi.ChainEpoch) ([]cid.Cid, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1049,7 +1077,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	circSupply, err := a.StateCirculatingSupply(ctx, ts.Key())
+	circSupply, err := a.StateVMCirculatingSupplyInternal(ctx, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
@@ -1203,7 +1231,7 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor state: %w", err)
 	}
 
-	circ, err := a.StateCirculatingSupply(ctx, ts.Key())
+	circ, err := a.StateVMCirculatingSupplyInternal(ctx, ts.Key())
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
@@ -1231,7 +1259,20 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 	}, nil
 }
 
-func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
+func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	sTree, err := a.stateForTs(ctx, ts)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+	return a.StateManager.GetCirculatingSupply(ctx, ts.Height(), sTree)
+}
+
+func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1241,7 +1282,7 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 	if err != nil {
 		return api.CirculatingSupply{}, err
 	}
-	return a.StateManager.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
+	return a.StateManager.GetVMCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }
 
 func (a *StateAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
@@ -1251,53 +1292,4 @@ func (a *StateAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey)
 	}
 
 	return a.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
-}
-
-func (a *StateAPI) StateMsgGasCost(ctx context.Context, inputMsg cid.Cid, tsk types.TipSetKey) (*api.MsgGasCost, error) {
-	var msg cid.Cid
-	var ts *types.TipSet
-	var err error
-	if tsk != types.EmptyTSK {
-		msg = inputMsg
-		ts, err = a.Chain.LoadTipSet(tsk)
-		if err != nil {
-			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-		}
-	} else {
-		mlkp, err := a.StateSearchMsg(ctx, inputMsg)
-		if err != nil {
-			return nil, xerrors.Errorf("searching for msg %s: %w", inputMsg, err)
-		}
-		if mlkp == nil {
-			return nil, xerrors.Errorf("didn't find msg %s", inputMsg)
-		}
-
-		executionTs, err := a.Chain.GetTipSetFromKey(mlkp.TipSet)
-		if err != nil {
-			return nil, xerrors.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
-		}
-
-		ts, err = a.Chain.LoadTipSet(executionTs.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
-		}
-
-		msg = mlkp.Message
-	}
-
-	m, r, err := a.StateManager.Replay(ctx, ts, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return &api.MsgGasCost{
-		Message:            msg,
-		GasUsed:            big.NewInt(r.GasUsed),
-		BaseFeeBurn:        r.GasCosts.BaseFeeBurn,
-		OverEstimationBurn: r.GasCosts.OverEstimationBurn,
-		MinerPenalty:       r.GasCosts.MinerPenalty,
-		MinerTip:           r.GasCosts.MinerTip,
-		Refund:             r.GasCosts.Refund,
-		TotalCost:          big.Sub(m.RequiredFunds(), r.GasCosts.Refund),
-	}, nil
 }

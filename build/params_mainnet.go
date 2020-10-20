@@ -31,7 +31,10 @@ const UpgradeTapeHeight = 45
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
 // We still have upgrades and state changes to do, but can happen after signaling timing here.
-const UpgradeLiftoffHeight = 148888
+const UpgradeLiftoffHeight = 22400
+
+// TODO: Confirm epoch
+const UpgradeKumquatHeight = 22450
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 30))
