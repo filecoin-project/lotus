@@ -73,6 +73,103 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 	}
 }
 
+func TestResolveCache(t *testing.T) {
+	cst := cbor.NewMemCborStore()
+	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonId := address.NewForTestGetter()()
+	id, _ := address.NewIDAddress(1000)
+
+	st.lookupIDFun = func(a address.Address) (address.Address, error) {
+		if a == nonId {
+			return id, nil
+		}
+		return address.Undef, types.ErrActorNotFound
+	}
+
+	err = st.SetActor(nonId, &types.Actor{Nonce: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	{
+		err = st.Snapshot(context.TODO())
+		if err != nil {
+			t.Fatal(err)
+		}
+		act, err := st.GetActor(nonId)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if act.Nonce != 1 {
+			t.Fatalf("expected nonce 1, got %d", act.Nonce)
+		}
+		err = st.SetActor(nonId, &types.Actor{Nonce: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		act, err = st.GetActor(nonId)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if act.Nonce != 2 {
+			t.Fatalf("expected nonce 2, got %d", act.Nonce)
+		}
+
+		if err := st.Revert(); err != nil {
+			t.Fatal(err)
+		}
+		st.ClearSnapshot()
+	}
+
+	act, err := st.GetActor(nonId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if act.Nonce != 1 {
+		t.Fatalf("expected nonce 1, got %d", act.Nonce)
+	}
+
+	{
+		err = st.Snapshot(context.TODO())
+		if err != nil {
+			t.Fatal(err)
+		}
+		act, err := st.GetActor(nonId)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if act.Nonce != 1 {
+			t.Fatalf("expected nonce 1, got %d", act.Nonce)
+		}
+		err = st.SetActor(nonId, &types.Actor{Nonce: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		act, err = st.GetActor(nonId)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if act.Nonce != 2 {
+			t.Fatalf("expected nonce 2, got %d", act.Nonce)
+		}
+		st.ClearSnapshot()
+	}
+
+	act, err = st.GetActor(nonId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if act.Nonce != 2 {
+		t.Fatalf("expected nonce 2, got %d", act.Nonce)
+	}
+
+}
+
 func BenchmarkStateTree10kGetActor(b *testing.B) {
 	cst := cbor.NewMemCborStore()
 	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
