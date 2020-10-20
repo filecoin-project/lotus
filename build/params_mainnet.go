@@ -37,6 +37,8 @@ const UpgradeTapeHeight = 140760
 // We still have upgrades and state changes to do, but can happen after signaling timing here.
 const UpgradeLiftoffHeight = 148888
 
+const UpgradeKumquatHeight = 170000
+
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 	policy.SetSupportedProofTypes(
