@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -30,7 +31,7 @@ var electionRunDummy = &cli.Command{
 		},
 		&cli.Uint64Flag{
 			Name:  "seed",
-			Value: 4,
+			Value: 0,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -46,7 +47,11 @@ var electionRunDummy = &cli.Command{
 
 		ep := &types.ElectionProof{}
 		ep.VRFProof = make([]byte, 32)
-		binary.BigEndian.PutUint64(ep.VRFProof, cctx.Uint64("seed"))
+		seed := cctx.Uint64("seed")
+		if seed == 0 {
+			seed = rand.Uint64()
+		}
+		binary.BigEndian.PutUint64(ep.VRFProof, seed)
 
 		i := uint64(0)
 		for {
