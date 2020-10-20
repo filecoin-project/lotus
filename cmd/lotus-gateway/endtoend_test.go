@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/lotus/cli"
 	clitest "github.com/filecoin-project/lotus/cli/test"
-	logging "github.com/ipfs/go-log/v2"
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
@@ -45,6 +44,7 @@ func init() {
 // node that is connected through a gateway to a full API node
 func TestWalletMsig(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -155,80 +155,35 @@ func TestMsigCLI(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodes(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
-	full := nodes.full
-
-	// The full node starts with a wallet
-	fullWalletAddr, err := full.WalletDefaultAddress(ctx)
-	require.NoError(t, err)
-
-	// Create a wallet on the lite node
-	liteWalletAddr, err := lite.WalletNew(ctx, types.KTSecp256k1)
-	require.NoError(t, err)
-
-	// Send some funds from the full node to the lite node
-	err = sendFunds(ctx, full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
-	require.NoError(t, err)
-
 	clitest.RunMultisigTest(t, cli.Commands, lite)
-}
-
-func sendFunds(ctx context.Context, fromNode test.TestNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
-	msg := &types.Message{
-		From:  fromAddr,
-		To:    toAddr,
-		Value: amt,
-	}
-
-	sm, err := fromNode.MpoolPushMessage(ctx, msg, nil)
-	if err != nil {
-		return err
-	}
-
-	res, err := fromNode.StateWaitMsg(ctx, sm.Cid(), 1)
-	if err != nil {
-		return err
-	}
-	if res.Receipt.ExitCode != 0 {
-		return xerrors.Errorf("send funds failed with exit code %d", res.Receipt.ExitCode)
-	}
-
-	return nil
 }
 
 func TestDealFlow(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-
-	logging.SetLogLevel("miner", "ERROR")
-	logging.SetLogLevel("chainstore", "ERROR")
-	logging.SetLogLevel("chain", "ERROR")
-	logging.SetLogLevel("sub", "ERROR")
-	logging.SetLogLevel("storageminer", "ERROR")
+	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodes(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
 
-	full := nodes.full
-	lite := nodes.lite
+	test.MakeDeal(t, ctx, 6, nodes.lite, nodes.miner, false, false)
+}
 
-	// The full node starts with a wallet
-	fullWalletAddr, err := full.WalletDefaultAddress(ctx)
-	require.NoError(t, err)
+func TestCLIDealFlow(t *testing.T) {
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	clitest.QuietMiningLogs()
 
-	// Create a wallet on the lite node
-	liteWalletAddr, err := lite.WalletNew(ctx, types.KTSecp256k1)
-	require.NoError(t, err)
+	blocktime := 5 * time.Millisecond
+	ctx := context.Background()
+	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	defer nodes.closer()
 
-	// Send some funds from the full node to the lite node
-	err = sendFunds(ctx, full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
-	require.NoError(t, err)
-
-	test.MakeDeal(t, ctx, 6, lite, nodes.miner, false, false)
+	clitest.RunClientTest(t, cli.Commands, nodes.lite)
 }
 
 type testNodes struct {
@@ -236,6 +191,30 @@ type testNodes struct {
 	full   test.TestNode
 	miner  test.TestStorageNode
 	closer jsonrpc.ClientCloser
+}
+
+func startNodesWithFunds(
+	ctx context.Context,
+	t *testing.T,
+	blocktime time.Duration,
+	lookbackCap time.Duration,
+	stateWaitLookbackLimit abi.ChainEpoch,
+) *testNodes {
+	nodes := startNodes(ctx, t, blocktime, lookbackCap, stateWaitLookbackLimit)
+
+	// The full node starts with a wallet
+	fullWalletAddr, err := nodes.full.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
+	// Create a wallet on the lite node
+	liteWalletAddr, err := nodes.lite.WalletNew(ctx, types.KTSecp256k1)
+	require.NoError(t, err)
+
+	// Send some funds from the full node to the lite node
+	err = sendFunds(ctx, nodes.full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
+	require.NoError(t, err)
+
+	return nodes
 }
 
 func startNodes(
@@ -301,4 +280,27 @@ func startNodes(
 	bm.MineBlocks()
 
 	return &testNodes{lite: lite, full: full, miner: miner, closer: closer}
+}
+
+func sendFunds(ctx context.Context, fromNode test.TestNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
+	msg := &types.Message{
+		From:  fromAddr,
+		To:    toAddr,
+		Value: amt,
+	}
+
+	sm, err := fromNode.MpoolPushMessage(ctx, msg, nil)
+	if err != nil {
+		return err
+	}
+
+	res, err := fromNode.StateWaitMsg(ctx, sm.Cid(), 1)
+	if err != nil {
+		return err
+	}
+	if res.Receipt.ExitCode != 0 {
+		return xerrors.Errorf("send funds failed with exit code %d", res.Receipt.ExitCode)
+	}
+
+	return nil
 }

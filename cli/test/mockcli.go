@@ -122,3 +122,12 @@ func (c *mockCLIClient) flagSet(cmd *lcli.Command) *flag.FlagSet {
 	}
 	return fs
 }
+
+func (c *mockCLIClient) runInteractiveCmd(cmd []string, interactive []string) string {
+	c.toStdin(strings.Join(interactive, "\n") + "\n")
+	return c.runCmd(cmd)
+}
+
+func (c *mockCLIClient) toStdin(s string) {
+	c.cctx.App.Metadata["stdin"] = bytes.NewBufferString(s)
+}
