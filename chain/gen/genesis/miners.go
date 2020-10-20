@@ -405,7 +405,7 @@ func circSupply(ctx context.Context, vmi *vm.VM, maddr address.Address) abi.Toke
 	rt := unsafeVM.MakeRuntime(ctx, &types.Message{
 		GasLimit: 1_000_000_000,
 		From:     maddr,
-	}, maddr, 0, 0, 0)
+	})
 
 	return rt.TotalFilCircSupply()
 }
