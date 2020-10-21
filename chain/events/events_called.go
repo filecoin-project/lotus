@@ -124,6 +124,9 @@ func (e *hcEvents) processHeadChangeEvent(rev, app []*types.TipSet) error {
 	}
 
 	for _, ts := range app {
+		if ts.ParentState().Equals(e.lastTs.ParentState()) {
+			continue
+		}
 		// Check if the head change caused any state changes that we were
 		// waiting for
 		stateChanges := e.watcherEvents.checkStateChanges(e.lastTs, ts)
