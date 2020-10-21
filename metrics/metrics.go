@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"time"
 
 	"go.opencensus.io/stats"
@@ -24,6 +25,8 @@ var (
 	MessageTo, _    = tag.NewKey("message_to")
 	MessageNonce, _ = tag.NewKey("message_nonce")
 	ReceivedFrom, _ = tag.NewKey("received_from")
+	Endpoint, _     = tag.NewKey("endpoint")
+	APIInterface, _ = tag.NewKey("api") // to distinguish between gateway api and full node api endpoint calls
 )
 
 // Measures
@@ -49,6 +52,7 @@ var (
 	PubsubRecvRPC                       = stats.Int64("pubsub/recv_rpc", "Counter for total received RPCs", stats.UnitDimensionless)
 	PubsubSendRPC                       = stats.Int64("pubsub/send_rpc", "Counter for total sent RPCs", stats.UnitDimensionless)
 	PubsubDropRPC                       = stats.Int64("pubsub/drop_rpc", "Counter for total dropped RPCs", stats.UnitDimensionless)
+	APIRequestDuration                  = stats.Float64("api/request_duration_ms", "Duration of API requests", stats.UnitMilliseconds)
 )
 
 var (
@@ -137,6 +141,11 @@ var (
 		Measure:     PubsubDropRPC,
 		Aggregation: view.Count(),
 	}
+	APIRequestDurationView = &view.View{
+		Measure:     APIRequestDuration,
+		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{APIInterface, Endpoint},
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
@@ -161,10 +170,20 @@ var DefaultViews = append([]*view.View{
 	PubsubRecvRPCView,
 	PubsubSendRPCView,
 	PubsubDropRPCView,
+	APIRequestDurationView,
 },
 	rpcmetrics.DefaultViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
 func SinceInMilliseconds(startTime time.Time) float64 {
 	return float64(time.Since(startTime).Nanoseconds()) / 1e6
+}
+
+// Timer is a function stopwatch, calling it starts the timer,
+// calling the returned function will record the duration.
+func Timer(ctx context.Context, m *stats.Float64Measure) func() {
+	start := time.Now()
+	return func() {
+		stats.Record(ctx, m.M(SinceInMilliseconds(start)))
+	}
 }
