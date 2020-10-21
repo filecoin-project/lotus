@@ -186,22 +186,12 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, j, maddr)
 		if err != nil {
 			return nil, err
 		}
 
-		worker, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, j, maddr, worker)
-		if err != nil {
-			return nil, err
-		}
-
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, j)
+		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, gsd, fc, j)
 		if err != nil {
 			return nil, err
 		}
