@@ -199,13 +199,18 @@ func (sbs *syncBucketSet) removeBucket(toremove *syncTargetBucket) {
 }
 
 func (sbs *syncBucketSet) PopRelated(ts *types.TipSet) *syncTargetBucket {
+	var bOut *syncTargetBucket
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
-			sbs.removeBucket(b)
-			return b
+			if bOut == nil {
+				sbs.removeBucket(b)
+				bOut = b
+			} else {
+				log.Errorf("REPORT THIS more that one related bucket for %s", ts)
+			}
 		}
 	}
-	return nil
+	return bOut
 }
 
 func (sbs *syncBucketSet) Heaviest() *types.TipSet {
@@ -312,7 +317,7 @@ func (sm *syncManager) syncScheduler() {
 			log.Info("sync scheduler shutting down")
 			return
 		case <-t.C:
-			activeSyncs := make([]types.TipSetKey, len(sm.activeSyncs), 0)
+			activeSyncs := make([]types.TipSetKey, 0, len(sm.activeSyncs))
 			for tsk := range sm.activeSyncs {
 				activeSyncs = append(activeSyncs, tsk)
 			}
