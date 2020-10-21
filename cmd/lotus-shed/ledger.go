@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/urfave/cli/v2"
 	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -76,15 +76,22 @@ var ledgerListAddressesCmd = &cli.Command{
 			}
 
 			if cctx.Bool("print-balances") && api != nil { // api check makes linter happier
-				b, err := api.WalletBalance(ctx, addr)
+				a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
 				if err != nil {
-					return xerrors.Errorf("getting balance: %w", err)
-				}
-				if !b.IsZero() {
-					end = i + 21 // BIP32 spec, stop after 20 empty addresses
+					if strings.Contains(err.Error(), "actor not found") {
+						a = nil
+					} else {
+						return err
+					}
 				}
 
-				fmt.Printf("%s %s %s\n", addr, printHDPath(p), types.FIL(b))
+				balance := big.Zero()
+				if a != nil {
+					balance = a.Balance
+					end = i + 20 + 1
+				}
+
+				fmt.Printf("%s %s %s\n", addr, printHDPath(p), types.FIL(balance))
 			} else {
 				fmt.Printf("%s %s\n", addr, printHDPath(p))
 			}
