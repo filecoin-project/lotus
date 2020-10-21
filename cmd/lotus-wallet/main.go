@@ -9,6 +9,8 @@ import (
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
@@ -18,6 +20,7 @@ import (
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -75,6 +78,13 @@ var runCmd = &cli.Command{
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
+		// Register all metric views
+		if err := view.Register(
+			metrics.DefaultViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
+
 		repoPath := cctx.String(FlagWalletRepo)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
@@ -125,7 +135,7 @@ var runCmd = &cli.Command{
 		log.Info("Setting up API endpoint at " + address)
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", &LoggedWallet{under: w})
+		rpcServer.Register("Filecoin", &LoggedWallet{under: metrics.MetricedWalletAPI(w)})
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
@@ -138,6 +148,7 @@ var runCmd = &cli.Command{
 		srv := &http.Server{
 			Handler: mux,
 			BaseContext: func(listener net.Listener) context.Context {
+				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-wallet"))
 				return ctx
 			},
 		}
