@@ -386,7 +386,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, &rbase, base)
+	ticket, err := m.computeTicket(ctx, &rbase, base, mbi)
 	if err != nil {
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
@@ -456,16 +456,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	return b, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase) (*types.Ticket, error) {
-	mi, err := m.api.StateMinerInfo(ctx, m.address, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-	worker, err := m.api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := m.address.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
@@ -474,6 +465,11 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 	round := base.TipSet.Height() + base.NullRounds + 1
 	if round > build.UpgradeSmokeHeight {
 		buf.Write(base.TipSet.MinTicket().VRFProof)
+	}
+
+	worker, err := m.api.StateAccountKey(ctx, mbi.WorkerKey, types.EmptyTSK)
+	if err != nil {
+		return nil, err
 	}
 
 	input, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
