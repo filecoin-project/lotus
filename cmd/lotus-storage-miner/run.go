@@ -186,7 +186,6 @@ var runCmd = &cli.Command{
 			},
 		}
 
-
 		sigChan := make(chan os.Signal, 2)
 		go func() {
 			select {

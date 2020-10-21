@@ -69,7 +69,6 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
 	defer stop()
 
-
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
 		return cid.Undef, err
