@@ -6,7 +6,10 @@ import (
 	"math/rand"
 	"sort"
 
+	"go.opencensus.io/tag"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/metrics"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -61,6 +64,10 @@ func (a *GasAPI) GasEstimateFeeCap(
 	maxqueueblks int64,
 	tsk types.TipSetKey,
 ) (types.BigInt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "GasEstimateFeeCap"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return gasEstimateFeeCap(a.Chain, msg, maxqueueblks)
 }
 func (m *GasModule) GasEstimateFeeCap(
@@ -123,6 +130,10 @@ func (a *GasAPI) GasEstimateGasPremium(
 	gaslimit int64,
 	_ types.TipSetKey,
 ) (types.BigInt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "GasEstimateGasPremium"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return gasEstimateGasPremium(a.Chain, nblocksincl)
 }
 func (m *GasModule) GasEstimateGasPremium(
@@ -192,6 +203,10 @@ func gasEstimateGasPremium(cstore *store.ChainStore, nblocksincl uint64) (types.
 }
 
 func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, _ types.TipSetKey) (int64, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "GasEstimateGasLimit"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return gasEstimateGasLimit(ctx, a.Chain, a.Stmgr, a.Mpool, msgIn)
 }
 func (m *GasModule) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, _ types.TipSetKey) (int64, error) {

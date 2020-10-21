@@ -3,6 +3,7 @@ package paych
 import (
 	"context"
 
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 	full "github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/paychmgr"
 )
@@ -28,6 +30,10 @@ type PaychAPI struct {
 }
 
 func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychGet"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt)
 	if err != nil {
 		return nil, err
@@ -40,22 +46,42 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt t
 }
 
 func (a *PaychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychAvailableFunds"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.AvailableFunds(ch)
 }
 
 func (a *PaychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychAvailableFundsByFromTo"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.AvailableFundsByFromTo(from, to)
 }
 
 func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychGetWaitReady"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.GetPaychWaitReady(ctx, sentinel)
 }
 
 func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychAllocateLane"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.AllocateLane(ch)
 }
 
 func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychNewPayment"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	amount := vouchers[len(vouchers)-1].Amount
 
 	// TODO: Fix free fund tracking in PaychGet
@@ -100,10 +126,18 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 }
 
 func (a *PaychAPI) PaychList(ctx context.Context) ([]address.Address, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychList"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.ListChannels()
 }
 
 func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychStatus"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ci, err := a.PaychMgr.GetChannelInfo(pch)
 	if err != nil {
 		return nil, err
@@ -115,22 +149,42 @@ func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.P
 }
 
 func (a *PaychAPI) PaychSettle(ctx context.Context, addr address.Address) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychSettle"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.Settle(ctx, addr)
 }
 
 func (a *PaychAPI) PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychCollect"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.Collect(ctx, addr)
 }
 
 func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychVoucherCheckValid"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.CheckVoucherValid(ctx, ch, sv)
 }
 
 func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychVoucherCheckSpendable"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
 }
 
 func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychVoucherAdd"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.AddVoucherInbound(ctx, ch, sv, proof, minDelta)
 }
 
@@ -142,10 +196,18 @@ func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *
 // If there are insufficient funds in the channel to create the voucher,
 // returns a nil voucher and the shortfall.
 func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*api.VoucherCreateResult, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychVoucherCreate"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.CreateVoucher(ctx, pch, paych.SignedVoucher{Amount: amt, Lane: lane})
 }
 
 func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychVoucherList"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	vi, err := a.PaychMgr.ListVouchers(ctx, pch)
 	if err != nil {
 		return nil, err
@@ -160,5 +222,9 @@ func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([
 }
 
 func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PaychVoucherSubmit"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.PaychMgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }

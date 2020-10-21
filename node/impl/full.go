@@ -4,8 +4,10 @@ import (
 	"context"
 
 	logging "github.com/ipfs/go-log/v2"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -34,6 +36,10 @@ type FullNodeAPI struct {
 }
 
 func (n *FullNodeAPI) CreateBackup(ctx context.Context, fpath string) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "CreateBackup"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return backup(n.DS, fpath)
 }
 

@@ -6,6 +6,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -28,6 +30,10 @@ type SyncAPI struct {
 }
 
 func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncState"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	states := a.Syncer.State()
 
 	out := &api.SyncState{
@@ -50,6 +56,10 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 }
 
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncSubmitBlock"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	parent, err := a.Syncer.ChainStore().GetBlock(blk.Header.Parents[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %w", err)
@@ -98,33 +108,57 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 }
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncIncomingBlocks"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Syncer.IncomingBlocks(ctx)
 }
 
 func (a *SyncAPI) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncCheckpoint"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	log.Warnf("Marking tipset %s as checkpoint", tsk)
 	return a.Syncer.SetCheckpoint(tsk)
 }
 
 func (a *SyncAPI) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncMarkBad"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	log.Warnf("Marking block %s as bad", bcid)
 	a.Syncer.MarkBad(bcid)
 	return nil
 }
 
 func (a *SyncAPI) SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncUnmarkBad"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	log.Warnf("Unmarking block %s as bad", bcid)
 	a.Syncer.UnmarkBad(bcid)
 	return nil
 }
 
 func (a *SyncAPI) SyncUnmarkAllBad(ctx context.Context) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncUnmarkAllBad"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	log.Warnf("Dropping bad block cache")
 	a.Syncer.UnmarkAllBad()
 	return nil
 }
 
 func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncCheckBad"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	reason, ok := a.Syncer.CheckBadBlockCache(bcid)
 	if !ok {
 		return "", nil
@@ -134,6 +168,10 @@ func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error
 }
 
 func (a *SyncAPI) SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SyncValidateTipset"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Syncer.ChainStore().LoadTipSet(tsk)
 	if err != nil {
 		return false, err

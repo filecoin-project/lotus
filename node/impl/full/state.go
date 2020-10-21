@@ -7,6 +7,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/metrics"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -77,10 +79,18 @@ type StateAPI struct {
 }
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateNetworkName"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
 func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerSectors"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -89,6 +99,10 @@ func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, 
 }
 
 func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) { // TODO: only used in cli
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerActiveSectors"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -113,6 +127,10 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 }
 
 func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerInfo"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateManager.LoadActorTsk(ctx, actor, tsk)
 	if err != nil {
 		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -127,6 +145,10 @@ func (a *StateAPI) StateMinerInfo(ctx context.Context, actor address.Address, ts
 }
 
 func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerDeadlines"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateManager.LoadActorTsk(ctx, m, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -160,6 +182,10 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 }
 
 func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerPartitions"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateManager.LoadActorTsk(ctx, m, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -216,6 +242,10 @@ func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, 
 }
 
 func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerProvingDeadline"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.StateManager.ChainStore().GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -240,6 +270,10 @@ func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.A
 }
 
 func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerFaults"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -254,6 +288,10 @@ func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, t
 }
 
 func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, endTsk types.TipSetKey) ([]*api.Fault, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateAllMinerFaults"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return nil, xerrors.Errorf("fixme")
 
 	/*endTs, err := a.Chain.GetTipSetFromKey(endTsk)
@@ -297,6 +335,10 @@ func (a *StateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEp
 }
 
 func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerRecoveries"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -311,6 +353,10 @@ func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Addres
 }
 
 func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerPower"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -329,6 +375,10 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, ts
 }
 
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateCall"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -347,6 +397,10 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 }
 
 func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateReplay"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	msgToReplay := mc
 	var ts *types.TipSet
 	var err error
@@ -451,6 +505,10 @@ func (m *StateModule) StateAccountKey(ctx context.Context, addr address.Address,
 }
 
 func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateReadState"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -483,10 +541,18 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
 func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MinerGetBaseInfo"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, a.Beacon, tsk, epoch, maddr, a.ProofVerifier)
 }
 
 func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) (*types.BlockMsg, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MinerCreateBlock"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, bt)
 	if err != nil {
 		return nil, err
@@ -508,6 +574,10 @@ func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence 
 	return stateWaitMsgLimited(ctx, m.StateManager, m.Chain, msg, confidence, stmgr.LookbackNoLimit)
 }
 func (a *StateAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateWaitMsgLimited"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return stateWaitMsgLimited(ctx, a.StateManager, a.Chain, msg, confidence, lookbackLimit)
 }
 func stateWaitMsgLimited(ctx context.Context, smgr *stmgr.StateManager, cstore *store.ChainStore, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
@@ -547,6 +617,10 @@ func stateWaitMsgLimited(ctx context.Context, smgr *stmgr.StateManager, cstore *
 }
 
 func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateSearchMsg"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, recpt, found, err := a.StateManager.SearchForMessage(ctx, msg)
 	if err != nil {
 		return nil, err
@@ -564,6 +638,10 @@ func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLoo
 }
 
 func (a *StateAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateGetReceipt"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -572,6 +650,10 @@ func (a *StateAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.T
 }
 
 func (a *StateAPI) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateListMiners"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -580,6 +662,10 @@ func (a *StateAPI) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]
 }
 
 func (a *StateAPI) StateListActors(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateListActors"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -588,6 +674,10 @@ func (a *StateAPI) StateListActors(ctx context.Context, tsk types.TipSetKey) ([]
 }
 
 func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMarketBalance"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return api.MarketBalance{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -596,6 +686,10 @@ func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address,
 }
 
 func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketBalance, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMarketParticipants"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	out := map[string]api.MarketBalance{}
 
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
@@ -636,6 +730,10 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 }
 
 func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketDeal, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMarketDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	out := map[string]api.MarketDeal{}
 
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
@@ -677,6 +775,10 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 }
 
 func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMarketStorageDeal"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -685,6 +787,10 @@ func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID
 }
 
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateChangedActors"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	store := a.Chain.Store(ctx)
 
 	oldTree, err := state.LoadStateTree(store, old)
@@ -701,6 +807,10 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 }
 
 func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerSectorCount"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
 		return api.MinerSectors{}, err
@@ -742,6 +852,10 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 }
 
 func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateSectorPreCommitInfo"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -756,6 +870,10 @@ func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.A
 }
 
 func (a *StateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateSectorGetInfo"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -764,6 +882,10 @@ func (a *StateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address
 }
 
 func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateSectorExpiration"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
 	if err != nil {
 		return nil, err
@@ -776,6 +898,10 @@ func (a *StateAPI) StateSectorExpiration(ctx context.Context, maddr address.Addr
 }
 
 func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateSectorPartition"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
 	if err != nil {
 		return nil, err
@@ -788,6 +914,10 @@ func (a *StateAPI) StateSectorPartition(ctx context.Context, maddr address.Addre
 }
 
 func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatch, tsk types.TipSetKey, toheight abi.ChainEpoch) ([]cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateListMessages"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -841,6 +971,10 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 }
 
 func (a *StateAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*api.ComputeStateOutput, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateCompute"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -878,6 +1012,10 @@ func (m *StateModule) MsigGetAvailableBalance(ctx context.Context, addr address.
 }
 
 func (a *StateAPI) MsigGetVestingSchedule(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MsigVesting, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigGetVestingSchedule"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return api.EmptyVesting, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -959,6 +1097,10 @@ var initialPledgeNum = types.NewInt(110)
 var initialPledgeDen = types.NewInt(100)
 
 func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerPreCommitDepositForPower"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1019,6 +1161,10 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 }
 
 func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerInitialPledgeCollateral"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	// TODO: this repeats a lot of the previous function. Fix that.
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
@@ -1096,6 +1242,10 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 }
 
 func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateMinerAvailableBalance"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1128,6 +1278,10 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 // Returns zero if there is no entry in the data cap table for the
 // address.
 func (a *StateAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateVerifierStatus"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateGetActor(ctx, verifreg.Address, tsk)
 	if err != nil {
 		return nil, err
@@ -1159,6 +1313,10 @@ func (a *StateAPI) StateVerifierStatus(ctx context.Context, addr address.Address
 // Returns zero if there is no entry in the data cap table for the
 // address.
 func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateVerifiedClientStatus"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	act, err := a.StateGetActor(ctx, verifreg.Address, tsk)
 	if err != nil {
 		return nil, err
@@ -1187,6 +1345,10 @@ func (a *StateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.A
 }
 
 func (a *StateAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateVerifiedRegistryRootKey"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	vact, err := a.StateGetActor(ctx, verifreg.Address, tsk)
 	if err != nil {
 		return address.Undef, err
@@ -1206,6 +1368,10 @@ var dealProviderCollateralDen = types.NewInt(100)
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 // can issue. It takes the deal size and verified status as parameters.
 func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateDealProviderCollateralBounds"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1260,6 +1426,10 @@ func (a *StateAPI) StateDealProviderCollateralBounds(ctx context.Context, size a
 }
 
 func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateCirculatingSupply"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1273,6 +1443,10 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 }
 
 func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateVMCirculatingSupplyInternal"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1286,6 +1460,10 @@ func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk typ
 }
 
 func (a *StateAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StateNetworkVersion"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return network.VersionMax, xerrors.Errorf("loading tipset %s: %w", tsk, err)

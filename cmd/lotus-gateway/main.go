@@ -6,11 +6,17 @@ import (
 	"net/http"
 	"os"
 
+	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-jsonrpc"
+	"go.opencensus.io/stats/view"
+
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/metrics"
+
 	logging "github.com/ipfs/go-log"
+	"go.opencensus.io/tag"
 
 	"github.com/gorilla/mux"
 	"github.com/urfave/cli/v2"
@@ -64,6 +70,13 @@ var runCmd = &cli.Command{
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
+		// Register all metric views
+		if err := view.Register(
+			metrics.DefaultViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
+
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -78,6 +91,14 @@ var runCmd = &cli.Command{
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", NewGatewayAPI(api))
 
+		exporter, err := prometheus.NewExporter(prometheus.Options{
+			Namespace: "lotus",
+		})
+		if err != nil {
+			log.Fatalf("could not create the prometheus stats exporter: %v", err)
+		}
+
+		mux.Handle("/debug/metrics", exporter)
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux)
 
@@ -89,6 +110,7 @@ var runCmd = &cli.Command{
 		srv := &http.Server{
 			Handler: mux,
 			BaseContext: func(listener net.Listener) context.Context {
+				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-gateway"))
 				return ctx
 			},
 		}

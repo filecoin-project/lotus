@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -35,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 var log = logging.Logger("fullnode")
@@ -68,14 +70,26 @@ type ChainAPI struct {
 }
 
 func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainNotify"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
-func (m *ChainModule) ChainHead(context.Context) (*types.TipSet, error) {
+func (m *ChainModule) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainHead"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return m.Chain.GetHeaviestTipSet(), nil
 }
 
 func (a *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetRandomnessFromTickets"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	pts, err := a.Chain.LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
@@ -85,6 +99,10 @@ func (a *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.
 }
 
 func (a *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetRandomnessFromBeacon"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	pts, err := a.Chain.LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
@@ -94,14 +112,26 @@ func (a *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.T
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetBlock"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Chain.GetBlock(msg)
 }
 
 func (m *ChainModule) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetTipSet"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return m.Chain.LoadTipSet(key)
 }
 
 func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetBlockMessages"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	b, err := a.Chain.GetBlock(msg)
 	if err != nil {
 		return nil, err
@@ -130,10 +160,18 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 }
 
 func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetPath"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Chain.GetPath(ctx, from, to)
 }
 
 func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]api.Message, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetParentMessages"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
@@ -167,6 +205,10 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 }
 
 func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetParentReceipts"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
@@ -201,6 +243,10 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 }
 
 func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetTipSetByHeight"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -209,6 +255,10 @@ func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpo
 }
 
 func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainReadObj"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	blk, err := m.Chain.Blockstore().Get(obj)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
@@ -218,14 +268,26 @@ func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, er
 }
 
 func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainDeleteObj"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Chain.Blockstore().DeleteBlock(obj)
 }
 
 func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainHasObj"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return m.Chain.Blockstore().Has(obj)
 }
 
 func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainStatObj"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	bs := a.Chain.Blockstore()
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
@@ -274,6 +336,10 @@ func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) 
 }
 
 func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainSetHead"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	newHeadTs, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -302,6 +368,10 @@ func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error 
 }
 
 func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetGenesis"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	genb, err := a.Chain.GetGenesis()
 	if err != nil {
 		return nil, err
@@ -311,6 +381,10 @@ func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
 }
 
 func (a *ChainAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainTipSetWeight"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -506,6 +580,10 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 }
 
 func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetNode"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ip, err := path.ParsePath(p)
 	if err != nil {
 		return nil, xerrors.Errorf("parsing path: %w", err)
@@ -533,6 +611,10 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 }
 
 func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainGetMessage"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	cm, err := a.Chain.GetCMessage(mc)
 	if err != nil {
 		return nil, err
@@ -542,6 +624,10 @@ func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Mess
 }
 
 func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ChainExport"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)

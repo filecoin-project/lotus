@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-state-types/big"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -11,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -39,6 +41,9 @@ func (a *MsigAPI) messageBuilder(ctx context.Context, from address.Address) (mul
 // TODO: remove gp (gasPrice) from arguments
 // TODO: Add "vesting start" to arguments.
 func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigCreate"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
 
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
@@ -60,6 +65,10 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 }
 
 func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigPropose"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
@@ -80,6 +89,10 @@ func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to addr
 }
 
 func (a *MsigAPI) MsigAddPropose(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigAddPropose"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	enc, actErr := serializeAddParams(newAdd, inc)
 	if actErr != nil {
 		return cid.Undef, actErr
@@ -89,6 +102,10 @@ func (a *MsigAPI) MsigAddPropose(ctx context.Context, msig address.Address, src 
 }
 
 func (a *MsigAPI) MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigAddApprove"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	enc, actErr := serializeAddParams(newAdd, inc)
 	if actErr != nil {
 		return cid.Undef, actErr
@@ -98,6 +115,10 @@ func (a *MsigAPI) MsigAddApprove(ctx context.Context, msig address.Address, src 
 }
 
 func (a *MsigAPI) MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigAddCancel"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	enc, actErr := serializeAddParams(newAdd, inc)
 	if actErr != nil {
 		return cid.Undef, actErr
@@ -107,6 +128,10 @@ func (a *MsigAPI) MsigAddCancel(ctx context.Context, msig address.Address, src a
 }
 
 func (a *MsigAPI) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigSwapPropose"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	enc, actErr := serializeSwapParams(oldAdd, newAdd)
 	if actErr != nil {
 		return cid.Undef, actErr
@@ -116,6 +141,10 @@ func (a *MsigAPI) MsigSwapPropose(ctx context.Context, msig address.Address, src
 }
 
 func (a *MsigAPI) MsigSwapApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigSwapApprove"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	enc, actErr := serializeSwapParams(oldAdd, newAdd)
 	if actErr != nil {
 		return cid.Undef, actErr
@@ -125,6 +154,10 @@ func (a *MsigAPI) MsigSwapApprove(ctx context.Context, msig address.Address, src
 }
 
 func (a *MsigAPI) MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigSwapCancel"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	enc, actErr := serializeSwapParams(oldAdd, newAdd)
 	if actErr != nil {
 		return cid.Undef, actErr
@@ -134,18 +167,34 @@ func (a *MsigAPI) MsigSwapCancel(ctx context.Context, msig address.Address, src 
 }
 
 func (a *MsigAPI) MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigApprove"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.msigApproveOrCancelSimple(ctx, api.MsigApprove, msig, txID, src)
 }
 
 func (a *MsigAPI) MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigApproveTxnHash"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.msigApproveOrCancelTxnHash(ctx, api.MsigApprove, msig, txID, proposer, to, amt, src, method, params)
 }
 
 func (a *MsigAPI) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigCancel"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.msigApproveOrCancelTxnHash(ctx, api.MsigCancel, msig, txID, src, to, amt, src, method, params)
 }
 
 func (a *MsigAPI) MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MsigRemoveSigner"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	enc, actErr := serializeRemoveParams(toRemove, decrease)
 	if actErr != nil {
 		return cid.Undef, actErr

@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -44,15 +46,27 @@ type MpoolAPI struct {
 	PushLocks *dtypes.MpoolLocker
 }
 
-func (a *MpoolAPI) MpoolGetConfig(context.Context) (*types.MpoolConfig, error) {
+func (a *MpoolAPI) MpoolGetConfig(ctx context.Context) (*types.MpoolConfig, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolGetConfig"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Mpool.GetConfig(), nil
 }
 
 func (a *MpoolAPI) MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolSetConfig"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Mpool.SetConfig(cfg)
 }
 
 func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolSelect"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -62,6 +76,10 @@ func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQ
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolPending"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -120,19 +138,35 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 }
 
 func (a *MpoolAPI) MpoolClear(ctx context.Context, local bool) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolClear"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	a.Mpool.Clear(local)
 	return nil
 }
 
 func (m *MpoolModule) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolPush"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return m.Mpool.Push(smsg)
 }
 
 func (a *MpoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolPushUntrusted"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Mpool.PushUntrusted(smsg)
 }
 
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolPushMessage"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	cp := *msg
 	msg = &cp
 	inMsg := *msg
@@ -188,9 +222,17 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 }
 
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolGetNonce"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Mpool.GetNonce(addr)
 }
 
 func (a *MpoolAPI) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MpoolSub"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return a.Mpool.Updates(ctx)
 }

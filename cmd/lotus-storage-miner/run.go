@@ -2,16 +2,20 @@ package main
 
 import (
 	"context"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"contrib.go.opencensus.io/exporter/prometheus"
 	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -22,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/ulimit"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -65,6 +70,13 @@ var runCmd = &cli.Command{
 		}
 		defer ncloser()
 		ctx := lcli.DaemonContext(cctx)
+
+		// Register all metric views
+		if err := view.Register(
+			metrics.DefaultViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
@@ -149,6 +161,14 @@ var runCmd = &cli.Command{
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(minerapi))
 
+		exporter, err := prometheus.NewExporter(prometheus.Options{
+			Namespace: "lotus",
+		})
+		if err != nil {
+			log.Fatalf("could not create the prometheus stats exporter: %v", err)
+		}
+
+		mux.Handle("/debug/metrics", exporter)
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
@@ -158,7 +178,14 @@ var runCmd = &cli.Command{
 			Next:   mux.ServeHTTP,
 		}
 
-		srv := &http.Server{Handler: ah}
+		srv := &http.Server{
+			Handler: ah,
+			BaseContext: func(listener net.Listener) context.Context {
+				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-miner"))
+				return ctx
+			},
+		}
+
 
 		sigChan := make(chan os.Signal, 2)
 		go func() {
