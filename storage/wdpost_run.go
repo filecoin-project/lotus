@@ -181,11 +181,6 @@ func (s *WindowPoStScheduler) runSubmitPoST(
 }
 
 func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.BitField) (bitfield.BitField, error) {
-	spt, err := s.proofType.RegisteredSealProof()
-	if err != nil {
-		return bitfield.BitField{}, xerrors.Errorf("getting seal proof type: %w", err)
-	}
-
 	mid, err := address.IDFromAddress(s.actor)
 	if err != nil {
 		return bitfield.BitField{}, err
@@ -207,7 +202,7 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 		return bitfield.BitField{}, xerrors.Errorf("iterating over bitfield: %w", err)
 	}
 
-	bad, err := s.faultTracker.CheckProvable(ctx, spt, tocheck)
+	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("checking provable sectors: %w", err)
 	}
