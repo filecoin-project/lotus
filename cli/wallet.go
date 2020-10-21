@@ -13,9 +13,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	types "github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -34,6 +38,7 @@ var walletCmd = &cli.Command{
 		walletSign,
 		walletVerify,
 		walletDelete,
+		walletWithdrawMarketFunds,
 	},
 }
 
@@ -469,5 +474,93 @@ var walletDelete = &cli.Command{
 		}
 
 		return api.WalletDelete(ctx, addr)
+	},
+}
+
+var walletWithdrawMarketFunds = &cli.Command{
+	Name:      "withdraw-market-funds",
+	Usage:     "Withdraw funds from the Storage Market Actor",
+	ArgsUsage: "[amount (FIL) optional, otherwise will withdraw max available]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "address",
+			Usage:   "Specify address to withdraw funds from, otherwise it will use the default wallet address",
+			Aliases: []string{"a"},
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting node API: %w", err)
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		defAddr, err := api.WalletDefaultAddress(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting default wallet address: %w", err)
+		}
+
+		addr := defAddr
+		if cctx.String("address") != "" {
+			addr, err = address.NewFromString(cctx.String("address"))
+			if err != nil {
+				return xerrors.Errorf("parsing address: %w", err)
+			}
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		bal, err := api.StateMarketBalance(ctx, addr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting market balance for address %s: %w", addr.String(), err)
+		}
+
+		avail := big.Subtract(bal.Escrow, bal.Locked)
+		amt := avail
+
+		if cctx.Args().Present() {
+			f, err := types.ParseFIL(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("parsing 'amount' argument: %w", err)
+			}
+
+			amt = abi.TokenAmount(f)
+		}
+
+		if amt.GreaterThan(avail) {
+			return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amt, avail)
+		}
+
+		if avail.IsZero() {
+			return xerrors.Errorf("zero unlocked funds available to withdraw")
+		}
+
+		params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
+			ProviderOrClientAddress: addr,
+			Amount:                  amt,
+		})
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		fmt.Printf("Submitting WithdrawBalance message for amount %s for address %s\n", types.FIL(amt), addr.String())
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			To:     builtin.StorageMarketActorAddr,
+			From:   defAddr,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMarket.WithdrawBalance,
+			Params: params,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("submitting WithdrawBalance message: %w", err)
+		}
+
+		fmt.Printf("WithdrawBalance message cid: %s\n", smsg.Cid())
+
+		return nil
 	},
 }
