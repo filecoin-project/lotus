@@ -295,6 +295,10 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 	// TODO: Does this always error in the not-found case? Just ignoring an error return for now.
 	_ = w.keystore.Delete(KNamePrefix + tAddr)
 
+	w.lk.Lock()
+	defer w.lk.Unlock()
+	delete(w.keys, addr)
+
 	return nil
 }
 
