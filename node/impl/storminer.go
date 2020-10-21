@@ -10,6 +10,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -27,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/metrics"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
@@ -84,19 +86,35 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 	sm.StorageMgr.ServeHTTP(w, r)
 }
 
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error) {
+func (sm *StorageMinerAPI) WorkerStats(ctx context.Context) (map[uint64]storiface.WorkerStats, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "WorkerStats"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.StorageMgr.WorkerStats(), nil
 }
 
 func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[uint64][]storiface.WorkerJob, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "WorkerJobs"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.StorageMgr.WorkerJobs(), nil
 }
 
-func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
+func (sm *StorageMinerAPI) ActorAddress(ctx context.Context) (address.Address, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ActorAddress"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.Miner.Address(), nil
 }
 
 func (sm *StorageMinerAPI) MiningBase(ctx context.Context) (*types.TipSet, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MiningBase"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	mb, err := sm.BlockMiner.GetBestMiningCandidate(ctx)
 	if err != nil {
 		return nil, err
@@ -105,6 +123,10 @@ func (sm *StorageMinerAPI) MiningBase(ctx context.Context) (*types.TipSet, error
 }
 
 func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "ActorSectorSize"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	mi, err := sm.Full.StateMinerInfo(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return 0, err
@@ -113,10 +135,18 @@ func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Add
 }
 
 func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PledgeSector"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.Miner.PledgeSector()
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorsStatus"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	info, err := sm.Miner.GetSectorInfo(sid)
 	if err != nil {
 		return api.SectorInfo{}, err
@@ -202,7 +232,11 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 }
 
 // List all staged sectors
-func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, error) {
+func (sm *StorageMinerAPI) SectorsList(ctx context.Context) ([]abi.SectorNumber, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorsList"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	sectors, err := sm.Miner.ListSectors()
 	if err != nil {
 		return nil, err
@@ -216,10 +250,18 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 }
 
 func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StorageLocal"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.StorageMgr.StorageLocal(ctx)
 }
 
-func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
+func (sm *StorageMinerAPI) SectorsRefs(ctx context.Context) (map[string][]api.SealedRef, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorRefs"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	// json can't handle cids as map keys
 	out := map[string][]api.SealedRef{}
 
@@ -236,14 +278,26 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 }
 
 func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StorageStat"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.StorageMgr.FsStat(ctx, id)
 }
 
 func (sm *StorageMinerAPI) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorStartSealing"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.Miner.StartPackingSector(number)
 }
 
 func (sm *StorageMinerAPI) SectorSetSealDelay(ctx context.Context, delay time.Duration) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorSetSealDelay"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	cfg, err := sm.GetSealingConfigFunc()
 	if err != nil {
 		return xerrors.Errorf("get config: %w", err)
@@ -255,6 +309,10 @@ func (sm *StorageMinerAPI) SectorSetSealDelay(ctx context.Context, delay time.Du
 }
 
 func (sm *StorageMinerAPI) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorGetSealDelay"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	cfg, err := sm.GetSealingConfigFunc()
 	if err != nil {
 		return 0, err
@@ -263,26 +321,50 @@ func (sm *StorageMinerAPI) SectorGetSealDelay(ctx context.Context) (time.Duratio
 }
 
 func (sm *StorageMinerAPI) SectorSetExpectedSealDuration(ctx context.Context, delay time.Duration) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorSetExpectedSealDuration"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.SetExpectedSealDurationFunc(delay)
 }
 
 func (sm *StorageMinerAPI) SectorGetExpectedSealDuration(ctx context.Context) (time.Duration, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorGetExpectedSealDuration"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.GetExpectedSealDurationFunc()
 }
 
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorUpdate"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
 func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorRemove"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.Miner.RemoveSector(ctx, id)
 }
 
 func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SectorMarkForUpgrade"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.Miner.MarkForUpgrade(id)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "WorkerConnect"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	w, err := connectRemoteWorker(ctx, sm, url)
 	if err != nil {
 		return xerrors.Errorf("connecting remote storage failed: %w", err)
@@ -294,10 +376,18 @@ func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error 
 }
 
 func (sm *StorageMinerAPI) SealingSchedDiag(ctx context.Context) (interface{}, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "SealingSchedDiag"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.StorageMgr.SchedDiag(ctx)
 }
 
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketImportDealData"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	fi, err := os.Open(path)
 	if err != nil {
 		return xerrors.Errorf("failed to open file: %w", err)
@@ -330,10 +420,18 @@ func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, err
 }
 
 func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]api.MarketDeal, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketListDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.listDeals(ctx)
 }
 
 func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketListRetrievalDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	var out []retrievalmarket.ProviderDealState
 	deals := sm.RetrievalProvider.ListDeals()
 
@@ -345,6 +443,10 @@ func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retr
 }
 
 func (sm *StorageMinerAPI) MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketGetDealUpdates"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	results := make(chan storagemarket.MinerDeal)
 	unsub := sm.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
 		select {
@@ -361,10 +463,18 @@ func (sm *StorageMinerAPI) MarketGetDealUpdates(ctx context.Context) (<-chan sto
 }
 
 func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketListIncompleteDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.StorageProvider.ListLocalDeals()
 }
 
 func (sm *StorageMinerAPI) MarketSetAsk(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketSetAsk"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	options := []storagemarket.StorageAskOption{
 		storagemarket.MinPieceSize(minPieceSize),
 		storagemarket.MaxPieceSize(maxPieceSize),
@@ -374,19 +484,35 @@ func (sm *StorageMinerAPI) MarketSetAsk(ctx context.Context, price types.BigInt,
 }
 
 func (sm *StorageMinerAPI) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketGetAsk"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.StorageProvider.GetAsk(), nil
 }
 
 func (sm *StorageMinerAPI) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketSetRetrievalAsk"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	sm.RetrievalProvider.SetAsk(rask)
 	return nil
 }
 
 func (sm *StorageMinerAPI) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketGetRetrievalAsk"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.RetrievalProvider.GetAsk(), nil
 }
 
 func (sm *StorageMinerAPI) MarketListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketListDataTransfers"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	inProgressChannels, err := sm.DataTransfer.InProgressChannels(ctx)
 	if err != nil {
 		return nil, err
@@ -401,6 +527,10 @@ func (sm *StorageMinerAPI) MarketListDataTransfers(ctx context.Context) ([]api.D
 }
 
 func (sm *StorageMinerAPI) MarketDataTransferUpdates(ctx context.Context) (<-chan api.DataTransferChannel, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "MarketDataTransferUpdates"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	channels := make(chan api.DataTransferChannel)
 
 	unsub := sm.DataTransfer.SubscribeToEvents(func(evt datatransfer.Event, channelState datatransfer.ChannelState) {
@@ -420,54 +550,106 @@ func (sm *StorageMinerAPI) MarketDataTransferUpdates(ctx context.Context) (<-cha
 }
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsList"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.listDeals(ctx)
 }
 
 func (sm *StorageMinerAPI) RetrievalDealsList(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]retrievalmarket.ProviderDealState, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "RetrievalDealsList"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.RetrievalProvider.ListDeals(), nil
 }
 
 func (sm *StorageMinerAPI) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsConsiderOnlineStorageDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.ConsiderOnlineStorageDealsConfigFunc()
 }
 
 func (sm *StorageMinerAPI) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsSetConsiderOnlineStorageDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.SetConsiderOnlineStorageDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsConsiderOnlineRetrievalDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.ConsiderOnlineRetrievalDealsConfigFunc()
 }
 
 func (sm *StorageMinerAPI) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsSetConsiderOnlineRetrievalDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.SetConsiderOnlineRetrievalDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsConsiderOfflineStorageDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.ConsiderOfflineStorageDealsConfigFunc()
 }
 
 func (sm *StorageMinerAPI) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsSetConsiderOfflineStorageDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.SetConsiderOfflineStorageDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsConsiderOfflineRetrievalDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.ConsiderOfflineRetrievalDealsConfigFunc()
 }
 
 func (sm *StorageMinerAPI) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsSetConsiderOfflineRetrievalDeals"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.SetConsiderOfflineRetrievalDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsGetExpectedSealDurationFunc(ctx context.Context) (time.Duration, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsGetExpectedSealDurationFunc"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.GetExpectedSealDurationFunc()
 }
 
 func (sm *StorageMinerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context, d time.Duration) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsSetExpectedSealDurationFunc"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.SetExpectedSealDurationFunc(d)
 }
 
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsImportData"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	fi, err := os.Open(fname)
 	if err != nil {
 		return xerrors.Errorf("failed to open given file: %w", err)
@@ -478,14 +660,26 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 }
 
 func (sm *StorageMinerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsPieceCidBlocklist"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.StorageDealPieceCidBlocklistConfigFunc()
 }
 
 func (sm *StorageMinerAPI) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "DealsSetPieceCidBlocklist"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.SetStorageDealPieceCidBlocklistConfigFunc(cids)
 }
 
 func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "StorageAddLocal"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	if sm.StorageMgr == nil {
 		return xerrors.Errorf("no storage manager")
 	}
@@ -494,14 +688,26 @@ func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) err
 }
 
 func (sm *StorageMinerAPI) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PiecesListPieces"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.PieceStore.ListPieceInfoKeys()
 }
 
 func (sm *StorageMinerAPI) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PiecesListCidInfos"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return sm.PieceStore.ListCidInfoKeys()
 }
 
 func (sm *StorageMinerAPI) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PiecesGetPieceInfo"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	pi, err := sm.PieceStore.GetPieceInfo(pieceCid)
 	if err != nil {
 		return nil, err
@@ -510,6 +716,10 @@ func (sm *StorageMinerAPI) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.
 }
 
 func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "PiecesGetCIDInfo"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	ci, err := sm.PieceStore.GetCIDInfo(payloadCid)
 	if err != nil {
 		return nil, err
@@ -519,6 +729,10 @@ func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.
 }
 
 func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Endpoint, "CreateBackup"))
+	stop := metrics.Timer(ctx, metrics.APIRequestDuration)
+	defer stop()
+
 	return backup(sm.DS, fpath)
 }
 
