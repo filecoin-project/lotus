@@ -272,12 +272,16 @@ func (w *LocalWallet) WalletHas(ctx context.Context, addr address.Address) (bool
 
 func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
 	k, err := w.findKey(addr)
+
 	if err != nil {
 		return xerrors.Errorf("failed to delete key %s : %w", addr, err)
 	}
 	if k == nil {
 		return nil // already not there
 	}
+
+	w.lk.Lock()
+	defer w.lk.Unlock()
 
 	if err := w.keystore.Put(KTrashPrefix+k.Address.String(), k.KeyInfo); err != nil {
 		return xerrors.Errorf("failed to mark key %s as trashed: %w", addr, err)
@@ -294,6 +298,8 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 
 	// TODO: Does this always error in the not-found case? Just ignoring an error return for now.
 	_ = w.keystore.Delete(KNamePrefix + tAddr)
+
+	delete(w.keys, addr)
 
 	return nil
 }
