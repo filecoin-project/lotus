@@ -5,8 +5,20 @@ import (
 	"os"
 	"sort"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/lotus/api"
+	lcli "github.com/filecoin-project/lotus/cli"
 )
+
+// FullAPI is a JSON-RPC client targeting a full node. It's initialized in a
+// cli.BeforeFunc.
+var FullAPI api.FullNode
+
+// Closer is the closer for the JSON-RPC client, which must be called on
+// cli.AfterFunc.
+var Closer jsonrpc.ClientCloser
 
 // DefaultLotusRepoPath is where the fallback path where to look for a Lotus
 // client repo. It is expanded with mitchellh/go-homedir, so it'll work with all
@@ -23,7 +35,7 @@ var repoFlag = cli.StringFlag{
 func main() {
 	app := &cli.App{
 		Name: "tvx",
-		Description: `tvx is a tool for extracting and executing test vectors. It has three subcommands.
+		Description: `tvx is a tool for extracting and executing test vectors. It has four subcommands.
 
    tvx extract extracts a test vector from a live network. It requires access to
    a Filecoin client that exposes the standard JSON-RPC API endpoint. Only
@@ -34,6 +46,15 @@ func main() {
 
    tvx extract-many performs a batch extraction of many messages, supplied in a
    CSV file. Refer to the help of that subcommand for more info.
+
+   tvx project projects an existing test vector against a different protocol
+   version, reporting the result, optionally appending a new variant to the
+   vector in place if deemed equivalent, or producing a new vector if
+   non-equivalent.
+
+   tvx simulate takes a raw message and simulates it on top of the supplied
+   epoch, reporting the result on stderr and writing a test vector on stdout
+   or into the specified file.
 
    SETTING THE JSON-RPC API ENDPOINT
 
@@ -57,7 +78,10 @@ func main() {
 			extractCmd,
 			execCmd,
 			extractManyCmd,
+			simulateCmd,
 		},
+		Before: initialize,
+		After:  destroy,
 	}
 
 	sort.Sort(cli.CommandsByName(app.Commands))
@@ -68,4 +92,28 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func initialize(c *cli.Context) error {
+	// LOTUS_DISABLE_VM_BUF disables what's called "VM state tree buffering",
+	// which stashes write operations in a BufferedBlockstore
+	// (https://github.com/filecoin-project/lotus/blob/b7a4dbb07fd8332b4492313a617e3458f8003b2a/lib/bufbstore/buf_bstore.go#L21)
+	// such that they're not written until the VM is actually flushed.
+	//
+	// For some reason, the standard behaviour was not working for me (raulk),
+	// and disabling it (such that the state transformations are written immediately
+	// to the blockstore) worked.
+	_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
+
+	// Make the API client.
+	var err error
+	FullAPI, Closer, err = lcli.GetFullNodeAPI(c)
+	return err
+}
+
+func destroy(_ *cli.Context) error {
+	if Closer != nil {
+		Closer()
+	}
+	return nil
 }
