@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	peer "github.com/libp2p/go-libp2p-core/peer"
@@ -224,8 +225,7 @@ func (sbs *syncBucketSet) Empty() bool {
 }
 
 type syncTargetBucket struct {
-	tips  []*types.TipSet
-	count int
+	tips []*types.TipSet
 }
 
 func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
@@ -244,7 +244,6 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 }
 
 func (stb *syncTargetBucket) add(ts *types.TipSet) {
-	stb.count++
 
 	for _, t := range stb.tips {
 		if t.Equals(ts) {
@@ -294,6 +293,7 @@ func (sm *syncManager) selectSyncTarget() (*types.TipSet, error) {
 }
 
 func (sm *syncManager) syncScheduler() {
+	t := time.NewTicker(10 * time.Second)
 
 	for {
 		select {
@@ -311,6 +311,16 @@ func (sm *syncManager) syncScheduler() {
 		case <-sm.stop:
 			log.Info("sync scheduler shutting down")
 			return
+		case <-t.C:
+			activeSyncs := make([]types.TipSetKey, len(sm.activeSyncs), 0)
+			for tsk := range sm.activeSyncs {
+				activeSyncs = append(activeSyncs, tsk)
+			}
+			sort.Slice(activeSyncs, func(i, j int) bool {
+				return string(activeSyncs[i].Bytes()) < string(activeSyncs[j].Bytes())
+			})
+
+			log.Infof("activeSyncs: %v, ", activeSyncs)
 		}
 	}
 }
@@ -376,7 +386,9 @@ func (sm *syncManager) scheduleProcessResult(res *syncResult) {
 				sm.nextSyncTarget = relbucket
 				sm.workerChan = sm.syncTargets
 			} else {
-				sm.syncQueue.buckets = append(sm.syncQueue.buckets, relbucket)
+				for _, t := range relbucket.tips {
+					sm.syncQueue.Insert(t)
+				}
 			}
 			return
 		}
