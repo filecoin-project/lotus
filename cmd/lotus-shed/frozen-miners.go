@@ -10,9 +10,9 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var borkedMinersCmd = &cli.Command{
-	Name:        "borked-miners",
-	Description: "information about 'borked' miner actors with late or frozen deadline crons",
+var frozenMinersCmd = &cli.Command{
+	Name:        "frozen-miners",
+	Description: "information about miner actors with late or frozen deadline crons",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tipset",
