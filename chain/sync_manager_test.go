@@ -80,12 +80,14 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 	t.Logf("c1: %s", c1)
 	c2 := mock.TipSet(mock.MkBlock(b2, 1, 5))
 	t.Logf("c2: %s", c2)
+	d1 := mock.TipSet(mock.MkBlock(c1, 1, 6))
+	t.Logf("d1: %s", d1)
+	e1 := mock.TipSet(mock.MkBlock(d1, 1, 7))
+	t.Logf("e1: %s", e1)
 
 	runSyncMgrTest(t, "edgeCase", 1, func(t *testing.T, sm *syncManager, stc chan *syncOp) {
 		sm.SetPeerHead(ctx, "peer1", a)
 		assertGetSyncOp(t, stc, a)
-		time.Sleep(10 * time.Millisecond)
-		t.Logf("bootstate: %d", sm.bootstrapState)
 
 		sm.SetPeerHead(ctx, "peer1", b1)
 		sm.SetPeerHead(ctx, "peer1", b2)
@@ -96,7 +98,6 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 		if !b1op.ts.Equals(b1) {
 			b1op, b2op = b2op, b1op
 		}
-		t.Logf("activeSyncs: %s: activeSyncTips: %s", sm.activeSyncs, sm.activeSyncTips.String())
 
 		sm.SetPeerHead(ctx, "peer2", c2) // c2 is put into activeSyncTips at index 0
 		sm.SetPeerHead(ctx, "peer2", c1) // c1 is put into activeSyncTips at index 1
@@ -106,26 +107,27 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 		b1op.done() // b1 completes first, is related to a, so it pops activeSyncTips index 0
 		// even though correct one is index 1
 
-		time.Sleep(100 * time.Millisecond)
-		t.Logf("activeSyncs: %s: activeSyncTips: %s", sm.activeSyncs, sm.activeSyncTips.String())
 		b2op.done()
 		// b2 completes and is not related to c1, so it leaves activeSyncTips as it is
-		for i := 0; i < 10; {
-			select {
-			case so := <-stc:
-				so.done()
-			default:
-				i++
-				time.Sleep(10 * time.Millisecond)
-			}
-		}
 
-		time.Sleep(10 * time.Millisecond)
+		waitUntilAllWorkersAreDone(stc)
+
 		if len(sm.activeSyncTips.buckets) != 0 {
 			t.Errorf("activeSyncTips expected empty but got: %s", sm.activeSyncTips.String())
 		}
-		t.Logf("activeSyncs: %s: activeSyncTips: %s", sm.activeSyncs, sm.activeSyncTips.String())
 	})
+}
+
+func waitUntilAllWorkersAreDone(stc chan *syncOp) {
+	for i := 0; i < 10; {
+		select {
+		case so := <-stc:
+			so.done()
+		default:
+			i++
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 }
 
 func TestSyncManager(t *testing.T) {

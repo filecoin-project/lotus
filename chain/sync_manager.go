@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	peer "github.com/libp2p/go-libp2p-core/peer"
@@ -212,16 +211,12 @@ func (sbs *syncBucketSet) removeBucket(toremove *syncTargetBucket) {
 	sbs.buckets = nbuckets
 }
 
-func (sbs *syncBucketSet) PopRelated(ts *types.TipSet) *syncTargetBucket {
-	var bOut *syncTargetBucket
+func (sbs *syncBucketSet) PopRelated(ts *types.TipSet) []*syncTargetBucket {
+	var bOut []*syncTargetBucket
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
-			if bOut == nil {
-				sbs.removeBucket(b)
-				bOut = b
-			} else {
-				log.Errorf("REPORT THIS more that one related bucket for %s", ts)
-			}
+			sbs.removeBucket(b)
+			bOut = append(bOut, b)
 		}
 	}
 	return bOut
@@ -312,8 +307,6 @@ func (sm *syncManager) selectSyncTarget() (*types.TipSet, error) {
 }
 
 func (sm *syncManager) syncScheduler() {
-	t := time.NewTicker(10 * time.Second)
-
 	for {
 		select {
 		case ts, ok := <-sm.incomingTipSets:
@@ -330,16 +323,6 @@ func (sm *syncManager) syncScheduler() {
 		case <-sm.stop:
 			log.Info("sync scheduler shutting down")
 			return
-		case <-t.C:
-			activeSyncs := make([]types.TipSetKey, 0, len(sm.activeSyncs))
-			for tsk := range sm.activeSyncs {
-				activeSyncs = append(activeSyncs, tsk)
-			}
-			sort.Slice(activeSyncs, func(i, j int) bool {
-				return string(activeSyncs[i].Bytes()) < string(activeSyncs[j].Bytes())
-			})
-
-			log.Infof("activeSyncs: %v, activeSyncTips: %s ", activeSyncs, sm.activeSyncTips.String())
 		}
 	}
 }
@@ -399,14 +382,17 @@ func (sm *syncManager) scheduleProcessResult(res *syncResult) {
 	}
 
 	delete(sm.activeSyncs, res.ts.Key())
-	relbucket := sm.activeSyncTips.PopRelated(res.ts)
-	if relbucket != nil {
+	relbuckets := sm.activeSyncTips.PopRelated(res.ts)
+	if len(relbuckets) != 0 {
 		if res.success {
 			if sm.nextSyncTarget == nil {
-				sm.nextSyncTarget = relbucket
+				sm.nextSyncTarget = relbuckets[0]
 				sm.workerChan = sm.syncTargets
-			} else {
-				for _, t := range relbucket.tips {
+				relbuckets = relbuckets[1:]
+			}
+
+			for _, b := range relbuckets {
+				for _, t := range b.tips {
 					sm.syncQueue.Insert(t)
 				}
 			}
