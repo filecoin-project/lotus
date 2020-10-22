@@ -507,12 +507,12 @@ var runCmd = &cli.Command{
 			blockmap:                   blockmap,
 		}
 
-		var refunds *MinersRefund = NewMinersRefund()
-		var rounds int = 0
+		var refunds = NewMinersRefund()
+		var rounds = 0
 		nextMinerRecovery := r.MinerRecoveryHeight() + minerRecoveryPeriod
 
 		for tipset := range tipsetsCh {
-			for k, _ := range rf.blockmap {
+			for k := range rf.blockmap {
 				fmt.Printf("%s\n", k)
 			}
 
