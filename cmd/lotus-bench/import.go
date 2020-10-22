@@ -97,7 +97,7 @@ var importBenchCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		metricsprometheus.Inject()
+		metricsprometheus.Inject() //nolint:errcheck
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 		if !cctx.Args().Present() {
 			fmt.Println("must pass car file of chain to benchmark importing")
@@ -331,8 +331,8 @@ var importBenchCmd = &cli.Command{
 				return err
 			}
 
-			io.Copy(metricsfi, resp.Body)
-			metricsfi.Close()
+			io.Copy(metricsfi, resp.Body) //nolint:errcheck
+			metricsfi.Close()             //nolint:errcheck
 		}
 
 		return nil
