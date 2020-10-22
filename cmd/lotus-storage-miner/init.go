@@ -603,8 +603,6 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 }
 
 func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, gasPrice types.BigInt, cctx *cli.Context) (address.Address, error) {
-	log.Info("Creating StorageMarket.CreateStorageMiner message")
-
 	var err error
 	var owner address.Address
 	if cctx.String("owner") != "" {
@@ -627,9 +625,32 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	} else if cctx.Bool("create-worker-key") { // TODO: Do we need to force this if owner is Secpk?
 		worker, err = api.WalletNew(ctx, types.KTBLS)
 	}
-	// TODO: Transfer some initial funds to worker
 	if err != nil {
-		return address.Undef, err
+		return address.Address{}, err
+	}
+
+	// make sure the worker account exists on chain
+	_, err = api.StateLookupID(ctx, worker, types.EmptyTSK)
+	if err != nil {
+		signed, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:  owner,
+			To:    worker,
+			Value: types.NewInt(0),
+		}, nil)
+		if err != nil {
+			return address.Undef, xerrors.Errorf("push worker init: %w", err)
+		}
+
+		log.Infof("Initializing worker account %s, message: %s", worker, signed.Cid())
+		log.Infof("Waiting for confirmation")
+
+		mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence)
+		if err != nil {
+			return address.Undef, xerrors.Errorf("waiting for worker init: %w", err)
+		}
+		if mw.Receipt.ExitCode != 0 {
+			return address.Undef, xerrors.Errorf("initializing worker account failed: exit code %d", mw.Receipt.ExitCode)
+		}
 	}
 
 	spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(ssize))
@@ -670,15 +691,15 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 
 	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, xerrors.Errorf("pushing createMiner message: %w", err)
 	}
 
-	log.Infof("Pushed StorageMarket.CreateStorageMiner, %s to Mpool", signed.Cid())
+	log.Infof("Pushed CreateMiner message: %s", signed.Cid())
 	log.Infof("Waiting for confirmation")
 
 	mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, xerrors.Errorf("waiting for createMiner message: %w", err)
 	}
 
 	if mw.Receipt.ExitCode != 0 {
