@@ -37,6 +37,7 @@
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
   * [ClientGetDealInfo](#ClientGetDealInfo)
+  * [ClientGetDealStatus](#ClientGetDealStatus)
   * [ClientGetDealUpdates](#ClientGetDealUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
@@ -195,7 +196,7 @@
   * [WalletSignMessage](#WalletSignMessage)
   * [WalletValidateAddress](#WalletValidateAddress)
   * [WalletVerify](#WalletVerify)
-## 
+##
 
 
 ### Closing
@@ -971,6 +972,21 @@ Response:
   "Verified": true
 }
 ```
+
+### ClientGetDealStatus
+ClientGetDealStatus returns status given a code
+
+
+Perms:
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response: `"string value"`
 
 ### ClientGetDealUpdates
 ClientGetDealUpdates returns the status of updated deals
