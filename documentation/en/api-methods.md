@@ -70,6 +70,9 @@
   * [MinerCreateBlock](#MinerCreateBlock)
   * [MinerGetBaseInfo](#MinerGetBaseInfo)
 * [Mpool](#Mpool)
+  * [MpoolBatchPush](#MpoolBatchPush)
+  * [MpoolBatchPushMessage](#MpoolBatchPushMessage)
+  * [MpoolBatchPushUntrusted](#MpoolBatchPushUntrusted)
   * [MpoolClear](#MpoolClear)
   * [MpoolGetConfig](#MpoolGetConfig)
   * [MpoolGetNonce](#MpoolGetNonce)
@@ -1696,6 +1699,54 @@ Response:
 The Mpool methods are for interacting with the message pool. The message pool
 manages all incoming and outgoing 'messages' going over the network.
 
+
+### MpoolBatchPush
+MpoolBatchPush batch pushes a signed message to mempool.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response: `null`
+
+### MpoolBatchPushMessage
+MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  null,
+  {
+    "MaxFee": "0"
+  }
+]
+```
+
+Response: `null`
+
+### MpoolBatchPushUntrusted
+MpoolBatchPushUntrusted batch pushes a signed message to mempool from untrusted sources.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response: `null`
 
 ### MpoolClear
 MpoolClear clears pending messages from the mpool
