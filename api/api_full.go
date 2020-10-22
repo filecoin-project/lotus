@@ -157,6 +157,10 @@ type FullNode interface {
 
 	// SyncSubmitBlock can be used to submit a newly created block to the.
 	// network through this node
+	// FIXME: Rename: remove the `Sync` prefix. We just submit the block,
+	//  whether we end up syncing to it or not will depend on its own merits.
+	// FIXME: Consider submitting an actual block (not a `BlockMsg`) to make
+	//  the process more straightforward.
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
 
 	// SyncIncomingBlocks returns a channel streaming incoming, potentially not

@@ -77,16 +77,13 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		SecpkMessages: smsgs,
 	}
 
+	// FIXME: `ValidateMsgMeta` and `InformNewBlock` should be more closely related.
 	if err := a.Syncer.ValidateMsgMeta(fb); err != nil {
 		return xerrors.Errorf("provided messages did not match block: %w", err)
 	}
 
-	ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
-	if err != nil {
-		return xerrors.Errorf("somehow failed to make a tipset out of a single block: %w", err)
-	}
-	if err := a.Syncer.Sync(ctx, ts); err != nil {
-		return xerrors.Errorf("sync to submitted block failed: %w", err)
+	if !a.Syncer.InformNewBlock(a.Syncer.LocalPeer(), fb) {
+		return xerrors.Errorf("submitted block was rejected to be synced: %s", blk.Header.Cid())
 	}
 
 	b, err := blk.Serialize()
@@ -94,6 +91,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
 	}
 
+	// We are publishing a block that we may not have actually synced to.
 	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
 }
 
