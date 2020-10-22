@@ -489,7 +489,7 @@ func interactiveDeal(cctx *cli.Context) error {
 	var dur time.Duration
 	var epochs abi.ChainEpoch
 	var verified bool
-	var ds lapi.DataSize
+	var ds lapi.DataCIDSize
 
 	// find
 	var candidateAsks []*storagemarket.StorageAsk
@@ -553,7 +553,7 @@ uiLoop:
 			}
 
 			color.Blue(".. calculating data size\n")
-			ds, err = api.ClientDealSize(ctx, data)
+			ds, err = api.ClientDealPieceCID(ctx, data)
 			if err != nil {
 				return err
 			}
@@ -843,6 +843,9 @@ uiLoop:
 					Data: &storagemarket.DataRef{
 						TransferType: storagemarket.TTGraphsync,
 						Root:         data,
+
+						PieceCid:  &ds.PieceCID,
+						PieceSize: ds.PieceSize.Unpadded(),
 					},
 					Wallet:            a,
 					Miner:             maddr,
