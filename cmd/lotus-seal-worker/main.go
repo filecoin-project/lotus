@@ -18,6 +18,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -34,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -189,6 +192,13 @@ var runCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
+
+		// Register all metric views
+		if err := view.Register(
+			metrics.DefaultViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
@@ -363,7 +373,7 @@ var runCmd = &cli.Command{
 
 		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 		rpcServer := jsonrpc.NewServer(readerServerOpt)
-		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(workerApi))
+		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(metrics.MetricedWorkerAPI(workerApi)))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
@@ -378,6 +388,7 @@ var runCmd = &cli.Command{
 		srv := &http.Server{
 			Handler: ah,
 			BaseContext: func(listener net.Listener) context.Context {
+				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
 				return ctx
 			},
 		}
