@@ -16,6 +16,8 @@ import (
 
 var zero = types.NewInt(0)
 
+// Compute the weight of this `TipSet` based on its `ParentWeight()`
+// and FIXME: COMPLETE THIS SENTENCE.
 func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
 	if ts == nil {
 		return types.NewInt(0), nil

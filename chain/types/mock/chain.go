@@ -65,7 +65,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 		pcids = parents.Cids()
 		height = parents.Height() + 1
 		timestamp = parents.MinTimestamp() + build.BlockDelaySecs
-		weight = types.BigAdd(parents.Blocks()[0].ParentWeight, weight)
+		weight = types.BigAdd(parents.ParentWeight(), weight)
 	}
 
 	return &types.BlockHeader{
