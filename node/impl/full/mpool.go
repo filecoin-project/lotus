@@ -187,6 +187,42 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	})
 }
 
+func (a *MpoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
+	var messageCids []cid.Cid
+	for _, smsg := range smsgs {
+		smsgCid, err := a.Mpool.Push(smsg)
+		if err != nil {
+			return messageCids, err
+		}
+		messageCids = append(messageCids, smsgCid)
+	}
+	return messageCids, nil
+}
+
+func (a *MpoolAPI) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
+	var messageCids []cid.Cid
+	for _, smsg := range smsgs {
+		smsgCid, err := a.Mpool.PushUntrusted(smsg)
+		if err != nil {
+			return messageCids, err
+		}
+		messageCids = append(messageCids, smsgCid)
+	}
+	return messageCids, nil
+}
+
+func (a *MpoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *api.MessageSendSpec) ([]*types.SignedMessage, error) {
+	var smsgs []*types.SignedMessage
+	for _, msg := range msgs {
+		smsg, err := a.MpoolPushMessage(ctx, msg, spec)
+		if err != nil {
+			return smsgs, err
+		}
+		smsgs = append(smsgs, smsg)
+	}
+	return smsgs, nil
+}
+
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	return a.Mpool.GetNonce(addr)
 }

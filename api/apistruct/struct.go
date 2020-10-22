@@ -131,6 +131,10 @@ type FullNodeStruct struct {
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                                    `perm:"read"`
 		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                                     `perm:"read"`
 
+		MpoolBatchPush          func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
+		MpoolBatchPushUntrusted func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
+		MpoolBatchPushMessage   func(ctx context.Context, msgs []*types.Message, spec *api.MessageSendSpec) ([]*types.SignedMessage, error) `perm:"sign"`
+
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
 
@@ -614,6 +618,18 @@ func (c *FullNodeStruct) MpoolPushUntrusted(ctx context.Context, smsg *types.Sig
 
 func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
 	return c.Internal.MpoolPushMessage(ctx, msg, spec)
+}
+
+func (c *FullNodeStruct) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
+	return c.Internal.MpoolBatchPush(ctx, smsgs)
+}
+
+func (c *FullNodeStruct) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
+	return c.Internal.MpoolBatchPushUntrusted(ctx, smsgs)
+}
+
+func (c *FullNodeStruct) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *api.MessageSendSpec) ([]*types.SignedMessage, error) {
+	return c.Internal.MpoolBatchPushMessage(ctx, msgs, spec)
 }
 
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
