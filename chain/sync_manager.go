@@ -211,12 +211,15 @@ func (sbs *syncBucketSet) removeBucket(toremove *syncTargetBucket) {
 	sbs.buckets = nbuckets
 }
 
-func (sbs *syncBucketSet) PopRelated(ts *types.TipSet) []*syncTargetBucket {
-	var bOut []*syncTargetBucket
+func (sbs *syncBucketSet) PopRelated(ts *types.TipSet) *syncTargetBucket {
+	var bOut *syncTargetBucket
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
 			sbs.removeBucket(b)
-			bOut = append(bOut, b)
+			if bOut == nil {
+				bOut = &syncTargetBucket{}
+			}
+			bOut.tips = append(bOut.tips, b.tips...)
 		}
 	}
 	return bOut
@@ -382,17 +385,14 @@ func (sm *syncManager) scheduleProcessResult(res *syncResult) {
 	}
 
 	delete(sm.activeSyncs, res.ts.Key())
-	relbuckets := sm.activeSyncTips.PopRelated(res.ts)
-	if len(relbuckets) != 0 {
+	relbucket := sm.activeSyncTips.PopRelated(res.ts)
+	if relbucket != nil {
 		if res.success {
 			if sm.nextSyncTarget == nil {
-				sm.nextSyncTarget = relbuckets[0]
+				sm.nextSyncTarget = relbucket
 				sm.workerChan = sm.syncTargets
-				relbuckets = relbuckets[1:]
-			}
-
-			for _, b := range relbuckets {
-				for _, t := range b.tips {
+			} else {
+				for _, t := range relbucket.tips {
 					sm.syncQueue.Insert(t)
 				}
 			}
