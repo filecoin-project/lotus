@@ -15,8 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
@@ -138,7 +137,7 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 		return cid.Undef, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
 	}
 
-	ccparams, err := actors.SerializeParams(&market0.ComputeDataCommitmentParams{
+	ccparams, err := actors.SerializeParams(&market2.ComputeDataCommitmentParams{
 		DealIDs:    deals,
 		SectorType: sectorType,
 	})
@@ -150,7 +149,7 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 		To:     market.Address,
 		From:   maddr,
 		Value:  types.NewInt(0),
-		Method: builtin0.MethodsMarket.ComputeDataCommitment,
+		Method: market.Methods.ComputeDataCommitment,
 		Params: ccparams,
 	}
 	r, err := s.delegate.StateCall(ctx, ccmt, tsk)

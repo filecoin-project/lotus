@@ -27,6 +27,21 @@ var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
 
+var (
+	ExpectedLeadersPerEpoch = builtin0.ExpectedLeadersPerEpoch
+)
+
+const (
+	EpochDurationSeconds = builtin0.EpochDurationSeconds
+	EpochsInDay          = builtin0.EpochsInDay
+	SecondsInDay         = builtin0.SecondsInDay
+)
+
+const (
+	MethodSend        = builtin2.MethodSend
+	MethodConstructor = builtin2.MethodConstructor
+)
+
 // TODO: Why does actors have 2 different versions of this?
 type SectorInfo = proof0.SectorInfo
 type PoStProof = proof0.PoStProof

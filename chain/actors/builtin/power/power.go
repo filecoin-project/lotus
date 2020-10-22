@@ -26,7 +26,10 @@ func init() {
 	})
 }
 
-var Address = builtin0.StoragePowerActorAddr
+var (
+	Address = builtin2.StoragePowerActorAddr
+	Methods = builtin2.MethodsPower
+)
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {

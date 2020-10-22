@@ -5,16 +5,17 @@ import (
 	"io"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+
+	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 )
 
 type basicContract struct{}
@@ -61,17 +62,17 @@ func (b basicContract) Exports() []interface{} {
 	}
 }
 
-func (basicContract) InvokeSomething0(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
+func (basicContract) InvokeSomething0(rt runtime2.Runtime, params *basicParams) *abi.EmptyValue {
 	rt.Abortf(exitcode.ExitCode(params.B), "params.B")
 	return nil
 }
 
-func (basicContract) BadParam(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
+func (basicContract) BadParam(rt runtime2.Runtime, params *basicParams) *abi.EmptyValue {
 	rt.Abortf(255, "bad params")
 	return nil
 }
 
-func (basicContract) InvokeSomething10(rt runtime.Runtime, params *basicParams) *abi.EmptyValue {
+func (basicContract) InvokeSomething10(rt runtime2.Runtime, params *basicParams) *abi.EmptyValue {
 	rt.Abortf(exitcode.ExitCode(params.B+10), "params.B")
 	return nil
 }

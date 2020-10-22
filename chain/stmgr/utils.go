@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -24,16 +23,16 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/rt"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -159,7 +158,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return mas.LoadSectors(snos)
 }
 
-func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof0.SectorInfo, error) {
+func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	act, err := sm.LoadActorRaw(ctx, maddr, st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -244,9 +243,9 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("loading proving sectors: %w", err)
 	}
 
-	out := make([]proof0.SectorInfo, len(sectors))
+	out := make([]builtin.SectorInfo, len(sectors))
 	for i, sinfo := range sectors {
-		out[i] = proof0.SectorInfo{
+		out[i] = builtin.SectorInfo{
 			SealProof:    spt,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,
@@ -548,8 +547,7 @@ func init() {
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
 		// Explicitly add send, it's special.
-		// Note that builtin2.MethodSend = builtin0.MethodSend = 0.
-		methods[builtin0.MethodSend] = MethodMeta{
+		methods[builtin.MethodSend] = MethodMeta{
 			Name:   "Send",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
 			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
@@ -573,11 +571,9 @@ func init() {
 			fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
 
 			switch abi.MethodNum(number) {
-			case builtin0.MethodSend:
-				// Note that builtin2.MethodSend = builtin0.MethodSend = 0.
+			case builtin.MethodSend:
 				panic("method 0 is reserved for Send")
-			case builtin0.MethodConstructor:
-				// Note that builtin2.MethodConstructor = builtin0.MethodConstructor = 1.
+			case builtin.MethodConstructor:
 				if fnName != "Constructor" {
 					panic("method 1 is reserved for Constructor")
 				}

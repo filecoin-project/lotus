@@ -12,7 +12,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -21,14 +22,14 @@ var (
 	UnixfsChunkSize     = uint64(1 << 20)
 	UnixfsLinksPerLevel = 1024
 
-	BlocksPerEpoch        = uint64(builtin.ExpectedLeadersPerEpoch)
+	BlocksPerEpoch        = uint64(builtin2.ExpectedLeadersPerEpoch)
 	BlockMessageLimit     = 512
 	BlockGasLimit         = int64(100_000_000_000)
 	BlockGasTarget        = int64(BlockGasLimit / 2)
 	BaseFeeMaxChangeDenom = int64(8) // 12.5%
 	InitialBaseFee        = int64(100e6)
 	MinimumBaseFee        = int64(100)
-	BlockDelaySecs        = uint64(builtin.EpochDurationSeconds)
+	BlockDelaySecs        = uint64(builtin2.EpochDurationSeconds)
 	PropagationDelaySecs  = uint64(6)
 
 	AllowableClockDriftSecs = uint64(1)
@@ -72,7 +73,7 @@ var (
 
 	// Actor consts
 	// TODO: Pull from actors when its made not private
-	MinDealDuration = abi.ChainEpoch(180 * builtin.EpochsInDay)
+	MinDealDuration = abi.ChainEpoch(180 * builtin2.EpochsInDay)
 
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5

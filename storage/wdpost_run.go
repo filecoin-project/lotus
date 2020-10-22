@@ -17,14 +17,13 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -290,7 +289,7 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin0.MethodsMiner.DeclareFaultsRecovered,
+		Method: miner.Methods.DeclareFaultsRecovered,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}
@@ -374,7 +373,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin0.MethodsMiner.DeclareFaults,
+		Method: miner.Methods.DeclareFaults,
 		Params: enc,
 		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
@@ -505,12 +504,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 		skipCount := uint64(0)
 		postSkipped := bitfield.New()
-		var postOut []proof.PoStProof
+		var postOut []proof2.PoStProof
 		somethingToProve := true
 
 		for retries := 0; retries < 5; retries++ {
 			var partitions []miner.PoStPartition
-			var sinfos []proof.SectorInfo
+			var sinfos []proof2.SectorInfo
 			for partIdx, partition := range batch {
 				// TODO: Can do this in parallel
 				toProve, err := bitfield.SubtractBitField(partition.LiveSectors, partition.FaultySectors)
@@ -625,12 +624,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 }
 
 func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition) ([][]api.Partition, error) {
-	// Get the number of sectors allowed in a partition, for this proof size
-	sectorsPerPartition, err := builtin0.PoStProofWindowPoStPartitionSectors(s.proofType)
-	if err != nil {
-		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
-	}
-
 	// We don't want to exceed the number of sectors allowed in a message.
 	// So given the number of sectors in a partition, work out the number of
 	// partitions that can be in a message without exceeding sectors per
@@ -641,9 +634,10 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition) ([][]a
 	// sectors per partition    3:  ooo
 	// partitions per message   2:  oooOOO
 	//                              <1><2> (3rd doesn't fit)
-	// TODO(NETUPGRADE): we're going to need some form of policy abstraction
-	// where we can get policy from the future. Unfortunately, we can't just get this from the state.
-	partitionsPerMsg := int(miner0.AddressedSectorsMax / sectorsPerPartition)
+	partitionsPerMsg, err := policy.GetMaxPoStPartitions(s.proofType)
+	if err != nil {
+		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
+	}
 
 	// The number of messages will be:
 	// ceiling(number of partitions / partitions per message)
@@ -665,7 +659,7 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition) ([][]a
 	return batches, nil
 }
 
-func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, allSectors bitfield.BitField, ts *types.TipSet) ([]proof.SectorInfo, error) {
+func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, allSectors bitfield.BitField, ts *types.TipSet) ([]proof2.SectorInfo, error) {
 	sset, err := s.api.StateMinerSectors(ctx, s.actor, &goodSectors, ts.Key())
 	if err != nil {
 		return nil, err
@@ -675,22 +669,22 @@ func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, 
 		return nil, nil
 	}
 
-	substitute := proof.SectorInfo{
+	substitute := proof2.SectorInfo{
 		SectorNumber: sset[0].SectorNumber,
 		SealedCID:    sset[0].SealedCID,
 		SealProof:    sset[0].SealProof,
 	}
 
-	sectorByID := make(map[uint64]proof.SectorInfo, len(sset))
+	sectorByID := make(map[uint64]proof2.SectorInfo, len(sset))
 	for _, sector := range sset {
-		sectorByID[uint64(sector.SectorNumber)] = proof.SectorInfo{
+		sectorByID[uint64(sector.SectorNumber)] = proof2.SectorInfo{
 			SectorNumber: sector.SectorNumber,
 			SealedCID:    sector.SealedCID,
 			SealProof:    sector.SealProof,
 		}
 	}
 
-	proofSectors := make([]proof.SectorInfo, 0, len(sset))
+	proofSectors := make([]proof2.SectorInfo, 0, len(sset))
 	if err := allSectors.ForEach(func(sectorNo uint64) error {
 		if info, found := sectorByID[sectorNo]; found {
 			proofSectors = append(proofSectors, info)
@@ -719,7 +713,7 @@ func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.Submi
 	msg := &types.Message{
 		To:     s.actor,
 		From:   s.worker,
-		Method: builtin0.MethodsMiner.SubmitWindowedPoSt,
+		Method: miner.Methods.SubmitWindowedPoSt,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}

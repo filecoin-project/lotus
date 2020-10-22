@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -15,8 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -259,7 +258,7 @@ func gasEstimateGasLimit(
 	if !builtin.IsPaymentChannelActor(act.Code) {
 		return res.MsgRct.GasUsed, nil
 	}
-	if msgIn.Method != builtin0.MethodsPaych.Collect {
+	if msgIn.Method != paych.Methods.Collect {
 		return res.MsgRct.GasUsed, nil
 	}
 

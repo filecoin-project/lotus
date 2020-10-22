@@ -8,7 +8,7 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 func TestSectorInfoSelialization(t *testing.T) {
@@ -22,7 +22,7 @@ func TestSectorInfoSelialization(t *testing.T) {
 		},
 	}
 
-	dummyCid := builtin.AccountActorCodeID
+	dummyCid := builtin2.AccountActorCodeID
 
 	si := &SectorInfo{
 		State:        "stateful",

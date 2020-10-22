@@ -23,7 +23,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -391,9 +391,9 @@ func (bv *BlockValidator) isChainNearSynced() bool {
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
 	// TODO there has to be a simpler way to do this without the blockstore dance
 	// block headers use adt0
-	store := adt0.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTemporary()))
-	bmArr := adt0.MakeEmptyArray(store)
-	smArr := adt0.MakeEmptyArray(store)
+	store := blockadt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTemporary()))
+	bmArr := blockadt.MakeEmptyArray(store)
+	smArr := blockadt.MakeEmptyArray(store)
 
 	for i, m := range msg.BlsMessages {
 		c := cbg.CborCid(m)

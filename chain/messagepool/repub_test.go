@@ -5,11 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-datastore"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/ipfs/go-datastore"
 )
 
 func TestRepubMessages(t *testing.T) {
@@ -48,7 +50,7 @@ func TestRepubMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 

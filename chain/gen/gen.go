@@ -8,13 +8,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	"github.com/google/uuid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/google/uuid"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -25,6 +23,8 @@ import (
 	"github.com/ipld/go-car"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -50,7 +50,7 @@ const msgsPerBlock = 20
 //nolint:deadcode,varcheck
 var log = logging.Logger("gen")
 
-var ValidWpostForTesting = []proof.PoStProof{{
+var ValidWpostForTesting = []proof2.PoStProof{{
 	ProofBytes: []byte("valid proof"),
 }}
 
@@ -467,7 +467,7 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessages(base *types.TipSet, miners 
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
 	eticket *types.ElectionProof, bvals []types.BeaconEntry, height abi.ChainEpoch,
-	wpost []proof.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+	wpost []proof2.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	var ts uint64
 	if cg.Timestamper != nil {
@@ -605,7 +605,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 
 type WinningPoStProver interface {
 	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
-	ComputeProof(context.Context, []proof.SectorInfo, abi.PoStRandomness) ([]proof.PoStProof, error)
+	ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error)
 }
 
 type wppProvider struct{}
@@ -614,7 +614,7 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 	return []uint64{0}, nil
 }
 
-func (wpp *wppProvider) ComputeProof(context.Context, []proof.SectorInfo, abi.PoStRandomness) ([]proof.PoStProof, error) {
+func (wpp *wppProvider) ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) {
 	return ValidWpostForTesting, nil
 }
 
@@ -681,15 +681,15 @@ type genFakeVerifier struct{}
 
 var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
 
-func (m genFakeVerifier) VerifySeal(svi proof.SealVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 
-func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 
