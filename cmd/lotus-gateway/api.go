@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -22,7 +23,7 @@ import (
 )
 
 const (
-	LookbackCap            = time.Hour * 12
+	LookbackCap            = time.Hour * 24
 	stateWaitLookbackLimit = abi.ChainEpoch(20)
 )
 
@@ -33,6 +34,8 @@ var (
 // gatewayDepsAPI defines the API methods that the GatewayAPI depends on
 // (to make it easy to mock for tests)
 type gatewayDepsAPI interface {
+	Version(context.Context) (api.Version, error)
+
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
@@ -57,6 +60,7 @@ type gatewayDepsAPI interface {
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 }
 
 type GatewayAPI struct {
@@ -112,6 +116,10 @@ func (a *GatewayAPI) checkTimestamp(at time.Time) error {
 	}
 
 	return nil
+}
+
+func (a *GatewayAPI) Version(ctx context.Context) (api.Version, error) {
+	return a.api.Version(ctx)
 }
 
 func (a *GatewayAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
@@ -293,6 +301,13 @@ func (a *GatewayAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk t
 		return api.CirculatingSupply{}, err
 	}
 	return a.api.StateVMCirculatingSupplyInternal(ctx, tsk)
+}
+
+func (a *GatewayAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return 0, err
+	}
+	return a.api.StateNetworkVersion(ctx, tsk)
 }
 
 func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
