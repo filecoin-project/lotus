@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -151,6 +152,19 @@ func newSyncTargetBucket(tipsets ...*types.TipSet) *syncTargetBucket {
 		stb.add(ts)
 	}
 	return &stb
+}
+
+func (sbs *syncBucketSet) String() string {
+	var bStrings []string
+	for _, b := range sbs.buckets {
+		var tsStrings []string
+		for _, t := range b.tips {
+			tsStrings = append(tsStrings, t.String())
+		}
+		bStrings = append(bStrings, "["+strings.Join(tsStrings, ",")+"]")
+	}
+
+	return "{" + strings.Join(bStrings, ";") + "}"
 }
 
 func (sbs *syncBucketSet) RelatedToAny(ts *types.TipSet) bool {
@@ -325,7 +339,7 @@ func (sm *syncManager) syncScheduler() {
 				return string(activeSyncs[i].Bytes()) < string(activeSyncs[j].Bytes())
 			})
 
-			log.Infof("activeSyncs: %v, ", activeSyncs)
+			log.Infof("activeSyncs: %v, activeSyncTips: %s ", activeSyncs, sm.activeSyncTips.String())
 		}
 	}
 }
@@ -341,7 +355,8 @@ func (sm *syncManager) scheduleIncoming(ts *types.TipSet) {
 	var relatedToActiveSync bool
 	for _, acts := range sm.activeSyncs {
 		if ts.Equals(acts) {
-			break
+			// ignore, we are already syncing it
+			return
 		}
 
 		if ts.Parents() == acts.Key() {
