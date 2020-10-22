@@ -3,6 +3,7 @@ package sectorstorage
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"math/rand"
 	"sort"
 	"sync"
@@ -80,6 +81,11 @@ type workerHandle struct {
 	w Worker
 
 	info storiface.WorkerInfo
+
+	acceptTasks map[sealtasks.TaskType]struct{}
+
+	path []stores.StoragePath
+
 
 	preparing *activeResources
 	active    *activeResources
