@@ -156,6 +156,7 @@ type FullNodeStruct struct {
 		ClientMinerQueryOffer                     func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error)            `perm:"read"`
 		ClientStartDeal                           func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                                          `perm:"admin"`
 		ClientGetDealInfo                         func(context.Context, cid.Cid) (*api.DealInfo, error)                                                             `perm:"read"`
+		ClientGetDealStatus                       func(context.Context, uint64) (string, error)                                                                     `perm:"read"`
 		ClientListDeals                           func(ctx context.Context) ([]api.DealInfo, error)                                                                 `perm:"write"`
 		ClientGetDealUpdates                      func(ctx context.Context) (<-chan api.DealInfo, error)                                                            `perm:"read"`
 		ClientRetrieve                            func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                                       `perm:"admin"`
@@ -514,6 +515,10 @@ func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, params *api.StartD
 
 func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*api.DealInfo, error) {
 	return c.Internal.ClientGetDealInfo(ctx, deal)
+}
+
+func (c *FullNodeStruct) ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error) {
+	return c.Internal.ClientGetDealStatus(ctx, statusCode)
 }
 
 func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {

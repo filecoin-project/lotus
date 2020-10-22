@@ -878,3 +878,12 @@ func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
 func (a *API) ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error {
 	return a.Retrieval.TryRestartInsufficientFunds(paymentChannel)
 }
+
+func (a *API) ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error) {
+	ststr, ok := storagemarket.DealStates[statusCode]
+	if !ok {
+		return "", fmt.Errorf("no such deal state %d", statusCode)
+	}
+
+	return ststr, nil
+}
