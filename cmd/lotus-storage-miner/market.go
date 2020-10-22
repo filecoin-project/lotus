@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,8 +14,10 @@ import (
 
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -569,6 +572,128 @@ var dataTransfersCmd = &cli.Command{
 	Usage: "Manage data transfers",
 	Subcommands: []*cli.Command{
 		transfersListCmd,
+		marketRestartTransfer,
+		marketCancelTransfer,
+	},
+}
+
+var marketRestartTransfer = &cli.Command{
+	Name:  "restart",
+	Usage: "Force restart a stalled data transfer",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "peerid",
+			Usage: "narrow to transfer with specific peer",
+		},
+		&cli.BoolFlag{
+			Name:  "initiator",
+			Usage: "specify only transfers where peer is/is not initiator",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return fmt.Errorf("Error reading transfer ID: %w", err)
+		}
+		transferID := datatransfer.TransferID(transferUint)
+		initiator := cctx.Bool("initiator")
+		var other peer.ID
+		if pidstr := cctx.String("peerid"); pidstr != "" {
+			p, err := peer.Decode(pidstr)
+			if err != nil {
+				return err
+			}
+			other = p
+		} else {
+			channels, err := nodeApi.MarketListDataTransfers(ctx)
+			if err != nil {
+				return err
+			}
+			found := false
+			for _, channel := range channels {
+				if channel.IsInitiator == initiator && channel.TransferID == transferID {
+					other = channel.OtherPeer
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.New("unable to find matching data transfer")
+			}
+		}
+
+		return nodeApi.MarketRestartDataTransfer(ctx, transferID, other, initiator)
+	},
+}
+
+var marketCancelTransfer = &cli.Command{
+	Name:  "cancel",
+	Usage: "Force cancel a data transfer",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "peerid",
+			Usage: "narrow to transfer with specific peer",
+		},
+		&cli.BoolFlag{
+			Name:  "initiator",
+			Usage: "specify only transfers where peer is/is not initiator",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return fmt.Errorf("Error reading transfer ID: %w", err)
+		}
+		transferID := datatransfer.TransferID(transferUint)
+		initiator := cctx.Bool("initiator")
+		var other peer.ID
+		if pidstr := cctx.String("peerid"); pidstr != "" {
+			p, err := peer.Decode(pidstr)
+			if err != nil {
+				return err
+			}
+			other = p
+		} else {
+			channels, err := nodeApi.MarketListDataTransfers(ctx)
+			if err != nil {
+				return err
+			}
+			found := false
+			for _, channel := range channels {
+				if channel.IsInitiator == initiator && channel.TransferID == transferID {
+					other = channel.OtherPeer
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.New("unable to find matching data transfer")
+			}
+		}
+
+		return nodeApi.MarketCancelDataTransfer(ctx, transferID, other, initiator)
 	},
 }
 
@@ -589,6 +714,10 @@ var transfersListCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
+		&cli.BoolFlag{
+			Name:  "show-failed",
+			Usage: "show failed/cancelled transfers",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -606,7 +735,7 @@ var transfersListCmd = &cli.Command{
 		completed := cctx.Bool("completed")
 		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
-
+		showFailed := cctx.Bool("show-failed")
 		if watch {
 			channelUpdates, err := api.MarketDataTransferUpdates(ctx)
 			if err != nil {
@@ -618,7 +747,7 @@ var transfersListCmd = &cli.Command{
 
 				tm.MoveCursor(1, 1)
 
-				lcli.OutputDataTransferChannels(tm.Screen, channels, completed, color)
+				lcli.OutputDataTransferChannels(tm.Screen, channels, completed, color, showFailed)
 
 				tm.Flush()
 
@@ -643,7 +772,7 @@ var transfersListCmd = &cli.Command{
 				}
 			}
 		}
-		lcli.OutputDataTransferChannels(os.Stdout, channels, completed, color)
+		lcli.OutputDataTransferChannels(os.Stdout, channels, completed, color, showFailed)
 		return nil
 	},
 }

@@ -312,6 +312,8 @@ type FullNode interface {
 	ClientDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
 	// ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 	ClientRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
+	// ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+	ClientCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
 	// ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
 	// which are stuck due to insufficient funds
 	ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error
