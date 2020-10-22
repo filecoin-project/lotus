@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -11,6 +12,14 @@ import (
 )
 
 const BootstrapPeerThreshold = 2
+
+var coalesceForksParents = false
+
+func init() {
+	if os.Getenv("LOTUS_SYNC_REL_PARENT") == "yes" {
+		coalesceForksParents = true
+	}
+}
 
 const (
 	BSStateInit      = 0
@@ -254,6 +263,9 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 			return true
 		}
 		if ts.Parents() == t.Key() {
+			return true
+		}
+		if coalesceForksParents && ts.Parents() == t.Parents() {
 			return true
 		}
 	}
