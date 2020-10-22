@@ -53,12 +53,7 @@ func (t SectorFileType) Has(singleType SectorFileType) bool {
 	return t&singleType == singleType
 }
 
-func (t SectorFileType) SealSpaceUse(spt abi.RegisteredSealProof) (uint64, error) {
-	ssize, err := spt.SectorSize()
-	if err != nil {
-		return 0, xerrors.Errorf("getting sector size: %w", err)
-	}
-
+func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 	var need uint64
 	for _, pathType := range PathTypes {
 		if !t.Has(pathType) {

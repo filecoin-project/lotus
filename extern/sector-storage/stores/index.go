@@ -55,9 +55,9 @@ type SectorIndex interface { // part of storage-miner api
 
 	StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType, primary bool) error
 	StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft SectorFileType) error
-	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error)
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]SectorStorageInfo, error)
 
-	StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredSealProof, pathType PathType) ([]StorageInfo, error)
+	StorageBestAlloc(ctx context.Context, allocate SectorFileType, ssize abi.SectorSize, pathType PathType) ([]StorageInfo, error)
 
 	// atomically acquire locks on all sector file types. close ctx to unlock
 	StorageLock(ctx context.Context, sector abi.SectorID, read SectorFileType, write SectorFileType) error
@@ -246,7 +246,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.Secto
 	return nil
 }
 
-func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft SectorFileType, spt abi.RegisteredSealProof, allowFetch bool) ([]SectorStorageInfo, error) {
+func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]SectorStorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -297,7 +297,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft Sector
 	}
 
 	if allowFetch {
-		spaceReq, err := ft.SealSpaceUse(spt)
+		spaceReq, err := ft.SealSpaceUse(ssize)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating required space: %w", err)
 		}
@@ -365,13 +365,13 @@ func (i *Index) StorageInfo(ctx context.Context, id ID) (StorageInfo, error) {
 	return *si.info, nil
 }
 
-func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, spt abi.RegisteredSealProof, pathType PathType) ([]StorageInfo, error) {
+func (i *Index) StorageBestAlloc(ctx context.Context, allocate SectorFileType, ssize abi.SectorSize, pathType PathType) ([]StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
 	var candidates []storageEntry
 
-	spaceReq, err := allocate.SealSpaceUse(spt)
+	spaceReq, err := allocate.SealSpaceUse(ssize)
 	if err != nil {
 		return nil, xerrors.Errorf("estimating required space: %w", err)
 	}

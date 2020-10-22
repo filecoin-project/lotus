@@ -392,7 +392,7 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector abi.SectorID) error {
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof, ids []abi.SectorID) ([]abi.SectorID, error) {
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []abi.SectorID) ([]abi.SectorID, error) {
 	var bad []abi.SectorID
 
 	for _, sid := range ids {
