@@ -257,7 +257,6 @@ func (stb *syncTargetBucket) add(ts *types.TipSet) {
 
 func (stb *syncTargetBucket) heaviestTipSet() *types.TipSet {
 	if stb == nil {
-		log.Warn("sync target bucket was nil when heaviestTipSet got called on it")
 		return nil
 	}
 
