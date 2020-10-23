@@ -19,7 +19,7 @@ func TestTimedBSSimple(t *testing.T) {
 	tc.clock = mClock
 	tc.doneRotatingCh = make(chan struct{})
 
-	tc.Start(context.Background())
+	_ = tc.Start(context.Background())
 	mClock.Add(1) // IDK why it is needed but it makes it work
 
 	defer func() {
