@@ -51,6 +51,8 @@ type StateModuleAPI interface {
 	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
 	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
 	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error)
+	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error)
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
@@ -223,18 +225,18 @@ func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, 
 	return out, err
 }
 
-func (a *StateAPI) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
-	ts, err := a.StateManager.ChainStore().GetTipSetFromKey(tsk)
+func (m *StateModule) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	act, err := a.StateManager.LoadActor(ctx, addr, ts)
+	act, err := m.StateManager.LoadActor(ctx, addr, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	mas, err := miner.Load(m.StateManager.ChainStore().Store(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
@@ -318,19 +320,19 @@ func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Addres
 	return miner.AllPartSectors(mas, miner.Partition.RecoveringSectors)
 }
 
-func (a *StateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+func (m *StateModule) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	m, net, hmp, err := stmgr.GetPower(ctx, a.StateManager, ts, addr)
+	mp, net, hmp, err := stmgr.GetPower(ctx, m.StateManager, ts, addr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.MinerPower{
-		MinerPower:  m,
+		MinerPower:  mp,
 		TotalPower:  net,
 		HasMinPower: hmp,
 	}, nil

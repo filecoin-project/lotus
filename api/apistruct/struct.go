@@ -393,6 +393,8 @@ type GatewayStruct struct {
 		StateLookupID                     func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 		StateListMiners                   func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
 		StateMinerInfo                    func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error)
+		StateMinerProvingDeadline         func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error)
+		StateMinerPower                   func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 		StateMarketBalance                func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
 		StateMarketStorageDeal            func(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
 		StateNetworkVersion               func(ctx context.Context, tsk types.TipSetKey) (stnetwork.Version, error)
@@ -1542,6 +1544,14 @@ func (g GatewayStruct) StateMarketStorageDeal(ctx context.Context, dealId abi.De
 
 func (g GatewayStruct) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
 	return g.Internal.StateMinerInfo(ctx, actor, tsk)
+}
+
+func (g GatewayStruct) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
+	return g.Internal.StateMinerProvingDeadline(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	return g.Internal.StateMinerPower(ctx, addr, tsk)
 }
 
 func (g GatewayStruct) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (stnetwork.Version, error) {
