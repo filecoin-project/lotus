@@ -1731,9 +1731,6 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 }
 
 func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []byte, evrf []byte) error {
-	if build.InsecurePoStValidation {
-		return nil
-	}
 	return gen.VerifyVRF(ctx, worker, rand, evrf)
 }
 

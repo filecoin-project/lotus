@@ -2,12 +2,15 @@ package test
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/stretchr/testify/assert"
@@ -21,6 +24,15 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 )
+
+func init() {
+	logging.SetAllLoggers(logging.LevelInfo)
+	err := os.Setenv("BELLMAN_NO_GPU", "1")
+	if err != nil {
+		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
+	}
+	build.InsecurePoStValidation = true
+}
 
 type TestNode struct {
 	api.FullNode
@@ -108,6 +120,11 @@ var FullNodeWithUpgradeAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 			}})
 		},
 	}
+}
+
+var MineNext = miner.MineReq{
+	InjectNulls: 0,
+	Done:        func(bool, abi.ChainEpoch, error) {},
 }
 
 func (ts *testSuite) testVersion(t *testing.T) {

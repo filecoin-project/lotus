@@ -16,15 +16,12 @@ import (
 
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/miner"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -34,18 +31,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 )
 
-var MineNext = miner.MineReq{
-	InjectNulls: 0,
-	Done:        func(bool, abi.ChainEpoch, error) {},
-}
-
-func init() {
-	logging.SetAllLoggers(logging.LevelInfo)
-	build.InsecurePoStValidation = true
-}
-
 func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport, fastRet bool) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
 	n, sn := b(t, OneFull, OneMiner)
@@ -82,7 +68,6 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 }
 
 func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
 	n, sn := b(t, OneFull, OneMiner)
@@ -146,7 +131,6 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 }
 
 func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
 	n, sn := b(t, OneFull, OneMiner)
@@ -201,7 +185,6 @@ func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Durati
 }
 
 func TestSenondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
 	n, sn := b(t, OneFull, OneMiner)
