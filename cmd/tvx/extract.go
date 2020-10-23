@@ -49,6 +49,8 @@ var extractCmd = &cli.Command{
 	Name:        "extract",
 	Description: "generate a test vector by extracting it from a live chain",
 	Action:      runExtract,
+	Before:      initialize,
+	After:       destroy,
 	Flags: []cli.Flag{
 		&repoFlag,
 		&cli.StringFlag{

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -47,11 +48,6 @@ func main() {
    tvx extract-many performs a batch extraction of many messages, supplied in a
    CSV file. Refer to the help of that subcommand for more info.
 
-   tvx project projects an existing test vector against a different protocol
-   version, reporting the result, optionally appending a new variant to the
-   vector in place if deemed equivalent, or producing a new vector if
-   non-equivalent.
-
    tvx simulate takes a raw message and simulates it on top of the supplied
    epoch, reporting the result on stderr and writing a test vector on stdout
    or into the specified file.
@@ -80,8 +76,6 @@ func main() {
 			extractManyCmd,
 			simulateCmd,
 		},
-		Before: initialize,
-		After:  destroy,
 	}
 
 	sort.Sort(cli.CommandsByName(app.Commands))
@@ -107,7 +101,9 @@ func initialize(c *cli.Context) error {
 
 	// Make the API client.
 	var err error
-	FullAPI, Closer, err = lcli.GetFullNodeAPI(c)
+	if FullAPI, Closer, err = lcli.GetFullNodeAPI(c); err != nil {
+		err = fmt.Errorf("failed to locate Lotus node; ")
+	}
 	return err
 }
 

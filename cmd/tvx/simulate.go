@@ -29,15 +29,19 @@ var simulateFlags struct {
 
 var simulateCmd = &cli.Command{
 	Name: "simulate",
-	Description: "simulate a raw message on top of the supplied" +
-		"epoch, reporting the result on stderr and writing a test vector on stdout" +
+	Description: "simulate a raw message on top of the supplied epoch (or HEAD), " +
+		"reporting the result on stderr and writing a test vector on stdout " +
 		"or into the specified file",
 	Action: runSimulateCmd,
+	Before: initialize,
+	After:  destroy,
 	Flags: []cli.Flag{
+		&repoFlag,
 		&cli.StringFlag{
 			Name:        "msg",
 			Usage:       "base64 cbor-encoded message",
 			Destination: &simulateFlags.msg,
+			Required:    true,
 		},
 		&cli.Int64Flag{
 			Name:        "at-epoch",

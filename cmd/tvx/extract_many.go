@@ -43,6 +43,8 @@ var extractManyCmd = &cli.Command{
    after these compulsory seven.
 `,
 	Action: runExtractMany,
+	Before: initialize,
+	After:  destroy,
 	Flags: []cli.Flag{
 		&repoFlag,
 		&cli.StringFlag{
