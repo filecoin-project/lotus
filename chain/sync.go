@@ -730,14 +730,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
-	lbts, err := stmgr.GetLookbackTipSetForRound(ctx, syncer.sm, baseTs, h.Height)
+	lbts, lbst, err := stmgr.GetLookbackTipSetForRound(ctx, syncer.sm, baseTs, h.Height)
 	if err != nil {
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
-	}
-
-	lbst, _, err := syncer.sm.TipSetState(ctx, lbts)
-	if err != nil {
-		return xerrors.Errorf("failed to compute lookback tipset state (epoch %d): %w", lbts.Height(), err)
 	}
 
 	prevBeacon, err := syncer.store.GetLatestBeaconEntry(baseTs)

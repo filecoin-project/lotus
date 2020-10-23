@@ -391,7 +391,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	return root, trace, nil
 }
 
-func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.TipSet, round abi.ChainEpoch) (*types.TipSet, error) {
+func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.TipSet, round abi.ChainEpoch) (*types.TipSet, cid.Cid, error) {
 	var lbr abi.ChainEpoch
 	lb := policy.GetWinningPoStSectorSetLookback(sm.GetNtwkVersion(ctx, round))
 	if round > lb {
@@ -399,16 +399,33 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 	}
 
 	// more null blocks than our lookback
-	if lbr > ts.Height() {
-		return ts, nil
+	if lbr >= ts.Height() {
+		// This should never happen at this point, but may happen before
+		// network version 3 (where the lookback was only 10 blocks).
+		st, _, err := sm.TipSetState(ctx, ts)
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+		return ts, st, nil
 	}
 
-	lbts, err := sm.ChainStore().GetTipsetByHeight(ctx, lbr, ts, true)
+	// Get the tipset after the lookback tipset, or the next non-null one.
+	nextTs, err := sm.ChainStore().GetTipsetByHeight(ctx, lbr+1, ts, false)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get lookback tipset: %w", err)
+		return nil, cid.Undef, xerrors.Errorf("failed to get lookback tipset+1: %w", err)
 	}
 
-	return lbts, nil
+	if lbr > nextTs.Height() {
+		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), ts.Height(), nextTs.Key(), nextTs.Height())
+
+	}
+
+	lbts, err := sm.ChainStore().GetTipSetFromKey(nextTs.Parents())
+	if err != nil {
+		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %w", err)
+	}
+
+	return lbts, nextTs.ParentState(), nil
 }
 
 func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*api.MiningBaseInfo, error) {
@@ -436,15 +453,9 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		rbase = entries[len(entries)-1]
 	}
 
-	lbts, err := GetLookbackTipSetForRound(ctx, sm, ts, round)
+	lbts, lbst, err := GetLookbackTipSetForRound(ctx, sm, ts, round)
 	if err != nil {
 		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
-	}
-
-	// TODO: load the state instead of computing it?
-	lbst, _, err := sm.TipSetState(ctx, lbts)
-	if err != nil {
-		return nil, err
 	}
 
 	act, err := sm.LoadActorRaw(ctx, maddr, lbst)

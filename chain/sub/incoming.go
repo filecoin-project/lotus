@@ -484,7 +484,7 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 	// we check that the miner met the minimum power at the lookback tipset
 
 	baseTs := bv.chain.GetHeaviestTipSet()
-	lbts, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
+	lbts, _, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
 	if err != nil {
 		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
 		return address.Undef, ErrSoftFailure
