@@ -33,13 +33,14 @@ const (
 )
 
 type extractOpts struct {
-	id        string
-	block     string
-	class     string
-	cid       string
-	file      string
-	retain    string
-	precursor string
+	id                 string
+	block              string
+	class              string
+	cid                string
+	file               string
+	retain             string
+	precursor          string
+	ignoreSanityChecks bool
 }
 
 var extractFlags extractOpts
@@ -95,10 +96,16 @@ var extractCmd = &cli.Command{
 			Value:       "sender",
 			Destination: &extractFlags.precursor,
 		},
+		&cli.BoolFlag{
+			Name:        "ignore-sanity-checks",
+			Usage:       "generate vector even if sanity checks fail",
+			Value:       false,
+			Destination: &extractFlags.ignoreSanityChecks,
+		},
 	},
 }
 
-func runExtract(c *cli.Context) error {
+func runExtract(_ *cli.Context) error {
 	return doExtract(extractFlags)
 }
 
@@ -282,13 +289,20 @@ func doExtract(opts extractOpts) error {
 			ReturnValue: rec.Return,
 			GasUsed:     rec.GasUsed,
 		}
+
 		reporter := new(conformance.LogReporter)
 		conformance.AssertMsgResult(reporter, receipt, applyret, "as locally executed")
 		if reporter.Failed() {
-			log.Println(color.RedString("receipt sanity check failed; aborting"))
-			return fmt.Errorf("vector generation aborted")
+			if opts.ignoreSanityChecks {
+				log.Println(color.YellowString("receipt sanity check failed; proceeding anyway"))
+			} else {
+				log.Println(color.RedString("receipt sanity check failed; aborting"))
+				return fmt.Errorf("vector generation aborted")
+			}
+		} else {
+			log.Println(color.GreenString("receipt sanity check succeeded"))
 		}
-		log.Println(color.GreenString("receipt sanity check succeeded"))
+
 	} else {
 		receipt = &schema.Receipt{
 			ExitCode:    int64(applyret.ExitCode),
