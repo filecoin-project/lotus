@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/impl/full"
 
@@ -21,13 +22,41 @@ type MpoolNonceAPI struct {
 	StateAPI full.StateAPI
 }
 
-// GetNonce gets the nonce from actor state
+// GetNonce gets the nonce from current chain head.
 func (a *MpoolNonceAPI) GetNonce(addr address.Address) (uint64, error) {
-	act, err := a.StateAPI.StateGetActor(context.Background(), addr, types.EmptyTSK)
+	ts := a.StateAPI.Chain.GetHeaviestTipSet()
+
+	// make sure we have a key address so we can compare with messages
+	keyAddr, err := a.StateAPI.StateManager.ResolveToKeyAddress(context.TODO(), addr, ts)
 	if err != nil {
 		return 0, err
 	}
-	return act.Nonce, nil
+
+	// Load the last nonce from the state, if it exists.
+	highestNonce := uint64(0)
+	if baseActor, err := a.StateAPI.StateManager.LoadActorRaw(context.TODO(), addr, ts.ParentState()); err != nil {
+		if !xerrors.Is(err, types.ErrActorNotFound) {
+			return 0, err
+		}
+	} else {
+		highestNonce = baseActor.Nonce
+	}
+
+	// Otherwise, find the highest nonce in the tipset.
+	msgs, err := a.StateAPI.Chain.MessagesForTipset(ts)
+	if err != nil {
+		return 0, err
+	}
+	for _, msg := range msgs {
+		vmmsg := msg.VMMessage()
+		if vmmsg.From != keyAddr {
+			continue
+		}
+		if vmmsg.Nonce > highestNonce {
+			highestNonce = vmmsg.Nonce
+		}
+	}
+	return highestNonce, nil
 }
 
 var _ messagesigner.MpoolNonceAPI = (*MpoolNonceAPI)(nil)
