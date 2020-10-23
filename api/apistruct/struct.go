@@ -374,20 +374,32 @@ type WorkerStruct struct {
 
 type GatewayStruct struct {
 	Internal struct {
-		// TODO: does the gateway need perms?
-		ChainHasObj             func(context.Context, cid.Cid) (bool, error)
-		ChainGetTipSet          func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
-		ChainGetTipSetByHeight  func(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
-		ChainHead               func(ctx context.Context) (*types.TipSet, error)
-		ChainReadObj            func(context.Context, cid.Cid) ([]byte, error)
-		GasEstimateMessageGas   func(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
-		MpoolPush               func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
-		MsigGetAvailableBalance func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
-		MsigGetVested           func(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
-		StateAccountKey         func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
-		StateGetActor           func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
-		StateLookupID           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
-		StateWaitMsg            func(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
+		ChainGetBlockMessages             func(ctx context.Context, c cid.Cid) (*api.BlockMessages, error)
+		ChainGetMessage                   func(ctx context.Context, mc cid.Cid) (*types.Message, error)
+		ChainGetTipSet                    func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+		ChainGetTipSetByHeight            func(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+		ChainHasObj                       func(context.Context, cid.Cid) (bool, error)
+		ChainHead                         func(ctx context.Context) (*types.TipSet, error)
+		ChainNotify                       func(ctx context.Context) (<-chan []*api.HeadChange, error)
+		ChainReadObj                      func(context.Context, cid.Cid) ([]byte, error)
+		GasEstimateMessageGas             func(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
+		MpoolPush                         func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
+		MsigGetAvailableBalance           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
+		MsigGetVested                     func(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
+		StateAccountKey                   func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+		StateDealProviderCollateralBounds func(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error)
+		StateGetActor                     func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
+		StateGetReceipt                   func(ctx context.Context, c cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error)
+		StateLookupID                     func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+		StateListMiners                   func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
+		StateMinerInfo                    func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error)
+		StateMinerProvingDeadline         func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error)
+		StateMinerPower                   func(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
+		StateMarketBalance                func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
+		StateMarketStorageDeal            func(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
+		StateNetworkVersion               func(ctx context.Context, tsk types.TipSetKey) (stnetwork.Version, error)
+		StateVerifiedClientStatus         func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
+		StateWaitMsg                      func(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 	}
 }
 
@@ -1450,12 +1462,12 @@ func (w *WorkerStruct) Closing(ctx context.Context) (<-chan struct{}, error) {
 	return w.Internal.Closing(ctx)
 }
 
-func (g GatewayStruct) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
-	return g.Internal.ChainHasObj(ctx, c)
+func (g GatewayStruct) ChainGetBlockMessages(ctx context.Context, c cid.Cid) (*api.BlockMessages, error) {
+	return g.Internal.ChainGetBlockMessages(ctx, c)
 }
 
-func (g GatewayStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
-	return g.Internal.ChainHead(ctx)
+func (g GatewayStruct) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	return g.Internal.ChainGetMessage(ctx, mc)
 }
 
 func (g GatewayStruct) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
@@ -1464,6 +1476,18 @@ func (g GatewayStruct) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) 
 
 func (g GatewayStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	return g.Internal.ChainGetTipSetByHeight(ctx, h, tsk)
+}
+
+func (g GatewayStruct) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
+	return g.Internal.ChainHasObj(ctx, c)
+}
+
+func (g GatewayStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	return g.Internal.ChainHead(ctx)
+}
+
+func (g GatewayStruct) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
+	return g.Internal.ChainNotify(ctx)
 }
 
 func (g GatewayStruct) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
@@ -1490,12 +1514,52 @@ func (g GatewayStruct) StateAccountKey(ctx context.Context, addr address.Address
 	return g.Internal.StateAccountKey(ctx, addr, tsk)
 }
 
+func (g GatewayStruct) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
+	return g.Internal.StateDealProviderCollateralBounds(ctx, size, verified, tsk)
+}
+
 func (g GatewayStruct) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
 	return g.Internal.StateGetActor(ctx, actor, ts)
 }
 
+func (g GatewayStruct) StateGetReceipt(ctx context.Context, c cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
+	return g.Internal.StateGetReceipt(ctx, c, tsk)
+}
+
 func (g GatewayStruct) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	return g.Internal.StateLookupID(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
+	return g.Internal.StateListMiners(ctx, tsk)
+}
+
+func (g GatewayStruct) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
+	return g.Internal.StateMarketBalance(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
+	return g.Internal.StateMarketStorageDeal(ctx, dealId, tsk)
+}
+
+func (g GatewayStruct) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+	return g.Internal.StateMinerInfo(ctx, actor, tsk)
+}
+
+func (g GatewayStruct) StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
+	return g.Internal.StateMinerProvingDeadline(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	return g.Internal.StateMinerPower(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (stnetwork.Version, error) {
+	return g.Internal.StateNetworkVersion(ctx, tsk)
+}
+
+func (g GatewayStruct) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	return g.Internal.StateVerifiedClientStatus(ctx, addr, tsk)
 }
 
 func (g GatewayStruct) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {

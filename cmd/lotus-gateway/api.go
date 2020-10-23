@@ -24,7 +24,7 @@ import (
 
 const (
 	LookbackCap            = time.Hour * 24
-	stateWaitLookbackLimit = abi.ChainEpoch(20)
+	StateWaitLookbackLimit = abi.ChainEpoch(20)
 )
 
 var (
@@ -35,20 +35,28 @@ var (
 // (to make it easy to mock for tests)
 type gatewayDepsAPI interface {
 	Version(context.Context) (api.Version, error)
-
-	ChainHasObj(context.Context, cid.Cid) (bool, error)
-	ChainHead(ctx context.Context) (*types.TipSet, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
+	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
+	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainHead(ctx context.Context) (*types.TipSet, error)
+	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
-	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
+	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
+	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
+	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 	StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error)
 	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
@@ -59,23 +67,24 @@ type gatewayDepsAPI interface {
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
+	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error)
-	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 }
 
 type GatewayAPI struct {
-	api         gatewayDepsAPI
-	lookbackCap time.Duration
+	api                    gatewayDepsAPI
+	lookbackCap            time.Duration
+	stateWaitLookbackLimit abi.ChainEpoch
 }
 
 // NewGatewayAPI creates a new GatewayAPI with the default lookback cap
 func NewGatewayAPI(api gatewayDepsAPI) *GatewayAPI {
-	return newGatewayAPI(api, LookbackCap)
+	return newGatewayAPI(api, LookbackCap, StateWaitLookbackLimit)
 }
 
 // used by the tests
-func newGatewayAPI(api gatewayDepsAPI, lookbackCap time.Duration) *GatewayAPI {
-	return &GatewayAPI{api: api, lookbackCap: lookbackCap}
+func newGatewayAPI(api gatewayDepsAPI, lookbackCap time.Duration, stateWaitLookbackLimit abi.ChainEpoch) *GatewayAPI {
+	return &GatewayAPI{api: api, lookbackCap: lookbackCap, stateWaitLookbackLimit: stateWaitLookbackLimit}
 }
 
 func (a *GatewayAPI) checkTipsetKey(ctx context.Context, tsk types.TipSetKey) error {
@@ -122,6 +131,10 @@ func (a *GatewayAPI) Version(ctx context.Context) (api.Version, error) {
 	return a.api.Version(ctx)
 }
 
+func (a *GatewayAPI) ChainGetBlockMessages(ctx context.Context, c cid.Cid) (*api.BlockMessages, error) {
+	return a.api.ChainGetBlockMessages(ctx, c)
+}
+
 func (a *GatewayAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
 	return a.api.ChainHasObj(ctx, c)
 }
@@ -130,6 +143,10 @@ func (a *GatewayAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	// TODO: cache and invalidate cache when timestamp is up (or have internal ChainNotify)
 
 	return a.api.ChainHead(ctx)
+}
+
+func (a *GatewayAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	return a.api.ChainGetMessage(ctx, mc)
 }
 
 func (a *GatewayAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
@@ -165,12 +182,16 @@ func (a *GatewayAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoc
 	return a.api.ChainGetTipSetByHeight(ctx, h, tsk)
 }
 
-func (a *GatewayAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
-	return a.api.ChainReadObj(ctx, c)
-}
-
 func (a *GatewayAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error) {
 	return a.api.ChainGetNode(ctx, p)
+}
+
+func (a *GatewayAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
+	return a.api.ChainNotify(ctx)
+}
+
+func (a *GatewayAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+	return a.api.ChainReadObj(ctx, c)
 }
 
 func (a *GatewayAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
@@ -213,12 +234,36 @@ func (a *GatewayAPI) StateAccountKey(ctx context.Context, addr address.Address, 
 	return a.api.StateAccountKey(ctx, addr, tsk)
 }
 
+func (a *GatewayAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return api.DealCollateralBounds{}, err
+	}
+
+	return a.api.StateDealProviderCollateralBounds(ctx, size, verified, tsk)
+}
+
 func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	if err := a.checkTipsetKey(ctx, tsk); err != nil {
 		return nil, err
 	}
 
 	return a.api.StateGetActor(ctx, actor, tsk)
+}
+
+func (a *GatewayAPI) StateGetReceipt(ctx context.Context, c cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+
+	return a.api.StateGetReceipt(ctx, c, tsk)
+}
+
+func (a *GatewayAPI) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+
+	return a.api.StateListMiners(ctx, tsk)
 }
 
 func (a *GatewayAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
@@ -229,8 +274,32 @@ func (a *GatewayAPI) StateLookupID(ctx context.Context, addr address.Address, ts
 	return a.api.StateLookupID(ctx, addr, tsk)
 }
 
+func (a *GatewayAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return api.MarketBalance{}, err
+	}
+
+	return a.api.StateMarketBalance(ctx, addr, tsk)
+}
+
+func (a *GatewayAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+
+	return a.api.StateMarketStorageDeal(ctx, dealId, tsk)
+}
+
+func (a *GatewayAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return network.VersionMax, err
+	}
+
+	return a.api.StateNetworkVersion(ctx, tsk)
+}
+
 func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	return a.api.StateWaitMsgLimited(ctx, msg, confidence, stateWaitLookbackLimit)
+	return a.api.StateWaitMsgLimited(ctx, msg, confidence, a.stateWaitLookbackLimit)
 }
 
 func (a *GatewayAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
@@ -296,18 +365,18 @@ func (a *GatewayAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSe
 
 }
 
+func (a *GatewayAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return a.api.StateVerifiedClientStatus(ctx, addr, tsk)
+}
+
 func (a *GatewayAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	if err := a.checkTipsetKey(ctx, tsk); err != nil {
 		return api.CirculatingSupply{}, err
 	}
 	return a.api.StateVMCirculatingSupplyInternal(ctx, tsk)
-}
-
-func (a *GatewayAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
-	if err := a.checkTipsetKey(ctx, tsk); err != nil {
-		return 0, err
-	}
-	return a.api.StateNetworkVersion(ctx, tsk)
 }
 
 func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {

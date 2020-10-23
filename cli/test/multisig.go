@@ -10,18 +10,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/types"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	lcli "github.com/urfave/cli/v2"
 )
-
-func QuietMiningLogs() {
-	logging.SetLogLevel("miner", "ERROR")
-	logging.SetLogLevel("chainstore", "ERROR")
-	logging.SetLogLevel("chain", "ERROR")
-	logging.SetLogLevel("sub", "ERROR")
-	logging.SetLogLevel("storageminer", "ERROR")
-}
 
 func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode) {
 	ctx := context.Background()

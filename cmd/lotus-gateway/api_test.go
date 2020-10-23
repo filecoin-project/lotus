@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/build"
 
 	"github.com/stretchr/testify/require"
@@ -116,6 +119,38 @@ func (m *mockGatewayDepsAPI) ChainHasObj(context.Context, cid.Cid) (bool, error)
 	panic("implement me")
 }
 
+func (m *mockGatewayDepsAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error) {
+	panic("implement me")
+}
+
 func (m *mockGatewayDepsAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	m.lk.RLock()
 	defer m.lk.RUnlock()
@@ -163,10 +198,6 @@ func (m *mockGatewayDepsAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.C
 	defer m.lk.Unlock()
 
 	return m.tipsets[h], nil
-}
-
-func (m *mockGatewayDepsAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
-	panic("implement me")
 }
 
 func (m *mockGatewayDepsAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {

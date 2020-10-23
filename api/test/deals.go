@@ -60,7 +60,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner, carExport, fastRet)
+	MakeDeal(t, ctx, 6, client, miner, carExport, fastRet)
 
 	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
@@ -97,24 +97,21 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner, false, false)
-	makeDeal(t, ctx, 7, client, miner, false, false)
+	MakeDeal(t, ctx, 6, client, miner, false, false)
+	MakeDeal(t, ctx, 7, client, miner, false, false)
 
 	atomic.AddInt64(&mine, -1)
 	fmt.Println("shutting down mining")
 	<-done
 }
 
-func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport, fastRet bool) {
-	data := make([]byte, 1600)
-	rand.New(rand.NewSource(int64(rseed))).Read(data)
-
-	r := bytes.NewReader(data)
-	fcid, err := client.ClientImportLocal(ctx, r)
+func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool) {
+	res, data, err := CreateClientFile(ctx, client, rseed)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	fcid := res.Root
 	fmt.Println("FILE CID: ", fcid)
 
 	deal := startDeal(t, ctx, miner, client, fcid, fastRet)
@@ -128,6 +125,28 @@ func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNod
 	require.NoError(t, err)
 
 	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
+}
+
+func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(int64(rseed))).Read(data)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	path := filepath.Join(dir, "sourcefile.dat")
+	err = ioutil.WriteFile(path, data, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	res, err := client.ClientImport(ctx, api.FileRef{Path: path})
+	if err != nil {
+		return nil, nil, err
+	}
+	return res, data, nil
 }
 
 func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
@@ -259,7 +278,7 @@ func TestSenondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration
 	<-done
 }
 
-func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, fcid cid.Cid, fastRet bool) *cid.Cid {
+func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, fcid cid.Cid, fastRet bool) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -286,7 +305,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 	return deal
 }
 
-func waitDealSealed(t *testing.T, ctx context.Context, miner TestStorageNode, client *impl.FullNodeAPI, deal *cid.Cid, noseal bool) {
+func waitDealSealed(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, deal *cid.Cid, noseal bool) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
@@ -359,7 +378,7 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 	}
 }
 
-func testRetrieval(t *testing.T, ctx context.Context, client *impl.FullNodeAPI, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
+func testRetrieval(t *testing.T, ctx context.Context, client api.FullNode, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
 	offers, err := client.ClientFindData(ctx, fcid, piece)
 	if err != nil {
 		t.Fatal(err)

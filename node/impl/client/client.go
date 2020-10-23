@@ -65,9 +65,9 @@ type API struct {
 	fx.In
 
 	full.ChainAPI
-	full.StateAPI
 	full.WalletAPI
 	paych.PaychAPI
+	full.StateAPI
 
 	SMDealClient storagemarket.StorageClient
 	RetDiscovery discovery.PeerResolver
@@ -117,7 +117,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		}
 	}
 
-	walletKey, err := a.StateAPI.StateManager.ResolveToKeyAddress(ctx, params.Wallet, nil)
+	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed resolving params.Wallet addr: %w", params.Wallet)
 	}

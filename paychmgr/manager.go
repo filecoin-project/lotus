@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -61,12 +60,8 @@ type managerAPI interface {
 
 // managerAPIImpl is used to create a composite that implements managerAPI
 type managerAPIImpl struct {
-	*stmgr.StateManager
+	stmgr.StateManagerAPI
 	paychAPI
-}
-
-func (m *managerAPIImpl) AdtStore(ctx context.Context) adt.Store {
-	return m.ChainStore().Store(ctx)
 }
 
 type Manager struct {
@@ -82,11 +77,11 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 
-func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm *stmgr.StateManager, pchstore *Store, api PaychAPI) *Manager {
+func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm stmgr.StateManagerAPI, pchstore *Store, api PaychAPI) *Manager {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	ctx, shutdown := context.WithCancel(ctx)
 
-	impl := &managerAPIImpl{StateManager: sm, paychAPI: &api}
+	impl := &managerAPIImpl{StateManagerAPI: sm, paychAPI: &api}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
