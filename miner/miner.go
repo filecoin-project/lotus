@@ -280,7 +280,7 @@ minerLoop:
 			m.minedBlockHeights.Add(blkKey, true)
 
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
-				log.Errorf("failed to submit newly mined block: %s", err)
+				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
 		} else {
 			base.NullRounds++
