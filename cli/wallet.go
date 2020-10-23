@@ -79,6 +79,16 @@ var walletList = &cli.Command{
 			Usage:   "Only print addresses",
 			Aliases: []string{"a"},
 		},
+		&cli.BoolFlag{
+			Name:    "id",
+			Usage:   "Output ID addresses",
+			Aliases: []string{"i"},
+		},
+		&cli.BoolFlag{
+			Name:    "market",
+			Usage:   "Output market balances",
+			Aliases: []string{"m"},
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -98,7 +108,10 @@ var walletList = &cli.Command{
 
 		tw := tablewriter.New(
 			tablewriter.Col("Address"),
+			tablewriter.Col("ID"),
 			tablewriter.Col("Balance"),
+			tablewriter.Col("Market(Avail)"),
+			tablewriter.Col("Market(Locked)"),
 			tablewriter.Col("Nonce"),
 			tablewriter.Col("Default"),
 			tablewriter.NewLineCol("Error"))
@@ -129,6 +142,23 @@ var walletList = &cli.Command{
 				}
 				if addr == def {
 					row["Default"] = "X"
+				}
+
+				if cctx.Bool("id") {
+					id, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
+					if err != nil {
+						row["ID"] = "n/a"
+					} else {
+						row["ID"] = id
+					}
+				}
+
+				if cctx.Bool("market") {
+					mbal, err := api.StateMarketBalance(ctx, addr, types.EmptyTSK)
+					if err == nil {
+						row["Market(Avail)"] = types.FIL(types.BigSub(mbal.Escrow, mbal.Locked))
+						row["Market(Locked)"] = types.FIL(mbal.Locked)
+					}
 				}
 
 				tw.Write(row)
