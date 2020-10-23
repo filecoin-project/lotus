@@ -106,21 +106,7 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 }
 
 func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool) {
-	data := make([]byte, 1600)
-	rand.New(rand.NewSource(int64(rseed))).Read(data)
-
-	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	path := filepath.Join(dir, "sourcefile.dat")
-	err = ioutil.WriteFile(path, data, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	res, err := client.ClientImport(ctx, api.FileRef{Path: path})
+	res, data, err := CreateClientFile(ctx, client, rseed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,6 +125,28 @@ func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode,
 	require.NoError(t, err)
 
 	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
+}
+
+func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(int64(rseed))).Read(data)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	path := filepath.Join(dir, "sourcefile.dat")
+	err = ioutil.WriteFile(path, data, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	res, err := client.ClientImport(ctx, api.FileRef{Path: path})
+	if err != nil {
+		return nil, nil, err
+	}
+	return res, data, nil
 }
 
 func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {

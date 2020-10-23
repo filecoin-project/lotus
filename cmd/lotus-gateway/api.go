@@ -67,6 +67,7 @@ type gatewayDepsAPI interface {
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
+	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error)
 }
 
@@ -362,6 +363,13 @@ func (a *GatewayAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSe
 	}
 	return a.api.StateCirculatingSupply(ctx, tsk)
 
+}
+
+func (a *GatewayAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	if err := a.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return a.api.StateVerifiedClientStatus(ctx, addr, tsk)
 }
 
 func (a *GatewayAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
