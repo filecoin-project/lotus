@@ -495,6 +495,11 @@ var walletMarketWithdraw = &cli.Command{
 			Usage:   "Specify address to withdraw funds from, otherwise it will use the default wallet address",
 			Aliases: []string{"f"},
 		},
+		&cli.StringFlag{
+			Name:    "address",
+			Usage:   "Market address to withdraw from (account or miner actor address, defaults to --from address)",
+			Aliases: []string{"a"},
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -504,16 +509,24 @@ var walletMarketWithdraw = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var addr address.Address
+		var from address.Address
 		if cctx.String("from") != "" {
-			addr, err = address.NewFromString(cctx.String("from"))
+			from, err = address.NewFromString(cctx.String("from"))
 			if err != nil {
 				return xerrors.Errorf("parsing from address: %w", err)
 			}
 		} else {
-			addr, err = api.WalletDefaultAddress(ctx)
+			from, err = api.WalletDefaultAddress(ctx)
 			if err != nil {
 				return xerrors.Errorf("getting default wallet address: %w", err)
+			}
+		}
+
+		addr := from
+		if cctx.String("address") != "" {
+			addr, err = address.NewFromString(cctx.String("address"))
+			if err != nil {
+				return xerrors.Errorf("parsing market address: %w", err)
 			}
 		}
 
@@ -535,7 +548,7 @@ var walletMarketWithdraw = &cli.Command{
 		}
 
 		if amt.GreaterThan(avail) {
-			return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amt, avail)
+			return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amt), types.FIL(avail))
 		}
 
 		if avail.IsZero() {
@@ -550,10 +563,10 @@ var walletMarketWithdraw = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		fmt.Printf("Submitting WithdrawBalance message for amount %s for address %s\n", types.FIL(amt), addr.String())
+		fmt.Printf("Submitting WithdrawBalance message for amount %s for address %s\n", types.FIL(amt), from.String())
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			To:     builtin.StorageMarketActorAddr,
-			From:   addr,
+			From:   from,
 			Value:  types.NewInt(0),
 			Method: builtin.MethodsMarket.WithdrawBalance,
 			Params: params,
