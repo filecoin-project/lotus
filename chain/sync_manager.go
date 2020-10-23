@@ -2,7 +2,9 @@ package chain
 
 import (
 	"context"
+	"os"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -10,6 +12,14 @@ import (
 )
 
 const BootstrapPeerThreshold = 2
+
+var coalesceForksParents = false
+
+func init() {
+	if os.Getenv("LOTUS_SYNC_REL_PARENT") == "yes" {
+		coalesceForksParents = true
+	}
+}
 
 const (
 	BSStateInit      = 0
@@ -152,6 +162,19 @@ func newSyncTargetBucket(tipsets ...*types.TipSet) *syncTargetBucket {
 	return &stb
 }
 
+func (sbs *syncBucketSet) String() string {
+	var bStrings []string
+	for _, b := range sbs.buckets {
+		var tsStrings []string
+		for _, t := range b.tips {
+			tsStrings = append(tsStrings, t.String())
+		}
+		bStrings = append(bStrings, "["+strings.Join(tsStrings, ",")+"]")
+	}
+
+	return "{" + strings.Join(bStrings, ";") + "}"
+}
+
 func (sbs *syncBucketSet) RelatedToAny(ts *types.TipSet) bool {
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
@@ -198,13 +221,17 @@ func (sbs *syncBucketSet) removeBucket(toremove *syncTargetBucket) {
 }
 
 func (sbs *syncBucketSet) PopRelated(ts *types.TipSet) *syncTargetBucket {
+	var bOut *syncTargetBucket
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
 			sbs.removeBucket(b)
-			return b
+			if bOut == nil {
+				bOut = &syncTargetBucket{}
+			}
+			bOut.tips = append(bOut.tips, b.tips...)
 		}
 	}
-	return nil
+	return bOut
 }
 
 func (sbs *syncBucketSet) Heaviest() *types.TipSet {
@@ -224,8 +251,7 @@ func (sbs *syncBucketSet) Empty() bool {
 }
 
 type syncTargetBucket struct {
-	tips  []*types.TipSet
-	count int
+	tips []*types.TipSet
 }
 
 func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
@@ -239,12 +265,14 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 		if ts.Parents() == t.Key() {
 			return true
 		}
+		if coalesceForksParents && ts.Parents() == t.Parents() {
+			return true
+		}
 	}
 	return false
 }
 
 func (stb *syncTargetBucket) add(ts *types.TipSet) {
-	stb.count++
 
 	for _, t := range stb.tips {
 		if t.Equals(ts) {
@@ -294,7 +322,6 @@ func (sm *syncManager) selectSyncTarget() (*types.TipSet, error) {
 }
 
 func (sm *syncManager) syncScheduler() {
-
 	for {
 		select {
 		case ts, ok := <-sm.incomingTipSets:
@@ -326,7 +353,8 @@ func (sm *syncManager) scheduleIncoming(ts *types.TipSet) {
 	var relatedToActiveSync bool
 	for _, acts := range sm.activeSyncs {
 		if ts.Equals(acts) {
-			break
+			// ignore, we are already syncing it
+			return
 		}
 
 		if ts.Parents() == acts.Key() {
@@ -376,7 +404,9 @@ func (sm *syncManager) scheduleProcessResult(res *syncResult) {
 				sm.nextSyncTarget = relbucket
 				sm.workerChan = sm.syncTargets
 			} else {
-				sm.syncQueue.buckets = append(sm.syncQueue.buckets, relbucket)
+				for _, t := range relbucket.tips {
+					sm.syncQueue.Insert(t)
+				}
 			}
 			return
 		}

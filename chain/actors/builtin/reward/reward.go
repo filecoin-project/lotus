@@ -24,7 +24,10 @@ func init() {
 	})
 }
 
-var Address = builtin0.RewardActorAddr
+var (
+	Address = builtin2.RewardActorAddr
+	Methods = builtin2.MethodsReward
+)
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {

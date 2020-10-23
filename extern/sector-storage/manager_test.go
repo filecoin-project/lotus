@@ -97,7 +97,7 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 	lstor, err := stores.NewLocal(ctx, st, si, nil)
 	require.NoError(t, err)
 
-	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor}, cfg)
+	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, spt: cfg.SealProofType}, cfg)
 	require.NoError(t, err)
 
 	stor := stores.NewRemote(lstor, si, nil, 6000)

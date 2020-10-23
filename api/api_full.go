@@ -207,6 +207,15 @@ type FullNode interface {
 	// based on current chain conditions
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *MessageSendSpec) (*types.SignedMessage, error)
 
+	// MpoolBatchPush batch pushes a signed message to mempool.
+	MpoolBatchPush(context.Context, []*types.SignedMessage) ([]cid.Cid, error)
+
+	// MpoolBatchPushUntrusted batch pushes a signed message to mempool from untrusted sources.
+	MpoolBatchPushUntrusted(context.Context, []*types.SignedMessage) ([]cid.Cid, error)
+
+	// MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+	MpoolBatchPushMessage(context.Context, []*types.Message, *MessageSendSpec) ([]*types.SignedMessage, error)
+
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
@@ -277,6 +286,8 @@ type FullNode interface {
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	// ClientGetDealUpdates returns the status of updated deals
 	ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error)
+	// ClientGetDealStatus returns status given a code
+	ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error)
 	// ClientHasLocal indicates whether a certain CID is locally stored.
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	// ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).
@@ -593,6 +604,8 @@ type MsgGasCost struct {
 	TotalCost          abi.TokenAmount
 }
 
+// BlsMessages[x].cid = Cids[x]
+// SecpkMessages[y].cid = Cids[BlsMessages.length + y]
 type BlockMessages struct {
 	BlsMessages   []*types.Message
 	SecpkMessages []*types.SignedMessage

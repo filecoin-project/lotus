@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/minio/blake2b-simd"
 
@@ -55,7 +55,7 @@ type BlockHeader struct {
 
 	BeaconEntries []BeaconEntry // 3
 
-	WinPoStProof []proof.PoStProof // 4
+	WinPoStProof []proof2.PoStProof // 4
 
 	Parents []cid.Cid // 5
 

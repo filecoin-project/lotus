@@ -4,19 +4,19 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
-
-	"github.com/filecoin-project/lotus/chain/types"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	tutils2 "github.com/filecoin-project/specs-actors/v2/support/testing"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // TestPaychAddVoucherAfterAddFunds tests adding a voucher to a channel with
@@ -27,11 +27,11 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
 	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
-	ch := tutils.NewIDAddr(t, 100)
-	from := tutils.NewSECP256K1Addr(t, string(fromKeyPublic))
-	to := tutils.NewSECP256K1Addr(t, "secpTo")
-	fromAcct := tutils.NewActorAddr(t, "fromAct")
-	toAcct := tutils.NewActorAddr(t, "toAct")
+	ch := tutils2.NewIDAddr(t, 100)
+	from := tutils2.NewSECP256K1Addr(t, string(fromKeyPublic))
+	to := tutils2.NewSECP256K1Addr(t, "secpTo")
+	fromAcct := tutils2.NewActorAddr(t, "fromAct")
+	toAcct := tutils2.NewActorAddr(t, "toAct")
 
 	mock := newMockManagerAPI()
 	defer mock.close()
@@ -55,7 +55,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 
 	// Create an actor in state for the channel with the initial channel balance
 	act := &types.Actor{
-		Code:    builtin.AccountActorCodeID,
+		Code:    builtin2.AccountActorCodeID,
 		Head:    cid.Cid{},
 		Nonce:   0,
 		Balance: createAmt,

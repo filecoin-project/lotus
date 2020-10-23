@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -37,6 +37,8 @@ const UpgradeTapeHeight = 140760
 // We still have upgrades and state changes to do, but can happen after signaling timing here.
 const UpgradeLiftoffHeight = 148888
 
+const UpgradeKumquatHeight = 170000
+
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 	policy.SetSupportedProofTypes(
@@ -55,6 +57,6 @@ func init() {
 	Devnet = false
 }
 
-const BlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
+const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)

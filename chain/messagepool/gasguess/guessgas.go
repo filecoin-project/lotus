@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/go-address"
@@ -68,7 +69,7 @@ func failedGuess(msg *types.SignedMessage) int64 {
 
 func GuessGasUsed(ctx context.Context, tsk types.TipSetKey, msg *types.SignedMessage, al ActorLookup) (int64, error) {
 	// MethodSend is the same in all versions.
-	if msg.Message.Method == builtin0.MethodSend {
+	if msg.Message.Method == builtin.MethodSend {
 		switch msg.Message.From.Protocol() {
 		case address.BLS:
 			return 1298450, nil

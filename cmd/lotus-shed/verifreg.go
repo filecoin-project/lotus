@@ -11,8 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
@@ -63,7 +62,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 		}
 
 		// TODO: ActorUpgrade: Abstract
-		params, err := actors.SerializeParams(&verifreg0.AddVerifierParams{Address: verifier, Allowance: allowance})
+		params, err := actors.SerializeParams(&verifreg2.AddVerifierParams{Address: verifier, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -80,7 +79,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return err
 		}
 
-		smsg, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(builtin0.MethodsVerifiedRegistry.AddVerifier), params)
+		smsg, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.AddVerifier), params)
 		if err != nil {
 			return err
 		}
@@ -136,7 +135,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&verifreg0.AddVerifiedClientParams{Address: target, Allowance: allowance})
+		params, err := actors.SerializeParams(&verifreg2.AddVerifiedClientParams{Address: target, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -151,7 +150,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 		msg := &types.Message{
 			To:     verifreg.Address,
 			From:   fromk,
-			Method: builtin0.MethodsVerifiedRegistry.AddVerifiedClient,
+			Method: verifreg.Methods.AddVerifiedClient,
 			Params: params,
 		}
 

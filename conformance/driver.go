@@ -248,7 +248,7 @@ func BaseFeeOrDefault(basefee *gobig.Int) abi.TokenAmount {
 // DefaultCirculatingSupply.
 func CircSupplyOrDefault(circSupply *gobig.Int) abi.TokenAmount {
 	if circSupply == nil {
-		return DefaultBaseFee
+		return DefaultCirculatingSupply
 	}
 	return big.NewFromGo(circSupply)
 }

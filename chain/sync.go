@@ -15,8 +15,6 @@ import (
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	"github.com/Gurpartap/async"
 	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
@@ -37,7 +35,11 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	blst "github.com/supranational/blst/bindings/go"
 
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	// named msgarray here to make it clear that these are the types used by
+	// messages, regardless of specs-actors version.
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -268,14 +270,15 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 
 	syncer.Exchange.AddPeer(from)
 
-	bestPweight := syncer.store.GetHeaviestTipSet().ParentWeight()
+	hts := syncer.store.GetHeaviestTipSet()
+	bestPweight := hts.ParentWeight()
 	targetWeight := fts.TipSet().ParentWeight()
 	if targetWeight.LessThan(bestPweight) {
 		var miners []string
 		for _, blk := range fts.TipSet().Blocks() {
 			miners = append(miners, blk.Miner.String())
 		}
-		log.Infof("incoming tipset from %s does not appear to be better than our best chain, ignoring for now", miners)
+		log.Infow("incoming tipset does not appear to be better than our best chain, ignoring for now", "miners", miners, "bestPweight", bestPweight, "bestTS", hts.Cids(), "incomingWeight", targetWeight, "incomingTS", fts.TipSet().Cids())
 		return false
 	}
 
@@ -462,9 +465,9 @@ func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types
 // of both types (BLS and Secpk).
 func computeMsgMeta(bs cbor.IpldStore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
 	// block headers use adt0
-	store := adt0.WrapStore(context.TODO(), bs)
-	bmArr := adt0.MakeEmptyArray(store)
-	smArr := adt0.MakeEmptyArray(store)
+	store := blockadt.WrapStore(context.TODO(), bs)
+	bmArr := blockadt.MakeEmptyArray(store)
+	smArr := blockadt.MakeEmptyArray(store)
 
 	for i, m := range bmsgCids {
 		c := cbg.CborCid(m)
@@ -1014,7 +1017,7 @@ func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, h *types.Block
 		return xerrors.Errorf("getting winning post sector set: %w", err)
 	}
 
-	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
+	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, proof2.WinningPoStVerifyInfo{
 		Randomness:        rand,
 		Proofs:            h.WinPoStProof,
 		ChallengedSectors: sectors,
@@ -1109,9 +1112,9 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	// Validate message arrays in a temporary blockstore.
 	tmpbs := bstore.NewTemporary()
-	tmpstore := adt0.WrapStore(ctx, cbor.NewCborStore(tmpbs))
+	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
 
-	bmArr := adt0.MakeEmptyArray(tmpstore)
+	bmArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.BlsMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
@@ -1128,7 +1131,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		}
 	}
 
-	smArr := adt0.MakeEmptyArray(tmpstore)
+	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
@@ -1393,6 +1396,11 @@ loop:
 	}
 
 	base := blockSet[len(blockSet)-1]
+	if base.Equals(known) {
+		blockSet = blockSet[:len(blockSet)-1]
+		base = blockSet[len(blockSet)-1]
+	}
+
 	if base.IsChildOf(known) {
 		// common case: receiving blocks that are building on top of our best tipset
 		return blockSet, nil
@@ -1728,9 +1736,6 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 }
 
 func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []byte, evrf []byte) error {
-	if build.InsecurePoStValidation {
-		return nil
-	}
 	return gen.VerifyVRF(ctx, worker, rand, evrf)
 }
 

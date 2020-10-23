@@ -1,6 +1,8 @@
 package policy
 
 import (
+	"sort"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -11,12 +13,14 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 )
 
 const (
 	ChainFinality          = miner0.ChainFinality
 	SealRandomnessLookback = ChainFinality
+	PaychSettleDelay       = paych2.SettleDelay
 )
 
 // SetSupportedProofTypes sets supported proof types, across all actor versions.
@@ -113,4 +117,36 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 	}
 
 	return ChainFinality
+}
+
+func GetMaxSectorExpirationExtension() abi.ChainEpoch {
+	return miner0.MaxSectorExpirationExtension
+}
+
+// TODO: we'll probably need to abstract over this better in the future.
+func GetMaxPoStPartitions(p abi.RegisteredPoStProof) (int, error) {
+	sectorsPerPart, err := builtin2.PoStProofWindowPoStPartitionSectors(p)
+	if err != nil {
+		return 0, err
+	}
+	return int(miner2.AddressedSectorsMax / sectorsPerPart), nil
+}
+
+func GetDefaultSectorSize() abi.SectorSize {
+	// supported proof types are the same across versions.
+	szs := make([]abi.SectorSize, 0, len(miner2.SupportedProofTypes))
+	for spt := range miner2.SupportedProofTypes {
+		ss, err := spt.SectorSize()
+		if err != nil {
+			panic(err)
+		}
+
+		szs = append(szs, ss)
+	}
+
+	sort.Slice(szs, func(i, j int) bool {
+		return szs[i] < szs[j]
+	})
+
+	return szs[0]
 }

@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -28,8 +26,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
@@ -167,7 +165,7 @@ var msigCreateCmd = &cli.Command{
 
 		// get address of newly created miner
 
-		var execreturn init0.ExecReturn
+		var execreturn init2.ExecReturn
 		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
@@ -427,7 +425,7 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		var retval msig0.ProposeReturn
+		var retval msig2.ProposeReturn
 		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
 		}
@@ -1160,7 +1158,7 @@ var msigLockProposeCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1170,7 +1168,7 @@ var msigLockProposeCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
+		msgCid, err := api.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
@@ -1257,7 +1255,7 @@ var msigLockApproveCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1267,7 +1265,7 @@ var msigLockApproveCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigApproveTxnHash(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
+		msgCid, err := api.MsigApproveTxnHash(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
@@ -1349,7 +1347,7 @@ var msigLockCancelCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&msig0.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1359,7 +1357,7 @@ var msigLockCancelCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(builtin2.MethodsMultisig.LockBalance), params)
+		msgCid, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
@@ -1488,7 +1486,7 @@ var msigProposeThresholdCmd = &cli.Command{
 			from = defaddr
 		}
 
-		params, actErr := actors.SerializeParams(&msig0.ChangeNumApprovalsThresholdParams{
+		params, actErr := actors.SerializeParams(&msig2.ChangeNumApprovalsThresholdParams{
 			NewThreshold: newM,
 		})
 
@@ -1496,7 +1494,7 @@ var msigProposeThresholdCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(builtin2.MethodsMultisig.ChangeNumApprovalsThreshold), params)
+		msgCid, err := api.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(multisig.Methods.ChangeNumApprovalsThreshold), params)
 		if err != nil {
 			return fmt.Errorf("failed to propose change of threshold: %w", err)
 		}

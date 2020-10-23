@@ -9,13 +9,15 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	// we can't import the actors shims from this package due to cyclic imports.
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 func TestEqualCall(t *testing.T) {
 	m1 := &Message{
-		To:    builtin.StoragePowerActorAddr,
-		From:  builtin.SystemActorAddr,
+		To:    builtin2.StoragePowerActorAddr,
+		From:  builtin2.SystemActorAddr,
 		Nonce: 34,
 		Value: big.Zero(),
 
@@ -28,8 +30,8 @@ func TestEqualCall(t *testing.T) {
 	}
 
 	m2 := &Message{
-		To:    builtin.StoragePowerActorAddr,
-		From:  builtin.SystemActorAddr,
+		To:    builtin2.StoragePowerActorAddr,
+		From:  builtin2.SystemActorAddr,
 		Nonce: 34,
 		Value: big.Zero(),
 
@@ -42,8 +44,8 @@ func TestEqualCall(t *testing.T) {
 	}
 
 	m3 := &Message{
-		To:    builtin.StoragePowerActorAddr,
-		From:  builtin.SystemActorAddr,
+		To:    builtin2.StoragePowerActorAddr,
+		From:  builtin2.SystemActorAddr,
 		Nonce: 34,
 		Value: big.Zero(),
 
@@ -56,8 +58,8 @@ func TestEqualCall(t *testing.T) {
 	}
 
 	m4 := &Message{
-		To:    builtin.StoragePowerActorAddr,
-		From:  builtin.SystemActorAddr,
+		To:    builtin2.StoragePowerActorAddr,
+		From:  builtin2.SystemActorAddr,
 		Nonce: 34,
 		Value: big.Zero(),
 
@@ -76,8 +78,8 @@ func TestEqualCall(t *testing.T) {
 
 func TestMessageJson(t *testing.T) {
 	m := &Message{
-		To:    builtin.StoragePowerActorAddr,
-		From:  builtin.SystemActorAddr,
+		To:    builtin2.StoragePowerActorAddr,
+		From:  builtin2.SystemActorAddr,
 		Nonce: 34,
 		Value: big.Zero(),
 
@@ -105,8 +107,8 @@ func TestMessageJson(t *testing.T) {
 
 func TestSignedMessageJson(t *testing.T) {
 	m := Message{
-		To:    builtin.StoragePowerActorAddr,
-		From:  builtin.SystemActorAddr,
+		To:    builtin2.StoragePowerActorAddr,
+		From:  builtin2.SystemActorAddr,
 		Nonce: 34,
 		Value: big.Zero(),
 

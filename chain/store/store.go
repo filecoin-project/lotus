@@ -19,12 +19,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
@@ -815,7 +815,7 @@ func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) 
 func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	ctx := context.TODO()
 	// block headers use adt0, for now.
-	a, err := adt0.AsArray(cs.Store(ctx), root)
+	a, err := blockadt.AsArray(cs.Store(ctx), root)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -1009,7 +1009,7 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	ctx := context.TODO()
 	// block headers use adt0, for now.
-	a, err := adt0.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
+	a, err := blockadt.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -1312,11 +1312,13 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 
 		var cids []cid.Cid
 		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
-			mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
-			if err != nil {
-				return xerrors.Errorf("recursing messages failed: %w", err)
+			if walked.Visit(b.Messages) {
+				mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
+				if err != nil {
+					return xerrors.Errorf("recursing messages failed: %w", err)
+				}
+				cids = mcids
 			}
-			cids = mcids
 		}
 
 		if b.Height > 0 {
@@ -1331,12 +1333,14 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		out := cids
 
 		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
-			cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
-			if err != nil {
-				return xerrors.Errorf("recursing genesis state failed: %w", err)
-			}
+			if walked.Visit(b.ParentStateRoot) {
+				cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+				if err != nil {
+					return xerrors.Errorf("recursing genesis state failed: %w", err)
+				}
 
-			out = append(out, cids...)
+				out = append(out, cids...)
+			}
 		}
 
 		for _, c := range out {

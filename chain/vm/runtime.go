@@ -53,8 +53,8 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 var EnableGasTracing = false
 
 type Runtime struct {
-	rt0.Message
-	rt0.Syscalls
+	rt2.Message
+	rt2.Syscalls
 
 	ctx context.Context
 
@@ -72,6 +72,7 @@ type Runtime struct {
 	originNonce uint64
 
 	executionTrace    types.ExecutionTrace
+	depth             uint64
 	numActorsCreated  uint64
 	allowInternal     bool
 	callerValidated   bool

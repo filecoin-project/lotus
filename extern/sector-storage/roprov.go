@@ -22,6 +22,11 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, e
 		return storiface.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}
 
+	ssize, err := l.spt.SectorSize()
+	if err != nil {
+		return storiface.SectorPaths{}, nil, xerrors.Errorf("failed to determine sector size: %w", err)
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 
 	// use TryLock to avoid blocking
@@ -35,7 +40,7 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, e
 		return storiface.SectorPaths{}, nil, xerrors.Errorf("failed to acquire sector lock")
 	}
 
-	p, _, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, sealing, storiface.AcquireMove)
+	p, _, err := l.stor.AcquireSector(ctx, id, ssize, existing, allocate, sealing, storiface.AcquireMove)
 
 	return p, cancel, err
 }
