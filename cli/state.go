@@ -1211,7 +1211,7 @@ func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOut
 		"GetCode":    getCode,
 		"GetMethod":  getMethod,
 		"ToFil":      toFil,
-		"JsonParams": jsonParams,
+		"JsonParams": JsonParams,
 		"JsonReturn": jsonReturn,
 		"IsSlow":     isSlow,
 		"IsVerySlow": isVerySlow,
@@ -1298,7 +1298,7 @@ func sumGas(changes []*types.GasTrace) types.GasTrace {
 	return out
 }
 
-func jsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
+func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
 	methodMeta, found := stmgr.MethodsMap[code][method]
 	if !found {
 		return "", fmt.Errorf("method %d not found on actor %s", method, code)

@@ -1291,7 +1291,7 @@ var chainDecodeParamsCmd = &cli.Command{
 			return xerrors.Errorf("getting actor: %w", err)
 		}
 
-		pstr, err := jsonParams(act.Code, abi.MethodNum(method), params)
+		pstr, err := JsonParams(act.Code, abi.MethodNum(method), params)
 		if err != nil {
 			return err
 		}
