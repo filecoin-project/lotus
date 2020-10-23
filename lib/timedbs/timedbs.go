@@ -8,6 +8,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/raulk/clock"
 	"go.uber.org/multierr"
 
 	"github.com/filecoin-project/lotus/build"
@@ -24,9 +25,10 @@ import (
 type TimedCacheBS struct {
 	mu               sync.RWMutex
 	active, inactive blockstore.MemStore
-
-	interval time.Duration
-	closeCh  chan struct{}
+	clock            clock.Clock
+	interval         time.Duration
+	closeCh          chan struct{}
+	doneRotatingCh   chan struct{}
 }
 
 func NewTimedCacheBS(cacheTime time.Duration) *TimedCacheBS {
@@ -34,6 +36,7 @@ func NewTimedCacheBS(cacheTime time.Duration) *TimedCacheBS {
 		active:   blockstore.NewTemporary(),
 		inactive: blockstore.NewTemporary(),
 		interval: cacheTime,
+		clock:    build.Clock,
 	}
 }
 
@@ -45,12 +48,15 @@ func (t *TimedCacheBS) Start(ctx context.Context) error {
 	}
 	t.closeCh = make(chan struct{})
 	go func() {
-		ticker := build.Clock.Ticker(t.interval)
+		ticker := t.clock.Ticker(t.interval)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
 				t.rotate()
+				if t.doneRotatingCh != nil {
+					t.doneRotatingCh <- struct{}{}
+				}
 			case <-t.closeCh:
 				return
 			}
