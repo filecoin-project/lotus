@@ -38,7 +38,7 @@ var walletCmd = &cli.Command{
 		walletSign,
 		walletVerify,
 		walletDelete,
-		walletWithdrawMarketFunds,
+		walletMarket,
 	},
 }
 
@@ -477,15 +477,23 @@ var walletDelete = &cli.Command{
 	},
 }
 
-var walletWithdrawMarketFunds = &cli.Command{
-	Name:      "withdraw-market-funds",
+var walletMarket = &cli.Command{
+	Name:  "market",
+	Usage: "Interact with market balances",
+	Subcommands: []*cli.Command{
+		walletMarketWithdraw,
+	},
+}
+
+var walletMarketWithdraw = &cli.Command{
+	Name:      "withdraw",
 	Usage:     "Withdraw funds from the Storage Market Actor",
 	ArgsUsage: "[amount (FIL) optional, otherwise will withdraw max available]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "address",
+			Name:    "from",
 			Usage:   "Specify address to withdraw funds from, otherwise it will use the default wallet address",
-			Aliases: []string{"a"},
+			Aliases: []string{"f"},
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -496,25 +504,20 @@ var walletWithdrawMarketFunds = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		defAddr, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return xerrors.Errorf("getting default wallet address: %w", err)
-		}
-
-		addr := defAddr
-		if cctx.String("address") != "" {
-			addr, err = address.NewFromString(cctx.String("address"))
+		var addr address.Address
+		if cctx.String("from") != "" {
+			addr, err = address.NewFromString(cctx.String("from"))
 			if err != nil {
-				return xerrors.Errorf("parsing address: %w", err)
+				return xerrors.Errorf("parsing from address: %w", err)
+			}
+		} else {
+			addr, err = api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting default wallet address: %w", err)
 			}
 		}
 
-		ts, err := api.ChainHead(ctx)
-		if err != nil {
-			return xerrors.Errorf("getting chain head: %w", err)
-		}
-
-		bal, err := api.StateMarketBalance(ctx, addr, ts.Key())
+		bal, err := api.StateMarketBalance(ctx, addr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting market balance for address %s: %w", addr.String(), err)
 		}
@@ -550,7 +553,7 @@ var walletWithdrawMarketFunds = &cli.Command{
 		fmt.Printf("Submitting WithdrawBalance message for amount %s for address %s\n", types.FIL(amt), addr.String())
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			To:     builtin.StorageMarketActorAddr,
-			From:   defAddr,
+			From:   addr,
 			Value:  types.NewInt(0),
 			Method: builtin.MethodsMarket.WithdrawBalance,
 			Params: params,
