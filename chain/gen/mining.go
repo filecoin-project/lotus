@@ -27,7 +27,17 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletA
 		return nil, xerrors.Errorf("failed to load tipset state: %w", err)
 	}
 
-	worker, err := stmgr.GetMinerWorkerRaw(ctx, sm, st, bt.Miner)
+	lbts, err := stmgr.GetLookbackTipSetForRound(ctx, sm, pts, bt.Epoch)
+	if err != nil {
+		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
+	}
+
+	lbst, _, err := sm.TipSetState(ctx, lbts)
+	if err != nil {
+		return nil, err
+	}
+
+	worker, err := stmgr.GetMinerWorkerRaw(ctx, sm, lbst, bt.Miner)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
 	}
