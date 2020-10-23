@@ -1396,6 +1396,11 @@ loop:
 	}
 
 	base := blockSet[len(blockSet)-1]
+	if base.Equals(known) {
+		blockSet = blockSet[:len(blockSet)-1]
+		base = blockSet[len(blockSet)-1]
+	}
+
 	if base.IsChildOf(known) {
 		// common case: receiving blocks that are building on top of our best tipset
 		return blockSet, nil
