@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/fatih/color"
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -68,6 +69,11 @@ var extractCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:        "block",
 			Usage:       "optionally, the block CID the message was included in, to avoid expensive chain scanning",
+			Destination: &extractFlags.block,
+		},
+		&cli.StringFlag{
+			Name:        "exec-block",
+			Usage:       "optionally, the block CID of a block where this message was executed, to aovid",
 			Destination: &extractFlags.block,
 		},
 		&cli.StringFlag{
@@ -143,7 +149,7 @@ func doExtract(opts extractOpts) error {
 		return fmt.Errorf("failed to fetch messages in canonical order from inclusion tipset: %w", err)
 	}
 
-	related, found, err := findMsgAndPrecursors(opts.precursor, msg, msgs)
+	related, found, err := findMsgAndPrecursors(opts.precursor, mcid, msg.From, msgs)
 	if err != nil {
 		return fmt.Errorf("failed while finding message and precursors: %w", err)
 	}
@@ -496,19 +502,19 @@ func fetchThisAndPrevTipset(ctx context.Context, api api.FullNode, target types.
 // findMsgAndPrecursors ranges through the canonical messages slice, locating
 // the target message and returning precursors in accordance to the supplied
 // mode.
-func findMsgAndPrecursors(mode string, target *types.Message, msgs []api.Message) (related []*types.Message, found bool, err error) {
+func findMsgAndPrecursors(mode string, msgCid cid.Cid, sender address.Address, msgs []api.Message) (related []*types.Message, found bool, err error) {
 	// Range through canonicalised messages, selecting only the precursors based
 	// on selection mode.
 	for _, other := range msgs {
 		switch {
 		case mode == PrecursorSelectAll:
 			fallthrough
-		case mode == PrecursorSelectSender && other.Message.From == target.From:
+		case mode == PrecursorSelectSender && other.Message.From == sender:
 			related = append(related, other.Message)
 		}
 
 		// this message is the target; we're done.
-		if other.Cid == target.Cid() {
+		if other.Cid == msgCid {
 			return related, true, nil
 		}
 	}
