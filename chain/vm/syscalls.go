@@ -34,15 +34,18 @@ func init() {
 
 // Actual type is defined in chain/types/vmcontext.go because the VMContext interface is there
 
-type SyscallBuilder func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime2.Syscalls
+type SyscallBuilder func(ctx context.Context, rt *Runtime) runtime2.Syscalls
 
 func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
-	return func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime2.Syscalls {
+	return func(ctx context.Context, rt *Runtime) runtime2.Syscalls {
+
 		return &syscallShim{
 			ctx: ctx,
 
-			cstate: cstate,
-			cst:    cst,
+			actor:   rt.Receiver(),
+			cstate:  rt.state,
+			cst:     rt.cst,
+			lbState: rt.vm.lbStateGet,
 
 			verifier: verifier,
 		}
@@ -52,6 +55,8 @@ func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
 type syscallShim struct {
 	ctx context.Context
 
+	lbState  LookbackStateGetter
+	actor    address.Address
 	cstate   *state.StateTree
 	cst      cbor.IpldStore
 	verifier ffiwrapper.Verifier
@@ -184,26 +189,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime2.Conse
 }
 
 func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
-
-	// get appropriate miner actor
-	act, err := ss.cstate.GetActor(blk.Miner)
-	if err != nil {
-		return err
-	}
-
-	// use that to get the miner state
-	mas, err := miner.Load(adt.WrapStore(ss.ctx, ss.cst), act)
-	if err != nil {
-		return err
-	}
-
-	info, err := mas.Info()
-	if err != nil {
-		return err
-	}
-
-	// and use to get resolved workerKey
-	waddr, err := ResolveToKeyAddr(ss.cstate, ss.cst, info.Worker)
+	waddr, err := ss.workerKeyAtLookback(blk.Height)
 	if err != nil {
 		return err
 	}
@@ -213,6 +199,31 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 	}
 
 	return nil
+}
+
+func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch) (address.Address, error) {
+	lbState, err := ss.lbState(ss.ctx, height)
+	if err != nil {
+		return address.Undef, err
+	}
+	// get appropriate miner actor
+	act, err := lbState.GetActor(ss.actor)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	// use that to get the miner state
+	mas, err := miner.Load(adt.WrapStore(ss.ctx, ss.cst), act)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	info, err := mas.Info()
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return ResolveToKeyAddr(ss.cstate, ss.cst, info.Worker)
 }
 
 func (ss *syscallShim) VerifyPoSt(proof proof2.WindowPoStVerifyInfo) error {

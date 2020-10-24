@@ -134,11 +134,6 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
-	rt.Syscalls = pricedSyscalls{
-		under:     vm.Syscalls(ctx, vm.cstate, rt.cst),
-		chargeGas: rt.chargeGasFunc(1),
-		pl:        rt.pricelist,
-	}
 
 	vmm := *msg
 	resF, ok := rt.ResolveAddress(msg.From)
@@ -156,6 +151,12 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 		rt.Message = &Message{msg: vmm}
 	}
 
+	rt.Syscalls = pricedSyscalls{
+		under:     vm.Syscalls(ctx, rt),
+		chargeGas: rt.chargeGasFunc(1),
+		pl:        rt.pricelist,
+	}
+
 	return rt
 }
 
@@ -169,6 +170,7 @@ func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message) *Runtim
 
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
 type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
+type LookbackStateGetter func(context.Context, abi.ChainEpoch) (*state.StateTree, error)
 
 type VM struct {
 	cstate         *state.StateTree
@@ -181,6 +183,7 @@ type VM struct {
 	circSupplyCalc CircSupplyCalculator
 	ntwkVersion    NtwkVersionGetter
 	baseFee        abi.TokenAmount
+	lbStateGet     LookbackStateGetter
 
 	Syscalls SyscallBuilder
 }
@@ -194,6 +197,7 @@ type VMOpts struct {
 	CircSupplyCalc CircSupplyCalculator
 	NtwkVersion    NtwkVersionGetter // TODO: stebalien: In what cases do we actually need this? It seems like even when creating new networks we want to use the 'global'/build-default version getter
 	BaseFee        abi.TokenAmount
+	LookbackState  LookbackStateGetter
 }
 
 func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
@@ -216,6 +220,7 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		ntwkVersion:    opts.NtwkVersion,
 		Syscalls:       opts.Syscalls,
 		baseFee:        opts.BaseFee,
+		lbStateGet:     opts.LookbackState,
 	}, nil
 }
 
