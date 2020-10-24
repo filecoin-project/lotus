@@ -44,12 +44,22 @@ func TestWorkerKeyChange(t *testing.T) {
 	logging.SetLogLevel("miner", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("pubsub", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
 	blocktime := 1 * time.Millisecond
 
-	n, sn := builder.MockSbBuilder(t, []test.FullNodeOpts{test.FullNodeWithUpgradeAt(1)}, test.OneMiner)
+	n, sn := builder.MockSbBuilder(t, []test.FullNodeOpts{test.FullNodeWithUpgradeAt(1), test.FullNodeWithUpgradeAt(1)}, test.OneMiner)
+
+	client1 := n[0]
+	client2 := n[1]
+
+	// Connect the nodes.
+	addrinfo, err := client1.NetAddrsListen(ctx)
+	require.NoError(t, err)
+	err = client2.NetConnect(ctx, addrinfo)
+	require.NoError(t, err)
 
 	output := bytes.NewBuffer(nil)
 	run := func(cmd *cli.Command, args ...string) error {
@@ -92,13 +102,11 @@ func TestWorkerKeyChange(t *testing.T) {
 		<-done
 	}()
 
-	client := n[0]
-
-	newKey, err := client.WalletNew(ctx, types.KTBLS)
+	newKey, err := client1.WalletNew(ctx, types.KTBLS)
 	require.NoError(t, err)
 
 	// Initialize wallet.
-	test.SendFunds(ctx, t, client, newKey, abi.NewTokenAmount(0))
+	test.SendFunds(ctx, t, client1, newKey, abi.NewTokenAmount(0))
 
 	require.NoError(t, run(actorProposeChangeWorker, "--really-do-it", newKey.String()))
 
@@ -119,7 +127,7 @@ func TestWorkerKeyChange(t *testing.T) {
 	output.Reset()
 
 	for {
-		head, err := client.ChainHead(ctx)
+		head, err := client1.ChainHead(ctx)
 		require.NoError(t, err)
 		if head.Height() >= abi.ChainEpoch(targetEpoch) {
 			break
@@ -128,4 +136,29 @@ func TestWorkerKeyChange(t *testing.T) {
 	}
 	require.NoError(t, run(actorConfirmChangeWorker, "--really-do-it", newKey.String()))
 	output.Reset()
+
+	head, err := client1.ChainHead(ctx)
+	require.NoError(t, err)
+
+	// Wait for finality (worker key switch).
+	targetHeight := head.Height() + policy.ChainFinality
+	for {
+		head, err := client1.ChainHead(ctx)
+		require.NoError(t, err)
+		if head.Height() >= targetHeight {
+			break
+		}
+		build.Clock.Sleep(10 * blocktime)
+	}
+
+	// Make sure the other node can catch up.
+	for i := 0; i < 20; i++ {
+		head, err := client2.ChainHead(ctx)
+		require.NoError(t, err)
+		if head.Height() >= targetHeight {
+			return
+		}
+		build.Clock.Sleep(10 * blocktime)
+	}
+	t.Fatal("failed to reach target epoch on the second miner")
 }
