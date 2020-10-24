@@ -64,6 +64,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        types.NewInt(0),
+		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 
 	vmi, err := sm.newVM(ctx, vmopt)
@@ -178,6 +179,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
+		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
