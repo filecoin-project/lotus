@@ -1,5 +1,13 @@
 # Lotus changelog
 
+# 1.1.2 / 2020-10-24
+
+This is a patch release of Lotus that builds on the fixes involving worker keys that was introduced in v1.1.1. Miners and node operators should update to this release as soon as possible in order to ensure their blocks are propagated and validated.
+
+## Changes 
+
+- Handle worker key changes correctly in runtime (https://github.com/filecoin-project/lotus/pull/4579)
+
 # 1.1.1 / 2020-10-24
 
 This is a patch release of Lotus that addresses some issues caused by when miners change their worker keys. Miners and node operators should update to this release as soon as possible, especially any miner who has changed their worker key recently.
