@@ -318,20 +318,14 @@ func (sm *syncManager) addSyncTarget(ts *types.TipSet) (*types.TipSet, bool, err
 	// it's not related to any active or pending sync; this could be a fork in which case we
 	// start a new worker to sync it, if it is *heavier* than any active or pending set;
 	// if it is not, we ignore it.
-	activeHeavier := false
 	for _, ws := range sm.state {
-		if ws.ts.Height() > ts.Height() {
-			activeHeavier = true
-			break
+		if isHeavier(ws.ts, ts) {
+			return nil, false, nil
 		}
 	}
 
-	if activeHeavier {
-		return nil, false, nil
-	}
-
 	pendHeaviest := sm.pend.Heaviest()
-	if pendHeaviest != nil && pendHeaviest.Height() > ts.Height() {
+	if pendHeaviest != nil && isHeavier(pendHeaviest, ts) {
 		return nil, false, nil
 	}
 
@@ -351,12 +345,16 @@ func (sm *syncManager) selectSyncTarget(done *types.TipSet) (*types.TipSet, bool
 
 	heaviest := related.heaviestTipSet()
 	for _, ws := range sm.state {
-		if ws.ts.Height() > heaviest.Height() {
+		if isHeavier(ws.ts, heaviest) {
 			return nil, false, nil
 		}
 	}
 
 	return heaviest, true, nil
+}
+
+func isHeavier(a, b *types.TipSet) bool {
+	return a.ParentWeight().GreaterThan(b.ParentWeight())
 }
 
 // sync buckets and related utilities
