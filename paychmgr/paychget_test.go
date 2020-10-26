@@ -663,6 +663,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 		defer addFundsSent.Done()
 
 		// Request add funds - should block until create channel has completed
+		var err error
 		addFundsCh1, addFundsMcid1, err = mgr.GetPaych(ctx, from, to, addFundsAmt1)
 		require.NoError(t, err)
 	}()
@@ -671,6 +672,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 		defer addFundsSent.Done()
 
 		// Request add funds again - should merge with waiting add funds request
+		var err error
 		addFundsCh2, addFundsMcid2, err = mgr.GetPaych(ctx, from, to, addFundsAmt2)
 		require.NoError(t, err)
 	}()
@@ -766,6 +768,7 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 		defer addFundsSent.Done()
 
 		// Request add funds again - should merge with waiting add funds request
+		var err error
 		addFundsCh2, addFundsMcid2, err = mgr.GetPaych(ctx, from, to, addFundsAmt2)
 		require.NoError(t, err)
 	}()
@@ -861,7 +864,6 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 
 		// Request add funds again - should merge with waiting add funds request
 		_, _, addFundsErr2 = mgr.GetPaych(addFundsCtx2, from, to, big.NewInt(3))
-		require.NoError(t, err)
 	}()
 	// Wait for add funds requests to be queued up
 	waitForQueueSize(t, mgr, from, to, 2)
@@ -950,6 +952,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 		defer addFundsSent.Done()
 
 		// Request add funds - should block until create channel has completed
+		var err error
 		_, addFundsMcid, err = mgr.GetPaych(ctx, from, to, addFundsAmt)
 		require.NoError(t, err)
 	}()
