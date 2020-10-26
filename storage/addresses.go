@@ -35,84 +35,13 @@ func AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use Ad
 		return mi.Worker, big.Zero(), nil
 	}
 
-	leastBad := address.Undef
+	leastBad := mi.Worker
 	bestAvail := minFunds
 
-	for _, addr := range mi.ControlAddresses {
-		b, err := a.WalletBalance(ctx, addr)
-		if err != nil {
-			return address.Undef, big.Zero(), xerrors.Errorf("checking control address balance: %w", err)
+	for _, addr := range append(mi.ControlAddresses, mi.Owner, mi.Worker) {
+		if maybeUseAddress(ctx, a, addr, goodFunds, &leastBad, &bestAvail) {
+			return leastBad, bestAvail, nil
 		}
-
-		if b.GreaterThanEqual(goodFunds) {
-			k, err := a.StateAccountKey(ctx, addr, types.EmptyTSK)
-			if err != nil {
-				log.Errorw("getting account key", "error", err)
-				continue
-			}
-
-			have, err := a.WalletHas(ctx, k)
-			if err != nil {
-				return address.Undef, big.Zero(), xerrors.Errorf("failed to check control address: %w", err)
-			}
-
-			if !have {
-				log.Errorw("don't have key", "key", k)
-				continue
-			}
-
-			return addr, b, nil
-		}
-
-		if b.GreaterThan(bestAvail) {
-			leastBad = addr
-			bestAvail = b
-		}
-
-		log.Warnw("control address didn't have enough funds for window post message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
-	}
-
-	// Try to use the owner account if we can, fallback to worker if we can't
-
-	k, err := a.StateAccountKey(ctx, mi.Owner, types.EmptyTSK)
-	if err != nil {
-		log.Errorw("getting owner account key", "error", err)
-		return mi.Worker, big.Zero(), nil
-	}
-
-	haveOwner, err := a.WalletHas(ctx, k)
-	if err != nil {
-		return address.Undef, big.Zero(), xerrors.Errorf("failed to check owner address: %w", err)
-	}
-
-	if haveOwner {
-		ownerBalance, err := a.WalletBalance(ctx, mi.Owner)
-		if err != nil {
-			return address.Undef, big.Zero(), xerrors.Errorf("checking owner balance: %w", err)
-		}
-
-		if ownerBalance.GreaterThanEqual(goodFunds) {
-			return mi.Owner, goodFunds, nil
-		}
-
-		if ownerBalance.GreaterThan(bestAvail) {
-			leastBad = mi.Owner
-			bestAvail = ownerBalance
-		}
-	}
-
-	workerBalance, err := a.WalletBalance(ctx, mi.Worker)
-	if err != nil {
-		return address.Undef, big.Zero(), xerrors.Errorf("checking owner balance: %w", err)
-	}
-
-	if workerBalance.GreaterThanEqual(goodFunds) {
-		return mi.Worker, goodFunds, nil
-	}
-
-	if workerBalance.GreaterThan(bestAvail) {
-		leastBad = mi.Worker
-		bestAvail = workerBalance
 	}
 
 	if bestAvail.GreaterThan(minFunds) {
@@ -123,6 +52,50 @@ func AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use Ad
 
 	// This most likely won't work, but can't hurt to try
 
+	workerBalance, err := a.WalletBalance(ctx, mi.Worker)
+	if err != nil {
+		return address.Undef, big.Zero(), xerrors.Errorf("checking owner balance: %w", err)
+	}
+
 	log.Warnw("No address had enough funds to for minimum PoSt message Fee, selecting worker address as a fallback", "address", mi.Worker, "balance", types.FIL(workerBalance), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
 	return mi.Worker, workerBalance, nil
+}
+
+func maybeUseAddress(ctx context.Context, a addrSelectApi, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
+	b, err := a.WalletBalance(ctx, addr)
+	if err != nil {
+		log.Errorw("checking control address balance", "addr", addr, "error", err)
+		return false
+	}
+
+	if b.GreaterThanEqual(goodFunds) {
+		k, err := a.StateAccountKey(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			log.Errorw("getting account key", "error", err)
+			return false
+		}
+
+		have, err := a.WalletHas(ctx, k)
+		if err != nil {
+			log.Errorw("failed to check control address", "addr", addr, "error", err)
+			return false
+		}
+
+		if !have {
+			log.Errorw("don't have key", "key", k)
+			return false
+		}
+
+		*leastBad = addr
+		*bestAvail = b
+		return true
+	}
+
+	if b.GreaterThan(*bestAvail) {
+		*leastBad = addr
+		*bestAvail = b
+	}
+
+	log.Warnw("address didn't have enough funds for window post message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
+	return false
 }
