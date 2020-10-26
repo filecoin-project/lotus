@@ -2,18 +2,16 @@ package client
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"math/bits"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/dline"
-
-	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
@@ -34,7 +32,6 @@ import (
 	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/discovery"
@@ -44,17 +41,16 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/commp"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
@@ -714,107 +710,11 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 	}, nil
 }
 
-const commPBufPad = abi.PaddedPieceSize(8 << 20)
-const commPBuf = abi.UnpaddedPieceSize(commPBufPad - (commPBufPad / 128)) // can't use .Unpadded() for const
-
-type commPWriter struct {
-	len    int64
-	buf    [commPBuf]byte
-	leaves []cid.Cid
-}
-
-func (w *commPWriter) Write(p []byte) (int, error) {
-	n := len(p)
-	for len(p) > 0 {
-		buffered := int(w.len % int64(len(w.buf)))
-		toBuffer := len(w.buf) - buffered
-		if toBuffer > len(p) {
-			toBuffer = len(p)
-		}
-
-		copied := copy(w.buf[buffered:], p[:toBuffer])
-		p = p[copied:]
-		w.len += int64(copied)
-
-		if copied > 0 && w.len%int64(len(w.buf)) == 0 {
-			leaf, err := ffiwrapper.GeneratePieceCIDFromFile(abi.RegisteredSealProof_StackedDrg32GiBV1, bytes.NewReader(w.buf[:]), commPBuf)
-			if err != nil {
-				return 0, err
-			}
-			w.leaves = append(w.leaves, leaf)
-		}
-	}
-	return n, nil
-}
-
-func (w *commPWriter) Sum() (api.DataCIDSize, error) {
-	// process last non-zero leaf if exists
-	lastLen := w.len % int64(len(w.buf))
-	rawLen := w.len
-
-	// process remaining bit of data
-	if lastLen != 0 {
-		if len(w.leaves) != 0 {
-			copy(w.buf[lastLen:], make([]byte, int(int64(commPBuf)-lastLen)))
-			lastLen = int64(commPBuf)
-		}
-
-		r, sz := padreader.New(bytes.NewReader(w.buf[:lastLen]), uint64(lastLen))
-		p, err := ffiwrapper.GeneratePieceCIDFromFile(abi.RegisteredSealProof_StackedDrg32GiBV1, r, sz)
-		if err != nil {
-			return api.DataCIDSize{}, err
-		}
-
-		if sz < commPBuf { // special case for pieces smaller than 16MiB
-			return api.DataCIDSize{
-				PayloadSize: w.len,
-				PieceSize:   sz.Padded(),
-				PieceCID:    p,
-			}, nil
-		}
-
-		w.leaves = append(w.leaves, p)
-	}
-
-	// pad with zero pieces to power-of-two size
-	fillerLeaves := (1 << (bits.Len(uint(len(w.leaves) - 1)))) - len(w.leaves)
-	for i := 0; i < fillerLeaves; i++ {
-		w.leaves = append(w.leaves, zerocomm.ZeroPieceCommitment(commPBuf))
-	}
-
-	if len(w.leaves) == 1 {
-		return api.DataCIDSize{
-			PayloadSize: rawLen,
-			PieceSize:   abi.PaddedPieceSize(len(w.leaves)) * commPBufPad,
-			PieceCID:    w.leaves[0],
-		}, nil
-	}
-
-	pieces := make([]abi.PieceInfo, len(w.leaves))
-	for i, leaf := range w.leaves {
-		pieces[i] = abi.PieceInfo{
-			Size:     commPBufPad,
-			PieceCID: leaf,
-		}
-	}
-
-	p, err := ffi.GenerateUnsealedCID(abi.RegisteredSealProof_StackedDrg32GiBV1, pieces)
-	if err != nil {
-		return api.DataCIDSize{}, xerrors.Errorf("generating unsealed CID: %w", err)
-	}
-
-	return api.DataCIDSize{
-		PayloadSize: rawLen,
-		PieceSize:   abi.PaddedPieceSize(len(w.leaves)) * commPBufPad,
-		PieceCID:    p,
-	}, nil
-}
-
 func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
 	dag := merkledag.NewDAGService(blockservice.New(a.CombinedBstore, offline.Exchange(a.CombinedBstore)))
 
-	w := &commPWriter{}
-	bw := bufio.NewWriterSize(w, int(commPBuf))
+	w := &commp.Writer{}
+	bw := bufio.NewWriterSize(w, int(commp.CommPBuf))
 
 	err := car.WriteCar(ctx, dag, []cid.Cid{root}, w)
 	if err != nil {
