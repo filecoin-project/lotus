@@ -37,10 +37,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	fmt.Println("Miner:", minerAddr)
 
 	// client query-ask <miner addr>
-	cmd := []string{
-		"client", "query-ask", minerAddr.String(),
-	}
-	out := clientCLI.RunCmd(cmd)
+	out := clientCLI.RunCmd("client", "query-ask", minerAddr.String())
 	require.Regexp(t, regexp.MustCompile("Ask:"), out)
 
 	// Create a deal (non-interactive)
@@ -50,10 +47,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	dataCid := res.Root
 	price := "1000000attofil"
 	duration := fmt.Sprintf("%d", build.MinDealDuration)
-	cmd = []string{
-		"client", "deal", dataCid.String(), minerAddr.String(), price, duration,
-	}
-	out = clientCLI.RunCmd(cmd)
+	out = clientCLI.RunCmd("client", "deal", dataCid.String(), minerAddr.String(), price, duration)
 	fmt.Println("client deal", out)
 
 	// Create a deal (interactive)
@@ -67,9 +61,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	require.NoError(t, err)
 	dataCid2 := res.Root
 	duration = fmt.Sprintf("%d", build.MinDealDuration/builtin.EpochsInDay)
-	cmd = []string{
-		"client", "deal",
-	}
+	cmd := []string{"client", "deal"}
 	interactiveCmds := []string{
 		dataCid2.String(),
 		duration,
@@ -84,8 +76,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	dealStatus := ""
 	for dealStatus != "StorageDealSealing" {
 		// client list-deals
-		cmd = []string{"client", "list-deals"}
-		out = clientCLI.RunCmd(cmd)
+		out = clientCLI.RunCmd("client", "list-deals")
 		fmt.Println("list-deals:\n", out)
 
 		lines := strings.Split(out, "\n")
@@ -106,10 +97,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	tmpdir, err := ioutil.TempDir(os.TempDir(), "test-cli-client")
 	require.NoError(t, err)
 	path := filepath.Join(tmpdir, "outfile.dat")
-	cmd = []string{
-		"client", "retrieve", dataCid.String(), path,
-	}
-	out = clientCLI.RunCmd(cmd)
+	out = clientCLI.RunCmd("client", "retrieve", dataCid.String(), path)
 	fmt.Println("retrieve:\n", out)
 	require.Regexp(t, regexp.MustCompile("Success"), out)
 }

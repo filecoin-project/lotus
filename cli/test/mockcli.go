@@ -52,22 +52,8 @@ type MockCLIClient struct {
 	out  *bytes.Buffer
 }
 
-func (c *MockCLIClient) run(cmd []string, params []string, args []string) string {
-	// Add parameter --api-url=<node api listener address>
-	apiFlag := "--api-url=" + c.addr.String()
-	params = append([]string{apiFlag}, params...)
-
-	err := c.cctx.App.Run(append(append(cmd, params...), args...))
-	require.NoError(c.t, err)
-
-	// Get the output
-	str := strings.TrimSpace(c.out.String())
-	c.out.Reset()
-	return str
-}
-
-func (c *MockCLIClient) RunCmd(input []string) string {
-	out, err := c.RunCmdRaw(input)
+func (c *MockCLIClient) RunCmd(input ...string) string {
+	out, err := c.RunCmdRaw(input...)
 	require.NoError(c.t, err)
 
 	return out
@@ -102,7 +88,7 @@ func (c *MockCLIClient) findSubcommand(cmd *lcli.Command, input []string) (*lcli
 	return nil, []string{}
 }
 
-func (c *MockCLIClient) RunCmdRaw(input []string) (string, error) {
+func (c *MockCLIClient) RunCmdRaw(input ...string) (string, error) {
 	cmd, input := c.cmdByNameSub(input)
 	if cmd == nil {
 		panic("Could not find command " + input[0] + " " + input[1])
@@ -145,7 +131,7 @@ func (c *MockCLIClient) flagSet(cmd *lcli.Command) *flag.FlagSet {
 
 func (c *MockCLIClient) RunInteractiveCmd(cmd []string, interactive []string) string {
 	c.toStdin(strings.Join(interactive, "\n") + "\n")
-	return c.RunCmd(cmd)
+	return c.RunCmd(cmd...)
 }
 
 func (c *MockCLIClient) toStdin(s string) {

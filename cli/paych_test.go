@@ -37,6 +37,7 @@ func init() {
 // commands
 func TestPaymentChannels(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -53,8 +54,7 @@ func TestPaymentChannels(t *testing.T) {
 
 	// creator: paych add-funds <creator> <receiver> <amount>
 	channelAmt := "100000"
-	cmd := []string{"paych", "add-funds", creatorAddr.String(), receiverAddr.String(), channelAmt}
-	chstr := creatorCLI.RunCmd(cmd)
+	chstr := creatorCLI.RunCmd("paych", "add-funds", creatorAddr.String(), receiverAddr.String(), channelAmt)
 
 	chAddr, err := address.NewFromString(chstr)
 	require.NoError(t, err)
@@ -62,16 +62,13 @@ func TestPaymentChannels(t *testing.T) {
 	// creator: paych voucher create <channel> <amount>
 	voucherAmt := 100
 	vamt := strconv.Itoa(voucherAmt)
-	cmd = []string{"paych", "voucher", "create", chAddr.String(), vamt}
-	voucher := creatorCLI.RunCmd(cmd)
+	voucher := creatorCLI.RunCmd("paych", "voucher", "create", chAddr.String(), vamt)
 
 	// receiver: paych voucher add <channel> <voucher>
-	cmd = []string{"paych", "voucher", "add", chAddr.String(), voucher}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "voucher", "add", chAddr.String(), voucher)
 
 	// creator: paych settle <channel>
-	cmd = []string{"paych", "settle", chAddr.String()}
-	creatorCLI.RunCmd(cmd)
+	creatorCLI.RunCmd("paych", "settle", chAddr.String())
 
 	// Wait for the chain to reach the settle height
 	chState := getPaychState(ctx, t, paymentReceiver, chAddr)
@@ -80,8 +77,7 @@ func TestPaymentChannels(t *testing.T) {
 	waitForHeight(ctx, t, paymentReceiver, sa)
 
 	// receiver: paych collect <channel>
-	cmd = []string{"paych", "collect", chAddr.String()}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "collect", chAddr.String())
 }
 
 type voucherSpec struct {
@@ -93,6 +89,7 @@ type voucherSpec struct {
 // TestPaymentChannelStatus tests the payment channel status CLI command
 func TestPaymentChannelStatus(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -106,8 +103,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych status-by-from-to <creator> <receiver>
-	cmd := []string{"paych", "status-by-from-to", creatorAddr.String(), receiverAddr.String()}
-	out := creatorCLI.RunCmd(cmd)
+	out := creatorCLI.RunCmd("paych", "status-by-from-to", creatorAddr.String(), receiverAddr.String())
 	fmt.Println(out)
 	noChannelState := "Channel does not exist"
 	require.Regexp(t, regexp.MustCompile(noChannelState), out)
@@ -116,14 +112,17 @@ func TestPaymentChannelStatus(t *testing.T) {
 	create := make(chan string)
 	go func() {
 		// creator: paych add-funds <creator> <receiver> <amount>
-		cmd := []string{"paych", "add-funds", creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
-		create <- creatorCLI.RunCmd(cmd)
+		create <- creatorCLI.RunCmd(
+			"paych",
+			"add-funds",
+			creatorAddr.String(),
+			receiverAddr.String(),
+			fmt.Sprintf("%d", channelAmt))
 	}()
 
 	// Wait for the output to stop being "Channel does not exist"
 	for regexp.MustCompile(noChannelState).MatchString(out) {
-		cmd := []string{"paych", "status-by-from-to", creatorAddr.String(), receiverAddr.String()}
-		out = creatorCLI.RunCmd(cmd)
+		out = creatorCLI.RunCmd("paych", "status-by-from-to", creatorAddr.String(), receiverAddr.String())
 	}
 	fmt.Println(out)
 
@@ -143,8 +142,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	// Wait for create channel to complete
 	chstr := <-create
 
-	cmd = []string{"paych", "status", chstr}
-	out = creatorCLI.RunCmd(cmd)
+	out = creatorCLI.RunCmd("paych", "status", chstr)
 	fmt.Println(out)
 	// Output should have the channel address
 	require.Regexp(t, regexp.MustCompile("Channel.*"+chstr), out)
@@ -156,11 +154,9 @@ func TestPaymentChannelStatus(t *testing.T) {
 
 	// creator: paych voucher create <channel> <amount>
 	voucherAmt := uint64(10)
-	cmd = []string{"paych", "voucher", "create", chAddr.String(), fmt.Sprintf("%d", voucherAmt)}
-	creatorCLI.RunCmd(cmd)
+	creatorCLI.RunCmd("paych", "voucher", "create", chAddr.String(), fmt.Sprintf("%d", voucherAmt))
 
-	cmd = []string{"paych", "status", chstr}
-	out = creatorCLI.RunCmd(cmd)
+	out = creatorCLI.RunCmd("paych", "status", chstr)
 	fmt.Println(out)
 	voucherAmtAtto := types.BigMul(types.NewInt(voucherAmt), types.NewInt(build.FilecoinPrecision))
 	voucherAmtStr := fmt.Sprintf("%d", voucherAmtAtto)
@@ -172,6 +168,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 // channel voucher commands
 func TestPaymentChannelVouchers(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -188,8 +185,7 @@ func TestPaymentChannelVouchers(t *testing.T) {
 
 	// creator: paych add-funds <creator> <receiver> <amount>
 	channelAmt := "100000"
-	cmd := []string{"paych", "add-funds", creatorAddr.String(), receiverAddr.String(), channelAmt}
-	chstr := creatorCLI.RunCmd(cmd)
+	chstr := creatorCLI.RunCmd("paych", "add-funds", creatorAddr.String(), receiverAddr.String(), channelAmt)
 
 	chAddr, err := address.NewFromString(chstr)
 	require.NoError(t, err)
@@ -199,39 +195,33 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	// creator: paych voucher create <channel> <amount>
 	// Note: implied --lane=0
 	voucherAmt1 := 100
-	cmd = []string{"paych", "voucher", "create", chAddr.String(), strconv.Itoa(voucherAmt1)}
-	voucher1 := creatorCLI.RunCmd(cmd)
+	voucher1 := creatorCLI.RunCmd("paych", "voucher", "create", chAddr.String(), strconv.Itoa(voucherAmt1))
 	vouchers = append(vouchers, voucherSpec{serialized: voucher1, lane: 0, amt: voucherAmt1})
 
 	// creator: paych voucher create <channel> <amount> --lane=5
 	lane5 := "--lane=5"
 	voucherAmt2 := 50
-	cmd = []string{"paych", "voucher", "create", lane5, chAddr.String(), strconv.Itoa(voucherAmt2)}
-	voucher2 := creatorCLI.RunCmd(cmd)
+	voucher2 := creatorCLI.RunCmd("paych", "voucher", "create", lane5, chAddr.String(), strconv.Itoa(voucherAmt2))
 	vouchers = append(vouchers, voucherSpec{serialized: voucher2, lane: 5, amt: voucherAmt2})
 
 	// creator: paych voucher create <channel> <amount> --lane=5
 	voucherAmt3 := 70
-	cmd = []string{"paych", "voucher", "create", lane5, chAddr.String(), strconv.Itoa(voucherAmt3)}
-	voucher3 := creatorCLI.RunCmd(cmd)
+	voucher3 := creatorCLI.RunCmd("paych", "voucher", "create", lane5, chAddr.String(), strconv.Itoa(voucherAmt3))
 	vouchers = append(vouchers, voucherSpec{serialized: voucher3, lane: 5, amt: voucherAmt3})
 
 	// creator: paych voucher create <channel> <amount> --lane=5
 	voucherAmt4 := 80
-	cmd = []string{"paych", "voucher", "create", lane5, chAddr.String(), strconv.Itoa(voucherAmt4)}
-	voucher4 := creatorCLI.RunCmd(cmd)
+	voucher4 := creatorCLI.RunCmd("paych", "voucher", "create", lane5, chAddr.String(), strconv.Itoa(voucherAmt4))
 	vouchers = append(vouchers, voucherSpec{serialized: voucher4, lane: 5, amt: voucherAmt4})
 
 	// creator: paych voucher list <channel> --export
-	cmd = []string{"paych", "voucher", "list", "--export", chAddr.String()}
-	list := creatorCLI.RunCmd(cmd)
+	list := creatorCLI.RunCmd("paych", "voucher", "list", "--export", chAddr.String())
 
 	// Check that voucher list output is correct on creator
 	checkVoucherOutput(t, list, vouchers)
 
 	// creator: paych voucher best-spendable <channel>
-	cmd = []string{"paych", "voucher", "best-spendable", "--export", chAddr.String()}
-	bestSpendable := creatorCLI.RunCmd(cmd)
+	bestSpendable := creatorCLI.RunCmd("paych", "voucher", "best-spendable", "--export", chAddr.String())
 
 	// Check that best spendable output is correct on creator
 	bestVouchers := []voucherSpec{
@@ -241,31 +231,25 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	checkVoucherOutput(t, bestSpendable, bestVouchers)
 
 	// receiver: paych voucher add <voucher>
-	cmd = []string{"paych", "voucher", "add", chAddr.String(), voucher1}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "voucher", "add", chAddr.String(), voucher1)
 
 	// receiver: paych voucher add <voucher>
-	cmd = []string{"paych", "voucher", "add", chAddr.String(), voucher2}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "voucher", "add", chAddr.String(), voucher2)
 
 	// receiver: paych voucher add <voucher>
-	cmd = []string{"paych", "voucher", "add", chAddr.String(), voucher3}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "voucher", "add", chAddr.String(), voucher3)
 
 	// receiver: paych voucher add <voucher>
-	cmd = []string{"paych", "voucher", "add", chAddr.String(), voucher4}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "voucher", "add", chAddr.String(), voucher4)
 
 	// receiver: paych voucher list <channel> --export
-	cmd = []string{"paych", "voucher", "list", "--export", chAddr.String()}
-	list = receiverCLI.RunCmd(cmd)
+	list = receiverCLI.RunCmd("paych", "voucher", "list", "--export", chAddr.String())
 
 	// Check that voucher list output is correct on receiver
 	checkVoucherOutput(t, list, vouchers)
 
 	// receiver: paych voucher best-spendable <channel>
-	cmd = []string{"paych", "voucher", "best-spendable", "--export", chAddr.String()}
-	bestSpendable = receiverCLI.RunCmd(cmd)
+	bestSpendable = receiverCLI.RunCmd("paych", "voucher", "best-spendable", "--export", chAddr.String())
 
 	// Check that best spendable output is correct on receiver
 	bestVouchers = []voucherSpec{
@@ -275,12 +259,10 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	checkVoucherOutput(t, bestSpendable, bestVouchers)
 
 	// receiver: paych voucher submit <channel> <voucher>
-	cmd = []string{"paych", "voucher", "submit", chAddr.String(), voucher1}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "voucher", "submit", chAddr.String(), voucher1)
 
 	// receiver: paych voucher best-spendable <channel>
-	cmd = []string{"paych", "voucher", "best-spendable", "--export", chAddr.String()}
-	bestSpendable = receiverCLI.RunCmd(cmd)
+	bestSpendable = receiverCLI.RunCmd("paych", "voucher", "best-spendable", "--export", chAddr.String())
 
 	// Check that best spendable output no longer includes submitted voucher
 	bestVouchers = []voucherSpec{
@@ -291,12 +273,10 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	// There are three vouchers in lane 5: 50, 70, 80
 	// Submit the voucher for 50. Best spendable should still be 80.
 	// receiver: paych voucher submit <channel> <voucher>
-	cmd = []string{"paych", "voucher", "submit", chAddr.String(), voucher2}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "voucher", "submit", chAddr.String(), voucher2)
 
 	// receiver: paych voucher best-spendable <channel>
-	cmd = []string{"paych", "voucher", "best-spendable", "--export", chAddr.String()}
-	bestSpendable = receiverCLI.RunCmd(cmd)
+	bestSpendable = receiverCLI.RunCmd("paych", "voucher", "best-spendable", "--export", chAddr.String())
 
 	// Check that best spendable output still includes the voucher for 80
 	bestVouchers = []voucherSpec{
@@ -306,12 +286,10 @@ func TestPaymentChannelVouchers(t *testing.T) {
 
 	// Submit the voucher for 80
 	// receiver: paych voucher submit <channel> <voucher>
-	cmd = []string{"paych", "voucher", "submit", chAddr.String(), voucher4}
-	receiverCLI.RunCmd(cmd)
+	receiverCLI.RunCmd("paych", "voucher", "submit", chAddr.String(), voucher4)
 
 	// receiver: paych voucher best-spendable <channel>
-	cmd = []string{"paych", "voucher", "best-spendable", "--export", chAddr.String()}
-	bestSpendable = receiverCLI.RunCmd(cmd)
+	bestSpendable = receiverCLI.RunCmd("paych", "voucher", "best-spendable", "--export", chAddr.String())
 
 	// Check that best spendable output no longer includes submitted voucher
 	bestVouchers = []voucherSpec{}
@@ -322,6 +300,7 @@ func TestPaymentChannelVouchers(t *testing.T) {
 // is greater than what's left in the channel, voucher create fails
 func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -336,8 +315,12 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 
 	// creator: paych add-funds <creator> <receiver> <amount>
 	channelAmt := 100
-	cmd := []string{"paych", "add-funds", creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
-	chstr := creatorCLI.RunCmd(cmd)
+	chstr := creatorCLI.RunCmd(
+		"paych",
+		"add-funds",
+		creatorAddr.String(),
+		receiverAddr.String(),
+		fmt.Sprintf("%d", channelAmt))
 
 	chAddr, err := address.NewFromString(chstr)
 	require.NoError(t, err)
@@ -345,15 +328,25 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	// creator: paych voucher create <channel> <amount> --lane=1
 	voucherAmt1 := 60
 	lane1 := "--lane=1"
-	cmd = []string{"paych", "voucher", "create", lane1, chAddr.String(), strconv.Itoa(voucherAmt1)}
-	voucher1 := creatorCLI.RunCmd(cmd)
+	voucher1 := creatorCLI.RunCmd(
+		"paych",
+		"voucher",
+		"create",
+		lane1,
+		chAddr.String(),
+		strconv.Itoa(voucherAmt1))
 	fmt.Println(voucher1)
 
 	// creator: paych voucher create <channel> <amount> --lane=2
 	lane2 := "--lane=2"
 	voucherAmt2 := 70
-	cmd = []string{"paych", "voucher", "create", lane2, chAddr.String(), strconv.Itoa(voucherAmt2)}
-	_, err = creatorCLI.RunCmdRaw(cmd)
+	_, err = creatorCLI.RunCmdRaw(
+		"paych",
+		"voucher",
+		"create",
+		lane2,
+		chAddr.String(),
+		strconv.Itoa(voucherAmt2))
 
 	// Should fail because channel doesn't have required amount
 	require.Error(t, err)
