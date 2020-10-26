@@ -237,7 +237,7 @@ func (sm *syncManager) spawnWorker(target *types.TipSet) {
 }
 
 func (sm *syncManager) worker(ws *workerState) {
-	log.Infof("worker %d syncing in %s", ws.id, ws.ss)
+	log.Infof("worker %d syncing in %s", ws.id, ws.ts)
 
 	start := build.Clock.Now()
 	defer func() {
