@@ -28,7 +28,12 @@ func runSyncMgrTest(t *testing.T, tname string, thresh int, tf func(*testing.T, 
 		<-ch
 		return nil
 	}).(*syncManager)
-	sm.bspThresh = thresh
+
+	oldBootstrapPeerThreshold := BootstrapPeerThreshold
+	BootstrapPeerThreshold = thresh
+	defer func() {
+		BootstrapPeerThreshold = oldBootstrapPeerThreshold
+	}()
 
 	sm.Start()
 	defer sm.Stop()
@@ -112,8 +117,8 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 
 		waitUntilAllWorkersAreDone(stc)
 
-		if len(sm.activeSyncTips.buckets) != 0 {
-			t.Errorf("activeSyncTips expected empty but got: %s", sm.activeSyncTips.String())
+		if len(sm.state) != 0 {
+			t.Errorf("active syncs expected empty but got: %d", len(sm.state))
 		}
 	})
 }
