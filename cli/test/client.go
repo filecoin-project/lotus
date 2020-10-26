@@ -25,8 +25,8 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	defer cancel()
 
 	// Create mock CLI
-	mockCLI := newMockCLI(t, cmds)
-	clientCLI := mockCLI.client(clientNode.ListenAddr)
+	mockCLI := NewMockCLI(t, cmds)
+	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
 	// Get the miner address
 	addrs, err := clientNode.StateListMiners(ctx, types.EmptyTSK)
@@ -40,7 +40,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	cmd := []string{
 		"client", "query-ask", minerAddr.String(),
 	}
-	out := clientCLI.runCmd(cmd)
+	out := clientCLI.RunCmd(cmd)
 	require.Regexp(t, regexp.MustCompile("Ask:"), out)
 
 	// Create a deal (non-interactive)
@@ -53,7 +53,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	cmd = []string{
 		"client", "deal", dataCid.String(), minerAddr.String(), price, duration,
 	}
-	out = clientCLI.runCmd(cmd)
+	out = clientCLI.RunCmd(cmd)
 	fmt.Println("client deal", out)
 
 	// Create a deal (interactive)
@@ -77,7 +77,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 		"no",
 		"yes",
 	}
-	out = clientCLI.runInteractiveCmd(cmd, interactiveCmds)
+	out = clientCLI.RunInteractiveCmd(cmd, interactiveCmds)
 	fmt.Println("client deal:\n", out)
 
 	// Wait for provider to start sealing deal
@@ -85,7 +85,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	for dealStatus != "StorageDealSealing" {
 		// client list-deals
 		cmd = []string{"client", "list-deals"}
-		out = clientCLI.runCmd(cmd)
+		out = clientCLI.RunCmd(cmd)
 		fmt.Println("list-deals:\n", out)
 
 		lines := strings.Split(out, "\n")
@@ -109,7 +109,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	cmd = []string{
 		"client", "retrieve", dataCid.String(), path,
 	}
-	out = clientCLI.runCmd(cmd)
+	out = clientCLI.RunCmd(cmd)
 	fmt.Println("retrieve:\n", out)
 	require.Regexp(t, regexp.MustCompile("Success"), out)
 }

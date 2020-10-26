@@ -18,8 +18,8 @@ func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNod
 	ctx := context.Background()
 
 	// Create mock CLI
-	mockCLI := newMockCLI(t, cmds)
-	clientCLI := mockCLI.client(clientNode.ListenAddr)
+	mockCLI := NewMockCLI(t, cmds)
+	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
 	// Create some wallets on the node to use for testing multisig
 	var walletAddrs []address.Address
@@ -48,7 +48,7 @@ func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNod
 		walletAddrs[1].String(),
 		walletAddrs[2].String(),
 	}
-	out := clientCLI.runCmd(cmd)
+	out := clientCLI.RunCmd(cmd)
 	fmt.Println(out)
 
 	// Extract msig robust address from output
@@ -68,12 +68,12 @@ func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNod
 		msigRobustAddr,
 		walletAddrs[3].String(),
 	}
-	out = clientCLI.runCmd(cmd)
+	out = clientCLI.RunCmd(cmd)
 	fmt.Println(out)
 
 	// msig inspect <msig>
 	cmd = []string{"msig", "inspect", "--vesting", "--decode-params", msigRobustAddr}
-	out = clientCLI.runCmd(cmd)
+	out = clientCLI.RunCmd(cmd)
 	fmt.Println(out)
 
 	// Expect correct balance
@@ -96,6 +96,6 @@ func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNod
 		walletAddrs[3].String(),
 		"false",
 	}
-	out = clientCLI.runCmd(cmd)
+	out = clientCLI.RunCmd(cmd)
 	fmt.Println(out)
 }
