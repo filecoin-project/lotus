@@ -759,6 +759,18 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 		msg.From = s.worker
 		return
 	}
+	worker, err := s.api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
+	if err != nil {
+		log.Errorw("error getting account key", "error", err)
+
+		msg.From = s.worker
+		return
+	}
+	// worker should keep sync with state on chain, if not, will met error when estimate msg gas.
+	if s.worker != worker {
+		s.worker = worker
+		msg.From = s.worker
+	}
 
 	gm, err := s.api.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK)
 	if err != nil {
