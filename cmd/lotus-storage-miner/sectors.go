@@ -219,7 +219,7 @@ var sectorsListCmd = &cli.Command{
 			tablewriter.Col("Deals"),
 			tablewriter.Col("DealWeight"),
 			tablewriter.NewLineCol("Error"),
-			tablewriter.NewLineCol("EarlyExpiration"))
+			tablewriter.NewLineCol("RecoveryTimeout"))
 
 		fast := cctx.Bool("fast")
 
@@ -281,7 +281,7 @@ var sectorsListCmd = &cli.Command{
 						}
 
 						if st.Early > 0 {
-							m["EarlyExpiration"] = color.YellowString(lcli.EpochTime(head.Height(), st.Early))
+							m["RecoveryTimeout"] = color.YellowString(lcli.EpochTime(head.Height(), st.Early))
 						}
 					}
 				}
