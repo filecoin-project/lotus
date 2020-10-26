@@ -32,6 +32,7 @@
   * [ChainTipSetWeight](#ChainTipSetWeight)
 * [Client](#Client)
   * [ClientCalcCommP](#ClientCalcCommP)
+  * [ClientCancelDataTransfer](#ClientCancelDataTransfer)
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
   * [ClientDealSize](#ClientDealSize)
   * [ClientFindData](#ClientFindData)
@@ -847,6 +848,23 @@ Response:
   "Size": 1024
 }
 ```
+
+### ClientCancelDataTransfer
+ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  3,
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  true
+]
+```
+
+Response: `{}`
 
 ### ClientDataTransferUpdates
 There are not yet any comments for this method.
