@@ -193,7 +193,7 @@ func (sm *syncManager) handlePeerHead(head peerHead) {
 }
 
 func (sm *syncManager) handleWorkerStatus(status workerStatus) {
-	log.Debugf("worker %d done; status error: %s", status.err)
+	log.Debugf("worker %d done; status error: %s", status.id, status.err)
 
 	sm.mx.Lock()
 	ws := sm.state[status.id]
@@ -240,13 +240,11 @@ func (sm *syncManager) worker(ws *workerState) {
 	log.Infof("worker %d syncing in %s", ws.id, ws.ts)
 
 	start := build.Clock.Now()
-	defer func() {
-		log.Infof("worker %d done; took %s", ws.id, build.Clock.Since(start))
-	}()
 
 	ctx := context.WithValue(sm.ctx, syncStateKey{}, ws.ss)
 	err := sm.doSync(ctx, ws.ts)
 
+	log.Infof("worker %d done; took %s", ws.id, build.Clock.Since(start))
 	select {
 	case sm.statusq <- workerStatus{id: ws.id, err: err}:
 	case <-sm.ctx.Done():
