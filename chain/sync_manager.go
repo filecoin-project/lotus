@@ -13,7 +13,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
-var BootstrapPeerThreshold = 2
+var BootstrapPeerThreshold = 1
 
 var coalesceForksParents = false
 
