@@ -11,14 +11,14 @@ import (
 	lcli "github.com/urfave/cli/v2"
 )
 
-type mockCLI struct {
+type MockCLI struct {
 	t    *testing.T
 	cmds []*lcli.Command
 	cctx *lcli.Context
 	out  *bytes.Buffer
 }
 
-func newMockCLI(t *testing.T, cmds []*lcli.Command) *mockCLI {
+func NewMockCLI(t *testing.T, cmds []*lcli.Command) *MockCLI {
 	// Create a CLI App with an --api-url flag so that we can specify which node
 	// the command should be executed against
 	app := &lcli.App{
@@ -36,15 +36,15 @@ func newMockCLI(t *testing.T, cmds []*lcli.Command) *mockCLI {
 	app.Setup()
 
 	cctx := lcli.NewContext(app, &flag.FlagSet{}, nil)
-	return &mockCLI{t: t, cmds: cmds, cctx: cctx, out: &out}
+	return &MockCLI{t: t, cmds: cmds, cctx: cctx, out: &out}
 }
 
-func (c *mockCLI) client(addr multiaddr.Multiaddr) *mockCLIClient {
-	return &mockCLIClient{t: c.t, cmds: c.cmds, addr: addr, cctx: c.cctx, out: c.out}
+func (c *MockCLI) Client(addr multiaddr.Multiaddr) *MockCLIClient {
+	return &MockCLIClient{t: c.t, cmds: c.cmds, addr: addr, cctx: c.cctx, out: c.out}
 }
 
-// mockCLIClient runs commands against a particular node
-type mockCLIClient struct {
+// MockCLIClient runs commands against a particular node
+type MockCLIClient struct {
 	t    *testing.T
 	cmds []*lcli.Command
 	addr multiaddr.Multiaddr
@@ -52,42 +52,48 @@ type mockCLIClient struct {
 	out  *bytes.Buffer
 }
 
-func (c *mockCLIClient) run(cmd []string, params []string, args []string) string {
-	// Add parameter --api-url=<node api listener address>
-	apiFlag := "--api-url=" + c.addr.String()
-	params = append([]string{apiFlag}, params...)
-
-	err := c.cctx.App.Run(append(append(cmd, params...), args...))
-	require.NoError(c.t, err)
-
-	// Get the output
-	str := strings.TrimSpace(c.out.String())
-	c.out.Reset()
-	return str
-}
-
-func (c *mockCLIClient) runCmd(input []string) string {
-	cmd := c.cmdByNameSub(input[0], input[1])
-	out, err := c.runCmdRaw(cmd, input[2:])
+func (c *MockCLIClient) RunCmd(input ...string) string {
+	out, err := c.RunCmdRaw(input...)
 	require.NoError(c.t, err)
 
 	return out
 }
 
-func (c *mockCLIClient) cmdByNameSub(name string, sub string) *lcli.Command {
-	for _, c := range c.cmds {
-		if c.Name == name {
-			for _, s := range c.Subcommands {
-				if s.Name == sub {
-					return s
-				}
-			}
+// Given an input, find the corresponding command or sub-command.
+// eg "paych add-funds"
+func (c *MockCLIClient) cmdByNameSub(input []string) (*lcli.Command, []string) {
+	name := input[0]
+	for _, cmd := range c.cmds {
+		if cmd.Name == name {
+			return c.findSubcommand(cmd, input[1:])
 		}
 	}
-	return nil
+	return nil, []string{}
 }
 
-func (c *mockCLIClient) runCmdRaw(cmd *lcli.Command, input []string) (string, error) {
+func (c *MockCLIClient) findSubcommand(cmd *lcli.Command, input []string) (*lcli.Command, []string) {
+	// If there are no sub-commands, return the current command
+	if len(cmd.Subcommands) == 0 {
+		return cmd, input
+	}
+
+	// Check each sub-command for a match against the name
+	subName := input[0]
+	for _, subCmd := range cmd.Subcommands {
+		if subCmd.Name == subName {
+			// Found a match, recursively search for sub-commands
+			return c.findSubcommand(subCmd, input[1:])
+		}
+	}
+	return nil, []string{}
+}
+
+func (c *MockCLIClient) RunCmdRaw(input ...string) (string, error) {
+	cmd, input := c.cmdByNameSub(input)
+	if cmd == nil {
+		panic("Could not find command " + input[0] + " " + input[1])
+	}
+
 	// prepend --api-url=<node api listener address>
 	apiFlag := "--api-url=" + c.addr.String()
 	input = append([]string{apiFlag}, input...)
@@ -104,7 +110,7 @@ func (c *mockCLIClient) runCmdRaw(cmd *lcli.Command, input []string) (string, er
 	return str, err
 }
 
-func (c *mockCLIClient) flagSet(cmd *lcli.Command) *flag.FlagSet {
+func (c *MockCLIClient) flagSet(cmd *lcli.Command) *flag.FlagSet {
 	// Apply app level flags (so we can process --api-url flag)
 	fs := &flag.FlagSet{}
 	for _, f := range c.cctx.App.Flags {
@@ -123,11 +129,11 @@ func (c *mockCLIClient) flagSet(cmd *lcli.Command) *flag.FlagSet {
 	return fs
 }
 
-func (c *mockCLIClient) runInteractiveCmd(cmd []string, interactive []string) string {
+func (c *MockCLIClient) RunInteractiveCmd(cmd []string, interactive []string) string {
 	c.toStdin(strings.Join(interactive, "\n") + "\n")
-	return c.runCmd(cmd)
+	return c.RunCmd(cmd...)
 }
 
-func (c *mockCLIClient) toStdin(s string) {
+func (c *MockCLIClient) toStdin(s string) {
 	c.cctx.App.Metadata["stdin"] = bytes.NewBufferString(s)
 }
