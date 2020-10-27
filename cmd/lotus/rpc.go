@@ -47,11 +47,11 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 	fullAPI := apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a))
 	rpcServer.Register("Filecoin", fullAPI)
 
-	doc := openrpc.NewLotusOpenRPCDocument()
-	discovery := &RPCDiscovery{doc}
+	doc := newOpenRPCDocument()
+
 	doc.RegisterReceiverName("Filecoin", fullAPI)
-	doc.RegisterReceiverName("rpc", discovery)
-	rpcServer.Register("rpc", discovery)
+
+	rpcServer.Register("rpc", &RPCDiscovery{doc})
 
 	ah := &auth.Handler{
 		Verify: a.AuthVerify,
