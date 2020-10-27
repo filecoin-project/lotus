@@ -28,5 +28,19 @@ type WorkerAPI interface {
 
 	StorageAddLocal(ctx context.Context, path string) error
 
+	// SetEnabled marks the worker as enabled/disabled. Not that this setting
+	// may take a few seconds to propagate to task scheduler
+	SetEnabled(ctx context.Context, enabled bool) error
+
+	Enabled(ctx context.Context) (bool, error)
+
+	// WaitQuiet blocks until there are no tasks running
+	WaitQuiet(ctx context.Context) error
+
+	// returns a random UUID of worker session, generated randomly when worker
+	// process starts
+	ProcessSession(context.Context) (uuid.UUID, error)
+
+	// Like ProcessSession, but returns an error when worker is disabled
 	Session(context.Context) (uuid.UUID, error)
 }

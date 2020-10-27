@@ -385,7 +385,13 @@ type WorkerStruct struct {
 		Remove          func(ctx context.Context, sector abi.SectorID) error `perm:"admin"`
 		StorageAddLocal func(ctx context.Context, path string) error         `perm:"admin"`
 
-		Session func(context.Context) (uuid.UUID, error) `perm:"admin"`
+		SetEnabled func(ctx context.Context, enabled bool) error `perm:"admin"`
+		Enabled    func(ctx context.Context) (bool, error)       `perm:"admin"`
+
+		WaitQuiet func(ctx context.Context) error `perm:"admin"`
+
+		ProcessSession func(context.Context) (uuid.UUID, error) `perm:"admin"`
+		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
 	}
 }
 
@@ -1542,6 +1548,22 @@ func (w *WorkerStruct) Remove(ctx context.Context, sector abi.SectorID) error {
 
 func (w *WorkerStruct) StorageAddLocal(ctx context.Context, path string) error {
 	return w.Internal.StorageAddLocal(ctx, path)
+}
+
+func (w *WorkerStruct) SetEnabled(ctx context.Context, enabled bool) error {
+	return w.Internal.SetEnabled(ctx, enabled)
+}
+
+func (w *WorkerStruct) Enabled(ctx context.Context) (bool, error) {
+	return w.Internal.Enabled(ctx)
+}
+
+func (w *WorkerStruct) WaitQuiet(ctx context.Context) error {
+	return w.Internal.WaitQuiet(ctx)
+}
+
+func (w *WorkerStruct) ProcessSession(ctx context.Context) (uuid.UUID, error) {
+	return w.Internal.ProcessSession(ctx)
 }
 
 func (w *WorkerStruct) Session(ctx context.Context) (uuid.UUID, error) {

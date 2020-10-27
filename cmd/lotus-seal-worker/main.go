@@ -58,6 +58,8 @@ func main() {
 		runCmd,
 		infoCmd,
 		storageCmd,
+		setCmd,
+		waitQuietCmd,
 	}
 
 	app := &cli.App{
