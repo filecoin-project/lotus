@@ -18,7 +18,7 @@ func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNod
 	ctx := context.Background()
 
 	// Create mock CLI
-	mockCLI := NewMockCLI(t, cmds)
+	mockCLI := NewMockCLI(ctx, t, cmds)
 	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
 	// Create some wallets on the node to use for testing multisig
