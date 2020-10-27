@@ -48,7 +48,7 @@ func TestPaymentChannels(t *testing.T) {
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(t, Commands)
+	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 
@@ -99,7 +99,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(t, Commands)
+	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych status-by-from-to <creator> <receiver>
@@ -179,7 +179,7 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(t, Commands)
+	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 
@@ -310,7 +310,7 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(t, Commands)
+	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych add-funds <creator> <receiver> <amount>

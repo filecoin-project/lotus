@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"strings"
 	"testing"
@@ -18,7 +19,7 @@ type MockCLI struct {
 	out  *bytes.Buffer
 }
 
-func NewMockCLI(t *testing.T, cmds []*lcli.Command) *MockCLI {
+func NewMockCLI(ctx context.Context, t *testing.T, cmds []*lcli.Command) *MockCLI {
 	// Create a CLI App with an --api-url flag so that we can specify which node
 	// the command should be executed against
 	app := &lcli.App{
@@ -36,6 +37,7 @@ func NewMockCLI(t *testing.T, cmds []*lcli.Command) *MockCLI {
 	app.Setup()
 
 	cctx := lcli.NewContext(app, &flag.FlagSet{}, nil)
+	cctx.Context = ctx
 	return &MockCLI{t: t, cmds: cmds, cctx: cctx, out: &out}
 }
 

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -25,7 +27,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	defer cancel()
 
 	// Create mock CLI
-	mockCLI := NewMockCLI(t, cmds)
+	mockCLI := NewMockCLI(ctx, t, cmds)
 	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
 	// Get the miner address
@@ -74,7 +76,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 
 	// Wait for provider to start sealing deal
 	dealStatus := ""
-	for dealStatus != "StorageDealSealing" {
+	for {
 		// client list-deals
 		out = clientCLI.RunCmd("client", "list-deals")
 		fmt.Println("list-deals:\n", out)
@@ -88,6 +90,9 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 		}
 		dealStatus = parts[3]
 		fmt.Println("  Deal status:", dealStatus)
+		if dealComplete(t, dealStatus) {
+			break
+		}
 
 		time.Sleep(time.Second)
 	}
@@ -100,4 +105,15 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	out = clientCLI.RunCmd("client", "retrieve", dataCid.String(), path)
 	fmt.Println("retrieve:\n", out)
 	require.Regexp(t, regexp.MustCompile("Success"), out)
+}
+
+func dealComplete(t *testing.T, dealStatus string) bool {
+	switch dealStatus {
+	case "StorageDealFailing", "StorageDealError":
+		t.Fatal(xerrors.Errorf("Storage deal failed with status: " + dealStatus))
+	case "StorageDealStaged", "StorageDealSealing", "StorageDealActive", "StorageDealExpired", "StorageDealSlashed":
+		return true
+	}
+
+	return false
 }
