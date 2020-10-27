@@ -188,6 +188,14 @@ jobs:
                 command: |
                   bash <(curl -s https://codecov.io/bash)
 
+  test-chain:
+    <<: *test
+  test-node:
+    <<: *test
+  test-storage:
+    <<: *test
+  test-cli:
+    <<: *test
   test-short:
     <<: *test
   test-window-post:
@@ -254,6 +262,25 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
+  build-lotus-soup:
+    description: |
+      Compile `lotus-soup` Testground test plan using the current version of Lotus.
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: cd extern/oni && git submodule sync
+      - run: cd extern/oni && git submodule update --init
+      - run: cd extern/filecoin-ffi && make
+      - run:
+          name: "replace lotus, filecoin-ffi, blst and fil-blst deps"
+          command: cd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi && go mod edit -replace github.com/supranational/blst=../../fil-blst/blst && go mod edit -replace github.com/filecoin-project/fil-blst=../../fil-blst
+      - run:
+          name: "build lotus-soup testplan"
+          command: pushd extern/oni/lotus-soup && go build -tags=testground .
+
 
   build-macos:
     description: build darwin lotus binary
@@ -400,7 +427,8 @@ workflows:
   version: 2.1
   ci:
     jobs:
-      - lint-all
+      - lint-all:
+          concurrency: "16"   # expend all docker 2xlarge CPUs.
       - mod-tidy-check
       - gofmt
       - cbor-gen-check
@@ -408,6 +436,22 @@ workflows:
       - test:
           codecov-upload: true
           test-suite-name: full
+      - test-chain:
+          codecov-upload: true
+          test-suite-name: chain
+          packages: "./chain/..."
+      - test-node:
+          codecov-upload: true
+          test-suite-name: node
+          packages: "./node/..."
+      - test-storage:
+          codecov-upload: true
+          test-suite-name: storage
+          packages: "./storage/... ./extern/..."
+      - test-cli:
+          codecov-upload: true
+          test-suite-name: cli
+          packages: "./cli/... ./cmd/... ./api/..."
       - test-window-post:
           go-test-flags: "-run=TestWindowedPost"
           winpost-test: "1"
@@ -427,6 +471,7 @@ workflows:
           test-suite-name: conformance-bleeding-edge
           packages: "./conformance"
           vectors-branch: master
+      - build-lotus-soup
       - build-debug
       - build-all:
           requires:

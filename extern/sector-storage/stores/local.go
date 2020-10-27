@@ -30,10 +30,15 @@ type StoragePath struct {
 
 // LocalStorageMeta [path]/sectorstore.json
 type LocalStorageMeta struct {
-	ID     ID
+	ID ID
+
+	// A high weight means data is more likely to be stored in this path
 	Weight uint64 // 0 = readonly
 
-	CanSeal  bool
+	// Intermediate data for the sealing process will be stored here
+	CanSeal bool
+
+	// Finalized sectors that will be proved over time will be stored here
 	CanStore bool
 }
 
@@ -264,12 +269,7 @@ func (st *Local) reportHealth(ctx context.Context) {
 	}
 }
 
-func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, spt abi.RegisteredSealProof, ft SectorFileType, storageIDs SectorPaths, overheadTab map[SectorFileType]int) (func(), error) {
-	ssize, err := spt.SectorSize()
-	if err != nil {
-		return nil, xerrors.Errorf("getting sector size: %w", err)
-	}
-
+func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, ft SectorFileType, storageIDs SectorPaths, overheadTab map[SectorFileType]int) (func(), error) {
 	st.localLk.Lock()
 
 	done := func() {}
@@ -319,7 +319,7 @@ func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, spt abi.Register
 	return done, nil
 }
 
-func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.RegisteredSealProof, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, error) {
+func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, existing SectorFileType, allocate SectorFileType, pathType PathType, op AcquireMode) (SectorPaths, SectorPaths, error) {
 	if existing|allocate != existing^allocate {
 		return SectorPaths{}, SectorPaths{}, xerrors.New("can't both find and allocate a sector")
 	}
@@ -335,7 +335,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 			continue
 		}
 
-		si, err := st.index.StorageFindSector(ctx, sid, fileType, spt, false)
+		si, err := st.index.StorageFindSector(ctx, sid, fileType, ssize, false)
 		if err != nil {
 			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
 			continue
@@ -365,7 +365,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, spt abi.Re
 			continue
 		}
 
-		sis, err := st.index.StorageBestAlloc(ctx, fileType, spt, pathType)
+		sis, err := st.index.StorageBestAlloc(ctx, fileType, ssize, pathType)
 		if err != nil {
 			return SectorPaths{}, SectorPaths{}, xerrors.Errorf("finding best storage for allocating : %w", err)
 		}
@@ -520,13 +520,13 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ SectorF
 	return nil
 }
 
-func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, spt abi.RegisteredSealProof, types SectorFileType) error {
-	dest, destIds, err := st.AcquireSector(ctx, s, spt, FTNone, types, PathStorage, AcquireMove)
+func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, ssize abi.SectorSize, types SectorFileType) error {
+	dest, destIds, err := st.AcquireSector(ctx, s, ssize, FTNone, types, PathStorage, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
 	}
 
-	src, srcIds, err := st.AcquireSector(ctx, s, spt, types, FTNone, PathStorage, AcquireMove)
+	src, srcIds, err := st.AcquireSector(ctx, s, ssize, types, FTNone, PathStorage, AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}

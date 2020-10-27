@@ -92,6 +92,12 @@ lotus-shed: $(BUILD_DEPS)
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
+lotus-gateway: $(BUILD_DEPS)
+	rm -f lotus-gateway
+	go build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
+.PHONY: lotus-gateway
+BINS+=lotus-gateway
+
 build: lotus lotus-miner lotus-worker
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
@@ -127,17 +133,29 @@ benchmarks:
 
 lotus-pond: 2k
 	go build -o lotus-pond ./lotuspond
-	(cd lotuspond/front && npm i && CI=false npm run build)
 .PHONY: lotus-pond
 BINS+=lotus-pond
+
+lotus-pond-front:
+	(cd lotuspond/front && npm i && CI=false npm run build)
+.PHONY: lotus-pond-front
+
+lotus-pond-app: lotus-pond-front lotus-pond
+.PHONY: lotus-pond-app
 
 lotus-townhall:
 	rm -f lotus-townhall
 	go build -o lotus-townhall ./cmd/lotus-townhall
-	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-townhall -i ./cmd/lotus-townhall -i ./build
 .PHONY: lotus-townhall
 BINS+=lotus-townhall
+
+lotus-townhall-front:
+	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
+.PHONY: lotus-townhall-front
+
+lotus-townhall-app: lotus-touch lotus-townhall-front
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-townhall -i ./cmd/lotus-townhall -i ./build
+.PHONY: lotus-townhall-app
 
 lotus-fountain:
 	rm -f lotus-fountain
@@ -179,6 +197,12 @@ lotus-health:
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-health -i ./build
 .PHONY: lotus-health
 BINS+=lotus-health
+
+lotus-wallet:
+	rm -f lotus-wallet
+	go build -o lotus-wallet ./cmd/lotus-wallet
+.PHONY: lotus-wallet
+BINS+=lotus-wallet
 
 testground:
 	go build -tags testground -o /dev/null ./cmd/lotus

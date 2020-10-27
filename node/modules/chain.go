@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"time"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -17,7 +18,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/journal"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/exchange"
@@ -28,6 +31,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/bufbstore"
+	"github.com/filecoin-project/lotus/lib/timedbs"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -39,8 +44,15 @@ func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt r
 	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
 	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
 
+	// Write all incoming bitswap blocks into a temporary blockstore for two
+	// block times. If they validate, they'll be persisted later.
+	cache := timedbs.NewTimedCacheBS(2 * time.Duration(build.BlockDelaySecs) * time.Second)
+	lc.Append(fx.Hook{OnStop: cache.Stop, OnStart: cache.Start})
+
+	bitswapBs := bufbstore.NewTieredBstore(bs, cache)
+
 	// Use just exch.Close(), closing the context is not needed
-	exch := bitswap.New(mctx, bitswapNetwork, bs, bitswapOptions...)
+	exch := bitswap.New(mctx, bitswapNetwork, bitswapBs, bitswapOptions...)
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			return exch.Close()
@@ -50,9 +62,9 @@ func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt r
 	return exch
 }
 
-func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS, nn dtypes.NetworkName) (*messagepool.MessagePool, error) {
+func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal) (*messagepool.MessagePool, error) {
 	mpp := messagepool.NewProvider(sm, ps)
-	mp, err := messagepool.New(mpp, ds, nn)
+	mp, err := messagepool.New(mpp, ds, nn, j)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %w", err)
 	}
@@ -87,8 +99,8 @@ func ChainBlockService(bs dtypes.ChainBlockstore, rem dtypes.ChainBitswap) dtype
 	return blockservice.New(bs, rem)
 }
 
-func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder) *store.ChainStore {
-	chain := store.NewChainStore(bs, ds, syscalls)
+func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
+	chain := store.NewChainStore(bs, ds, syscalls, j)
 
 	if err := chain.Load(); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
@@ -156,15 +168,47 @@ func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error)
 	return dtypes.AfterGenesisSet{}, cs.SetGenesis(genesis)
 }
 
-func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
+func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, us stmgr.UpgradeSchedule, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
+	if !build.Devnet {
+		return "testnetnet", nil
+	}
+
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	netName, err := stmgr.GetNetworkName(ctx, stmgr.NewStateManager(cs), cs.GetHeaviestTipSet().ParentState())
+	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(cs, us)
+	if err != nil {
+		return "", err
+	}
+
+	netName, err := stmgr.GetNetworkName(ctx, sm, cs.GetHeaviestTipSet().ParentState())
 	return netName, err
 }
 
-func NewSyncer(lc fx.Lifecycle, ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.Client, h host.Host, beacon beacon.Schedule, verifier ffiwrapper.Verifier) (*chain.Syncer, error) {
-	syncer, err := chain.NewSyncer(ds, sm, exchange, h.ConnManager(), h.ID(), beacon, verifier)
+type SyncerParams struct {
+	fx.In
+
+	Lifecycle    fx.Lifecycle
+	MetadataDS   dtypes.MetadataDS
+	StateManager *stmgr.StateManager
+	ChainXchg    exchange.Client
+	SyncMgrCtor  chain.SyncManagerCtor
+	Host         host.Host
+	Beacon       beacon.Schedule
+	Verifier     ffiwrapper.Verifier
+}
+
+func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
+	var (
+		lc     = params.Lifecycle
+		ds     = params.MetadataDS
+		sm     = params.StateManager
+		ex     = params.ChainXchg
+		smCtor = params.SyncMgrCtor
+		h      = params.Host
+		b      = params.Beacon
+		v      = params.Verifier
+	)
+	syncer, err := chain.NewSyncer(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, v)
 	if err != nil {
 		return nil, err
 	}

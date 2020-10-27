@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -30,22 +30,22 @@ func main() {
 			return err
 		}
 
-		var kt crypto.SigType
+		var kt types.KeyType
 		switch cctx.String("type") {
 		case "bls":
-			kt = crypto.SigTypeBLS
+			kt = types.KTBLS
 		case "secp256k1":
-			kt = crypto.SigTypeSecp256k1
+			kt = types.KTSecp256k1
 		default:
 			return fmt.Errorf("unrecognized key type: %q", cctx.String("type"))
 		}
 
-		kaddr, err := w.GenerateKey(kt)
+		kaddr, err := w.WalletNew(cctx.Context, kt)
 		if err != nil {
 			return err
 		}
 
-		ki, err := w.Export(kaddr)
+		ki, err := w.WalletExport(cctx.Context, kaddr)
 		if err != nil {
 			return err
 		}

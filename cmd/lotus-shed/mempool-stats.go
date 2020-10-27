@@ -16,9 +16,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 var (
@@ -121,7 +122,7 @@ var mpoolStatsCmd = &cli.Command{
 				return false, err
 			}
 
-			ism := act.Code == builtin.StorageMinerActorCodeID
+			ism := builtin.IsStorageMinerActor(act.Code)
 			mcache[addr] = ism
 			return ism, nil
 		}
@@ -143,7 +144,7 @@ var mpoolStatsCmd = &cli.Command{
 						seen: time.Now(),
 					}
 
-					if u.Message.Message.Method == builtin.MethodsMiner.SubmitWindowedPoSt {
+					if u.Message.Message.Method == miner.Methods.SubmitWindowedPoSt {
 
 						miner, err := isMiner(u.Message.Message.To)
 						if err != nil {

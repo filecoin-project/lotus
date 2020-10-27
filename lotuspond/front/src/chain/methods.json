@@ -23,7 +23,8 @@
     "AddSigner",
     "RemoveSigner",
     "SwapSigner",
-    "ChangeNumApprovalsThreshold"
+    "ChangeNumApprovalsThreshold",
+    "LockBalance"
   ],
   "fil/1/paymentchannel": [
     "Send",
@@ -86,7 +87,114 @@
     "SubmitPoRepForBulkVerify",
     "CurrentTotalPower"
   ],
+  "fil/1/system": [
+    "Send",
+    "Constructor"
+  ],
   "fil/1/verifiedregistry": [
+    "Send",
+    "Constructor",
+    "AddVerifier",
+    "RemoveVerifier",
+    "AddVerifiedClient",
+    "UseBytes",
+    "RestoreBytes"
+  ],
+  "fil/2/account": [
+    "Send",
+    "Constructor",
+    "PubkeyAddress"
+  ],
+  "fil/2/cron": [
+    "Send",
+    "Constructor",
+    "EpochTick"
+  ],
+  "fil/2/init": [
+    "Send",
+    "Constructor",
+    "Exec"
+  ],
+  "fil/2/multisig": [
+    "Send",
+    "Constructor",
+    "Propose",
+    "Approve",
+    "Cancel",
+    "AddSigner",
+    "RemoveSigner",
+    "SwapSigner",
+    "ChangeNumApprovalsThreshold",
+    "LockBalance"
+  ],
+  "fil/2/paymentchannel": [
+    "Send",
+    "Constructor",
+    "UpdateChannelState",
+    "Settle",
+    "Collect"
+  ],
+  "fil/2/reward": [
+    "Send",
+    "Constructor",
+    "AwardBlockReward",
+    "ThisEpochReward",
+    "UpdateNetworkKPI"
+  ],
+  "fil/2/storagemarket": [
+    "Send",
+    "Constructor",
+    "AddBalance",
+    "WithdrawBalance",
+    "PublishStorageDeals",
+    "VerifyDealsForActivation",
+    "ActivateDeals",
+    "OnMinerSectorsTerminate",
+    "ComputeDataCommitment",
+    "CronTick"
+  ],
+  "fil/2/storageminer": [
+    "Send",
+    "Constructor",
+    "ControlAddresses",
+    "ChangeWorkerAddress",
+    "ChangePeerID",
+    "SubmitWindowedPoSt",
+    "PreCommitSector",
+    "ProveCommitSector",
+    "ExtendSectorExpiration",
+    "TerminateSectors",
+    "DeclareFaults",
+    "DeclareFaultsRecovered",
+    "OnDeferredCronEvent",
+    "CheckSectorProven",
+    "ApplyRewards",
+    "ReportConsensusFault",
+    "WithdrawBalance",
+    "ConfirmSectorProofsValid",
+    "ChangeMultiaddrs",
+    "CompactPartitions",
+    "CompactSectorNumbers",
+    "ConfirmUpdateWorkerKey",
+    "RepayDebt",
+    "ChangeOwnerAddress"
+  ],
+  "fil/2/storagepower": [
+    "Send",
+    "Constructor",
+    "CreateMiner",
+    "UpdateClaimedPower",
+    "EnrollCronEvent",
+    "OnEpochTickEnd",
+    "UpdatePledgeTotal",
+    "SubmitPoRepForBulkVerify",
+    "CurrentTotalPower"
+  ],
+  "fil/2/system": [
+    "Send",
+    "Constructor"
+  ],
+  "fil/2/verifiedregistry": [
     "Send",
     "Constructor",
     "AddVerifier",

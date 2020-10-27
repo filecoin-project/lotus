@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 
-	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"golang.org/x/xerrors"
 
@@ -13,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -93,8 +95,15 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
 	}
 
-	if height-(si.TicketEpoch+SealRandomnessLookback) > SealRandomnessLookbackLimit(si.SectorType) {
-		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+SealRandomnessLookback, height)}
+	nv, err := api.StateNetworkVersion(ctx, tok)
+	if err != nil {
+		return &ErrApi{xerrors.Errorf("calling StateNetworkVersion: %w", err)}
+	}
+
+	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), si.SectorType)
+
+	if height-(si.TicketEpoch+policy.SealRandomnessLookback) > msd {
+		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+policy.SealRandomnessLookback, height)}
 	}
 
 	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)
@@ -139,8 +148,8 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
 	}
 
-	if pci.PreCommitEpoch+miner.PreCommitChallengeDelay != si.SeedEpoch {
-		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+miner.PreCommitChallengeDelay, si.SeedEpoch)}
+	if pci.PreCommitEpoch+policy.GetPreCommitChallengeDelay() != si.SeedEpoch {
+		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+policy.GetPreCommitChallengeDelay(), si.SeedEpoch)}
 	}
 
 	buf := new(bytes.Buffer)
@@ -170,7 +179,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		log.Warn("on-chain sealed CID doesn't match!")
 	}
 
-	ok, err := m.verif.VerifySeal(saproof.SealVerifyInfo{
+	ok, err := m.verif.VerifySeal(proof2.SealVerifyInfo{
 		SectorID:              m.minerSector(si.SectorNumber),
 		SealedCID:             pci.Info.SealedCID,
 		SealProof:             spt,

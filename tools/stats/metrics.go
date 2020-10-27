@@ -13,15 +13,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -189,7 +188,7 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 		pl.AddPoint(p)
 	}
 	{
-		blks := len(cids)
+		blks := int64(len(cids))
 		p = NewPoint("chain.gas_fill_ratio", float64(totalGasLimit)/float64(blks*build.BlockGasTarget))
 		pl.AddPoint(p)
 		p = NewPoint("chain.gas_capacity_ratio", float64(totalUniqGasLimit)/float64(blks*build.BlockGasTarget))
@@ -201,16 +200,24 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 	return nil
 }
 
-type apiIpldStore struct {
+type ApiIpldStore struct {
 	ctx context.Context
-	api api.FullNode
+	api apiIpldStoreApi
 }
 
-func (ht *apiIpldStore) Context() context.Context {
+type apiIpldStoreApi interface {
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+}
+
+func NewApiIpldStore(ctx context.Context, api apiIpldStoreApi) *ApiIpldStore {
+	return &ApiIpldStore{ctx, api}
+}
+
+func (ht *ApiIpldStore) Context() context.Context {
 	return ht.ctx
 }
 
-func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
+func (ht *ApiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
 	raw, err := ht.api.ChainReadObj(ctx, c)
 	if err != nil {
 		return err
@@ -227,8 +234,8 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 	return fmt.Errorf("Object does not implement CBORUnmarshaler")
 }
 
-func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	return cid.Undef, fmt.Errorf("Put is not implemented on apiIpldStore")
+func (ht *ApiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	return cid.Undef, fmt.Errorf("Put is not implemented on ApiIpldStore")
 }
 
 func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
@@ -245,7 +252,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	//p := NewPoint("chain.pledge_collateral", pcFilFloat)
 	//pl.AddPoint(p)
 
-	netBal, err := api.WalletBalance(ctx, builtin.RewardActorAddr)
+	netBal, err := api.WalletBalance(ctx, reward.Address)
 	if err != nil {
 		return err
 	}
@@ -263,35 +270,17 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	p = NewPoint("chain.power", totalPower.TotalPower.QualityAdjPower.Int64())
 	pl.AddPoint(p)
 
-	powerActor, err := api.StateGetActor(ctx, builtin.StoragePowerActorAddr, tipset.Key())
+	powerActor, err := api.StateGetActor(ctx, power.Address, tipset.Key())
 	if err != nil {
 		return err
 	}
 
-	powerRaw, err := api.ChainReadObj(ctx, powerActor.Head)
+	powerActorState, err := power.Load(&ApiIpldStore{ctx, api}, powerActor)
 	if err != nil {
 		return err
 	}
 
-	var powerActorState power.State
-
-	if err := powerActorState.UnmarshalCBOR(bytes.NewReader(powerRaw)); err != nil {
-		return fmt.Errorf("failed to unmarshal power actor state: %w", err)
-	}
-
-	s := &apiIpldStore{ctx, api}
-	mp, err := adt.AsMap(s, powerActorState.Claims)
-	if err != nil {
-		return err
-	}
-
-	var claim power.Claim
-	err = mp.ForEach(&claim, func(key string) error {
-		addr, err := address.NewFromBytes([]byte(key))
-		if err != nil {
-			return err
-		}
-
+	return powerActorState.ForEachClaim(func(addr address.Address, claim power.Claim) error {
 		if claim.QualityAdjPower.Int64() == 0 {
 			return nil
 		}
@@ -302,11 +291,6 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 type msgTag struct {

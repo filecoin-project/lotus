@@ -1,5 +1,457 @@
 # Lotus changelog
 
+# 1.1.2 / 2020-10-24
+
+This is a patch release of Lotus that builds on the fixes involving worker keys that was introduced in v1.1.1. Miners and node operators should update to this release as soon as possible in order to ensure their blocks are propagated and validated.
+
+## Changes 
+
+- Handle worker key changes correctly in runtime (https://github.com/filecoin-project/lotus/pull/4579)
+
+# 1.1.1 / 2020-10-24
+
+This is a patch release of Lotus that addresses some issues caused by when miners change their worker keys. Miners and node operators should update to this release as soon as possible, especially any miner who has changed their worker key recently.
+
+## Changes
+
+- Miner finder for interactive client deal CLI (https://github.com/filecoin-project/lotus/pull/4504)
+- Disable blockstore bloom filter (https://github.com/filecoin-project/lotus/pull/4512)
+- Add api for getting status given a code (https://github.com/filecoin-project/lotus/pull/4210)
+- add batch api for push messages (https://github.com/filecoin-project/lotus/pull/4236)
+- add measure datastore wrapper around bench chain datastore (https://github.com/filecoin-project/lotus/pull/4302)
+- Look at block base fee for PCR (https://github.com/filecoin-project/lotus/pull/4313)
+- Add a shed util to determine % of power that has won a block (https://github.com/filecoin-project/lotus/pull/4318)
+- Shed/borked cmd (https://github.com/filecoin-project/lotus/pull/4339)
+- optimize mining code (https://github.com/filecoin-project/lotus/pull/4379)
+- heaviestTipSet reurning nil is a ok (https://github.com/filecoin-project/lotus/pull/4523)
+- Remove most v0 actor imports (https://github.com/filecoin-project/lotus/pull/4383)
+- Small chain export optimization (https://github.com/filecoin-project/lotus/pull/4536)
+- Add block list to pcr (https://github.com/filecoin-project/lotus/pull/4314)
+- Fix circ supply default in conformance (https://github.com/filecoin-project/lotus/pull/4449)
+- miner: fix init --create-worker-key (https://github.com/filecoin-project/lotus/pull/4475)
+- make push and addLocal atomic (https://github.com/filecoin-project/lotus/pull/4500)
+- add some methods that oni needs (https://github.com/filecoin-project/lotus/pull/4501)
+- MinerGetBaseInfo: if miner is not found in lookback, check current (https://github.com/filecoin-project/lotus/pull/4508)
+- Delete wallet from local wallet cache (https://github.com/filecoin-project/lotus/pull/4526)
+- Fix lotus-shed ledger list (https://github.com/filecoin-project/lotus/pull/4521)
+- Manage sectors by size instead of proof type (https://github.com/filecoin-project/lotus/pull/4511)
+- Feat/api request metrics wrapper (https://github.com/filecoin-project/lotus/pull/4516)
+- Fix chain sync stopping to sync (https://github.com/filecoin-project/lotus/pull/4541)
+- Use the correct lookback for the worker key when creating blocks (https://github.com/filecoin-project/lotus/pull/4539)
+- Cleanup test initialization and always validate VRFs in tests (https://github.com/filecoin-project/lotus/pull/4538)
+- Add a market WithdrawBalance CLI (https://github.com/filecoin-project/lotus/pull/4524)
+- wallet list: Add market balance and ID address flags (https://github.com/filecoin-project/lotus/pull/4555)
+- tvx simulate command; tvx extract --ignore-sanity-checks (https://github.com/filecoin-project/lotus/pull/4554)
+- lotus-lite: CLI tests for `lotus client` commands (https://github.com/filecoin-project/lotus/pull/4497)
+- lite-mode - market storage and retrieval clients (https://github.com/filecoin-project/lotus/pull/4263)
+- Chore: update drand to v1.2.0 (https://github.com/filecoin-project/lotus/pull/4420)
+- Fix random test failures (https://github.com/filecoin-project/lotus/pull/4559)
+- Fix flaky TestTimedBSSimple (https://github.com/filecoin-project/lotus/pull/4561)
+- Make wallet market withdraw usable with miner addresses (https://github.com/filecoin-project/lotus/pull/4556)
+- Fix flaky TestChainExportImportFull (https://github.com/filecoin-project/lotus/pull/4564)
+- Use older randomness for the PoSt commit on specs-actors version 2 (https://github.com/filecoin-project/lotus/pull/4563)
+- shed: Commad to decode messages (https://github.com/filecoin-project/lotus/pull/4565)
+- Fetch worker key from correct block on sync (https://github.com/filecoin-project/lotus/pull/4573)
+
+# 1.1.0 / 2020-10-20
+
+This is a mandatory release that introduces the first post-liftoff upgrade to the Filecoin network. The changes that break consensus are an upgrade to specs-actors v2.2.0 at epoch 170000.
+
+## Changes
+
+- Introduce Network version 6 (https://github.com/filecoin-project/lotus/pull/4506)
+- Update markets v1.0.0 (https://github.com/filecoin-project/lotus/pull/4505)
+- Add some extra logging to try and debug sync issues (https://github.com/filecoin-project/lotus/pull/4486)
+- Circle: Run tests for some subsystems separately (https://github.com/filecoin-project/lotus/pull/4496)
+- Add a terminate sectors command to lotus-shed (https://github.com/filecoin-project/lotus/pull/4507)
+- Add a comment to BlockMessages to address #4446 (https://github.com/filecoin-project/lotus/pull/4491)
+
+# 1.0.0 / 2020-10-19
+
+It's 1.0.0! This is an optional release of Lotus that introduces some UX improvements to the 0.10 series.
+
+This very small release is largely cosmetic, and intended to flag the code that the Filecoin mainnet was launched with.
+
+## API changes
+
+- `StateMsgGasCost` has been removed. The equivalent information can be gained by calling `StateReplay`.
+- A `GasCost` field has been added to the `InvocResult` type, meaning detailed gas costs will be returned when calling `StateReplay`, `StateCompute`, and `StateCall`.
+- The behaviour of `StateReplay` in response to an empty tipset key has been changed. Instead of simply using the heaviest tipset (which is almost guaranteed to be an unsuccessful replay), we search now search the chain for the tipset that included the message, and replay the message in that tipset (we fail if no such tipset is found).
+
+## Changes
+
+- Increase code coverage! (https://github.com/filecoin-project/lotus/pull/4410)
+- Mpool: Don't block node startup loading messages (https://github.com/filecoin-project/lotus/pull/4411)
+- Improve the UX of multisig approves (https://github.com/filecoin-project/lotus/pull/4398)
+- Use build.BlockDelaySecs for deal start buffer (https://github.com/filecoin-project/lotus/pull/4415)
+- Conformance: support multiple protocol versions (https://github.com/filecoin-project/lotus/pull/4393)
+- Ensure msig inspect cli works with lotus-lite (https://github.com/filecoin-project/lotus/pull/4421)
+- Add command to (slowly) prune lotus chain datastore (https://github.com/filecoin-project/lotus/pull/3876)
+- Add WalletVerify to lotus-gateway (https://github.com/filecoin-project/lotus/pull/4373)
+- Improve StateMsg APIs (https://github.com/filecoin-project/lotus/pull/4429)
+- Add endpoints needed by spacegap (https://github.com/filecoin-project/lotus/pull/4426)
+- Make audit balances capable of printing robust addresses (https://github.com/filecoin-project/lotus/pull/4423)
+- Custom filters for retrieval deals (https://github.com/filecoin-project/lotus/pull/4424)
+- Fix message list api (https://github.com/filecoin-project/lotus/pull/4422)
+- Replace bootstrap peers (https://github.com/filecoin-project/lotus/pull/4447)
+- Don't overwrite previously-configured maxPieceSize for a persisted ask (https://github.com/filecoin-project/lotus/pull/4480)
+- State: optimize state snapshot address cache (https://github.com/filecoin-project/lotus/pull/4481)
+
+# 0.10.2 / 2020-10-14
+
+This is an optional release of Lotus that updates markets to 0.9.1, which fixes an issue affecting deals that were mid-transfer when the node was upgraded to 0.9.0. This release also includes some tweaks to default gas values and minor performance improvements.
+
+## Changes
+
+- Use updated stored ask API (https://github.com/filecoin-project/lotus/pull/4384)
+- tvx: trace puts to blockstore for inclusion in CAR. (https://github.com/filecoin-project/lotus/pull/4278)
+- Add propose remove (https://github.com/filecoin-project/lotus/pull/4311)
+- Update to 0.9.1 bugfix release (https://github.com/filecoin-project/lotus/pull/4402)
+- Update drand endpoints (https://github.com/filecoin-project/lotus/pull/4125)
+- fix: return true when deadlines changed (https://github.com/filecoin-project/lotus/pull/4403)
+- sync wait --watch (https://github.com/filecoin-project/lotus/pull/4396)
+- reduce garbage in blockstore (https://github.com/filecoin-project/lotus/pull/4406)
+- give the TimeCacheBS tests a bit more time (https://github.com/filecoin-project/lotus/pull/4407)
+- Improve gas defaults (https://github.com/filecoin-project/lotus/pull/4408)
+- Change default gas premium to for 10 block inclusion (https://github.com/filecoin-project/lotus/pull/4222)
+
+# 0.10.1 / 2020-10-14
+
+This is an optional release of Lotus that updates markets to 0.9.0, which adds the ability to restart data transfers. This release also introduces Ledger support, and various UX improvements.
+
+## Changes
+
+- Test the tape upgrade (https://github.com/filecoin-project/lotus/pull/4328)
+- Adding in Ledger support (https://github.com/filecoin-project/lotus/pull/4290)
+- Improve the UX for lotus-miner sealing workers (https://github.com/filecoin-project/lotus/pull/4329)
+- Add a CLI tool for miner's to repay debt (https://github.com/filecoin-project/lotus/pull/4319)
+- Rename params_testnet to params_mainnet (https://github.com/filecoin-project/lotus/pull/4336)
+- Use seal-duration in calculating the earliest StartEpoch (https://github.com/filecoin-project/lotus/pull/4337)
+- Reject deals that are > 7 days in the future in the BasicDealFilter (https://github.com/filecoin-project/lotus/pull/4173)
+- Add an API endpoint to calculate the exact circulating supply (https://github.com/filecoin-project/lotus/pull/4148)
+- lotus-pcr: ignore all other market messages (https://github.com/filecoin-project/lotus/pull/4341)
+- Add message CID to InvocResult (https://github.com/filecoin-project/lotus/pull/4382)
+- types: Add CID fields to messages in json marshalers (https://github.com/filecoin-project/lotus/pull/4338)
+- fix(sync state): set state height to actual tipset height (https://github.com/filecoin-project/lotus/pull/4347)
+- Fix off by one tipset in searchBackForMsg (https://github.com/filecoin-project/lotus/pull/4367)
+- fix a panic on startup when we fail to load the tipset (https://github.com/filecoin-project/lotus/pull/4376)
+- Avoid having the same message CID show up in execution traces (https://github.com/filecoin-project/lotus/pull/4350)
+- feat(markets): update markets 0.9.0 and add data transfer restart (https://github.com/filecoin-project/lotus/pull/4363)
+
+# 0.10.0 / 2020-10-12
+
+This is a consensus-breaking hotfix that addresses an issue in specs-actors v2.0.3 that made it impossible to pledge new 32GiB sectors. The change in Lotus is to update to actors v2.1.0, behind the new network version 5.
+
+## Changes
+
+- make pledge test pass with the race detector (https://github.com/filecoin-project/lotus/pull/4291)
+- fix a race in tipset cache usage (https://github.com/filecoin-project/lotus/pull/4282)
+- add an api for removing multisig signers (https://github.com/filecoin-project/lotus/pull/4274)
+- cli: Don't output errors to stdout (https://github.com/filecoin-project/lotus/pull/4298)
+- Fix panic in wallet export when key is not found (https://github.com/filecoin-project/lotus/pull/4299)
+- Dump the block validation cache whenever we perform an import (https://github.com/filecoin-project/lotus/pull/4287)
+- Fix two races (https://github.com/filecoin-project/lotus/pull/4301)
+- sync unmark-bad --all (https://github.com/filecoin-project/lotus/pull/4296)
+- decode parameters for multisig transactions in inspect (https://github.com/filecoin-project/lotus/pull/4312)
+- Chain is love (https://github.com/filecoin-project/lotus/pull/4321)
+- lotus-stats: optmize getting miner power (https://github.com/filecoin-project/lotus/pull/4315)
+- implement tape upgrade (https://github.com/filecoin-project/lotus/pull/4322)
+
+# 0.9.1 / 2020-10-10
+
+This release fixes an issue which may cause the actors v2 migration to compute the state incorrectly when more than one migration is running in parallel.
+
+## Changes
+
+- Make concurrent actor migrations safe (https://github.com/filecoin-project/lotus/pull/4293)
+- Remote wallet backends (https://github.com/filecoin-project/lotus/pull/3583)
+- Track funds in FundMgr correctly in case of AddFunds failing (https://github.com/filecoin-project/lotus/pull/4273)
+- Partial lite-node mode (https://github.com/filecoin-project/lotus/pull/4095)
+- Fix potential infinite loop in GetBestMiningCandidate (https://github.com/filecoin-project/lotus/pull/3444)
+- sync wait: Handle processed message offset (https://github.com/filecoin-project/lotus/pull/4253)
+- Add some new endpoints for querying Msig info (https://github.com/filecoin-project/lotus/pull/4250)
+- Update markets v0.7.1 (https://github.com/filecoin-project/lotus/pull/4254)
+- Optimize SearchForMessage and GetReceipt (https://github.com/filecoin-project/lotus/pull/4246)
+- Use FIL instead of attoFIL in CLI more consistently (https://github.com/filecoin-project/lotus/pull/4249)
+- fix: clash between daemon --api flag and cli tests (https://github.com/filecoin-project/lotus/pull/4241)
+- add more info to chain sync lookback failure (https://github.com/filecoin-project/lotus/pull/4245)
+- Add message counts to inspect chain output (https://github.com/filecoin-project/lotus/pull/4230)
+
+# 0.9.0 / 2020-10-07
+
+This consensus-breaking release of Lotus upgrades the actors version to v2.0.0. This requires migrating actor state from v0 to v2. The changes that break consensus are:
+
+- Introducing v2 actors and its migration (https://github.com/filecoin-project/lotus/pull/3936)
+- Runtime's Receiver() should only return ID addresses  (https://github.com/filecoin-project/lotus/pull/3589)
+- Update miner eligibility checks for v2 actors (https://github.com/filecoin-project/lotus/pull/4188)
+- Add funds that have left FilReserve to circ supply (https://github.com/filecoin-project/lotus/pull/4160)
+- Set WinningPoStSectorSetLookback to finality post-v2 actors (https://github.com/filecoin-project/lotus/pull/4190)
+- fix: error when actor panics directly (https://github.com/filecoin-project/lotus/pull/3697)
+
+## Changes
+
+#### Dependencies
+
+- Update go-bitfield (https://github.com/filecoin-project/lotus/pull/4171)
+- update the AMT implementation (https://github.com/filecoin-project/lotus/pull/4194)
+- Update to actors v0.2.1 (https://github.com/filecoin-project/lotus/pull/4199)
+
+#### Core Lotus
+
+- Paych: fix voucher amount verification (https://github.com/filecoin-project/lotus/pull/3821)
+- Cap market provider messages (https://github.com/filecoin-project/lotus/pull/4141)
+- Run fork function after cron for null block safety (https://github.com/filecoin-project/lotus/pull/4114)
+- use bitswap sessions when fetching messages, and cancel them (https://github.com/filecoin-project/lotus/pull/4142)
+- relax pubsub IPColocationFactorThreshold to 5 (https://github.com/filecoin-project/lotus/pull/4183)
+- Support addresses with mainnet prefixes (https://github.com/filecoin-project/lotus/pull/4186)
+- fix: make message signer nonce generation transactional (https://github.com/filecoin-project/lotus/pull/4165)
+- build: Env var to keep test address output (https://github.com/filecoin-project/lotus/pull/4213)
+- make vm.EnableGasTracing public (https://github.com/filecoin-project/lotus/pull/4214)
+- introduce separate state-tree versions (https://github.com/filecoin-project/lotus/pull/4197)
+- reject explicit "calls" at the upgrade height (https://github.com/filecoin-project/lotus/pull/4231)
+- return an illegal actor error when we see an unsupported actor version (https://github.com/filecoin-project/lotus/pull/4232)
+- Set head should unmark blocks as valid (https://gist.github.com/travisperson/3c7cddd77a33979a519ccef4e6515f20)
+
+#### Mining
+
+- Increased ExpectedSealDuration and and WaitDealsDelay (https://github.com/filecoin-project/lotus/pull/3743)
+- Miner backup/restore commands (https://github.com/filecoin-project/lotus/pull/4133)
+- lotus-miner: add more help text to storage / attach (https://github.com/filecoin-project/lotus/pull/3961)
+- Reject deals that are > 7 days in the future in the BasicDealFilter (https://github.com/filecoin-project/lotus/pull/4173)
+- feat(miner): add miner deadline diffing logic (https://github.com/filecoin-project/lotus/pull/4178)
+
+#### UX
+
+- Improve the UX for replacing messages (https://github.com/filecoin-project/lotus/pull/4134)
+- Add verified flag to interactive deal creation (https://github.com/filecoin-project/lotus/pull/4145)
+- Add command to (slowly) prune lotus chain datastore (https://github.com/filecoin-project/lotus/pull/3876)
+- Some helpers for verifreg work (https://github.com/filecoin-project/lotus/pull/4124)
+- Always use default 720h for setask duration and hide the duration param option (https://github.com/filecoin-project/lotus/pull/4077)
+- Convert ID addresses to key addresses before checking wallet (https://github.com/filecoin-project/lotus/pull/4122)
+- add a command to view block space utilization (https://github.com/filecoin-project/lotus/pull/4176)
+- allow usage inspection on a chain segment (https://github.com/filecoin-project/lotus/pull/4177)
+- Add mpool stats for base fee (https://github.com/filecoin-project/lotus/pull/4170)
+- Add verified status to api.DealInfo (https://github.com/filecoin-project/lotus/pull/4153)
+- Add a CLI command to set a miner's owner address (https://github.com/filecoin-project/lotus/pull/4189)
+
+#### Tooling and validation
+
+- Lotus-pcr: add recover-miners command (https://github.com/filecoin-project/lotus/pull/3714)
+- MpoolPushUntrusted API for gateway (https://github.com/filecoin-project/lotus/pull/3915)
+- Test lotus-miner info all (https://github.com/filecoin-project/lotus/pull/4166)
+- chain export: Error with unfinished exports (https://github.com/filecoin-project/lotus/pull/4179)
+- add printf in TestWindowPost (https://github.com/filecoin-project/lotus/pull/4043)
+- add trace wdpost (https://github.com/filecoin-project/lotus/pull/4020)
+- Fix noncefix (https://github.com/filecoin-project/lotus/pull/4202)
+- Lotus-pcr: Limit the fee cap of messages we will process, refund gas fees for windowed post and storage deals (https://github.com/filecoin-project/lotus/pull/4198)
+- Fix pond (https://github.com/filecoin-project/lotus/pull/4203)
+- allow manual setting of noncefix fee cap (https://github.com/filecoin-project/lotus/pull/4205)
+- implement command to get execution traces of any message (https://github.com/filecoin-project/lotus/pull/4200)
+- conformance: minor driver refactors (https://github.com/filecoin-project/lotus/pull/4211) 
+- lotus-pcr: ignore all other messages (https://github.com/filecoin-project/lotus/pull/4218)
+- lotus-pcr: zero refund (https://github.com/filecoin-project/lotus/pull/4229)
+
+## Contributors
+
+The following contributors had 5 or more commits go into this release.
+We are grateful for every contribution!
+
+| Contributor        | Commits | Lines ±       |
+|--------------------|---------|---------------|
+| Stebalien          | 84       | +3425/-2287  |
+| magik6k            | 41       | +2121/-506   |
+| arajasek           | 39       | +2467/-424   |
+| Kubuxu             | 25       | +2344/-775   |
+| raulk              | 21       | +287/-196    |
+| whyrusleeping      | 13       | +727/-71     |
+| hsanjuan           | 13       | +5886/-7956  |
+| dirkmc             | 11       | +2634/-576   | 
+| travisperson       | 8        | +923/-202    |
+| ribasushi          | 6        | +188/-128    |
+| zgfzgf             | 5        | +21/-17      |
+
+# 0.8.1 / 2020-09-30
+
+This optional release of Lotus introduces a new version of markets which switches to CBOR-map encodings, and allows datastore migrations. The release also introduces several improvements to the mining process, a few performance optimizations, and a battery of UX additions and enhancements.
+
+## Changes 
+
+#### Dependencies
+
+- Markets 0.7.0 with updated data stores (https://github.com/filecoin-project/lotus/pull/4089)
+- Update ffi to code with blst fixes (https://github.com/filecoin-project/lotus/pull/3998)
+
+#### Core Lotus
+
+- Fix GetPower with no miner address (https://github.com/filecoin-project/lotus/pull/4049)
+- Refactor: Move nonce generation out of mpool (https://github.com/filecoin-project/lotus/pull/3970)
+
+#### Performance
+
+- Implement caching syscalls for import-bench (https://github.com/filecoin-project/lotus/pull/3888)
+- Fetch tipset blocks in parallel (https://github.com/filecoin-project/lotus/pull/4074)
+- Optimize Tipset equals() (https://github.com/filecoin-project/lotus/pull/4056)
+- Make state transition in validation async (https://github.com/filecoin-project/lotus/pull/3868)
+
+#### Mining
+
+- Add trace window post (https://github.com/filecoin-project/lotus/pull/4020)
+- Use abstract types for Dont recompute post on revert (https://github.com/filecoin-project/lotus/pull/4022)
+- Fix injectNulls logic in test miner (https://github.com/filecoin-project/lotus/pull/4058)
+- Fix potential panic in FinalizeSector (https://github.com/filecoin-project/lotus/pull/4092)
+- Don't recompute post on revert (https://github.com/filecoin-project/lotus/pull/3924)
+- Fix some failed precommit handling (https://github.com/filecoin-project/lotus/pull/3445)
+- Add --no-swap flag for worker (https://github.com/filecoin-project/lotus/pull/4107)
+- Allow some single-thread tasks to run in parallel with PC2/C2 (https://github.com/filecoin-project/lotus/pull/4116)
+
+#### UX
+
+- Add an envvar to set address network version (https://github.com/filecoin-project/lotus/pull/4028)
+- Add logging to chain export (https://github.com/filecoin-project/lotus/pull/4030)
+- Add JSON output to state compute (https://github.com/filecoin-project/lotus/pull/4038)
+- Wallet list CLI: Print balances/nonces (https://github.com/filecoin-project/lotus/pull/4088)
+- Added an option to show or not show sector info for `lotus-miner info` (https://github.com/filecoin-project/lotus/pull/4003)
+- Add a command to import an ipld object into the chainstore (https://github.com/filecoin-project/lotus/pull/3434)
+- Improve the lotus-shed dealtracker (https://github.com/filecoin-project/lotus/pull/4051)
+- Docs review and re-organization (https://github.com/filecoin-project/lotus/pull/3431)
+- Fix wallet list (https://github.com/filecoin-project/lotus/pull/4104)
+- Add an endpoint to validate whether a string is a well-formed address (https://github.com/filecoin-project/lotus/pull/4106)
+- Add an option to set config path (https://github.com/filecoin-project/lotus/pull/4103)
+- Add printf in TestWindowPost (https://github.com/filecoin-project/lotus/pull/4043)
+- Improve miner sectors list UX (https://github.com/filecoin-project/lotus/pull/4108)
+
+#### Tooling
+
+- Move policy change to seal bench (https://github.com/filecoin-project/lotus/pull/4032)
+- Add back network power to stats (https://github.com/filecoin-project/lotus/pull/4050)
+- Conformance: Record and feed circulating supply (https://github.com/filecoin-project/lotus/pull/4078)
+- Snapshot import progress bar, add HTTP support (https://github.com/filecoin-project/lotus/pull/4070)
+- Add lotus shed util to validate a tipset (https://github.com/filecoin-project/lotus/pull/4065)
+- tvx: a test vector extraction and execution tool (https://github.com/filecoin-project/lotus/pull/4064)
+
+#### Bootstrap
+
+- Add new bootstrappers (https://github.com/filecoin-project/lotus/pull/4007)
+- Add Glif node to bootstrap peers (https://github.com/filecoin-project/lotus/pull/4004)
+- Add one more node located in China (https://github.com/filecoin-project/lotus/pull/4041)
+- Add ipfsmain bootstrapper (https://github.com/filecoin-project/lotus/pull/4067)
+
+# 0.8.0 / 2020-09-26
+
+This consensus-breaking release of Lotus introduces an upgrade to the network. The changes that break consensus are:
+
+- Upgrading to specs-actors v0.9.11, which reduces WindowPoSt faults per [FIP 0002](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0002.md) to reduce cost for honest miners with occasional faults (see https://github.com/filecoin-project/specs-actors/pull/1181)
+- Revisions to some cryptoeconomics and network params
+
+This release also updates go-fil-markets to fix an incompatibility issue between v0.7.2 and earlier versions.
+
+## Changes 
+
+#### Dependencies
+
+- Update spec actors to 0.9.11 (https://github.com/filecoin-project/lotus/pull/4039)
+- Update markets to 0.6.3 (https://github.com/filecoin-project/lotus/pull/4013)
+
+#### Core Lotus
+
+- Network upgrade (https://github.com/filecoin-project/lotus/pull/4039)
+- Fix AddSupportedProofTypes (https://github.com/filecoin-project/lotus/pull/4033)
+- Return an error when we fail to find a sector when checking sector expiration (https://github.com/filecoin-project/lotus/pull/4026)
+- Batch blockstore copies after block validation (https://github.com/filecoin-project/lotus/pull/3980)
+- Remove a misleading miner actor abstraction (https://github.com/filecoin-project/lotus/pull/3977)
+- Fix out-of-bounds when loading all sector infos (https://github.com/filecoin-project/lotus/pull/3976)
+- Fix break condition in the miner (https://github.com/filecoin-project/lotus/pull/3953)
+
+#### UX
+
+- Correct helptext around miners setting ask (https://github.com/filecoin-project/lotus/pull/4009)
+- Make sync wait nicer (https://github.com/filecoin-project/lotus/pull/3991)
+
+#### Tooling and validation
+
+- Small adjustments following network upgradability changes (https://github.com/filecoin-project/lotus/pull/3996)
+- Add some more big pictures stats to stateroot stat (https://github.com/filecoin-project/lotus/pull/3995)
+- Add some actors policy setters for testing (https://github.com/filecoin-project/lotus/pull/3975)
+
+## Contributors
+
+The following contributors had 5 or more commits go into this release.
+We are grateful for every contribution!
+
+| Contributor        | Commits | Lines ±       |
+|--------------------|---------|---------------|
+| arajasek           | 66       | +3140/-1261  |
+| Stebalien          | 64       | +3797/-3434  |
+| magik6k            | 48       | +1892/-976   |
+| raulk              | 40       | +2412/-1549  |
+| vyzo               | 22       | +287/-196    |
+| alanshaw           | 15       | +761/-146    |
+| whyrusleeping      | 15       | +736/-52     |
+| hannahhoward       | 14       | +1237/-837   | 
+| anton              | 6        | +32/-8       |
+| travisperson       | 5        | +502/-6      |
+| Frank              | 5        | +78/-39      |
+| Jennifer           | 5        | +148/-41     |
+
+# 0.7.2 / 2020-09-23
+
+This optional release of Lotus introduces a major refactor around how a Lotus node interacts with code from the specs-actors repo. We now use interfaces to read the state of actors, which is required to be able to reason about different versions of actors code at the same time.
+
+Additionally, this release introduces various improvements to the sync process, as well as changes to better the overall UX experience.
+
+## Changes
+
+#### Core Lotus
+
+- Network upgrade support (https://github.com/filecoin-project/lotus/pull/3781)
+- Upgrade markets to `v0.6.2` (https://github.com/filecoin-project/lotus/pull/3974)
+- Validate chain sync response indices when fetching messages (https://github.com/filecoin-project/lotus/pull/3939)
+- Add height diff to sync wait (https://github.com/filecoin-project/lotus/pull/3926)
+- Replace Requires with Wants (https://github.com/filecoin-project/lotus/pull/3898)
+- Update state diffing for market actor (https://github.com/filecoin-project/lotus/pull/3889)
+- Parallel fetch for sync (https://github.com/filecoin-project/lotus/pull/3887)
+- Fix SectorState (https://github.com/filecoin-project/lotus/pull/3881)
+
+#### User Experience
+
+- Add basic deal stats api server for spacerace slingshot (https://github.com/filecoin-project/lotus/pull/3963)
+- When doing `sectors update-state`, show a list of existing states if user inputs an invalid one (https://github.com/filecoin-project/lotus/pull/3944)
+- Fix `lotus-miner storage find` error (https://github.com/filecoin-project/lotus/pull/3927)
+- Log shutdown method for lotus daemon and miner (https://github.com/filecoin-project/lotus/pull/3925)
+- Update build and setup instruction link (https://github.com/filecoin-project/lotus/pull/3919)
+- Add an option to hide removed sectors from `sectors list` output (https://github.com/filecoin-project/lotus/pull/3903)
+
+#### Testing and validation
+
+- Add init.State#Remove() for testing (https://github.com/filecoin-project/lotus/pull/3971)
+- lotus-shed: add consensus check command (https://github.com/filecoin-project/lotus/pull/3933)
+- Add keyinfo verify and jwt token command to lotus-shed (https://github.com/filecoin-project/lotus/pull/3914)
+- Fix conformance gen (https://github.com/filecoin-project/lotus/pull/3892)
+
+# 0.7.1 / 2020-09-17
+
+This optional release of Lotus introduces some critical fixes to the window PoSt process. It also upgrades some core dependencies, and introduces many improvements to the mining process, deal-making cycle, and overall User Experience.
+
+## Changes
+
+#### Some notable improvements: 
+
+- Correctly construct params for `SubmitWindowedPoSt` messages (https://github.com/filecoin-project/lotus/pull/3909)
+- Skip sectors correctly for Window PoSt (https://github.com/filecoin-project/lotus/pull/3839)
+- Split window PoST submission into multiple messages (https://github.com/filecoin-project/lotus/pull/3689)
+- Improve journal coverage (https://github.com/filecoin-project/lotus/pull/2455)
+- Allow retrievals while sealing (https://github.com/filecoin-project/lotus/pull/3778)
+- Don't prune locally published messages (https://github.com/filecoin-project/lotus/pull/3772)
+- Add get-ask, set-ask retrieval commands (https://github.com/filecoin-project/lotus/pull/3886)
+- Consistently name winning and window post in logs (https://github.com/filecoin-project/lotus/pull/3873))
+- Add auto flag to mpool replace (https://github.com/filecoin-project/lotus/pull/3752))
+
+#### Dependencies
+
+- Upgrade markets to `v0.6.1` (https://github.com/filecoin-project/lotus/pull/3906)
+- Upgrade specs-actors to `v0.9.10` (https://github.com/filecoin-project/lotus/pull/3846)
+- Upgrade badger (https://github.com/filecoin-project/lotus/pull/3739)
+
 # 0.7.0 / 2020-09-10
 
 This consensus-breaking release of Lotus is designed to test a network upgrade on the space race testnet. The changes that break consensus are:

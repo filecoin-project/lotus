@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/journal"
 )
 
 type MineReq struct {
@@ -32,6 +33,7 @@ func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(api.FullNode
 			minedBlockHeights: arc,
 			address:           addr,
 			sf:                slashfilter.New(ds.NewMapDatastore()),
+			journal:           journal.NilJournal(),
 		}
 
 		if err := m.Start(context.TODO()); err != nil {

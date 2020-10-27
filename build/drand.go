@@ -35,6 +35,7 @@ var DrandConfigs = map[DrandEnum]dtypes.DrandConfig{
 			"https://api.drand.sh",
 			"https://api2.drand.sh",
 			"https://api3.drand.sh",
+			"https://drand.cloudflare.com",
 		},
 		Relays: []string{
 			"/dnsaddr/api.drand.sh/",
@@ -68,16 +69,6 @@ var DrandConfigs = map[DrandEnum]dtypes.DrandConfig{
 		ChainInfoJSON: `{"public_key":"8cda589f88914aa728fd183f383980b35789ce81b274e5daee1f338b77d02566ef4d3fb0098af1f844f10f9c803c1827","period":25,"genesis_time":1595348225,"hash":"e73b7dc3c4f6a236378220c0dd6aa110eb16eed26c11259606e07ee122838d4f","groupHash":"567d4785122a5a3e75a9bc9911d7ea807dd85ff76b78dc4ff06b075712898607"}`,
 	},
 	DrandIncentinet: {
-		Servers: []string{
-			"https://pl-eu.incentinet.drand.sh",
-			"https://pl-us.incentinet.drand.sh",
-			"https://pl-sin.incentinet.drand.sh",
-		},
-		Relays: []string{
-			"/dnsaddr/pl-eu.incentinet.drand.sh/",
-			"/dnsaddr/pl-us.incentinet.drand.sh/",
-			"/dnsaddr/pl-sin.incentinet.drand.sh/",
-		},
 		ChainInfoJSON: `{"public_key":"8cad0c72c606ab27d36ee06de1d5b2db1faf92e447025ca37575ab3a8aac2eaae83192f846fc9e158bc738423753d000","period":30,"genesis_time":1595873820,"hash":"80c8b872c714f4c00fdd3daa465d5514049f457f01f85a4caf68cdcd394ba039","groupHash":"d9406aaed487f7af71851b4399448e311f2328923d454e971536c05398ce2d9b"}`,
 	},
 }

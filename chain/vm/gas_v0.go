@@ -3,12 +3,13 @@ package vm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 type scalingCost struct {
@@ -175,14 +176,14 @@ func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealPr
 }
 
 // OnVerifySeal
-func (pl *pricelistV0) OnVerifySeal(info proof.SealVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
 	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
 // OnVerifyPost
-func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge {
 	sectorSize := "unknown"
 	var proofType abi.RegisteredPoStProof
 

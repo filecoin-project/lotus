@@ -3,12 +3,14 @@ package chaos
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/go-state-types/rt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/ipfs/go-cid"
 
-	typegen "github.com/whyrusleeping/cbor-gen"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 )
 
 //go:generate go run ./gen
@@ -31,10 +33,14 @@ type Actor struct{}
 type CallerValidationBranch int64
 
 const (
+	// CallerValidationBranchNone causes no caller validation to take place.
 	CallerValidationBranchNone CallerValidationBranch = iota
+	// CallerValidationBranchTwice causes Runtime.ValidateImmediateCallerAcceptAny to be called twice.
 	CallerValidationBranchTwice
-	CallerValidationBranchAddrNilSet
-	CallerValidationBranchTypeNilSet
+	// CallerValidationBranchIsAddress causes caller validation against CallerValidationArgs.Addrs.
+	CallerValidationBranchIsAddress
+	// CallerValidationBranchIsType causes caller validation against CallerValidationArgs.Types.
+	CallerValidationBranchIsType
 )
 
 // MutateStateBranch is an enum used to select the type of state mutation to attempt.
@@ -64,6 +70,9 @@ const (
 	// MethodAbortWith is the identifier for the method that panics optionally with
 	// a passed exit code.
 	MethodAbortWith
+	// MethodInspectRuntime is the identifier for the method that returns the
+	// current runtime values.
+	MethodInspectRuntime
 )
 
 // Exports defines the methods this actor exposes publicly.
@@ -77,10 +86,15 @@ func (a Actor) Exports() []interface{} {
 		MethodSend:                a.Send,
 		MethodMutateState:         a.MutateState,
 		MethodAbortWith:           a.AbortWith,
+		MethodInspectRuntime:      a.InspectRuntime,
 	}
 }
 
-var _ runtime.Invokee = Actor{}
+func (a Actor) Code() cid.Cid     { return ChaosActorCodeCID }
+func (a Actor) State() cbor.Er    { return new(State) }
+func (a Actor) IsSingleton() bool { return true }
+
+var _ rt.VMActor = Actor{}
 
 // SendArgs are the arguments for the Send method.
 type SendArgs struct {
@@ -92,26 +106,22 @@ type SendArgs struct {
 
 // SendReturn is the return values for the Send method.
 type SendReturn struct {
-	Return runtime.CBORBytes
+	Return builtin2.CBORBytes
 	Code   exitcode.ExitCode
 }
 
 // Send requests for this actor to send a message to an actor with the
 // passed parameters.
-func (a Actor) Send(rt runtime.Runtime, args *SendArgs) *SendReturn {
+func (a Actor) Send(rt runtime2.Runtime, args *SendArgs) *SendReturn {
 	rt.ValidateImmediateCallerAcceptAny()
-	ret, code := rt.Send(
+	var out builtin2.CBORBytes
+	code := rt.Send(
 		args.To,
 		args.Method,
-		runtime.CBORBytes(args.Params),
+		builtin2.CBORBytes(args.Params),
 		args.Value,
+		&out,
 	)
-	var out runtime.CBORBytes
-	if ret != nil {
-		if err := ret.Into(&out); err != nil {
-			rt.Abortf(exitcode.ErrIllegalState, "failed to unmarshal send return: %v", err)
-		}
-	}
 	return &SendReturn{
 		Return: out,
 		Code:   code,
@@ -119,27 +129,33 @@ func (a Actor) Send(rt runtime.Runtime, args *SendArgs) *SendReturn {
 }
 
 // Constructor will panic because the Chaos actor is a singleton.
-func (a Actor) Constructor(_ runtime.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
+func (a Actor) Constructor(_ runtime2.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	panic("constructor should not be called; the Chaos actor is a singleton actor")
+}
+
+// CallerValidationArgs are the arguments to Actor.CallerValidation.
+type CallerValidationArgs struct {
+	Branch CallerValidationBranch
+	Addrs  []address.Address
+	Types  []cid.Cid
 }
 
 // CallerValidation violates VM call validation constraints.
 //
 //  CallerValidationBranchNone performs no validation.
 //  CallerValidationBranchTwice validates twice.
-//  CallerValidationBranchAddrNilSet validates against an empty caller
-//  address set.
-//  CallerValidationBranchTypeNilSet validates against an empty caller type set.
-func (a Actor) CallerValidation(rt runtime.Runtime, branch *typegen.CborInt) *abi.EmptyValue {
-	switch CallerValidationBranch(*branch) {
+//  CallerValidationBranchIsAddress validates caller against CallerValidationArgs.Addrs.
+//  CallerValidationBranchIsType validates caller against CallerValidationArgs.Types.
+func (a Actor) CallerValidation(rt runtime2.Runtime, args *CallerValidationArgs) *abi.EmptyValue {
+	switch args.Branch {
 	case CallerValidationBranchNone:
 	case CallerValidationBranchTwice:
 		rt.ValidateImmediateCallerAcceptAny()
 		rt.ValidateImmediateCallerAcceptAny()
-	case CallerValidationBranchAddrNilSet:
-		rt.ValidateImmediateCallerIs()
-	case CallerValidationBranchTypeNilSet:
-		rt.ValidateImmediateCallerType()
+	case CallerValidationBranchIsAddress:
+		rt.ValidateImmediateCallerIs(args.Addrs...)
+	case CallerValidationBranchIsType:
+		rt.ValidateImmediateCallerType(args.Types...)
 	default:
 		panic("invalid branch passed to CallerValidation")
 	}
@@ -160,7 +176,7 @@ type CreateActorArgs struct {
 }
 
 // CreateActor creates an actor with the supplied CID and Address.
-func (a Actor) CreateActor(rt runtime.Runtime, args *CreateActorArgs) *abi.EmptyValue {
+func (a Actor) CreateActor(rt runtime2.Runtime, args *CreateActorArgs) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 
 	var (
@@ -185,7 +201,7 @@ type ResolveAddressResponse struct {
 	Success bool
 }
 
-func (a Actor) ResolveAddress(rt runtime.Runtime, args *address.Address) *ResolveAddressResponse {
+func (a Actor) ResolveAddress(rt runtime2.Runtime, args *address.Address) *ResolveAddressResponse {
 	rt.ValidateImmediateCallerAcceptAny()
 
 	resolvedAddr, ok := rt.ResolveAddress(*args)
@@ -198,7 +214,7 @@ func (a Actor) ResolveAddress(rt runtime.Runtime, args *address.Address) *Resolv
 
 // DeleteActor deletes the executing actor from the state tree, transferring any
 // balance to beneficiary.
-func (a Actor) DeleteActor(rt runtime.Runtime, beneficiary *address.Address) *abi.EmptyValue {
+func (a Actor) DeleteActor(rt runtime2.Runtime, beneficiary *address.Address) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	rt.DeleteActor(*beneficiary)
 	return nil
@@ -212,19 +228,19 @@ type MutateStateArgs struct {
 }
 
 // MutateState attempts to mutate a state value in the actor.
-func (a Actor) MutateState(rt runtime.Runtime, args *MutateStateArgs) *abi.EmptyValue {
+func (a Actor) MutateState(rt runtime2.Runtime, args *MutateStateArgs) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	var st State
 	switch args.Branch {
 	case MutateInTransaction:
-		rt.State().Transaction(&st, func() {
+		rt.StateTransaction(&st, func() {
 			st.Value = args.Value
 		})
 	case MutateReadonly:
-		rt.State().Readonly(&st)
+		rt.StateReadonly(&st)
 		st.Value = args.Value
 	case MutateAfterTransaction:
-		rt.State().Transaction(&st, func() {
+		rt.StateTransaction(&st, func() {
 			st.Value = args.Value + "-in"
 		})
 		st.Value = args.Value
@@ -243,11 +259,36 @@ type AbortWithArgs struct {
 }
 
 // AbortWith simply causes a panic with the passed exit code.
-func (a Actor) AbortWith(rt runtime.Runtime, args *AbortWithArgs) *abi.EmptyValue {
+func (a Actor) AbortWith(rt runtime2.Runtime, args *AbortWithArgs) *abi.EmptyValue {
 	if args.Uncontrolled { // uncontrolled abort: directly panic
 		panic(args.Message)
 	} else {
 		rt.Abortf(args.Code, args.Message)
 	}
 	return nil
+}
+
+// InspectRuntimeReturn is the return value for the Actor.InspectRuntime method.
+type InspectRuntimeReturn struct {
+	Caller         address.Address
+	Receiver       address.Address
+	ValueReceived  abi.TokenAmount
+	CurrEpoch      abi.ChainEpoch
+	CurrentBalance abi.TokenAmount
+	State          State
+}
+
+// InspectRuntime returns a copy of the serializable values available in the Runtime.
+func (a Actor) InspectRuntime(rt runtime2.Runtime, _ *abi.EmptyValue) *InspectRuntimeReturn {
+	rt.ValidateImmediateCallerAcceptAny()
+	var st State
+	rt.StateReadonly(&st)
+	return &InspectRuntimeReturn{
+		Caller:         rt.Caller(),
+		Receiver:       rt.Receiver(),
+		ValueReceived:  rt.ValueReceived(),
+		CurrEpoch:      rt.CurrEpoch(),
+		CurrentBalance: rt.CurrentBalance(),
+		State:          st,
+	}
 }

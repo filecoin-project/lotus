@@ -14,14 +14,14 @@ import (
 
 // FaultTracker TODO: Track things more actively
 type FaultTracker interface {
-	CheckProvable(ctx context.Context, spt abi.RegisteredSealProof, sectors []abi.SectorID) ([]abi.SectorID, error)
+	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []abi.SectorID) ([]abi.SectorID, error)
 }
 
 // CheckProvable returns unprovable sectors
-func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
+func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
 	var bad []abi.SectorID
 
-	ssize, err := spt.SectorSize()
+	ssize, err := pp.SectorSize()
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (m *Manager) CheckProvable(ctx context.Context, spt abi.RegisteredSealProof
 				return nil
 			}
 
-			lp, _, err := m.localStore.AcquireSector(ctx, sector, spt, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
+			lp, _, err := m.localStore.AcquireSector(ctx, sector, ssize, stores.FTSealed|stores.FTCache, stores.FTNone, stores.PathStorage, stores.AcquireMove)
 			if err != nil {
 				log.Warnw("CheckProvable Sector FAULT: acquire sector in checkProvable", "sector", sector, "error", err)
 				bad = append(bad, sector)

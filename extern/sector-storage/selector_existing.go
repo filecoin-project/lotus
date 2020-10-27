@@ -46,7 +46,12 @@ func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt 
 		have[path.ID] = struct{}{}
 	}
 
-	best, err := s.index.StorageFindSector(ctx, s.sector, s.alloc, spt, s.allowFetch)
+	ssize, err := spt.SectorSize()
+	if err != nil {
+		return false, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	best, err := s.index.StorageFindSector(ctx, s.sector, s.alloc, ssize, s.allowFetch)
 	if err != nil {
 		return false, xerrors.Errorf("finding best storage: %w", err)
 	}
