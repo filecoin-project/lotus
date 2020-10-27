@@ -40,6 +40,8 @@ var actorCmd = &cli.Command{
 		actorSetPeeridCmd,
 		actorSetOwnerCmd,
 		actorControl,
+		actorProposeChangeWorker,
+		actorConfirmChangeWorker,
 	},
 }
 
@@ -693,6 +695,224 @@ var actorSetOwnerCmd = &cli.Command{
 		if wait.Receipt.ExitCode != 0 {
 			fmt.Println("Approve owner change failed!")
 			return err
+		}
+
+		return nil
+	},
+}
+
+var actorProposeChangeWorker = &cli.Command{
+	Name:      "propose-change-worker",
+	Usage:     "Propose a worker address change",
+	ArgsUsage: "[address]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of new worker address")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		na, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		if mi.NewWorker.Empty() {
+			if mi.Worker == newAddr {
+				return fmt.Errorf("worker address already set to %s", na)
+			}
+		} else {
+			if mi.NewWorker == newAddr {
+				return fmt.Errorf("change to worker address %s already pending", na)
+			}
+		}
+
+		if !cctx.Bool("really-do-it") {
+			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
+		cwp := &miner2.ChangeWorkerAddressParams{
+			NewWorker:       newAddr,
+			NewControlAddrs: mi.ControlAddresses,
+		}
+
+		sp, err := actors.SerializeParams(cwp)
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:   mi.Owner,
+			To:     maddr,
+			Method: miner.Methods.ChangeWorkerAddress,
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
+
+		// wait for it to get mined into a block
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Fprintln(cctx.App.Writer, "Propose worker change failed!")
+			return err
+		}
+
+		mi, err = api.StateMinerInfo(ctx, maddr, wait.TipSet)
+		if err != nil {
+			return err
+		}
+		if mi.NewWorker != newAddr {
+			return fmt.Errorf("Proposed worker address change not reflected on chain: expected '%s', found '%s'", na, mi.NewWorker)
+		}
+
+		fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully proposed.\n", na)
+		fmt.Fprintf(cctx.App.Writer, "Call 'confirm-change-worker' at or after height %d to complete.\n", mi.WorkerChangeEpoch)
+
+		return nil
+	},
+}
+
+var actorConfirmChangeWorker = &cli.Command{
+	Name:      "confirm-change-worker",
+	Usage:     "Confirm a worker address change",
+	ArgsUsage: "[address]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of new worker address")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		na, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		if mi.NewWorker.Empty() {
+			return xerrors.Errorf("no worker key change proposed")
+		} else if mi.NewWorker != newAddr {
+			return xerrors.Errorf("worker key %s does not match current worker key proposal %s", newAddr, mi.NewWorker)
+		}
+
+		if head, err := api.ChainHead(ctx); err != nil {
+			return xerrors.Errorf("failed to get the chain head: %w", err)
+		} else if head.Height() < mi.WorkerChangeEpoch {
+			return xerrors.Errorf("worker key change cannot be confirmed until %d, current height is %d", mi.WorkerChangeEpoch, head.Height())
+		}
+
+		if !cctx.Bool("really-do-it") {
+			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:   mi.Owner,
+			To:     maddr,
+			Method: miner.Methods.ConfirmUpdateWorkerKey,
+			Value:  big.Zero(),
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Fprintln(cctx.App.Writer, "Confirm Message CID:", smsg.Cid())
+
+		// wait for it to get mined into a block
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
+			return err
+		}
+
+		mi, err = api.StateMinerInfo(ctx, maddr, wait.TipSet)
+		if err != nil {
+			return err
+		}
+		if mi.Worker != newAddr {
+			return fmt.Errorf("Confirmed worker address change not reflected on chain: expected '%s', found '%s'", newAddr, mi.Worker)
 		}
 
 		return nil
