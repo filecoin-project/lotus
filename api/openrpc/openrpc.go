@@ -1,30 +1,25 @@
-package main
+package openrpc
 
 import (
-	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
-	"log"
 	"net"
-	"os"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/alecthomas/jsonschema"
 	go_openrpc_reflect "github.com/etclabscore/go-openrpc-reflect"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	meta_schema "github.com/open-rpc/meta-schema"
 )
 
-var comments, groupDocs = parseApiASTInfo()
+var Comments, GroupDocs = parseApiASTInfo()
 
-// newOpenRPCDocument returns a Document configured with application-specific logic.
-func newOpenRPCDocument() *go_openrpc_reflect.Document {
+// NewLotusOpenRPCDocument defines application-specific documentation and configuration for its OpenRPC document.
+func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 	d := &go_openrpc_reflect.Document{}
 
 	// Register "Meta" document fields.
@@ -84,7 +79,7 @@ func newOpenRPCDocument() *go_openrpc_reflect.Document {
 	}
 
 	appReflector.FnGetMethodSummary = func(r reflect.Value, m reflect.Method, funcDecl *ast.FuncDecl) (string, error) {
-		if v, ok := comments[m.Name]; ok {
+		if v, ok := Comments[m.Name]; ok {
 			return v, nil
 		}
 		return "", nil // noComment
@@ -94,41 +89,6 @@ func newOpenRPCDocument() *go_openrpc_reflect.Document {
 	d.WithReflector(appReflector)
 	return d
 }
-
-func main() {
-	commonPermStruct := &apistruct.CommonStruct{}
-	fullStruct := &apistruct.FullNodeStruct{}
-
-	doc := newOpenRPCDocument()
-
-	doc.RegisterReceiverName("common", commonPermStruct)
-	doc.RegisterReceiverName("full", fullStruct)
-
-	out, err := doc.Discover()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	jsonOut, err := json.MarshalIndent(out, "", "    ")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	err = ioutil.WriteFile("/tmp/lotus-openrpc-spec.json", jsonOut, os.ModePerm)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	fmt.Println(string(jsonOut))
-
-	// fmt.Println("---- (Comments?) Out:")
-	// // out2, groupDocs := parseApiASTInfo()
-	// out2, _ := parseApiASTInfo()
-	// out2JSON, _ := json.MarshalIndent(out2, "", "    ")
-	// fmt.Println(string(out2JSON))
-	// fmt.Println("---- (Group Comments?):")
-	// groupDocsJSON, _ := json.MarshalIndent(groupDocs, "", "    ")
-	// fmt.Println(string(groupDocsJSON))
-}
-
 
 type Visitor struct {
 	Methods map[string]ast.Node
@@ -164,7 +124,6 @@ func parseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
 	}
 
 	ap := pkgs["api"]
-
 	f := ap.Files["api/api_full.go"]
 
 	cmap := ast.NewCommentMap(fset, f, f.Comments)
