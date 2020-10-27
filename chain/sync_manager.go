@@ -15,12 +15,10 @@ import (
 
 var BootstrapPeerThreshold = 1
 
-var coalesceForksParents = false
+var coalesceTipsets = false
 
 func init() {
-	if os.Getenv("LOTUS_SYNC_REL_PARENT") == "yes" {
-		coalesceForksParents = true
-	}
+	coalesceTipsets = os.Getenv("LOTUS_SYNC_FORMTS_PEND") == "yes"
 }
 
 type SyncFunc func(context.Context, *types.TipSet) error
@@ -471,19 +469,29 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 		if ts.Parents() == t.Key() {
 			return true
 		}
-		if coalesceForksParents && ts.Parents() == t.Parents() {
-			return true
-		}
 	}
 	return false
 }
 
 func (stb *syncTargetBucket) add(ts *types.TipSet) {
-
-	for _, t := range stb.tips {
+	for i, t := range stb.tips {
 		if t.Equals(ts) {
 			return
 		}
+		if coalesceTipsets && t.Height() == ts.Height() &&
+			types.CidArrsEqual(t.Blocks()[0].Parents, ts.Blocks()[0].Parents) {
+
+			newTs := append([]*types.BlockHeader{}, ts.Blocks()...)
+			newTs = append(newTs, t.Blocks()...)
+			ts2, err := types.NewTipSet(newTs)
+			if err != nil {
+				log.Warnf("error while trying to recombine a tipset in a bucket: %+v", err)
+				continue
+			}
+			stb.tips[i] = ts2
+			return
+		}
+
 	}
 
 	stb.tips = append(stb.tips, ts)
