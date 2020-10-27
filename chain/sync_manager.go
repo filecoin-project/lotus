@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -480,9 +481,23 @@ func (stb *syncTargetBucket) add(ts *types.TipSet) {
 		}
 		if coalesceTipsets && t.Height() == ts.Height() &&
 			types.CidArrsEqual(t.Blocks()[0].Parents, ts.Blocks()[0].Parents) {
+			miners := make(map[address.Address]struct{})
+			newTs := []*types.BlockHeader{}
+			for _, b := range t.Blocks() {
+				_, have := miners[b.Miner]
+				if !have {
+					newTs = append(newTs, b)
+					miners[b.Miner] = struct{}{}
+				}
+			}
+			for _, b := range ts.Blocks() {
+				_, have := miners[b.Miner]
+				if !have {
+					newTs = append(newTs, b)
+					miners[b.Miner] = struct{}{}
+				}
+			}
 
-			newTs := append([]*types.BlockHeader{}, ts.Blocks()...)
-			newTs = append(newTs, t.Blocks()...)
 			ts2, err := types.NewTipSet(newTs)
 			if err != nil {
 				log.Warnf("error while trying to recombine a tipset in a bucket: %+v", err)
