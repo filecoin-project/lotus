@@ -2,7 +2,9 @@ package chain
 
 import (
 	"context"
+	"os"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -10,6 +12,14 @@ import (
 )
 
 const BootstrapPeerThreshold = 2
+
+var coalesceForksParents = false
+
+func init() {
+	if os.Getenv("LOTUS_SYNC_REL_PARENT") == "yes" {
+		coalesceForksParents = true
+	}
+}
 
 const (
 	BSStateInit      = 0
@@ -20,7 +30,28 @@ const (
 
 type SyncFunc func(context.Context, *types.TipSet) error
 
-type SyncManager struct {
+// SyncManager manages the chain synchronization process, both at bootstrap time
+// and during ongoing operation.
+//
+// It receives candidate chain heads in the form of tipsets from peers,
+// and schedules them onto sync workers, deduplicating processing for
+// already-active syncs.
+type SyncManager interface {
+	// Start starts the SyncManager.
+	Start()
+
+	// Stop stops the SyncManager.
+	Stop()
+
+	// SetPeerHead informs the SyncManager that the supplied peer reported the
+	// supplied tipset.
+	SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet)
+
+	// State retrieves the state of the sync workers.
+	State() []SyncerStateSnapshot
+}
+
+type syncManager struct {
 	lk        sync.Mutex
 	peerHeads map[peer.ID]*types.TipSet
 
@@ -48,6 +79,8 @@ type SyncManager struct {
 	workerChan     chan *types.TipSet
 }
 
+var _ SyncManager = (*syncManager)(nil)
+
 type syncResult struct {
 	ts      *types.TipSet
 	success bool
@@ -55,8 +88,8 @@ type syncResult struct {
 
 const syncWorkerCount = 3
 
-func NewSyncManager(sync SyncFunc) *SyncManager {
-	return &SyncManager{
+func NewSyncManager(sync SyncFunc) SyncManager {
+	sm := &syncManager{
 		bspThresh:       1,
 		peerHeads:       make(map[peer.ID]*types.TipSet),
 		syncTargets:     make(chan *types.TipSet),
@@ -67,20 +100,24 @@ func NewSyncManager(sync SyncFunc) *SyncManager {
 		doSync:          sync,
 		stop:            make(chan struct{}),
 	}
+	for i := range sm.syncStates {
+		sm.syncStates[i] = new(SyncerState)
+	}
+	return sm
 }
 
-func (sm *SyncManager) Start() {
+func (sm *syncManager) Start() {
 	go sm.syncScheduler()
 	for i := 0; i < syncWorkerCount; i++ {
 		go sm.syncWorker(i)
 	}
 }
 
-func (sm *SyncManager) Stop() {
+func (sm *syncManager) Stop() {
 	close(sm.stop)
 }
 
-func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet) {
+func (sm *syncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	sm.peerHeads[p] = ts
@@ -105,6 +142,14 @@ func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.Tip
 	sm.incomingTipSets <- ts
 }
 
+func (sm *syncManager) State() []SyncerStateSnapshot {
+	ret := make([]SyncerStateSnapshot, 0, len(sm.syncStates))
+	for _, s := range sm.syncStates {
+		ret = append(ret, s.Snapshot())
+	}
+	return ret
+}
+
 type syncBucketSet struct {
 	buckets []*syncTargetBucket
 }
@@ -115,6 +160,19 @@ func newSyncTargetBucket(tipsets ...*types.TipSet) *syncTargetBucket {
 		stb.add(ts)
 	}
 	return &stb
+}
+
+func (sbs *syncBucketSet) String() string {
+	var bStrings []string
+	for _, b := range sbs.buckets {
+		var tsStrings []string
+		for _, t := range b.tips {
+			tsStrings = append(tsStrings, t.String())
+		}
+		bStrings = append(bStrings, "["+strings.Join(tsStrings, ",")+"]")
+	}
+
+	return "{" + strings.Join(bStrings, ";") + "}"
 }
 
 func (sbs *syncBucketSet) RelatedToAny(ts *types.TipSet) bool {
@@ -163,13 +221,17 @@ func (sbs *syncBucketSet) removeBucket(toremove *syncTargetBucket) {
 }
 
 func (sbs *syncBucketSet) PopRelated(ts *types.TipSet) *syncTargetBucket {
+	var bOut *syncTargetBucket
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
 			sbs.removeBucket(b)
-			return b
+			if bOut == nil {
+				bOut = &syncTargetBucket{}
+			}
+			bOut.tips = append(bOut.tips, b.tips...)
 		}
 	}
-	return nil
+	return bOut
 }
 
 func (sbs *syncBucketSet) Heaviest() *types.TipSet {
@@ -189,8 +251,7 @@ func (sbs *syncBucketSet) Empty() bool {
 }
 
 type syncTargetBucket struct {
-	tips  []*types.TipSet
-	count int
+	tips []*types.TipSet
 }
 
 func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
@@ -204,12 +265,14 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 		if ts.Parents() == t.Key() {
 			return true
 		}
+		if coalesceForksParents && ts.Parents() == t.Parents() {
+			return true
+		}
 	}
 	return false
 }
 
 func (stb *syncTargetBucket) add(ts *types.TipSet) {
-	stb.count++
 
 	for _, t := range stb.tips {
 		if t.Equals(ts) {
@@ -234,7 +297,7 @@ func (stb *syncTargetBucket) heaviestTipSet() *types.TipSet {
 	return best
 }
 
-func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
+func (sm *syncManager) selectSyncTarget() (*types.TipSet, error) {
 	var buckets syncBucketSet
 
 	var peerHeads []*types.TipSet
@@ -258,8 +321,7 @@ func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
 	return buckets.Heaviest(), nil
 }
 
-func (sm *SyncManager) syncScheduler() {
-
+func (sm *syncManager) syncScheduler() {
 	for {
 		select {
 		case ts, ok := <-sm.incomingTipSets:
@@ -280,7 +342,7 @@ func (sm *SyncManager) syncScheduler() {
 	}
 }
 
-func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
+func (sm *syncManager) scheduleIncoming(ts *types.TipSet) {
 	log.Debug("scheduling incoming tipset sync: ", ts.Cids())
 	if sm.getBootstrapState() == BSStateSelected {
 		sm.setBootstrapState(BSStateScheduled)
@@ -291,7 +353,8 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 	var relatedToActiveSync bool
 	for _, acts := range sm.activeSyncs {
 		if ts.Equals(acts) {
-			break
+			// ignore, we are already syncing it
+			return
 		}
 
 		if ts.Parents() == acts.Key() {
@@ -328,10 +391,11 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 	}
 }
 
-func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
+func (sm *syncManager) scheduleProcessResult(res *syncResult) {
 	if res.success && sm.getBootstrapState() != BSStateComplete {
 		sm.setBootstrapState(BSStateComplete)
 	}
+
 	delete(sm.activeSyncs, res.ts.Key())
 	relbucket := sm.activeSyncTips.PopRelated(res.ts)
 	if relbucket != nil {
@@ -340,7 +404,9 @@ func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
 				sm.nextSyncTarget = relbucket
 				sm.workerChan = sm.syncTargets
 			} else {
-				sm.syncQueue.buckets = append(sm.syncQueue.buckets, relbucket)
+				for _, t := range relbucket.tips {
+					sm.syncQueue.Insert(t)
+				}
 			}
 			return
 		}
@@ -360,7 +426,7 @@ func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
 	}
 }
 
-func (sm *SyncManager) scheduleWorkSent() {
+func (sm *syncManager) scheduleWorkSent() {
 	hts := sm.nextSyncTarget.heaviestTipSet()
 	sm.activeSyncs[hts.Key()] = hts
 
@@ -372,9 +438,8 @@ func (sm *SyncManager) scheduleWorkSent() {
 	}
 }
 
-func (sm *SyncManager) syncWorker(id int) {
-	ss := &SyncerState{}
-	sm.syncStates[id] = ss
+func (sm *syncManager) syncWorker(id int) {
+	ss := sm.syncStates[id]
 	for {
 		select {
 		case ts, ok := <-sm.syncTargets:
@@ -397,7 +462,7 @@ func (sm *SyncManager) syncWorker(id int) {
 	}
 }
 
-func (sm *SyncManager) syncedPeerCount() int {
+func (sm *syncManager) syncedPeerCount() int {
 	var count int
 	for _, ts := range sm.peerHeads {
 		if ts.Height() > 0 {
@@ -407,19 +472,19 @@ func (sm *SyncManager) syncedPeerCount() int {
 	return count
 }
 
-func (sm *SyncManager) getBootstrapState() int {
+func (sm *syncManager) getBootstrapState() int {
 	sm.bssLk.Lock()
 	defer sm.bssLk.Unlock()
 	return sm.bootstrapState
 }
 
-func (sm *SyncManager) setBootstrapState(v int) {
+func (sm *syncManager) setBootstrapState(v int) {
 	sm.bssLk.Lock()
 	defer sm.bssLk.Unlock()
 	sm.bootstrapState = v
 }
 
-func (sm *SyncManager) IsBootstrapped() bool {
+func (sm *syncManager) IsBootstrapped() bool {
 	sm.bssLk.Lock()
 	defer sm.bssLk.Unlock()
 	return sm.bootstrapState == BSStateComplete

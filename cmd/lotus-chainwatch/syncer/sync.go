@@ -136,7 +136,8 @@ create unique index if not exists block_cid_uindex
 	on blocks (cid,height);
 
 create materialized view if not exists state_heights
-    as select distinct height, parentstateroot from blocks;
+    as select min(b.height) height, b.parentstateroot
+	from blocks b group by b.parentstateroot;
 
 create index if not exists state_heights_height_index
 	on state_heights (height);
@@ -315,7 +316,7 @@ limit 1
 }
 
 func (s *Syncer) storeCirculatingSupply(ctx context.Context, tipset *types.TipSet) error {
-	supply, err := s.node.StateCirculatingSupply(ctx, tipset.Key())
+	supply, err := s.node.StateVMCirculatingSupplyInternal(ctx, tipset.Key())
 	if err != nil {
 		return err
 	}

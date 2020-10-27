@@ -1,33 +1,30 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-
 	"github.com/filecoin-project/go-address"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/vectors"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 func init() {
-	verifreg.MinVerifiedDealSize = big.NewInt(2048)
-	power.ConsensusMinerMinPower = big.NewInt(2048)
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(2048))
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 }
 
 func MakeHeaderVectors() []vectors.HeaderVector {
@@ -64,11 +61,11 @@ func MakeMessageSigningVectors() []vectors.MessageSigningVector {
 		panic(err)
 	}
 
-	blsk, err := w.GenerateKey(crypto.SigTypeBLS)
+	blsk, err := w.WalletNew(context.Background(), types.KTBLS)
 	if err != nil {
 		panic(err)
 	}
-	bki, err := w.Export(blsk)
+	bki, err := w.WalletExport(context.Background(), blsk)
 	if err != nil {
 		panic(err)
 	}
@@ -88,11 +85,11 @@ func MakeMessageSigningVectors() []vectors.MessageSigningVector {
 		Signature:   &bmsg.Signature,
 	}
 
-	secpk, err := w.GenerateKey(crypto.SigTypeBLS)
+	secpk, err := w.WalletNew(context.Background(), types.KTBLS)
 	if err != nil {
 		panic(err)
 	}
-	ski, err := w.Export(secpk)
+	ski, err := w.WalletExport(context.Background(), secpk)
 	if err != nil {
 		panic(err)
 	}

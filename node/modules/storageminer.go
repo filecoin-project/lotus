@@ -29,10 +29,11 @@ import (
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
+	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
@@ -49,9 +50,12 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/markets"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -107,6 +111,9 @@ func MinerID(ma dtypes.MinerAddress) (dtypes.MinerID, error) {
 }
 
 func StorageNetworkName(ctx helpers.MetricsCtx, a lapi.FullNode) (dtypes.NetworkName, error) {
+	if !build.Devnet {
+		return "testnetnet", nil
+	}
 	return a.StateNetworkName(ctx)
 }
 
@@ -142,8 +149,36 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc) (*storage.Miner, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, api lapi.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc) (*storage.Miner, error) {
+type StorageMinerParams struct {
+	fx.In
+
+	Lifecycle          fx.Lifecycle
+	MetricsCtx         helpers.MetricsCtx
+	API                lapi.FullNode
+	Host               host.Host
+	MetadataDS         dtypes.MetadataDS
+	Sealer             sectorstorage.SectorManager
+	SectorIDCounter    sealing.SectorIDCounter
+	Verifier           ffiwrapper.Verifier
+	GetSealingConfigFn dtypes.GetSealingConfigFunc
+	Journal            journal.Journal
+}
+
+func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
+	return func(params StorageMinerParams) (*storage.Miner, error) {
+		var (
+			ds     = params.MetadataDS
+			mctx   = params.MetricsCtx
+			lc     = params.Lifecycle
+			api    = params.API
+			sealer = params.Sealer
+			h      = params.Host
+			sc     = params.SectorIDCounter
+			verif  = params.Verifier
+			gsd    = params.GetSealingConfigFn
+			j      = params.Journal
+		)
+
 		maddr, err := minerAddrFromDS(ds)
 		if err != nil {
 			return nil, err
@@ -161,12 +196,12 @@ func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.
 			return nil, err
 		}
 
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, maddr, worker)
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, j, maddr, worker)
 		if err != nil {
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc)
+		sm, err := storage.NewMiner(api, maddr, worker, h, ds, sealer, sc, verif, gsd, fc, j)
 		if err != nil {
 			return nil, err
 		}
@@ -183,11 +218,17 @@ func StorageMiner(fc config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.
 	}
 }
 
-func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
+func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider, j journal.Journal) {
+	m.OnReady(marketevents.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
+
+		OnStart: func(ctx context.Context) error {
 			m.SubscribeToEvents(marketevents.RetrievalProviderLogger)
-			return m.Start()
+
+			evtType := j.RegisterEventType("markets/retrieval/provider", "state_change")
+			m.SubscribeToEvents(markets.RetrievalProviderJournaler(j, evtType))
+
+			return m.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
 			return m.Stop()
@@ -195,12 +236,16 @@ func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.Retrieva
 	})
 }
 
-func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider) {
+func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
-
+	h.OnReady(marketevents.ReadyLogger("storage provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			h.SubscribeToEvents(marketevents.StorageProviderLogger)
+
+			evtType := j.RegisterEventType("markets/storage/provider", "state_change")
+			h.SubscribeToEvents(markets.StorageProviderJournaler(j, evtType))
+
 			return h.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
@@ -222,6 +267,7 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 		return nil, err
 	}
 
+	dt.OnReady(marketevents.ReadyLogger("provider data transfer"))
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return dt.Start(ctx)
@@ -235,8 +281,18 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the storage and retrieval providers
-func NewProviderPieceStore(ds dtypes.MetadataDS) dtypes.ProviderPieceStore {
-	return piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
+func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.ProviderPieceStore, error) {
+	ps, err := piecestoreimpl.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
+	if err != nil {
+		return nil, err
+	}
+	ps.OnReady(marketevents.ReadyLogger("piecestore"))
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return ps.Start(ctx)
+		},
+	})
+	return ps, nil
 }
 
 func StagingMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
@@ -301,13 +357,13 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, minerAddr, sf)
+	m := miner.NewMiner(api, epp, minerAddr, sf, j)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -331,13 +387,17 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 		return nil, err
 	}
 
-	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(ds, datastore.NewKey("/deals/provider")), datastore.NewKey("latest-ask"), spn, address.Address(minerAddress))
+	providerDs := namespace.Wrap(ds, datastore.NewKey("/deals/provider"))
+	// legacy this was mistake where this key was place -- so we move the legacy key if need be
+	err = shared.MoveKey(providerDs, "/latest-ask", "/storage-ask/latest")
 	if err != nil {
 		return nil, err
 	}
-	// Hacky way to set max piece size to the sector size
-	a := storedAsk.GetAsk().Ask
-	err = storedAsk.SetAsk(a.Price, a.VerifiedPrice, a.Expiry-a.Timestamp, storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
+		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return storedAsk, err
 	}
@@ -350,16 +410,16 @@ func NewProviderDealFunds(ds dtypes.MetadataDS) (ProviderDealFunds, error) {
 	return funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/provider"))
 }
 
-func BasicDealFilter(user dtypes.DealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
+func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
-	spn storagemarket.StorageProviderNode) dtypes.DealFilter {
+	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
-		spn storagemarket.StorageProviderNode) dtypes.DealFilter {
+		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 			b, err := onlineOk()
@@ -410,6 +470,13 @@ func BasicDealFilter(user dtypes.DealFilter) func(onlineOk dtypes.ConsiderOnline
 				return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
 			}
 
+			// Reject if it's more than 7 days in the future
+			// TODO: read from cfg
+			maxStartEpoch := earliest + abi.ChainEpoch(7*builtin.SecondsInDay/build.BlockDelaySecs)
+			if deal.Proposal.StartEpoch > maxStartEpoch {
+				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
+			}
+
 			if user != nil {
 				return user(ctx, deal)
 			}
@@ -428,7 +495,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	pieceStore dtypes.ProviderPieceStore,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
-	df dtypes.DealFilter,
+	df dtypes.StorageDealFilter,
 	funds ProviderDealFunds,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
@@ -442,8 +509,52 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk, funds, opt)
 }
 
+func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
+	return func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+		offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
+		return func(ctx context.Context, state retrievalmarket.ProviderDealState) (bool, string, error) {
+			b, err := onlineOk()
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if !b {
+				log.Warn("online retrieval deal consideration disabled; rejecting retrieval deal proposal from client")
+				return false, "miner is not accepting online retrieval deals", nil
+			}
+
+			b, err = offlineOk()
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if !b {
+				log.Info("offline retrieval has not been implemented yet")
+			}
+
+			if userFilter != nil {
+				return userFilter(ctx, state)
+			}
+
+			return true, "", nil
+		}
+	}
+}
+
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.SectorManager, full lapi.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, mds dtypes.StagingMultiDstore, dt dtypes.ProviderDataTransfer, onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc, offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) (retrievalmarket.RetrievalProvider, error) {
+func RetrievalProvider(h host.Host,
+	miner *storage.Miner,
+	sealer sectorstorage.SectorManager,
+	full lapi.FullNode,
+	ds dtypes.MetadataDS,
+	pieceStore dtypes.ProviderPieceStore,
+	mds dtypes.StagingMultiDstore,
+	dt dtypes.ProviderDataTransfer,
+	onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
+	userFilter dtypes.RetrievalDealFilter,
+) (retrievalmarket.RetrievalProvider, error) {
 	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
 
 	maddr, err := minerAddrFromDS(ds)
@@ -452,29 +563,7 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sealer sectorstorage.S
 	}
 
 	netwk := rmnet.NewFromLibp2pHost(h)
-
-	opt := retrievalimpl.DealDeciderOpt(func(ctx context.Context, state retrievalmarket.ProviderDealState) (bool, string, error) {
-		b, err := onlineOk()
-		if err != nil {
-			return false, "miner error", err
-		}
-
-		if !b {
-			log.Warn("online retrieval deal consideration disabled; rejecting retrieval deal proposal from client")
-			return false, "miner is not accepting online retrieval deals", nil
-		}
-
-		b, err = offlineOk()
-		if err != nil {
-			return false, "miner error", err
-		}
-
-		if !b {
-			log.Info("offline retrieval has not been implemented yet")
-		}
-
-		return true, "", nil
-	})
+	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
 
 	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
 }

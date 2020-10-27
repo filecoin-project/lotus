@@ -26,6 +26,7 @@ var pathTypes = []stores.SectorFileType{stores.FTUnsealed, stores.FTSealed, stor
 type WorkerConfig struct {
 	SealProof abi.RegisteredSealProof
 	TaskTypes []sealtasks.TaskType
+	NoSwap    bool
 }
 
 type LocalWorker struct {
@@ -33,6 +34,7 @@ type LocalWorker struct {
 	storage    stores.Store
 	localStore *stores.Local
 	sindex     stores.SectorIndex
+	noSwap     bool
 
 	acceptTasks map[sealtasks.TaskType]struct{}
 }
@@ -50,6 +52,7 @@ func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, 
 		storage:    store,
 		localStore: local,
 		sindex:     sindex,
+		noSwap:     wcfg.NoSwap,
 
 		acceptTasks: acceptTasks,
 	}
@@ -62,12 +65,16 @@ type localWorkerPathProvider struct {
 
 func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing stores.PathType) (stores.SectorPaths, func(), error) {
 
-	paths, storageIDs, err := l.w.storage.AcquireSector(ctx, sector, l.w.scfg.SealProofType, existing, allocate, sealing, l.op)
+	ssize, err := l.w.scfg.SealProofType.SectorSize()
+	if err != nil {
+		return stores.SectorPaths{}, nil, err
+	}
+	paths, storageIDs, err := l.w.storage.AcquireSector(ctx, sector, ssize, existing, allocate, sealing, l.op)
 	if err != nil {
 		return stores.SectorPaths{}, nil, err
 	}
 
-	releaseStorage, err := l.w.localStore.Reserve(ctx, sector, l.w.scfg.SealProofType, allocate, storageIDs, stores.FSOverheadSeal)
+	releaseStorage, err := l.w.localStore.Reserve(ctx, sector, ssize, allocate, storageIDs, stores.FSOverheadSeal)
 	if err != nil {
 		return stores.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
 	}
@@ -209,7 +216,11 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 }
 
 func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
-	if err := l.storage.MoveStorage(ctx, sector, l.scfg.SealProofType, types); err != nil {
+	ssize, err := l.scfg.SealProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+	if err := l.storage.MoveStorage(ctx, sector, ssize, types); err != nil {
 		return xerrors.Errorf("moving sealed data to storage: %w", err)
 	}
 
@@ -275,11 +286,16 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		return storiface.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
 	}
 
+	memSwap := mem.VirtualTotal
+	if l.noSwap {
+		memSwap = 0
+	}
+
 	return storiface.WorkerInfo{
 		Hostname: hostname,
 		Resources: storiface.WorkerResources{
 			MemPhysical: mem.Total,
-			MemSwap:     mem.VirtualTotal,
+			MemSwap:     memSwap,
 			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
 			CPUs:        uint64(runtime.NumCPU()),
 			GPUs:        gpus,

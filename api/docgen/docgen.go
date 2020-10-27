@@ -87,6 +87,7 @@ func init() {
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
+	addExample(types.KTBLS)
 	addExample(int64(9))
 	addExample(12.3)
 	addExample(123)
@@ -114,6 +115,7 @@ func init() {
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)
+	addExample(build.NewestNetworkVersion)
 	addExample(&types.ExecutionTrace{
 		Msg:    exampleValue(reflect.TypeOf(&types.Message{}), nil).(*types.Message),
 		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),

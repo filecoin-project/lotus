@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -49,7 +49,7 @@ const (
 
 type VoucherInfo struct {
 	Voucher   *paych.SignedVoucher
-	Proof     []byte
+	Proof     []byte // ignored
 	Submitted bool
 }
 

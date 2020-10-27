@@ -12,38 +12,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-
-	"github.com/filecoin-project/go-state-types/big"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
-	"github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/lotus/chain/events"
-
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	cbor "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api/test"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	builder "github.com/filecoin-project/lotus/node/test"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/types"
+	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(2048)
-	saminer.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{
-		abi.RegisteredSealProof_StackedDrg2KiBV1: {},
-	}
-	verifreg.MinVerifiedDealSize = big.NewInt(256)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
 // TestPaymentChannels does a basic test to exercise the payment channel CLI
@@ -88,7 +80,9 @@ func TestPaymentChannels(t *testing.T) {
 
 	// Wait for the chain to reach the settle height
 	chState := getPaychState(ctx, t, paymentReceiver, chAddr)
-	waitForHeight(ctx, t, paymentReceiver, chState.SettlingAt)
+	sa, err := chState.SettlingAt()
+	require.NoError(t, err)
+	waitForHeight(ctx, t, paymentReceiver, sa)
 
 	// receiver: paych collect <channel>
 	cmd = []string{chAddr.String()}
@@ -126,13 +120,13 @@ func TestPaymentChannelStatus(t *testing.T) {
 	create := make(chan string)
 	go func() {
 		// creator: paych add-funds <creator> <receiver> <amount>
-		cmd = []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
+		cmd := []string{creatorAddr.String(), receiverAddr.String(), fmt.Sprintf("%d", channelAmt)}
 		create <- creatorCLI.runCmd(paychAddFundsCmd, cmd)
 	}()
 
 	// Wait for the output to stop being "Channel does not exist"
 	for regexp.MustCompile(noChannelState).MatchString(out) {
-		cmd = []string{creatorAddr.String(), receiverAddr.String()}
+		cmd := []string{creatorAddr.String(), receiverAddr.String()}
 		out = creatorCLI.runCmd(paychStatusByFromToCmd, cmd)
 	}
 	fmt.Println(out)
@@ -395,7 +389,7 @@ func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 }
 
 func startTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]test.TestNode, []address.Address) {
-	n, sn := builder.RPCMockSbBuilder(t, 2, test.OneMiner)
+	n, sn := builder.RPCMockSbBuilder(t, test.TwoFull, test.OneMiner)
 
 	paymentCreator := n[0]
 	paymentReceiver := n[1]
@@ -420,7 +414,7 @@ func startTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Dur
 	bm.MineBlocks()
 
 	// Send some funds to register the receiver
-	receiverAddr, err := paymentReceiver.WalletNew(ctx, wallet.ActSigType("secp256k1"))
+	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,13 +437,14 @@ type mockCLI struct {
 	out  *bytes.Buffer
 }
 
+// TODO: refactor to use the methods in cli/test/mockcli.go
 func newMockCLI(t *testing.T) *mockCLI {
-	// Create a CLI App with an --api flag so that we can specify which node
+	// Create a CLI App with an --api-url flag so that we can specify which node
 	// the command should be executed against
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:   "api",
+			Name:   "api-url",
 			Hidden: true,
 		},
 	}
@@ -481,8 +476,8 @@ func (c *mockCLIClient) runCmd(cmd *cli.Command, input []string) string {
 }
 
 func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, error) {
-	// prepend --api=<node api listener address>
-	apiFlag := "--api=" + c.addr.String()
+	// prepend --api-url=<node api listener address>
+	apiFlag := "--api-url=" + c.addr.String()
 	input = append([]string{apiFlag}, input...)
 
 	fs := c.flagSet(cmd)
@@ -498,7 +493,7 @@ func (c *mockCLIClient) runCmdRaw(cmd *cli.Command, input []string) (string, err
 }
 
 func (c *mockCLIClient) flagSet(cmd *cli.Command) *flag.FlagSet {
-	// Apply app level flags (so we can process --api flag)
+	// Apply app level flags (so we can process --api-url flag)
 	fs := &flag.FlagSet{}
 	for _, f := range c.cctx.App.Flags {
 		err := f.Apply(fs)
@@ -540,8 +535,7 @@ func getPaychState(ctx context.Context, t *testing.T, node test.TestNode, chAddr
 	require.NoError(t, err)
 
 	store := cbor.NewCborStore(apibstore.NewAPIBlockstore(node))
-	var chState paych.State
-	err = store.Get(ctx, act.Head, &chState)
+	chState, err := paych.Load(adt.WrapStore(ctx, store), act)
 	require.NoError(t, err)
 
 	return chState

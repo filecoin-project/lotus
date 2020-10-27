@@ -11,8 +11,6 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -20,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -46,37 +45,16 @@ func NewCliError(s string) error {
 // ApiConnector returns API instance
 type ApiConnector func() api.FullNode
 
-type APIInfo struct {
-	Addr  multiaddr.Multiaddr
-	Token []byte
-}
-
-func (a APIInfo) DialArgs() (string, error) {
-	_, addr, err := manet.DialArgs(a.Addr)
-
-	return "ws://" + addr + "/rpc/v0", err
-}
-
-func (a APIInfo) AuthHeader() http.Header {
-	if len(a.Token) != 0 {
-		headers := http.Header{}
-		headers.Add("Authorization", "Bearer "+string(a.Token))
-		return headers
-	}
-	log.Warn("API Token not set and requested, capabilities might be limited.")
-	return nil
-}
-
 // The flag passed on the command line with the listen address of the API
 // server (only used by the tests)
 func flagForAPI(t repo.RepoType) string {
 	switch t {
 	case repo.FullNode:
-		return "api"
+		return "api-url"
 	case repo.StorageMiner:
-		return "miner-api"
+		return "miner-api-url"
 	case repo.Worker:
-		return "worker-api"
+		return "worker-api-url"
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -122,7 +100,7 @@ func envForRepoDeprecation(t repo.RepoType) string {
 	}
 }
 
-func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
+func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (cliutil.APIInfo, error) {
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)
 	apiFlag := flagForAPI(t)
@@ -130,11 +108,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		strma := ctx.String(apiFlag)
 		strma = strings.TrimSpace(strma)
 
-		apima, err := multiaddr.NewMultiaddr(strma)
-		if err != nil {
-			return APIInfo{}, err
-		}
-		return APIInfo{Addr: apima}, nil
+		return cliutil.APIInfo{Addr: strma}, nil
 	}
 
 	envKey := envForRepo(t)
@@ -148,36 +122,24 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		}
 	}
 	if ok {
-		sp := strings.SplitN(env, ":", 2)
-		if len(sp) != 2 {
-			log.Warnf("invalid env(%s) value, missing token or address", envKey)
-		} else {
-			ma, err := multiaddr.NewMultiaddr(sp[1])
-			if err != nil {
-				return APIInfo{}, xerrors.Errorf("could not parse multiaddr from env(%s): %w", envKey, err)
-			}
-			return APIInfo{
-				Addr:  ma,
-				Token: []byte(sp[0]),
-			}, nil
-		}
+		return cliutil.ParseApiInfo(env), nil
 	}
 
 	repoFlag := flagForRepo(t)
 
 	p, err := homedir.Expand(ctx.String(repoFlag))
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
+		return cliutil.APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
 	}
 
 	r, err := repo.NewFS(p)
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+		return cliutil.APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
 	}
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+		return cliutil.APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
 	}
 
 	token, err := r.APIToken()
@@ -185,8 +147,8 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
 	}
 
-	return APIInfo{
-		Addr:  ma,
+	return cliutil.APIInfo{
+		Addr:  ma.String(),
 		Token: token,
 	}, nil
 }
@@ -216,6 +178,13 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		log.Errorf("repoType type does not match the type of repo.RepoType")
 	}
 
+	if tn, ok := ctx.App.Metadata["testnode-storage"]; ok {
+		return tn.(api.StorageMiner), func() {}, nil
+	}
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(api.FullNode), func() {}, nil
+	}
+
 	addr, headers, err := GetRawAPI(ctx, t)
 	if err != nil {
 		return nil, nil, err
@@ -225,6 +194,10 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 }
 
 func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(api.FullNode), func() {}, nil
+	}
+
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
 	if err != nil {
 		return nil, nil, err
@@ -234,6 +207,10 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 }
 
 func GetStorageMinerAPI(ctx *cli.Context, opts ...jsonrpc.Option) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-storage"]; ok {
+		return tn.(api.StorageMiner), func() {}, nil
+	}
+
 	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner)
 	if err != nil {
 		return nil, nil, err
@@ -249,6 +226,15 @@ func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error)
 	}
 
 	return client.NewWorkerRPC(ctx.Context, addr, headers)
+}
+
+func GetGatewayAPI(ctx *cli.Context) (api.GatewayAPI, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewGatewayRPC(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {

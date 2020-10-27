@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -13,6 +14,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
@@ -22,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 )
@@ -30,7 +33,7 @@ var log = logging.Logger("main")
 
 func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownCh <-chan struct{}) error {
 	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(a))
+	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a)))
 
 	ah := &auth.Handler{
 		Verify: a.AuthVerify,
@@ -60,14 +63,22 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 		return xerrors.Errorf("could not listen: %w", err)
 	}
 
-	srv := &http.Server{Handler: http.DefaultServeMux}
+	srv := &http.Server{
+		Handler: http.DefaultServeMux,
+		BaseContext: func(listener net.Listener) context.Context {
+			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-daemon"))
+			return ctx
+		},
+	}
 
 	sigCh := make(chan os.Signal, 2)
 	shutdownDone := make(chan struct{})
 	go func() {
 		select {
-		case <-sigCh:
+		case sig := <-sigCh:
+			log.Warnw("received shutdown", "signal", sig)
 		case <-shutdownCh:
+			log.Warn("received shutdown")
 		}
 
 		log.Warn("Shutting down...")

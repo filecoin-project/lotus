@@ -3,16 +3,17 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"runtime/pprof"
 	"strings"
-
-	"github.com/filecoin-project/lotus/chain/types"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/mitchellh/go-homedir"
@@ -23,14 +24,17 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
+	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/lib/ulimit"
@@ -100,15 +104,20 @@ var DaemonCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "import-chain",
-			Usage: "on first run, load chain from given file and validate",
+			Usage: "on first run, load chain from given file or url and validate",
 		},
 		&cli.StringFlag{
 			Name:  "import-snapshot",
-			Usage: "import chain state from a given chain export file",
+			Usage: "import chain state from a given chain export file or url",
 		},
 		&cli.BoolFlag{
 			Name:  "halt-after-import",
 			Usage: "halt the process after importing chain from file",
+		},
+		&cli.BoolFlag{
+			Name:   "lite",
+			Usage:  "start lotus in lite mode",
+			Hidden: true,
 		},
 		&cli.StringFlag{
 			Name:  "pprof",
@@ -123,8 +132,14 @@ var DaemonCmd = &cli.Command{
 			Usage: "manage open file limit",
 			Value: true,
 		},
+		&cli.StringFlag{
+			Name:  "config",
+			Usage: "specify path of config file to use",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		isLite := cctx.Bool("lite")
+
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
 			EnableCPU:    true,
 			EnableMemory: true,
@@ -176,12 +191,18 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
+		if cctx.String("config") != "" {
+			r.SetConfigPath(cctx.String("config"))
+		}
+
 		if err := r.Init(repo.FullNode); err != nil && err != repo.ErrRepoExists {
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
+		if !isLite {
+			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
+				return xerrors.Errorf("fetching proof parameters: %w", err)
+			}
 		}
 
 		var genBytes []byte
@@ -206,11 +227,6 @@ var DaemonCmd = &cli.Command{
 				issnapshot = true
 			}
 
-			chainfile, err := homedir.Expand(chainfile)
-			if err != nil {
-				return err
-			}
-
 			if err := ImportChain(r, chainfile, issnapshot); err != nil {
 				return err
 			}
@@ -233,10 +249,23 @@ var DaemonCmd = &cli.Command{
 
 		shutdownChan := make(chan struct{})
 
+		// If the daemon is started in "lite mode", provide a  GatewayAPI
+		// for RPC calls
+		liteModeDeps := node.Options()
+		if isLite {
+			gapi, closer, err := lcli.GetGatewayAPI(cctx)
+			if err != nil {
+				return err
+			}
+
+			defer closer()
+			liteModeDeps = node.Override(new(api.GatewayAPI), gapi)
+		}
+
 		var api api.FullNode
 
 		stop, err := node.New(ctx,
-			node.FullAPI(&api),
+			node.FullAPI(&api, node.Lite(isLite)),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
@@ -244,6 +273,7 @@ var DaemonCmd = &cli.Command{
 			node.Repo(r),
 
 			genesis,
+			liteModeDeps,
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
@@ -326,12 +356,42 @@ func importKey(ctx context.Context, api api.FullNode, f string) error {
 	return nil
 }
 
-func ImportChain(r repo.Repo, fname string, snapshot bool) error {
-	fi, err := os.Open(fname)
-	if err != nil {
-		return err
+func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
+	var rd io.Reader
+	var l int64
+	if strings.HasPrefix(fname, "http://") || strings.HasPrefix(fname, "https://") {
+		resp, err := http.Get(fname) //nolint:gosec
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close() //nolint:errcheck
+
+		if resp.StatusCode != http.StatusOK {
+			return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
+		}
+
+		rd = resp.Body
+		l = resp.ContentLength
+	} else {
+		fname, err = homedir.Expand(fname)
+		if err != nil {
+			return err
+		}
+
+		fi, err := os.Open(fname)
+		if err != nil {
+			return err
+		}
+		defer fi.Close() //nolint:errcheck
+
+		st, err := os.Stat(fname)
+		if err != nil {
+			return err
+		}
+
+		rd = fi
+		l = st.Size()
 	}
-	defer fi.Close() //nolint:errcheck
 
 	lr, err := r.Lock(repo.FullNode)
 	if err != nil {
@@ -351,12 +411,33 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) error {
 
 	bs := blockstore.NewBlockstore(ds)
 
-	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+	j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+	if err != nil {
+		return xerrors.Errorf("failed to open journal: %w", err)
+	}
+	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
 
-	log.Info("importing chain from file...")
-	ts, err := cst.Import(fi)
+	log.Infof("importing chain from %s...", fname)
+
+	bufr := bufio.NewReaderSize(rd, 1<<20)
+
+	bar := pb.New64(l)
+	br := bar.NewProxyReader(bufr)
+	bar.ShowTimeLeft = true
+	bar.ShowPercent = true
+	bar.ShowSpeed = true
+	bar.Units = pb.U_BYTES
+
+	bar.Start()
+	ts, err := cst.Import(br)
+	bar.Finish()
+
 	if err != nil {
 		return xerrors.Errorf("importing chain failed: %w", err)
+	}
+
+	if err := cst.FlushValidationCache(); err != nil {
+		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
 	gb, err := cst.GetTipsetByHeight(context.TODO(), 0, ts, true)
@@ -378,7 +459,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) error {
 		}
 	}
 
-	log.Info("accepting %s as new head", ts.Cids())
+	log.Infof("accepting %s as new head", ts.Cids())
 	if err := cst.SetHead(ts); err != nil {
 		return err
 	}

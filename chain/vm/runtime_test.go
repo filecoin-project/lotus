@@ -42,6 +42,26 @@ func TestRuntimePutErrors(t *testing.T) {
 		cst: cbor.NewCborStore(nil),
 	}
 
-	rt.Put(&NotAVeryGoodMarshaler{})
+	rt.StorePut(&NotAVeryGoodMarshaler{})
 	t.Error("expected panic")
+}
+
+func BenchmarkRuntime_CreateRuntimeChargeGas_TracingDisabled(b *testing.B) {
+	var (
+		cst = cbor.NewCborStore(nil)
+		gch = newGasCharge("foo", 1000, 1000)
+	)
+
+	b.ResetTimer()
+
+	EnableGasTracing = false
+	noop := func() bool { return EnableGasTracing }
+	for n := 0; n < b.N; n++ {
+		// flip the value and access it to make sure
+		// the compiler doesn't optimize away
+		EnableGasTracing = true
+		_ = noop()
+		EnableGasTracing = false
+		_ = (&Runtime{cst: cst}).chargeGasInternal(gch, 0)
+	}
 }

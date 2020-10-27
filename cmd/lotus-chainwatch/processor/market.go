@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/events/state"
 )
 
@@ -293,7 +294,7 @@ func (p *Processor) updateMarketActorDealProposals(ctx context.Context, marketTi
 		if !changed {
 			continue
 		}
-		changes, ok := val.(*state.MarketDealStateChanges)
+		changes, ok := val.(*market.DealStateChanges)
 		if !ok {
 			return xerrors.Errorf("Unknown type returned by Deal State AMT predicate: %T", val)
 		}

@@ -146,7 +146,7 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Status (blocksync.status) (uint64)
+	// t.Status (exchange.status) (uint64)
 
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.Status)); err != nil {
 		return err
@@ -164,7 +164,7 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Chain ([]*blocksync.BSTipSet) (slice)
+	// t.Chain ([]*exchange.BSTipSet) (slice)
 	if len(t.Chain) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Chain was too long")
 	}
@@ -198,7 +198,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Status (blocksync.status) (uint64)
+	// t.Status (exchange.status) (uint64)
 
 	{
 
@@ -222,7 +222,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) error {
 
 		t.ErrorMessage = string(sval)
 	}
-	// t.Chain ([]*blocksync.BSTipSet) (slice)
+	// t.Chain ([]*exchange.BSTipSet) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -567,7 +567,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Messages (blocksync.CompactedMessages) (struct)
+	// t.Messages (exchange.CompactedMessages) (struct)
 	if err := t.Messages.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -621,7 +621,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 		t.Blocks[i] = &v
 	}
 
-	// t.Messages (blocksync.CompactedMessages) (struct)
+	// t.Messages (exchange.CompactedMessages) (struct)
 
 	{
 

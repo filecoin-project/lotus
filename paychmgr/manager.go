@@ -2,33 +2,30 @@ package paychmgr
 
 import (
 	"context"
+	"errors"
 	"sync"
 
-	"github.com/filecoin-project/go-state-types/crypto"
-
-	"github.com/filecoin-project/lotus/node/modules/helpers"
-
-	"github.com/ipfs/go-datastore"
-
-	xerrors "golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/api"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
+	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 var log = logging.Logger("paych")
+
+var errProofNotSupported = errors.New("payment channel proof parameter is not supported")
 
 // PaychAPI is used by dependency injection to pass the consituent APIs to NewManager()
 type PaychAPI struct {
@@ -40,9 +37,9 @@ type PaychAPI struct {
 
 // stateManagerAPI defines the methods needed from StateManager
 type stateManagerAPI interface {
-	LoadActorState(ctx context.Context, a address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error)
+	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
-	AdtStore(ctx context.Context) adt.Store
 }
 
 // paychAPI defines the API methods needed by the payment channel manager
@@ -52,6 +49,7 @@ type paychAPI interface {
 	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee *api.MessageSendSpec) (*types.SignedMessage, error)
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
 	WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 }
 
 // managerAPI defines all methods needed by the manager
@@ -62,12 +60,8 @@ type managerAPI interface {
 
 // managerAPIImpl is used to create a composite that implements managerAPI
 type managerAPIImpl struct {
-	*stmgr.StateManager
+	stmgr.StateManagerAPI
 	paychAPI
-}
-
-func (m *managerAPIImpl) AdtStore(ctx context.Context) adt.Store {
-	return m.ChainStore().Store(ctx)
 }
 
 type Manager struct {
@@ -83,11 +77,11 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 
-func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm *stmgr.StateManager, pchstore *Store, api PaychAPI) *Manager {
+func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm stmgr.StateManagerAPI, pchstore *Store, api PaychAPI) *Manager {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	ctx, shutdown := context.WithCancel(ctx)
 
-	impl := &managerAPIImpl{StateManager: sm, paychAPI: &api}
+	impl := &managerAPIImpl{StateManagerAPI: sm, paychAPI: &api}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
@@ -251,34 +245,43 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 
 // CheckVoucherSpendable checks if the given voucher is currently spendable
 func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+	if len(proof) > 0 {
+		return false, errProofNotSupported
+	}
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return false, err
 	}
 
-	return ca.checkVoucherSpendable(ctx, ch, sv, secret, proof)
+	return ca.checkVoucherSpendable(ctx, ch, sv, secret)
 }
 
 // AddVoucherOutbound adds a voucher for an outbound channel.
 // Returns an error if the channel is not already in the store.
 func (pm *Manager) AddVoucherOutbound(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+	if len(proof) > 0 {
+		return types.NewInt(0), errProofNotSupported
+	}
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return types.NewInt(0), err
 	}
-	return ca.addVoucher(ctx, ch, sv, proof, minDelta)
+	return ca.addVoucher(ctx, ch, sv, minDelta)
 }
 
 // AddVoucherInbound adds a voucher for an inbound channel.
 // If the channel is not in the store, fetches the channel from state (and checks that
 // the channel To address is owned by the wallet).
 func (pm *Manager) AddVoucherInbound(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+	if len(proof) > 0 {
+		return types.NewInt(0), errProofNotSupported
+	}
 	// Get an accessor for the channel, creating it from state if necessary
 	ca, err := pm.inboundChannelAccessor(ctx, ch)
 	if err != nil {
 		return types.BigInt{}, err
 	}
-	return ca.addVoucher(ctx, ch, sv, proof, minDelta)
+	return ca.addVoucher(ctx, ch, sv, minDelta)
 }
 
 // inboundChannelAccessor gets an accessor for the given channel. The channel
@@ -342,11 +345,14 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 }
 
 func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+	if len(proof) > 0 {
+		return cid.Undef, errProofNotSupported
+	}
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return cid.Undef, err
 	}
-	return ca.submitVoucher(ctx, ch, sv, secret, proof)
+	return ca.submitVoucher(ctx, ch, sv, secret)
 }
 
 func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {

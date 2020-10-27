@@ -1,7 +1,6 @@
 package processor
 
 import (
-	"bytes"
 	"context"
 	"time"
 
@@ -9,14 +8,16 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	_init "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/ipfs/go-cid"
-	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 func (p *Processor) setupCommonActors() error {
@@ -137,45 +138,30 @@ func (p Processor) storeActorAddresses(ctx context.Context, actors map[cid.Cid]A
 
 	addressToID := map[address.Address]address.Address{}
 	// HACK until genesis storage is figured out:
-	addressToID[builtin.SystemActorAddr] = builtin.SystemActorAddr
-	addressToID[builtin.InitActorAddr] = builtin.InitActorAddr
-	addressToID[builtin.RewardActorAddr] = builtin.RewardActorAddr
-	addressToID[builtin.CronActorAddr] = builtin.CronActorAddr
-	addressToID[builtin.StoragePowerActorAddr] = builtin.StoragePowerActorAddr
-	addressToID[builtin.StorageMarketActorAddr] = builtin.StorageMarketActorAddr
-	addressToID[builtin.VerifiedRegistryActorAddr] = builtin.VerifiedRegistryActorAddr
-	addressToID[builtin.BurntFundsActorAddr] = builtin.BurntFundsActorAddr
-	initActor, err := p.node.StateGetActor(ctx, builtin.InitActorAddr, types.EmptyTSK)
+	addressToID[builtin2.SystemActorAddr] = builtin2.SystemActorAddr
+	addressToID[builtin2.InitActorAddr] = builtin2.InitActorAddr
+	addressToID[builtin2.RewardActorAddr] = builtin2.RewardActorAddr
+	addressToID[builtin2.CronActorAddr] = builtin2.CronActorAddr
+	addressToID[builtin2.StoragePowerActorAddr] = builtin2.StoragePowerActorAddr
+	addressToID[builtin2.StorageMarketActorAddr] = builtin2.StorageMarketActorAddr
+	addressToID[builtin2.VerifiedRegistryActorAddr] = builtin2.VerifiedRegistryActorAddr
+	addressToID[builtin2.BurntFundsActorAddr] = builtin2.BurntFundsActorAddr
+	initActor, err := p.node.StateGetActor(ctx, builtin2.InitActorAddr, types.EmptyTSK)
 	if err != nil {
 		return err
 	}
 
-	initActorRaw, err := p.node.ChainReadObj(ctx, initActor.Head)
-	if err != nil {
-		return err
-	}
-
-	var initActorState _init.State
-	if err := initActorState.UnmarshalCBOR(bytes.NewReader(initActorRaw)); err != nil {
-		return err
-	}
-	ctxStore := cw_util.NewAPIIpldStore(ctx, p.node)
-	addrMap, err := adt.AsMap(ctxStore, initActorState.AddressMap)
+	initActorState, err := _init.Load(cw_util.NewAPIIpldStore(ctx, p.node), initActor)
 	if err != nil {
 		return err
 	}
 	// gross..
-	var actorID typegen.CborInt
-	if err := addrMap.ForEach(&actorID, func(key string) error {
-		longAddr, err := address.NewFromBytes([]byte(key))
+	if err := initActorState.ForEachActor(func(id abi.ActorID, addr address.Address) error {
+		idAddr, err := address.NewIDAddress(uint64(id))
 		if err != nil {
 			return err
 		}
-		shortAddr, err := address.NewIDAddress(uint64(actorID))
-		if err != nil {
-			return err
-		}
-		addressToID[longAddr] = shortAddr
+		addressToID[addr] = idAddr
 		return nil
 	}); err != nil {
 		return err

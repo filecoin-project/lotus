@@ -4,8 +4,6 @@ import (
 	"errors"
 
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 var ErrActorNotFound = errors.New("actor not found")
@@ -16,8 +14,4 @@ type Actor struct {
 	Head    cid.Cid
 	Nonce   uint64
 	Balance BigInt
-}
-
-func (a *Actor) IsAccountActor() bool {
-	return a.Code == builtin.AccountActorCodeID
 }

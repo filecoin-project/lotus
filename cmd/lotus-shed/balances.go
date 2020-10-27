@@ -3,15 +3,29 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
+
+	"github.com/filecoin-project/lotus/chain/gen/genesis"
+
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+
+	"github.com/docker/go-units"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -21,22 +35,22 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 type accountInfo struct {
-	Address       address.Address
-	Balance       types.FIL
-	Type          string
-	Power         abi.StoragePower
-	Worker        address.Address
-	Owner         address.Address
-	InitialPledge types.FIL
-	PreCommits    types.FIL
-	LockedFunds   types.FIL
-	Sectors       uint64
+	Address         address.Address
+	Balance         types.FIL
+	Type            string
+	Power           abi.StoragePower
+	Worker          address.Address
+	Owner           address.Address
+	InitialPledge   types.FIL
+	PreCommits      types.FIL
+	LockedFunds     types.FIL
+	Sectors         uint64
+	VestingStart    abi.ChainEpoch
+	VestingDuration abi.ChainEpoch
+	VestingAmount   types.FIL
 }
 
 var auditsCmd = &cli.Command{
@@ -45,6 +59,7 @@ var auditsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		chainBalanceCmd,
 		chainBalanceStateCmd,
+		chainPledgeCmd,
 	},
 }
 
@@ -90,7 +105,7 @@ var chainBalanceCmd = &cli.Command{
 				Type:    string(act.Code.Hash()[2:]),
 			}
 
-			if act.Code == builtin.StorageMinerActorCodeID {
+			if builtin.IsStorageMinerActor(act.Code) {
 				pow, err := api.StateMinerPower(ctx, addr, tsk)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
@@ -108,10 +123,8 @@ var chainBalanceCmd = &cli.Command{
 			infos = append(infos, ai)
 		}
 
-		fmt.Printf("Address,Balance,Type,Power,Worker,Owner\n")
-		for _, acc := range infos {
-			fmt.Printf("%s,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance, acc.Type, acc.Power, acc.Worker, acc.Owner)
-		}
+		printAccountInfos(infos, false)
+
 		return nil
 	},
 }
@@ -126,6 +139,9 @@ var chainBalanceStateCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name: "miner-info",
+		},
+		&cli.BoolFlag{
+			Name: "robust-addresses",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -164,9 +180,10 @@ var chainBalanceStateCmd = &cli.Command{
 
 		bs := blockstore.NewBlockstore(ds)
 
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier))
+		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 
 		cst := cbor.NewCborStore(bs)
+		store := adt.WrapStore(ctx, cst)
 
 		sm := stmgr.NewStateManager(cs)
 
@@ -176,6 +193,33 @@ var chainBalanceStateCmd = &cli.Command{
 		}
 
 		minerInfo := cctx.Bool("miner-info")
+
+		robustMap := make(map[address.Address]address.Address)
+		if cctx.Bool("robust-addresses") {
+			iact, err := tree.GetActor(_init.Address)
+			if err != nil {
+				return xerrors.Errorf("failed to load init actor: %w", err)
+			}
+
+			ist, err := _init.Load(store, iact)
+			if err != nil {
+				return xerrors.Errorf("failed to load init actor state: %w", err)
+			}
+
+			err = ist.ForEachActor(func(id abi.ActorID, addr address.Address) error {
+				idAddr, err := address.NewIDAddress(uint64(id))
+				if err != nil {
+					return xerrors.Errorf("failed to write to addr map: %w", err)
+				}
+
+				robustMap[idAddr] = addr
+
+				return nil
+			})
+			if err != nil {
+				return xerrors.Errorf("failed to invert init address map: %w", err)
+			}
+		}
 
 		var infos []accountInfo
 		err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
@@ -188,39 +232,88 @@ var chainBalanceStateCmd = &cli.Command{
 				LockedFunds:   types.FIL(big.NewInt(0)),
 				InitialPledge: types.FIL(big.NewInt(0)),
 				PreCommits:    types.FIL(big.NewInt(0)),
+				VestingAmount: types.FIL(big.NewInt(0)),
 			}
 
-			if act.Code == builtin.StorageMinerActorCodeID && minerInfo {
-				pow, _, err := stmgr.GetPowerRaw(ctx, sm, sroot, addr)
+			if cctx.Bool("robust-addresses") {
+				robust, found := robustMap[addr]
+				if found {
+					ai.Address = robust
+				} else {
+					id, err := address.IDFromAddress(addr)
+					if err != nil {
+						return xerrors.Errorf("failed to get ID address: %w", err)
+					}
+
+					// TODO: This is not the correctest way to determine whether a robust address should exist
+					if id >= genesis.MinerStart {
+						return xerrors.Errorf("address doesn't have a robust address: %s", addr)
+					}
+				}
+			}
+
+			if minerInfo && builtin.IsStorageMinerActor(act.Code) {
+				pow, _, _, err := stmgr.GetPowerRaw(ctx, sm, sroot, addr)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
 				}
 
 				ai.Power = pow.RawBytePower
 
-				var st miner.State
-				if err := cst.Get(ctx, act.Head, &st); err != nil {
+				st, err := miner.Load(store, act)
+				if err != nil {
 					return xerrors.Errorf("failed to read miner state: %w", err)
 				}
 
-				sectors, err := adt.AsArray(cs.Store(ctx), st.Sectors)
+				liveSectorCount, err := st.NumLiveSectors()
 				if err != nil {
-					return xerrors.Errorf("failed to load sector set: %w", err)
+					return xerrors.Errorf("failed to compute live sector count: %w", err)
 				}
 
-				ai.InitialPledge = types.FIL(st.InitialPledgeRequirement)
-				ai.LockedFunds = types.FIL(st.LockedFunds)
-				ai.PreCommits = types.FIL(st.PreCommitDeposits)
-				ai.Sectors = sectors.Length()
+				lockedFunds, err := st.LockedFunds()
+				if err != nil {
+					return xerrors.Errorf("failed to compute locked funds: %w", err)
+				}
 
-				var minfo miner.MinerInfo
-				if err := cst.Get(ctx, st.Info, &minfo); err != nil {
-					return xerrors.Errorf("failed to read miner info: %w", err)
+				ai.InitialPledge = types.FIL(lockedFunds.InitialPledgeRequirement)
+				ai.LockedFunds = types.FIL(lockedFunds.VestingFunds)
+				ai.PreCommits = types.FIL(lockedFunds.PreCommitDeposits)
+				ai.Sectors = liveSectorCount
+
+				minfo, err := st.Info()
+				if err != nil {
+					return xerrors.Errorf("failed to get miner info: %w", err)
 				}
 
 				ai.Worker = minfo.Worker
 				ai.Owner = minfo.Owner
 			}
+
+			if builtin.IsMultisigActor(act.Code) {
+				mst, err := multisig.Load(store, act)
+				if err != nil {
+					return err
+				}
+
+				ai.VestingStart, err = mst.StartEpoch()
+				if err != nil {
+					return err
+				}
+
+				ib, err := mst.InitialBalance()
+				if err != nil {
+					return err
+				}
+
+				ai.VestingAmount = types.FIL(ib)
+
+				ai.VestingDuration, err = mst.UnlockDuration()
+				if err != nil {
+					return err
+				}
+
+			}
+
 			infos = append(infos, ai)
 			return nil
 		})
@@ -228,16 +321,151 @@ var chainBalanceStateCmd = &cli.Command{
 			return xerrors.Errorf("failed to loop over actors: %w", err)
 		}
 
-		if minerInfo {
-			fmt.Printf("Address,Balance,Type,Sectors,Worker,Owner,InitialPledge,Locked,PreCommits\n")
-			for _, acc := range infos {
-				fmt.Printf("%s,%s,%s,%d,%s,%s,%s,%s,%s\n", acc.Address, acc.Balance, acc.Type, acc.Sectors, acc.Worker, acc.Owner, acc.InitialPledge, acc.LockedFunds, acc.PreCommits)
-			}
+		printAccountInfos(infos, minerInfo)
+
+		return nil
+	},
+}
+
+func printAccountInfos(infos []accountInfo, minerInfo bool) {
+	if minerInfo {
+		fmt.Printf("Address,Balance,Type,Sectors,Worker,Owner,InitialPledge,Locked,PreCommits,VestingStart,VestingDuration,VestingAmount\n")
+		for _, acc := range infos {
+			fmt.Printf("%s,%s,%s,%d,%s,%s,%s,%s,%s,%d,%d,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type, acc.Sectors, acc.Worker, acc.Owner, acc.InitialPledge.Unitless(), acc.LockedFunds.Unitless(), acc.PreCommits.Unitless(), acc.VestingStart, acc.VestingDuration, acc.VestingAmount.Unitless())
+		}
+	} else {
+		fmt.Printf("Address,Balance,Type\n")
+		for _, acc := range infos {
+			fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type)
+		}
+	}
+
+}
+
+var chainPledgeCmd = &cli.Command{
+	Name:        "stateroot-pledge",
+	Description: "Calculate sector pledge numbers",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo",
+			Value: "~/.lotus",
+		},
+	},
+	ArgsUsage: "[stateroot epoch]",
+	Action: func(cctx *cli.Context) error {
+		logging.SetLogLevel("badger", "ERROR")
+		ctx := context.TODO()
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass state root")
+		}
+
+		sroot, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to parse input: %w", err)
+		}
+
+		epoch, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing epoch arg: %w", err)
+		}
+
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		if err != nil {
+			return err
+		}
+
+		defer lkrepo.Close() //nolint:errcheck
+
+		ds, err := lkrepo.Datastore("/chain")
+		if err != nil {
+			return err
+		}
+
+		mds, err := lkrepo.Datastore("/metadata")
+		if err != nil {
+			return err
+		}
+
+		bs := blockstore.NewBlockstore(ds)
+
+		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+
+		cst := cbor.NewCborStore(bs)
+		store := adt.WrapStore(ctx, cst)
+
+		sm := stmgr.NewStateManager(cs)
+
+		state, err := state.LoadStateTree(cst, sroot)
+		if err != nil {
+			return err
+		}
+
+		var (
+			powerSmoothed    builtin.FilterEstimate
+			pledgeCollateral abi.TokenAmount
+		)
+		if act, err := state.GetActor(power.Address); err != nil {
+			return xerrors.Errorf("loading miner actor: %w", err)
+		} else if s, err := power.Load(store, act); err != nil {
+			return xerrors.Errorf("loading power actor state: %w", err)
+		} else if p, err := s.TotalPowerSmoothed(); err != nil {
+			return xerrors.Errorf("failed to determine total power: %w", err)
+		} else if c, err := s.TotalLocked(); err != nil {
+			return xerrors.Errorf("failed to determine pledge collateral: %w", err)
 		} else {
-			fmt.Printf("Address,Balance,Type\n")
-			for _, acc := range infos {
-				fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance, acc.Type)
+			powerSmoothed = p
+			pledgeCollateral = c
+		}
+
+		circ, err := sm.GetVMCirculatingSupplyDetailed(ctx, abi.ChainEpoch(epoch), state)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("(real) circulating supply: ", types.FIL(circ.FilCirculating))
+		if circ.FilCirculating.LessThan(big.Zero()) {
+			circ.FilCirculating = big.Zero()
+		}
+
+		rewardActor, err := state.GetActor(reward.Address)
+		if err != nil {
+			return xerrors.Errorf("loading miner actor: %w", err)
+		}
+
+		rewardState, err := reward.Load(store, rewardActor)
+		if err != nil {
+			return xerrors.Errorf("loading reward actor state: %w", err)
+		}
+
+		fmt.Println("FilVested", types.FIL(circ.FilVested))
+		fmt.Println("FilMined", types.FIL(circ.FilMined))
+		fmt.Println("FilBurnt", types.FIL(circ.FilBurnt))
+		fmt.Println("FilLocked", types.FIL(circ.FilLocked))
+		fmt.Println("FilCirculating", types.FIL(circ.FilCirculating))
+
+		for _, sectorWeight := range []abi.StoragePower{
+			types.NewInt(32 << 30),
+			types.NewInt(64 << 30),
+			types.NewInt(32 << 30 * 10),
+			types.NewInt(64 << 30 * 10),
+		} {
+			initialPledge, err := rewardState.InitialPledgeForPower(
+				sectorWeight,
+				pledgeCollateral,
+				&powerSmoothed,
+				circ.FilCirculating,
+			)
+			if err != nil {
+				return xerrors.Errorf("calculating initial pledge: %w", err)
 			}
+
+			fmt.Println("IP ", units.HumanSize(float64(sectorWeight.Uint64())), types.FIL(initialPledge))
 		}
 
 		return nil

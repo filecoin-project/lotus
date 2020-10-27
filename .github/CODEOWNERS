@@ -13,3 +13,4 @@
 ### Conformance testing.
 conformance/            @raulk
 extern/test-vectors     @raulk
+cmd/tvx                 @raulk

@@ -6,22 +6,17 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/lotus/api"
-
-	"golang.org/x/sync/errgroup"
-
-	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -314,13 +309,17 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt typ
 			return nil, err
 		}
 
-		laneStates, err := ca.laneState(ca.chctx, pchState, ch)
+		laneStates, err := ca.laneState(pchState, ch)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, ls := range laneStates {
-			totalRedeemed = types.BigAdd(totalRedeemed, ls.Redeemed)
+			r, err := ls.Redeemed()
+			if err != nil {
+				return nil, err
+			}
+			totalRedeemed = types.BigAdd(totalRedeemed, r)
 		}
 	}
 
@@ -385,25 +384,13 @@ func (ca *channelAccessor) processTask(ctx context.Context, amt types.BigInt) *p
 
 // createPaych sends a message to create the channel and returns the message cid
 func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (cid.Cid, error) {
-	params, aerr := actors.SerializeParams(&paych.ConstructorParams{From: ca.from, To: ca.to})
-	if aerr != nil {
-		return cid.Undef, aerr
+	mb, err := ca.messageBuilder(ctx, ca.from)
+	if err != nil {
+		return cid.Undef, err
 	}
-
-	enc, aerr := actors.SerializeParams(&init_.ExecParams{
-		CodeCID:           builtin.PaymentChannelActorCodeID,
-		ConstructorParams: params,
-	})
-	if aerr != nil {
-		return cid.Undef, aerr
-	}
-
-	msg := &types.Message{
-		To:     builtin.InitActorAddr,
-		From:   ca.from,
-		Value:  amt,
-		Method: builtin.MethodsInit.Exec,
-		Params: enc,
+	msg, err := mb.Create(ca.to, amt)
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
@@ -455,7 +442,10 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 		return err
 	}
 
-	var decodedReturn init_.ExecReturn
+	// TODO: ActorUpgrade abstract over this.
+	// This "works" because it hasn't changed from v0 to v2, but we still
+	// need an abstraction here.
+	var decodedReturn init2.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)
