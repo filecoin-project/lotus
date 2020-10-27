@@ -110,7 +110,7 @@ var DefaultVerifregRootkeyActor = genesis.Actor{
 	Meta:    rootkeyMultisig.ActorMeta(),
 }
 
-var remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
+var remAccTestKey, _ = address.NewFromString("t1arngf6wtnep7psj5etoepzcdbf4mhy27gxagbxq")
 var remAccMeta = genesis.MultisigMeta{
 	Signers:   []address.Address{remAccTestKey},
 	Threshold: 1,
