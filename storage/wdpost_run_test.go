@@ -123,7 +123,6 @@ func TestWDPostDoPost(t *testing.T) {
 
 	proofType := abi.RegisteredPoStProof_StackedDrgWindow2KiBV1
 	postAct := tutils.NewIDAddr(t, 100)
-	workerAct := tutils.NewIDAddr(t, 101)
 
 	mockStgMinerAPI := newMockStorageMinerAPI()
 
@@ -164,7 +163,6 @@ func TestWDPostDoPost(t *testing.T) {
 		faultTracker: &mockFaultTracker{},
 		proofType:    proofType,
 		actor:        postAct,
-		worker:       workerAct,
 		journal:      journal.NilJournal(),
 	}
 

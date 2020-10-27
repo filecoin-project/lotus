@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -27,14 +26,11 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/messagepool"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/impl/client"
@@ -227,9 +223,6 @@ type BlockValidator struct {
 	// necessary for block validation
 	chain *store.ChainStore
 	stmgr *stmgr.StateManager
-
-	mx       sync.Mutex
-	keycache map[string]address.Address
 }
 
 func NewBlockValidator(self peer.ID, chain *store.ChainStore, stmgr *stmgr.StateManager, blacklist func(peer.ID)) *BlockValidator {
@@ -242,7 +235,6 @@ func NewBlockValidator(self peer.ID, chain *store.ChainStore, stmgr *stmgr.State
 		recvBlocks: newBlockReceiptCache(),
 		chain:      chain,
 		stmgr:      stmgr,
-		keycache:   make(map[string]address.Address),
 	}
 }
 
@@ -436,59 +428,24 @@ func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockM
 }
 
 func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *types.BlockHeader) (address.Address, error) {
-	addr := bh.Miner
-
-	bv.mx.Lock()
-	key, ok := bv.keycache[addr.String()]
-	bv.mx.Unlock()
-	if !ok {
-		// TODO I have a feeling all this can be simplified by cleverer DI to use the API
-		ts := bv.chain.GetHeaviestTipSet()
-		st, _, err := bv.stmgr.TipSetState(ctx, ts)
-		if err != nil {
-			return address.Undef, err
-		}
-
-		buf := bufbstore.NewBufferedBstore(bv.chain.Blockstore())
-		cst := cbor.NewCborStore(buf)
-		state, err := state.LoadStateTree(cst, st)
-		if err != nil {
-			return address.Undef, err
-		}
-		act, err := state.GetActor(addr)
-		if err != nil {
-			return address.Undef, err
-		}
-
-		mst, err := miner.Load(bv.chain.Store(ctx), act)
-		if err != nil {
-			return address.Undef, err
-		}
-
-		info, err := mst.Info()
-		if err != nil {
-			return address.Undef, err
-		}
-
-		worker := info.Worker
-		key, err = bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
-		if err != nil {
-			return address.Undef, err
-		}
-
-		bv.mx.Lock()
-		bv.keycache[addr.String()] = key
-		bv.mx.Unlock()
-	}
-
 	// we check that the miner met the minimum power at the lookback tipset
 
 	baseTs := bv.chain.GetHeaviestTipSet()
-	lbts, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
+	lbts, lbst, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
 	if err != nil {
 		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
 		return address.Undef, ErrSoftFailure
 	}
+
+	key, err := stmgr.GetMinerWorkerRaw(ctx, bv.stmgr, lbst, bh.Miner)
+	if err != nil {
+		log.Warnf("failed to resolve worker key for miner %s: %s", bh.Miner, err)
+		return address.Undef, ErrSoftFailure
+	}
+
+	// NOTE: we check to see if the miner was eligible in the lookback
+	// tipset - 1 for historical reasons. DO NOT use the lookback state
+	// returned by GetLookbackTipSetForRound.
 
 	eligible, err := stmgr.MinerEligibleToMine(ctx, bv.stmgr, bh.Miner, baseTs, lbts)
 	if err != nil {

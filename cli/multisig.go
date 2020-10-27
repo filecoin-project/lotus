@@ -264,8 +264,19 @@ var msigInspectCmd = &cli.Command{
 		}
 		fmt.Fprintf(cctx.App.Writer, "Threshold: %d / %d\n", threshold, len(signers))
 		fmt.Fprintln(cctx.App.Writer, "Signers:")
+
+		signerTable := tabwriter.NewWriter(cctx.App.Writer, 8, 4, 2, ' ', 0)
+		fmt.Fprintf(signerTable, "ID\tAddress\n")
 		for _, s := range signers {
-			fmt.Fprintf(cctx.App.Writer, "\t%s\n", s)
+			signerActor, err := api.StateAccountKey(ctx, s, types.EmptyTSK)
+			if err != nil {
+				fmt.Fprintf(signerTable, "%s\t%s\n", s, "N/A")
+			} else {
+				fmt.Fprintf(signerTable, "%s\t%s\n", s, signerActor)
+			}
+		}
+		if err := signerTable.Flush(); err != nil {
+			return xerrors.Errorf("flushing output: %+v", err)
 		}
 
 		pending := make(map[int64]multisig.Transaction)
@@ -296,27 +307,33 @@ var msigInspectCmd = &cli.Command{
 					target += " (self)"
 				}
 				targAct, err := api.StateGetActor(ctx, tx.To, types.EmptyTSK)
-				if err != nil {
-					return xerrors.Errorf("failed to resolve 'To' address of multisig transaction %d: %w", txid, err)
-				}
-				method := stmgr.MethodsMap[targAct.Code][tx.Method]
-
 				paramStr := fmt.Sprintf("%x", tx.Params)
-				if decParams && tx.Method != 0 {
-					ptyp := reflect.New(method.Params.Elem()).Interface().(cbg.CBORUnmarshaler)
-					if err := ptyp.UnmarshalCBOR(bytes.NewReader(tx.Params)); err != nil {
-						return xerrors.Errorf("failed to decode parameters of transaction %d: %w", txid, err)
+
+				if err != nil {
+					if tx.Method == 0 {
+						fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "Send", tx.Method, paramStr)
+					} else {
+						fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "new account, unknown method", tx.Method, paramStr)
+					}
+				} else {
+					method := stmgr.MethodsMap[targAct.Code][tx.Method]
+
+					if decParams && tx.Method != 0 {
+						ptyp := reflect.New(method.Params.Elem()).Interface().(cbg.CBORUnmarshaler)
+						if err := ptyp.UnmarshalCBOR(bytes.NewReader(tx.Params)); err != nil {
+							return xerrors.Errorf("failed to decode parameters of transaction %d: %w", txid, err)
+						}
+
+						b, err := json.Marshal(ptyp)
+						if err != nil {
+							return xerrors.Errorf("could not json marshal parameter type: %w", err)
+						}
+
+						paramStr = string(b)
 					}
 
-					b, err := json.Marshal(ptyp)
-					if err != nil {
-						return xerrors.Errorf("could not json marshal parameter type: %w", err)
-					}
-
-					paramStr = string(b)
+					fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), method.Name, tx.Method, paramStr)
 				}
-
-				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), method.Name, tx.Method, paramStr)
 			}
 			if err := w.Flush(); err != nil {
 				return xerrors.Errorf("flushing output: %+v", err)

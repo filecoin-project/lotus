@@ -277,6 +277,15 @@ func (s *state0) DeadlinesChanged(other State) (bool, error) {
 	return !s.State.Deadlines.Equals(other0.Deadlines), nil
 }
 
+func (s *state0) MinerInfoChanged(other State) (bool, error) {
+	other0, ok := other.(*state0)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.Info.Equals(other0.State.Info), nil
+}
+
 func (s *state0) Info() (MinerInfo, error) {
 	info, err := s.State.GetInfo(s.store)
 	if err != nil {

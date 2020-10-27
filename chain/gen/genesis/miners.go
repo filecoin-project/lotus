@@ -56,9 +56,9 @@ func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer 
 }
 
 func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
-	return func(ctx context.Context, cstate *state.StateTree, cst cbor.IpldStore) runtime2.Syscalls {
+	return func(ctx context.Context, rt *vm.Runtime) runtime2.Syscalls {
 		return &fakedSigSyscalls{
-			base(ctx, cstate, cst),
+			base(ctx, rt),
 		}
 	}
 }

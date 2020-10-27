@@ -84,6 +84,7 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientImportCmd),
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
+		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("util", clientCommPCmd),
@@ -91,6 +92,7 @@ var clientCmd = &cli.Command{
 		WithCategory("util", clientInfoCmd),
 		WithCategory("util", clientListTransfers),
 		WithCategory("util", clientRestartTransfer),
+		WithCategory("util", clientCancelTransfer),
 	},
 }
 
@@ -1638,6 +1640,39 @@ var clientInfoCmd = &cli.Command{
 	},
 }
 
+var clientStat = &cli.Command{
+	Name:      "stat",
+	Usage:     "Print information about a locally stored file (piece size, etc)",
+	ArgsUsage: "<cid>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() || cctx.NArg() != 1 {
+			return fmt.Errorf("must specify cid of data")
+		}
+
+		dataCid, err := cid.Parse(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("parsing data cid: %w", err)
+		}
+
+		ds, err := api.ClientDealSize(ctx, dataCid)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Piece Size  : %v\n", ds.PieceSize)
+		fmt.Printf("Payload Size: %v\n", ds.PayloadSize)
+
+		return nil
+	},
+}
+
 var clientRestartTransfer = &cli.Command{
 	Name:  "restart-transfer",
 	Usage: "Force restart a stalled data transfer",
@@ -1698,6 +1733,66 @@ var clientRestartTransfer = &cli.Command{
 	},
 }
 
+var clientCancelTransfer = &cli.Command{
+	Name:  "cancel-transfer",
+	Usage: "Force cancel a data transfer",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "peerid",
+			Usage: "narrow to transfer with specific peer",
+		},
+		&cli.BoolFlag{
+			Name:  "initiator",
+			Usage: "specify only transfers where peer is/is not initiator",
+			Value: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return fmt.Errorf("Error reading transfer ID: %w", err)
+		}
+		transferID := datatransfer.TransferID(transferUint)
+		initiator := cctx.Bool("initiator")
+		var other peer.ID
+		if pidstr := cctx.String("peerid"); pidstr != "" {
+			p, err := peer.Decode(pidstr)
+			if err != nil {
+				return err
+			}
+			other = p
+		} else {
+			channels, err := api.ClientListDataTransfers(ctx)
+			if err != nil {
+				return err
+			}
+			found := false
+			for _, channel := range channels {
+				if channel.IsInitiator == initiator && channel.TransferID == transferID {
+					other = channel.OtherPeer
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.New("unable to find matching data transfer")
+			}
+		}
+
+		return api.ClientCancelDataTransfer(ctx, transferID, other, initiator)
+	},
+}
+
 var clientListTransfers = &cli.Command{
 	Name:  "list-transfers",
 	Usage: "List ongoing data transfers for deals",
@@ -1714,6 +1809,10 @@ var clientListTransfers = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
+		&cli.BoolFlag{
+			Name:  "show-failed",
+			Usage: "show failed/cancelled transfers",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1732,7 +1831,7 @@ var clientListTransfers = &cli.Command{
 		completed := cctx.Bool("completed")
 		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
-
+		showFailed := cctx.Bool("show-failed")
 		if watch {
 			channelUpdates, err := api.ClientDataTransferUpdates(ctx)
 			if err != nil {
@@ -1744,7 +1843,7 @@ var clientListTransfers = &cli.Command{
 
 				tm.MoveCursor(1, 1)
 
-				OutputDataTransferChannels(tm.Screen, channels, completed, color)
+				OutputDataTransferChannels(tm.Screen, channels, completed, color, showFailed)
 
 				tm.Flush()
 
@@ -1769,13 +1868,13 @@ var clientListTransfers = &cli.Command{
 				}
 			}
 		}
-		OutputDataTransferChannels(os.Stdout, channels, completed, color)
+		OutputDataTransferChannels(os.Stdout, channels, completed, color, showFailed)
 		return nil
 	},
 }
 
 // OutputDataTransferChannels generates table output for a list of channels
-func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChannel, completed bool, color bool) {
+func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChannel, completed bool, color bool, showFailed bool) {
 	sort.Slice(channels, func(i, j int) bool {
 		return channels[i].TransferID < channels[j].TransferID
 	})
@@ -1783,6 +1882,9 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 	var receivingChannels, sendingChannels []lapi.DataTransferChannel
 	for _, channel := range channels {
 		if !completed && channel.Status == datatransfer.Completed {
+			continue
+		}
+		if !showFailed && (channel.Status == datatransfer.Failed || channel.Status == datatransfer.Cancelled) {
 			continue
 		}
 		if channel.IsSender {
