@@ -374,7 +374,7 @@ func isHeavier(a, b *types.TipSet) bool {
 // sync buffer -- this is a circular buffer of recently synced tipsets
 type syncBuffer struct {
 	buf  []*types.TipSet
-	next int64
+	next int
 }
 
 func newSyncBuffer(size int) *syncBuffer {
@@ -382,29 +382,14 @@ func newSyncBuffer(size int) *syncBuffer {
 }
 
 func (sb *syncBuffer) Push(ts *types.TipSet) {
-	i := int(sb.next % int64(len(sb.buf)))
-	sb.buf[i] = ts
+	sb.buf[sb.next] = ts
 	sb.next++
+	sb.next %= len(sb.buf)
 }
 
 func (sb *syncBuffer) Synced(ts *types.TipSet) bool {
-	synced := func(a, b *types.TipSet) bool {
-		return a.Equals(b) || isHeavier(a, b)
-	}
-
-	if sb.next < int64(len(sb.buf)) {
-		for i := int(sb.next - 1); i >= 0; i-- {
-			if synced(sb.buf[i], ts) {
-				return true
-			}
-		}
-
-		return false
-	}
-
-	for j := 1; j < len(sb.buf); j++ {
-		i := int((sb.next - int64(j)) % int64(len(sb.buf)))
-		if synced(sb.buf[i], ts) {
+	for _, rts := range sb.buf {
+		if rts != nil && (rts.Equals(ts) || isHeavier(rts, ts)) {
 			return true
 		}
 	}
