@@ -47,7 +47,7 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 	fullAPI := apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a))
 	rpcServer.Register("Filecoin", fullAPI)
 
-	doc := newOpenRPCDocument()
+	doc := openrpc.NewLotusOpenRPCDocument()
 
 	doc.RegisterReceiverName("Filecoin", fullAPI)
 
