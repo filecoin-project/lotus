@@ -35,6 +35,7 @@
   * [ClientCalcCommP](#ClientCalcCommP)
   * [ClientCancelDataTransfer](#ClientCancelDataTransfer)
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
+  * [ClientDealPieceCID](#ClientDealPieceCID)
   * [ClientDealSize](#ClientDealSize)
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
@@ -898,6 +899,32 @@ Response:
   "Message": "string value",
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Transferred": 42
+}
+```
+
+### ClientDealPieceCID
+ClientCalcCommP calculates the CommP and data size of the specified CID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "PayloadSize": 9,
+  "PieceSize": 1032,
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 
