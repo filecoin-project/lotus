@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/alecthomas/jsonschema"
 	go_openrpc_reflect "github.com/etclabscore/go-openrpc-reflect"
@@ -75,7 +76,11 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 		if m.Name == "ID" {
 			return moduleName + "_ID", nil
 		}
-		return go_openrpc_reflect.EthereumReflector.GetMethodName(moduleName, r, m, funcDecl)
+		if moduleName == "rpc" && m.Name == "Discover" {
+			return "rpc.discover", nil
+		}
+
+		return moduleName + "." + m.Name, nil
 	}
 
 	appReflector.FnGetMethodSummary = func(r reflect.Value, m reflect.Method, funcDecl *ast.FuncDecl) (string, error) {
@@ -88,6 +93,14 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 	// Finally, register the configured reflector to the document.
 	d.WithReflector(appReflector)
 	return d
+}
+
+func firstToLower(str string) string {
+	ret := []rune(str)
+	if len(ret) > 0 {
+		ret[0] = unicode.ToLower(ret[0])
+	}
+	return string(ret)
 }
 
 type Visitor struct {
