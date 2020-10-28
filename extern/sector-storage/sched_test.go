@@ -591,8 +591,13 @@ func TestWindowCompact(t *testing.T) {
 				wh.activeWindows = append(wh.activeWindows, window)
 			}
 
-			n := sh.workerCompactWindows(wh, WorkerID{})
-			require.Equal(t, len(start)-len(expect), n)
+			sw := schedWorker{
+				sched:            &sh,
+				worker:           wh,
+			}
+
+			sw.workerCompactWindows()
+			require.Equal(t, len(start)-len(expect), -sw.windowsRequested)
 
 			for wi, tasks := range expect {
 				var expectRes activeResources
