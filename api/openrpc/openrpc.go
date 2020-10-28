@@ -1,23 +1,19 @@
 package openrpc
 
 import (
-	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"net"
 	"reflect"
-	"strings"
 	"time"
-	"unicode"
 
 	"github.com/alecthomas/jsonschema"
 	go_openrpc_reflect "github.com/etclabscore/go-openrpc-reflect"
+	"github.com/filecoin-project/lotus/api/docgen"
 	"github.com/filecoin-project/lotus/build"
 	meta_schema "github.com/open-rpc/meta-schema"
 )
 
-var Comments, GroupDocs = parseApiASTInfo()
+var Comments, GroupDocs = docgen.ParseApiASTInfo()
 
 // NewLotusOpenRPCDocument defines application-specific documentation and configuration for its OpenRPC document.
 func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
@@ -93,82 +89,4 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 	// Finally, register the configured reflector to the document.
 	d.WithReflector(appReflector)
 	return d
-}
-
-func firstToLower(str string) string {
-	ret := []rune(str)
-	if len(ret) > 0 {
-		ret[0] = unicode.ToLower(ret[0])
-	}
-	return string(ret)
-}
-
-type Visitor struct {
-	Methods map[string]ast.Node
-}
-
-func (v *Visitor) Visit(node ast.Node) ast.Visitor {
-	st, ok := node.(*ast.TypeSpec)
-	if !ok {
-		return v
-	}
-
-	if st.Name.Name != "FullNode" {
-		return nil
-	}
-
-	iface := st.Type.(*ast.InterfaceType)
-	for _, m := range iface.Methods.List {
-		if len(m.Names) > 0 {
-			v.Methods[m.Names[0].Name] = m
-		}
-	}
-
-	return v
-}
-
-const noComment = "There are not yet any comments for this method."
-
-func parseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, "./api", nil, parser.AllErrors|parser.ParseComments)
-	if err != nil {
-		fmt.Println("parse error: ", err)
-	}
-
-	ap := pkgs["api"]
-	f := ap.Files["api/api_full.go"]
-
-	cmap := ast.NewCommentMap(fset, f, f.Comments)
-
-	v := &Visitor{make(map[string]ast.Node)}
-	ast.Walk(v, pkgs["api"])
-
-	groupDocs := make(map[string]string)
-	out := make(map[string]string)
-	for mn, node := range v.Methods {
-		comments := cmap.Filter(node).Comments()
-		if len(comments) == 0 {
-			out[mn] = noComment
-		} else {
-			for _, c := range comments {
-				if strings.HasPrefix(c.Text(), "MethodGroup:") {
-					parts := strings.Split(c.Text(), "\n")
-					groupName := strings.TrimSpace(parts[0][12:])
-					comment := strings.Join(parts[1:], "\n")
-					groupDocs[groupName] = comment
-
-					break
-				}
-			}
-
-			last := comments[len(comments)-1].Text()
-			if !strings.HasPrefix(last, "MethodGroup:") {
-				out[mn] = last
-			} else {
-				out[mn] = noComment
-			}
-		}
-	}
-	return out, groupDocs
 }
