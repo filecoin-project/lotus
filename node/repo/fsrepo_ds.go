@@ -32,7 +32,7 @@ func chainBadgerDs(path string, readonly bool) (datastore.Batching, error) {
 	opts.ReadOnly = readonly
 
 	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
-		WithValueThreshold(1 << 10)
+		WithValueThreshold(128)
 
 	return badger.NewDatastore(path, &opts)
 }
