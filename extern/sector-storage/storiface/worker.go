@@ -1,9 +1,17 @@
 package storiface
 
 import (
+	"context"
+	"fmt"
+	"io"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-storage/storage"
+
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 )
 
@@ -24,7 +32,8 @@ type WorkerResources struct {
 }
 
 type WorkerStats struct {
-	Info WorkerInfo
+	Info    WorkerInfo
+	Enabled bool
 
 	MemUsedMin uint64
 	MemUsedMax uint64
@@ -33,10 +42,51 @@ type WorkerStats struct {
 }
 
 type WorkerJob struct {
-	ID     uint64
+	ID     CallID
 	Sector abi.SectorID
 	Task   sealtasks.TaskType
 
-	RunWait int // 0 - running, 1+ - assigned
+	RunWait int // -1 - ret-wait, 0 - running, 1+ - assigned
 	Start   time.Time
+}
+
+type CallID struct {
+	Sector abi.SectorID
+	ID     uuid.UUID
+}
+
+func (c CallID) String() string {
+	return fmt.Sprintf("%d-%d-%s", c.Sector.Miner, c.Sector.Number, c.ID)
+}
+
+var _ fmt.Stringer = &CallID{}
+
+var UndefCall CallID
+
+type WorkerCalls interface {
+	AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (CallID, error)
+	SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
+	SealPreCommit2(ctx context.Context, sector abi.SectorID, pc1o storage.PreCommit1Out) (CallID, error)
+	SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (CallID, error)
+	SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (CallID, error)
+	FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) (CallID, error)
+	ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) (CallID, error)
+	MoveStorage(ctx context.Context, sector abi.SectorID, types SectorFileType) (CallID, error)
+	UnsealPiece(context.Context, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
+	ReadPiece(context.Context, io.Writer, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize) (CallID, error)
+	Fetch(context.Context, abi.SectorID, SectorFileType, PathType, AcquireMode) (CallID, error)
+}
+
+type WorkerReturn interface {
+	ReturnAddPiece(ctx context.Context, callID CallID, pi abi.PieceInfo, err string) error
+	ReturnSealPreCommit1(ctx context.Context, callID CallID, p1o storage.PreCommit1Out, err string) error
+	ReturnSealPreCommit2(ctx context.Context, callID CallID, sealed storage.SectorCids, err string) error
+	ReturnSealCommit1(ctx context.Context, callID CallID, out storage.Commit1Out, err string) error
+	ReturnSealCommit2(ctx context.Context, callID CallID, proof storage.Proof, err string) error
+	ReturnFinalizeSector(ctx context.Context, callID CallID, err string) error
+	ReturnReleaseUnsealed(ctx context.Context, callID CallID, err string) error
+	ReturnMoveStorage(ctx context.Context, callID CallID, err string) error
+	ReturnUnsealPiece(ctx context.Context, callID CallID, err string) error
+	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err string) error
+	ReturnFetch(ctx context.Context, callID CallID, err string) error
 }

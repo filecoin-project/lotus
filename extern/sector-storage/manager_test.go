@@ -9,18 +9,23 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/google/uuid"
-	logging "github.com/ipfs/go-log"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 func init() {
@@ -80,9 +85,8 @@ func (t *testStorage) Stat(path string) (fsutil.FsStat, error) {
 
 var _ stores.LocalStorage = &testStorage{}
 
-func newTestMgr(ctx context.Context, t *testing.T) (*Manager, *stores.Local, *stores.Remote, *stores.Index) {
+func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Manager, *stores.Local, *stores.Remote, *stores.Index, func()) {
 	st := newTestStorage(t)
-	defer st.cleanup()
 
 	si := stores.NewIndex()
 	cfg := &ffiwrapper.Config{
@@ -109,18 +113,27 @@ func newTestMgr(ctx context.Context, t *testing.T) (*Manager, *stores.Local, *st
 		sched: newScheduler(cfg.SealProofType),
 
 		Prover: prover,
+
+		work:       statestore.New(ds),
+		callToWork: map[storiface.CallID]WorkID{},
+		callRes:    map[storiface.CallID]chan result{},
+		results:    map[WorkID]result{},
+		waitRes:    map[WorkID]chan struct{}{},
 	}
+
+	m.setupWorkTracker()
 
 	go m.sched.runSched()
 
-	return m, lstor, stor, si
+	return m, lstor, stor, si, st.cleanup
 }
 
 func TestSimple(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
 	ctx := context.Background()
-	m, lstor, _, _ := newTestMgr(ctx, t)
+	m, lstor, _, _, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
@@ -129,7 +142,44 @@ func TestSimple(t *testing.T) {
 	err := m.AddWorker(ctx, newTestWorker(WorkerConfig{
 		SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
 		TaskTypes: localTasks,
-	}, lstor))
+	}, lstor, m))
+	require.NoError(t, err)
+
+	sid := abi.SectorID{Miner: 1000, Number: 1}
+
+	pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+	require.NoError(t, err)
+	require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
+
+	piz, err := m.AddPiece(ctx, sid, nil, 1016, bytes.NewReader(make([]byte, 1016)[:]))
+	require.NoError(t, err)
+	require.Equal(t, abi.PaddedPieceSize(1024), piz.Size)
+
+	pieces := []abi.PieceInfo{pi, piz}
+
+	ticket := abi.SealRandomness{9, 9, 9, 9, 9, 9, 9, 9}
+
+	_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
+	require.NoError(t, err)
+}
+
+func TestRedoPC1(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelDebug)
+
+	ctx := context.Background()
+	m, lstor, _, _, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	defer cleanup()
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+	}
+
+	tw := newTestWorker(WorkerConfig{
+		SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
+		TaskTypes: localTasks,
+	}, lstor, m)
+
+	err := m.AddWorker(ctx, tw)
 	require.NoError(t, err)
 
 	sid := abi.SectorID{Miner: 1000, Number: 1}
@@ -149,4 +199,156 @@ func TestSimple(t *testing.T) {
 	_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
 	require.NoError(t, err)
 
+	// tell mock ffi that we expect PC1 again
+	require.NoError(t, tw.mockSeal.ForceState(sid, 0)) // sectorPacking
+
+	_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
+	require.NoError(t, err)
+
+	require.Equal(t, 2, tw.pc1s)
+}
+
+// Manager restarts in the middle of a task, restarts it, it completes
+func TestRestartManager(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelDebug)
+
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+
+	ds := datastore.NewMapDatastore()
+
+	m, lstor, _, _, cleanup := newTestMgr(ctx, t, ds)
+	defer cleanup()
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+	}
+
+	tw := newTestWorker(WorkerConfig{
+		SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
+		TaskTypes: localTasks,
+	}, lstor, m)
+
+	err := m.AddWorker(ctx, tw)
+	require.NoError(t, err)
+
+	sid := abi.SectorID{Miner: 1000, Number: 1}
+
+	pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+	require.NoError(t, err)
+	require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
+
+	piz, err := m.AddPiece(ctx, sid, nil, 1016, bytes.NewReader(make([]byte, 1016)[:]))
+	require.NoError(t, err)
+	require.Equal(t, abi.PaddedPieceSize(1024), piz.Size)
+
+	pieces := []abi.PieceInfo{pi, piz}
+
+	ticket := abi.SealRandomness{0, 9, 9, 9, 9, 9, 9, 9}
+
+	tw.pc1lk.Lock()
+	tw.pc1wait = &sync.WaitGroup{}
+	tw.pc1wait.Add(1)
+
+	var cwg sync.WaitGroup
+	cwg.Add(1)
+
+	var perr error
+	go func() {
+		defer cwg.Done()
+		_, perr = m.SealPreCommit1(ctx, sid, ticket, pieces)
+	}()
+
+	tw.pc1wait.Wait()
+
+	require.NoError(t, m.Close(ctx))
+	tw.ret = nil
+
+	cwg.Wait()
+	require.Error(t, perr)
+
+	m, _, _, _, cleanup2 := newTestMgr(ctx, t, ds)
+	defer cleanup2()
+
+	tw.ret = m // simulate jsonrpc auto-reconnect
+	err = m.AddWorker(ctx, tw)
+	require.NoError(t, err)
+
+	tw.pc1lk.Unlock()
+
+	_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, tw.pc1s)
+}
+
+// Worker restarts in the middle of a task, task fails after restart
+func TestRestartWorker(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelDebug)
+
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+
+	ds := datastore.NewMapDatastore()
+
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
+	defer cleanup()
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+	}
+
+	wds := datastore.NewMapDatastore()
+
+	arch := make(chan chan apres)
+	w := newLocalWorker(func() (ffiwrapper.Storage, error) {
+		return &testExec{apch: arch}, nil
+	}, WorkerConfig{
+		SealProof: 0,
+		TaskTypes: localTasks,
+	}, stor, lstor, idx, m, statestore.New(wds))
+
+	err := m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	sid := abi.SectorID{Miner: 1000, Number: 1}
+
+	apDone := make(chan struct{})
+
+	go func() {
+		defer close(apDone)
+
+		_, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+		require.Error(t, err)
+	}()
+
+	// kill the worker
+	<-arch
+	require.NoError(t, w.Close())
+
+	for {
+		if len(m.WorkerStats()) == 0 {
+			break
+		}
+
+		time.Sleep(time.Millisecond * 3)
+	}
+
+	// restart the worker
+	w = newLocalWorker(func() (ffiwrapper.Storage, error) {
+		return &testExec{apch: arch}, nil
+	}, WorkerConfig{
+		SealProof: 0,
+		TaskTypes: localTasks,
+	}, stor, lstor, idx, m, statestore.New(wds))
+
+	err = m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	<-apDone
+
+	time.Sleep(12 * time.Millisecond)
+	uf, err := w.ct.unfinished()
+	require.NoError(t, err)
+	require.Empty(t, uf)
 }

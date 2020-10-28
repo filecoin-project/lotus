@@ -6,6 +6,7 @@ import (
 	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -64,8 +65,9 @@ type StorageMiner interface {
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
-	WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error)
-	WorkerJobs(context.Context) (map[uint64][]storiface.WorkerJob, error)
+	WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error)
+	WorkerJobs(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error)
+	storiface.WorkerReturn
 
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(context.Context) (interface{}, error)

@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/gbrlsnchs/jwt/v3"
+	"github.com/google/uuid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -26,6 +26,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
+
+var session = uuid.New()
 
 type CommonAPI struct {
 	fx.In
@@ -200,6 +202,10 @@ func (a *CommonAPI) LogSetLevel(ctx context.Context, subsystem, level string) er
 func (a *CommonAPI) Shutdown(ctx context.Context) error {
 	a.ShutdownChan <- struct{}{}
 	return nil
+}
+
+func (a *CommonAPI) Session(ctx context.Context) (uuid.UUID, error) {
+	return session, nil
 }
 
 func (a *CommonAPI) Closing(ctx context.Context) (<-chan struct{}, error) {
