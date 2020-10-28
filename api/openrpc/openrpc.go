@@ -86,6 +86,16 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 		return "", nil // noComment
 	}
 
+	appReflector.StandardReflectorT.FnSchemaExamples = func(ty reflect.Type) (examples *meta_schema.Examples, err error) {
+		v, ok := docgen.ExampleValues[ty]
+		if !ok {
+			return nil, nil
+		}
+		return &meta_schema.Examples{
+			meta_schema.AlwaysTrue(v),
+		}, nil
+	}
+	
 	// Finally, register the configured reflector to the document.
 	d.WithReflector(appReflector)
 	return d
