@@ -55,7 +55,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		return xerrors.Errorf("loading parent block: %w", err)
 	}
 
-	if err := a.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
+	if err := a.SlashFilter.MinedBlock(blk.Header, parent.Height, parent.Parents); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 		return xerrors.Errorf("<!!> SLASH FILTER ERROR: %w", err)
 	}
