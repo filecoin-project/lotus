@@ -225,7 +225,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector abi.SectorID, rt Ret
 
 		res, err := work(ctx, ci)
 
-		{
+		if err != nil {
 			rb, err := json.Marshal(res)
 			if err != nil {
 				log.Errorf("tracking call (marshaling results): %+v", err)
