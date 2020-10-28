@@ -15,13 +15,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -107,13 +107,18 @@ var stateMinerInfo = &cli.Command{
 			return err
 		}
 
+		availableBalance, err := api.StateMinerAvailableBalance(ctx, addr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner available balance: %w", err)
+		}
+		fmt.Printf("Miner available balance: %sss\n", types.FIL(availableBalance))
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
 		for i, controlAddress := range mi.ControlAddresses {
 			fmt.Printf("Control %d: \t%s\n", i, controlAddress)
 		}
+
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
-		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
 		fmt.Printf("Multiaddrs: \t")
 		for _, addr := range mi.Multiaddrs {
 			a, err := multiaddr.NewMultiaddrBytes(addr)
@@ -122,6 +127,26 @@ var stateMinerInfo = &cli.Command{
 			}
 			fmt.Printf("%s ", a)
 		}
+
+		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
+		pow, err := api.StateMinerPower(ctx, addr, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		rpercI := types.BigDiv(types.BigMul(pow.MinerPower.RawBytePower, types.NewInt(1000000)), pow.TotalPower.RawBytePower)
+		qpercI := types.BigDiv(types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
+
+		fmt.Printf("Byte Power:   %s / %s (%0.4f%%)\n",
+			color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
+			types.SizeStr(pow.TotalPower.RawBytePower),
+			float64(rpercI.Int64())/10000)
+
+		fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n",
+			color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
+			types.DeciStr(pow.TotalPower.QualityAdjPower),
+			float64(qpercI.Int64())/10000)
+
 		fmt.Println()
 
 		cd, err := api.StateMinerProvingDeadline(ctx, addr, ts.Key())
