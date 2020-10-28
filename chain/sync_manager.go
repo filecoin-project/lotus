@@ -20,6 +20,7 @@ var (
 
 	RecentSyncBufferSize = 10
 	MaxSyncWorkers       = 5
+	SyncWorkerHistory    = 3
 
 	coalesceTipsets = false
 )
@@ -69,6 +70,9 @@ type syncManager struct {
 	mx    sync.Mutex
 	state map[uint64]*workerState
 
+	history  []*workerState
+	historyI int
+
 	doSync func(context.Context, *types.TipSet) error
 }
 
@@ -100,9 +104,10 @@ func NewSyncManager(sync SyncFunc) SyncManager {
 		workq:   make(chan peerHead),
 		statusq: make(chan workerStatus),
 
-		heads:  make(map[peer.ID]*types.TipSet),
-		state:  make(map[uint64]*workerState),
-		recent: newSyncBuffer(RecentSyncBufferSize),
+		heads:   make(map[peer.ID]*types.TipSet),
+		state:   make(map[uint64]*workerState),
+		recent:  newSyncBuffer(RecentSyncBufferSize),
+		history: make([]*workerState, SyncWorkerHistory),
 
 		doSync: sync,
 	}
@@ -133,6 +138,11 @@ func (sm *syncManager) State() []SyncerStateSnapshot {
 	workerStates := make([]*workerState, 0, len(sm.state))
 	for _, ws := range sm.state {
 		workerStates = append(workerStates, ws)
+	}
+	for _, ws := range sm.history {
+		if ws != nil {
+			workerStates = append(workerStates, ws)
+		}
 	}
 	sm.mx.Unlock()
 
@@ -216,6 +226,11 @@ func (sm *syncManager) handleWorkerStatus(status workerStatus) {
 	sm.mx.Lock()
 	ws := sm.state[status.id]
 	delete(sm.state, status.id)
+
+	// we track the last few workers for debug purposes
+	sm.history[sm.historyI] = ws
+	sm.historyI++
+	sm.historyI %= len(sm.history)
 	sm.mx.Unlock()
 
 	if status.err != nil {
