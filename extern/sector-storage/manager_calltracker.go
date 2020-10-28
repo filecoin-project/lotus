@@ -334,7 +334,7 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 		err: err,
 	}
 
-	m.sched.wt.onDone(callID)
+	m.sched.workTracker.onDone(callID)
 
 	m.workLk.Lock()
 	defer m.workLk.Unlock()

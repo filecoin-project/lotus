@@ -530,7 +530,7 @@ func BenchmarkTrySched(b *testing.B) {
 
 				sched := newScheduler(spt)
 				sched.workers[WorkerID{}] = &workerHandle{
-					w: nil,
+					workerRpc: nil,
 					info: storiface.WorkerInfo{
 						Hostname:  "t",
 						Resources: decentWorkerResources,

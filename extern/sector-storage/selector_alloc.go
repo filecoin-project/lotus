@@ -27,7 +27,7 @@ func newAllocSelector(index stores.SectorIndex, alloc storiface.SectorFileType, 
 }
 
 func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *workerHandle) (bool, error) {
-	tasks, err := whnd.w.TaskTypes(ctx)
+	tasks, err := whnd.workerRpc.TaskTypes(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("getting supported worker task types: %w", err)
 	}
@@ -35,7 +35,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 		return false, nil
 	}
 
-	paths, err := whnd.w.Paths(ctx)
+	paths, err := whnd.workerRpc.Paths(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("getting worker paths: %w", err)
 	}

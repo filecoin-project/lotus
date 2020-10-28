@@ -2,14 +2,15 @@ package sectorstorage
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"time"
 
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 )
 
 type schedWorker struct {
-	sh     *scheduler
+	sched  *scheduler
 	worker *workerHandle
 
 	wid WorkerID
@@ -37,8 +38,8 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 	}
 
 	worker := &workerHandle{
-		w:    w,
-		info: info,
+		workerRpc: w,
+		info:      info,
 
 		preparing: &activeResources{},
 		active:    &activeResources{},
@@ -63,7 +64,7 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 	sh.workersLk.Unlock()
 
 	sw := &schedWorker{
-		sh:     sh,
+		sched:  sh,
 		worker: worker,
 
 		wid: wid,
@@ -81,7 +82,7 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 }
 
 func (sw *schedWorker) handleWorker() {
-	worker, sh := sw.worker, sw.sh
+	worker, sched := sw.worker, sw.sched
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
@@ -95,17 +96,17 @@ func (sw *schedWorker) handleWorker() {
 			log.Warnw("failed to disable worker", "worker", sw.wid, "error", err)
 		}
 
-		sh.workersLk.Lock()
-		delete(sh.workers, sw.wid)
-		sh.workersLk.Unlock()
+		sched.workersLk.Lock()
+		delete(sched.workers, sw.wid)
+		sched.workersLk.Unlock()
 	}()
 
 	defer sw.heartbeatTimer.Stop()
 
 	for {
-		sh.workersLk.Lock()
+		sched.workersLk.Lock()
 		enabled := worker.enabled
-		sh.workersLk.Unlock()
+		sched.workersLk.Unlock()
 
 		// ask for more windows if we need them (non-blocking)
 		if enabled {
@@ -123,9 +124,9 @@ func (sw *schedWorker) handleWorker() {
 
 			// session looks good
 			if !enabled {
-				sh.workersLk.Lock()
+				sched.workersLk.Lock()
 				worker.enabled = true
-				sh.workersLk.Unlock()
+				sched.workersLk.Unlock()
 
 				// we'll send window requests on the next loop
 			}
@@ -142,16 +143,16 @@ func (sw *schedWorker) handleWorker() {
 		}
 
 		// process assigned windows (non-blocking)
-		sh.workersLk.RLock()
+		sched.workersLk.RLock()
 		worker.wndLk.Lock()
 
-		sw.windowsRequested -= sh.workerCompactWindows(worker, sw.wid)
+		sw.workerCompactWindows()
 
 		// send tasks to the worker
 		sw.processAssignedWindows()
 
 		worker.wndLk.Unlock()
-		sh.workersLk.RUnlock()
+		sched.workersLk.RUnlock()
 	}
 }
 
@@ -160,7 +161,7 @@ func (sw *schedWorker) disable(ctx context.Context) error {
 
 	// request cleanup in the main scheduler goroutine
 	select {
-	case sw.sh.workerDisable <- workerDisableReq{
+	case sw.sched.workerDisable <- workerDisableReq{
 		activeWindows: sw.worker.activeWindows,
 		wid:           sw.wid,
 		done: func() {
@@ -169,7 +170,7 @@ func (sw *schedWorker) disable(ctx context.Context) error {
 	}:
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-sw.sh.closing:
+	case <-sw.sched.closing:
 		return nil
 	}
 
@@ -178,7 +179,7 @@ func (sw *schedWorker) disable(ctx context.Context) error {
 	case <-done:
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-sw.sh.closing:
+	case <-sw.sched.closing:
 		return nil
 	}
 
@@ -190,7 +191,7 @@ func (sw *schedWorker) disable(ctx context.Context) error {
 func (sw *schedWorker) checkSession(ctx context.Context) bool {
 	for {
 		sctx, scancel := context.WithTimeout(ctx, stores.HeartbeatInterval/2)
-		curSes, err := sw.worker.w.Session(sctx)
+		curSes, err := sw.worker.workerRpc.Session(sctx)
 		scancel()
 		if err != nil {
 			// Likely temporary error
@@ -213,7 +214,7 @@ func (sw *schedWorker) checkSession(ctx context.Context) bool {
 				if err := sw.disable(ctx); err != nil {
 					log.Warnw("failed to disable worker with session error", "worker", sw.wid, "error", err)
 				}
-			case <-sw.sh.closing:
+			case <-sw.sched.closing:
 				return false
 			case <-sw.worker.closingMgr:
 				return false
@@ -237,11 +238,11 @@ func (sw *schedWorker) checkSession(ctx context.Context) bool {
 func (sw *schedWorker) requestWindows() bool {
 	for ; sw.windowsRequested < SchedWindows; sw.windowsRequested++ {
 		select {
-		case sw.sh.windowRequests <- &schedWindowRequest{
+		case sw.sched.windowRequests <- &schedWindowRequest{
 			worker: sw.wid,
 			done:   sw.scheduledWindows,
 		}:
-		case <-sw.sh.closing:
+		case <-sw.sched.closing:
 			return false
 		case <-sw.worker.closingMgr:
 			return false
@@ -262,13 +263,16 @@ func (sw *schedWorker) waitForUpdates() (update bool, ok bool) {
 	case <-sw.taskDone:
 		log.Debugw("task done", "workerid", sw.wid)
 		return true, true
-	case <-sw.sh.closing:
+	case <-sw.sched.closing:
 	case <-sw.worker.closingMgr:
 	}
+
 	return false, false
 }
 
-func (sh *scheduler) workerCompactWindows(worker *workerHandle, wid WorkerID) int {
+func (sw *schedWorker) workerCompactWindows() {
+	worker := sw.worker
+
 	// move tasks from older windows to newer windows if older windows
 	// still can fit them
 	if len(worker.activeWindows) > 1 {
@@ -277,8 +281,8 @@ func (sh *scheduler) workerCompactWindows(worker *workerHandle, wid WorkerID) in
 			var moved []int
 
 			for ti, todo := range window.todo {
-				needRes := ResourceTable[todo.taskType][sh.spt]
-				if !lower.allocated.canHandleRequest(needRes, wid, "compactWindows", worker.info.Resources) {
+				needRes := ResourceTable[todo.taskType][sw.sched.spt]
+				if !lower.allocated.canHandleRequest(needRes, sw.wid, "compactWindows", worker.info.Resources) {
 					continue
 				}
 
@@ -316,8 +320,7 @@ func (sh *scheduler) workerCompactWindows(worker *workerHandle, wid WorkerID) in
 	}
 
 	worker.activeWindows = newWindows
-
-	return compacted
+	sw.windowsRequested -= compacted
 }
 
 func (sw *schedWorker) processAssignedWindows() {
@@ -334,7 +337,7 @@ assignLoop:
 
 			worker.lk.Lock()
 			for t, todo := range firstWindow.todo {
-				needRes := ResourceTable[todo.taskType][sw.sh.spt]
+				needRes := ResourceTable[todo.taskType][sw.sched.spt]
 				if worker.preparing.canHandleRequest(needRes, sw.wid, "startPreparing", worker.info.Resources) {
 					tidx = t
 					break
@@ -371,7 +374,7 @@ assignLoop:
 }
 
 func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRequest) error {
-	w, sh := sw.worker, sw.sh
+	w, sh := sw.worker, sw.sched
 
 	needRes := ResourceTable[req.taskType][sh.spt]
 
@@ -380,7 +383,8 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 	w.lk.Unlock()
 
 	go func() {
-		err := req.prepare(req.ctx, sh.wt.worker(sw.wid, w.w))
+		// first run the prepare step (e.g. fetching sector data from other worker)
+		err := req.prepare(req.ctx, sh.workTracker.worker(sw.wid, w.workerRpc))
 		sh.workersLk.Lock()
 
 		if err != nil {
@@ -405,6 +409,7 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 			return
 		}
 
+		// wait (if needed) for resources in the 'active' window
 		err = w.active.withResources(sw.wid, w.info.Resources, needRes, &sh.workersLk, func() error {
 			w.lk.Lock()
 			w.preparing.free(w.info.Resources, needRes)
@@ -417,7 +422,8 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 			case <-sh.closing:
 			}
 
-			err = req.work(req.ctx, sh.wt.worker(sw.wid, w.w))
+			// Do the work!
+			err = req.work(req.ctx, sh.workTracker.worker(sw.wid, w.workerRpc))
 
 			select {
 			case req.ret <- workerResponse{err: err}:

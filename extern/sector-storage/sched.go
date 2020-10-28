@@ -64,7 +64,7 @@ type scheduler struct {
 	schedQueue  *requestQueue
 	openWindows []*schedWindowRequest
 
-	wt *workTracker
+	workTracker *workTracker
 
 	info chan func(interface{})
 
@@ -74,7 +74,7 @@ type scheduler struct {
 }
 
 type workerHandle struct {
-	w Worker
+	workerRpc Worker
 
 	info storiface.WorkerInfo
 
@@ -155,7 +155,7 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 
 		schedQueue: &requestQueue{},
 
-		wt: &workTracker{
+		workTracker: &workTracker{
 			done:    map[storiface.CallID]struct{}{},
 			running: map[storiface.CallID]trackedWork{},
 		},
