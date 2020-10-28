@@ -85,9 +85,8 @@ func (t *testStorage) Stat(path string) (fsutil.FsStat, error) {
 
 var _ stores.LocalStorage = &testStorage{}
 
-func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Manager, *stores.Local, *stores.Remote, *stores.Index) {
+func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Manager, *stores.Local, *stores.Remote, *stores.Index, func()) {
 	st := newTestStorage(t)
-	defer st.cleanup()
 
 	si := stores.NewIndex()
 	cfg := &ffiwrapper.Config{
@@ -126,14 +125,15 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 
 	go m.sched.runSched()
 
-	return m, lstor, stor, si
+	return m, lstor, stor, si, st.cleanup
 }
 
 func TestSimple(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
 	ctx := context.Background()
-	m, lstor, _, _ := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	m, lstor, _, _, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
@@ -167,7 +167,8 @@ func TestRedoPC1(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
 	ctx := context.Background()
-	m, lstor, _, _ := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	m, lstor, _, _, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
@@ -216,7 +217,8 @@ func TestRestartManager(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	m, lstor, _, _ := newTestMgr(ctx, t, ds)
+	m, lstor, _, _, cleanup := newTestMgr(ctx, t, ds)
+	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
@@ -265,7 +267,9 @@ func TestRestartManager(t *testing.T) {
 	cwg.Wait()
 	require.Error(t, perr)
 
-	m, _, _, _ = newTestMgr(ctx, t, ds)
+	m, _, _, _, cleanup2 := newTestMgr(ctx, t, ds)
+	defer cleanup2()
+
 	tw.ret = m // simulate jsonrpc auto-reconnect
 	err = m.AddWorker(ctx, tw)
 	require.NoError(t, err)
@@ -287,7 +291,8 @@ func TestRestartWorker(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	m, lstor, stor, idx := newTestMgr(ctx, t, ds)
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
+	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
