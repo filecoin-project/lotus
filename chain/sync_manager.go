@@ -257,6 +257,7 @@ func (sm *syncManager) handleInitialSync() {
 			return
 		}
 
+		log.Infof("selected deferred sync target: %s", target)
 		sm.spawnWorker(target)
 	}
 }
