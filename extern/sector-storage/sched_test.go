@@ -592,8 +592,8 @@ func TestWindowCompact(t *testing.T) {
 			}
 
 			sw := schedWorker{
-				sched:            &sh,
-				worker:           wh,
+				sched:  &sh,
+				worker: wh,
 			}
 
 			sw.workerCompactWindows()
