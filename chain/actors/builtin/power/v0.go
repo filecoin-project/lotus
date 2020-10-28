@@ -115,3 +115,12 @@ func (s *state0) ForEachClaim(cb func(miner address.Address, claim Claim) error)
 		})
 	})
 }
+
+func (s *state0) ClaimsChanged(other State) (bool, error) {
+	other0, ok := other.(*state0)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.Claims.Equals(other0.State.Claims), nil
+}

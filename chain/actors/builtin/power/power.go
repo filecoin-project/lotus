@@ -56,6 +56,7 @@ type State interface {
 	MinerNominalPowerMeetsConsensusMinimum(address.Address) (bool, error)
 	ListAllMiners() ([]address.Address, error)
 	ForEachClaim(func(miner address.Address, claim Claim) error) error
+	ClaimsChanged(State) (bool, error)
 }
 
 type Claim struct {
