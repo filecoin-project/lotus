@@ -45,8 +45,8 @@ var syncStatusCmd = &cli.Command{
 		}
 
 		fmt.Println("sync status:")
-		for i, ss := range state.ActiveSyncs {
-			fmt.Printf("worker %d:\n", i)
+		for _, ss := range state.ActiveSyncs {
+			fmt.Printf("worker %d:\n", ss.WorkerID)
 			var base, target []cid.Cid
 			var heightDiff int64
 			var theight abi.ChainEpoch

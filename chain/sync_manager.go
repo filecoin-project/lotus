@@ -135,7 +135,7 @@ func (sm *syncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.Tip
 
 func (sm *syncManager) State() []SyncerStateSnapshot {
 	sm.mx.Lock()
-	workerStates := make([]*workerState, 0, len(sm.state))
+	workerStates := make([]*workerState, 0, len(sm.state)+len(sm.history))
 	for _, ws := range sm.state {
 		workerStates = append(workerStates, ws)
 	}
@@ -285,6 +285,7 @@ func (sm *syncManager) spawnWorker(target *types.TipSet) {
 		ts: target,
 		ss: new(SyncerState),
 	}
+	ws.ss.data.WorkerID = id
 
 	sm.mx.Lock()
 	sm.state[id] = ws
