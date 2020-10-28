@@ -160,6 +160,7 @@ func (sm *syncManager) scheduler() {
 			sm.handleWorkerStatus(status)
 		case <-tickerC:
 			if sm.initialSync {
+				ticker.Stop()
 				tickerC = nil
 				sm.handleInitialSync()
 			}
