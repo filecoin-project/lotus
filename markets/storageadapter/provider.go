@@ -51,6 +51,7 @@ type ProviderNodeAdapter struct {
 	ev   *events.Events
 
 	publishSpec, addBalanceSpec *api.MessageSendSpec
+	dsMatcher                   *dealStateMatcher
 }
 
 func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
@@ -58,9 +59,10 @@ func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDA
 		na := &ProviderNodeAdapter{
 			FullNode: full,
 
-			dag:  dag,
-			secb: secb,
-			ev:   events.NewEvents(context.TODO(), full),
+			dag:       dag,
+			secb:      secb,
+			ev:        events.NewEvents(context.TODO(), full),
+			dsMatcher: newDealStateMatcher(state.NewStatePredicates(full)),
 		}
 		if fc != nil {
 			na.publishSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxPublishDealsFee)}
@@ -461,13 +463,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	}
 
 	// Watch for state changes to the deal
-	preds := state.NewStatePredicates(n)
-	dealDiff := preds.OnStorageMarketActorChanged(
-		preds.OnDealStateChanged(
-			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
-	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
-		return dealDiff(ctx, oldTs.Key(), newTs.Key())
-	}
+	match := n.dsMatcher.matcher(ctx, dealID)
 
 	// Wait until after the end epoch for the deal and then timeout
 	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1

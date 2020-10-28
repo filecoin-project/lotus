@@ -38,8 +38,9 @@ type ClientNodeAdapter struct {
 	full.ChainAPI
 	full.MpoolAPI
 
-	fm *market.FundMgr
-	ev *events.Events
+	fm        *market.FundMgr
+	ev        *events.Events
+	dsMatcher *dealStateMatcher
 }
 
 type clientApi struct {
@@ -47,14 +48,16 @@ type clientApi struct {
 	full.StateAPI
 }
 
-func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fm *market.FundMgr) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fm *market.FundMgr) storagemarket.StorageClientNode {
+	capi := &clientApi{chain, stateapi}
 	return &ClientNodeAdapter{
-		StateAPI: state,
+		StateAPI: stateapi,
 		ChainAPI: chain,
 		MpoolAPI: mpool,
 
-		fm: fm,
-		ev: events.NewEvents(context.TODO(), &clientApi{chain, state}),
+		fm:        fm,
+		ev:        events.NewEvents(context.TODO(), capi),
+		dsMatcher: newDealStateMatcher(state.NewStatePredicates(capi)),
 	}
 }
 
@@ -389,13 +392,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	}
 
 	// Watch for state changes to the deal
-	preds := state.NewStatePredicates(c)
-	dealDiff := preds.OnStorageMarketActorChanged(
-		preds.OnDealStateChanged(
-			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
-	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
-		return dealDiff(ctx, oldTs.Key(), newTs.Key())
-	}
+	match := c.dsMatcher.matcher(ctx, dealID)
 
 	// Wait until after the end epoch for the deal and then timeout
 	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1
