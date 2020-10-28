@@ -35,13 +35,16 @@ type WorkerConfig struct {
 	NoSwap    bool
 }
 
+// used do provide custom proofs impl (mostly used in testing)
+type ExecutorFunc func() (ffiwrapper.Storage, error)
+
 type LocalWorker struct {
 	scfg       *ffiwrapper.Config
 	storage    stores.Store
 	localStore *stores.Local
 	sindex     stores.SectorIndex
 	ret        storiface.WorkerReturn
-	executor   func() (ffiwrapper.Storage, error)
+	executor   ExecutorFunc
 	noSwap     bool
 
 	ct          *workerCallTracker
@@ -52,7 +55,7 @@ type LocalWorker struct {
 	closing chan struct{}
 }
 
-func newLocalWorker(executor func() (ffiwrapper.Storage, error), wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
