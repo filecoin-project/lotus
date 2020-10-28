@@ -330,8 +330,8 @@ var datastoreRewriteCmd = &cli.Command{
 		go func() {
 			bw := bufio.NewWriterSize(pw, 64<<20)
 			_, err := from.DB.Backup(bw, 0)
-			bw.Flush()
-			pw.CloseWithError(err)
+			_ = bw.Flush()
+			_ = pw.CloseWithError(err)
 			errCh <- err
 		}()
 		go func() {
