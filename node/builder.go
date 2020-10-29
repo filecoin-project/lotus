@@ -268,6 +268,7 @@ func Online() Option {
 			Override(new(*chain.Syncer), modules.NewSyncer),
 			Override(new(exchange.Client), exchange.NewClient),
 			Override(new(*messagepool.MessagePool), modules.MessagePool),
+			Override(new(dtypes.DefaultMaxFeeFunc), modules.NewDefaultMaxFeeFunc),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
 			Override(new(dtypes.AfterGenesisSet), modules.SetGenesis),

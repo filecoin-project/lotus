@@ -23,6 +23,7 @@ type FullNode struct {
 	Client  Client
 	Metrics Metrics
 	Wallet  Wallet
+	Fees    FeeConfig
 }
 
 // // Common
@@ -115,6 +116,10 @@ type Wallet struct {
 	DisableLocal  bool
 }
 
+type FeeConfig struct {
+	DefaultMaxFee types.FIL
+}
+
 func defCommon() Common {
 	return Common{
 		API: API{
@@ -142,10 +147,15 @@ func defCommon() Common {
 
 }
 
+var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
+		Fees: FeeConfig{
+			DefaultMaxFee: DefaultDefaultMaxFee,
+		},
 	}
 }
 
