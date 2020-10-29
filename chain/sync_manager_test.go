@@ -10,6 +10,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/mock"
 )
 
+func init() {
+	BootstrapPeerThreshold = 1
+}
+
 var genTs = mock.TipSet(mock.MkBlock(nil, 0, 0))
 
 type syncOp struct {

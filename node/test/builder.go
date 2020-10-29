@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -49,6 +50,10 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	chain.BootstrapPeerThreshold = 1
+}
 
 func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
 	r := repo.NewMemory(nil)
