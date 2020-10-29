@@ -271,6 +271,7 @@ func (m *Manager) waitWork(ctx context.Context, wid WorkID) (interface{}, error)
 	res, ok := m.results[wid]
 	if ok {
 		done()
+		m.workLk.Unlock()
 		return res.r, res.err
 	}
 

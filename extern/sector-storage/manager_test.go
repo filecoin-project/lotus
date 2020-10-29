@@ -296,6 +296,9 @@ func TestRestartManager(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, 1, tw.pc1s)
+
+			ws := m.WorkerJobs()
+			require.Empty(t, ws)
 		}
 	}
 
