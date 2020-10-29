@@ -231,6 +231,15 @@ func (s *state2) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 	return infos, nil
 }
 
+func (s *state2) GetAllocatedSectors() (*bitfield.BitField, error) {
+	var allocatedSectors bitfield.BitField
+	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+		return nil, err
+	}
+
+	return &allocatedSectors, nil
+}
+
 func (s *state2) IsAllocated(num abi.SectorNumber) (bool, error) {
 	var allocatedSectors bitfield.BitField
 	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
