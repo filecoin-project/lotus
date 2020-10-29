@@ -111,7 +111,7 @@ var stateMinerInfo = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("getting miner available balance: %w", err)
 		}
-		fmt.Printf("Miner available balance: %sss\n", types.FIL(availableBalance))
+		fmt.Printf("Available Balance: %s\n", types.FIL(availableBalance))
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
 		for i, controlAddress := range mi.ControlAddresses {
