@@ -105,6 +105,7 @@ type Metrics struct {
 
 type Client struct {
 	UseIpfs             bool
+	IpfsOnlineMode      bool
 	IpfsMAddr           string
 	IpfsUseForRetrieval bool
 }
