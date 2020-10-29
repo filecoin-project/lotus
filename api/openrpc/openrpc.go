@@ -86,7 +86,50 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 		return "", nil // noComment
 	}
 
-	appReflector.StandardReflectorT.FnSchemaExamples = func(ty reflect.Type) (examples *meta_schema.Examples, err error) {
+	appReflector.FnGetMethodExamples = func(r reflect.Value, m reflect.Method, funcDecl *ast.FuncDecl) (*meta_schema.MethodObjectExamples, error) {
+
+		var args []interface{}
+		ft := m.Func.Type()
+		for j := 2; j < ft.NumIn(); j++ {
+			inp := ft.In(j)
+			args = append(args, docgen.ExampleValue(inp, nil))
+		}
+		params := []meta_schema.ExampleOrReference{}
+		for _, p := range params {
+			v := meta_schema.ExampleObjectValue(p)
+			params = append(params, meta_schema.ExampleOrReference{
+				ExampleObject:   &meta_schema.ExampleObject{Value: &v},
+				ReferenceObject: nil,
+			})
+		}
+		pairingParams := meta_schema.ExamplePairingObjectParams(params)
+
+		outv := docgen.ExampleValue(ft.Out(0), nil)
+		resultV := meta_schema.ExampleObjectValue(outv)
+		result := &meta_schema.ExampleObject{
+			Summary:     nil,
+			Value:       &resultV,
+			Description: nil,
+			Name:        nil,
+		}
+
+		pairingResult := meta_schema.ExamplePairingObjectResult{
+			ExampleObject:   result,
+			ReferenceObject: nil,
+		}
+		ex := meta_schema.ExamplePairingOrReference{
+			ExamplePairingObject: &meta_schema.ExamplePairingObject{
+				Name:        nil,
+				Description: nil,
+				Params:      &pairingParams,
+				Result:      &pairingResult,
+			},
+		}
+
+		return &meta_schema.MethodObjectExamples{ex}, nil
+	}
+
+	appReflector.FnSchemaExamples = func(ty reflect.Type) (examples *meta_schema.Examples, err error) {
 		v, ok := docgen.ExampleValues[ty]
 		if !ok {
 			return nil, nil
