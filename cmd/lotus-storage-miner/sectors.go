@@ -5,6 +5,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/go-units"
@@ -155,6 +156,14 @@ var sectorsListCmd = &cli.Command{
 			Name:  "fast",
 			Usage: "don't show on-chain info for better performance",
 		},
+		&cli.BoolFlag{
+			Name:  "events",
+			Usage: "display number of events the sector has received",
+		},
+		&cli.BoolFlag{
+			Name:  "seal-time",
+			Usage: "display how long it took for the sector to be sealed",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
@@ -216,6 +225,8 @@ var sectorsListCmd = &cli.Command{
 			tablewriter.Col("OnChain"),
 			tablewriter.Col("Active"),
 			tablewriter.Col("Expiration"),
+			tablewriter.Col("SealTime"),
+			tablewriter.Col("Events"),
 			tablewriter.Col("Deals"),
 			tablewriter.Col("DealWeight"),
 			tablewriter.NewLineCol("Error"),
@@ -282,6 +293,52 @@ var sectorsListCmd = &cli.Command{
 
 						if st.Early > 0 {
 							m["RecoveryTimeout"] = color.YellowString(lcli.EpochTime(head.Height(), st.Early))
+						}
+					}
+				}
+
+				if cctx.Bool("events") {
+					var events int
+					for _, sectorLog := range st.Log {
+						if !strings.HasPrefix(sectorLog.Kind, "event") {
+							continue
+						}
+						if sectorLog.Kind == "event;sealing.SectorRestart" {
+							continue
+						}
+						events++
+					}
+
+					pieces := len(st.Deals)
+
+					switch {
+					case events < 12+pieces:
+						m["Events"] = color.GreenString("%d", events)
+					case events < 20+pieces:
+						m["Events"] = color.YellowString("%d", events)
+					default:
+						m["Events"] = color.RedString("%d", events)
+					}
+				}
+
+				if cctx.Bool("seal-time") && len(st.Log) > 1 {
+					start := time.Unix(int64(st.Log[0].Timestamp), 0)
+
+					for _, sectorLog := range st.Log {
+						if sectorLog.Kind == "event;sealing.SectorProving" {
+							end := time.Unix(int64(sectorLog.Timestamp), 0)
+							dur := end.Sub(start)
+
+							switch {
+							case dur < 12*time.Hour:
+								m["SealTime"] = color.GreenString("%s", dur)
+							case dur < 24*time.Hour:
+								m["SealTime"] = color.YellowString("%s", dur)
+							default:
+								m["SealTime"] = color.RedString("%s", dur)
+							}
+
+							break
 						}
 					}
 				}
