@@ -382,8 +382,8 @@ func rleToPng(rleBytes []byte) ([]byte, error) {
 	}
 
 	const width = 1024
-	const skipTh = 128
-	const skipSize = 64
+	const skipTh = 64
+	const skipSize = 32
 
 	var size uint64
 	for ri.HasNext() {
@@ -391,7 +391,7 @@ func rleToPng(rleBytes []byte) ([]byte, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("getting next run: %w", err)
 		}
-		if !run.Val && run.Len > skipTh*width {
+		if run.Len > skipTh*width {
 			size += run.Len%(2*width) + skipSize*width
 		} else {
 			size += run.Len
@@ -418,7 +418,7 @@ func rleToPng(rleBytes []byte) ([]byte, error) {
 		}
 		var cut = false
 		var oldLen uint64
-		if !run.Val && run.Len > skipTh*width {
+		if run.Len > skipTh*width {
 			oldLen = run.Len
 			run.Len = run.Len%(2*width) + skipSize*width
 			cut = true
