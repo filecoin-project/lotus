@@ -65,7 +65,7 @@ type syncManager struct {
 	heads      map[peer.ID]*types.TipSet
 	recent     *syncBuffer
 
-	initialSync bool
+	initialSyncDone bool
 
 	mx    sync.Mutex
 	state map[uint64]*workerState
@@ -169,10 +169,10 @@ func (sm *syncManager) scheduler() {
 		case status := <-sm.statusq:
 			sm.handleWorkerStatus(status)
 		case <-tickerC:
-			if sm.initialSync {
+			if sm.initialSyncDone {
 				ticker.Stop()
 				tickerC = nil
-				sm.handleInitialSync()
+				sm.handleInitialSyncDone()
 			}
 		case <-sm.ctx.Done():
 			return
@@ -241,7 +241,7 @@ func (sm *syncManager) handleWorkerStatus(status workerStatus) {
 		// add to the recently synced buffer
 		sm.recent.Push(ws.ts)
 		// mark the end of the initial sync
-		sm.initialSync = true
+		sm.initialSyncDone = true
 	}
 
 	// we are done with this target, select the next sync target and spawn a worker if there is work
@@ -258,7 +258,7 @@ func (sm *syncManager) handleWorkerStatus(status workerStatus) {
 	}
 }
 
-func (sm *syncManager) handleInitialSync() {
+func (sm *syncManager) handleInitialSyncDone() {
 	// we have just finished the initial sync; spawn some additional workers in deferred syncs
 	// as needed (and up to MaxSyncWorkers) to ramp up chain sync
 	for len(sm.state) < MaxSyncWorkers {
@@ -393,7 +393,7 @@ func (sm *syncManager) addSyncTarget(ts *types.TipSet) (*types.TipSet, bool, err
 
 	// if we have not finished the initial sync or have too many workers, add it to the deferred queue;
 	// it will be processed once a worker is freed from syncing a chain (or the initial sync finishes)
-	if !sm.initialSync || len(sm.state) >= MaxSyncWorkers {
+	if !sm.initialSyncDone || len(sm.state) >= MaxSyncWorkers {
 		log.Infof("deferring sync on %s", ts)
 		sm.deferred.Insert(ts)
 		return nil, false, nil
