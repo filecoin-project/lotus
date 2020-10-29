@@ -251,19 +251,7 @@ func (m *Manager) waitWork(ctx context.Context, wid WorkID) (interface{}, error)
 		return nil, xerrors.Errorf("something else in waiting on callRes")
 	}
 
-	ch, ok := m.waitRes[wid]
-	if !ok {
-		ch = make(chan struct{})
-		m.waitRes[wid] = ch
-	}
-	m.workLk.Unlock()
-
-	select {
-	case <-ch:
-		m.workLk.Lock()
-		defer m.workLk.Unlock()
-
-		res := m.results[wid]
+	done := func() {
 		delete(m.results, wid)
 
 		_, ok := m.callToWork[ws.WorkerCall]
@@ -276,6 +264,31 @@ func (m *Manager) waitWork(ctx context.Context, wid WorkID) (interface{}, error)
 			// Not great, but not worth discarding potentially multi-hour computation over this
 			log.Errorf("marking work as done: %+v", err)
 		}
+	}
+
+	// the result can already be there if the work was running, manager restarted,
+	// and the worker has delivered the result before we entered waitWork
+	res, ok := m.results[wid]
+	if ok {
+		done()
+		return res.r, res.err
+	}
+
+	ch, ok := m.waitRes[wid]
+	if !ok {
+		ch = make(chan struct{})
+		m.waitRes[wid] = ch
+	}
+
+	m.workLk.Unlock()
+
+	select {
+	case <-ch:
+		m.workLk.Lock()
+		defer m.workLk.Unlock()
+
+		res := m.results[wid]
+		done()
 
 		return res.r, res.err
 	case <-ctx.Done():

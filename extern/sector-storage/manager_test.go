@@ -210,76 +210,97 @@ func TestRedoPC1(t *testing.T) {
 
 // Manager restarts in the middle of a task, restarts it, it completes
 func TestRestartManager(t *testing.T) {
-	logging.SetAllLoggers(logging.LevelDebug)
+	test := func(returnBeforeCall bool) func(*testing.T) {
+		return func(t *testing.T) {
+			logging.SetAllLoggers(logging.LevelDebug)
 
-	ctx, done := context.WithCancel(context.Background())
-	defer done()
+			ctx, done := context.WithCancel(context.Background())
+			defer done()
 
-	ds := datastore.NewMapDatastore()
+			ds := datastore.NewMapDatastore()
 
-	m, lstor, _, _, cleanup := newTestMgr(ctx, t, ds)
-	defer cleanup()
+			m, lstor, _, _, cleanup := newTestMgr(ctx, t, ds)
+			defer cleanup()
 
-	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+			localTasks := []sealtasks.TaskType{
+				sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+			}
+
+			tw := newTestWorker(WorkerConfig{
+				SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
+				TaskTypes: localTasks,
+			}, lstor, m)
+
+			err := m.AddWorker(ctx, tw)
+			require.NoError(t, err)
+
+			sid := abi.SectorID{Miner: 1000, Number: 1}
+
+			pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+			require.NoError(t, err)
+			require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
+
+			piz, err := m.AddPiece(ctx, sid, nil, 1016, bytes.NewReader(make([]byte, 1016)[:]))
+			require.NoError(t, err)
+			require.Equal(t, abi.PaddedPieceSize(1024), piz.Size)
+
+			pieces := []abi.PieceInfo{pi, piz}
+
+			ticket := abi.SealRandomness{0, 9, 9, 9, 9, 9, 9, 9}
+
+			tw.pc1lk.Lock()
+			tw.pc1wait = &sync.WaitGroup{}
+			tw.pc1wait.Add(1)
+
+			var cwg sync.WaitGroup
+			cwg.Add(1)
+
+			var perr error
+			go func() {
+				defer cwg.Done()
+				_, perr = m.SealPreCommit1(ctx, sid, ticket, pieces)
+			}()
+
+			tw.pc1wait.Wait()
+
+			require.NoError(t, m.Close(ctx))
+			tw.ret = nil
+
+			cwg.Wait()
+			require.Error(t, perr)
+
+			m, _, _, _, cleanup2 := newTestMgr(ctx, t, ds)
+			defer cleanup2()
+
+			tw.ret = m // simulate jsonrpc auto-reconnect
+			err = m.AddWorker(ctx, tw)
+			require.NoError(t, err)
+
+			if returnBeforeCall {
+				tw.pc1lk.Unlock()
+				time.Sleep(100 * time.Millisecond)
+
+				_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
+			} else {
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
+				}()
+
+				time.Sleep(100 * time.Millisecond)
+				tw.pc1lk.Unlock()
+				<-done
+			}
+
+			require.NoError(t, err)
+
+			require.Equal(t, 1, tw.pc1s)
+		}
 	}
 
-	tw := newTestWorker(WorkerConfig{
-		SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
-		TaskTypes: localTasks,
-	}, lstor, m)
-
-	err := m.AddWorker(ctx, tw)
-	require.NoError(t, err)
-
-	sid := abi.SectorID{Miner: 1000, Number: 1}
-
-	pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
-	require.NoError(t, err)
-	require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
-
-	piz, err := m.AddPiece(ctx, sid, nil, 1016, bytes.NewReader(make([]byte, 1016)[:]))
-	require.NoError(t, err)
-	require.Equal(t, abi.PaddedPieceSize(1024), piz.Size)
-
-	pieces := []abi.PieceInfo{pi, piz}
-
-	ticket := abi.SealRandomness{0, 9, 9, 9, 9, 9, 9, 9}
-
-	tw.pc1lk.Lock()
-	tw.pc1wait = &sync.WaitGroup{}
-	tw.pc1wait.Add(1)
-
-	var cwg sync.WaitGroup
-	cwg.Add(1)
-
-	var perr error
-	go func() {
-		defer cwg.Done()
-		_, perr = m.SealPreCommit1(ctx, sid, ticket, pieces)
-	}()
-
-	tw.pc1wait.Wait()
-
-	require.NoError(t, m.Close(ctx))
-	tw.ret = nil
-
-	cwg.Wait()
-	require.Error(t, perr)
-
-	m, _, _, _, cleanup2 := newTestMgr(ctx, t, ds)
-	defer cleanup2()
-
-	tw.ret = m // simulate jsonrpc auto-reconnect
-	err = m.AddWorker(ctx, tw)
-	require.NoError(t, err)
-
-	tw.pc1lk.Unlock()
-
-	_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
-	require.NoError(t, err)
-
-	require.Equal(t, 1, tw.pc1s)
+	t.Run("callThenReturn", test(false))
+	t.Run("returnThenCall", test(true))
 }
 
 // Worker restarts in the middle of a task, task fails after restart
