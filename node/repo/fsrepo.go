@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -555,7 +556,10 @@ func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
 	keyPath := fsr.join(fsKeystore, encName)
 
 	_, err := os.Stat(keyPath)
-	if err == nil {
+	if err == nil && strings.HasPrefix(name, wallet.KTrashPrefix) {
+		// Fine to try to write the same trash-prefixed file multiple times
+		return nil
+	} else if err == nil {
 		return xerrors.Errorf("checking key before put '%s': %w", name, types.ErrKeyExists)
 	} else if !os.IsNotExist(err) {
 		return xerrors.Errorf("checking key before put '%s': %w", name, err)
