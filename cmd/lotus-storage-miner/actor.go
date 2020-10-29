@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/fatih/color"
@@ -924,10 +925,13 @@ var actorCompactAllocatedCmd = &cli.Command{
 	Name:  "compact-allocated",
 	Usage: "compact allocated sectors bitfield",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "auto",
-			Usage: "fill out all empty gaps in allocation bitfield",
-			Value: false,
+		&cli.Uint64Flag{
+			Name:  "mask-last-offset",
+			Usage: "Mask sector IDs from 0 to 'higest_allocated - offset'",
+		},
+		&cli.Uint64Flag{
+			Name:  "mask-upto-n",
+			Usage: "Mask sector IDs from 0 to 'n'",
 		},
 		&cli.BoolFlag{
 			Name:  "really-do-it",
@@ -981,20 +985,58 @@ var actorCompactAllocatedCmd = &cli.Command{
 			return err
 		}
 
-		last, err := allocs.Last()
-		if err != nil {
-			return err
-		}
+		var maskBf bitfield.BitField
 
-		// ??? TODO
-		bitfield.NewFromIter()
+		{
+			exclusiveFlags := []string{"mask-last-offset", "mask-upto-n"}
+			hasFlag := false
+			for _, f := range exclusiveFlags {
+				if hasFlag && cctx.IsSet(f) {
+					return xerrors.Errorf("more than one 'mask` flag set")
+				}
+				hasFlag = hasFlag || cctx.IsSet(f)
+			}
+		}
+		switch {
+		case cctx.IsSet("mask-last-offset"):
+			last, err := allocs.Last()
+			if err != nil {
+				return err
+			}
+
+			m := cctx.Uint64("mask-last-offset")
+			if last <= m+1 {
+				return xerrors.Errorf("higest allocated sector lower than mask offset %d: %d", m+1, last)
+			}
+			// securty to not brick a miner
+			if last > 1<<60 {
+				return xerrors.Errorf("very high last sector number, refusing to mask: %d", last)
+			}
+
+			maskBf, err = bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
+				Runs: []rlepluslazy.Run{{Val: true, Len: last - m}}})
+			if err != nil {
+				return xerrors.Errorf("forming bitfield: %w", err)
+			}
+		case cctx.IsSet("mask-upto-n"):
+			n := cctx.Uint64("mask-upto-n")
+			maskBf, err = bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
+				Runs: []rlepluslazy.Run{{Val: true, Len: n}}})
+			if err != nil {
+				return xerrors.Errorf("forming bitfield: %w", err)
+			}
+		default:
+			return xerrors.Errorf("no 'mask' flags set")
+		}
 
 		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		params := &miner2.CompactSectorNumbersParams{}
+		params := &miner2.CompactSectorNumbersParams{
+			MaskSectorNumbers: maskBf,
+		}
 
 		sp, err := actors.SerializeParams(params)
 		if err != nil {
