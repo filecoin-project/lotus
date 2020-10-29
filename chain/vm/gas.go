@@ -126,6 +126,7 @@ var prices = map[abi.ChainEpoch]Pricelist{
 				scale: 85639,
 			},
 		},
+		verifyPostDiscount:   true,
 		verifyConsensusFault: 495422,
 	},
 }
