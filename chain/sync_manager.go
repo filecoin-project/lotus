@@ -253,7 +253,7 @@ func (sm *syncManager) handleWorkerStatus(status workerStatus) {
 	} else {
 		// add to the recently synced buffer
 		sm.recent.Push(ws.ts)
-		// if we are still in intial sync and this was fast enough, mark the end of the initial sync
+		// if we are still in initial sync and this was fast enough, mark the end of the initial sync
 		if !sm.initialSyncDone && ws.dt < InitialSyncTimeThreshold {
 			sm.initialSyncDone = true
 		}
