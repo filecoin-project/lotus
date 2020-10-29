@@ -396,6 +396,7 @@ func (sm *syncManager) addSyncTarget(ts *types.TipSet) (*types.TipSet, bool, err
 	if !sm.initialSync || len(sm.state) >= MaxSyncWorkers {
 		log.Infof("deferring sync on %s", ts)
 		sm.deferred.Insert(ts)
+		return nil, false, nil
 	}
 
 	// start a new worker, seems heavy enough and unrelated to active or pending syncs
