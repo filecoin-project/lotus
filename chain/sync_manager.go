@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,7 +17,7 @@ import (
 )
 
 var (
-	BootstrapPeerThreshold = 1
+	BootstrapPeerThreshold = 4
 
 	RecentSyncBufferSize = 10
 	MaxSyncWorkers       = 5
@@ -29,6 +30,15 @@ var (
 
 func init() {
 	coalesceTipsets = os.Getenv("LOTUS_SYNC_FORMTS_PEND") == "yes"
+
+	if bootstrapPeerThreshold := os.Getenv("LOTUS_SYNC_BOOTSTRAP_PEERS"); bootstrapPeerThreshold != "" {
+		threshold, err := strconv.Atoi(bootstrapPeerThreshold)
+		if err != nil {
+			log.Errorf("failed to parse 'LOTUS_SYNC_BOOTSTRAP_PEERS' env var: %s", err)
+		} else {
+			BootstrapPeerThreshold = threshold
+		}
+	}
 }
 
 type SyncFunc func(context.Context, *types.TipSet) error
