@@ -127,14 +127,25 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		}
 	}
 
-	_, height, err := m.api.ChainHead(ctx.Context())
+	tok, height, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
 		return nil
 	}
 
 	if height-sector.TicketEpoch > MaxTicketAge {
-		return ctx.Send(SectorOldTicket{})
+		pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+		if err != nil {
+			log.Errorf("getting precommit info: %+v", err)
+		}
+
+		if pci == nil {
+			return ctx.Send(SectorOldTicket{}) // go get new ticket
+		}
+
+		// TODO: allow configuring expected seal durations, if we're here, it's
+		//  pretty unlikely that we'll precommit on time (unless the miner
+		//  process has just restarted and the worker had the result ready)
 	}
 
 	pc1o, err := m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), sector.TicketValue, sector.pieceInfos())
