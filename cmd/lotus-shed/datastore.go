@@ -350,6 +350,9 @@ var datastoreRewriteCmd = &cli.Command{
 		}
 
 		err = <-errCh
-		return err
+		if err != nil {
+			return err
+		}
+		return multierr.Append(from.Close(), to.Close())
 	},
 }
