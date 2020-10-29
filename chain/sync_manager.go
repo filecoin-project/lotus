@@ -22,6 +22,8 @@ var (
 	MaxSyncWorkers       = 5
 	SyncWorkerHistory    = 3
 
+	InitialSyncTimeThreshold = 15 * time.Minute
+
 	coalesceTipsets = false
 )
 
@@ -87,6 +89,7 @@ type workerState struct {
 	id uint64
 	ts *types.TipSet
 	ss *SyncerState
+	dt time.Duration
 }
 
 type workerStatus struct {
@@ -240,8 +243,10 @@ func (sm *syncManager) handleWorkerStatus(status workerStatus) {
 	} else {
 		// add to the recently synced buffer
 		sm.recent.Push(ws.ts)
-		// mark the end of the initial sync
-		sm.initialSyncDone = true
+		// if we are still in intial sync and this was fast enough, mark the end of the initial sync
+		if !sm.initialSyncDone && ws.dt < InitialSyncTimeThreshold {
+			sm.initialSyncDone = true
+		}
 	}
 
 	// we are done with this target, select the next sync target and spawn a worker if there is work
@@ -302,7 +307,8 @@ func (sm *syncManager) worker(ws *workerState) {
 	ctx := context.WithValue(sm.ctx, syncStateKey{}, ws.ss)
 	err := sm.doSync(ctx, ws.ts)
 
-	log.Infof("worker %d done; took %s", ws.id, build.Clock.Since(start))
+	ws.dt = build.Clock.Since(start)
+	log.Infof("worker %d done; took %s", ws.id, ws.dt)
 	select {
 	case sm.statusq <- workerStatus{id: ws.id, err: err}:
 	case <-sm.ctx.Done():
