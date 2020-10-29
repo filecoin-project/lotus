@@ -510,10 +510,10 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 		skipCount := uint64(0)
 		postSkipped := bitfield.New()
-		var postOut []proof2.PoStProof
-		somethingToProve := true
+		somethingToProve := false
 
-		for retries := 0; retries < 5; retries++ {
+		// Retry until we run out of sectors to prove.
+		for retries := 0; ; retries++ {
 			var partitions []miner.PoStPartition
 			var sinfos []proof2.SectorInfo
 			for partIdx, partition := range batch {
@@ -567,7 +567,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 			if len(sinfos) == 0 {
 				// nothing to prove for this batch
-				somethingToProve = false
 				break
 			}
 
@@ -585,24 +584,31 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 				return nil, err
 			}
 
-			var ps []abi.SectorID
-			postOut, ps, err = s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
+			postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
 			elapsed := time.Since(tsStart)
 
 			log.Infow("computing window post", "batch", batchIdx, "elapsed", elapsed)
 
 			if err == nil {
-				// Proof generation successful, stop retrying
-				params.Partitions = append(params.Partitions, partitions...)
+				if len(postOut) == 0 {
+					return nil, xerrors.Errorf("received no proofs back from generate window post")
+				}
 
+				// Proof generation successful, stop retrying
+				somethingToProve = true
+				params.Partitions = partitions
+				params.Proofs = postOut
 				break
 			}
 
 			// Proof generation failed, so retry
 
 			if len(ps) == 0 {
+				// If we didn't skip any new sectors, we failed
+				// for some other reason and we need to abort.
 				return nil, xerrors.Errorf("running window post failed: %w", err)
 			}
+			// TODO: maybe mark these as faulty somewhere?
 
 			log.Warnw("generate window post skipped sectors", "sectors", ps, "error", err, "try", retries)
 
@@ -616,12 +622,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		if !somethingToProve {
 			continue
 		}
-
-		if len(postOut) == 0 {
-			return nil, xerrors.Errorf("received no proofs back from generate window post")
-		}
-
-		params.Proofs = postOut
 
 		posts = append(posts, params)
 	}
