@@ -451,14 +451,24 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting miner session: %w", err)
 		}
 
+		waitQuietCh := func() chan struct{} {
+			out := make(chan struct{})
+			go func() {
+				workerApi.LocalWorker.WaitQuiet()
+				close(out)
+			}()
+			return out
+		}
+
 		go func() {
 			heartbeats := time.NewTicker(stores.HeartbeatInterval)
 			defer heartbeats.Stop()
 
-			var connected, reconnect bool
+			var redeclareStorage bool
+			var readyCh chan struct{}
 			for {
 				// If we're reconnecting, redeclare storage first
-				if reconnect {
+				if redeclareStorage {
 					log.Info("Redeclaring local storage")
 
 					if err := localStore.Redeclare(ctx); err != nil {
@@ -471,14 +481,13 @@ var runCmd = &cli.Command{
 						}
 						continue
 					}
-
-					connected = false
 				}
 
-				log.Info("Making sure no local tasks are running")
-
 				// TODO: we could get rid of this, but that requires tracking resources for restarted tasks correctly
-				workerApi.LocalWorker.WaitQuiet()
+				if readyCh == nil {
+					log.Info("Making sure no local tasks are running")
+					readyCh = waitQuietCh()
+				}
 
 				for {
 					curSession, err := nodeApi.Session(ctx)
@@ -489,29 +498,28 @@ var runCmd = &cli.Command{
 							minerSession = curSession
 							break
 						}
-
-						if !connected {
-							if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
-								log.Errorf("Registering worker failed: %+v", err)
-								cancel()
-								return
-							}
-
-							log.Info("Worker registered successfully, waiting for tasks")
-							connected = true
-						}
 					}
 
 					select {
+					case <-readyCh:
+						if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
+							log.Errorf("Registering worker failed: %+v", err)
+							cancel()
+							return
+						}
+
+						log.Info("Worker registered successfully, waiting for tasks")
+
+						readyCh = nil
+					case <-heartbeats.C:
 					case <-ctx.Done():
 						return // graceful shutdown
-					case <-heartbeats.C:
 					}
 				}
 
 				log.Errorf("LOTUS-MINER CONNECTION LOST")
 
-				reconnect = true
+				redeclareStorage = true
 			}
 		}()
 
