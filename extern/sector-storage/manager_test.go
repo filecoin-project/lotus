@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -375,4 +376,60 @@ func TestRestartWorker(t *testing.T) {
 	uf, err := w.ct.unfinished()
 	require.NoError(t, err)
 	require.Empty(t, uf)
+}
+
+func TestReenableWorker(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelDebug)
+	stores.HeartbeatInterval = 5 * time.Millisecond
+
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+
+	ds := datastore.NewMapDatastore()
+
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
+	defer cleanup()
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+	}
+
+	wds := datastore.NewMapDatastore()
+
+	arch := make(chan chan apres)
+	w := newLocalWorker(func() (ffiwrapper.Storage, error) {
+		return &testExec{apch: arch}, nil
+	}, WorkerConfig{
+		SealProof: 0,
+		TaskTypes: localTasks,
+	}, stor, lstor, idx, m, statestore.New(wds))
+
+	err := m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	time.Sleep(time.Millisecond * 100)
+
+	// disable
+	atomic.StoreInt64(&w.testDisable, 1)
+
+	for i := 0; i < 100; i++ {
+		if !m.WorkerStats()[w.session].Enabled {
+			break
+		}
+
+		time.Sleep(time.Millisecond * 3)
+	}
+	require.False(t, m.WorkerStats()[w.session].Enabled)
+
+	// reenable
+	atomic.StoreInt64(&w.testDisable, 0)
+
+	for i := 0; i < 100; i++ {
+		if m.WorkerStats()[w.session].Enabled {
+			break
+		}
+
+		time.Sleep(time.Millisecond * 3)
+	}
+	require.True(t, m.WorkerStats()[w.session].Enabled)
 }

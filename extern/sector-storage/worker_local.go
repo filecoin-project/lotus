@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/elastic/go-sysinfo"
@@ -51,8 +52,9 @@ type LocalWorker struct {
 	acceptTasks map[sealtasks.TaskType]struct{}
 	running     sync.WaitGroup
 
-	session uuid.UUID
-	closing chan struct{}
+	session     uuid.UUID
+	testDisable int64
+	closing     chan struct{}
 }
 
 func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
@@ -501,6 +503,10 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 }
 
 func (l *LocalWorker) Session(ctx context.Context) (uuid.UUID, error) {
+	if atomic.LoadInt64(&l.testDisable) == 1 {
+		return uuid.UUID{}, xerrors.Errorf("disabled")
+	}
+
 	select {
 	case <-l.closing:
 		return ClosedWorkerID, nil
