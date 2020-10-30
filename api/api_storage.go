@@ -70,7 +70,7 @@ type StorageMiner interface {
 	storiface.WorkerReturn
 
 	// SealingSchedDiag dumps internal sealing scheduler state
-	SealingSchedDiag(context.Context) (interface{}, error)
+	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error)
 
 	stores.SectorIndex
 

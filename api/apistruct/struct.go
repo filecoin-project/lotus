@@ -321,7 +321,7 @@ type StorageMinerStruct struct {
 		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err string) error                   `perm:"admin" retry:"true"`
 		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
 
-		SealingSchedDiag func(context.Context) (interface{}, error) `perm:"admin"`
+		SealingSchedDiag func(context.Context, bool) (interface{}, error) `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                   `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                          `perm:"admin"`
@@ -1298,8 +1298,8 @@ func (c *StorageMinerStruct) ReturnFetch(ctx context.Context, callID storiface.C
 	return c.Internal.ReturnFetch(ctx, callID, err)
 }
 
-func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context) (interface{}, error) {
-	return c.Internal.SealingSchedDiag(ctx)
+func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) {
+	return c.Internal.SealingSchedDiag(ctx, doSched)
 }
 
 func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st fsutil.FsStat) error {
