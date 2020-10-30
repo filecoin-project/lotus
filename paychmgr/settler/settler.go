@@ -103,27 +103,27 @@ func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *types.T
 	return nil
 }
 
-func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matchOnce bool, matched bool, err error) {
+func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matched bool, err error) {
 	// Check if this is a settle payment channel message
 	if msg.Method != paych.Methods.Settle {
-		return false, false, nil
+		return false, nil
 	}
 	// Check if this payment channel is of concern to this node (i.e. tracked in payment channel store),
 	// and its inbound (i.e. we're getting vouchers that we may need to redeem)
 	trackedAddresses, err := pcs.api.PaychList(pcs.ctx)
 	if err != nil {
-		return false, false, err
+		return false, err
 	}
 	for _, addr := range trackedAddresses {
 		if msg.To == addr {
 			status, err := pcs.api.PaychStatus(pcs.ctx, addr)
 			if err != nil {
-				return false, false, err
+				return false, err
 			}
 			if status.Direction == api.PCHInbound {
-				return false, true, nil
+				return true, nil
 			}
 		}
 	}
-	return false, false, nil
+	return false, nil
 }

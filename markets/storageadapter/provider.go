@@ -307,44 +307,44 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 	var sectorNumber abi.SectorNumber
 	var sectorFound bool
 
-	matchEvent := func(msg *types.Message) (matchOnce bool, matched bool, err error) {
+	matchEvent := func(msg *types.Message) (matched bool, err error) {
 		if msg.To != provider {
-			return true, false, nil
+			return false, nil
 		}
 
 		switch msg.Method {
 		case miner.Methods.PreCommitSector:
 			var params miner.SectorPreCommitInfo
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return true, false, xerrors.Errorf("unmarshal pre commit: %w", err)
+				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
 			}
 
 			for _, did := range params.DealIDs {
 				if did == dealID {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
-					return true, false, nil
+					return false, nil
 				}
 			}
 
-			return true, false, nil
+			return false, nil
 		case miner.Methods.ProveCommitSector:
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return true, false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
 			}
 
 			if !sectorFound {
-				return true, false, nil
+				return false, nil
 			}
 
 			if params.SectorNumber != sectorNumber {
-				return true, false, nil
+				return false, nil
 			}
 
-			return false, true, nil
+			return true, nil
 		default:
-			return true, false, nil
+			return false, nil
 		}
 
 	}
