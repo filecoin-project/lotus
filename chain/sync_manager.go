@@ -440,6 +440,10 @@ func (sm *syncManager) selectSyncTarget(done *types.TipSet) (*types.TipSet, bool
 		}
 	}
 
+	if sm.recent.Synced(heaviest) {
+		return sm.selectDeferredSyncTarget()
+	}
+
 	return heaviest, true, nil
 }
 
@@ -450,6 +454,11 @@ deferredLoop:
 	for !sm.deferred.Empty() {
 		bucket := sm.deferred.Pop()
 		heaviest := bucket.heaviestTipSet()
+
+		if sm.recent.Synced(heaviest) {
+			// we have synced it or something heavier recently, skip it
+			continue deferredLoop
+		}
 
 		if sm.pend.RelatedToAny(heaviest) {
 			// this has converged to a pending sync, insert it to the pending queue
