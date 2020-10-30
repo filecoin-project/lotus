@@ -612,6 +612,15 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 			log.Warnw("generate window post skipped sectors", "sectors", ps, "error", err, "try", retries)
 
+			// Explicitly make sure we haven't aborted this PoSt
+			// (GenerateWindowPoSt may or may not check this).
+			// Otherwise, we could try to continue proving a
+			// deadline after the deadline has ended.
+			if ctx.Err() != nil {
+				log.Warnw("aborting PoSt due to context cancellation", "error", ctx.Err(), "deadline", di.Index)
+				return nil, ctx.Err()
+			}
+
 			skipCount += uint64(len(ps))
 			for _, sector := range ps {
 				postSkipped.Set(uint64(sector.Number))
