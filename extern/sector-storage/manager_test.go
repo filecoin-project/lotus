@@ -409,6 +409,9 @@ func TestReenableWorker(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 
+	i, _ := m.sched.Info(ctx)
+	require.Len(t, i.(SchedDiagInfo).OpenWindows, 2)
+
 	// disable
 	atomic.StoreInt64(&w.testDisable, 1)
 
@@ -421,6 +424,9 @@ func TestReenableWorker(t *testing.T) {
 	}
 	require.False(t, m.WorkerStats()[w.session].Enabled)
 
+	i, _ = m.sched.Info(ctx)
+	require.Len(t, i.(SchedDiagInfo).OpenWindows, 0)
+
 	// reenable
 	atomic.StoreInt64(&w.testDisable, 0)
 
@@ -432,4 +438,16 @@ func TestReenableWorker(t *testing.T) {
 		time.Sleep(time.Millisecond * 3)
 	}
 	require.True(t, m.WorkerStats()[w.session].Enabled)
+
+	for i := 0; i < 100; i++ {
+		info, _ := m.sched.Info(ctx)
+		if len(info.(SchedDiagInfo).OpenWindows) != 0 {
+			break
+		}
+
+		time.Sleep(time.Millisecond * 3)
+	}
+
+	i, _ = m.sched.Info(ctx)
+	require.Len(t, i.(SchedDiagInfo).OpenWindows, 2)
 }

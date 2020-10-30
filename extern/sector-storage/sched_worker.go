@@ -125,10 +125,17 @@ func (sw *schedWorker) handleWorker() {
 			}
 
 			// session looks good
-			sched.workersLk.Lock()
-			worker.enabled = true
-			// we'll send window requests on the next loop
-			sched.workersLk.Unlock()
+			{
+				sched.workersLk.Lock()
+				enabled := worker.enabled
+				worker.enabled = true
+				sched.workersLk.Unlock()
+
+				if !enabled {
+					// go send window requests
+					break
+				}
+			}
 
 			// wait for more tasks to be assigned by the main scheduler or for the worker
 			// to finish precessing a task
