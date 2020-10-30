@@ -263,6 +263,11 @@ func SyncWait(ctx context.Context, napi api.FullNode, watch bool) error {
 			return err
 		}
 
+		if len(state.ActiveSyncs) == 0 {
+			time.Sleep(time.Second)
+			continue
+		}
+
 		head, err := napi.ChainHead(ctx)
 		if err != nil {
 			return err
@@ -280,6 +285,7 @@ func SyncWait(ctx context.Context, napi api.FullNode, watch bool) error {
 		}
 
 		ss := state.ActiveSyncs[working]
+		workerID := ss.WorkerID
 
 		var baseHeight abi.ChainEpoch
 		var target []cid.Cid
@@ -302,7 +308,7 @@ func SyncWait(ctx context.Context, napi api.FullNode, watch bool) error {
 			fmt.Print("\r\x1b[2K\x1b[A")
 		}
 
-		fmt.Printf("Worker: %d; Base: %d; Target: %d (diff: %d)\n", working, baseHeight, theight, heightDiff)
+		fmt.Printf("Worker: %d; Base: %d; Target: %d (diff: %d)\n", workerID, baseHeight, theight, heightDiff)
 		fmt.Printf("State: %s; Current Epoch: %d; Todo: %d\n", ss.Stage, ss.Height, theight-ss.Height)
 		lastLines = 2
 
