@@ -459,7 +459,7 @@ type messageEvents struct {
 	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
-	matchers map[triggerID][]MsgMatchFunc
+	matchers map[triggerID]MsgMatchFunc
 }
 
 func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs eventAPI) messageEvents {
@@ -467,7 +467,7 @@ func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs eventAPI) mes
 		ctx:      ctx,
 		cs:       cs,
 		hcAPI:    hcAPI,
-		matchers: map[triggerID][]MsgMatchFunc{},
+		matchers: make(map[triggerID]MsgMatchFunc),
 	}
 }
 
@@ -482,32 +482,23 @@ func (me *messageEvents) checkNewCalls(ts *types.TipSet) (map[triggerID]eventDat
 	me.lk.RLock()
 	defer me.lk.RUnlock()
 
+	// For each message in the tipset
 	res := make(map[triggerID]eventData)
 	me.messagesForTs(pts, func(msg *types.Message) {
 		// TODO: provide receipts
 
-		for tid, matchFns := range me.matchers {
-			var matched bool
-			var once bool
-			for _, matchFn := range matchFns {
-				matchOne, ok, err := matchFn(msg)
-				if err != nil {
-					log.Errorf("event matcher failed: %s", err)
-					continue
-				}
-				matched = ok
-				once = matchOne
-
-				if matched {
-					break
-				}
+		// Run each trigger's matcher against the message
+		for tid, matchFn := range me.matchers {
+			matched, err := matchFn(msg)
+			if err != nil {
+				log.Errorf("event matcher failed: %s", err)
+				continue
 			}
 
+			// If there was a match, include the message in the results for the
+			// trigger
 			if matched {
 				res[tid] = msg
-				if once {
-					break
-				}
 			}
 		}
 	})
@@ -555,7 +546,7 @@ func (me *messageEvents) messagesForTs(ts *types.TipSet, consume func(*types.Mes
 // `curH`-`ts.Height` = `confidence`
 type MsgHandler func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
 
-type MsgMatchFunc func(msg *types.Message) (matchOnce bool, matched bool, err error)
+type MsgMatchFunc func(msg *types.Message) (matched bool, err error)
 
 // Called registers a callback which is triggered when a specified method is
 //  called on an actor, or a timeout is reached.
@@ -607,7 +598,7 @@ func (me *messageEvents) Called(check CheckFunc, msgHnd MsgHandler, rev RevertHa
 
 	me.lk.Lock()
 	defer me.lk.Unlock()
-	me.matchers[id] = append(me.matchers[id], mf)
+	me.matchers[id] = mf
 
 	return nil
 }
