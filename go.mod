@@ -22,8 +22,7 @@ require (
 	github.com/drand/kyber v1.1.4
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-sysinfo v1.3.0
-	github.com/etclabscore/go-openrpc-reflect v0.0.31
-	github.com/ethereum/go-ethereum v1.9.12
+	github.com/etclabscore/go-openrpc-reflect v0.0.34
 	github.com/fatih/color v1.9.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.4
@@ -117,7 +116,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.14
-	github.com/open-rpc/meta-schema v0.0.43
+	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/prometheus/client_golang v1.6.0
@@ -160,7 +159,3 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 replace github.com/supranational/blst => ./extern/fil-blst/blst
 
 replace github.com/filecoin-project/fil-blst => ./extern/fil-blst
-
-replace github.com/etclabscore/go-openrpc-reflect => /home/ia/go/src/github.com/etclabscore/go-openrpc-reflect
-
-replace github.com/open-rpc/meta-schema => /home/ia/dev/open-rpc/meta-schema
