@@ -215,6 +215,11 @@ var sealingJobsCmd = &cli.Command{
 var sealingSchedDiagCmd = &cli.Command{
 	Name:  "sched-diag",
 	Usage: "Dump internal scheduler state",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "force-sched",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -224,7 +229,7 @@ var sealingSchedDiagCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		st, err := nodeApi.SealingSchedDiag(ctx)
+		st, err := nodeApi.SealingSchedDiag(ctx, cctx.Bool("force-sched"))
 		if err != nil {
 			return err
 		}
