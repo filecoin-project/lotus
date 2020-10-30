@@ -15,11 +15,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/addrutil"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -104,4 +106,29 @@ func DrandBootstrap(ds dtypes.DrandSchedule) (dtypes.DrandBootstrap, error) {
 		res = append(res, addrs...)
 	}
 	return res, nil
+}
+
+func NewDefaultMaxFeeFunc(r repo.LockedRepo) dtypes.DefaultMaxFeeFunc {
+	return func() (out abi.TokenAmount, err error) {
+		err = readNodeCfg(r, func(cfg *config.FullNode) {
+			out = abi.TokenAmount(cfg.Fees.DefaultMaxFee)
+		})
+		return
+	}
+}
+
+func readNodeCfg(r repo.LockedRepo, accessor func(node *config.FullNode)) error {
+	raw, err := r.Config()
+	if err != nil {
+		return err
+	}
+
+	cfg, ok := raw.(*config.FullNode)
+	if !ok {
+		return xerrors.New("expected config.FullNode")
+	}
+
+	accessor(cfg)
+
+	return nil
 }

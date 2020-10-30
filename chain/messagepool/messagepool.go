@@ -59,8 +59,6 @@ var MaxUntrustedActorPendingMessages = 10
 
 var MaxNonceGap = uint64(4)
 
-var DefaultMaxFee = abi.TokenAmount(types.MustParseFIL("0.007"))
-
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
@@ -183,9 +181,15 @@ func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 	return types.BigAdd(minPrice, types.NewInt(1))
 }
 
-func CapGasFee(msg *types.Message, maxFee abi.TokenAmount) {
+func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, maxFee abi.TokenAmount) {
 	if maxFee.Equals(big.Zero()) {
-		maxFee = DefaultMaxFee
+		mf, err := mff()
+		if err != nil {
+			log.Errorf("failed to get default max gas fee: %+v", err)
+			mf = big.Zero()
+		}
+
+		maxFee = mf
 	}
 
 	gl := types.NewInt(uint64(msg.GasLimit))
