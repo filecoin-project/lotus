@@ -142,8 +142,8 @@ var importBenchCmd = &cli.Command{
 
 		switch {
 		case cctx.Bool("use-pebble"):
+			log.Info("using pebble")
 			cache := 512
-
 			ds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
 				// Pebble has a single combined cache area and the write
 				// buffers are taken from this too. Assign all available
@@ -165,13 +165,16 @@ var importBenchCmd = &cli.Command{
 			})
 
 		case cctx.Bool("use-native-badger"):
+			log.Info("using native badger")
 			opts, err := repo.BadgerBlockstoreOptions(repo.BlockstoreChain, tdir, false)
 			if err != nil {
 				return err
 			}
+			opts.SyncWrites = false
 			bs, err = badgerbs.Open(opts)
 
 		default: // legacy badger via datastore.
+			log.Info("using legacy badger")
 			bdgOpt := badger.DefaultOptions
 			bdgOpt.GcInterval = 0
 			bdgOpt.Options = bdg.DefaultOptions("")
