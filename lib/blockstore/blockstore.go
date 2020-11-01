@@ -17,10 +17,17 @@ package blockstore
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
+
+// Viewer is a blockstore trait that can be implemented by blockstores
+// that offer zero-copy access to blocks.
+type Viewer interface {
+	View(cid cid.Cid, callback func([]byte) error) error
+}
 
 // NewTemporary returns a temporary blockstore.
 func NewTemporary() MemStore {
