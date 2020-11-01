@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/options"
+
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	logger "github.com/ipfs/go-log/v2"
@@ -16,9 +18,21 @@ import (
 )
 
 var (
+	// ErrBlockstoreClosed is returned from blockstore operations after
+	// the blockstore has been closed.
 	ErrBlockstoreClosed = fmt.Errorf("badger blockstore closed")
 
 	log = logger.Logger("badgerbs")
+)
+
+// aliases to mask badger dependencies.
+const (
+	// FileIO is equivalent to badger.options.FileIO.
+	FileIO = options.FileIO
+	// MemoryMap is equivalent to badger.options.MemoryMap.
+	MemoryMap = options.MemoryMap
+	// LoadToRAM is equivalent to badger.options.LoadToRAM.
+	LoadToRAM = options.LoadToRAM
 )
 
 type Options struct {
