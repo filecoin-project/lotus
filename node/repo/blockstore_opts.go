@@ -35,13 +35,12 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	opts.ValueLogLoadingMode = badgerbs.FileIO
 	opts.TableLoadingMode = badgerbs.MemoryMap
 
-	// Embed only values < 128 bytes in the LSM; larger values in value logs.
+	// Embed only values < 128 bytes in the LSM tree; larger values are stored
+	// in value logs.
 	opts.ValueThreshold = 128
 
-	// Reduce this from 64MiB to 16MiB. That means badger will hold on to
-	// 20MiB by default instead of 80MiB. This does not appear to have a
-	// significant performance hit.
-	opts.MaxTableSize = 16 << 20
+	// Default table size is already 64MiB. This is here to make it explicit.
+	opts.MaxTableSize = 64 << 20
 
 	// NOTE: The chain blockstore doesn't require any GC (blocks are never
 	// deleted). This will change if we move to a tiered blockstore.
