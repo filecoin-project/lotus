@@ -18,6 +18,8 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -34,6 +36,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	bdg "github.com/dgraph-io/badger/v2"
@@ -193,25 +196,6 @@ var importBenchCmd = &cli.Command{
 			defer c.Close() //nolint:errcheck
 		}
 
-		start := time.Now().Format(time.RFC3339)
-		defer func() {
-			end := time.Now().Format(time.RFC3339)
-
-			writeProfile := func(name string) {
-				if file, err := os.Create(fmt.Sprintf("%s.%s.%s.pprof", name, start, end)); err == nil {
-					if err := pprof.Lookup(name).WriteTo(file, 0); err != nil {
-						log.Warnf("failed to write %s pprof: %s", name, err)
-					}
-					_ = file.Close()
-				} else {
-					log.Warnf("failed to create %s pprof file: %s", name, err)
-				}
-			}
-
-			writeProfile("heap")
-			writeProfile("allocs")
-		}()
-
 		cacheOpts := blockstore.DefaultCacheOpts()
 		cacheOpts.HasBloomFilterSize = 0
 		bs, err = blockstore.CachedBlockstore(context.TODO(), bs, cacheOpts)
@@ -239,6 +223,47 @@ var importBenchCmd = &cli.Command{
 		metadataDs := datastore.NewMapDatastore()
 		cs := store.NewChainStore(bs, metadataDs, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
+
+		start := time.Now()
+
+		// register a gauge that reports how long since the measurable
+		// operation began.
+		prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+			Name: "lotus_bench_time_taken_secs",
+		}, func() float64 {
+			return time.Since(start).Seconds()
+		})
+
+		defer func() {
+			end := time.Now().Format(time.RFC3339)
+
+			resp, err := http.Get("http://localhost:6060/debug/metrics/prometheus")
+			if err != nil {
+				log.Warnf("failed to scape prometheus: %s", err)
+			}
+
+			metricsfi, err := os.Create("import-bench.metrics")
+			if err != nil {
+				log.Warnf("failed to write prometheus data: %s", err)
+			}
+
+			_, _ = io.Copy(metricsfi, resp.Body) //nolint:errcheck
+			_ = metricsfi.Close()                //nolint:errcheck
+
+			writeProfile := func(name string) {
+				if file, err := os.Create(fmt.Sprintf("%s.%s.%s.pprof", name, start.Format(time.RFC3339), end)); err == nil {
+					if err := pprof.Lookup(name).WriteTo(file, 0); err != nil {
+						log.Warnf("failed to write %s pprof: %s", name, err)
+					}
+					_ = file.Close()
+				} else {
+					log.Warnf("failed to create %s pprof file: %s", name, err)
+				}
+			}
+
+			writeProfile("heap")
+			writeProfile("allocs")
+		}()
 
 		if cctx.Bool("global-profile") {
 			prof, err := os.Create("import-bench.prof")
@@ -366,21 +391,6 @@ var importBenchCmd = &cli.Command{
 		}
 
 		pprof.StopCPUProfile()
-
-		if true {
-			resp, err := http.Get("http://localhost:6060/debug/metrics/prometheus")
-			if err != nil {
-				return err
-			}
-
-			metricsfi, err := os.Create("import-bench.metrics")
-			if err != nil {
-				return err
-			}
-
-			io.Copy(metricsfi, resp.Body) //nolint:errcheck
-			metricsfi.Close()             //nolint:errcheck
-		}
 
 		return nil
 
