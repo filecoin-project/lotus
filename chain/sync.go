@@ -332,7 +332,7 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 
 	// We use a temporary bstore here to avoid writing intermediate pieces
 	// into the blockstore.
-	blockstore := bstore.NewTemporary()
+	blockstore := bstore.NewTempBlocktore()
 	cst := cbor.NewCborStore(blockstore)
 
 	var bcids, scids []cid.Cid
@@ -1106,7 +1106,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	// Validate message arrays in a temporary blockstore.
-	tmpbs := bstore.NewTemporary()
+	tmpbs := bstore.NewTempBlocktore()
 	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
 
 	bmArr := blockadt.MakeEmptyArray(tmpstore)
@@ -1542,7 +1542,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 
 		for bsi := 0; bsi < len(bstout); bsi++ {
 			// temp storage so we don't persist data we dont want to
-			bs := bstore.NewTemporary()
+			bs := bstore.NewTempBlocktore()
 			blks := cbor.NewCborStore(bs)
 
 			this := headers[i-bsi]

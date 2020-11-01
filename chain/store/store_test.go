@@ -96,7 +96,7 @@ func TestChainExportImport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewTemporary()
+	nbs := blockstore.NewTempBlocktore()
 	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, nil)
 
 	root, err := cs.Import(buf)
@@ -130,7 +130,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewTemporary()
+	nbs := blockstore.NewTempBlocktore()
 	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, nil)
 	root, err := cs.Import(buf)
 	if err != nil {

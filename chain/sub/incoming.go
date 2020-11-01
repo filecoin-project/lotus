@@ -383,7 +383,7 @@ func (bv *BlockValidator) isChainNearSynced() bool {
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
 	// TODO there has to be a simpler way to do this without the blockstore dance
 	// block headers use adt0
-	store := blockadt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTemporary()))
+	store := blockadt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTempBlocktore()))
 	bmArr := blockadt.MakeEmptyArray(store)
 	smArr := blockadt.MakeEmptyArray(store)
 

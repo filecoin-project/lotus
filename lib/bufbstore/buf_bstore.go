@@ -24,7 +24,7 @@ func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
 		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
 		buf = base
 	} else {
-		buf = bstore.NewTemporary()
+		buf = bstore.NewTempBlocktore()
 	}
 
 	return &BufferedBS{

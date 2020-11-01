@@ -593,7 +593,7 @@ func UpgradeRefuel(ctx context.Context, sm *StateManager, cb ExecCallback, root 
 }
 
 func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	buf := bufbstore.NewTieredBstore(sm.cs.Blockstore(), bstore.NewTemporarySync())
+	buf := bufbstore.NewTieredBstore(sm.cs.Blockstore(), bstore.NewTempBlocktore())
 	store := store.ActorStore(ctx, buf)
 
 	info, err := store.Put(ctx, new(types.StateInfo0))

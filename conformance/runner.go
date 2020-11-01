@@ -249,7 +249,7 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 }
 
 func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore, error) {
-	bs := blockstore.NewTemporary()
+	bs := blockstore.NewTempBlocktore()
 
 	// Read the base64-encoded CAR from the vector, and inflate the gzip.
 	buf := bytes.NewReader(vectorCAR)

@@ -22,16 +22,6 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
-// NewTemporary returns a temporary blockstore.
-func NewTemporary() MemStore {
-	return make(MemStore)
-}
-
-// NewTemporarySync returns a thread-safe temporary blockstore.
-func NewTemporarySync() *SyncStore {
-	return &SyncStore{bs: make(MemStore)}
-}
-
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 func WrapIDStore(bstore blockstore.Blockstore) blockstore.Blockstore {
 	return blockstore.NewIdStore(bstore)

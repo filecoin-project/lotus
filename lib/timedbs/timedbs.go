@@ -24,7 +24,7 @@ import (
 // stored at most 2x the cache interval.
 type TimedCacheBS struct {
 	mu               sync.RWMutex
-	active, inactive blockstore.MemStore
+	active, inactive blockstore.Blockstore
 	clock            clock.Clock
 	interval         time.Duration
 	closeCh          chan struct{}
@@ -33,8 +33,8 @@ type TimedCacheBS struct {
 
 func NewTimedCacheBS(cacheTime time.Duration) *TimedCacheBS {
 	return &TimedCacheBS{
-		active:   blockstore.NewTemporary(),
-		inactive: blockstore.NewTemporary(),
+		active:   blockstore.NewTempBlocktore(),
+		inactive: blockstore.NewTempBlocktore(),
 		interval: cacheTime,
 		clock:    build.Clock,
 	}
@@ -81,7 +81,7 @@ func (t *TimedCacheBS) Stop(ctx context.Context) error {
 }
 
 func (t *TimedCacheBS) rotate() {
-	newBs := blockstore.NewTemporary()
+	newBs := blockstore.NewTempBlocktore()
 
 	t.mu.Lock()
 	t.inactive, t.active = t.active, newBs
@@ -147,16 +147,24 @@ func (t *TimedCacheBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	ch := make(chan cid.Cid, len(t.active)+len(t.inactive))
-	for c := range t.active {
-		ch <- c
+	chActive, _ := t.active.AllKeysChan(ctx)
+	chInactive, _ := t.inactive.AllKeysChan(ctx)
+
+	seen := make(map[cid.Cid]struct{})
+	outCh := make(chan cid.Cid, len(chActive)+len(chInactive))
+
+	for c := range chActive {
+		outCh <- c
+		seen[c] = struct{}{}
 	}
-	for c := range t.inactive {
-		if _, ok := t.active[c]; ok {
-			continue
+
+	for c := range chInactive {
+		// only if we have not seen it yet
+		if _, ok := seen[c]; !ok {
+			outCh <- c
 		}
-		ch <- c
 	}
-	close(ch)
-	return ch, nil
+
+	close(outCh)
+	return outCh, nil
 }

@@ -69,7 +69,7 @@ func infoCmdAct(cctx *cli.Context) error {
 		return err
 	}
 
-	tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(api), blockstore.NewTemporary())
+	tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(api), blockstore.NewTempBlocktore())
 	mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 	if err != nil {
 		return err

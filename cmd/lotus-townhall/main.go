@@ -28,7 +28,7 @@ func init() {
 		return
 	}
 
-	bs := blockstore.NewTemporary()
+	bs := blockstore.NewTempBlocktore()
 
 	c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 	if err != nil {
