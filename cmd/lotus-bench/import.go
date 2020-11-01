@@ -163,6 +163,25 @@ var importBenchCmd = &cli.Command{
 		}
 		defer bds.Close() //nolint:errcheck
 
+		start := time.Now().Format(time.RFC3339)
+		defer func() {
+			end := time.Now().Format(time.RFC3339)
+
+			writeProfile := func(name string) {
+				if file, err := os.Create(fmt.Sprintf("%s.%s.%s.pprof", name, start, end)); err == nil {
+					if err := pprof.Lookup(name).WriteTo(file, 0); err != nil {
+						log.Warnf("failed to write %s pprof: %s", name, err)
+					}
+					_ = file.Close()
+				} else {
+					log.Warnf("failed to create %s pprof file: %s", name, err)
+				}
+			}
+
+			writeProfile("heap")
+			writeProfile("allocs")
+		}()
+
 		bds = measure.New("dsbench", bds)
 
 		bs := blockstore.NewBlockstore(bds)
