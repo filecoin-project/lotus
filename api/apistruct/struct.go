@@ -215,6 +215,7 @@ type FullNodeStruct struct {
 		StateGetReceipt                    func(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)                                      `perm:"read"`
 		StateMinerSectorCount              func(context.Context, address.Address, types.TipSetKey) (api.MinerSectors, error)                                   `perm:"read"`
 		StateListMessages                  func(ctx context.Context, match *api.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)     `perm:"read"`
+		StateDecodeParams                  func(context.Context, address.Address, abi.MethodNum, []byte, types.TipSetKey) (interface{}, error)                 `perm:"read"`
 		StateCompute                       func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)           `perm:"read"`
 		StateVerifierStatus                func(context.Context, address.Address, types.TipSetKey) (*abi.StoragePower, error)                                  `perm:"read"`
 		StateVerifiedClientStatus          func(context.Context, address.Address, types.TipSetKey) (*abi.StoragePower, error)                                  `perm:"read"`
@@ -321,7 +322,7 @@ type StorageMinerStruct struct {
 		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err string) error                   `perm:"admin" retry:"true"`
 		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
 
-		SealingSchedDiag func(context.Context) (interface{}, error) `perm:"admin"`
+		SealingSchedDiag func(context.Context, bool) (interface{}, error) `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                   `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                          `perm:"admin"`
@@ -385,7 +386,13 @@ type WorkerStruct struct {
 		Remove          func(ctx context.Context, sector abi.SectorID) error `perm:"admin"`
 		StorageAddLocal func(ctx context.Context, path string) error         `perm:"admin"`
 
-		Session func(context.Context) (uuid.UUID, error) `perm:"admin"`
+		SetEnabled func(ctx context.Context, enabled bool) error `perm:"admin"`
+		Enabled    func(ctx context.Context) (bool, error)       `perm:"admin"`
+
+		WaitQuiet func(ctx context.Context) error `perm:"admin"`
+
+		ProcessSession func(context.Context) (uuid.UUID, error) `perm:"admin"`
+		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
 	}
 }
 
@@ -1014,6 +1021,10 @@ func (c *FullNodeStruct) StateListMessages(ctx context.Context, match *api.Messa
 	return c.Internal.StateListMessages(ctx, match, tsk, toht)
 }
 
+func (c *FullNodeStruct) StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) {
+	return c.Internal.StateDecodeParams(ctx, toAddr, method, params, tsk)
+}
+
 func (c *FullNodeStruct) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*api.ComputeStateOutput, error) {
 	return c.Internal.StateCompute(ctx, height, msgs, tsk)
 }
@@ -1298,8 +1309,8 @@ func (c *StorageMinerStruct) ReturnFetch(ctx context.Context, callID storiface.C
 	return c.Internal.ReturnFetch(ctx, callID, err)
 }
 
-func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context) (interface{}, error) {
-	return c.Internal.SealingSchedDiag(ctx)
+func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) {
+	return c.Internal.SealingSchedDiag(ctx, doSched)
 }
 
 func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st fsutil.FsStat) error {
@@ -1542,6 +1553,22 @@ func (w *WorkerStruct) Remove(ctx context.Context, sector abi.SectorID) error {
 
 func (w *WorkerStruct) StorageAddLocal(ctx context.Context, path string) error {
 	return w.Internal.StorageAddLocal(ctx, path)
+}
+
+func (w *WorkerStruct) SetEnabled(ctx context.Context, enabled bool) error {
+	return w.Internal.SetEnabled(ctx, enabled)
+}
+
+func (w *WorkerStruct) Enabled(ctx context.Context) (bool, error) {
+	return w.Internal.Enabled(ctx)
+}
+
+func (w *WorkerStruct) WaitQuiet(ctx context.Context) error {
+	return w.Internal.WaitQuiet(ctx)
+}
+
+func (w *WorkerStruct) ProcessSession(ctx context.Context) (uuid.UUID, error) {
+	return w.Internal.ProcessSession(ctx)
 }
 
 func (w *WorkerStruct) Session(ctx context.Context) (uuid.UUID, error) {

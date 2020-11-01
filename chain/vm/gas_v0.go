@@ -90,6 +90,7 @@ type pricelistV0 struct {
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
 	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
+	verifyPostDiscount           bool
 	verifyConsensusFault         int64
 }
 
@@ -201,7 +202,9 @@ func (pl *pricelistV0) OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge 
 	}
 
 	gasUsed := cost.flat + int64(len(info.ChallengedSectors))*cost.scale
-	gasUsed /= 2 // XXX: this is an artificial discount
+	if pl.verifyPostDiscount {
+		gasUsed /= 2 // XXX: this is an artificial discount
+	}
 
 	return newGasCharge("OnVerifyPost", gasUsed, 0).
 		WithExtra(map[string]interface{}{

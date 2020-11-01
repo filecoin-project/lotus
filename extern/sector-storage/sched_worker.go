@@ -104,14 +104,16 @@ func (sw *schedWorker) handleWorker() {
 	defer sw.heartbeatTimer.Stop()
 
 	for {
-		sched.workersLk.Lock()
-		enabled := worker.enabled
-		sched.workersLk.Unlock()
+		{
+			sched.workersLk.Lock()
+			enabled := worker.enabled
+			sched.workersLk.Unlock()
 
-		// ask for more windows if we need them (non-blocking)
-		if enabled {
-			if !sw.requestWindows() {
-				return // graceful shutdown
+			// ask for more windows if we need them (non-blocking)
+			if enabled {
+				if !sw.requestWindows() {
+					return // graceful shutdown
+				}
 			}
 		}
 
@@ -123,12 +125,16 @@ func (sw *schedWorker) handleWorker() {
 			}
 
 			// session looks good
-			if !enabled {
+			{
 				sched.workersLk.Lock()
+				enabled := worker.enabled
 				worker.enabled = true
 				sched.workersLk.Unlock()
 
-				// we'll send window requests on the next loop
+				if !enabled {
+					// go send window requests
+					break
+				}
 			}
 
 			// wait for more tasks to be assigned by the main scheduler or for the worker

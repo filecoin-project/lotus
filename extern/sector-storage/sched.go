@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -217,7 +218,7 @@ type SchedDiagRequestInfo struct {
 
 type SchedDiagInfo struct {
 	Requests    []SchedDiagRequestInfo
-	OpenWindows []WorkerID
+	OpenWindows []string
 }
 
 func (sh *scheduler) runSched() {
@@ -324,7 +325,7 @@ func (sh *scheduler) diag() SchedDiagInfo {
 	defer sh.workersLk.RUnlock()
 
 	for _, window := range sh.openWindows {
-		out.OpenWindows = append(out.OpenWindows, window.worker)
+		out.OpenWindows = append(out.OpenWindows, uuid.UUID(window.worker).String())
 	}
 
 	return out

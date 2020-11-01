@@ -4,14 +4,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ipfs/go-datastore"
+	dgbadger "github.com/dgraph-io/badger/v2"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
 
-	dgbadger "github.com/dgraph-io/badger/v2"
+	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
-	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 type dsCtor func(path string, readonly bool) (datastore.Batching, error)
@@ -31,7 +31,6 @@ func badgerDs(path string, readonly bool) (datastore.Batching, error) {
 
 	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
 		WithValueThreshold(1 << 10)
-
 	return badger.NewDatastore(path, &opts)
 }
 

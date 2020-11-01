@@ -679,7 +679,15 @@ func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, erro
 	return m.storage.FsStat(ctx, id)
 }
 
-func (m *Manager) SchedDiag(ctx context.Context) (interface{}, error) {
+func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, error) {
+	if doSched {
+		select {
+		case m.sched.workerChange <- struct{}{}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
 	return m.sched.Info(ctx)
 }
 
