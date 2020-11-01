@@ -5,7 +5,6 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 type MemStore map[cid.Cid]blocks.Block
@@ -21,7 +20,7 @@ func (m MemStore) Has(k cid.Cid) (bool, error) {
 func (m MemStore) Get(k cid.Cid) (blocks.Block, error) {
 	b, ok := m[k]
 	if !ok {
-		return nil, blockstore.ErrNotFound
+		return nil, ErrNotFound
 	}
 	return b, nil
 }
@@ -30,7 +29,7 @@ func (m MemStore) Get(k cid.Cid) (blocks.Block, error) {
 func (m MemStore) GetSize(k cid.Cid) (int, error) {
 	b, ok := m[k]
 	if !ok {
-		return 0, blockstore.ErrNotFound
+		return 0, ErrNotFound
 	}
 	return len(b.RawData()), nil
 }
