@@ -161,7 +161,7 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 
 	return &MemRepo{
 		repoLock:   make(chan struct{}, 1),
-		blockstore: lblockstore.NewTemporarySync(),
+		blockstore: lblockstore.WrapIDStore(lblockstore.NewTemporarySync()),
 		datastore:  opts.Ds,
 		configF:    opts.ConfigF,
 		keystore:   opts.KeyStore,
