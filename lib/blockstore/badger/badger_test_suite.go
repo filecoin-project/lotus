@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-blockstore"
 	u "github.com/ipfs/go-ipfs-util"
 
 	"github.com/stretchr/testify/require"
