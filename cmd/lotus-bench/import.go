@@ -24,8 +24,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/node/repo"
+
 	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
 	"github.com/ipld/go-car"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -95,6 +98,9 @@ var importBenchCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "use-pebble",
 		},
+		&cli.BoolFlag{
+			Name: "use-native-badger",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		metricsprometheus.Inject() //nolint:errcheck
@@ -126,17 +132,16 @@ var importBenchCmd = &cli.Command{
 			tdir = tmp
 		}
 
-		bdgOpt := badger.DefaultOptions
-		bdgOpt.GcInterval = 0
-		bdgOpt.Options = bdg.DefaultOptions("")
-		bdgOpt.Options.SyncWrites = false
-		bdgOpt.Options.Truncate = true
-		bdgOpt.Options.DetectConflicts = false
+		var (
+			ds datastore.Batching
+			bs blockstore.Blockstore
+		)
 
-		var bds datastore.Batching
-		if cctx.Bool("use-pebble") {
+		switch {
+		case cctx.Bool("use-pebble"):
 			cache := 512
-			bds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
+
+			ds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
 				// Pebble has a single combined cache area and the write
 				// buffers are taken from this too. Assign all available
 				// memory allowance for cache.
@@ -155,13 +160,38 @@ var importBenchCmd = &cli.Command{
 				},
 				Logger: log,
 			})
-		} else {
-			bds, err = badger.NewDatastore(tdir, &bdgOpt)
+
+		case cctx.Bool("use-native-badger"):
+			opts, err := repo.BadgerBlockstoreOptions(repo.BlockstoreChain, tdir, false)
+			if err != nil {
+				return err
+			}
+			bs, err = badgerbs.Open(opts)
+
+		default: // legacy badger via datastore.
+			bdgOpt := badger.DefaultOptions
+			bdgOpt.GcInterval = 0
+			bdgOpt.Options = bdg.DefaultOptions("")
+			bdgOpt.Options.SyncWrites = false
+			bdgOpt.Options.Truncate = true
+			bdgOpt.Options.DetectConflicts = false
+
+			ds, err = badger.NewDatastore(tdir, &bdgOpt)
 		}
+
 		if err != nil {
 			return err
 		}
-		defer bds.Close() //nolint:errcheck
+
+		if ds != nil {
+			ds = measure.New("dsbench", ds)
+			defer ds.Close() //nolint:errcheck
+			bs = blockstore.NewBlockstore(ds)
+		}
+
+		if c, ok := bs.(io.Closer); ok {
+			defer c.Close() //nolint:errcheck
+		}
 
 		start := time.Now().Format(time.RFC3339)
 		defer func() {
@@ -182,22 +212,16 @@ var importBenchCmd = &cli.Command{
 			writeProfile("allocs")
 		}()
 
-		bds = measure.New("dsbench", bds)
-
-		bs := blockstore.NewBlockstore(bds)
 		cacheOpts := blockstore.DefaultCacheOpts()
 		cacheOpts.HasBloomFilterSize = 0
-
-		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, cacheOpts)
+		bs, err = blockstore.CachedBlockstore(context.TODO(), bs, cacheOpts)
 		if err != nil {
 			return err
 		}
-		bs = cbs
-		ds := datastore.NewMapDatastore()
 
 		var verifier ffiwrapper.Verifier = ffiwrapper.ProofVerifier
 		if cctx.IsSet("syscall-cache") {
-			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &bdgOpt)
+			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &badger.DefaultOptions)
 			if err != nil {
 				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
 			}
@@ -212,7 +236,8 @@ var importBenchCmd = &cli.Command{
 			return nil
 		}
 
-		cs := store.NewChainStore(bs, ds, vm.Syscalls(verifier), nil)
+		metadataDs := datastore.NewMapDatastore()
+		cs := store.NewChainStore(bs, metadataDs, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
 
 		if cctx.Bool("global-profile") {
@@ -283,6 +308,9 @@ var importBenchCmd = &cli.Command{
 		ts := head
 		tschain := []*types.TipSet{ts}
 		for ts.Height() > startEpoch {
+			if h := ts.Height(); h%100 == 0 {
+				log.Info("walking back the chain; loaded tipset at height %d...", h)
+			}
 			next, err := cs.LoadTipSet(ts.Parents())
 			if err != nil {
 				return err
