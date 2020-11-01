@@ -76,7 +76,8 @@ require (
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipfs-http-client v0.0.5
 	github.com/ipfs/go-ipfs-routing v0.1.0
-	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf
+	github.com/ipfs/go-ipfs-util v0.0.2
+	github.com/ipfs/go-ipld-cbor v0.0.5-0.20201030204514-f689d2bb3874
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
 	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
@@ -89,6 +90,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.5.1-0.20200828233916-988837377a7f
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.7.0
+	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.11.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
