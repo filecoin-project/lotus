@@ -14,6 +14,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-base32"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -282,6 +284,52 @@ func (fsr *fsLockedRepo) Close() error {
 	err = fsr.closer.Close()
 	fsr.closer = nil
 	return err
+}
+
+func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error) {
+	if domain != BlockstoreChain {
+		return nil, ErrInvalidBlockstoreDomain
+	}
+
+	path := fsr.join(filepath.Join(fsDatastore, "chain"))
+	opts := badgerbs.DefaultOptions(path)
+
+	// Due to legacy usage of blockstore.Blockstore, over a datastore, all
+	// blocks are prefixed with this namespace. In the future, this can go away,
+	// in order to shorten keys, but it'll require a migration.
+	opts.Prefix = "/blocks/"
+
+	// Blockstore values are immutable; therefore we do not expect any
+	// conflicts to emerge.
+	opts.DetectConflicts = false
+
+	// This is to optimize the database on close so it can be opened
+	// read-only and efficiently queried. We don't do that and hanging on
+	// stop isn't nice.
+	opts.CompactL0OnClose = false
+
+	// The alternative is "crash on start and tell the user to fix it". This
+	// will truncate corrupt and unsynced data, which we don't guarantee to
+	// persist anyways.
+	opts.Truncate = true
+
+	// We mmap the index into memory, and access values from disk.
+	// Ideally the table loading mode would be settable by LSM level.
+	opts.ValueLogLoadingMode = badgerbs.FileIO
+	opts.TableLoadingMode = badgerbs.MemoryMap
+
+	// Embed only values < 128 bytes in the LSM; larger values in value logs.
+	opts.ValueThreshold = 128
+
+	// Reduce this from 64MiB to 16MiB. That means badger will hold on to
+	// 20MiB by default instead of 80MiB. This does not appear to have a
+	// significant performance hit.
+	opts.MaxTableSize = 16 << 20
+
+	// NOTE: The chain blockstore doesn't require any GC (blocks are never
+	// deleted). This will change if we move to a tiered blockstore.
+
+	return badgerbs.Open(opts)
 }
 
 // join joins path elements with fsr.path
