@@ -19,6 +19,7 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -231,7 +232,7 @@ var importBenchCmd = &cli.Command{
 
 		// register a gauge that reports how long since the measurable
 		// operation began.
-		prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		promauto.NewGaugeFunc(prometheus.GaugeOpts{
 			Name: "lotus_bench_time_taken_secs",
 		}, func() float64 {
 			return time.Since(start).Seconds()
