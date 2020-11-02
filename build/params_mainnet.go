@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
@@ -47,7 +46,7 @@ func init() {
 	)
 
 	// Lower the most time-consuming parts of PoRep
-	miner.PreCommitChallengeDelay = abi.ChainEpoch(10)
+	policy.SetPreCommitChallengeDelay(10)
 
 	// TODO - make this a variable
 	//miner.WPoStChallengeLookback = abi.ChainEpoch(2)

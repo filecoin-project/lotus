@@ -1461,6 +1461,7 @@ github.com/x-cray/logrus-prefixed-formatter v0.5.2/go.mod h1:2duySbKsL6M18s5GU7V
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xlab/c-for-go v0.0.0-20200718154222-87b0065af829 h1:wb7xrDzfkLgPHsSEBm+VSx6aDdi64VtV0xvP0E6j8bk=
 github.com/xlab/c-for-go v0.0.0-20200718154222-87b0065af829/go.mod h1:h/1PEBwj7Ym/8kOuMWvO2ujZ6Lt+TMbySEXNhjjR87I=
+github.com/xlab/c-for-go v0.0.0-20201002084316-c134bfab968f/go.mod h1:h/1PEBwj7Ym/8kOuMWvO2ujZ6Lt+TMbySEXNhjjR87I=
 github.com/xlab/pkgconfig v0.0.0-20170226114623-cea12a0fd245 h1:Sw125DKxZhPUI4JLlWugkzsrlB50jR9v2khiD9FxuSo=
 github.com/xlab/pkgconfig v0.0.0-20170226114623-cea12a0fd245/go.mod h1:C+diUUz7pxhNY6KAoLgrTYARGWnt82zWTylZlxT92vk=
 github.com/xorcare/golden v0.6.0/go.mod h1:7T39/ZMvaSEZlBPoYfVFmsBLmUl3uz9IuzWj/U6FtvQ=
