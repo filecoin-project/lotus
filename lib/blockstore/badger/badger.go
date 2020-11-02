@@ -361,7 +361,7 @@ func (b *Blockstore) HashOnRead(_ bool) {
 func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
 	h := cid.Hash()
 	size := base32.RawStdEncoding.EncodedLen(len(h))
-	if !b.prefixing {
+	if !b.prefixing { // optimize for branch prediction.
 		k := pool.Get(size)
 		base32.RawStdEncoding.Encode(k, h)
 		return k, true // slicing upto length unnecessary; the pool has already done this.
@@ -372,4 +372,29 @@ func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
 	copy(k, b.prefix)
 	base32.RawStdEncoding.Encode(k[b.prefixLen:], h)
 	return k, true // slicing upto length unnecessary; the pool has already done this.
+}
+
+// Storage acts like PooledStorageKey, but attempts to write the storage key
+// into the provided slice. If the slice capacity is insufficient, it allocates
+// a new byte slice with enough capacity to accommodate the result. This method
+// returns the resulting slice.
+func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
+	h := cid.Hash()
+	reqsize := base32.RawStdEncoding.EncodedLen(len(h)) + b.prefixLen
+	if reqsize > cap(dst) {
+		// passed slice is smaller than required size; create new.
+		dst = make([]byte, reqsize)
+	} else if reqsize > len(dst) {
+		// passed slice has enough capacity, but its length is
+		// restricted, expand.
+		dst = dst[:cap(dst)]
+	}
+
+	if b.prefixing { // optimize for branch prediction.
+		copy(dst, b.prefix)
+		base32.RawStdEncoding.Encode(dst[b.prefixLen:], h)
+	} else {
+		base32.RawStdEncoding.Encode(dst, h)
+	}
+	return dst[:reqsize]
 }

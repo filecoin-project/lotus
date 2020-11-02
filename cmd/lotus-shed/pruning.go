@@ -210,7 +210,7 @@ var stateTreePruneCmd = &cli.Command{
 		defer b.Cancel()
 
 		markForRemoval := func(c cid.Cid) error {
-			return b.Delete(badgbs.PrefixedKey(c))
+			return b.Delete(badgbs.StorageKey(nil, c))
 		}
 
 		keys, err := bs.AllKeysChan(context.Background())
