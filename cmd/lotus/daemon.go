@@ -409,7 +409,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 		return err
 	}
 
-	bs := blockstore.NewBlockstore(ds)
+	bs := blockstore.XNewBlockstore(ds)
 
 	j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
 	if err != nil {

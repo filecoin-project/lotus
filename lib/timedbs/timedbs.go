@@ -24,7 +24,7 @@ import (
 // stored at most 2x the cache interval.
 type TimedCacheBS struct {
 	mu               sync.RWMutex
-	active, inactive blockstore.Blockstore
+	active, inactive blockstore.XBlockstore
 	clock            clock.Clock
 	interval         time.Duration
 	closeCh          chan struct{}

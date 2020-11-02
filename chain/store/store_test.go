@@ -61,7 +61,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	bs := blockstore.NewBlockstore(bds)
+	bs := blockstore.XNewBlockstore(bds)
 
 	cs := store.NewChainStore(bs, mds, nil, nil)
 

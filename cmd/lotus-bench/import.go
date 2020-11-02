@@ -165,11 +165,11 @@ var importBenchCmd = &cli.Command{
 
 		bds = measure.New("dsbench", bds)
 
-		bs := blockstore.NewBlockstore(bds)
+		bs := blockstore.XNewBlockstore(bds)
 		cacheOpts := blockstore.DefaultCacheOpts()
 		cacheOpts.HasBloomFilterSize = 0
 
-		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, cacheOpts)
+		cbs, err := blockstore.XCachedBlockstore(context.TODO(), bs, cacheOpts)
 		if err != nil {
 			return err
 		}

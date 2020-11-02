@@ -160,7 +160,7 @@ var stateTreePruneCmd = &cli.Command{
 			return fmt.Errorf("datastore doesnt support gc")
 		}
 
-		bs := blockstore.NewBlockstore(ds)
+		bs := blockstore.XNewBlockstore(ds)
 
 		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 		if err := cs.Load(); err != nil {

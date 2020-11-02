@@ -104,7 +104,7 @@ type HeadChangeEvt struct {
 //   1. a tipset cache
 //   2. a block => messages references cache.
 type ChainStore struct {
-	bs bstore.Blockstore
+	bs bstore.XBlockstore
 	ds dstore.Batching
 
 	heaviestLk sync.Mutex
@@ -130,7 +130,7 @@ type ChainStore struct {
 	journal  journal.Journal
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+func NewChainStore(bs bstore.XBlockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -687,7 +687,7 @@ type storable interface {
 	ToStorageBlock() (block.Block, error)
 }
 
-func PutMessage(bs bstore.Blockstore, m storable) (cid.Cid, error) {
+func PutMessage(bs bstore.XBlockstore, m storable) (cid.Cid, error) {
 	b, err := m.ToStorageBlock()
 	if err != nil {
 		return cid.Undef, err
@@ -1052,11 +1052,11 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	return msgs, nil
 }
 
-func (cs *ChainStore) Blockstore() bstore.Blockstore {
+func (cs *ChainStore) Blockstore() bstore.XBlockstore {
 	return cs.bs
 }
 
-func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
+func ActorStore(ctx context.Context, bs bstore.XBlockstore) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
 }
 
@@ -1213,7 +1213,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	return cs.LoadTipSet(lbts.Parents())
 }
 
-func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(bs bstore.XBlockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return in, nil
 	}

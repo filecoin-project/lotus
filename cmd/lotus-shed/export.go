@@ -81,7 +81,7 @@ var exportChainCmd = &cli.Command{
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
+		bs := blockstore.XNewBlockstore(ds)
 
 		cs := store.NewChainStore(bs, mds, nil, nil)
 		if err := cs.Load(); err != nil {

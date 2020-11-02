@@ -71,7 +71,7 @@ func TestMultistoreRetrievalStoreManager(t *testing.T) {
 func TestBlockstoreRetrievalStoreManager(t *testing.T) {
 	ctx := context.Background()
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
-	bs := blockstore.NewBlockstore(ds)
+	bs := blockstore.XNewBlockstore(ds)
 	retrievalStoreMgr := retrievalstoremgr.NewBlockstoreRetrievalStoreManager(bs)
 	var stores []retrievalstoremgr.RetrievalStore
 	var cids []cid.Cid

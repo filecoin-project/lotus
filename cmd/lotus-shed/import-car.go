@@ -50,7 +50,7 @@ var importCarCmd = &cli.Command{
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
+		bs := blockstore.XNewBlockstore(ds)
 
 		cr, err := car.NewCarReader(f)
 		if err != nil {
@@ -113,7 +113,7 @@ var importObjectCmd = &cli.Command{
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
+		bs := blockstore.XNewBlockstore(ds)
 
 		c, err := cid.Decode(cctx.Args().Get(0))
 		if err != nil {

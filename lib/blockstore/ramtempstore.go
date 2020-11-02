@@ -9,7 +9,7 @@ import (
 )
 
 // NewTempBlocktore returns a thread-safe temporary memory-backed blockstore
-func NewTempBlocktore() Blockstore {
+func NewTempBlocktore() XBlockstore {
 	return &tempBS{
 		store: make(map[cid.Cid]blocks.Block, 512)}
 }

@@ -28,12 +28,12 @@ func WrapIDStore(bstore blockstore.Blockstore) blockstore.Blockstore {
 }
 
 // NewBlockstore creates a new blockstore wrapped by the given datastore.
-func NewBlockstore(dstore ds.Batching) blockstore.Blockstore {
+func XNewBlockstore(dstore ds.Batching) blockstore.Blockstore {
 	return WrapIDStore(blockstore.NewBlockstore(dstore))
 }
 
 // Alias so other packages don't have to import go-ipfs-blockstore
-type Blockstore = blockstore.Blockstore
+type XBlockstore = blockstore.Blockstore
 type CacheOpts = blockstore.CacheOpts
 
 var ErrNotFound = blockstore.ErrNotFound
@@ -46,7 +46,7 @@ func DefaultCacheOpts() CacheOpts {
 	}
 }
 
-func CachedBlockstore(ctx context.Context, bs Blockstore, opts CacheOpts) (Blockstore, error) {
+func XCachedBlockstore(ctx context.Context, bs XBlockstore, opts CacheOpts) (XBlockstore, error) {
 	bs, err := blockstore.CachedBlockstore(ctx, bs, opts)
 	if err != nil {
 		return nil, err

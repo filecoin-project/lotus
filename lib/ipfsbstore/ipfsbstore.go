@@ -132,4 +132,4 @@ func (i *IpfsBstore) HashOnRead(enabled bool) {
 	return // TODO: We could technically support this, but..
 }
 
-var _ blockstore.Blockstore = &IpfsBstore{}
+var _ blockstore.XBlockstore = &IpfsBstore{}

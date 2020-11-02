@@ -23,14 +23,14 @@ import (
 // dy default it's namespaced under /metadata in main repo datastore
 type MetadataDS datastore.Batching
 
-type ChainBlockstore blockstore.Blockstore
+type ChainBlockstore blockstore.ChainBlockstore
 
 type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService
 
 type ClientMultiDstore *multistore.MultiStore
 type ClientImportMgr *importmgr.Mgr
-type ClientBlockstore blockstore.Blockstore
+type ClientBlockstore blockstore.XBlockstore
 type ClientDealStore *statestore.StateStore
 type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
 type ClientDatastore datastore.Batching
@@ -49,6 +49,6 @@ type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 type ProviderDataTransfer datatransfer.Manager
 
 type StagingDAG format.DAGService
-type StagingBlockstore blockstore.Blockstore
+type StagingBlockstore blockstore.XBlockstore
 type StagingGraphsync graphsync.GraphExchange
 type StagingMultiDstore *multistore.MultiStore

@@ -19,7 +19,7 @@ type apiBStore struct {
 	api ChainIO
 }
 
-func NewAPIBlockstore(cio ChainIO) blockstore.Blockstore {
+func NewAPIBlockstore(cio ChainIO) blockstore.XBlockstore {
 	return &apiBStore{
 		api: cio,
 	}
@@ -65,4 +65,4 @@ func (a *apiBStore) HashOnRead(enabled bool) {
 	return
 }
 
-var _ blockstore.Blockstore = &apiBStore{}
+var _ blockstore.XBlockstore = &apiBStore{}

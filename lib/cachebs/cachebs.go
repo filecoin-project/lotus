@@ -16,10 +16,10 @@ var log = logging.Logger("cachebs")
 
 type CacheBS struct {
 	cache *lru.ARCCache
-	bs    bstore.Blockstore
+	bs    bstore.XBlockstore
 }
 
-func NewBufferedBstore(base bstore.Blockstore, size int) bstore.Blockstore {
+func NewBufferedBstore(base bstore.XBlockstore, size int) bstore.XBlockstore {
 	c, err := lru.NewARC(size)
 	if err != nil {
 		panic(err)
@@ -32,7 +32,7 @@ func NewBufferedBstore(base bstore.Blockstore, size int) bstore.Blockstore {
 	})
 }
 
-var _ (bstore.Blockstore) = &CacheBS{}
+var _ (bstore.XBlockstore) = &CacheBS{}
 
 func (bs *CacheBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return bs.bs.AllKeysChan(ctx)

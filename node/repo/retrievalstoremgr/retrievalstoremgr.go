@@ -73,13 +73,13 @@ func (mrs *multiStoreRetrievalStore) DAGService() ipldformat.DAGService {
 
 // BlockstoreRetrievalStoreManager manages a single blockstore as if it were multiple stores
 type BlockstoreRetrievalStoreManager struct {
-	bs blockstore.Blockstore
+	bs blockstore.XBlockstore
 }
 
 var _ RetrievalStoreManager = &BlockstoreRetrievalStoreManager{}
 
 // NewBlockstoreRetrievalStoreManager returns a new blockstore based RetrievalStoreManager
-func NewBlockstoreRetrievalStoreManager(bs blockstore.Blockstore) RetrievalStoreManager {
+func NewBlockstoreRetrievalStoreManager(bs blockstore.XBlockstore) RetrievalStoreManager {
 	return &BlockstoreRetrievalStoreManager{
 		bs: bs,
 	}

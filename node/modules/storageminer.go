@@ -313,7 +313,7 @@ func StagingBlockstore(r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
 		return nil, err
 	}
 
-	return blockstore.NewBlockstore(stagingds), nil
+	return blockstore.XNewBlockstore(stagingds), nil
 }
 
 // StagingDAG is a DAGService for the StagingBlockstore

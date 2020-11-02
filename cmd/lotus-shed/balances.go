@@ -178,7 +178,7 @@ var chainBalanceStateCmd = &cli.Command{
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
+		bs := blockstore.XNewBlockstore(ds)
 
 		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 
@@ -392,7 +392,7 @@ var chainPledgeCmd = &cli.Command{
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
+		bs := blockstore.XNewBlockstore(ds)
 
 		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 

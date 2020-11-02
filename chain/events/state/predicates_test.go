@@ -38,10 +38,10 @@ func init() {
 
 type mockAPI struct {
 	ts map[types.TipSetKey]*types.Actor
-	bs bstore.Blockstore
+	bs bstore.XBlockstore
 }
 
-func newMockAPI(bs bstore.Blockstore) *mockAPI {
+func newMockAPI(bs bstore.XBlockstore) *mockAPI {
 	return &mockAPI{
 		bs: bs,
 		ts: make(map[types.TipSetKey]*types.Actor),
