@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	"github.com/multiformats/go-base32"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -15,6 +16,11 @@ import (
 	pool "github.com/libp2p/go-buffer-pool"
 
 	"github.com/filecoin-project/lotus/lib/blockstore"
+)
+
+var (
+	// KeyPool is the buffer pool we use to compute storage keys.
+	KeyPool *pool.BufferPool = pool.GlobalPool
 )
 
 var (
@@ -121,9 +127,9 @@ func (b *Blockstore) View(cid cid.Cid, fn func([]byte) error) error {
 		return ErrBlockstoreClosed
 	}
 
-	k, pooled := b.PooledPrefixedKey(cid)
+	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
-		defer pool.Put(k)
+		defer KeyPool.Put(k)
 	}
 
 	return b.DB.View(func(txn *badger.Txn) error {
@@ -143,9 +149,9 @@ func (b *Blockstore) Has(cid cid.Cid) (bool, error) {
 		return false, ErrBlockstoreClosed
 	}
 
-	k, pooled := b.PooledPrefixedKey(cid)
+	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
-		defer pool.Put(k)
+		defer KeyPool.Put(k)
 	}
 
 	err := b.DB.View(func(txn *badger.Txn) error {
@@ -172,9 +178,9 @@ func (b *Blockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, ErrBlockstoreClosed
 	}
 
-	k, pooled := b.PooledPrefixedKey(cid)
+	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
-		defer pool.Put(k)
+		defer KeyPool.Put(k)
 	}
 
 	var val []byte
@@ -200,9 +206,9 @@ func (b *Blockstore) GetSize(cid cid.Cid) (int, error) {
 		return -1, ErrBlockstoreClosed
 	}
 
-	k, pooled := b.PooledPrefixedKey(cid)
+	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
-		defer pool.Put(k)
+		defer KeyPool.Put(k)
 	}
 
 	var size int
@@ -228,9 +234,9 @@ func (b *Blockstore) Put(block blocks.Block) error {
 		return ErrBlockstoreClosed
 	}
 
-	k, pooled := b.PooledPrefixedKey(block.Cid())
+	k, pooled := b.PooledStorageKey(block.Cid())
 	if pooled {
-		defer pool.Put(k)
+		defer KeyPool.Put(k)
 	}
 
 	err := b.DB.Update(func(txn *badger.Txn) error {
@@ -258,13 +264,13 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 		toReturn = make([][]byte, 0, len(blocks))
 		defer func() {
 			for _, b := range toReturn {
-				pool.Put(b)
+				KeyPool.Put(b)
 			}
 		}()
 	}
 
 	for _, block := range blocks {
-		k, pooled := b.PooledPrefixedKey(block.Cid())
+		k, pooled := b.PooledStorageKey(block.Cid())
 		if pooled {
 			toReturn = append(toReturn, k)
 		}
@@ -285,9 +291,9 @@ func (b *Blockstore) DeleteBlock(cid cid.Cid) error {
 		return ErrBlockstoreClosed
 	}
 
-	k, pooled := b.PooledPrefixedKey(cid)
+	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
-		defer pool.Put(k)
+		defer KeyPool.Put(k)
 	}
 
 	return b.DB.Update(func(txn *badger.Txn) error {
@@ -312,6 +318,9 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 		defer close(ch)
 		defer iter.Close()
 
+		// NewCidV1 makes a copy of the multihash buffer, so we can reuse it to
+		// contain allocs.
+		var buf []byte
 		for iter.Rewind(); iter.Valid(); iter.Next() {
 			if ctx.Err() != nil {
 				return // context has fired.
@@ -324,37 +333,43 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 			if b.prefixing {
 				k = k[b.prefixLen:]
 			}
-			ch <- cid.NewCidV1(cid.Raw, k)
+
+			if reqlen := base32.RawStdEncoding.DecodedLen(len(k)); len(buf) < reqlen {
+				buf = make([]byte, reqlen)
+			}
+			if n, err := base32.RawStdEncoding.Decode(buf, k); err == nil {
+				ch <- cid.NewCidV1(cid.Raw, buf[:n])
+			} else {
+				log.Warnf("failed to decode key %s in badger AllKeysChan; err: %s", k, err)
+			}
 		}
 	}()
 
 	return ch, nil
 }
 
-func (b *Blockstore) HashOnRead(enabled bool) {
+func (b *Blockstore) HashOnRead(_ bool) {
 	log.Warnf("called HashOnRead on badger blockstore; function not supported; ignoring")
 }
 
-func (b *Blockstore) PrefixedKey(cid cid.Cid) []byte {
+// PooledStorageKey returns the storage key under which this CID is stored.
+//
+// The key is: prefix + base32_no_padding(cid.Hash)
+//
+// This method may return pooled byte slice, which MUST be returned to the
+// KeyPool if pooled=true, or a leak will occur.
+func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
 	h := cid.Hash()
+	size := base32.RawStdEncoding.EncodedLen(len(h))
 	if !b.prefixing {
-		return h
-	}
-	k := make([]byte, b.prefixLen+len(h))
-	copy(k, b.prefix)
-	copy(k[b.prefixLen:], h)
-	return k
-}
-
-func (b *Blockstore) PooledPrefixedKey(cid cid.Cid) (key []byte, pooled bool) {
-	h := cid.Hash()
-	if !b.prefixing {
-		return h, false
+		k := pool.Get(size)
+		base32.RawStdEncoding.Encode(k, h)
+		return k, true // slicing upto length unnecessary; the pool has already done this.
 	}
 
-	size := b.prefixLen + len(h)
+	size += b.prefixLen
 	k := pool.Get(size)
 	copy(k, b.prefix)
-	copy(k[b.prefixLen:], h)
-	return k, true
+	base32.RawStdEncoding.Encode(k[b.prefixLen:], h)
+	return k, true // slicing upto length unnecessary; the pool has already done this.
 }
