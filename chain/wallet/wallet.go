@@ -305,6 +305,18 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 
 	delete(w.keys, addr)
 
+	def, err := w.GetDefault()
+	if err != nil {
+		return xerrors.Errorf("getting default address: %w", err)
+	}
+
+	if def == addr {
+		err = w.SetDefault(address.Undef)
+		if err != nil {
+			return xerrors.Errorf("unsetting default address: %w", err)
+		}
+	}
+
 	return nil
 }
 
