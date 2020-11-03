@@ -407,8 +407,8 @@ var importBenchCmd = &cli.Command{
 		)
 
 		if tsk := cctx.String("start-tipset"); tsk != "" {
-			cids, err := lcli.ParseTipSetString(tsk)
-			if err != nil {
+			var cids []cid.Cid
+			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
 				return xerrors.Errorf("failed to start genesis tipset key: %w", err)
 			}
 			start, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
