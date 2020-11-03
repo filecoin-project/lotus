@@ -18,6 +18,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
+	"github.com/ipfs/go-cid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -184,8 +185,8 @@ var importBenchCmd = &cli.Command{
 
 		case cctx.Bool("use-native-badger"):
 			log.Info("using native badger")
-			opts, err := repo.BadgerBlockstoreOptions(repo.BlockstoreChain, tdir, false)
-			if err != nil {
+			var opts badgerbs.Options
+			if opts, err = repo.BadgerBlockstoreOptions(repo.BlockstoreChain, tdir, false); err != nil {
 				return err
 			}
 			opts.SyncWrites = false
@@ -360,8 +361,8 @@ var importBenchCmd = &cli.Command{
 		var genesis *types.TipSet
 		log.Infof("getting genesis block")
 		if tsk := cctx.String("genesis-tipset"); tsk != "" {
-			cids, err := lcli.ParseTipSetString(tsk)
-			if err != nil {
+			var cids []cid.Cid
+			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
 				return xerrors.Errorf("failed to parse genesis tipset key: %w", err)
 			}
 			genesis, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
@@ -382,8 +383,8 @@ var importBenchCmd = &cli.Command{
 		// Resolve the end tipset, falling back to head if not provided.
 		end := head
 		if tsk := cctx.String("end-tipset"); tsk != "" {
-			cids, err := lcli.ParseTipSetString(tsk)
-			if err != nil {
+			var cids []cid.Cid
+			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
 				return xerrors.Errorf("failed to end genesis tipset key: %w", err)
 			}
 			end, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
