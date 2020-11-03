@@ -193,7 +193,7 @@ var importBenchCmd = &cli.Command{
 			return nil
 		}
 
-		cs := store.NewChainStore(bs, ds, vm.Syscalls(verifier), nil)
+		cs := store.NewChainStore(bs, bs, ds, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
 
 		if cctx.Bool("global-profile") {
