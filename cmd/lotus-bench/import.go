@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -64,7 +65,11 @@ var importBenchCmd = &cli.Command{
 	},
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
-			Name:  "height",
+			Name:  "start-height",
+			Usage: "start validation at given height",
+		},
+		&cli.Int64Flag{
+			Name:  "end-height",
 			Usage: "halt validation after given height",
 		},
 		&cli.IntFlag{
@@ -93,9 +98,6 @@ var importBenchCmd = &cli.Command{
 			Name:  "global-profile",
 			Value: true,
 		},
-		&cli.Int64Flag{
-			Name: "start-at",
-		},
 		&cli.BoolFlag{
 			Name: "only-import",
 		},
@@ -105,20 +107,22 @@ var importBenchCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "use-native-badger",
 		},
+		&cli.StringFlag{
+			Name: "car",
+			Usage: "path to CAR file; required for import; on validation, either " +
+				"a CAR path or the --head flag are required",
+		},
+		&cli.StringFlag{
+			Name: "head",
+			Usage: "tipset key of the head, useful when benchmarking validation " +
+				"on an existing chain store, where a CAR is not available; " +
+				"if both --car and --head are provided, --head takes precedence " +
+				"over the CAR root; the format is cid1,cid2,cid3...",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		metricsprometheus.Inject() //nolint:errcheck
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
-		if !cctx.Args().Present() {
-			fmt.Println("must pass car file of chain to benchmark importing")
-			return nil
-		}
-
-		cfi, err := os.Open(cctx.Args().First())
-		if err != nil {
-			return err
-		}
-		defer cfi.Close() //nolint:errcheck // read only file
 
 		go func() {
 			http.Handle("/debug/metrics/prometheus", promhttp.Handler())
@@ -137,8 +141,9 @@ var importBenchCmd = &cli.Command{
 		}
 
 		var (
-			ds datastore.Batching
-			bs blockstore.Blockstore
+			ds  datastore.Batching
+			bs  blockstore.Blockstore
+			err error
 		)
 
 		switch {
@@ -281,18 +286,26 @@ var importBenchCmd = &cli.Command{
 			}
 		}
 
+		var carFile *os.File
+
+		// open the CAR file if one is provided.
+		if path := cctx.String("car"); path != "" {
+			var err error
+			if carFile, err = os.Open(path); err != nil {
+				return xerrors.Errorf("failed to open provided CAR file: %w", err)
+			}
+		}
+
 		var head *types.TipSet
+
+		// --- IMPORT ---
 		if !cctx.Bool("no-import") {
-			head, err = cs.Import(cfi)
-			if err != nil {
-				return err
+			// import is NOT suppressed; do it.
+			if carFile == nil { // a CAR is compulsory for the import.
+				return fmt.Errorf("no CAR file provided for import")
 			}
-		} else {
-			cr, err := car.NewCarReader(cfi)
-			if err != nil {
-				return err
-			}
-			head, err = cs.LoadTipSet(types.NewTipSetKey(cr.Header.Roots...))
+
+			head, err = cs.Import(carFile)
 			if err != nil {
 				return err
 			}
@@ -301,6 +314,36 @@ var importBenchCmd = &cli.Command{
 		if cctx.Bool("only-import") {
 			return nil
 		}
+
+		// --- VALIDATION ---
+		//
+		// we are now preparing for the validation benchmark.
+		// a HEAD needs to be set; --head takes precedence over the root
+		// of the CAR, if both are provided.
+		if h := cctx.String("head"); h != "" {
+			cids, err := lcli.ParseTipSetString(h)
+			if err != nil {
+				return xerrors.Errorf("failed to parse head tipset key: %w", err)
+			}
+
+			head, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+			if err != nil {
+				return err
+			}
+		} else if carFile != nil && head == nil {
+			cr, err := car.NewCarReader(carFile)
+			if err != nil {
+				return err
+			}
+			head, err = cs.LoadTipSet(types.NewTipSetKey(cr.Header.Roots...))
+			if err != nil {
+				return err
+			}
+		} else if h == "" && carFile == nil {
+			return xerrors.Errorf("neither --car nor --head flags supplied")
+		}
+
+		log.Infof("validation head is tipset: %s", head.Key())
 
 		gb, err := cs.GetTipsetByHeight(context.TODO(), 0, head, true)
 		if err != nil {
@@ -313,9 +356,11 @@ var importBenchCmd = &cli.Command{
 		}
 
 		startEpoch := abi.ChainEpoch(1)
-		if cctx.IsSet("start-at") {
-			startEpoch = abi.ChainEpoch(cctx.Int64("start-at"))
-			start, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(cctx.Int64("start-at")), head, true)
+		if cctx.IsSet("start-height") {
+			h := cctx.Int64("start-height")
+			startEpoch = abi.ChainEpoch(h)
+			log.Infof("getting start tipset at height %d...", h)
+			start, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(cctx.Int64("start-height")), head, true)
 			if err != nil {
 				return err
 			}
@@ -326,7 +371,8 @@ var importBenchCmd = &cli.Command{
 			}
 		}
 
-		if h := cctx.Int64("height"); h != 0 {
+		if h := cctx.Int64("end-height"); h != 0 {
+			log.Infof("getting end tipset at height %d...", h)
 			tsh, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
 			if err != nil {
 				return err
@@ -338,7 +384,7 @@ var importBenchCmd = &cli.Command{
 		tschain := []*types.TipSet{ts}
 		for ts.Height() > startEpoch {
 			if h := ts.Height(); h%100 == 0 {
-				log.Info("walking back the chain; loaded tipset at height %d...", h)
+				log.Infof("walking back the chain; loaded tipset at height %d...", h)
 			}
 			next, err := cs.LoadTipSet(ts.Parents())
 			if err != nil {
