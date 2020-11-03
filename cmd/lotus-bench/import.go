@@ -287,18 +287,6 @@ var importBenchCmd = &cli.Command{
 			writeProfile("allocs")
 		}()
 
-		if cctx.Bool("global-profile") {
-			prof, err := os.Create("import-bench.prof")
-			if err != nil {
-				return err
-			}
-			defer prof.Close() //nolint:errcheck
-
-			if err := pprof.StartCPUProfile(prof); err != nil {
-				return err
-			}
-		}
-
 		var carFile *os.File
 
 		// open the CAR file if one is provided.
@@ -313,6 +301,18 @@ var importBenchCmd = &cli.Command{
 
 		// --- IMPORT ---
 		if !cctx.Bool("no-import") {
+			if cctx.Bool("global-profile") {
+				prof, err := os.Create("bench.import.pprof")
+				if err != nil {
+					return err
+				}
+				defer prof.Close() //nolint:errcheck
+
+				if err := pprof.StartCPUProfile(prof); err != nil {
+					return err
+				}
+			}
+
 			// import is NOT suppressed; do it.
 			if carFile == nil { // a CAR is compulsory for the import.
 				return fmt.Errorf("no CAR file provided for import")
@@ -322,6 +322,8 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+
+			pprof.StopCPUProfile()
 		}
 
 		if cctx.Bool("only-import") {
@@ -452,6 +454,18 @@ var importBenchCmd = &cli.Command{
 			enc = json.NewEncoder(ibj)
 		}
 
+		if cctx.Bool("global-profile") {
+			prof, err := os.Create("bench.validation.pprof")
+			if err != nil {
+				return err
+			}
+			defer prof.Close() //nolint:errcheck
+
+			if err := pprof.StartCPUProfile(prof); err != nil {
+				return err
+			}
+		}
+
 		for i := len(inverseChain) - 1; i >= 1; i-- {
 			cur := inverseChain[i]
 			start := time.Now()
@@ -489,7 +503,6 @@ var importBenchCmd = &cli.Command{
 		pprof.StopCPUProfile()
 
 		return nil
-
 	},
 }
 
