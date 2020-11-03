@@ -94,7 +94,7 @@ func (bs *BufferedBS) DeleteBlock(c cid.Cid) error {
 }
 
 func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
-	if out, err := bs.read.Get(c); err != nil {
+	if out, err := bs.write.Get(c); err != nil {
 		if err != bstore.ErrNotFound {
 			return nil, err
 		}
@@ -102,7 +102,7 @@ func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
 		return out, nil
 	}
 
-	return bs.write.Get(c)
+	return bs.read.Get(c)
 }
 
 func (bs *BufferedBS) GetSize(c cid.Cid) (int, error) {
@@ -115,7 +115,7 @@ func (bs *BufferedBS) GetSize(c cid.Cid) (int, error) {
 }
 
 func (bs *BufferedBS) Put(blk block.Block) error {
-	has, err := bs.read.Has(blk.Cid())
+	has, err := bs.read.Has(blk.Cid()) // TODO: consider dropping this check
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (bs *BufferedBS) Put(blk block.Block) error {
 }
 
 func (bs *BufferedBS) Has(c cid.Cid) (bool, error) {
-	has, err := bs.read.Has(c)
+	has, err := bs.write.Has(c)
 	if err != nil {
 		return false, err
 	}
@@ -136,7 +136,7 @@ func (bs *BufferedBS) Has(c cid.Cid) (bool, error) {
 		return true, nil
 	}
 
-	return bs.write.Has(c)
+	return bs.read.Has(c)
 }
 
 func (bs *BufferedBS) HashOnRead(hor bool) {
