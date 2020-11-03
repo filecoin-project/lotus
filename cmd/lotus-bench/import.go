@@ -64,13 +64,25 @@ var importBenchCmd = &cli.Command{
 		importAnalyzeCmd,
 	},
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "start-tipset",
+			Usage: "start validation at the given tipset key; in format cid1,cid2,cid3...",
+		},
+		&cli.StringFlag{
+			Name:  "end-tipset",
+			Usage: "halt validation at the given tipset key; in format cid1,cid2,cid3...",
+		},
+		&cli.StringFlag{
+			Name:  "genesis-tipset",
+			Usage: "genesis tipset key; in format cid1,cid2,cid3...",
+		},
 		&cli.Int64Flag{
 			Name:  "start-height",
-			Usage: "start validation at given height",
+			Usage: "start validation at given height; beware that chain traversal by height is very slow",
 		},
 		&cli.Int64Flag{
 			Name:  "end-height",
-			Usage: "halt validation after given height",
+			Usage: "halt validation after given height; beware that chain traversal by height is very slow",
 		},
 		&cli.IntFlag{
 			Name:  "batch-seal-verify-threads",
@@ -233,14 +245,14 @@ var importBenchCmd = &cli.Command{
 		cs := store.NewChainStore(bs, metadataDs, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
 
-		start := time.Now()
+		startTime := time.Now()
 
 		// register a gauge that reports how long since the measurable
 		// operation began.
 		promauto.NewGaugeFunc(prometheus.GaugeOpts{
 			Name: "lotus_bench_time_taken_secs",
 		}, func() float64 {
-			return time.Since(start).Seconds()
+			return time.Since(startTime).Seconds()
 		})
 
 		defer func() {
@@ -260,7 +272,7 @@ var importBenchCmd = &cli.Command{
 			_ = metricsfi.Close()                //nolint:errcheck
 
 			writeProfile := func(name string) {
-				if file, err := os.Create(fmt.Sprintf("%s.%s.%s.pprof", name, start.Format(time.RFC3339), end)); err == nil {
+				if file, err := os.Create(fmt.Sprintf("%s.%s.%s.pprof", name, startTime.Format(time.RFC3339), end)); err == nil {
 					if err := pprof.Lookup(name).WriteTo(file, 0); err != nil {
 						log.Warnf("failed to write %s pprof: %s", name, err)
 					}
@@ -343,46 +355,75 @@ var importBenchCmd = &cli.Command{
 			return xerrors.Errorf("neither --car nor --head flags supplied")
 		}
 
-		log.Infof("validation head is tipset: %s", head.Key())
+		log.Infof("chain head is tipset: %s", head.Key())
 
-		gb, err := cs.GetTipsetByHeight(context.TODO(), 0, head, true)
+		var genesis *types.TipSet
+		log.Infof("getting genesis block")
+		if tsk := cctx.String("genesis-tipset"); tsk != "" {
+			cids, err := lcli.ParseTipSetString(tsk)
+			if err != nil {
+				return xerrors.Errorf("failed to parse genesis tipset key: %w", err)
+			}
+			genesis, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+		} else {
+			log.Warnf("getting genesis by height; this will be slow; pass in the genesis tipset through --genesis-tipset")
+			// fallback to the slow path of walking the chain.
+			genesis, err = cs.GetTipsetByHeight(context.TODO(), 0, head, true)
+		}
+
 		if err != nil {
 			return err
 		}
 
-		err = cs.SetGenesis(gb.Blocks()[0])
-		if err != nil {
+		if err = cs.SetGenesis(genesis.Blocks()[0]); err != nil {
 			return err
 		}
 
-		startEpoch := abi.ChainEpoch(1)
-		if cctx.IsSet("start-height") {
-			h := cctx.Int64("start-height")
-			startEpoch = abi.ChainEpoch(h)
+		var (
+			startEpoch = abi.ChainEpoch(1)
+			start      *types.TipSet
+		)
+
+		if tsk := cctx.String("start-tipset"); tsk != "" {
+			cids, err := lcli.ParseTipSetString(tsk)
+			if err != nil {
+				return xerrors.Errorf("failed to start genesis tipset key: %w", err)
+			}
+			start, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+		} else if h := cctx.Int64("start-height"); h != 0 {
 			log.Infof("getting start tipset at height %d...", h)
-			start, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(cctx.Int64("start-height")), head, true)
-			if err != nil {
-				return err
-			}
+			start, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
+		}
 
-			err = cs.SetHead(start)
-			if err != nil {
+		if err != nil {
+			return err
+		}
+
+		if start != nil {
+			startEpoch = start.Height()
+			if err := cs.SetHead(start); err != nil {
 				return err
 			}
 		}
 
-		if h := cctx.Int64("end-height"); h != 0 {
+		end := head
+		if tsk := cctx.String("end-tipset"); tsk != "" {
+			cids, err := lcli.ParseTipSetString(tsk)
+			if err != nil {
+				return xerrors.Errorf("failed to end genesis tipset key: %w", err)
+			}
+			end, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+		} else if h := cctx.Int64("end-height"); h != 0 {
 			log.Infof("getting end tipset at height %d...", h)
-			tsh, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
-			if err != nil {
-				return err
-			}
-			head = tsh
+			end, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
 		}
 
-		ts := head
-		tschain := []*types.TipSet{ts}
-		for ts.Height() > startEpoch {
+		if err != nil {
+			return err
+		}
+
+		inverseChain := append(make([]*types.TipSet, 0, end.Height()), end)
+		for ts := end; ts.Height() > startEpoch; {
 			if h := ts.Height(); h%100 == 0 {
 				log.Infof("walking back the chain; loaded tipset at height %d...", h)
 			}
@@ -391,7 +432,7 @@ var importBenchCmd = &cli.Command{
 				return err
 			}
 
-			tschain = append(tschain, next)
+			inverseChain = append(inverseChain, next)
 			ts = next
 		}
 
@@ -406,8 +447,8 @@ var importBenchCmd = &cli.Command{
 			enc = json.NewEncoder(ibj)
 		}
 
-		for i := len(tschain) - 1; i >= 1; i-- {
-			cur := tschain[i]
+		for i := len(inverseChain) - 1; i >= 1; i-- {
+			cur := inverseChain[i]
 			start := time.Now()
 			log.Infof("computing state (height: %d, ts=%s)", cur.Height(), cur.Cids())
 			st, trace, err := stm.ExecutionTrace(context.TODO(), cur)
@@ -426,7 +467,7 @@ var importBenchCmd = &cli.Command{
 					return xerrors.Errorf("failed to write out tipsetexec: %w", err)
 				}
 			}
-			if tschain[i-1].ParentState() != st {
+			if inverseChain[i-1].ParentState() != st {
 				stripCallers(tse.Trace)
 				lastTrace := tse.Trace
 				d, err := json.MarshalIndent(lastTrace, "", "  ")
