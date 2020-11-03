@@ -563,15 +563,16 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 		)
 	}
 
-	if syncer.store.GetHeaviestTipSet().ParentWeight().GreaterThan(maybeHead.ParentWeight()) {
+	hts := syncer.store.GetHeaviestTipSet()
+
+	if hts.ParentWeight().GreaterThan(maybeHead.ParentWeight()) {
+		return nil
+	}
+	if syncer.Genesis.Equals(maybeHead) || hts.Equals(maybeHead) {
 		return nil
 	}
 
-	if syncer.Genesis.Equals(maybeHead) || syncer.store.GetHeaviestTipSet().Equals(maybeHead) {
-		return nil
-	}
-
-	if err := syncer.collectChain(ctx, maybeHead); err != nil {
+	if err := syncer.collectChain(ctx, maybeHead, hts); err != nil {
 		span.AddAttributes(trace.StringAttribute("col_error", err.Error()))
 		span.SetStatus(trace.Status{
 			Code:    13,
@@ -1684,14 +1685,14 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 //
 //  3. StageMessages: having acquired the headers and found a common tipset,
 //     we then move forward, requesting the full blocks, including the messages.
-func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error {
+func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "collectChain")
 	defer span.End()
 	ss := extractSyncState(ctx)
 
-	ss.Init(syncer.store.GetHeaviestTipSet(), ts)
+	ss.Init(hts, ts)
 
-	headers, err := syncer.collectHeaders(ctx, ts, syncer.store.GetHeaviestTipSet())
+	headers, err := syncer.collectHeaders(ctx, ts, hts)
 	if err != nil {
 		ss.Error(err)
 		return err

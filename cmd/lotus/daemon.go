@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
@@ -261,8 +262,14 @@ var DaemonCmd = &cli.Command{
 			liteModeDeps = node.Override(new(api.GatewayAPI), gapi)
 		}
 
-		var api api.FullNode
+		// some libraries like ipfs/go-ds-measure and ipfs/go-ipfs-blockstore
+		// use ipfs/go-metrics-interface. This injects a Prometheus exporter
+		// for those. Metrics are exported to the default registry.
+		if err := metricsprom.Inject(); err != nil {
+			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
+		}
 
+		var api api.FullNode
 		stop, err := node.New(ctx,
 			node.FullAPI(&api, node.Lite(isLite)),
 

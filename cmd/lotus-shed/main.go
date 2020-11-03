@@ -47,6 +47,7 @@ func main() {
 		sectorsCmd,
 		msgCmd,
 		electionCmd,
+		rpcCmd,
 	}
 
 	app := &cli.App{
