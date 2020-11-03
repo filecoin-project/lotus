@@ -61,8 +61,8 @@ func (bo *BenchResults) SumSealingTime() error {
 	if len(bo.SealingResults) <= 0 {
 		return xerrors.Errorf("BenchResults SealingResults len <= 0")
 	}
-	if len(bo.SealingResults) != int(bo.SectorNumber) {
-		return xerrors.Errorf("BenchResults SealingResults len(%d) != bo.SectorNumber(%d)", len(bo.SealingResults), int(bo.SectorNumber))
+	if len(bo.SealingResults) != bo.SectorNumber {
+		return xerrors.Errorf("BenchResults SealingResults len(%d) != bo.SectorNumber(%d)", len(bo.SealingResults), bo.SectorNumber)
 	}
 
 	for _, sealing := range bo.SealingResults {
