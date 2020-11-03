@@ -49,7 +49,7 @@ func (s *server) HandleStream(stream inet.Stream) {
 		log.Warnf("failed to read block sync request: %s", err)
 		return
 	}
-	log.Infow("block sync request",
+	log.Debugw("block sync request",
 		"start", req.Head, "len", req.Length)
 
 	resp, err := s.processRequest(ctx, &req)
