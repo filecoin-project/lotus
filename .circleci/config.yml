@@ -276,7 +276,7 @@ jobs:
       - run: cd extern/filecoin-ffi && make
       - run:
           name: "replace lotus, filecoin-ffi, blst and fil-blst deps"
-          command: cd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi && go mod edit -replace github.com/supranational/blst=../../fil-blst/blst && go mod edit -replace github.com/filecoin-project/fil-blst=../../fil-blst
+          command: cd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi && go mod edit -replace github.com/supranational/blst=../../blst
       - run:
           name: "build lotus-soup testplan"
           command: pushd extern/oni/lotus-soup && go build -tags=testground .
