@@ -179,7 +179,7 @@ BINS+=lotus-bench
 
 lotus-stats:
 	rm -f lotus-stats
-	go build -o lotus-stats ./cmd/lotus-stats
+	go build $(GOFLAGS) -o lotus-stats ./cmd/lotus-stats
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-stats -i ./build
 .PHONY: lotus-stats
 BINS+=lotus-stats
