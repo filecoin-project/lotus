@@ -379,33 +379,7 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 
-		var (
-			startEpoch = abi.ChainEpoch(1)
-			start      *types.TipSet
-		)
-
-		if tsk := cctx.String("start-tipset"); tsk != "" {
-			cids, err := lcli.ParseTipSetString(tsk)
-			if err != nil {
-				return xerrors.Errorf("failed to start genesis tipset key: %w", err)
-			}
-			start, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
-		} else if h := cctx.Int64("start-height"); h != 0 {
-			log.Infof("getting start tipset at height %d...", h)
-			start, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
-		}
-
-		if err != nil {
-			return err
-		}
-
-		if start != nil {
-			startEpoch = start.Height()
-			if err := cs.SetHead(start); err != nil {
-				return err
-			}
-		}
-
+		// Resolve the end tipset, falling back to head if not provided.
 		end := head
 		if tsk := cctx.String("end-tipset"); tsk != "" {
 			cids, err := lcli.ParseTipSetString(tsk)
@@ -420,6 +394,36 @@ var importBenchCmd = &cli.Command{
 
 		if err != nil {
 			return err
+		}
+
+		// Resolve the start tipset, if provided; otherwise, fallback to
+		// height 1 for a start point.
+		var (
+			startEpoch = abi.ChainEpoch(1)
+			start      *types.TipSet
+		)
+
+		if tsk := cctx.String("start-tipset"); tsk != "" {
+			cids, err := lcli.ParseTipSetString(tsk)
+			if err != nil {
+				return xerrors.Errorf("failed to start genesis tipset key: %w", err)
+			}
+			start, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+		} else if h := cctx.Int64("start-height"); h != 0 {
+			log.Infof("getting start tipset at height %d...", h)
+			// lookback from the end tipset (which falls back to head if not supplied).
+			start, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), end, true)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if start != nil {
+			startEpoch = start.Height()
+			if err := cs.SetHead(start); err != nil {
+				return err
+			}
 		}
 
 		inverseChain := append(make([]*types.TipSet, 0, end.Height()), end)
