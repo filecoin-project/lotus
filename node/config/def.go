@@ -23,6 +23,7 @@ type FullNode struct {
 	Client  Client
 	Metrics Metrics
 	Wallet  Wallet
+	Fees    FeeConfig
 }
 
 // // Common
@@ -105,6 +106,7 @@ type Metrics struct {
 
 type Client struct {
 	UseIpfs             bool
+	IpfsOnlineMode      bool
 	IpfsMAddr           string
 	IpfsUseForRetrieval bool
 }
@@ -113,6 +115,10 @@ type Wallet struct {
 	RemoteBackend string
 	EnableLedger  bool
 	DisableLocal  bool
+}
+
+type FeeConfig struct {
+	DefaultMaxFee types.FIL
 }
 
 func defCommon() Common {
@@ -142,10 +148,15 @@ func defCommon() Common {
 
 }
 
+var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
+		Fees: FeeConfig{
+			DefaultMaxFee: DefaultDefaultMaxFee,
+		},
 	}
 }
 

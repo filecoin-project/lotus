@@ -1,6 +1,7 @@
 # Groups
 * [](#)
   * [Closing](#Closing)
+  * [Session](#Session)
   * [Shutdown](#Shutdown)
   * [Version](#Version)
 * [Auth](#Auth)
@@ -34,6 +35,7 @@
   * [ClientCalcCommP](#ClientCalcCommP)
   * [ClientCancelDataTransfer](#ClientCancelDataTransfer)
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
+  * [ClientDealPieceCID](#ClientDealPieceCID)
   * [ClientDealSize](#ClientDealSize)
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
@@ -138,6 +140,7 @@
   * [StateCirculatingSupply](#StateCirculatingSupply)
   * [StateCompute](#StateCompute)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
+  * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
   * [StateGetReceipt](#StateGetReceipt)
   * [StateListActors](#StateListActors)
@@ -159,6 +162,7 @@
   * [StateMinerPreCommitDepositForPower](#StateMinerPreCommitDepositForPower)
   * [StateMinerProvingDeadline](#StateMinerProvingDeadline)
   * [StateMinerRecoveries](#StateMinerRecoveries)
+  * [StateMinerSectorAllocated](#StateMinerSectorAllocated)
   * [StateMinerSectorCount](#StateMinerSectorCount)
   * [StateMinerSectors](#StateMinerSectors)
   * [StateNetworkName](#StateNetworkName)
@@ -211,6 +215,15 @@ Perms: read
 Inputs: `null`
 
 Response: `{}`
+
+### Session
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"07070707-0707-0707-0707-070707070707"`
 
 ### Shutdown
 
@@ -887,6 +900,32 @@ Response:
   "Message": "string value",
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Transferred": 42
+}
+```
+
+### ClientDealPieceCID
+ClientCalcCommP calculates the CommP and data size of the specified CID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "PayloadSize": 9,
+  "PieceSize": 1032,
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 
@@ -3349,6 +3388,31 @@ Response:
 }
 ```
 
+### StateDecodeParams
+StateDecodeParams attempts to decode the provided params, based on the recipient actor address and method number.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  1,
+  "Ynl0ZSBhcnJheQ==",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
 ### StateGetActor
 StateGetActor returns the indicated actor's nonce and balance.
 
@@ -4002,6 +4066,30 @@ Response:
   1
 ]
 ```
+
+### StateMinerSectorAllocated
+StateMinerSectorAllocated checks if a sector is allocated
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  9,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `true`
 
 ### StateMinerSectorCount
 StateMinerSectorCount returns the number of sectors in a miner's sector set and proving set

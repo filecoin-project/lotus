@@ -4,17 +4,26 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ipfs/go-datastore"
+	dgbadger "github.com/dgraph-io/badger/v2"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
 
-	dgbadger "github.com/dgraph-io/badger/v2"
+	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
-	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 type dsCtor func(path string, readonly bool) (datastore.Batching, error)
+
+func ChainBadgerOptions() badger.Options {
+	opts := badger.DefaultOptions
+	opts.GcInterval = 0 // disable GC for chain datastore
+
+	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
+		WithValueThreshold(128)
+	return opts
+}
 
 var fsDatastores = map[string]dsCtor{
 	"chain":    chainBadgerDs,
@@ -27,13 +36,8 @@ var fsDatastores = map[string]dsCtor{
 }
 
 func chainBadgerDs(path string, readonly bool) (datastore.Batching, error) {
-	opts := badger.DefaultOptions
-	opts.GcInterval = 0 // disable GC for chain datastore
+	opts := ChainBadgerOptions()
 	opts.ReadOnly = readonly
-
-	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
-		WithValueThreshold(1 << 10)
-
 	return badger.NewDatastore(path, &opts)
 }
 
@@ -43,7 +47,6 @@ func badgerDs(path string, readonly bool) (datastore.Batching, error) {
 
 	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
 		WithValueThreshold(1 << 10)
-
 	return badger.NewDatastore(path, &opts)
 }
 

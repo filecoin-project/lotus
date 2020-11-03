@@ -32,6 +32,7 @@ import (
 type mockStorageMinerAPI struct {
 	partitions     []api.Partition
 	pushedMessages chan *types.Message
+	storageMinerApi
 }
 
 func newMockStorageMinerAPI() *mockStorageMinerAPI {
@@ -45,10 +46,6 @@ func (m *mockStorageMinerAPI) StateMinerInfo(ctx context.Context, a address.Addr
 		Worker: tutils.NewIDAddr(nil, 101),
 		Owner:  tutils.NewIDAddr(nil, 101),
 	}, nil
-}
-
-func (m *mockStorageMinerAPI) StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error) {
-	return build.NewestNetworkVersion, nil
 }
 
 func (m *mockStorageMinerAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -96,6 +93,10 @@ func (m *mockStorageMinerAPI) StateWaitMsg(ctx context.Context, cid cid.Cid, con
 	}, nil
 }
 
+func (m *mockStorageMinerAPI) StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error) {
+	return build.NewestNetworkVersion, nil
+}
+
 type mockProver struct {
 }
 
@@ -128,7 +129,6 @@ func TestWDPostDoPost(t *testing.T) {
 
 	proofType := abi.RegisteredPoStProof_StackedDrgWindow2KiBV1
 	postAct := tutils.NewIDAddr(t, 100)
-	workerAct := tutils.NewIDAddr(t, 101)
 
 	mockStgMinerAPI := newMockStorageMinerAPI()
 
@@ -169,7 +169,6 @@ func TestWDPostDoPost(t *testing.T) {
 		faultTracker: &mockFaultTracker{},
 		proofType:    proofType,
 		actor:        postAct,
-		worker:       workerAct,
 		journal:      journal.NilJournal(),
 	}
 

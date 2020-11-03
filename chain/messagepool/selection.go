@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	tbig "github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -751,11 +752,10 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		balance = new(big.Int).Sub(balance, required)
 
 		value := m.Message.Value.Int
-		if balance.Cmp(value) >= 0 {
-			// Note: we only account for the value if the balance doesn't drop below 0
-			//       otherwise the message will fail and the miner can reap the gas rewards
-			balance = new(big.Int).Sub(balance, value)
+		if balance.Cmp(value) < 0 {
+			break
 		}
+		balance = new(big.Int).Sub(balance, value)
 
 		gasReward := mp.getGasReward(m, baseFee)
 		rewards = append(rewards, gasReward)

@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type GasModuleAPI interface {
@@ -34,9 +35,10 @@ type GasModuleAPI interface {
 // Injection (for example with a thin RPC client).
 type GasModule struct {
 	fx.In
-	Stmgr *stmgr.StateManager
-	Chain *store.ChainStore
-	Mpool *messagepool.MessagePool
+	Stmgr     *stmgr.StateManager
+	Chain     *store.ChainStore
+	Mpool     *messagepool.MessagePool
+	GetMaxFee dtypes.DefaultMaxFeeFunc
 }
 
 var _ GasModuleAPI = (*GasModule)(nil)
@@ -291,7 +293,7 @@ func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Messag
 		msg.GasFeeCap = feeCap
 	}
 
-	messagepool.CapGasFee(msg, spec.Get().MaxFee)
+	messagepool.CapGasFee(m.GetMaxFee, msg, spec.Get().MaxFee)
 
 	return msg, nil
 }

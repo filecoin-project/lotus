@@ -84,6 +84,7 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientImportCmd),
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
+		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("util", clientCommPCmd),
@@ -492,7 +493,7 @@ func interactiveDeal(cctx *cli.Context) error {
 	var dur time.Duration
 	var epochs abi.ChainEpoch
 	var verified bool
-	var ds lapi.DataSize
+	var ds lapi.DataCIDSize
 
 	// find
 	var candidateAsks []*storagemarket.StorageAsk
@@ -556,7 +557,7 @@ uiLoop:
 			}
 
 			color.Blue(".. calculating data size\n")
-			ds, err = api.ClientDealSize(ctx, data)
+			ds, err = api.ClientDealPieceCID(ctx, data)
 			if err != nil {
 				return err
 			}
@@ -846,6 +847,9 @@ uiLoop:
 					Data: &storagemarket.DataRef{
 						TransferType: storagemarket.TTGraphsync,
 						Root:         data,
+
+						PieceCid:  &ds.PieceCID,
+						PieceSize: ds.PieceSize.Unpadded(),
 					},
 					Wallet:            a,
 					Miner:             maddr,
@@ -1634,6 +1638,39 @@ var clientInfoCmd = &cli.Command{
 
 		fmt.Printf("Locked Funds:\t%s\n", types.FIL(balance.Locked))
 		fmt.Printf("Escrowed Funds:\t%s\n", types.FIL(balance.Escrow))
+
+		return nil
+	},
+}
+
+var clientStat = &cli.Command{
+	Name:      "stat",
+	Usage:     "Print information about a locally stored file (piece size, etc)",
+	ArgsUsage: "<cid>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() || cctx.NArg() != 1 {
+			return fmt.Errorf("must specify cid of data")
+		}
+
+		dataCid, err := cid.Parse(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("parsing data cid: %w", err)
+		}
+
+		ds, err := api.ClientDealSize(ctx, dataCid)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Piece Size  : %v\n", ds.PieceSize)
+		fmt.Printf("Payload Size: %v\n", ds.PayloadSize)
 
 		return nil
 	},

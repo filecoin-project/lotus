@@ -491,6 +491,24 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 	}, nil
 }
 
+func (a *StateAPI) StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) {
+	act, err := a.StateGetActor(ctx, toAddr, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("getting actor: %w", err)
+	}
+
+	paramType, err := stmgr.GetParamType(act.Code, method)
+	if err != nil {
+		return nil, xerrors.Errorf("getting params type: %w", err)
+	}
+
+	if err = paramType.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
+		return nil, err
+	}
+
+	return paramType, nil
+}
+
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
 func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
 	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, a.Beacon, tsk, epoch, maddr, a.ProofVerifier)
@@ -1132,6 +1150,25 @@ func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address
 	}
 
 	return types.BigAdd(abal, vested), nil
+}
+
+func (a *StateAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return false, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := a.StateManager.LoadActor(ctx, maddr, ts)
+	if err != nil {
+		return false, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return false, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return mas.IsAllocated(s)
 }
 
 // StateVerifiedClientStatus returns the data cap for the given address.
