@@ -587,7 +587,7 @@ func (t *SendReturn) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Return (runtime.CBORBytes) (slice)
+	// t.Return (builtin.CBORBytes) (slice)
 	if len(t.Return) > cbg.ByteArrayMaxLen {
 		return xerrors.Errorf("Byte array in field t.Return was too long")
 	}
@@ -631,7 +631,7 @@ func (t *SendReturn) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Return (runtime.CBORBytes) (slice)
+	// t.Return (builtin.CBORBytes) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {

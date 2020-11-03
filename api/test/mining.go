@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -59,14 +58,11 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 
 	newHeads, err := api.ChainNotify(ctx)
 	require.NoError(t, err)
-	initHead := (<-newHeads)[0]
-	if initHead.Val.Height() != 2 {
-		<-newHeads
-	}
+	at := (<-newHeads)[0].Val.Height()
 
 	h1, err := api.ChainHead(ctx)
 	require.NoError(t, err)
-	require.Equal(t, abi.ChainEpoch(2), h1.Height())
+	require.Equal(t, int64(at), int64(h1.Height()))
 
 	MineUntilBlock(ctx, t, apis[0], sn[0], nil)
 	require.NoError(t, err)
@@ -75,21 +71,19 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 
 	h2, err := api.ChainHead(ctx)
 	require.NoError(t, err)
-	require.Equal(t, abi.ChainEpoch(3), h2.Height())
+	require.Greater(t, int64(h2.Height()), int64(h1.Height()))
 
 	MineUntilBlock(ctx, t, apis[0], sn[0], nil)
 	require.NoError(t, err)
 
 	<-newHeads
 
-	h2, err = api.ChainHead(ctx)
+	h3, err := api.ChainHead(ctx)
 	require.NoError(t, err)
-	require.Equal(t, abi.ChainEpoch(4), h2.Height())
+	require.Greater(t, int64(h3.Height()), int64(h2.Height()))
 }
 
 func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExport bool) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-
 	// test making a deal with a fresh miner, and see if it starts to mine
 
 	ctx := context.Background()

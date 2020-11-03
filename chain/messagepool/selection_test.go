@@ -13,18 +13,18 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/crypto"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -77,7 +77,7 @@ func TestMessageChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestMessageChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestMessageChains(t *testing.T) {
 	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 
@@ -315,7 +315,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,7 +325,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestMessageChainSkipping(t *testing.T) {
 	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 	baseFee := types.NewInt(0)
 
 	tma.setBalance(a1, 1) // in FIL
@@ -391,7 +391,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +401,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +410,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -535,7 +535,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,7 +545,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -554,7 +554,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -598,7 +598,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -608,7 +608,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -617,7 +617,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -677,7 +677,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -687,7 +687,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -696,7 +696,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -746,7 +746,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -756,7 +756,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -765,7 +765,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -843,7 +843,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -853,7 +853,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -862,7 +862,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -910,7 +910,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a1, err := w1.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a1, err := w1.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -920,7 +920,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a2, err := w2.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+	a2, err := w2.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -929,7 +929,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -994,7 +994,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+		a, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1007,7 +1007,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 
 	for _, a := range actors {
 		tma.setBalance(a, 1) // in FIL
@@ -1074,7 +1074,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 			t.Fatal(err)
 		}
 
-		a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+		a, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1087,7 +1087,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 	baseFee := types.NewInt(0)
 
 	for _, a := range actors {
@@ -1344,7 +1344,7 @@ readLoop:
 				t.Fatal(err)
 			}
 
-			a, err := w.WalletNew(context.Background(), crypto.SigTypeSecp256k1)
+			a, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 			if err != nil {
 				t.Fatal(err)
 			}

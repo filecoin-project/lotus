@@ -23,6 +23,7 @@ type FullNode struct {
 	Client  Client
 	Metrics Metrics
 	Wallet  Wallet
+	Fees    FeeConfig
 }
 
 // // Common
@@ -45,7 +46,8 @@ type DealmakingConfig struct {
 	PieceCidBlocklist             []cid.Cid
 	ExpectedSealDuration          Duration
 
-	Filter string
+	Filter          string
+	RetrievalFilter string
 }
 
 type SealingConfig struct {
@@ -104,12 +106,19 @@ type Metrics struct {
 
 type Client struct {
 	UseIpfs             bool
+	IpfsOnlineMode      bool
 	IpfsMAddr           string
 	IpfsUseForRetrieval bool
 }
 
 type Wallet struct {
 	RemoteBackend string
+	EnableLedger  bool
+	DisableLocal  bool
+}
+
+type FeeConfig struct {
+	DefaultMaxFee types.FIL
 }
 
 func defCommon() Common {
@@ -139,10 +148,15 @@ func defCommon() Common {
 
 }
 
+var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
+		Fees: FeeConfig{
+			DefaultMaxFee: DefaultDefaultMaxFee,
+		},
 	}
 }
 
@@ -180,11 +194,11 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Fees: MinerFeeConfig{
-			MaxPreCommitGasFee:     types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))), // 0.05
-			MaxCommitGasFee:        types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(20))),
-			MaxWindowPoStGasFee:    types.FIL(types.FromFil(50)),
-			MaxPublishDealsFee:     types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(33))),  // 0.03ish
-			MaxMarketBalanceAddFee: types.FIL(types.BigDiv(types.FromFil(1), types.NewInt(100))), // 0.01
+			MaxPreCommitGasFee:     types.MustParseFIL("0.025"),
+			MaxCommitGasFee:        types.MustParseFIL("0.05"),
+			MaxWindowPoStGasFee:    types.MustParseFIL("5"),
+			MaxPublishDealsFee:     types.MustParseFIL("0.05"),
+			MaxMarketBalanceAddFee: types.MustParseFIL("0.007"),
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

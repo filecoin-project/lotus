@@ -4,15 +4,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"go.uber.org/fx"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	"go.uber.org/fx"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -156,7 +154,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		To:     market.Address,
 		From:   wallet,
 		Value:  toAdd,
-		Method: builtin.MethodsMarket.AddBalance,
+		Method: market.Methods.AddBalance,
 		Params: params,
 	}, nil)
 	if err != nil {

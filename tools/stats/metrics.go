@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -269,25 +270,27 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	p = NewPoint("chain.power", totalPower.TotalPower.QualityAdjPower.Int64())
 	pl.AddPoint(p)
 
-	miners, err := api.StateListMiners(ctx, tipset.Key())
+	powerActor, err := api.StateGetActor(ctx, power.Address, tipset.Key())
 	if err != nil {
 		return err
 	}
 
-	for _, addr := range miners {
-		mp, err := api.StateMinerPower(ctx, addr, tipset.Key())
-		if err != nil {
-			return err
-		}
-
-		if !mp.MinerPower.QualityAdjPower.IsZero() {
-			p = NewPoint("chain.miner_power", mp.MinerPower.QualityAdjPower.Int64())
-			p.AddTag("miner", addr.String())
-			pl.AddPoint(p)
-		}
+	powerActorState, err := power.Load(&ApiIpldStore{ctx, api}, powerActor)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	return powerActorState.ForEachClaim(func(addr address.Address, claim power.Claim) error {
+		if claim.QualityAdjPower.Int64() == 0 {
+			return nil
+		}
+
+		p = NewPoint("chain.miner_power", claim.QualityAdjPower.Int64())
+		p.AddTag("miner", addr.String())
+		pl.AddPoint(p)
+
+		return nil
+	})
 }
 
 type msgTag struct {

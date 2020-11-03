@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -23,13 +22,6 @@ import (
 	bminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl"
 )
-
-func init() {
-	err := os.Setenv("BELLMAN_NO_GPU", "1")
-	if err != nil {
-		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
-	}
-}
 
 func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	ctx, cancel := context.WithCancel(context.Background())

@@ -12,8 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/types"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -85,7 +84,7 @@ func (a *MsigAPI) MsigAddPropose(ctx context.Context, msig address.Address, src 
 		return cid.Undef, actErr
 	}
 
-	return a.MsigPropose(ctx, msig, msig, big.Zero(), src, uint64(builtin0.MethodsMultisig.AddSigner), enc)
+	return a.MsigPropose(ctx, msig, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
 }
 
 func (a *MsigAPI) MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (cid.Cid, error) {
@@ -94,7 +93,7 @@ func (a *MsigAPI) MsigAddApprove(ctx context.Context, msig address.Address, src 
 		return cid.Undef, actErr
 	}
 
-	return a.MsigApproveTxnHash(ctx, msig, txID, proposer, msig, big.Zero(), src, uint64(builtin0.MethodsMultisig.AddSigner), enc)
+	return a.MsigApproveTxnHash(ctx, msig, txID, proposer, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
 }
 
 func (a *MsigAPI) MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (cid.Cid, error) {
@@ -103,7 +102,7 @@ func (a *MsigAPI) MsigAddCancel(ctx context.Context, msig address.Address, src a
 		return cid.Undef, actErr
 	}
 
-	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(builtin0.MethodsMultisig.AddSigner), enc)
+	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
 }
 
 func (a *MsigAPI) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
@@ -112,7 +111,7 @@ func (a *MsigAPI) MsigSwapPropose(ctx context.Context, msig address.Address, src
 		return cid.Undef, actErr
 	}
 
-	return a.MsigPropose(ctx, msig, msig, big.Zero(), src, uint64(builtin0.MethodsMultisig.SwapSigner), enc)
+	return a.MsigPropose(ctx, msig, msig, big.Zero(), src, uint64(multisig.Methods.SwapSigner), enc)
 }
 
 func (a *MsigAPI) MsigSwapApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
@@ -121,7 +120,7 @@ func (a *MsigAPI) MsigSwapApprove(ctx context.Context, msig address.Address, src
 		return cid.Undef, actErr
 	}
 
-	return a.MsigApproveTxnHash(ctx, msig, txID, proposer, msig, big.Zero(), src, uint64(builtin0.MethodsMultisig.SwapSigner), enc)
+	return a.MsigApproveTxnHash(ctx, msig, txID, proposer, msig, big.Zero(), src, uint64(multisig.Methods.SwapSigner), enc)
 }
 
 func (a *MsigAPI) MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (cid.Cid, error) {
@@ -130,7 +129,7 @@ func (a *MsigAPI) MsigSwapCancel(ctx context.Context, msig address.Address, src 
 		return cid.Undef, actErr
 	}
 
-	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(builtin0.MethodsMultisig.SwapSigner), enc)
+	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.SwapSigner), enc)
 }
 
 func (a *MsigAPI) MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error) {
@@ -151,7 +150,7 @@ func (a *MsigAPI) MsigRemoveSigner(ctx context.Context, msig address.Address, pr
 		return cid.Undef, actErr
 	}
 
-	return a.MsigPropose(ctx, msig, msig, types.NewInt(0), proposer, uint64(builtin0.MethodsMultisig.RemoveSigner), enc)
+	return a.MsigPropose(ctx, msig, msig, types.NewInt(0), proposer, uint64(multisig.Methods.RemoveSigner), enc)
 }
 
 func (a *MsigAPI) msigApproveOrCancelSimple(ctx context.Context, operation api.MsigProposeResponse, msig address.Address, txID uint64, src address.Address) (cid.Cid, error) {
@@ -242,7 +241,7 @@ func (a *MsigAPI) msigApproveOrCancelTxnHash(ctx context.Context, operation api.
 }
 
 func serializeAddParams(new address.Address, inc bool) ([]byte, error) {
-	enc, actErr := actors.SerializeParams(&multisig0.AddSignerParams{
+	enc, actErr := actors.SerializeParams(&multisig2.AddSignerParams{
 		Signer:   new,
 		Increase: inc,
 	})
@@ -254,7 +253,7 @@ func serializeAddParams(new address.Address, inc bool) ([]byte, error) {
 }
 
 func serializeSwapParams(old address.Address, new address.Address) ([]byte, error) {
-	enc, actErr := actors.SerializeParams(&multisig0.SwapSignerParams{
+	enc, actErr := actors.SerializeParams(&multisig2.SwapSignerParams{
 		From: old,
 		To:   new,
 	})
@@ -266,7 +265,7 @@ func serializeSwapParams(old address.Address, new address.Address) ([]byte, erro
 }
 
 func serializeRemoveParams(rem address.Address, dec bool) ([]byte, error) {
-	enc, actErr := actors.SerializeParams(&multisig0.RemoveSignerParams{
+	enc, actErr := actors.SerializeParams(&multisig2.RemoveSignerParams{
 		Signer:   rem,
 		Decrease: dec,
 	})

@@ -13,16 +13,11 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
-	full "github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 type PaychAPI struct {
 	fx.In
-
-	full.MpoolAPI
-	full.WalletAPI
-	full.ChainAPI
 
 	PaychMgr *paychmgr.Manager
 }

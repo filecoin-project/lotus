@@ -16,14 +16,15 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
@@ -45,7 +46,7 @@ type testActor struct {
 }
 
 // must use existing actor that an account is allowed to exec.
-func (testActor) Code() cid.Cid  { return builtin.PaymentChannelActorCodeID }
+func (testActor) Code() cid.Cid  { return builtin0.PaymentChannelActorCodeID }
 func (testActor) State() cbor.Er { return new(testActorState) }
 
 type testActorState struct {
@@ -75,7 +76,7 @@ func (ta testActor) Exports() []interface{} {
 	}
 }
 
-func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
+func (ta *testActor) Constructor(rt rt2.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	rt.StateCreate(&testActorState{11})
 	//fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Receiver())
@@ -83,7 +84,7 @@ func (ta *testActor) Constructor(rt runtime.Runtime, params *abi.EmptyValue) *ab
 	return abi.Empty
 }
 
-func (ta *testActor) TestMethod(rt runtime.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
+func (ta *testActor) TestMethod(rt rt2.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	var st testActorState
 	rt.StateReadonly(&st)
@@ -175,15 +176,15 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	var msgs []*types.SignedMessage
 
-	enc, err := actors.SerializeParams(&init0.ExecParams{CodeCID: (testActor{}).Code()})
+	enc, err := actors.SerializeParams(&init2.ExecParams{CodeCID: (testActor{}).Code()})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	m := &types.Message{
 		From:     cg.Banker(),
-		To:       lotusinit.Address,
-		Method:   builtin.MethodsInit.Exec,
+		To:       _init.Address,
+		Method:   _init.Methods.Exec,
 		Params:   enc,
 		GasLimit: types.TestGasLimit,
 	}
@@ -273,15 +274,15 @@ func TestForkRefuseCall(t *testing.T) {
 
 	cg.SetStateManager(sm)
 
-	enc, err := actors.SerializeParams(&init0.ExecParams{CodeCID: (testActor{}).Code()})
+	enc, err := actors.SerializeParams(&init2.ExecParams{CodeCID: (testActor{}).Code()})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	m := &types.Message{
 		From:       cg.Banker(),
-		To:         lotusinit.Address,
-		Method:     builtin.MethodsInit.Exec,
+		To:         _init.Address,
+		Method:     _init.Methods.Exec,
 		Params:     enc,
 		GasLimit:   types.TestGasLimit,
 		Value:      types.NewInt(0),

@@ -9,12 +9,18 @@ import (
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-jsonrpc"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -60,6 +66,10 @@ var runCmd = &cli.Command{
 			Usage: "host address and port the wallet api will listen on",
 			Value: "0.0.0.0:1777",
 		},
+		&cli.BoolFlag{
+			Name:  "ledger",
+			Usage: "use a ledger device instead of an on-disk wallet",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus wallet")
@@ -67,6 +77,13 @@ var runCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
+
+		// Register all metric views
+		if err := view.Register(
+			metrics.DefaultViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
 
 		repoPath := cctx.String(FlagWalletRepo)
 		r, err := repo.NewFS(repoPath)
@@ -94,9 +111,22 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		w, err := wallet.NewWallet(ks)
+		lw, err := wallet.NewWallet(ks)
 		if err != nil {
 			return err
+		}
+
+		var w api.WalletAPI = lw
+		if cctx.Bool("ledger") {
+			ds, err := lr.Datastore("/metadata")
+			if err != nil {
+				return err
+			}
+
+			w = wallet.MultiWallet{
+				Local:  lw,
+				Ledger: ledgerwallet.NewWallet(ds),
+			}
 		}
 
 		address := cctx.String("listen")
@@ -105,7 +135,7 @@ var runCmd = &cli.Command{
 		log.Info("Setting up API endpoint at " + address)
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", &LoggedWallet{under: w})
+		rpcServer.Register("Filecoin", &LoggedWallet{under: metrics.MetricedWalletAPI(w)})
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
@@ -118,6 +148,7 @@ var runCmd = &cli.Command{
 		srv := &http.Server{
 			Handler: mux,
 			BaseContext: func(listener net.Listener) context.Context {
+				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-wallet"))
 				return ctx
 			},
 		}

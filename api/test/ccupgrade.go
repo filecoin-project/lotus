@@ -3,7 +3,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -17,8 +16,6 @@ import (
 )
 
 func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-
 	for _, height := range []abi.ChainEpoch{
 		1,    // before
 		162,  // while sealing
@@ -92,7 +89,7 @@ func testCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeH
 		t.Fatal(err)
 	}
 
-	makeDeal(t, ctx, 6, client, miner, false, false)
+	MakeDeal(t, ctx, 6, client, miner, false, false)
 
 	// Validate upgrade
 

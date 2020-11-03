@@ -1,6 +1,7 @@
 # Groups
 * [](#)
   * [Closing](#Closing)
+  * [Session](#Session)
   * [Shutdown](#Shutdown)
   * [Version](#Version)
 * [Auth](#Auth)
@@ -32,11 +33,14 @@
   * [ChainTipSetWeight](#ChainTipSetWeight)
 * [Client](#Client)
   * [ClientCalcCommP](#ClientCalcCommP)
+  * [ClientCancelDataTransfer](#ClientCancelDataTransfer)
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
+  * [ClientDealPieceCID](#ClientDealPieceCID)
   * [ClientDealSize](#ClientDealSize)
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
   * [ClientGetDealInfo](#ClientGetDealInfo)
+  * [ClientGetDealStatus](#ClientGetDealStatus)
   * [ClientGetDealUpdates](#ClientGetDealUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
@@ -46,6 +50,7 @@
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
+  * [ClientRestartDataTransfer](#ClientRestartDataTransfer)
   * [ClientRetrieve](#ClientRetrieve)
   * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
   * [ClientRetrieveWithEvents](#ClientRetrieveWithEvents)
@@ -68,6 +73,9 @@
   * [MinerCreateBlock](#MinerCreateBlock)
   * [MinerGetBaseInfo](#MinerGetBaseInfo)
 * [Mpool](#Mpool)
+  * [MpoolBatchPush](#MpoolBatchPush)
+  * [MpoolBatchPushMessage](#MpoolBatchPushMessage)
+  * [MpoolBatchPushUntrusted](#MpoolBatchPushUntrusted)
   * [MpoolClear](#MpoolClear)
   * [MpoolGetConfig](#MpoolGetConfig)
   * [MpoolGetNonce](#MpoolGetNonce)
@@ -132,6 +140,7 @@
   * [StateCirculatingSupply](#StateCirculatingSupply)
   * [StateCompute](#StateCompute)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
+  * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
   * [StateGetReceipt](#StateGetReceipt)
   * [StateListActors](#StateListActors)
@@ -153,9 +162,9 @@
   * [StateMinerPreCommitDepositForPower](#StateMinerPreCommitDepositForPower)
   * [StateMinerProvingDeadline](#StateMinerProvingDeadline)
   * [StateMinerRecoveries](#StateMinerRecoveries)
+  * [StateMinerSectorAllocated](#StateMinerSectorAllocated)
   * [StateMinerSectorCount](#StateMinerSectorCount)
   * [StateMinerSectors](#StateMinerSectors)
-  * [StateMsgGasCost](#StateMsgGasCost)
   * [StateNetworkName](#StateNetworkName)
   * [StateNetworkVersion](#StateNetworkVersion)
   * [StateReadState](#StateReadState)
@@ -165,6 +174,7 @@
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
   * [StateSectorPreCommitInfo](#StateSectorPreCommitInfo)
+  * [StateVMCirculatingSupplyInternal](#StateVMCirculatingSupplyInternal)
   * [StateVerifiedClientStatus](#StateVerifiedClientStatus)
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
@@ -206,6 +216,15 @@ Inputs: `null`
 
 Response: `{}`
 
+### Session
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"07070707-0707-0707-0707-070707070707"`
+
 ### Shutdown
 
 
@@ -226,7 +245,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 4096,
+  "APIVersion": 4352,
   "BlockDelay": 42
 }
 ```
@@ -462,7 +481,10 @@ Response:
   "GasFeeCap": "0",
   "GasPremium": "0",
   "Method": 1,
-  "Params": "Ynl0ZSBhcnJheQ=="
+  "Params": "Ynl0ZSBhcnJheQ==",
+  "CID": {
+    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+  }
 }
 ```
 
@@ -840,6 +862,23 @@ Response:
 }
 ```
 
+### ClientCancelDataTransfer
+ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  3,
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  true
+]
+```
+
+Response: `{}`
+
 ### ClientDataTransferUpdates
 There are not yet any comments for this method.
 
@@ -861,6 +900,32 @@ Response:
   "Message": "string value",
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Transferred": 42
+}
+```
+
+### ClientDealPieceCID
+ClientCalcCommP calculates the CommP and data size of the specified CID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "PayloadSize": 9,
+  "PieceSize": 1032,
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 
@@ -967,6 +1032,21 @@ Response:
   "Verified": true
 }
 ```
+
+### ClientGetDealStatus
+ClientGetDealStatus returns status given a code
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response: `"string value"`
 
 ### ClientGetDealUpdates
 ClientGetDealUpdates returns the status of updated deals
@@ -1160,6 +1240,23 @@ Inputs:
 
 Response: `{}`
 
+### ClientRestartDataTransfer
+ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  3,
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  true
+]
+```
+
+Response: `{}`
+
 ### ClientRetrieve
 ClientRetrieve initiates the retrieval of a file, as specified in the order.
 
@@ -1333,7 +1430,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   9,
   [
@@ -1369,7 +1469,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   [
     {
@@ -1429,7 +1532,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   {
     "MaxFee": "0"
@@ -1457,7 +1563,10 @@ Response:
   "GasFeeCap": "0",
   "GasPremium": "0",
   "Method": 1,
-  "Params": "Ynl0ZSBhcnJheQ=="
+  "Params": "Ynl0ZSBhcnJheQ==",
+  "CID": {
+    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+  }
 }
 ```
 
@@ -1648,6 +1757,54 @@ The Mpool methods are for interacting with the message pool. The message pool
 manages all incoming and outgoing 'messages' going over the network.
 
 
+### MpoolBatchPush
+MpoolBatchPush batch pushes a signed message to mempool.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response: `null`
+
+### MpoolBatchPushMessage
+MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  null,
+  {
+    "MaxFee": "0"
+  }
+]
+```
+
+Response: `null`
+
+### MpoolBatchPushUntrusted
+MpoolBatchPushUntrusted batch pushes a signed message to mempool from untrusted sources.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response: `null`
+
 ### MpoolClear
 MpoolClear clears pending messages from the mpool
 
@@ -1741,11 +1898,17 @@ Inputs:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     }
   }
 ]
@@ -1782,7 +1945,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   {
     "MaxFee": "0"
@@ -1803,11 +1969,17 @@ Response:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   "Signature": {
     "Type": 2,
     "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "CID": {
+    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   }
 }
 ```
@@ -1832,11 +2004,17 @@ Inputs:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     }
   }
 ]
@@ -1916,11 +2094,17 @@ Response:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     }
   }
 }
@@ -2928,7 +3112,7 @@ Response:
 
 ## State
 The State methods are used to query, inspect, and interact with chain state.
-All methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
 A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 
@@ -2997,7 +3181,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   [
     {
@@ -3013,6 +3200,9 @@ Inputs:
 Response:
 ```json
 {
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Msg": {
     "Version": 42,
     "To": "f01234",
@@ -3023,12 +3213,27 @@ Response:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9
+  },
+  "GasCost": {
+    "Message": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "GasUsed": "0",
+    "BaseFeeBurn": "0",
+    "OverEstimationBurn": "0",
+    "MinerPenalty": "0",
+    "MinerTip": "0",
+    "Refund": "0",
+    "TotalCost": "0"
   },
   "ExecutionTrace": {
     "Msg": {
@@ -3041,7 +3246,10 @@ Response:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
@@ -3094,7 +3302,8 @@ Response:
 ```
 
 ### StateCirculatingSupply
-StateCirculatingSupply returns the circulating supply of Filecoin at the given tipset
+StateCirculatingSupply returns the exact circulating supply of Filecoin at the given tipset.
+This is not used anywhere in the protocol itself, and is only for external consumption.
 
 
 Perms: read
@@ -3113,16 +3322,7 @@ Inputs:
 ]
 ```
 
-Response:
-```json
-{
-  "FilVested": "0",
-  "FilMined": "0",
-  "FilBurnt": "0",
-  "FilLocked": "0",
-  "FilCirculating": "0"
-}
-```
+Response: `"0"`
 
 ### StateCompute
 StateCompute is a flexible command that applies the given messages on the given tipset.
@@ -3187,6 +3387,31 @@ Response:
   "Max": "0"
 }
 ```
+
+### StateDecodeParams
+StateDecodeParams attempts to decode the provided params, based on the recipient actor address and method number.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  1,
+  "Ynl0ZSBhcnJheQ==",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
 
 ### StateGetActor
 StateGetActor returns the indicated actor's nonce and balance.
@@ -3287,16 +3512,8 @@ Inputs:
 ```json
 [
   {
-    "Version": 42,
     "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "From": "f01234"
   },
   [
     {
@@ -3850,6 +4067,30 @@ Response:
 ]
 ```
 
+### StateMinerSectorAllocated
+StateMinerSectorAllocated checks if a sector is allocated
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  9,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `true`
+
 ### StateMinerSectorCount
 StateMinerSectorCount returns the number of sectors in a miner's sector set and proving set
 
@@ -3906,45 +4147,6 @@ Inputs:
 
 Response: `null`
 
-### StateMsgGasCost
-StateMsgGasCost searches for a message in the chain, and returns details of the messages gas costs, including the penalty and miner tip
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "GasUsed": "0",
-  "BaseFeeBurn": "0",
-  "OverEstimationBurn": "0",
-  "MinerPenalty": "0",
-  "MinerTip": "0",
-  "Refund": "0",
-  "TotalCost": "0"
-}
-```
-
 ### StateNetworkName
 StateNetworkName returns the name of the network the node is synced to
 
@@ -3975,7 +4177,7 @@ Inputs:
 ]
 ```
 
-Response: `4`
+Response: `6`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4007,7 +4209,8 @@ Response:
 ```
 
 ### StateReplay
-StateReplay returns the result of executing the indicated message, assuming it was executed in the indicated tipset.
+StateReplay replays a given message, assuming it was included in a block in the specified tipset.
+If no tipset key is provided, the appropriate tipset is looked up.
 
 
 Perms: read
@@ -4032,6 +4235,9 @@ Inputs:
 Response:
 ```json
 {
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Msg": {
     "Version": 42,
     "To": "f01234",
@@ -4042,12 +4248,27 @@ Response:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9
+  },
+  "GasCost": {
+    "Message": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "GasUsed": "0",
+    "BaseFeeBurn": "0",
+    "OverEstimationBurn": "0",
+    "MinerPenalty": "0",
+    "MinerTip": "0",
+    "Refund": "0",
+    "TotalCost": "0"
   },
   "ExecutionTrace": {
     "Msg": {
@@ -4060,7 +4281,10 @@ Response:
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
@@ -4262,6 +4486,38 @@ Response:
   "PreCommitEpoch": 10101,
   "DealWeight": "0",
   "VerifiedDealWeight": "0"
+}
+```
+
+### StateVMCirculatingSupplyInternal
+StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
+This is the value reported by the runtime interface to actors code.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "FilVested": "0",
+  "FilMined": "0",
+  "FilBurnt": "0",
+  "FilLocked": "0",
+  "FilCirculating": "0"
 }
 ```
 
@@ -4710,7 +4966,7 @@ Inputs:
 Response:
 ```json
 {
-  "Type": "string value",
+  "Type": "bls",
   "PrivateKey": "Ynl0ZSBhcnJheQ=="
 }
 ```
@@ -4740,7 +4996,7 @@ Inputs:
 ```json
 [
   {
-    "Type": "string value",
+    "Type": "bls",
     "PrivateKey": "Ynl0ZSBhcnJheQ=="
   }
 ]
@@ -4760,6 +5016,8 @@ Response: `null`
 
 ### WalletNew
 WalletNew creates a new address in the wallet with the given sigType.
+Available key types: bls, secp256k1, secp256k1-ledger
+Support for numerical types: 1 - secp256k1, 2 - BLS is deprecated
 
 
 Perms: write
@@ -4767,7 +5025,7 @@ Perms: write
 Inputs:
 ```json
 [
-  2
+  "bls"
 ]
 ```
 
@@ -4830,7 +5088,10 @@ Inputs:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   }
 ]
 ```
@@ -4848,11 +5109,17 @@ Response:
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
   },
   "Signature": {
     "Type": 2,
     "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "CID": {
+    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   }
 }
 ```

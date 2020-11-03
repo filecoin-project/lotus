@@ -12,8 +12,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -52,6 +51,7 @@ type ProviderNodeAdapter struct {
 	ev   *events.Events
 
 	publishSpec, addBalanceSpec *api.MessageSendSpec
+	dsMatcher                   *dealStateMatcher
 }
 
 func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
@@ -59,9 +59,10 @@ func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDA
 		na := &ProviderNodeAdapter{
 			FullNode: full,
 
-			dag:  dag,
-			secb: secb,
-			ev:   events.NewEvents(context.TODO(), full),
+			dag:       dag,
+			secb:      secb,
+			ev:        events.NewEvents(context.TODO(), full),
+			dsMatcher: newDealStateMatcher(state.NewStatePredicates(full)),
 		}
 		if fc != nil {
 			na.publishSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxPublishDealsFee)}
@@ -79,8 +80,8 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		return cid.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&market0.PublishStorageDealsParams{
-		Deals: []market0.ClientDealProposal{deal.ClientDealProposal},
+	params, err := actors.SerializeParams(&market2.PublishStorageDealsParams{
+		Deals: []market2.ClientDealProposal{deal.ClientDealProposal},
 	})
 
 	if err != nil {
@@ -92,7 +93,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		To:     market.Address,
 		From:   mi.Worker,
 		Value:  types.NewInt(0),
-		Method: builtin0.MethodsMarket.PublishStorageDeals,
+		Method: market.Methods.PublishStorageDeals,
 		Params: params,
 	}, n.publishSpec)
 	if err != nil {
@@ -192,7 +193,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		To:     market.Address,
 		From:   addr,
 		Value:  amount,
-		Method: builtin0.MethodsMarket.AddBalance,
+		Method: market.Methods.AddBalance,
 	}, n.addBalanceSpec)
 	if err != nil {
 		return cid.Undef, err
@@ -308,44 +309,44 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 	var sectorNumber abi.SectorNumber
 	var sectorFound bool
 
-	matchEvent := func(msg *types.Message) (matchOnce bool, matched bool, err error) {
+	matchEvent := func(msg *types.Message) (matched bool, err error) {
 		if msg.To != provider {
-			return true, false, nil
+			return false, nil
 		}
 
 		switch msg.Method {
-		case builtin0.MethodsMiner.PreCommitSector:
+		case miner.Methods.PreCommitSector:
 			var params miner.SectorPreCommitInfo
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return true, false, xerrors.Errorf("unmarshal pre commit: %w", err)
+				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
 			}
 
 			for _, did := range params.DealIDs {
 				if did == dealID {
 					sectorNumber = params.SectorNumber
 					sectorFound = true
-					return true, false, nil
+					return false, nil
 				}
 			}
 
-			return true, false, nil
-		case builtin0.MethodsMiner.ProveCommitSector:
+			return false, nil
+		case miner.Methods.ProveCommitSector:
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return true, false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
 			}
 
 			if !sectorFound {
-				return true, false, nil
+				return false, nil
 			}
 
 			if params.SectorNumber != sectorNumber {
-				return true, false, nil
+				return false, nil
 			}
 
-			return false, true, nil
+			return true, nil
 		default:
-			return true, false, nil
+			return false, nil
 		}
 
 	}
@@ -462,13 +463,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	}
 
 	// Watch for state changes to the deal
-	preds := state.NewStatePredicates(n)
-	dealDiff := preds.OnStorageMarketActorChanged(
-		preds.OnDealStateChanged(
-			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
-	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
-		return dealDiff(ctx, oldTs.Key(), newTs.Key())
-	}
+	match := n.dsMatcher.matcher(ctx, dealID)
 
 	// Wait until after the end epoch for the deal and then timeout
 	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1

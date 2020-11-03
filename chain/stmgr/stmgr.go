@@ -6,11 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -23,15 +18,23 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 
+	// Used for genesis.
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -43,6 +46,8 @@ const LookbackNoLimit = abi.ChainEpoch(-1)
 var log = logging.Logger("statemgr")
 
 type StateManagerAPI interface {
+	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
+	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
@@ -195,6 +200,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 func traceFunc(trace *[]*api.InvocResult) func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 	return func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		ir := &api.InvocResult{
+			MsgCid:         mcid,
 			Msg:            msg,
 			MsgRct:         &ret.MessageReceipt,
 			ExecutionTrace: ret.ExecutionTrace,
@@ -202,6 +208,9 @@ func traceFunc(trace *[]*api.InvocResult) func(mcid cid.Cid, msg *types.Message,
 		}
 		if ret.ActorErr != nil {
 			ir.Error = ret.ActorErr.Error()
+		}
+		if ret.GasCosts != nil {
+			ir.GasCost = MakeMsgGasCost(msg, ret)
 		}
 		*trace = append(*trace, ir)
 		return nil
@@ -229,9 +238,10 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			Rand:           r,
 			Bstore:         sm.cs.Blockstore(),
 			Syscalls:       sm.cs.VMSys(),
-			CircSupplyCalc: sm.GetCirculatingSupply,
+			CircSupplyCalc: sm.GetVMCirculatingSupply,
 			NtwkVersion:    sm.GetNtwkVersion,
 			BaseFee:        baseFee,
+			LookbackState:  LookbackStateGetterForTipset(sm, ts),
 		}
 
 		return sm.newVM(ctx, vmopt)
@@ -242,22 +252,17 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
 	}
 
-	runCron := func() error {
-		// TODO: this nonce-getting is a tiny bit ugly
-		ca, err := vmi.StateTree().GetActor(builtin0.SystemActorAddr)
-		if err != nil {
-			return err
-		}
+	runCron := func(epoch abi.ChainEpoch) error {
 
 		cronMsg := &types.Message{
-			To:         builtin0.CronActorAddr,
-			From:       builtin0.SystemActorAddr,
-			Nonce:      ca.Nonce,
+			To:         cron.Address,
+			From:       builtin.SystemActorAddr,
+			Nonce:      uint64(epoch),
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
 			GasLimit:   build.BlockGasLimit * 10000, // Make super sure this is never too little
-			Method:     builtin0.MethodsCron.EpochTick,
+			Method:     cron.Methods.EpochTick,
 			Params:     nil,
 		}
 		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
@@ -279,7 +284,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
 			// run cron for null rounds if any
-			if err := runCron(); err != nil {
+			if err := runCron(i); err != nil {
 				return cid.Undef, cid.Undef, err
 			}
 
@@ -308,7 +313,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	}
 
 	var receipts []cbg.CBORMarshaler
-	processedMsgs := map[cid.Cid]bool{}
+	processedMsgs := make(map[cid.Cid]struct{})
 	for _, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
@@ -332,7 +337,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 					return cid.Undef, cid.Undef, err
 				}
 			}
-			processedMsgs[m.Cid()] = true
+			processedMsgs[m.Cid()] = struct{}{}
 		}
 
 		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
@@ -345,20 +350,15 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
 		}
 
-		sysAct, actErr := vmi.StateTree().GetActor(builtin0.SystemActorAddr)
-		if actErr != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", actErr)
-		}
-
 		rwMsg := &types.Message{
-			From:       builtin0.SystemActorAddr,
+			From:       builtin.SystemActorAddr,
 			To:         reward.Address,
-			Nonce:      sysAct.Nonce,
+			Nonce:      uint64(epoch),
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
 			GasLimit:   1 << 30,
-			Method:     builtin0.MethodsReward.AwardBlockReward,
+			Method:     reward.Methods.AwardBlockReward,
 			Params:     params,
 		}
 		ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
@@ -376,7 +376,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 	}
 
-	if err := runCron(); err != nil {
+	if err := runCron(epoch); err != nil {
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
@@ -430,12 +430,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, ts *types.TipSet
 		parentEpoch = parent.Height
 	}
 
-	cids := make([]cid.Cid, len(blks))
-	for i, v := range blks {
-		cids[i] = v.Cid()
-	}
-
-	r := store.NewChainRand(sm.cs, cids)
+	r := store.NewChainRand(sm.cs, ts.Cids())
 
 	blkmsgs, err := sm.cs.BlockMsgsForTipset(ts)
 	if err != nil {
@@ -733,7 +728,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			}
 
 			if r != nil {
-				return pts, r, foundMsg, nil
+				return cur, r, foundMsg, nil
 			}
 		}
 
@@ -980,7 +975,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		} else if builtin.IsAccountActor(act.Code) {
 			// should exclude burnt funds actor and "remainder account actor"
 			// should only ever be "faucet" accounts in testnets
-			if kaddr == builtin0.BurntFundsActorAddr {
+			if kaddr == builtin.BurntFundsActorAddr {
 				return nil
 			}
 
@@ -1058,24 +1053,24 @@ func (sm *StateManager) setupPreIgnitionGenesisActorsTestnet(ctx context.Context
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin0.EpochsInDay)
+	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
 	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
 	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
 
 	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin0.EpochsInDay)
+	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
 	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
 
 	// 2 years
-	twoYears := abi.ChainEpoch(2 * 365 * builtin0.EpochsInDay)
+	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
 
 	// 3 years
-	threeYears := abi.ChainEpoch(3 * 365 * builtin0.EpochsInDay)
+	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
 
 	// 6 years
-	sixYears := abi.ChainEpoch(6 * 365 * builtin0.EpochsInDay)
+	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
@@ -1135,24 +1130,24 @@ func (sm *StateManager) setupPostIgnitionGenesisActors(ctx context.Context) erro
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin0.EpochsInDay)
+	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
 	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
 	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
 
 	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin0.EpochsInDay)
+	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
 	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
 
 	// 2 years
-	twoYears := abi.ChainEpoch(2 * 365 * builtin0.EpochsInDay)
+	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
 
 	// 3 years
-	threeYears := abi.ChainEpoch(3 * 365 * builtin0.EpochsInDay)
+	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
 
 	// 6 years
-	sixYears := abi.ChainEpoch(6 * 365 * builtin0.EpochsInDay)
+	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
@@ -1286,7 +1281,7 @@ func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (
 }
 
 func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-	burnt, err := st.GetActor(builtin0.BurntFundsActorAddr)
+	burnt, err := st.GetActor(builtin.BurntFundsActorAddr)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %w", err)
 	}
@@ -1294,7 +1289,16 @@ func GetFilBurnt(ctx context.Context, st *state.StateTree) (abi.TokenAmount, err
 	return burnt.Balance, nil
 }
 
-func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
+func (sm *StateManager) GetVMCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+	cs, err := sm.GetVMCirculatingSupplyDetailed(ctx, height, st)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	return cs.FilCirculating, err
+}
+
+func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
 	sm.genesisMsigLk.Lock()
 	defer sm.genesisMsigLk.Unlock()
 	if sm.preIgnitionGenInfos == nil {
@@ -1357,12 +1361,91 @@ func (sm *StateManager) GetCirculatingSupplyDetailed(ctx context.Context, height
 }
 
 func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
-	csi, err := sm.GetCirculatingSupplyDetailed(ctx, height, st)
+	circ := big.Zero()
+	unCirc := big.Zero()
+	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
+		switch {
+		case actor.Balance.IsZero():
+			// Do nothing for zero-balance actors
+			break
+		case a == _init.Address ||
+			a == reward.Address ||
+			a == verifreg.Address ||
+			// The power actor itself should never receive funds
+			a == power.Address ||
+			a == builtin.SystemActorAddr ||
+			a == builtin.CronActorAddr ||
+			a == builtin.BurntFundsActorAddr ||
+			a == builtin.SaftAddress ||
+			a == builtin.ReserveAddress:
+
+			unCirc = big.Add(unCirc, actor.Balance)
+
+		case a == market.Address:
+			mst, err := market.Load(sm.cs.Store(ctx), actor)
+			if err != nil {
+				return err
+			}
+
+			lb, err := mst.TotalLocked()
+			if err != nil {
+				return err
+			}
+
+			circ = big.Add(circ, big.Sub(actor.Balance, lb))
+			unCirc = big.Add(unCirc, lb)
+
+		case builtin.IsAccountActor(actor.Code) || builtin.IsPaymentChannelActor(actor.Code):
+			circ = big.Add(circ, actor.Balance)
+
+		case builtin.IsStorageMinerActor(actor.Code):
+			mst, err := miner.Load(sm.cs.Store(ctx), actor)
+			if err != nil {
+				return err
+			}
+
+			ab, err := mst.AvailableBalance(actor.Balance)
+
+			if err == nil {
+				circ = big.Add(circ, ab)
+				unCirc = big.Add(unCirc, big.Sub(actor.Balance, ab))
+			} else {
+				// Assume any error is because the miner state is "broken" (lower actor balance than locked funds)
+				// In this case, the actor's entire balance is considered "uncirculating"
+				unCirc = big.Add(unCirc, actor.Balance)
+			}
+
+		case builtin.IsMultisigActor(actor.Code):
+			mst, err := multisig.Load(sm.cs.Store(ctx), actor)
+			if err != nil {
+				return err
+			}
+
+			lb, err := mst.LockedBalance(height)
+			if err != nil {
+				return err
+			}
+
+			ab := big.Sub(actor.Balance, lb)
+			circ = big.Add(circ, big.Max(ab, big.Zero()))
+			unCirc = big.Add(unCirc, big.Min(actor.Balance, lb))
+		default:
+			return xerrors.Errorf("unexpected actor: %s", a)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return big.Zero(), err
+		return types.EmptyInt, err
 	}
 
-	return csi.FilCirculating, nil
+	total := big.Add(circ, unCirc)
+	if !total.Equals(types.TotalFilecoinInt) {
+		return types.EmptyInt, xerrors.Errorf("total filecoin didn't add to expected amount: %s != %s", total, types.TotalFilecoinInt)
+	}
+
+	return circ, nil
 }
 
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {

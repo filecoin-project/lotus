@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/types"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
 )
@@ -70,6 +72,24 @@ func main() {
 		exchange.Response{},
 		exchange.CompactedMessages{},
 		exchange.BSTipSet{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteMapEncodersToFile("./extern/sector-storage/storiface/cbor_gen.go", "storiface",
+		storiface.CallID{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteMapEncodersToFile("./extern/sector-storage/cbor_gen.go", "sectorstorage",
+		sectorstorage.Call{},
+		sectorstorage.WorkState{},
+		sectorstorage.WorkID{},
 	)
 	if err != nil {
 		fmt.Println(err)

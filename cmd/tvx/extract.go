@@ -14,14 +14,12 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/conformance"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/test-vectors/schema"
 
@@ -35,13 +33,14 @@ const (
 )
 
 type extractOpts struct {
-	id        string
-	block     string
-	class     string
-	cid       string
-	file      string
-	retain    string
-	precursor string
+	id                 string
+	block              string
+	class              string
+	cid                string
+	file               string
+	retain             string
+	precursor          string
+	ignoreSanityChecks bool
 }
 
 var extractFlags extractOpts
@@ -50,6 +49,8 @@ var extractCmd = &cli.Command{
 	Name:        "extract",
 	Description: "generate a test vector by extracting it from a live chain",
 	Action:      runExtract,
+	Before:      initialize,
+	After:       destroy,
 	Flags: []cli.Flag{
 		&repoFlag,
 		&cli.StringFlag{
@@ -89,53 +90,42 @@ var extractCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name: "precursor-select",
-			Usage: "precursors to apply; values: 'all', 'sender'; 'all' selects all preceding" +
-				"messages in the canonicalised tipset, 'sender' selects only preceding messages from the same" +
-				"sender. Usually, 'sender' is a good tradeoff and gives you sufficient accuracy. If the receipt sanity" +
-				"check fails due to gas reasons, switch to 'all', as previous messages in the tipset may have" +
+			Usage: "precursors to apply; values: 'all', 'sender'; 'all' selects all preceding " +
+				"messages in the canonicalised tipset, 'sender' selects only preceding messages from the same " +
+				"sender. Usually, 'sender' is a good tradeoff and gives you sufficient accuracy. If the receipt sanity " +
+				"check fails due to gas reasons, switch to 'all', as previous messages in the tipset may have " +
 				"affected state in a disruptive way",
 			Value:       "sender",
 			Destination: &extractFlags.precursor,
 		},
+		&cli.BoolFlag{
+			Name:        "ignore-sanity-checks",
+			Usage:       "generate vector even if sanity checks fail",
+			Value:       false,
+			Destination: &extractFlags.ignoreSanityChecks,
+		},
 	},
 }
 
-func runExtract(c *cli.Context) error {
-	// LOTUS_DISABLE_VM_BUF disables what's called "VM state tree buffering",
-	// which stashes write operations in a BufferedBlockstore
-	// (https://github.com/filecoin-project/lotus/blob/b7a4dbb07fd8332b4492313a617e3458f8003b2a/lib/bufbstore/buf_bstore.go#L21)
-	// such that they're not written until the VM is actually flushed.
-	//
-	// For some reason, the standard behaviour was not working for me (raulk),
-	// and disabling it (such that the state transformations are written immediately
-	// to the blockstore) worked.
-	_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
-
-	ctx := context.Background()
-
-	// Make the API client.
-	fapi, closer, err := lcli.GetFullNodeAPI(c)
-	if err != nil {
-		return err
-	}
-	defer closer()
-
-	return doExtract(ctx, fapi, extractFlags)
+func runExtract(_ *cli.Context) error {
+	return doExtract(extractFlags)
 }
 
-func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
+func doExtract(opts extractOpts) error {
+	ctx := context.Background()
+
 	mcid, err := cid.Decode(opts.cid)
 	if err != nil {
 		return err
 	}
 
-	msg, execTs, incTs, err := resolveFromChain(ctx, fapi, mcid, opts.block)
+	msg, execTs, incTs, err := resolveFromChain(ctx, FullAPI, mcid, opts.block)
 	if err != nil {
 		return fmt.Errorf("failed to resolve message and tipsets from chain: %w", err)
 	}
 
 	// get the circulating supply before the message was executed.
-	circSupplyDetail, err := fapi.StateCirculatingSupply(ctx, incTs.Key())
+	circSupplyDetail, err := FullAPI.StateVMCirculatingSupplyInternal(ctx, incTs.Key())
 	if err != nil {
 		return fmt.Errorf("failed while fetching circulating supply: %w", err)
 	}
@@ -148,7 +138,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	log.Printf("finding precursor messages using mode: %s", opts.precursor)
 
 	// Fetch messages in canonical order from inclusion tipset.
-	msgs, err := fapi.ChainGetParentMessages(ctx, execTs.Blocks()[0].Cid())
+	msgs, err := FullAPI.ChainGetParentMessages(ctx, execTs.Blocks()[0].Cid())
 	if err != nil {
 		return fmt.Errorf("failed to fetch messages in canonical order from inclusion tipset: %w", err)
 	}
@@ -175,8 +165,8 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 
 	var (
 		// create a read-through store that uses ChainGetObject to fetch unknown CIDs.
-		pst = NewProxyingStores(ctx, fapi)
-		g   = NewSurgeon(ctx, fapi, pst)
+		pst = NewProxyingStores(ctx, FullAPI)
+		g   = NewSurgeon(ctx, FullAPI, pst)
 	)
 
 	driver := conformance.NewDriver(ctx, schema.Selector{}, conformance.DriverOpts{
@@ -201,7 +191,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
 			// recorded randomness will be discarded.
-			Rand: conformance.NewRecordingRand(new(conformance.LogReporter), fapi),
+			Rand: conformance.NewRecordingRand(new(conformance.LogReporter), FullAPI),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute precursor message: %w", err)
@@ -216,7 +206,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		retention = opts.retain
 
 		// recordingRand will record randomness so we can embed it in the test vector.
-		recordingRand = conformance.NewRecordingRand(new(conformance.LogReporter), fapi)
+		recordingRand = conformance.NewRecordingRand(new(conformance.LogReporter), FullAPI)
 	)
 
 	log.Printf("using state retention strategy: %s", retention)
@@ -249,7 +239,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	case "accessed-actors":
 		log.Printf("calculating accessed actors")
 		// get actors accessed by message.
-		retain, err := g.GetAccessedActors(ctx, fapi, mcid)
+		retain, err := g.GetAccessedActors(ctx, FullAPI, mcid)
 		if err != nil {
 			return fmt.Errorf("failed to calculate accessed actors: %w", err)
 		}
@@ -287,7 +277,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 	// TODO sometimes this returns a nil receipt and no error ¯\_(ツ)_/¯
 	//  ex: https://filfox.info/en/message/bafy2bzacebpxw3yiaxzy2bako62akig46x3imji7fewszen6fryiz6nymu2b2
 	//  This code is lenient and skips receipt comparison in case of a nil receipt.
-	rec, err := fapi.StateGetReceipt(ctx, mcid, execTs.Key())
+	rec, err := FullAPI.StateGetReceipt(ctx, mcid, execTs.Key())
 	if err != nil {
 		return fmt.Errorf("failed to find receipt on chain: %w", err)
 	}
@@ -301,13 +291,20 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 			ReturnValue: rec.Return,
 			GasUsed:     rec.GasUsed,
 		}
+
 		reporter := new(conformance.LogReporter)
 		conformance.AssertMsgResult(reporter, receipt, applyret, "as locally executed")
 		if reporter.Failed() {
-			log.Println(color.RedString("receipt sanity check failed; aborting"))
-			return fmt.Errorf("vector generation aborted")
+			if opts.ignoreSanityChecks {
+				log.Println(color.YellowString("receipt sanity check failed; proceeding anyway"))
+			} else {
+				log.Println(color.RedString("receipt sanity check failed; aborting"))
+				return fmt.Errorf("vector generation aborted")
+			}
+		} else {
+			log.Println(color.GreenString("receipt sanity check succeeded"))
 		}
-		log.Println(color.GreenString("receipt sanity check succeeded"))
+
 	} else {
 		receipt = &schema.Receipt{
 			ExitCode:    int64(applyret.ExitCode),
@@ -337,15 +334,22 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		return err
 	}
 
-	version, err := fapi.Version(ctx)
+	version, err := FullAPI.Version(ctx)
 	if err != nil {
 		return err
 	}
 
-	ntwkName, err := fapi.StateNetworkName(ctx)
+	ntwkName, err := FullAPI.StateNetworkName(ctx)
 	if err != nil {
 		return err
 	}
+
+	nv, err := FullAPI.StateNetworkVersion(ctx, execTs.Key())
+	if err != nil {
+		return err
+	}
+
+	codename := GetProtocolCodename(execTs.Height())
 
 	// Write out the test vector.
 	vector := schema.TestVector{
@@ -363,10 +367,15 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 				{Source: fmt.Sprintf("execution_tipset:%s", execTs.Key().String())},
 				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
 		},
+		Selector: schema.Selector{
+			schema.SelectorMinProtocolVersion: codename,
+		},
 		Randomness: recordingRand.Recorded(),
 		CAR:        out.Bytes(),
 		Pre: &schema.Preconditions{
-			Epoch:      int64(execTs.Height()),
+			Variants: []schema.Variant{
+				{ID: codename, Epoch: int64(execTs.Height()), NetworkVersion: uint(nv)},
+			},
 			CircSupply: circSupply.Int,
 			BaseFee:    basefee.Int,
 			StateTree: &schema.StateTree{
@@ -388,8 +397,12 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 		},
 	}
 
+	return writeVector(vector, opts.file)
+}
+
+func writeVector(vector schema.TestVector, file string) (err error) {
 	output := io.WriteCloser(os.Stdout)
-	if file := opts.file; file != "" {
+	if file := file; file != "" {
 		dir := filepath.Dir(file)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("unable to create directory %s: %w", dir, err)
@@ -404,11 +417,7 @@ func doExtract(ctx context.Context, fapi api.FullNode, opts extractOpts) error {
 
 	enc := json.NewEncoder(output)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(&vector); err != nil {
-		return err
-	}
-
-	return nil
+	return enc.Encode(&vector)
 }
 
 // resolveFromChain queries the chain for the provided message, using the block CID to

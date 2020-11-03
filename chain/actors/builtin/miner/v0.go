@@ -47,8 +47,16 @@ type partition0 struct {
 	store adt.Store
 }
 
-func (s *state0) AvailableBalance(bal abi.TokenAmount) (abi.TokenAmount, error) {
-	return s.GetAvailableBalance(bal), nil
+func (s *state0) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = xerrors.Errorf("failed to get available balance: %w", r)
+			available = abi.NewTokenAmount(0)
+		}
+	}()
+	// this panics if the miner doesnt have enough funds to cover their locked pledge
+	available = s.GetAvailableBalance(bal)
+	return available, err
 }
 
 func (s *state0) VestedFunds(epoch abi.ChainEpoch) (abi.TokenAmount, error) {
@@ -266,7 +274,16 @@ func (s *state0) DeadlinesChanged(other State) (bool, error) {
 		return true, nil
 	}
 
-	return s.State.Deadlines.Equals(other0.Deadlines), nil
+	return !s.State.Deadlines.Equals(other0.Deadlines), nil
+}
+
+func (s *state0) MinerInfoChanged(other State) (bool, error) {
+	other0, ok := other.(*state0)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.Info.Equals(other0.State.Info), nil
 }
 
 func (s *state0) Info() (MinerInfo, error) {
@@ -362,7 +379,7 @@ func (d *deadline0) PartitionsChanged(other Deadline) (bool, error) {
 		return true, nil
 	}
 
-	return d.Deadline.Partitions.Equals(other0.Deadline.Partitions), nil
+	return !d.Deadline.Partitions.Equals(other0.Deadline.Partitions), nil
 }
 
 func (d *deadline0) PostSubmissions() (bitfield.BitField, error) {

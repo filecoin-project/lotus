@@ -26,8 +26,6 @@ const (
 	KNamePrefix  = "wallet-"
 	KTrashPrefix = "trash-"
 	KDefault     = "default"
-	KTBLS        = "bls"
-	KTSecp256k1  = "secp256k1"
 )
 
 type LocalWallet struct {
@@ -236,7 +234,7 @@ func (w *LocalWallet) SetDefault(a address.Address) error {
 	return nil
 }
 
-func (w *LocalWallet) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
+func (w *LocalWallet) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -274,11 +272,19 @@ func (w *LocalWallet) WalletHas(ctx context.Context, addr address.Address) (bool
 
 func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
 	k, err := w.findKey(addr)
+
 	if err != nil {
 		return xerrors.Errorf("failed to delete key %s : %w", addr, err)
 	}
 	if k == nil {
 		return nil // already not there
+	}
+
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
+	if err := w.keystore.Delete(KTrashPrefix + k.Address.String()); err != nil && !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+		return xerrors.Errorf("failed to purge trashed key %s: %w", addr, err)
 	}
 
 	if err := w.keystore.Put(KTrashPrefix+k.Address.String(), k.KeyInfo); err != nil {
@@ -297,7 +303,17 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 	// TODO: Does this always error in the not-found case? Just ignoring an error return for now.
 	_ = w.keystore.Delete(KNamePrefix + tAddr)
 
+	delete(w.keys, addr)
+
 	return nil
+}
+
+func (w *LocalWallet) Get() api.WalletAPI {
+	if w == nil {
+		return nil
+	}
+
+	return w
 }
 
 var _ api.WalletAPI = &LocalWallet{}
@@ -312,3 +328,16 @@ func swapMainnetForTestnetPrefix(addr string) (string, error) {
 	aChars[0] = prefixRunes[0]
 	return string(aChars), nil
 }
+
+type nilDefault struct{}
+
+func (n nilDefault) GetDefault() (address.Address, error) {
+	return address.Undef, nil
+}
+
+func (n nilDefault) SetDefault(a address.Address) error {
+	return xerrors.Errorf("not supported; local wallet disabled")
+}
+
+var NilDefault nilDefault
+var _ Default = NilDefault

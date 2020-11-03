@@ -2,7 +2,9 @@ package power
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,7 +27,10 @@ func init() {
 	})
 }
 
-var Address = builtin0.StoragePowerActorAddr
+var (
+	Address = builtin2.StoragePowerActorAddr
+	Methods = builtin2.MethodsPower
+)
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
@@ -51,6 +56,12 @@ type State interface {
 	MinerPower(address.Address) (Claim, bool, error)
 	MinerNominalPowerMeetsConsensusMinimum(address.Address) (bool, error)
 	ListAllMiners() ([]address.Address, error)
+	ForEachClaim(func(miner address.Address, claim Claim) error) error
+	ClaimsChanged(State) (bool, error)
+
+	// Diff helpers. Used by Diff* functions internally.
+	claims() (adt.Map, error)
+	decodeClaim(*cbg.Deferred) (Claim, error)
 }
 
 type Claim struct {
@@ -59,4 +70,11 @@ type Claim struct {
 
 	// Sum of quality adjusted power for a miner's sectors.
 	QualityAdjPower abi.StoragePower
+}
+
+func AddClaims(a Claim, b Claim) Claim {
+	return Claim{
+		RawBytePower:    big.Add(a.RawBytePower, b.RawBytePower),
+		QualityAdjPower: big.Add(a.QualityAdjPower, b.QualityAdjPower),
+	}
 }

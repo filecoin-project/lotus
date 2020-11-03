@@ -170,7 +170,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
 		case *ErrBadTicket:
-			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
+			return ctx.Send(SectorTicketExpired{xerrors.Errorf("expired ticket: %w", err)})
 		case *ErrInvalidDeals:
 			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
 			return ctx.Send(SectorInvalidDealIDs{Return: RetCommitFailed})

@@ -1,17 +1,17 @@
 package client
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/dline"
-
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
@@ -33,6 +33,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	"github.com/filecoin-project/go-fil-markets/pieceio"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -40,7 +41,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -50,6 +50,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/commp"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
@@ -65,9 +66,9 @@ type API struct {
 	fx.In
 
 	full.ChainAPI
-	full.StateAPI
 	full.WalletAPI
 	paych.PaychAPI
+	full.StateAPI
 
 	SMDealClient storagemarket.StorageClient
 	RetDiscovery discovery.PeerResolver
@@ -117,7 +118,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		}
 	}
 
-	walletKey, err := a.StateAPI.StateManager.ResolveToKeyAddress(ctx, params.Wallet, nil)
+	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed resolving params.Wallet addr: %w", params.Wallet)
 	}
@@ -709,6 +710,24 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 	}, nil
 }
 
+func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
+	dag := merkledag.NewDAGService(blockservice.New(a.CombinedBstore, offline.Exchange(a.CombinedBstore)))
+
+	w := &commp.Writer{}
+	bw := bufio.NewWriterSize(w, int(commp.CommPBuf))
+
+	err := car.WriteCar(ctx, dag, []cid.Cid{root}, w)
+	if err != nil {
+		return api.DataCIDSize{}, err
+	}
+
+	if err := bw.Flush(); err != nil {
+		return api.DataCIDSize{}, err
+	}
+
+	return w.Sum()
+}
+
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
 	id, st, err := a.imgr().NewStore()
 	if err != nil {
@@ -850,6 +869,22 @@ func (a *API) ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTra
 	return channels, nil
 }
 
+func (a *API) ClientRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
+	selfPeer := a.Host.ID()
+	if isInitiator {
+		return a.DataTransfer.RestartDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: selfPeer, Responder: otherPeer, ID: transferID})
+	}
+	return a.DataTransfer.RestartDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
+}
+
+func (a *API) ClientCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
+	selfPeer := a.Host.ID()
+	if isInitiator {
+		return a.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: selfPeer, Responder: otherPeer, ID: transferID})
+	}
+	return a.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
+}
+
 func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
 	return api.DealInfo{
 		ProposalCid:   v.ProposalCid,
@@ -869,4 +904,13 @@ func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
 
 func (a *API) ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error {
 	return a.Retrieval.TryRestartInsufficientFunds(paymentChannel)
+}
+
+func (a *API) ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error) {
+	ststr, ok := storagemarket.DealStates[statusCode]
+	if !ok {
+		return "", fmt.Errorf("no such deal state %d", statusCode)
+	}
+
+	return ststr, nil
 }

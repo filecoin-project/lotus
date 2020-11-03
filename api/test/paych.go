@@ -3,13 +3,9 @@ package test
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -22,16 +18,15 @@ import (
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
 func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-
 	ctx := context.Background()
 	n, sn := b(t, TwoFull, OneMiner)
 
@@ -58,7 +53,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	bm.MineBlocks()
 
 	// send some funds to register the receiver
-	receiverAddr, err := paymentReceiver.WalletNew(ctx, wallet.ActSigType("secp256k1"))
+	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +223,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	}
 
 	// wait for the settlement period to pass before collecting
-	waitForBlocks(ctx, t, bm, paymentReceiver, receiverAddr, paych0.SettleDelay)
+	waitForBlocks(ctx, t, bm, paymentReceiver, receiverAddr, policy.PaychSettleDelay)
 
 	creatorPreCollectBalance, err := paymentCreator.WalletBalance(ctx, createrAddr)
 	if err != nil {
@@ -284,7 +279,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *BlockMiner, paymentRec
 
 		// Add a real block
 		m, err := paymentReceiver.MpoolPushMessage(ctx, &types.Message{
-			To:    builtin0.BurntFundsActorAddr,
+			To:    builtin.BurntFundsActorAddr,
 			From:  receiverAddr,
 			Value: types.NewInt(0),
 		}, nil)

@@ -2,15 +2,13 @@ package api
 
 import (
 	"context"
-	"io"
 
-	"github.com/ipfs/go-cid"
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -23,18 +21,26 @@ type WorkerAPI interface {
 	Paths(context.Context) ([]stores.StoragePath, error)
 	Info(context.Context) (storiface.WorkerInfo, error)
 
-	AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error)
+	storiface.WorkerCalls
 
-	storage.Sealer
-
-	MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error
-
-	UnsealPiece(context.Context, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
-	ReadPiece(context.Context, io.Writer, abi.SectorID, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (bool, error)
+	// Storage / Other
+	Remove(ctx context.Context, sector abi.SectorID) error
 
 	StorageAddLocal(ctx context.Context, path string) error
 
-	Fetch(context.Context, abi.SectorID, stores.SectorFileType, stores.PathType, stores.AcquireMode) error
+	// SetEnabled marks the worker as enabled/disabled. Not that this setting
+	// may take a few seconds to propagate to task scheduler
+	SetEnabled(ctx context.Context, enabled bool) error
 
-	Closing(context.Context) (<-chan struct{}, error)
+	Enabled(ctx context.Context) (bool, error)
+
+	// WaitQuiet blocks until there are no tasks running
+	WaitQuiet(ctx context.Context) error
+
+	// returns a random UUID of worker session, generated randomly when worker
+	// process starts
+	ProcessSession(context.Context) (uuid.UUID, error)
+
+	// Like ProcessSession, but returns an error when worker is disabled
+	Session(context.Context) (uuid.UUID, error)
 }

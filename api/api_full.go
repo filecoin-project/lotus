@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/ipfs/go-cid"
@@ -206,6 +207,15 @@ type FullNode interface {
 	// based on current chain conditions
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *MessageSendSpec) (*types.SignedMessage, error)
 
+	// MpoolBatchPush batch pushes a signed message to mempool.
+	MpoolBatchPush(context.Context, []*types.SignedMessage) ([]cid.Cid, error)
+
+	// MpoolBatchPushUntrusted batch pushes a signed message to mempool from untrusted sources.
+	MpoolBatchPushUntrusted(context.Context, []*types.SignedMessage) ([]cid.Cid, error)
+
+	// MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+	MpoolBatchPushMessage(context.Context, []*types.Message, *MessageSendSpec) ([]*types.SignedMessage, error)
+
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
@@ -229,7 +239,9 @@ type FullNode interface {
 	// MethodGroup: Wallet
 
 	// WalletNew creates a new address in the wallet with the given sigType.
-	WalletNew(context.Context, crypto.SigType) (address.Address, error)
+	// Available key types: bls, secp256k1, secp256k1-ledger
+	// Support for numerical types: 1 - secp256k1, 2 - BLS is deprecated
+	WalletNew(context.Context, types.KeyType) (address.Address, error)
 	// WalletHas indicates whether the given address is in the wallet.
 	WalletHas(context.Context, address.Address) (bool, error)
 	// WalletList lists all the addresses in the wallet.
@@ -274,6 +286,8 @@ type FullNode interface {
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	// ClientGetDealUpdates returns the status of updated deals
 	ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error)
+	// ClientGetDealStatus returns status given a code
+	ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error)
 	// ClientHasLocal indicates whether a certain CID is locally stored.
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	// ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).
@@ -287,6 +301,8 @@ type FullNode interface {
 	ClientRetrieveWithEvents(ctx context.Context, order RetrievalOrder, ref *FileRef) (<-chan marketevents.RetrievalEvent, error)
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error)
+	// ClientCalcCommP calculates the CommP and data size of the specified CID
+	ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize, error)
 	// ClientCalcCommP calculates the CommP for a specified file
 	ClientCalcCommP(ctx context.Context, inpath string) (*CommPRet, error)
 	// ClientGenCar generates a CAR file for the specified file.
@@ -296,6 +312,10 @@ type FullNode interface {
 	// ClientListTransfers returns the status of all ongoing transfers of data
 	ClientListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
 	ClientDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
+	// ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+	ClientRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
+	// ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+	ClientCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
 	// ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
 	// which are stuck due to insufficient funds
 	ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error
@@ -310,19 +330,22 @@ type FullNode interface {
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
-	// All methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+	// Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
 	// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 	// StateCall runs the given message and returns its result without any persisted changes.
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error)
-	// StateReplay returns the result of executing the indicated message, assuming it was executed in the indicated tipset.
+	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
+	// If no tipset key is provided, the appropriate tipset is looked up.
 	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error)
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	// StateReadState returns the indicated actor's state.
 	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*ActorState, error)
 	// StateListMessages looks back and returns all messages with a matching to or from address, stopping at the given height.
-	StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)
+	StateListMessages(ctx context.Context, match *MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)
+	// StateDecodeParams attempts to decode the provided params, based on the recipient actor address and method number.
+	StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)
 
 	// StateNetworkName returns the name of the network the node is synced to
 	StateNetworkName(context.Context) (dtypes.NetworkName, error)
@@ -353,6 +376,8 @@ type FullNode interface {
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	// StateMinerSectorAllocated checks if a sector is allocated
+	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error)
 	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
@@ -365,8 +390,6 @@ type FullNode interface {
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
 	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
-	// StateMsgGasCost searches for a message in the chain, and returns details of the messages gas costs, including the penalty and miner tip
-	StateMsgGasCost(context.Context, cid.Cid, types.TipSetKey) (*MsgGasCost, error)
 	// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 	// message arrives on chain, and gets to the indicated confidence depth.
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*MsgLookup, error)
@@ -414,8 +437,12 @@ type FullNode interface {
 	// can issue. It takes the deal size and verified status as parameters.
 	StateDealProviderCollateralBounds(context.Context, abi.PaddedPieceSize, bool, types.TipSetKey) (DealCollateralBounds, error)
 
-	// StateCirculatingSupply returns the circulating supply of Filecoin at the given tipset
-	StateCirculatingSupply(context.Context, types.TipSetKey) (CirculatingSupply, error)
+	// StateCirculatingSupply returns the exact circulating supply of Filecoin at the given tipset.
+	// This is not used anywhere in the protocol itself, and is only for external consumption.
+	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
+	// StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
+	// This is the value reported by the runtime interface to actors code.
+	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error)
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 
@@ -583,6 +610,8 @@ type MsgGasCost struct {
 	TotalCost          abi.TokenAmount
 }
 
+// BlsMessages[x].cid = Cids[x]
+// SecpkMessages[y].cid = Cids[BlsMessages.length + y]
 type BlockMessages struct {
 	BlsMessages   []*types.Message
 	SecpkMessages []*types.SignedMessage
@@ -728,8 +757,10 @@ type RetrievalOrder struct {
 }
 
 type InvocResult struct {
+	MsgCid         cid.Cid
 	Msg            *types.Message
 	MsgRct         *types.MessageReceipt
+	GasCost        MsgGasCost
 	ExecutionTrace types.ExecutionTrace
 	Error          string
 	Duration       time.Duration
@@ -864,6 +895,12 @@ type DataSize struct {
 	PieceSize   abi.PaddedPieceSize
 }
 
+type DataCIDSize struct {
+	PayloadSize int64
+	PieceSize   abi.PaddedPieceSize
+	PieceCID    cid.Cid
+}
+
 type CommPRet struct {
 	Root cid.Cid
 	Size abi.UnpaddedPieceSize
@@ -907,4 +944,9 @@ type MsigVesting struct {
 	InitialBalance abi.TokenAmount
 	StartEpoch     abi.ChainEpoch
 	UnlockDuration abi.ChainEpoch
+}
+
+type MessageMatch struct {
+	To   address.Address
+	From address.Address
 }

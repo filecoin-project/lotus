@@ -87,6 +87,7 @@ func init() {
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
+	addExample(types.KTBLS)
 	addExample(int64(9))
 	addExample(12.3)
 	addExample(123)

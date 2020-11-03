@@ -26,7 +26,9 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
 	"github.com/ipld/go-car"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -34,6 +36,7 @@ import (
 	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
+	measure "github.com/ipfs/go-ds-measure"
 	pebbleds "github.com/ipfs/go-ds-pebble"
 
 	"github.com/urfave/cli/v2"
@@ -89,8 +92,12 @@ var importBenchCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "only-import",
 		},
+		&cli.BoolFlag{
+			Name: "use-pebble",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		metricsprometheus.Inject() //nolint:errcheck
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 		if !cctx.Args().Present() {
 			fmt.Println("must pass car file of chain to benchmark importing")
@@ -104,6 +111,7 @@ var importBenchCmd = &cli.Command{
 		defer cfi.Close() //nolint:errcheck // read only file
 
 		go func() {
+			http.Handle("/debug/metrics/prometheus", promhttp.Handler())
 			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
 		}()
 
@@ -126,7 +134,7 @@ var importBenchCmd = &cli.Command{
 		bdgOpt.Options.DetectConflicts = false
 
 		var bds datastore.Batching
-		if false {
+		if cctx.Bool("use-pebble") {
 			cache := 512
 			bds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
 				// Pebble has a single combined cache area and the write
@@ -154,6 +162,8 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 		defer bds.Close() //nolint:errcheck
+
+		bds = measure.New("dsbench", bds)
 
 		bs := blockstore.NewBlockstore(bds)
 		cacheOpts := blockstore.DefaultCacheOpts()
@@ -309,6 +319,21 @@ var importBenchCmd = &cli.Command{
 		}
 
 		pprof.StopCPUProfile()
+
+		if true {
+			resp, err := http.Get("http://localhost:6060/debug/metrics/prometheus")
+			if err != nil {
+				return err
+			}
+
+			metricsfi, err := os.Create("import-bench.metrics")
+			if err != nil {
+				return err
+			}
+
+			io.Copy(metricsfi, resp.Body) //nolint:errcheck
+			metricsfi.Close()             //nolint:errcheck
+		}
 
 		return nil
 

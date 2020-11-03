@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
@@ -280,7 +280,7 @@ minerLoop:
 			m.minedBlockHeights.Add(blkKey, true)
 
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
-				log.Errorf("failed to submit newly mined block: %s", err)
+				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
 		} else {
 			base.NullRounds++
@@ -386,7 +386,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, &rbase, base)
+	ticket, err := m.computeTicket(ctx, &rbase, base, mbi)
 	if err != nil {
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
@@ -456,16 +456,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	return b, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase) (*types.Ticket, error) {
-	mi, err := m.api.StateMinerInfo(ctx, m.address, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-	worker, err := m.api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := m.address.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
@@ -481,7 +472,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 		return nil, err
 	}
 
-	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, worker, input)
+	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, mbi.WorkerKey, input)
 	if err != nil {
 		return nil, err
 	}
@@ -492,7 +483,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof0.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
 	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1

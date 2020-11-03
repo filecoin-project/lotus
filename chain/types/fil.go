@@ -81,5 +81,14 @@ func ParseFIL(s string) (FIL, error) {
 	return FIL{r.Num()}, nil
 }
 
+func MustParseFIL(s string) FIL {
+	n, err := ParseFIL(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return n
+}
+
 var _ encoding.TextMarshaler = (*FIL)(nil)
 var _ encoding.TextUnmarshaler = (*FIL)(nil)

@@ -2,21 +2,37 @@ package test
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/types"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 )
+
+func init() {
+	logging.SetAllLoggers(logging.LevelInfo)
+	err := os.Setenv("BELLMAN_NO_GPU", "1")
+	if err != nil {
+		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
+	}
+	build.InsecurePoStValidation = true
+}
 
 type TestNode struct {
 	api.FullNode
@@ -74,6 +90,7 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("testConnectTwo", ts.testConnectTwo)
 	t.Run("testMining", ts.testMining)
 	t.Run("testMiningReal", ts.testMiningReal)
+	t.Run("testSearchMsg", ts.testSearchMsg)
 }
 
 func DefaultFullOpts(nFull int) []FullNodeOpts {
@@ -96,12 +113,18 @@ var FullNodeWithUpgradeAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 	return FullNodeOpts{
 		Opts: func(nodes []TestNode) node.Option {
 			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
-				Network:   build.ActorUpgradeNetworkVersion,
+				// Skip directly to tape height so precommits work.
+				Network:   network.Version5,
 				Height:    upgradeHeight,
 				Migration: stmgr.UpgradeActorsV2,
 			}})
 		},
 	}
+}
+
+var MineNext = miner.MineReq{
+	InjectNulls: 0,
+	Done:        func(bool, abi.ChainEpoch, error) {},
 }
 
 func (ts *testSuite) testVersion(t *testing.T) {
@@ -116,6 +139,49 @@ func (ts *testSuite) testVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	require.Equal(t, v.Version, build.BuildVersion)
+}
+
+func (ts *testSuite) testSearchMsg(t *testing.T) {
+	apis, miners := ts.makeNodes(t, OneFull, OneMiner)
+
+	api := apis[0]
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	senderAddr, err := api.WalletDefaultAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := &types.Message{
+		From:  senderAddr,
+		To:    senderAddr,
+		Value: big.Zero(),
+	}
+	bm := NewBlockMiner(ctx, t, miners[0], 100*time.Millisecond)
+	bm.MineBlocks()
+	defer bm.Stop()
+
+	sm, err := api.MpoolPushMessage(ctx, msg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Receipt.ExitCode != 0 {
+		t.Fatal("did not successfully send message")
+	}
+
+	searchRes, err := api.StateSearchMsg(ctx, sm.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if searchRes.TipSet != res.TipSet {
+		t.Fatalf("search ts: %s, different from wait ts: %s", searchRes.TipSet, res.TipSet)
+	}
+
 }
 
 func (ts *testSuite) testID(t *testing.T) {

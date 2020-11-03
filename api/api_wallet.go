@@ -35,7 +35,7 @@ type MsgMeta struct {
 }
 
 type WalletAPI interface {
-	WalletNew(context.Context, crypto.SigType) (address.Address, error)
+	WalletNew(context.Context, types.KeyType) (address.Address, error)
 	WalletHas(context.Context, address.Address) (bool, error)
 	WalletList(context.Context) ([]address.Address, error)
 

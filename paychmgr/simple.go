@@ -101,10 +101,13 @@ type mergedFundsReq struct {
 
 func newMergedFundsReq(reqs []*fundsReq) *mergedFundsReq {
 	ctx, cancel := context.WithCancel(context.Background())
+
+	rqs := make([]*fundsReq, len(reqs))
+	copy(rqs, reqs)
 	m := &mergedFundsReq{
 		ctx:    ctx,
 		cancel: cancel,
-		reqs:   reqs,
+		reqs:   rqs,
 	}
 
 	for _, r := range m.reqs {
@@ -201,7 +204,7 @@ func (ca *channelAccessor) processQueue(channelID string) (*api.ChannelAvailable
 	// Merge all pending requests into one.
 	// For example if there are pending requests for 3, 2, 4 then
 	// amt = 3 + 2 + 4 = 9
-	merged := newMergedFundsReq(ca.fundsReqQueue[:])
+	merged := newMergedFundsReq(ca.fundsReqQueue)
 	amt := merged.sum()
 	if amt.IsZero() {
 		// Note: The amount can be zero if requests are cancelled as we're

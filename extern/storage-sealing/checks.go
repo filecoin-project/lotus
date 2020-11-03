@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"golang.org/x/xerrors"
 
@@ -179,7 +179,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		log.Warn("on-chain sealed CID doesn't match!")
 	}
 
-	ok, err := m.verif.VerifySeal(proof0.SealVerifyInfo{
+	ok, err := m.verif.VerifySeal(proof2.SealVerifyInfo{
 		SectorID:              m.minerSector(si.SectorNumber),
 		SealedCID:             pci.Info.SealedCID,
 		SealProof:             spt,

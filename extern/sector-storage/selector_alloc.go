@@ -9,15 +9,16 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type allocSelector struct {
 	index stores.SectorIndex
-	alloc stores.SectorFileType
-	ptype stores.PathType
+	alloc storiface.SectorFileType
+	ptype storiface.PathType
 }
 
-func newAllocSelector(index stores.SectorIndex, alloc stores.SectorFileType, ptype stores.PathType) *allocSelector {
+func newAllocSelector(index stores.SectorIndex, alloc storiface.SectorFileType, ptype storiface.PathType) *allocSelector {
 	return &allocSelector{
 		index: index,
 		alloc: alloc,
@@ -26,7 +27,7 @@ func newAllocSelector(index stores.SectorIndex, alloc stores.SectorFileType, pty
 }
 
 func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *workerHandle) (bool, error) {
-	tasks, err := whnd.w.TaskTypes(ctx)
+	tasks, err := whnd.workerRpc.TaskTypes(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("getting supported worker task types: %w", err)
 	}
@@ -34,7 +35,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 		return false, nil
 	}
 
-	paths, err := whnd.w.Paths(ctx)
+	paths, err := whnd.workerRpc.Paths(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("getting worker paths: %w", err)
 	}
@@ -44,7 +45,12 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 		have[path.ID] = struct{}{}
 	}
 
-	best, err := s.index.StorageBestAlloc(ctx, s.alloc, spt, s.ptype)
+	ssize, err := spt.SectorSize()
+	if err != nil {
+		return false, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	best, err := s.index.StorageBestAlloc(ctx, s.alloc, ssize, s.ptype)
 	if err != nil {
 		return false, xerrors.Errorf("finding best alloc storage: %w", err)
 	}

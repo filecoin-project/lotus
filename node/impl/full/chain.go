@@ -40,9 +40,14 @@ import (
 var log = logging.Logger("fullnode")
 
 type ChainModuleAPI interface {
+	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
+	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(context.Context) (*types.TipSet, error)
+	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
 // ChainModule provides a default implementation of ChainModuleAPI.
@@ -65,8 +70,8 @@ type ChainAPI struct {
 	Chain *store.ChainStore
 }
 
-func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
-	return a.Chain.SubHeadChanges(ctx), nil
+func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
+	return m.Chain.SubHeadChanges(ctx), nil
 }
 
 func (m *ChainModule) ChainHead(context.Context) (*types.TipSet, error) {
@@ -99,13 +104,13 @@ func (m *ChainModule) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (
 	return m.Chain.LoadTipSet(key)
 }
 
-func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
-	b, err := a.Chain.GetBlock(msg)
+func (m *ChainModule) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
+	b, err := m.Chain.GetBlock(msg)
 	if err != nil {
 		return nil, err
 	}
 
-	bmsgs, smsgs, err := a.Chain.MessagesForBlock(b)
+	bmsgs, smsgs, err := m.Chain.MessagesForBlock(b)
 	if err != nil {
 		return nil, err
 	}
@@ -206,8 +211,8 @@ func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpo
 	return m.Chain.GetTipsetByHeight(ctx, h, ts, true)
 }
 
-func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
-	blk, err := a.Chain.Blockstore().Get(obj)
+func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
+	blk, err := m.Chain.Blockstore().Get(obj)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}
@@ -219,8 +224,8 @@ func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
 	return a.Chain.Blockstore().DeleteBlock(obj)
 }
 
-func (a *ChainAPI) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
-	return a.Chain.Blockstore().Has(obj)
+func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
+	return m.Chain.Blockstore().Has(obj)
 }
 
 func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
@@ -530,8 +535,8 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 	}, nil
 }
 
-func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
-	cm, err := a.Chain.GetCMessage(mc)
+func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	cm, err := m.Chain.GetCMessage(mc)
 	if err != nil {
 		return nil, err
 	}

@@ -5,9 +5,6 @@ import (
 	"errors"
 	"time"
 
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/dline"
@@ -29,7 +26,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -50,8 +49,7 @@ type Miner struct {
 	sc     sealing.SectorIDCounter
 	verif  ffiwrapper.Verifier
 
-	maddr  address.Address
-	worker address.Address
+	maddr address.Address
 
 	getSealConfig dtypes.GetSealingConfigFunc
 	sealing       *sealing.Sealing
@@ -83,6 +81,7 @@ type storageMinerApi interface {
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error)
+	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error)
 	StateSearchMsg(context.Context, cid.Cid) (*api.MsgLookup, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error) // TODO: removeme eventually
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
@@ -112,7 +111,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc, feeCfg config.MinerFeeConfig, journal journal.Journal) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc, feeCfg config.MinerFeeConfig, journal journal.Journal) (*Miner, error) {
 	m := &Miner{
 		api:    api,
 		feeCfg: feeCfg,
@@ -123,7 +122,6 @@ func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, d
 		verif:  verif,
 
 		maddr:          maddr,
-		worker:         worker,
 		getSealConfig:  gsd,
 		journal:        journal,
 		sealingEvtType: journal.RegisterEventType("storage", "sealing_states"),
@@ -150,7 +148,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	evts := events.NewEvents(ctx, m.api)
 	adaptedAPI := NewSealingAPIAdapter(m.api)
 	// TODO: Maybe we update this policy after actor upgrades?
-	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, miner0.MaxSectorExpirationExtension-(miner0.WPoStProvingPeriod*2), md.PeriodStart%miner0.WPoStProvingPeriod)
+	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, policy.GetMaxSectorExpirationExtension()-(md.WPoStProvingPeriod*2), md.PeriodStart%md.WPoStProvingPeriod)
 	m.sealing = sealing.New(adaptedAPI, fc, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications)
 
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
@@ -175,7 +173,17 @@ func (m *Miner) Stop(ctx context.Context) error {
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {
-	has, err := m.api.WalletHas(ctx, m.worker)
+	mi, err := m.api.StateMinerInfo(ctx, m.maddr, types.EmptyTSK)
+	if err != nil {
+		return xerrors.Errorf("failed to resolve miner info: %w", err)
+	}
+
+	workerKey, err := m.api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
+	if err != nil {
+		return xerrors.Errorf("failed to resolve worker key: %w", err)
+	}
+
+	has, err := m.api.WalletHas(ctx, workerKey)
 	if err != nil {
 		return xerrors.Errorf("failed to check wallet for worker key: %w", err)
 	}
@@ -184,7 +192,7 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 		return errors.New("key for worker not found in local wallet")
 	}
 
-	log.Infof("starting up miner %s, worker addr %s", m.maddr, m.worker)
+	log.Infof("starting up miner %s, worker addr %s", m.maddr, workerKey)
 	return nil
 }
 
@@ -238,9 +246,9 @@ func (wpp *StorageWpp) GenerateCandidates(ctx context.Context, randomness abi.Po
 	return cds, nil
 }
 
-func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []proof0.SectorInfo, rand abi.PoStRandomness) ([]proof0.PoStProof, error) {
+func (wpp *StorageWpp) ComputeProof(ctx context.Context, ssi []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) {
 	if build.InsecurePoStValidation {
-		return []proof0.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
+		return []builtin.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
 
 	log.Infof("Computing WinningPoSt ;%+v; %v", ssi, rand)

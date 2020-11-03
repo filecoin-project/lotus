@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/build"
 
 	"github.com/stretchr/testify/require"
@@ -88,7 +91,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := &GatewayAPI{api: mock}
+			a := NewGatewayAPI(mock)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -107,6 +110,45 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 type mockGatewayDepsAPI struct {
 	lk      sync.RWMutex
 	tipsets []*types.TipSet
+
+	gatewayDepsAPI // satisfies all interface requirements but will panic if
+	// methods are called. easier than filling out with panic stubs IMO
+}
+
+func (m *mockGatewayDepsAPI) ChainHasObj(context.Context, cid.Cid) (bool, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error) {
+	panic("implement me")
 }
 
 func (m *mockGatewayDepsAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
@@ -187,5 +229,9 @@ func (m *mockGatewayDepsAPI) StateLookupID(ctx context.Context, addr address.Add
 }
 
 func (m *mockGatewayDepsAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error) {
+	panic("implement me")
+}
+
+func (m *mockGatewayDepsAPI) StateReadState(ctx context.Context, act address.Address, ts types.TipSetKey) (*api.ActorState, error) {
 	panic("implement me")
 }

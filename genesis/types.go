@@ -5,9 +5,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 )
 
 type ActorType string
@@ -21,7 +22,7 @@ type PreSeal struct {
 	CommR     cid.Cid
 	CommD     cid.Cid
 	SectorID  abi.SectorNumber
-	Deal      market.DealProposal
+	Deal      market2.DealProposal
 	ProofType abi.RegisteredSealProof
 }
 

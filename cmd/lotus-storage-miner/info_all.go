@@ -137,7 +137,7 @@ var infoAllCmd = &cli.Command{
 			}
 
 			if err := sectorsStatusCmd.Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
-				return err
+				fmt.Println("ERROR: ", err)
 			}
 
 			fmt.Printf("\n##: Sector %d Storage Location\n", s)
@@ -148,7 +148,7 @@ var infoAllCmd = &cli.Command{
 			}
 
 			if err := storageFindCmd.Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
-				return err
+				fmt.Println("ERROR: ", err)
 			}
 		}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type readonlyProvider struct {
@@ -16,25 +17,30 @@ type readonlyProvider struct {
 	spt   abi.RegisteredSealProof
 }
 
-func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, sealing stores.PathType) (stores.SectorPaths, func(), error) {
-	if allocate != stores.FTNone {
-		return stores.SectorPaths{}, nil, xerrors.New("read-only storage")
+func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorID, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
+	if allocate != storiface.FTNone {
+		return storiface.SectorPaths{}, nil, xerrors.New("read-only storage")
+	}
+
+	ssize, err := l.spt.SectorSize()
+	if err != nil {
+		return storiface.SectorPaths{}, nil, xerrors.Errorf("failed to determine sector size: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
 
 	// use TryLock to avoid blocking
-	locked, err := l.index.StorageTryLock(ctx, id, existing, stores.FTNone)
+	locked, err := l.index.StorageTryLock(ctx, id, existing, storiface.FTNone)
 	if err != nil {
 		cancel()
-		return stores.SectorPaths{}, nil, xerrors.Errorf("acquiring sector lock: %w", err)
+		return storiface.SectorPaths{}, nil, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 	if !locked {
 		cancel()
-		return stores.SectorPaths{}, nil, xerrors.Errorf("failed to acquire sector lock")
+		return storiface.SectorPaths{}, nil, xerrors.Errorf("failed to acquire sector lock")
 	}
 
-	p, _, err := l.stor.AcquireSector(ctx, id, l.spt, existing, allocate, sealing, stores.AcquireMove)
+	p, _, err := l.stor.AcquireSector(ctx, id, ssize, existing, allocate, sealing, storiface.AcquireMove)
 
 	return p, cancel, err
 }

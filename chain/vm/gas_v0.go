@@ -3,12 +3,13 @@ package vm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 type scalingCost struct {
@@ -89,6 +90,7 @@ type pricelistV0 struct {
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
 	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
+	verifyPostDiscount           bool
 	verifyConsensusFault         int64
 }
 
@@ -112,14 +114,14 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 	if big.Cmp(value, abi.NewTokenAmount(0)) != 0 {
 		ret += pl.sendTransferFunds
-		if methodNum == builtin0.MethodSend {
+		if methodNum == builtin.MethodSend {
 			// transfer only
 			ret += pl.sendTransferOnlyPremium
 		}
 		extra += "t"
 	}
 
-	if methodNum != builtin0.MethodSend {
+	if methodNum != builtin.MethodSend {
 		extra += "i"
 		// running actors is cheaper becase we hand over to actors
 		ret += pl.sendInvokeMethod
@@ -175,14 +177,14 @@ func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealPr
 }
 
 // OnVerifySeal
-func (pl *pricelistV0) OnVerifySeal(info proof.SealVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
 	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
 // OnVerifyPost
-func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge {
 	sectorSize := "unknown"
 	var proofType abi.RegisteredPoStProof
 
@@ -200,7 +202,9 @@ func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
 	}
 
 	gasUsed := cost.flat + int64(len(info.ChallengedSectors))*cost.scale
-	gasUsed /= 2 // XXX: this is an artificial discount
+	if pl.verifyPostDiscount {
+		gasUsed /= 2 // XXX: this is an artificial discount
+	}
 
 	return newGasCharge("OnVerifyPost", gasUsed, 0).
 		WithExtra(map[string]interface{}{

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 
@@ -30,7 +30,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 func init() {
@@ -93,7 +93,7 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := ProofVerifier.VerifySeal(saproof.SealVerifyInfo{
+	ok, err := ProofVerifier.VerifySeal(proof2.SealVerifyInfo{
 		SectorID:              s.id,
 		SealedCID:             s.cids.Sealed,
 		SealProof:             sealProofType,
@@ -125,7 +125,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 		t.Fatal("read wrong bytes")
 	}
 
-	p, sd, err := sp.AcquireSector(context.TODO(), si, stores.FTUnsealed, stores.FTNone, stores.PathStorage)
+	p, sd, err := sp.AcquireSector(context.TODO(), si, storiface.FTUnsealed, storiface.FTNone, storiface.PathStorage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,9 +171,9 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 	randomness := abi.PoStRandomness{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 7}
 
-	sis := make([]saproof.SectorInfo, len(seals))
+	sis := make([]proof2.SectorInfo, len(seals))
 	for i, s := range seals {
-		sis[i] = saproof.SectorInfo{
+		sis[i] = proof2.SectorInfo{
 			SealProof:    sealProofType,
 			SectorNumber: s.id.Number,
 			SealedCID:    s.cids.Sealed,
@@ -191,7 +191,7 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := ProofVerifier.VerifyWindowPoSt(context.TODO(), saproof.WindowPoStVerifyInfo{
+	ok, err := ProofVerifier.VerifyWindowPoSt(context.TODO(), proof2.WindowPoStVerifyInfo{
 		Randomness:        randomness,
 		Proofs:            proofs,
 		ChallengedSectors: sis,
@@ -206,7 +206,7 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 }
 
 func corrupt(t *testing.T, sealer *Sealer, id abi.SectorID) {
-	paths, done, err := sealer.sectors.AcquireSector(context.Background(), id, stores.FTSealed, 0, stores.PathStorage)
+	paths, done, err := sealer.sectors.AcquireSector(context.Background(), id, storiface.FTSealed, 0, storiface.PathStorage)
 	require.NoError(t, err)
 	defer done()
 

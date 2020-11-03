@@ -61,9 +61,10 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		Rand:           store.NewChainRand(sm.cs, ts.Cids()),
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
-		CircSupplyCalc: sm.GetCirculatingSupply,
+		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        types.NewInt(0),
+		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 
 	vmi, err := sm.newVM(ctx, vmopt)
@@ -113,6 +114,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	}
 
 	return &api.InvocResult{
+		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,
 		ExecutionTrace: ret.ExecutionTrace,
@@ -174,9 +176,10 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		Rand:           r,
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
-		CircSupplyCalc: sm.GetCirculatingSupply,
+		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
+		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
@@ -228,8 +231,10 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	}
 
 	return &api.InvocResult{
+		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,
+		GasCost:        MakeMsgGasCost(msg, ret),
 		ExecutionTrace: ret.ExecutionTrace,
 		Error:          errs,
 		Duration:       ret.Duration,

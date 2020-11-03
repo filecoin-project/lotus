@@ -30,11 +30,11 @@ import (
 )
 
 // ExecuteMessageVector executes a message-class test vector.
-func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
+func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) {
 	var (
-		ctx   = context.Background()
-		epoch = vector.Pre.Epoch
-		root  = vector.Pre.StateTree.RootCID
+		ctx       = context.Background()
+		baseEpoch = variant.Epoch
+		root      = vector.Pre.StateTree.RootCID
 	)
 
 	// Load the CAR into a new temporary Blockstore.
@@ -53,16 +53,16 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 			r.Fatalf("failed to deserialize message: %s", err)
 		}
 
-		// add an epoch if one's set.
-		if m.Epoch != nil {
-			epoch = *m.Epoch
+		// add the epoch offset if one is set.
+		if m.EpochOffset != nil {
+			baseEpoch += *m.EpochOffset
 		}
 
 		// Execute the message.
 		var ret *vm.ApplyRet
 		ret, root, err = driver.ExecuteMessage(bs, ExecuteMessageParams{
 			Preroot:    root,
-			Epoch:      abi.ChainEpoch(epoch),
+			Epoch:      abi.ChainEpoch(baseEpoch),
 			Message:    msg,
 			BaseFee:    BaseFeeOrDefault(vector.Pre.BaseFee),
 			CircSupply: CircSupplyOrDefault(vector.Pre.CircSupply),
@@ -86,10 +86,10 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector) {
 }
 
 // ExecuteTipsetVector executes a tipset-class test vector.
-func ExecuteTipsetVector(r Reporter, vector *schema.TestVector) {
+func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) {
 	var (
 		ctx       = context.Background()
-		prevEpoch = vector.Pre.Epoch
+		baseEpoch = abi.ChainEpoch(variant.Epoch)
 		root      = vector.Pre.StateTree.RootCID
 		tmpds     = ds.NewMapDatastore()
 	)
@@ -105,9 +105,11 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector) {
 
 	// Apply every tipset.
 	var receiptsIdx int
+	var prevEpoch = baseEpoch
 	for i, ts := range vector.ApplyTipsets {
 		ts := ts // capture
-		ret, err := driver.ExecuteTipset(bs, tmpds, root, abi.ChainEpoch(prevEpoch), &ts)
+		execEpoch := baseEpoch + abi.ChainEpoch(ts.EpochOffset)
+		ret, err := driver.ExecuteTipset(bs, tmpds, root, prevEpoch, &ts, execEpoch)
 		if err != nil {
 			r.Fatalf("failed to apply tipset %d message: %s", i, err)
 		}
@@ -122,7 +124,7 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector) {
 			r.Errorf("post receipts root doesn't match; expected: %s, was: %s", expected, actual)
 		}
 
-		prevEpoch = ts.Epoch
+		prevEpoch = execEpoch
 		root = ret.PostStateRoot
 	}
 
