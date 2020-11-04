@@ -214,12 +214,7 @@ func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiw
 		return nil, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
-	if err != nil {
-		return nil, err
-	}
-
-	wpt, err := spt.RegisteredWinningPoStProof()
+	wpt, err := mi.SealProofType.RegisteredWinningPoStProof()
 	if err != nil {
 		return nil, err
 	}

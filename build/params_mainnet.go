@@ -43,10 +43,6 @@ const UpgradeCalicoHeight = 999999
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
-	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg32GiBV1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1,
-	)
 
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)

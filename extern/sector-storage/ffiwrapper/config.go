@@ -6,17 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-type Config struct {
-	SealProofType abi.RegisteredSealProof
-
-	_ struct{} // guard against nameless init
-}
-
-func sizeFromConfig(cfg Config) (abi.SectorSize, error) {
-	return cfg.SealProofType.SectorSize()
-}
-
-func SealProofTypeFromSectorSize(ssize abi.SectorSize) (abi.RegisteredSealProof, error) {
+func SealProofTypeFromSectorSizea(ssize abi.SectorSize) (abi.RegisteredSealProof, error) {
 	switch ssize {
 	case 2 << 10:
 		return abi.RegisteredSealProof_StackedDrg2KiBV1, nil

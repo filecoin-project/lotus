@@ -42,10 +42,6 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		return nil, nil, err
 	}
 
-	cfg := &ffiwrapper.Config{
-		SealProofType: spt,
-	}
-
 	if err := os.MkdirAll(sbroot, 0775); err != nil { //nolint:gosec
 		return nil, nil, err
 	}
@@ -56,7 +52,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		Root: sbroot,
 	}
 
-	sb, err := ffiwrapper.New(sbfs, cfg)
+	sb, err := ffiwrapper.New(sbfs)
 	if err != nil {
 		return nil, nil, err
 	}

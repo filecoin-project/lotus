@@ -8,12 +8,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/go-address"
 	padreader "github.com/filecoin-project/go-padreader"
@@ -53,6 +55,7 @@ type SealingAPI interface {
 	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok TipSetToken) (address.Address, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
+	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, TipSetToken) (bool, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
@@ -105,6 +108,7 @@ type UnsealedSectorInfo struct {
 	// stored should always equal sum of pieceSizes.Padded()
 	stored     abi.PaddedPieceSize
 	pieceSizes []abi.UnpaddedPieceSize
+	ssize      abi.SectorSize
 }
 
 func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee) *Sealing {
@@ -151,19 +155,30 @@ func (m *Sealing) Run(ctx context.Context) error {
 func (m *Sealing) Stop(ctx context.Context) error {
 	return m.sectors.Stop(ctx)
 }
+
 func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
 	log.Infof("Adding piece for deal %d (publish msg: %s)", d.DealID, d.PublishCid)
 	if (padreader.PaddedSize(uint64(size))) != size {
 		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
 	}
 
-	if size > abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded() {
+	sp, err := m.currentSealProof(ctx)
+	if err != nil {
+		return 0, 0, xerrors.Errorf("getting current seal proof type: %w", err)
+	}
+
+	ssize, err := sp.SectorSize()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if size > abi.PaddedPieceSize(ssize).Unpadded() {
 		return 0, 0, xerrors.Errorf("piece cannot fit into a sector")
 	}
 
 	m.unsealedInfoMap.lk.Lock()
 
-	sid, pads, err := m.getSectorAndPadding(size)
+	sid, pads, err := m.getSectorAndPadding(ctx, size)
 	if err != nil {
 		m.unsealedInfoMap.lk.Unlock()
 		return 0, 0, xerrors.Errorf("getting available sector: %w", err)
@@ -185,7 +200,7 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 		return 0, 0, xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	startPacking := m.unsealedInfoMap.infos[sid].numDeals >= getDealPerSectorLimit(m.sealer.SectorSize())
+	startPacking := m.unsealedInfoMap.infos[sid].numDeals >= getDealPerSectorLimit(ssize)
 
 	m.unsealedInfoMap.lk.Unlock()
 
@@ -201,7 +216,16 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 // Caller should hold m.unsealedInfoMap.lk
 func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size abi.UnpaddedPieceSize, r io.Reader, di *DealInfo) error {
 	log.Infof("Adding piece to sector %d", sectorID)
-	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sectorID), m.unsealedInfoMap.infos[sectorID].pieceSizes, size, r)
+	sp, err := m.currentSealProof(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting current seal proof type: %w", err)
+	}
+	ssize, err := sp.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sp, sectorID), m.unsealedInfoMap.infos[sectorID].pieceSizes, size, r)
 	if err != nil {
 		return xerrors.Errorf("writing piece: %w", err)
 	}
@@ -224,6 +248,7 @@ func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size 
 		numDeals:   num,
 		stored:     ui.stored + piece.Piece.Size,
 		pieceSizes: append(ui.pieceSizes, piece.Piece.Size.Unpadded()),
+		ssize:      ssize,
 	}
 
 	return nil
@@ -257,16 +282,16 @@ func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 }
 
 // Caller should hold m.unsealedInfoMap.lk
-func (m *Sealing) getSectorAndPadding(size abi.UnpaddedPieceSize) (abi.SectorNumber, []abi.PaddedPieceSize, error) {
-	ss := abi.PaddedPieceSize(m.sealer.SectorSize())
+func (m *Sealing) getSectorAndPadding(ctx context.Context, size abi.UnpaddedPieceSize) (abi.SectorNumber, []abi.PaddedPieceSize, error) {
 	for k, v := range m.unsealedInfoMap.infos {
 		pads, padLength := ffiwrapper.GetRequiredPadding(v.stored, size.Padded())
-		if v.stored+size.Padded()+padLength <= ss {
+
+		if v.stored+size.Padded()+padLength <= abi.PaddedPieceSize(v.ssize) {
 			return k, pads, nil
 		}
 	}
 
-	ns, err := m.newDealSector()
+	ns, ssize, err := m.newDealSector(ctx)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -275,23 +300,24 @@ func (m *Sealing) getSectorAndPadding(size abi.UnpaddedPieceSize) (abi.SectorNum
 		numDeals:   0,
 		stored:     0,
 		pieceSizes: nil,
+		ssize:      ssize,
 	}
 
 	return ns, nil, nil
 }
 
 // newDealSector creates a new sector for deal storage
-func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
+func (m *Sealing) newDealSector(ctx context.Context) (abi.SectorNumber, abi.SectorSize, error) {
 	// First make sure we don't have too many 'open' sectors
 
 	cfg, err := m.getConfig()
 	if err != nil {
-		return 0, xerrors.Errorf("getting config: %w", err)
+		return 0, 0, xerrors.Errorf("getting config: %w", err)
 	}
 
 	if cfg.MaxSealingSectorsForDeals > 0 {
 		if m.stats.curSealing() > cfg.MaxSealingSectorsForDeals {
-			return 0, ErrTooManySectorsSealing
+			return 0, 0, ErrTooManySectorsSealing
 		}
 	}
 
@@ -338,36 +364,36 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 		}
 	}
 
+	spt, err := m.currentSealProof(ctx)
+	if err != nil {
+		return 0, 0, xerrors.Errorf("getting current seal proof type: %w", err)
+	}
+
 	// Now actually create a new sector
 
 	sid, err := m.sc.Next()
 	if err != nil {
-		return 0, xerrors.Errorf("getting sector number: %w", err)
+		return 0, 0, xerrors.Errorf("getting sector number: %w", err)
 	}
 
-	err = m.sealer.NewSector(context.TODO(), m.minerSector(sid))
+	err = m.sealer.NewSector(context.TODO(), m.minerSector(spt, sid))
 	if err != nil {
-		return 0, xerrors.Errorf("initializing sector: %w", err)
-	}
-
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
-	if err != nil {
-		return 0, xerrors.Errorf("bad sector size: %w", err)
+		return 0, 0, xerrors.Errorf("initializing sector: %w", err)
 	}
 
 	log.Infof("Creating sector %d", sid)
 	err = m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,
-		SectorType: rt,
+		SectorType: spt,
 	})
 
 	if err != nil {
-		return 0, xerrors.Errorf("starting the sector fsm: %w", err)
+		return 0, 0, xerrors.Errorf("starting the sector fsm: %w", err)
 	}
 
 	cf, err := m.getConfig()
 	if err != nil {
-		return 0, xerrors.Errorf("getting the sealing delay: %w", err)
+		return 0, 0, xerrors.Errorf("getting the sealing delay: %w", err)
 	}
 
 	if cf.WaitDealsDelay > 0 {
@@ -380,25 +406,42 @@ func (m *Sealing) newDealSector() (abi.SectorNumber, error) {
 		}()
 	}
 
-	return sid, nil
+	ssize, err := spt.SectorSize()
+	return sid, ssize, err
 }
 
 // newSectorCC accepts a slice of pieces with no deal (junk data)
-func (m *Sealing) newSectorCC(sid abi.SectorNumber, pieces []Piece) error {
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(m.sealer.SectorSize())
+func (m *Sealing) newSectorCC(ctx context.Context, sid abi.SectorNumber, pieces []Piece) error {
+	spt, err := m.currentSealProof(ctx)
 	if err != nil {
-		return xerrors.Errorf("bad sector size: %w", err)
+		return xerrors.Errorf("getting current seal proof type: %w", err)
 	}
 
 	log.Infof("Creating CC sector %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStartCC{
 		ID:         sid,
 		Pieces:     pieces,
-		SectorType: rt,
+		SectorType: spt,
 	})
 }
 
-func (m *Sealing) minerSector(num abi.SectorNumber) abi.SectorID {
+func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof, error) {
+	mi, err := m.api.StateMinerInfo(ctx, m.maddr, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	return mi.SealProofType, nil
+}
+
+func (m *Sealing) minerSector(spt abi.RegisteredSealProof, num abi.SectorNumber) storage.SectorRef {
+	return storage.SectorRef{
+		ID:        m.minerSectorID(num),
+		ProofType: spt,
+	}
+}
+
+func (m *Sealing) minerSectorID(num abi.SectorNumber) abi.SectorID {
 	mid, err := address.IDFromAddress(m.maddr)
 	if err != nil {
 		panic(err)
