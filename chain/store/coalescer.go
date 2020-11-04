@@ -80,41 +80,77 @@ func (c *HeadChangeCoalescer) background(delay time.Duration) {
 }
 
 func (c *HeadChangeCoalescer) coalesce(revert, apply []*types.TipSet) {
-	// newly reverted tipsets cancel out pending applied tipsets
-	// we iterate through the revert set and if a tipset is pending for apply we cancel it.
+	// newly reverted tipsets cancel out with pending applys.
+	// similarly, newly applied tipsets cancel out with pending reverts.
 
-	// pending tipsets for apply
-	applied := make(map[types.TipSetKey]struct{})
-	for _, ts := range c.apply {
-		applied[ts.Key()] = struct{}{}
+	// pending tipsets
+	pendRevert := make(map[types.TipSetKey]struct{}, len(c.revert))
+	for _, ts := range c.revert {
+		pendRevert[ts.Key()] = struct{}{}
 	}
 
-	// freshly reverted tipsets from the pending applied set
-	reverted := make(map[types.TipSetKey]struct{})
+	pendApply := make(map[types.TipSetKey]struct{}, len(c.apply))
+	for _, ts := range c.apply {
+		pendApply[ts.Key()] = struct{}{}
+	}
 
+	// incoming tipsets
+	reverting := make(map[types.TipSetKey]struct{}, len(revert))
 	for _, ts := range revert {
-		key := ts.Key()
+		reverting[ts.Key()] = struct{}{}
+	}
 
-		_, ok := applied[key]
-		if ok {
-			reverted[key] = struct{}{}
+	applying := make(map[types.TipSetKey]struct{}, len(apply))
+	for _, ts := range apply {
+		applying[ts.Key()] = struct{}{}
+	}
+
+	// coalesced revert set
+	// - pending reverts are cancelled by incoming applys
+	// - incoming reverts are cancelled by pending applys
+	newRevert := make([]*types.TipSet, 0, len(c.revert)+len(revert))
+	for _, ts := range c.revert {
+		_, cancel := applying[ts.Key()]
+		if cancel {
 			continue
 		}
 
-		c.revert = append(c.revert, ts)
+		newRevert = append(newRevert, ts)
 	}
 
-	newApply := make([]*types.TipSet, 0, len(c.apply)-len(reverted)+len(apply))
+	for _, ts := range revert {
+		_, cancel := pendApply[ts.Key()]
+		if cancel {
+			continue
+		}
+
+		newRevert = append(newRevert, ts)
+	}
+
+	// coalesced apply set
+	// - pending applys are cancelled by incoming reverts
+	// - incoming applys are cancelled by pending reverts
+	newApply := make([]*types.TipSet, 0, len(c.apply)+len(apply))
 	for _, ts := range c.apply {
-		_, ok := reverted[ts.Key()]
-		if ok {
+		_, cancel := reverting[ts.Key()]
+		if cancel {
 			continue
 		}
 
 		newApply = append(newApply, ts)
 	}
 
-	newApply = append(newApply, apply...)
+	for _, ts := range apply {
+		_, cancel := pendRevert[ts.Key()]
+		if cancel {
+			continue
+		}
+
+		newApply = append(newApply, ts)
+	}
+
+	// commit the coalesced sets
+	c.revert = newRevert
 	c.apply = newApply
 }
 
