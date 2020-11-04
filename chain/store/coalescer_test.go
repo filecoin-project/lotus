@@ -14,7 +14,7 @@ func TestHeadChangeCoalescer(t *testing.T) {
 		notif <- headChange{apply: apply, revert: revert}
 		return nil
 	}, 100*time.Millisecond)
-	defer c.Close()
+	defer c.Close() //nolint
 
 	b0 := mock.MkBlock(nil, 0, 0)
 	root := mock.TipSet(b0)
@@ -30,10 +30,10 @@ func TestHeadChangeCoalescer(t *testing.T) {
 	bE := mock.MkBlock(root, 1, 5)
 	tABCDE := mock.TipSet(bA, bB, bC, bD, bE)
 
-	c.HeadChange(nil, []*types.TipSet{tA})
-	c.HeadChange(nil, []*types.TipSet{tB})
-	c.HeadChange([]*types.TipSet{tA, tB}, []*types.TipSet{tAB})
-	c.HeadChange([]*types.TipSet{tAB}, []*types.TipSet{tABC})
+	c.HeadChange(nil, []*types.TipSet{tA})                      //nolint
+	c.HeadChange(nil, []*types.TipSet{tB})                      //nolint
+	c.HeadChange([]*types.TipSet{tA, tB}, []*types.TipSet{tAB}) //nolint
+	c.HeadChange([]*types.TipSet{tAB}, []*types.TipSet{tABC})   //nolint
 
 	change := <-notif
 
@@ -47,8 +47,8 @@ func TestHeadChangeCoalescer(t *testing.T) {
 		t.Fatalf("expected to apply tABC")
 	}
 
-	c.HeadChange([]*types.TipSet{tABC}, []*types.TipSet{tABCD})
-	c.HeadChange([]*types.TipSet{tABCD}, []*types.TipSet{tABCDE})
+	c.HeadChange([]*types.TipSet{tABC}, []*types.TipSet{tABCD})   //nolint
+	c.HeadChange([]*types.TipSet{tABCD}, []*types.TipSet{tABCDE}) //nolint
 
 	change = <-notif
 
