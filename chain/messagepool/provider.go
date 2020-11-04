@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -9,8 +10,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var HeadChangeCoalesceDelay = time.Second
 
 type Provider interface {
 	SubscribeHeadChanges(func(rev, app []*types.TipSet) error) *types.TipSet
@@ -34,7 +38,7 @@ func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
 }
 
 func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
-	mpp.sm.ChainStore().SubscribeHeadChanges(cb)
+	mpp.sm.ChainStore().SubscribeHeadChanges(store.WrapHeadChangeCoalescer(cb, HeadChangeCoalesceDelay))
 	return mpp.sm.ChainStore().GetHeaviestTipSet()
 }
 
