@@ -16,6 +16,7 @@ import (
 	"sort"
 	"time"
 
+	ocprom "contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	"github.com/ipfs/go-cid"
@@ -34,11 +35,9 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/repo"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
 	"github.com/ipld/go-car"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
@@ -138,7 +137,25 @@ var importBenchCmd = &cli.Command{
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 
 		go func() {
-			http.Handle("/debug/metrics/prometheus", promhttp.Handler())
+			// Prometheus globals are exposed as interfaces, but the prometheus
+			// OpenCensus exporter expects a concrete *Registry. The concrete type of
+			// the globals are actually *Registry, so we downcast them, staying
+			// defensive in case things change under the hood.
+			registry, ok := prometheus.DefaultRegisterer.(*prometheus.Registry)
+			if !ok {
+				log.Warnf("failed to export default prometheus registry; some metrics will be unavailable; unexpected type: %T", prometheus.DefaultRegisterer)
+				return
+			}
+			exporter, err := ocprom.NewExporter(ocprom.Options{
+				Registry:  registry,
+				Namespace: "lotus",
+			})
+			if err != nil {
+				log.Fatalf("could not create the prometheus stats exporter: %v", err)
+			}
+
+			http.Handle("/debug/metrics", exporter)
+
 			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
 		}()
 
@@ -259,12 +276,12 @@ var importBenchCmd = &cli.Command{
 		defer func() {
 			end := time.Now().Format(time.RFC3339)
 
-			resp, err := http.Get("http://localhost:6060/debug/metrics/prometheus")
+			resp, err := http.Get("http://localhost:6060/debug/metrics")
 			if err != nil {
 				log.Warnf("failed to scape prometheus: %s", err)
 			}
 
-			metricsfi, err := os.Create("import-bench.metrics")
+			metricsfi, err := os.Create("bench.metrics")
 			if err != nil {
 				log.Warnf("failed to write prometheus data: %s", err)
 			}
@@ -446,7 +463,7 @@ var importBenchCmd = &cli.Command{
 
 		var enc *json.Encoder
 		if cctx.Bool("export-traces") {
-			ibj, err := os.Create("import-bench.json")
+			ibj, err := os.Create("bench.json")
 			if err != nil {
 				return err
 			}
