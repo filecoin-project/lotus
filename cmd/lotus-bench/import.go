@@ -424,7 +424,8 @@ var importBenchCmd = &cli.Command{
 
 		if start != nil {
 			startEpoch = start.Height()
-			if err := cs.SetHead(start); err != nil {
+			if err := cs.ForceHeadSilent(context.Background(), start); err != nil {
+				// if err := cs.SetHead(start); err != nil {
 				return err
 			}
 		}

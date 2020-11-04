@@ -44,10 +44,10 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	car "github.com/ipld/go-car"
+	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	pubsub "github.com/whyrusleeping/pubsub"
+	"github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
 )
 
@@ -360,6 +360,26 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		return cs.takeHeaviestTipSet(ctx, ts)
 	}
 	return nil
+}
+
+// ForceHeadSilent forces a chain head tipset without triggering a reorg
+// operation.
+//
+// CAUTION: Use it only for testing, such as to teleport the chain to a
+// particular tipset to carry out a benchmark, verification, etc. on a chain
+// segment.
+func (cs *ChainStore) ForceHeadSilent(_ context.Context, ts *types.TipSet) error {
+	log.Warnf("(!!!) forcing a new head silently; only use this only for testing; new head: %s", ts)
+
+	cs.heaviestLk.Lock()
+	defer cs.heaviestLk.Unlock()
+	cs.heaviest = ts
+
+	err := cs.writeHead(ts)
+	if err != nil {
+		err = xerrors.Errorf("failed to write chain head: %s", err)
+	}
+	return err
 }
 
 type reorg struct {
