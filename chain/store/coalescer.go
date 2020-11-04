@@ -7,11 +7,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// WrapHeadChangeCoalescer wraps a ReorgNotifee with a head change coalescer.
 func WrapHeadChangeCoalescer(fn ReorgNotifee, delay time.Duration) ReorgNotifee {
 	c := NewHeadChangeCoalescer(fn, delay)
 	return c.HeadChange
 }
 
+// HeadChangeCoalescer is a stateful reorg notifee which coalesces incoming head changes
+// with pending head changes to reduce state computations from head change notifications.
 type HeadChangeCoalescer struct {
 	notify ReorgNotifee
 
@@ -28,6 +31,7 @@ type headChange struct {
 	revert, apply []*types.TipSet
 }
 
+// NewHeadChangeCoalescer creates a HeadChangeCoalescer.
 func NewHeadChangeCoalescer(fn ReorgNotifee, delay time.Duration) *HeadChangeCoalescer {
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &HeadChangeCoalescer{
@@ -42,6 +46,8 @@ func NewHeadChangeCoalescer(fn ReorgNotifee, delay time.Duration) *HeadChangeCoa
 	return c
 }
 
+// HeadChange is the ReorgNotifee callback for the stateful coalescer; it receives an incoming
+// head change and schedules dispatch of a coalesced head change in the background.
 func (c *HeadChangeCoalescer) HeadChange(revert, apply []*types.TipSet) error {
 	select {
 	case c.eventq <- headChange{revert: revert, apply: apply}:
@@ -51,6 +57,8 @@ func (c *HeadChangeCoalescer) HeadChange(revert, apply []*types.TipSet) error {
 	}
 }
 
+// Close closes the coalescer and cancels the background dispatch goroutine.
+// Any further notification will result in an error.
 func (c *HeadChangeCoalescer) Close() {
 	select {
 	case <-c.ctx.Done():
@@ -58,6 +66,8 @@ func (c *HeadChangeCoalescer) Close() {
 		c.cancel()
 	}
 }
+
+// Implementation details
 
 func (c *HeadChangeCoalescer) background(delay time.Duration) {
 	var timerC <-chan time.Time
@@ -74,6 +84,9 @@ func (c *HeadChangeCoalescer) background(delay time.Duration) {
 			timerC = nil
 
 		case <-c.ctx.Done():
+			if c.revert != nil || c.apply != nil {
+				c.dispatch()
+			}
 			return
 		}
 	}
