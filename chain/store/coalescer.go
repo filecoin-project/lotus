@@ -59,12 +59,14 @@ func (c *HeadChangeCoalescer) HeadChange(revert, apply []*types.TipSet) error {
 
 // Close closes the coalescer and cancels the background dispatch goroutine.
 // Any further notification will result in an error.
-func (c *HeadChangeCoalescer) Close() {
+func (c *HeadChangeCoalescer) Close() error {
 	select {
 	case <-c.ctx.Done():
 	default:
 		c.cancel()
 	}
+
+	return nil
 }
 
 // Implementation details
