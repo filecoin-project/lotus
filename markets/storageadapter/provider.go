@@ -254,7 +254,7 @@ func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, 
 }
 
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return OnDealSectorCommitted(n, n.ev, ctx, provider, dealID, publishCid, cb)
+	return OnDealSectorCommitted(ctx, n, n.ev, provider, dealID, publishCid, cb)
 }
 
 func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {

@@ -213,7 +213,7 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 }
 
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return OnDealSectorCommitted(c, c.ev, ctx, provider, dealID, publishCid, cb)
+	return OnDealSectorCommitted(ctx, c, c.ev, provider, dealID, publishCid, cb)
 }
 
 func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {

@@ -263,7 +263,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 				cbCallCount++
 				cbError = err
 			}
-			err = OnDealSectorCommitted(api, eventsAPI, ctx, provider, startDealID, &publishCid, cb)
+			err = OnDealSectorCommitted(ctx, api, eventsAPI, provider, startDealID, &publishCid, cb)
 			if data.expectedError == nil {
 				require.NoError(t, err)
 			} else {
@@ -345,7 +345,7 @@ var seq int
 func generateCids(n int) []cid.Cid {
 	cids := make([]cid.Cid, 0, n)
 	for i := 0; i < n; i++ {
-		c := blocks.NewBlock([]byte(string(fmt.Sprint(seq)))).Cid()
+		c := blocks.NewBlock([]byte(fmt.Sprint(seq))).Cid()
 		seq++
 		cids = append(cids, c)
 	}

@@ -19,7 +19,7 @@ type sectorCommittedEventsAPI interface {
 	Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error
 }
 
-func OnDealSectorCommitted(api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, ctx context.Context, provider address.Address, dealID abi.DealID, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		newDealID, sd, err := GetCurrentDealInfo(ctx, ts, api, dealID, publishCid)
 		if err != nil {

@@ -20,7 +20,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var notFoundError = errors.New("Could not find")
+var errNotFound = errors.New("Could not find")
 
 func TestGetCurrentDealInfo(t *testing.T) {
 	ctx := context.Background()
@@ -54,7 +54,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		},
 		"publish CID = nil": {
 			expectedDealID: startDealID,
-			expectedError:  notFoundError,
+			expectedError:  errNotFound,
 		},
 		"search message fails": {
 			publishCid:       &dummyCid,
@@ -103,7 +103,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 				},
 			},
 			expectedDealID: startDealID,
-			expectedError:  notFoundError,
+			expectedError:  errNotFound,
 		},
 		"new deal id success": {
 			publishCid: &dummyCid,
@@ -128,7 +128,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 				},
 			},
 			expectedDealID: newDealID,
-			expectedError:  notFoundError,
+			expectedError:  errNotFound,
 		},
 	}
 	for testCase, data := range testCases {
@@ -174,7 +174,7 @@ type mockGetCurrentDealInfoAPI struct {
 func (mapi *mockGetCurrentDealInfoAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, ts types.TipSetKey) (*api.MarketDeal, error) {
 	deal, ok := mapi.MarketDeals[marketDealKey{dealID, ts}]
 	if !ok {
-		return nil, notFoundError
+		return nil, errNotFound
 	}
 	return deal, nil
 }
