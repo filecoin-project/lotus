@@ -31,11 +31,6 @@ type testWorker struct {
 }
 
 func newTestWorker(wcfg WorkerConfig, lstor *stores.Local, ret storiface.WorkerReturn) *testWorker {
-	ssize, err := wcfg.SealProof.SectorSize()
-	if err != nil {
-		panic(err)
-	}
-
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
@@ -46,15 +41,15 @@ func newTestWorker(wcfg WorkerConfig, lstor *stores.Local, ret storiface.WorkerR
 		lstor:       lstor,
 		ret:         ret,
 
-		mockSeal: mock.NewMockSectorMgr(ssize, nil),
+		mockSeal: mock.NewMockSectorMgr(nil),
 
 		session: uuid.New(),
 	}
 }
 
-func (t *testWorker) asyncCall(sector abi.SectorID, work func(ci storiface.CallID)) (storiface.CallID, error) {
+func (t *testWorker) asyncCall(sector storage.SectorRef, work func(ci storiface.CallID)) (storiface.CallID, error) {
 	ci := storiface.CallID{
-		Sector: sector,
+		Sector: sector.ID,
 		ID:     uuid.New(),
 	}
 
@@ -63,7 +58,7 @@ func (t *testWorker) asyncCall(sector abi.SectorID, work func(ci storiface.CallI
 	return ci, nil
 }
 
-func (t *testWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+func (t *testWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
 	return t.asyncCall(sector, func(ci storiface.CallID) {
 		p, err := t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
 		if err := t.ret.ReturnAddPiece(ctx, ci, p, errstr(err)); err != nil {
@@ -72,7 +67,7 @@ func (t *testWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceSiz
 	})
 }
 
-func (t *testWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
+func (t *testWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	return t.asyncCall(sector, func(ci storiface.CallID) {
 		t.pc1s++
 
@@ -90,7 +85,7 @@ func (t *testWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ti
 	})
 }
 
-func (t *testWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
+func (t *testWorker) Fetch(ctx context.Context, sector storage.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	return t.asyncCall(sector, func(ci storiface.CallID) {
 		if err := t.ret.ReturnFetch(ctx, ci, ""); err != nil {
 			log.Error(err)
