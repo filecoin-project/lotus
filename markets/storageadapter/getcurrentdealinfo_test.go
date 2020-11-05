@@ -137,10 +137,14 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			defer cancel()
 			ts, err := test.MockTipset(address.TestAddress, rand.Uint64())
 			require.NoError(t, err)
+			marketDeals := make(map[marketDealKey]*api.MarketDeal)
+			for dealID, deal := range data.marketDeals {
+				marketDeals[marketDealKey{dealID, ts.Key()}] = deal
+			}
 			api := &mockGetCurrentDealInfoAPI{
 				SearchMessageLookup: data.searchMessageLookup,
 				SearchMessageErr:    data.searchMessageErr,
-				MarketDeals:         data.marketDeals,
+				MarketDeals:         marketDeals,
 			}
 
 			dealID, marketDeal, err := GetCurrentDealInfo(ctx, ts, api, startDealID, data.publishCid)
@@ -155,15 +159,20 @@ func TestGetCurrentDealInfo(t *testing.T) {
 	}
 }
 
+type marketDealKey struct {
+	abi.DealID
+	types.TipSetKey
+}
+
 type mockGetCurrentDealInfoAPI struct {
 	SearchMessageLookup *api.MsgLookup
 	SearchMessageErr    error
 
-	MarketDeals map[abi.DealID]*api.MarketDeal
+	MarketDeals map[marketDealKey]*api.MarketDeal
 }
 
 func (mapi *mockGetCurrentDealInfoAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, ts types.TipSetKey) (*api.MarketDeal, error) {
-	deal, ok := mapi.MarketDeals[dealID]
+	deal, ok := mapi.MarketDeals[marketDealKey{dealID, ts}]
 	if !ok {
 		return nil, notFoundError
 	}
