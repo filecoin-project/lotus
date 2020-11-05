@@ -6,6 +6,12 @@ import (
 	"sort"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+
+	"github.com/filecoin-project/go-address"
+
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -38,8 +44,23 @@ var infoCmd = &cli.Command{
 			Name:  "hide-sectors-info",
 			Usage: "hide sectors info",
 		},
+		&cli.BoolFlag{
+			Name:  "show-rewards",
+			Usage: "show block rewards earned",
+		},
 	},
 	Action: infoCmdAct,
+}
+
+func getRewardsForMiner(rewardAmount abi.TokenAmount, miner address.Address, trace []types.ExecutionTrace) abi.TokenAmount {
+	var updatedRewardAmount = rewardAmount
+	for _, im := range trace {
+		if im.Msg.From == reward.Address && im.Msg.To == miner {
+			updatedRewardAmount = big.Sum(rewardAmount, im.Msg.Value)
+		}
+		updatedRewardAmount = getRewardsForMiner(updatedRewardAmount, miner, im.Subcalls)
+	}
+	return updatedRewardAmount
 }
 
 func infoCmdAct(cctx *cli.Context) error {
@@ -156,6 +177,30 @@ func infoCmdAct(cctx *cli.Context) error {
 			fmt.Print("Expected block win rate: ")
 			color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))
 		}
+	}
+
+	if cctx.Bool("show-rewards") {
+		curTs := head
+		var blockRewardsEarned = abi.NewTokenAmount(0)
+		for curTs.Height() > abi.ChainEpoch(0) {
+			stout, err := api.StateCompute(ctx, curTs.Height(), nil, curTs.Key())
+			if err != nil {
+				return err
+			}
+
+			for _, stoutT := range stout.Trace {
+				blockRewardsEarned = getRewardsForMiner(blockRewardsEarned, maddr, stoutT.ExecutionTrace.Subcalls)
+			}
+
+			nextTs, err := api.ChainGetTipSetByHeight(ctx, curTs.Height()-1, curTs.Key())
+			if err != nil {
+				return err
+			}
+
+			curTs = nextTs
+		}
+
+		fmt.Printf("Block rewards earned: %s\n", types.FIL(blockRewardsEarned))
 	}
 
 	fmt.Println()
