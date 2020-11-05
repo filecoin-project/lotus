@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -209,15 +210,17 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 
 		// Drop the partition
 		err = secs.ForEach(func(sid uint64) error {
-			return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkCorrupted(abi.SectorID{
-				Miner:  abi.ActorID(mid),
-				Number: abi.SectorNumber(sid),
+			return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkCorrupted(storage.SectorRef{
+				ID: abi.SectorID{
+					Miner:  abi.ActorID(mid),
+					Number: abi.SectorNumber(sid),
+				},
 			}, true)
 		})
 		require.NoError(t, err)
 	}
 
-	var s abi.SectorID
+	var s storage.SectorRef
 
 	// Drop 1 sectors from deadline 3 partition 0
 	{
@@ -238,9 +241,11 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 		require.NoError(t, err)
 		fmt.Println("the sectors", all)
 
-		s = abi.SectorID{
-			Miner:  abi.ActorID(mid),
-			Number: abi.SectorNumber(sn),
+		s = storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(sn),
+			},
 		}
 
 		err = miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(s, true)

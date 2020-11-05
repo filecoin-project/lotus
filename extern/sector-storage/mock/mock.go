@@ -404,14 +404,14 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) erro
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []abi.SectorID) ([]abi.SectorID, error) {
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef) ([]abi.SectorID, error) {
 	var bad []abi.SectorID
 
 	for _, sid := range ids {
-		_, found := mgr.sectors[sid]
+		_, found := mgr.sectors[sid.ID]
 
-		if !found || mgr.sectors[sid].failed {
-			bad = append(bad, sid)
+		if !found || mgr.sectors[sid.ID].failed {
+			bad = append(bad, sid.ID)
 		}
 	}
 

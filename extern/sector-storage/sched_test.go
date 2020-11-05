@@ -584,7 +584,10 @@ func TestWindowCompact(t *testing.T) {
 				window := &schedWindow{}
 
 				for _, task := range windowTasks {
-					window.todo = append(window.todo, &workerRequest{taskType: task})
+					window.todo = append(window.todo, &workerRequest{
+						taskType: task,
+						sector:   storage.SectorRef{ProofType: spt},
+					})
 					window.allocated.add(wh.info.Resources, ResourceTable[task][spt])
 				}
 
