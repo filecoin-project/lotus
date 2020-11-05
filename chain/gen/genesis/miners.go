@@ -29,6 +29,7 @@ import (
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -99,11 +100,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		i := i
 		m := m
 
-		if len(m.Sectors) == 0 {
-			return cid.Undef, xerrors.Errorf("genesis miners must have at least 1 presealed sector")
-		}
 
-		spt := m.Sectors[0].ProofType
+		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, build.NewestNetworkVersion)
+		if err != nil {
+			return cid.Undef, err
+		}
 
 		{
 			constructorParams := &power0.CreateMinerParams{
