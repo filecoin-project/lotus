@@ -30,7 +30,7 @@ type GasCharge struct {
 }
 
 func (g GasCharge) Total() int64 {
-	return g.ComputeGas*GasComputeMulti + g.StorageGas*GasStorageMulti
+	return g.ComputeGas + g.StorageGas
 }
 func (g GasCharge) WithVirtual(compute, storage int64) GasCharge {
 	out := g
@@ -85,6 +85,9 @@ type Pricelist interface {
 
 var prices = map[abi.ChainEpoch]Pricelist{
 	abi.ChainEpoch(0): &pricelistV0{
+		computeGasMulti: 1,
+		storageGasMulti: 1000,
+
 		onChainMessageComputeBase:    38863,
 		onChainMessageStorageBase:    36,
 		onChainMessageStoragePerByte: 1,
