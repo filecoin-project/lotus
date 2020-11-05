@@ -213,14 +213,14 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 	return big.Mul(bounds.Min, big.NewInt(clientOverestimation)), bounds.Max, nil
 }
 
-func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err := c.StateMarketStorageDeal(ctx, dealId, ts.Key())
-
+		newDealID, sd, err := GetCurrentDealInfo(ctx, ts, c, dealID, publishCid)
 		if err != nil {
 			// TODO: This may be fine for some errors
-			return false, false, xerrors.Errorf("client: failed to look up deal on chain: %w", err)
+			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
+		dealID = newDealID
 
 		if sd.State.SectorStartEpoch > 0 {
 			cb(nil)
@@ -230,32 +230,58 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		return false, true, nil
 	}
 
+	var sectorNumber abi.SectorNumber
+	var sectorFound bool
+
 	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
 		defer func() {
 			if err != nil {
 				cb(xerrors.Errorf("handling applied event: %w", err))
 			}
 		}()
+		switch msg.Method {
+		case miner.Methods.PreCommitSector:
+			dealID, _, err = GetCurrentDealInfo(ctx, ts, c, dealID, publishCid)
+			if err != nil {
+				return false, err
+			}
 
-		if msg == nil {
-			log.Error("timed out waiting for deal activation... what now?")
+			var params miner.SectorPreCommitInfo
+			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
+			}
+
+			for _, did := range params.DealIDs {
+				if did == dealID {
+					sectorNumber = params.SectorNumber
+					sectorFound = true
+					return true, nil
+				}
+			}
+			return true, nil
+		case miner.Methods.ProveCommitSector:
+			if msg == nil {
+				log.Error("timed out waiting for deal activation... what now?")
+				return false, nil
+			}
+
+			sd, err := c.StateMarketStorageDeal(ctx, dealID, ts.Key())
+			if err != nil {
+				return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
+			}
+
+			if sd.State.SectorStartEpoch < 1 {
+				return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", dealID, ts.ParentState(), ts.Height())
+			}
+
+			log.Infof("Storage deal %d activated at epoch %d", dealID, sd.State.SectorStartEpoch)
+
+			cb(nil)
+
+			return false, nil
+		default:
 			return false, nil
 		}
-
-		sd, err := c.StateMarketStorageDeal(ctx, dealId, ts.Key())
-		if err != nil {
-			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
-		}
-
-		if sd.State.SectorStartEpoch < 1 {
-			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", dealId, ts.ParentState(), ts.Height())
-		}
-
-		log.Infof("Storage deal %d activated at epoch %d", dealId, sd.State.SectorStartEpoch)
-
-		cb(nil)
-
-		return false, nil
 	}
 
 	revert := func(ctx context.Context, ts *types.TipSet) error {
@@ -264,29 +290,14 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		return nil
 	}
 
-	var sectorNumber abi.SectorNumber
-	var sectorFound bool
 	matchEvent := func(msg *types.Message) (matched bool, err error) {
 		if msg.To != provider {
 			return false, nil
 		}
 
 		switch msg.Method {
-		case miner2.MethodsMiner.PreCommitSector:
-			var params miner.SectorPreCommitInfo
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
-			}
-
-			for _, did := range params.DealIDs {
-				if did == dealId {
-					sectorNumber = params.SectorNumber
-					sectorFound = true
-					return false, nil
-				}
-			}
-
-			return false, nil
+		case miner.Methods.PreCommitSector:
+			return !sectorFound, nil
 		case miner2.MethodsMiner.ProveCommitSector:
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
