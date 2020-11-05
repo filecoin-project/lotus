@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/api"
@@ -19,8 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
-
-var log = logging.Logger("market_adapter")
 
 // API is the dependencies need to run a fund manager
 type API struct {
