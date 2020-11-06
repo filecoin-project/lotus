@@ -30,9 +30,9 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	// persist anyways.
 	opts.Truncate = true
 
-	// We mmap the index into memory, and access values from disk.
-	// Ideally the table loading mode would be settable by LSM level.
-	opts.ValueLogLoadingMode = badgerbs.FileIO
+	// We mmap the index and the value logs; this is important to enable
+	// zero-copy value access.
+	opts.ValueLogLoadingMode = badgerbs.MemoryMap
 	opts.TableLoadingMode = badgerbs.MemoryMap
 
 	// Embed only values < 128 bytes in the LSM tree; larger values are stored
