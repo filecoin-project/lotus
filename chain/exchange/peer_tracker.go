@@ -11,6 +11,7 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
+	"go.uber.org/multierr"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/peermgr"
@@ -38,20 +39,34 @@ func newPeerTracker(lc fx.Lifecycle, h host.Host, pmgr *peermgr.PeerMgr) *bsPeer
 		pmgr:  pmgr,
 	}
 
-	sub, err := h.EventBus().Subscribe(new(peermgr.NewFilPeer))
+	addSub, err := h.EventBus().Subscribe(new(peermgr.NewFilPeer))
 	if err != nil {
 		panic(err)
 	}
 
 	go func() {
-		for newPeer := range sub.Out() {
+		for newPeer := range addSub.Out() {
 			bsPt.addPeer(newPeer.(peermgr.NewFilPeer).Id)
+		}
+	}()
+
+	rmSub, err := h.EventBus().Subscribe(new(peermgr.RemoveFilPeer))
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		for rmPeer := range rmSub.Out() {
+			bsPt.removePeer(rmPeer.(peermgr.RemoveFilPeer).Id)
 		}
 	}()
 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
-			return sub.Close()
+			return multierr.Combine(
+				addSub.Close(),
+				rmSub.Close(),
+			)
 		},
 	})
 
