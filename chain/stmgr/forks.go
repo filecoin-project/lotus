@@ -97,6 +97,10 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeCalicoHeight,
 		Network:   network.Version7,
 		Migration: UpgradeCalico,
+	}, {
+		Height:    build.UpgradePersianHeight,
+		Network:   network.Version8,
+		Migration: nil,
 	}}
 
 	if build.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade

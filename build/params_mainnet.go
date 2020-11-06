@@ -40,6 +40,7 @@ const UpgradeKumquatHeight = 170000
 
 // TODO: Height??
 const UpgradeCalicoHeight = 999999
+const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInDay * 2)
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
