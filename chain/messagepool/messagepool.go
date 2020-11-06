@@ -517,6 +517,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}()
 
 	mp.curTsLk.Lock()
+
 	publish, err := mp.addTs(m, mp.curTs, true, false)
 	if err != nil {
 		mp.curTsLk.Unlock()
@@ -629,6 +630,10 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 	balance, err := mp.getStateBalance(m.Message.From, curTs)
 	if err != nil {
 		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrSoftValidationFailure)
+	}
+
+	if balance == abi.NewTokenAmount(0) {
+		return xerrors.Errorf("sender balance is 0FIL.")
 	}
 
 	requiredFunds := m.Message.RequiredFunds()

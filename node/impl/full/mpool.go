@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -152,6 +154,17 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
 	}
 
+	b, err := a.WalletBalance(ctx, msg.From)
+	if err != nil {
+		return nil, xerrors.Errorf("mpool push: getting origin balance: %w", err)
+	}
+	if b.Equals(abi.NewTokenAmount(0)) {
+		return nil, xerrors.Errorf("mpool push: account has no funds.")
+	}
+	if b.LessThan(msg.Value) {
+		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
+	}
+
 	msg, err = a.GasAPI.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
@@ -167,15 +180,6 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	if msg.From.Protocol() == address.ID {
 		log.Warnf("Push from ID address (%s), adjusting to %s", msg.From, fromA)
 		msg.From = fromA
-	}
-
-	b, err := a.WalletBalance(ctx, msg.From)
-	if err != nil {
-		return nil, xerrors.Errorf("mpool push: getting origin balance: %w", err)
-	}
-
-	if b.LessThan(msg.Value) {
-		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
 	}
 
 	// Sign and push the message
