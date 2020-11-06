@@ -11,14 +11,13 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	lblockstore "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -161,7 +160,7 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 
 	return &MemRepo{
 		repoLock:   make(chan struct{}, 1),
-		blockstore: lblockstore.WrapIDStore(lblockstore.NewTemporarySync()),
+		blockstore: llblockstore.WrapIDStore(llblockstore.NewTemporarySync()),
 		datastore:  opts.Ds,
 		configF:    opts.ConfigF,
 		keystore:   opts.KeyStore,
