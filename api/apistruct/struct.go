@@ -240,6 +240,7 @@ type FullNodeStruct struct {
 		MsigSwapApprove         func(context.Context, address.Address, address.Address, uint64, address.Address, address.Address, address.Address) (cid.Cid, error)              `perm:"sign"`
 		MsigSwapCancel          func(context.Context, address.Address, address.Address, uint64, address.Address, address.Address) (cid.Cid, error)                               `perm:"sign"`
 		MsigRemoveSigner        func(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)              `perm:"sign"`
+		MsigGetWalletForSigner  func(ctx context.Context, signer address.Address) ([]address.Address, error)                                                                     `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error) `perm:"sign"`
 
@@ -1115,6 +1116,10 @@ func (c *FullNodeStruct) MsigSwapCancel(ctx context.Context, msig address.Addres
 
 func (c *FullNodeStruct) MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error) {
 	return c.Internal.MsigRemoveSigner(ctx, msig, proposer, toRemove, decrease)
+}
+
+func (c *FullNodeStruct) MsigGetWalletForSigner(ctx context.Context, signer address.Address) ([]address.Address, error) {
+	return c.Internal.MsigGetWalletForSigner(ctx, signer)
 }
 
 func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) (cid.Cid, error) {

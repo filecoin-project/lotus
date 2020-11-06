@@ -1495,4 +1495,41 @@ func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (m
 	return actState, nil
 }
 
+func (sm *StateManager) GetMultisigsForSigner(ctx context.Context, signerAddress address.Address, st *state.StateTree) ([]address.Address, error) {
+
+	signerAddressId, err := st.LookupID(signerAddress)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var multisigActors []address.Address
+	err = st.ForEach(func(a address.Address, actor *types.Actor) error {
+		if builtin.IsMultisigActor(actor.Code) {
+			ms, err := multisig.Load(sm.cs.Store(ctx), actor)
+			if err != nil {
+				return err
+			}
+
+			signers, err := ms.Signers()
+
+			if err != nil {
+				return err
+			}
+
+			for _, s := range signers {
+				if signerAddressId == s {
+					multisigActors = append(multisigActors, a)
+				}
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return multisigActors, nil
+}
+
 var _ StateManagerAPI = (*StateManager)(nil)

@@ -514,6 +514,9 @@ type FullNode interface {
 	// along with the address removal.
 	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)
 
+	// MsigGetWalletForSigner gets all the multisig wallets the given address is a signer of
+	MsigGetWalletForSigner(ctx context.Context, signer address.Address) ([]address.Address, error)
+
 	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)
 	// MarketFreeBalance
 

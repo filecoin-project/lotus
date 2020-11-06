@@ -63,6 +63,7 @@ var multisigCmd = &cli.Command{
 		msigLockCancelCmd,
 		msigVestedCmd,
 		msigProposeThresholdCmd,
+		msigGetMsig,
 	},
 }
 
@@ -1525,6 +1526,43 @@ var msigProposeThresholdCmd = &cli.Command{
 
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("change threshold proposal returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigGetMsig = &cli.Command{
+	Name:      "get-msig",
+	Usage:     "Get all msig wallets an address is a signer of",
+	ArgsUsage: "address",
+
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 1 {
+			return ShowHelp(cctx, fmt.Errorf("must provide an address"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		addr, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		msigWallets, err := api.MsigGetWalletForSigner(ctx, addr)
+		if err != nil {
+			return nil
+		}
+
+		fmt.Printf("%s is a signer of the following multisig wallets:\n", addr.String())
+
+		for _, msig := range msigWallets {
+			fmt.Printf("%s \n", msig.String())
 		}
 
 		return nil

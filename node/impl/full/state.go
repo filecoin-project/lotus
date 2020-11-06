@@ -42,6 +42,7 @@ import (
 type StateModuleAPI interface {
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
+	MsigGetWalletForSigner(ctx context.Context, signer address.Address) ([]address.Address, error)
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
@@ -981,6 +982,14 @@ func (m *StateModule) MsigGetVested(ctx context.Context, addr address.Address, s
 	}
 
 	return types.BigSub(startLk, endLk), nil
+}
+
+func (a *StateModule) MsigGetWalletForSigner(ctx context.Context, signer address.Address) ([]address.Address, error) {
+	sTree, err := a.stateForTs(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return a.StateManager.GetMultisigsForSigner(ctx, signer, sTree)
 }
 
 var initialPledgeNum = types.NewInt(110)

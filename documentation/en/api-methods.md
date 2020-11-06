@@ -97,6 +97,7 @@
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
   * [MsigGetVested](#MsigGetVested)
   * [MsigGetVestingSchedule](#MsigGetVestingSchedule)
+  * [MsigGetWalletForSigner](#MsigGetWalletForSigner)
   * [MsigPropose](#MsigPropose)
   * [MsigRemoveSigner](#MsigRemoveSigner)
   * [MsigSwapApprove](#MsigSwapApprove)
@@ -2387,6 +2388,21 @@ Response:
   "UnlockDuration": 10101
 }
 ```
+
+### MsigGetWalletForSigner
+MsigGetWalletForSigner gets all the multisig wallets the given address is a signer of
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `null`
 
 ### MsigPropose
 MsigPropose proposes a multisig message
