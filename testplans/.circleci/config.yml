@@ -1,0 +1,86 @@
+---
+version: 2.1
+
+parameters:
+  workspace-dir:
+    type: string
+    default: "/home/circleci"
+
+commands:
+  setup:
+    description: "install go, checkout and restore cache"
+    steps:
+      - checkout
+      - run: sudo apt-get update
+      - run: sudo apt-get install ocl-icd-opencl-dev
+      - run: git submodule sync
+      - run: git submodule update --init
+      - run: cd extra/filecoin-ffi && make
+
+executors:
+  golang:
+    docker:
+      - image: circleci/golang:1.14.6
+    resource_class: 2xlarge
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build-soup-linux
+      - build-graphsync-linux
+      - trigger-testplans
+  nightly:
+    triggers:
+      - schedule:
+          cron: "45 * * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - trigger-testplans
+
+jobs:
+
+  build-soup-linux:
+    executor: golang
+    steps:
+      - setup
+      - run:
+          name: "build lotus-soup"
+          command: pushd lotus-soup && go build -tags=testground .
+
+  build-graphsync-linux:
+    executor: golang
+    steps:
+      - setup
+      - run:
+          name: "build graphsync"
+          command: pushd graphsync && go build .
+
+  trigger-testplans:
+    executor: golang
+    steps:
+      - setup
+      - run:
+          name: "download testground"
+          command: wget https://gist.github.com/nonsense/5fbf3167cac79945f658771aed32fc44/raw/2e17eb0debf7ec6bdf027c1bdafc2c92dd97273b/testground-d3e9603 -O ~/testground-cli && chmod +x ~/testground-cli
+      - run:
+          name: "prepare .env.toml"
+          command: pushd lotus-soup && mkdir -p $HOME/testground && cp env-ci.toml $HOME/testground/.env.toml && echo 'endpoint="'$endpoint'"' >> $HOME/testground/.env.toml && echo 'token="'$token'"' >> $HOME/testground/.env.toml && echo 'user="circleci"' >> $HOME/testground/.env.toml
+      - run:
+          name: "prepare testground home dir"
+          command: mkdir -p $HOME/testground/plans && mv lotus-soup $HOME/testground/plans/ && mv graphsync $HOME/testground/plans/
+      - run:
+          name: "trigger baseline test plan on testground ci"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/oni --metadata-branch=$CIRCLE_BRANCH
+      - run:
+          name: "trigger payment channel stress test plan on testground ci"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/oni --metadata-branch=$CIRCLE_BRANCH
+      - run:
+          name: "trigger deals stress concurrent test plan on testground ci"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/deals-stress-concurrent-natural-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/oni --metadata-branch=$CIRCLE_BRANCH
+      - run:
+          name: "trigger graphsync stress test plan on testground ci"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/graphsync/_compositions/stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/oni --metadata-branch=$CIRCLE_BRANCH
