@@ -29,7 +29,6 @@ import (
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -100,8 +99,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		i := i
 		m := m
 
-
-		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, build.NewestNetworkVersion)
+		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, GenesisNetworkVersion)
 		if err != nil {
 			return cid.Undef, err
 		}
