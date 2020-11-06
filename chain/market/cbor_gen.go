@@ -12,7 +12,7 @@ import (
 
 var _ = xerrors.Errorf
 
-var lengthBufFundedAddressState = []byte{132}
+var lengthBufFundedAddressState = []byte{131}
 
 func (t *FundedAddressState) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -24,11 +24,6 @@ func (t *FundedAddressState) MarshalCBOR(w io.Writer) error {
 	}
 
 	scratch := make([]byte, 9)
-
-	// t.Wallet (address.Address) (struct)
-	if err := t.Wallet.MarshalCBOR(w); err != nil {
-		return err
-	}
 
 	// t.Addr (address.Address) (struct)
 	if err := t.Addr.MarshalCBOR(w); err != nil {
@@ -69,19 +64,10 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 3 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Wallet (address.Address) (struct)
-
-	{
-
-		if err := t.Wallet.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.Wallet: %w", err)
-		}
-
-	}
 	// t.Addr (address.Address) (struct)
 
 	{

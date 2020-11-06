@@ -46,24 +46,22 @@ type FundManager struct {
 	ctx      context.Context
 	shutdown context.CancelFunc
 	api      fundManagerAPI
-	wallet   address.Address
 	str      *Store
 
 	lk          sync.Mutex
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-type waitSentinel cid.Cid
+type WaitSentinel cid.Cid
 
-var waitSentinelUndef = waitSentinel(cid.Undef)
+var WaitSentinelUndef = WaitSentinel(cid.Undef)
 
-func NewFundManager(api fundManagerAPI, ds datastore.Batching, wallet address.Address) *FundManager {
+func NewFundManager(api fundManagerAPI, ds datastore.Batching) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,
 		shutdown:    cancel,
 		api:         api,
-		wallet:      wallet,
 		str:         newStore(ds),
 		fundedAddrs: make(map[address.Address]*fundedAddress),
 	}
@@ -103,25 +101,25 @@ func (fm *FundManager) getFundedAddress(addr address.Address) *fundedAddress {
 	return fa
 }
 
-// Reserve adds amt to `reserved`. If there is not enough available funds for
+// Reserve adds amt to `reserved`. If there are not enough available funds for
 // the address, submits a message on chain to top up available funds.
-func (fm *FundManager) Reserve(ctx context.Context, addr address.Address, amt abi.TokenAmount) (waitSentinel, error) {
-	return fm.getFundedAddress(addr).reserve(ctx, amt)
+func (fm *FundManager) Reserve(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (WaitSentinel, error) {
+	return fm.getFundedAddress(addr).reserve(ctx, wallet, amt)
 }
 
 // Subtract from `reserved`.
-func (fm *FundManager) Release(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
-	return fm.getFundedAddress(addr).release(ctx, amt)
+func (fm *FundManager) Release(addr address.Address, amt abi.TokenAmount) error {
+	return fm.getFundedAddress(addr).release(amt)
 }
 
 // Withdraw unreserved funds. Only succeeds if there are enough unreserved
 // funds for the address.
-func (fm *FundManager) Withdraw(ctx context.Context, addr address.Address, amt abi.TokenAmount) (waitSentinel, error) {
-	return fm.getFundedAddress(addr).withdraw(ctx, amt)
+func (fm *FundManager) Withdraw(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (WaitSentinel, error) {
+	return fm.getFundedAddress(addr).withdraw(ctx, wallet, amt)
 }
 
 // Waits for a reserve or withdraw to complete.
-func (fm *FundManager) Wait(ctx context.Context, sentinel waitSentinel) error {
+func (fm *FundManager) Wait(ctx context.Context, sentinel WaitSentinel) error {
 	_, err := fm.api.StateWaitMsg(ctx, cid.Cid(sentinel), build.MessageConfidence)
 	return err
 }
@@ -129,9 +127,7 @@ func (fm *FundManager) Wait(ctx context.Context, sentinel waitSentinel) error {
 // FundedAddressState keeps track of the state of an address with funds in the
 // datastore
 type FundedAddressState struct {
-	// Wallet is the wallet from which funds are added to the address
-	Wallet address.Address
-	Addr   address.Address
+	Addr address.Address
 	// AmtReserved is the amount that must be kept in the address (cannot be
 	// withdrawn)
 	AmtReserved abi.TokenAmount
@@ -164,14 +160,13 @@ func newFundedAddress(fm *FundManager, addr address.Address) *fundedAddress {
 		env: &fundManagerEnvironment{api: fm.api},
 		str: fm.str,
 		state: &FundedAddressState{
-			Wallet:      fm.wallet,
 			Addr:        addr,
 			AmtReserved: abi.NewTokenAmount(0),
 		},
 	}
 }
 
-// If there is a in-progress on-chain message, don't submit any more messages
+// If there is an in-progress on-chain message, don't submit any more messages
 // on chain until it completes
 func (a *fundedAddress) start() {
 	a.lk.Lock()
@@ -183,22 +178,22 @@ func (a *fundedAddress) start() {
 	}
 }
 
-func (a *fundedAddress) reserve(ctx context.Context, amt abi.TokenAmount) (waitSentinel, error) {
-	return a.requestAndWait(ctx, amt, &a.reservations)
+func (a *fundedAddress) reserve(ctx context.Context, wallet address.Address, amt abi.TokenAmount) (WaitSentinel, error) {
+	return a.requestAndWait(ctx, wallet, amt, &a.reservations)
 }
 
-func (a *fundedAddress) release(ctx context.Context, amt abi.TokenAmount) error {
-	_, err := a.requestAndWait(ctx, amt, &a.releases)
+func (a *fundedAddress) release(amt abi.TokenAmount) error {
+	_, err := a.requestAndWait(context.Background(), address.Undef, amt, &a.releases)
 	return err
 }
 
-func (a *fundedAddress) withdraw(ctx context.Context, amt abi.TokenAmount) (waitSentinel, error) {
-	return a.requestAndWait(ctx, amt, &a.withdrawals)
+func (a *fundedAddress) withdraw(ctx context.Context, wallet address.Address, amt abi.TokenAmount) (WaitSentinel, error) {
+	return a.requestAndWait(ctx, wallet, amt, &a.withdrawals)
 }
 
-func (a *fundedAddress) requestAndWait(ctx context.Context, amt abi.TokenAmount, reqs *[]*fundRequest) (waitSentinel, error) {
+func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Address, amt abi.TokenAmount, reqs *[]*fundRequest) (WaitSentinel, error) {
 	// Create a request and add it to the request queue
-	req := newFundRequest(ctx, amt)
+	req := newFundRequest(ctx, wallet, amt)
 
 	a.lk.Lock()
 	*reqs = append(*reqs, req)
@@ -210,9 +205,9 @@ func (a *fundedAddress) requestAndWait(ctx context.Context, amt abi.TokenAmount,
 	// Wait for the results
 	select {
 	case <-ctx.Done():
-		return waitSentinelUndef, ctx.Err()
+		return WaitSentinelUndef, ctx.Err()
 	case r := <-req.Result:
-		return waitSentinel(r.msgCid), r.err
+		return WaitSentinel(r.msgCid), r.err
 	}
 }
 
@@ -243,17 +238,40 @@ func (a *fundedAddress) process() {
 	}
 
 	// Check if there's anything to do
-	if len(a.reservations) == 0 && len(a.releases) == 0 && len(a.withdrawals) == 0 {
+	haveReservations := len(a.reservations) > 0 || len(a.releases) > 0
+	haveWithdrawals := len(a.withdrawals) > 0
+	if !haveReservations && !haveWithdrawals {
 		return
 	}
 
-	res, _ := a.processRequests()
+	// Process reservations / releases
+	if haveReservations {
+		res, err := a.processReservations(a.reservations, a.releases)
+		if err == nil {
+			a.applyStateChange(res.msgCid, res.amtReserved)
+		}
+		a.reservations = filterOutProcessedReqs(a.reservations)
+		a.releases = filterOutProcessedReqs(a.releases)
+	}
 
-	a.reservations = filterOutProcessedReqs(a.reservations)
-	a.releases = filterOutProcessedReqs(a.releases)
-	a.withdrawals = filterOutProcessedReqs(a.withdrawals)
+	// If there was no message sent on chain by adding reservations, and all
+	// reservations have completed processing, process withdrawals
+	if haveWithdrawals && a.state.MsgCid == nil && len(a.reservations) == 0 {
+		withdrawalCid, err := a.processWithdrawals(a.withdrawals)
+		if err == nil && withdrawalCid != cid.Undef {
+			a.applyStateChange(&withdrawalCid, types.EmptyInt)
+		}
+		a.withdrawals = filterOutProcessedReqs(a.withdrawals)
+	}
 
-	a.applyStateChange(res)
+	// If a message was sent on-chain
+	if a.state.MsgCid != nil {
+		// Start waiting for results of message (async)
+		a.startWaitForResults(*a.state.MsgCid)
+	}
+
+	// Process any remaining queued requests
+	go a.process()
 }
 
 // Filter out completed requests
@@ -268,9 +286,11 @@ func filterOutProcessedReqs(reqs []*fundRequest) []*fundRequest {
 }
 
 // Apply the results of processing queues and save to the datastore
-func (a *fundedAddress) applyStateChange(res *processResult) {
-	a.state.MsgCid = res.msgCid
-	a.state.AmtReserved = res.amtReserved
+func (a *fundedAddress) applyStateChange(msgCid *cid.Cid, amtReserved abi.TokenAmount) {
+	a.state.MsgCid = msgCid
+	if !amtReserved.Nil() {
+		a.state.AmtReserved = amtReserved
+	}
 	a.saveState()
 }
 
@@ -289,59 +309,67 @@ func (a *fundedAddress) saveState() {
 	}
 }
 
-// The result of processing the request queues
+// The result of processing the reservation / release queues
 type processResult struct {
+	// Requests that completed without adding funds
+	cancelled []*fundRequest
+	// Requests that added funds
+	added []*fundRequest
+
 	// The new reserved amount
 	amtReserved abi.TokenAmount
-	// The message cid, if a message was pushed
+	// The message cid, if a message was submitted on-chain
 	msgCid *cid.Cid
 }
 
-// process request queues and return the resulting changes to state
-func (a *fundedAddress) processRequests() (pr *processResult, prerr error) {
-	// If there's an error, mark reserve requests as errored
+// process reservations and releases, and return the resulting changes to state
+func (a *fundedAddress) processReservations(reservations []*fundRequest, releases []*fundRequest) (pr *processResult, prerr error) {
+	// When the function returns
 	defer func() {
+		// If there's an error, mark all requests as errored
 		if prerr != nil {
-			for _, req := range a.reservations {
+			for _, req := range append(reservations, releases...) {
 				req.Complete(cid.Undef, prerr)
+			}
+			return
+		}
+
+		// Complete all release requests
+		for _, req := range releases {
+			req.Complete(cid.Undef, nil)
+		}
+
+		// Complete all cancelled requests
+		for _, req := range pr.cancelled {
+			req.Complete(cid.Undef, nil)
+		}
+
+		// If a message was sent
+		if pr.msgCid != nil {
+			// Complete all add funds requests
+			for _, req := range pr.added {
+				req.Complete(*pr.msgCid, nil)
 			}
 		}
 	}()
 
-	// Start with the reserved amount in state
-	reserved := a.state.AmtReserved
+	// Split reservations into those to cancel (because they are covered by
+	// released amounts) and those to add
+	toCancel, toAdd, reservedDelta := splitReservations(reservations, releases)
 
-	// Add the amount of each reserve request
-	for _, req := range a.reservations {
-		amt := req.Amount()
-		a.debugf("reserve %d", amt)
-		reserved = types.BigAdd(reserved, amt)
-	}
-
-	// Subtract the amount of each release request
-	for _, req := range a.releases {
-		amt := req.Amount()
-		a.debugf("release %d", amt)
-		reserved = types.BigSub(reserved, amt)
-
-		// Mark release as complete
-		req.Complete(cid.Undef, nil)
-	}
-
-	// If reserved amount is negative, set it to zero
+	// Apply the reserved delta to the reserved amount
+	reserved := types.BigAdd(a.state.AmtReserved, reservedDelta)
 	if reserved.LessThan(abi.NewTokenAmount(0)) {
 		reserved = abi.NewTokenAmount(0)
 	}
-
-	res := &processResult{amtReserved: reserved}
+	res := &processResult{
+		amtReserved: reserved,
+		cancelled:   toCancel,
+	}
 
 	// Work out the amount to add to the balance
-	toAdd := abi.NewTokenAmount(0)
-
-	// If the new reserved amount is greater than the existing amount
-	if reserved.GreaterThan(a.state.AmtReserved) {
-		a.debugf("reserved %d > state.AmtReserved %d", reserved, a.state.AmtReserved)
-
+	amtToAdd := abi.NewTokenAmount(0)
+	if reserved.GreaterThan(abi.NewTokenAmount(0)) {
 		// Get available funds for address
 		avail, err := a.env.AvailableFunds(a.ctx, a.state.Addr)
 		if err != nil {
@@ -349,63 +377,98 @@ func (a *fundedAddress) processRequests() (pr *processResult, prerr error) {
 		}
 
 		// amount to add = new reserved amount - available
-		toAdd = types.BigSub(reserved, avail)
-		a.debugf("reserved %d - avail %d = %d", reserved, avail, toAdd)
+		amtToAdd = types.BigSub(reserved, avail)
+		a.debugf("reserved %d - avail %d = to add %d", reserved, avail, amtToAdd)
 	}
 
-	// If there's nothing to add to the balance
-	if toAdd.LessThanEqual(abi.NewTokenAmount(0)) {
-		// Mark reserve requests as complete
-		for _, req := range a.reservations {
-			req.Complete(cid.Undef, nil)
-		}
-
-		// Process withdrawals
-		return a.processWithdrawals(reserved)
+	// If there's nothing to add to the balance, bail out
+	if amtToAdd.LessThanEqual(abi.NewTokenAmount(0)) {
+		a.debugf("    queued for cancel %d", len(toAdd))
+		res.cancelled = append(res.cancelled, toAdd...)
+		return res, nil
 	}
 
 	// Add funds to address
-	a.debugf("add funds %d", toAdd)
-	addFundsCid, err := a.env.AddFunds(a.ctx, a.state.Wallet, a.state.Addr, toAdd)
+	a.debugf("add funds %d", amtToAdd)
+	addFundsCid, err := a.env.AddFunds(a.ctx, toAdd[0].Wallet, a.state.Addr, amtToAdd)
 	if err != nil {
 		return res, err
 	}
 
 	// Mark reserve requests as complete
-	for _, req := range a.reservations {
-		req.Complete(addFundsCid, nil)
-	}
-
-	// Start waiting for results (async)
-	defer a.startWaitForResults(addFundsCid)
+	res.added = toAdd
 
 	// Save the message CID to state
 	res.msgCid = &addFundsCid
 	return res, nil
 }
 
+// Split reservations into those that are under the total release amount and
+// those that exceed it
+func splitReservations(reservations []*fundRequest, releases []*fundRequest) ([]*fundRequest, []*fundRequest, abi.TokenAmount) {
+	toCancel := make([]*fundRequest, 0, len(reservations))
+	toAdd := make([]*fundRequest, 0, len(reservations))
+	toAddAmt := abi.NewTokenAmount(0)
+
+	// Sum release amounts
+	releaseAmt := abi.NewTokenAmount(0)
+	for _, req := range releases {
+		releaseAmt = types.BigAdd(releaseAmt, req.Amount())
+	}
+
+	// We only want to combine requests that come from the same wallet
+	wallet := address.Undef
+	for _, req := range reservations {
+		amt := req.Amount()
+
+		// If the amount to add to the reserve is cancelled out by a release
+		if amt.LessThanEqual(releaseAmt) {
+			// Cancel the request and update the release total
+			releaseAmt = types.BigSub(releaseAmt, amt)
+			toCancel = append(toCancel, req)
+		} else {
+			// The amount to add is greater that the release total so we want
+			// to send an add funds request
+
+			// The first time the wallet will be undefined
+			if wallet == address.Undef {
+				wallet = req.Wallet
+			}
+			// If this request's wallet is the same as the first request's
+			// wallet, the requests will be combined
+			if wallet == req.Wallet {
+				delta := types.BigSub(amt, releaseAmt)
+				toAddAmt = types.BigAdd(toAddAmt, delta)
+				releaseAmt = abi.NewTokenAmount(0)
+				toAdd = append(toAdd, req)
+			}
+		}
+	}
+
+	// The change in the reserved amount is "amount to add" - "amount to release"
+	reservedDelta := types.BigSub(toAddAmt, releaseAmt)
+
+	return toCancel, toAdd, reservedDelta
+}
+
 // process withdrawal queue
-func (a *fundedAddress) processWithdrawals(reserved abi.TokenAmount) (pr *processResult, prerr error) {
-	// If there's an error, mark withdrawal requests as errored
+func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid cid.Cid, prerr error) {
+	// If there's an error, mark all withdrawal requests as errored
 	defer func() {
 		if prerr != nil {
-			for _, req := range a.withdrawals {
+			for _, req := range withdrawals {
 				req.Complete(cid.Undef, prerr)
 			}
 		}
 	}()
 
-	res := &processResult{
-		amtReserved: reserved,
-	}
-
 	// Get the net available balance
 	avail, err := a.env.AvailableFunds(a.ctx, a.state.Addr)
 	if err != nil {
-		return res, err
+		return cid.Undef, err
 	}
 
-	netAvail := types.BigSub(avail, reserved)
+	netAvail := types.BigSub(avail, a.state.AmtReserved)
 
 	// Fit as many withdrawals as possible into the available balance, and fail
 	// the rest
@@ -428,18 +491,18 @@ func (a *fundedAddress) processWithdrawals(reserved abi.TokenAmount) (pr *proces
 
 	// Check if there is anything to withdraw
 	if allowedAmt.Equals(abi.NewTokenAmount(0)) {
-		// Mark allowed requests as complete
+		// Mark allowed requests as cancelled
 		for _, req := range allowed {
 			req.Complete(cid.Undef, nil)
 		}
-		return res, nil
+		return cid.Undef, nil
 	}
 
 	// Withdraw funds
 	a.debugf("withdraw funds %d", allowedAmt)
-	withdrawFundsCid, err := a.env.WithdrawFunds(a.ctx, a.state.Wallet, a.state.Addr, allowedAmt)
+	withdrawFundsCid, err := a.env.WithdrawFunds(a.ctx, allowed[0].Wallet, a.state.Addr, allowedAmt)
 	if err != nil {
-		return res, err
+		return cid.Undef, err
 	}
 
 	// Mark allowed requests as complete
@@ -447,12 +510,8 @@ func (a *fundedAddress) processWithdrawals(reserved abi.TokenAmount) (pr *proces
 		req.Complete(withdrawFundsCid, nil)
 	}
 
-	// Start waiting for results of message (async)
-	defer a.startWaitForResults(withdrawFundsCid)
-
 	// Save the message CID to state
-	res.msgCid = &withdrawFundsCid
-	return res, nil
+	return withdrawFundsCid, nil
 }
 
 // asynchonously wait for results of message
@@ -491,13 +550,15 @@ type fundRequest struct {
 	ctx       context.Context
 	amt       abi.TokenAmount
 	completed chan struct{}
+	Wallet    address.Address
 	Result    chan reqResult
 }
 
-func newFundRequest(ctx context.Context, amt abi.TokenAmount) *fundRequest {
+func newFundRequest(ctx context.Context, wallet address.Address, amt abi.TokenAmount) *fundRequest {
 	return &fundRequest{
 		ctx:       ctx,
 		amt:       amt,
+		Wallet:    wallet,
 		Result:    make(chan reqResult),
 		completed: make(chan struct{}),
 	}
@@ -532,10 +593,6 @@ func (frp *fundRequest) Completed() bool {
 	}
 }
 
-func (frp *fundRequest) Equals(other *fundRequest) bool {
-	return frp == other
-}
-
 // fundManagerEnvironment simplifies some API calls
 type fundManagerEnvironment struct {
 	api fundManagerAPI
@@ -556,7 +613,24 @@ func (env *fundManagerEnvironment) AddFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	return env.sendFunds(ctx, wallet, addr, amt)
+	params, err := actors.SerializeParams(&addr)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
+		To:     market.Address,
+		From:   wallet,
+		Value:  amt,
+		Method: market.Methods.AddBalance,
+		Params: params,
+	}, nil)
+
+	if aerr != nil {
+		return cid.Undef, aerr
+	}
+
+	return smsg.Cid(), nil
 }
 
 func (env *fundManagerEnvironment) WithdrawFunds(
@@ -565,25 +639,19 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	return env.sendFunds(ctx, addr, wallet, amt)
-}
-
-func (env *fundManagerEnvironment) sendFunds(
-	ctx context.Context,
-	from address.Address,
-	to address.Address,
-	amt abi.TokenAmount,
-) (cid.Cid, error) {
-	params, err := actors.SerializeParams(&to)
+	params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
+		ProviderOrClientAddress: addr,
+		Amount:                  amt,
+	})
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("serializing params: %w", err)
 	}
 
 	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
 		To:     market.Address,
-		From:   from,
-		Value:  amt,
-		Method: market.Methods.AddBalance,
+		From:   wallet,
+		Value:  types.NewInt(0),
+		Method: market.Methods.WithdrawBalance,
 		Params: params,
 	}, nil)
 
