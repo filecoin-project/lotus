@@ -4,10 +4,10 @@ services:
   influxdb:
     image: influxdb:latest
     container_name: influxdb
+    ports:
+      - "18086:8086"
     environment:
       - INFLUXDB_DB=lotus
-    ports:
-      - "8086:8086"
     volumes:
       - influxdb:/var/lib/influxdb
 
@@ -15,7 +15,7 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"
+      - "13000:3000"
     links:
       - influxdb
     volumes:

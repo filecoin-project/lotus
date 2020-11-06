@@ -28,7 +28,7 @@ type state2 struct {
 	store adt.Store
 }
 
-func (s *state2) ThisEpochReward() (abi.StoragePower, error) {
+func (s *state2) ThisEpochReward() (abi.TokenAmount, error) {
 	return s.State.ThisEpochReward, nil
 }
 
@@ -55,11 +55,11 @@ func (s *state2) EffectiveNetworkTime() (abi.ChainEpoch, error) {
 	return s.State.EffectiveNetworkTime, nil
 }
 
-func (s *state2) CumsumBaseline() (abi.StoragePower, error) {
+func (s *state2) CumsumBaseline() (reward2.Spacetime, error) {
 	return s.State.CumsumBaseline, nil
 }
 
-func (s *state2) CumsumRealized() (abi.StoragePower, error) {
+func (s *state2) CumsumRealized() (reward2.Spacetime, error) {
 	return s.State.CumsumRealized, nil
 }
 

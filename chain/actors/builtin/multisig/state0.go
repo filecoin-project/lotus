@@ -1,17 +1,20 @@
 package multisig
 
 import (
+	"bytes"
 	"encoding/binary"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	multisig0 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 )
 
 var _ State = (*state0)(nil)
@@ -67,4 +70,25 @@ func (s *state0) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 		}
 		return cb(txid, (Transaction)(out))
 	})
+}
+
+func (s *state0) PendingTxnChanged(other State) (bool, error) {
+	other0, ok := other.(*state0)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.PendingTxns.Equals(other0.PendingTxns), nil
+}
+
+func (s *state0) transactions() (adt.Map, error) {
+	return adt0.AsMap(s.store, s.PendingTxns)
+}
+
+func (s *state0) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
+	var tx multisig0.Transaction
+	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return Transaction{}, err
+	}
+	return tx, nil
 }

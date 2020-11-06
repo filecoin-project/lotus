@@ -1,11 +1,13 @@
 package multisig
 
 import (
+	"bytes"
 	"encoding/binary"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -67,4 +69,25 @@ func (s *state2) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 		}
 		return cb(txid, (Transaction)(out))
 	})
+}
+
+func (s *state2) PendingTxnChanged(other State) (bool, error) {
+	other2, ok := other.(*state2)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.PendingTxns.Equals(other2.PendingTxns), nil
+}
+
+func (s *state2) transactions() (adt.Map, error) {
+	return adt2.AsMap(s.store, s.PendingTxns)
+}
+
+func (s *state2) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
+	var tx msig2.Transaction
+	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return Transaction{}, err
+	}
+	return tx, nil
 }

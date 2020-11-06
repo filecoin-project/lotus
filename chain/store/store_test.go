@@ -70,7 +70,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	cs := store.NewChainStore(bs, mds, nil, nil)
+	cs := store.NewChainStore(bs, bs, mds, nil, nil)
 
 	b.ResetTimer()
 
@@ -104,7 +104,7 @@ func TestChainExportImport(t *testing.T) {
 	}
 
 	nbs := blockstore.NewTemporary()
-	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, nil)
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
 
 	root, err := cs.Import(buf)
 	if err != nil {
@@ -138,7 +138,7 @@ func TestChainExportImportFull(t *testing.T) {
 	}
 
 	nbs := blockstore.NewTemporary()
-	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, nil)
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
 	root, err := cs.Import(buf)
 	if err != nil {
 		t.Fatal(err)

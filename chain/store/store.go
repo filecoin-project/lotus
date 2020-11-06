@@ -104,8 +104,9 @@ type HeadChangeEvt struct {
 //   1. a tipset cache
 //   2. a block => messages references cache.
 type ChainStore struct {
-	bs bstore.Blockstore
-	ds dstore.Batching
+	bs      bstore.Blockstore
+	localbs bstore.Blockstore
+	ds      dstore.Batching
 
 	heaviestLk sync.Mutex
 	heaviest   *types.TipSet
@@ -130,7 +131,8 @@ type ChainStore struct {
 	journal  journal.Journal
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+// localbs is guaranteed to fail Get* if requested block isn't stored locally
+func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -138,6 +140,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallB
 	}
 	cs := &ChainStore{
 		bs:       bs,
+		localbs:  localbs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
 		tipsets:  make(map[abi.ChainEpoch][]cid.Cid),
@@ -542,7 +545,7 @@ func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 // GetBlock fetches a BlockHeader with the supplied CID. It returns
 // blockstore.ErrNotFound if the block was not found in the BlockStore.
 func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
-	sb, err := cs.bs.Get(c)
+	sb, err := cs.localbs.Get(c)
 	if err != nil {
 		return nil, err
 	}
@@ -813,7 +816,7 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 }
 
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
-	sb, err := cs.bs.Get(c)
+	sb, err := cs.localbs.Get(c)
 	if err != nil {
 		log.Errorf("get message get failed: %s: %s", c, err)
 		return nil, err
@@ -823,7 +826,7 @@ func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 }
 
 func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
-	sb, err := cs.bs.Get(c)
+	sb, err := cs.localbs.Get(c)
 	if err != nil {
 		log.Errorf("get message get failed: %s: %s", c, err)
 		return nil, err
@@ -959,7 +962,7 @@ func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 		return mmcids.bls, mmcids.secpk, nil
 	}
 
-	cst := cbor.NewCborStore(cs.bs)
+	cst := cbor.NewCborStore(cs.localbs)
 	var msgmeta types.MsgMeta
 	if err := cst.Get(context.TODO(), mmc, &msgmeta); err != nil {
 		return nil, nil, xerrors.Errorf("failed to load msgmeta (%s): %w", mmc, err)

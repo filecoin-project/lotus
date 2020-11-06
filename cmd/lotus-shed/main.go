@@ -48,6 +48,7 @@ func main() {
 		msgCmd,
 		electionCmd,
 		rpcCmd,
+		cidCmd,
 	}
 
 	app := &cli.App{
