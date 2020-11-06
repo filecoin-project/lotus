@@ -25,10 +25,24 @@ import (
 )
 
 func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
+	for _, height := range []abi.ChainEpoch{
+		2,    // before
+		100,  // while sealing
+		4000, // after
+	} {
+		height := height // copy to satisfy lints
+		t.Run(fmt.Sprintf("sdr-%d", height), func(t *testing.T) {
+			testPledgeSector(t, b, blocktime, nSectors, height)
+		})
+	}
+
+}
+
+func testPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int, sdrHeight abi.ChainEpoch) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, OneFull, OneMiner)
+	n, sn := b(t, []FullNodeOpts{FullNodeWithSDRAt(sdrHeight)}, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -55,6 +69,9 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 			}
 		}
 	}()
+
+	// Wait for any initial upgrades.
+	build.Clock.Sleep(10 * blocktime)
 
 	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
 
@@ -127,7 +144,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithUpgradeAt(upgradeHeight)}, OneMiner)
+	n, sn := b(t, []FullNodeOpts{FullNodeWithActorsV2At(upgradeHeight)}, OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
