@@ -789,8 +789,9 @@ type IpldObject struct {
 }
 
 type ActiveSync struct {
-	Base   *types.TipSet
-	Target *types.TipSet
+	WorkerID uint64
+	Base     *types.TipSet
+	Target   *types.TipSet
 
 	Stage  SyncStateStage
 	Height abi.ChainEpoch

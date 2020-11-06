@@ -361,6 +361,8 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
 		return cs.takeHeaviestTipSet(ctx, ts)
+	} else if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
+		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
 	}
 	return nil
 }
