@@ -1,4 +1,4 @@
-module github.com/libp2p/test-plans/ping
+module github.com/filecoin-project/lotus/testplans/graphsync
 
 go 1.14
 

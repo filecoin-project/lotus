@@ -2,10 +2,13 @@ ARG GO_VERSION=1.14.2
 
 FROM golang:${GO_VERSION}-buster
 
-RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git pkg-config bzr
+RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git pkg-config bzr libhwloc-dev
 
-ARG FILECOIN_FFI_COMMIT=57e38efe4943f09d3127dcf6f0edd614e6acf68e
-ARG FFI_DIR=/extra/filecoin-ffi
+ARG FILECOIN_FFI_COMMIT=1985275547f222e8c97a8ab70b5cc26bc1fa50b1
+ARG FFI_DIR=/extern/filecoin-ffi
+
+ARG BLST_COMMIT=1cbb16ed9580dcd3e9593b71221fcf2a048faaef
+ARG BLST_DIR=/extern/blst
 
 RUN mkdir -p ${FFI_DIR} \
     && git clone https://github.com/filecoin-project/filecoin-ffi.git ${FFI_DIR} \
@@ -13,10 +16,9 @@ RUN mkdir -p ${FFI_DIR} \
     && git checkout ${FILECOIN_FFI_COMMIT} \
     && make
 
-ARG FIL_BLST_COMMIT=8609119cf4595d1741139c24378fcd8bc4f1c475
-ARG BLST_DIR=/extra/fil-blst
-
 RUN mkdir -p ${BLST_DIR} \
-    && git clone https://github.com/filecoin-project/fil-blst.git ${BLST_DIR} \
+    && git clone https://github.com/supranational/blst.git ${BLST_DIR} \
     && cd ${BLST_DIR} \
-    && git checkout ${FIL_BLST_COMMIT}
+    && git checkout ${BLST_COMMIT}
+
+RUN ldconfig
