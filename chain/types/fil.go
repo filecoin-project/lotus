@@ -61,6 +61,10 @@ func ParseFIL(s string) (FIL, error) {
 		}
 	}
 
+	if len(s) > 50 {
+		return FIL{}, fmt.Errorf("string length too large: %d", len(s))
+	}
+
 	r, ok := new(big.Rat).SetString(s)
 	if !ok {
 		return FIL{}, fmt.Errorf("failed to parse %q as a decimal number", s)
