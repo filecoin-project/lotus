@@ -88,6 +88,7 @@ var (
 	UpgradeActorsV2Height abi.ChainEpoch = 10
 	UpgradeLiftoffHeight  abi.ChainEpoch = -5
 	UpgradeKumquatHeight  abi.ChainEpoch = -6
+	UpgradeCalicoHeight   abi.ChainEpoch = -7
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
