@@ -8,8 +8,15 @@ import (
 )
 
 // WrapHeadChangeCoalescer wraps a ReorgNotifee with a head change coalescer.
-func WrapHeadChangeCoalescer(fn ReorgNotifee, delay time.Duration) ReorgNotifee {
-	c := NewHeadChangeCoalescer(fn, delay)
+// minDelay is the minimum coalesce delay; when a head change is first received, the coalescer will
+//  wait for that long to coalesce more head changes.
+// maxDelay is the maximum coalesce delay; the coalescer will not delay delivery of a head change
+//  more than that.
+// mergeInterval is the interval that triggers additional coalesce delay; if the last head change was
+//  within the merge interval when the coalesce timer fires, then the coalesce time is extended
+//  by min delay and up to max delay total.
+func WrapHeadChangeCoalescer(fn ReorgNotifee, minDelay, maxDelay, mergeInterval time.Duration) ReorgNotifee {
+	c := NewHeadChangeCoalescer(fn, minDelay, maxDelay, mergeInterval)
 	return c.HeadChange
 }
 
@@ -32,7 +39,7 @@ type headChange struct {
 }
 
 // NewHeadChangeCoalescer creates a HeadChangeCoalescer.
-func NewHeadChangeCoalescer(fn ReorgNotifee, delay time.Duration) *HeadChangeCoalescer {
+func NewHeadChangeCoalescer(fn ReorgNotifee, minDelay, maxDelay, mergeInterval time.Duration) *HeadChangeCoalescer {
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &HeadChangeCoalescer{
 		notify: fn,
@@ -41,7 +48,7 @@ func NewHeadChangeCoalescer(fn ReorgNotifee, delay time.Duration) *HeadChangeCoa
 		eventq: make(chan headChange),
 	}
 
-	go c.background(delay)
+	go c.background(minDelay, maxDelay, mergeInterval)
 
 	return c
 }
@@ -71,19 +78,46 @@ func (c *HeadChangeCoalescer) Close() error {
 
 // Implementation details
 
-func (c *HeadChangeCoalescer) background(delay time.Duration) {
+func (c *HeadChangeCoalescer) background(minDelay, maxDelay, mergeInterval time.Duration) {
 	var timerC <-chan time.Time
+	var first, last time.Time
+
 	for {
 		select {
 		case evt := <-c.eventq:
 			c.coalesce(evt.revert, evt.apply)
-			if timerC == nil {
-				timerC = time.After(delay)
+
+			now := time.Now()
+			last = now
+			if first.IsZero() {
+				first = now
 			}
 
-		case <-timerC:
-			c.dispatch()
-			timerC = nil
+			if timerC == nil {
+				timerC = time.After(minDelay)
+			}
+
+		case now := <-timerC:
+			sinceFirst := now.Sub(first)
+			sinceLast := now.Sub(last)
+
+			if sinceLast < mergeInterval && sinceFirst < maxDelay {
+				// coalesce some more
+				maxWait := maxDelay - sinceFirst
+				wait := minDelay
+				if maxWait < wait {
+					wait = maxWait
+				}
+
+				timerC = time.After(wait)
+			} else {
+				// dispatch
+				c.dispatch()
+
+				first = time.Time{}
+				last = time.Time{}
+				timerC = nil
+			}
 
 		case <-c.ctx.Done():
 			if c.revert != nil || c.apply != nil {

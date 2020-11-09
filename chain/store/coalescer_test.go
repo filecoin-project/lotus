@@ -13,7 +13,11 @@ func TestHeadChangeCoalescer(t *testing.T) {
 	c := NewHeadChangeCoalescer(func(revert, apply []*types.TipSet) error {
 		notif <- headChange{apply: apply, revert: revert}
 		return nil
-	}, 100*time.Millisecond)
+	},
+		100*time.Millisecond,
+		200*time.Millisecond,
+		10*time.Millisecond,
+	)
 	defer c.Close() //nolint
 
 	b0 := mock.MkBlock(nil, 0, 0)

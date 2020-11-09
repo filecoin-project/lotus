@@ -14,7 +14,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var HeadChangeCoalesceDelay = time.Second
+var (
+	HeadChangeCoalesceMinDelay      = 2 * time.Second
+	HeadChangeCoalesceMaxDelay      = 6 * time.Second
+	HeadChangeCoalesceMergeInterval = time.Second
+)
 
 type Provider interface {
 	SubscribeHeadChanges(func(rev, app []*types.TipSet) error) *types.TipSet
@@ -38,7 +42,13 @@ func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
 }
 
 func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
-	mpp.sm.ChainStore().SubscribeHeadChanges(store.WrapHeadChangeCoalescer(cb, HeadChangeCoalesceDelay))
+	mpp.sm.ChainStore().SubscribeHeadChanges(
+		store.WrapHeadChangeCoalescer(
+			cb,
+			HeadChangeCoalesceMinDelay,
+			HeadChangeCoalesceMaxDelay,
+			HeadChangeCoalesceMergeInterval,
+		))
 	return mpp.sm.ChainStore().GetHeaviestTipSet()
 }
 

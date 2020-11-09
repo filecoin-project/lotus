@@ -54,7 +54,9 @@ import (
 
 func init() {
 	chain.BootstrapPeerThreshold = 1
-	messagepool.HeadChangeCoalesceDelay = time.Microsecond
+	messagepool.HeadChangeCoalesceMinDelay = time.Microsecond
+	messagepool.HeadChangeCoalesceMaxDelay = 2 * time.Microsecond
+	messagepool.HeadChangeCoalesceMergeInterval = 100 * time.Nanosecond
 }
 
 func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
