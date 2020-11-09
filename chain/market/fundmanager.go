@@ -227,9 +227,10 @@ func (a *fundedAddress) process() {
 	// Used by the tests
 	if a.onProcessStartListener != nil {
 		done := a.onProcessStartListener()
-		if done {
-			a.onProcessStartListener = nil
+		if !done {
+			return
 		}
+		a.onProcessStartListener = nil
 	}
 
 	// Check if we're still waiting for the response to a message
@@ -387,7 +388,6 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 
 	// If there's nothing to add to the balance, bail out
 	if amtToAdd.LessThanEqual(abi.NewTokenAmount(0)) {
-		a.debugf("    queued for cancel %d", len(toAdd))
 		res.covered = append(res.covered, toAdd...)
 		return res, nil
 	}
@@ -424,7 +424,7 @@ func splitReservations(reservations []*fundRequest, releases []*fundRequest) ([]
 	}
 
 	// We only want to combine requests that come from the same wallet
-	wallet := address.Undef
+	batchWallet := address.Undef
 	for _, req := range reservations {
 		amt := req.Amount()
 
@@ -433,22 +433,23 @@ func splitReservations(reservations []*fundRequest, releases []*fundRequest) ([]
 			// Cancel the request and update the release total
 			releaseAmt = types.BigSub(releaseAmt, amt)
 			toCancel = append(toCancel, req)
-		} else {
-			// The amount to add is greater that the release total so we want
-			// to send an add funds request
+			continue
+		}
 
-			// The first time the wallet will be undefined
-			if wallet == address.Undef {
-				wallet = req.Wallet
-			}
-			// If this request's wallet is the same as the first request's
-			// wallet, the requests will be combined
-			if wallet == req.Wallet {
-				delta := types.BigSub(amt, releaseAmt)
-				toAddAmt = types.BigAdd(toAddAmt, delta)
-				releaseAmt = abi.NewTokenAmount(0)
-				toAdd = append(toAdd, req)
-			}
+		// The amount to add is greater that the release total so we want
+		// to send an add funds request
+
+		// The first time the wallet will be undefined
+		if batchWallet == address.Undef {
+			batchWallet = req.Wallet
+		}
+		// If this request's wallet is the same as the batch wallet,
+		// the requests will be combined
+		if batchWallet == req.Wallet {
+			delta := types.BigSub(amt, releaseAmt)
+			toAddAmt = types.BigAdd(toAddAmt, delta)
+			releaseAmt = abi.NewTokenAmount(0)
+			toAdd = append(toAdd, req)
 		}
 	}
 
@@ -482,18 +483,42 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 	withdrawalAmt := abi.NewTokenAmount(0)
 	allowedAmt := abi.NewTokenAmount(0)
 	allowed := make([]*fundRequest, 0, len(a.withdrawals))
+	var batchWallet address.Address
 	for _, req := range a.withdrawals {
 		amt := req.Amount()
-		withdrawalAmt = types.BigAdd(withdrawalAmt, amt)
-		if withdrawalAmt.LessThanEqual(netAvail) {
-			a.debugf("withdraw %d", amt)
-			allowed = append(allowed, req)
-			allowedAmt = types.BigAdd(allowedAmt, amt)
-		} else {
+		if amt.IsZero() {
+			// If the context for the request was cancelled, bail out
+			req.Complete(cid.Undef, err)
+			continue
+		}
+
+		// If the amount would exceed the available amount, complete the
+		// request with an error
+		newWithdrawalAmt := types.BigAdd(withdrawalAmt, amt)
+		if newWithdrawalAmt.GreaterThan(netAvail) {
 			err := xerrors.Errorf("insufficient funds for withdrawal %d", amt)
 			a.debugf("%s", err)
 			req.Complete(cid.Undef, err)
+			continue
 		}
+
+		// If this is the first allowed withdrawal request in this batch, save
+		// its wallet address
+		if batchWallet == address.Undef {
+			batchWallet = req.Wallet
+		}
+		// If the request wallet doesn't match the batch wallet, bail out
+		// (the withdrawal will be processed after the current batch has
+		// completed)
+		if req.Wallet != batchWallet {
+			continue
+		}
+
+		// Include this withdrawal request in the batch
+		withdrawalAmt = newWithdrawalAmt
+		a.debugf("withdraw %d", amt)
+		allowed = append(allowed, req)
+		allowedAmt = types.BigAdd(allowedAmt, amt)
 	}
 
 	// Check if there is anything to withdraw.
