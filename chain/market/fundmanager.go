@@ -312,7 +312,7 @@ func (a *fundedAddress) saveState() {
 // The result of processing the reservation / release queues
 type processResult struct {
 	// Requests that completed without adding funds
-	cancelled []*fundRequest
+	covered []*fundRequest
 	// Requests that added funds
 	added []*fundRequest
 
@@ -339,8 +339,8 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 			req.Complete(cid.Undef, nil)
 		}
 
-		// Complete all cancelled requests
-		for _, req := range pr.cancelled {
+		// Complete all requests that were covered by released amounts
+		for _, req := range pr.covered {
 			req.Complete(cid.Undef, nil)
 		}
 
@@ -353,8 +353,12 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 		}
 	}()
 
-	// Split reservations into those to cancel (because they are covered by
-	// released amounts) and those to add
+	// Split reservations into those that are covered by released amounts,
+	// and those to add to the reserved amount.
+	// Note that we process requests from the same wallet in batches. So some
+	// requests may not be included in covered if they don't match the first
+	// covered request's wallet. These will be processed on a subsequent
+	// invocation of processReservations.
 	toCancel, toAdd, reservedDelta := splitReservations(reservations, releases)
 
 	// Apply the reserved delta to the reserved amount
@@ -364,7 +368,7 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 	}
 	res := &processResult{
 		amtReserved: reserved,
-		cancelled:   toCancel,
+		covered:     toCancel,
 	}
 
 	// Work out the amount to add to the balance
@@ -384,7 +388,7 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 	// If there's nothing to add to the balance, bail out
 	if amtToAdd.LessThanEqual(abi.NewTokenAmount(0)) {
 		a.debugf("    queued for cancel %d", len(toAdd))
-		res.cancelled = append(res.cancelled, toAdd...)
+		res.covered = append(res.covered, toAdd...)
 		return res, nil
 	}
 
@@ -395,7 +399,7 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 		return res, err
 	}
 
-	// Mark reserve requests as complete
+	// Mark reservation requests as complete
 	res.added = toAdd
 
 	// Save the message CID to state
@@ -403,8 +407,11 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 	return res, nil
 }
 
-// Split reservations into those that are under the total release amount and
-// those that exceed it
+// Split reservations into those that are under the total release amount
+// (covered) and those that exceed it (to add).
+// Note that we process requests from the same wallet in batches. So some
+// requests may not be included in covered if they don't match the first
+// covered request's wallet.
 func splitReservations(reservations []*fundRequest, releases []*fundRequest) ([]*fundRequest, []*fundRequest, abi.TokenAmount) {
 	toCancel := make([]*fundRequest, 0, len(reservations))
 	toAdd := make([]*fundRequest, 0, len(reservations))
@@ -489,9 +496,11 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 		}
 	}
 
-	// Check if there is anything to withdraw
+	// Check if there is anything to withdraw.
+	// Note that if the context for a request is cancelled,
+	// req.Amount() returns zero
 	if allowedAmt.Equals(abi.NewTokenAmount(0)) {
-		// Mark allowed requests as cancelled
+		// Mark allowed requests as complete
 		for _, req := range allowed {
 			req.Complete(cid.Undef, nil)
 		}
