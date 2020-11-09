@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -41,6 +42,9 @@ type WorkState struct {
 
 	WorkerCall storiface.CallID // Set when entering wsRunning
 	WorkError  string           // Status = wsDone, set when failed to start work
+
+	WorkerHostname string // hostname of last worker handling this job
+	StartTime      int64  // unix seconds
 }
 
 func newWorkID(method sealtasks.TaskType, params ...interface{}) (WorkID, error) {
@@ -167,8 +171,16 @@ func (m *Manager) getWork(ctx context.Context, method sealtasks.TaskType, params
 	}, nil
 }
 
-func (m *Manager) startWork(ctx context.Context, wk WorkID) func(callID storiface.CallID, err error) error {
+func (m *Manager) startWork(ctx context.Context, w Worker, wk WorkID) func(callID storiface.CallID, err error) error {
 	return func(callID storiface.CallID, err error) error {
+		var hostname string
+		info, ierr := w.Info(ctx)
+		if ierr != nil {
+			hostname = "[err]"
+		} else {
+			hostname = info.Hostname
+		}
+
 		m.workLk.Lock()
 		defer m.workLk.Unlock()
 
@@ -194,6 +206,8 @@ func (m *Manager) startWork(ctx context.Context, wk WorkID) func(callID storifac
 				ws.Status = wsRunning
 			}
 			ws.WorkerCall = callID
+			ws.WorkerHostname = hostname
+			ws.StartTime = time.Now().Unix()
 			return nil
 		})
 		if err != nil {

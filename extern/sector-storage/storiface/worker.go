@@ -48,6 +48,8 @@ type WorkerJob struct {
 
 	RunWait int // -1 - ret-wait, 0 - running, 1+ - assigned
 	Start   time.Time
+
+	Hostname string `json:",omitempty"` // optional, set for ret-wait jobs
 }
 
 type CallID struct {

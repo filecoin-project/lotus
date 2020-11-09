@@ -198,11 +198,16 @@ var sealingJobsCmd = &cli.Command{
 				dur = time.Now().Sub(l.Start).Truncate(time.Millisecond * 100).String()
 			}
 
+			hostname, ok := workerHostnames[l.wid]
+			if !ok {
+				hostname = l.Hostname
+			}
+
 			_, _ = fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
 				hex.EncodeToString(l.ID.ID[10:]),
 				l.Sector.Number,
 				hex.EncodeToString(l.wid[5:]),
-				workerHostnames[l.wid],
+				hostname,
 				l.Task.Short(),
 				state,
 				dur)
