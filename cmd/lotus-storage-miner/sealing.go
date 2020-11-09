@@ -190,9 +190,11 @@ var sealingJobsCmd = &cli.Command{
 			switch {
 			case l.RunWait > 0:
 				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
-			case l.RunWait == -2:
+			case l.RunWait == storiface.RWRetDone:
+				state = "ret-done"
+			case l.RunWait == storiface.RWReturned:
 				state = "returned"
-			case l.RunWait == -1:
+			case l.RunWait == storiface.RWRetWait:
 				state = "ret-wait"
 			}
 			dur := "n/a"

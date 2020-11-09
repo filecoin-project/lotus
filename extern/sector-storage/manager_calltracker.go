@@ -89,8 +89,7 @@ func (m *Manager) setupWorkTracker() {
 				log.Errorf("cleannig up work state for %s", wid)
 			}
 		case wsDone:
-			// realistically this shouldn't ever happen as we return results
-			// immediately after getting them
+			// can happen after restart, abandoning work, and another restart
 			log.Warnf("dropping done work, no result, wid %s", wid)
 
 			if err := m.work.Get(wid).End(); err != nil {
@@ -392,6 +391,20 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 	}
 
 	m.results[wid] = res
+
+	err = m.work.Get(wid).Mutate(func(ws *WorkState) error {
+		ws.Status = wsDone
+		return nil
+	})
+	if err != nil {
+		// in the unlikely case:
+		// * manager has restarted, and we're still tracking this work, and
+		// * the work is abandoned (storage-fsm doesn't do a matching call on the sector), and
+		// * the call is returned from the worker, and
+		// * this errors
+		// the user will get jobs stuck in ret-wait state
+		log.Errorf("marking work as done: %+v", err)
+	}
 
 	_, found := m.waitRes[wid]
 	if found {

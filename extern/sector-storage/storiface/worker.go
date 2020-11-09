@@ -41,12 +41,23 @@ type WorkerStats struct {
 	CpuUse     uint64 // nolint
 }
 
+const (
+	RWRetWait  = -1
+	RWReturned = -2
+	RWRetDone  = -3
+)
+
 type WorkerJob struct {
 	ID     CallID
 	Sector abi.SectorID
 	Task   sealtasks.TaskType
 
-	RunWait int // -2 - returned, -1 - ret-wait, 0 - running, 1+ - assigned
+	// 1+ - assigned
+	// 0  - running
+	// -1 - ret-wait
+	// -2 - returned
+	// -3 - ret-done
+	RunWait int
 	Start   time.Time
 
 	Hostname string `json:",omitempty"` // optional, set for ret-wait jobs

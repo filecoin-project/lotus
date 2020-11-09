@@ -72,9 +72,12 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 			log.Errorf("WorkerJobs: get work %s: %+v", work, err)
 		}
 
-		wait := -1
+		wait := storiface.RWRetWait
 		if _, ok := m.results[work]; ok {
-			wait = -2 // mark as returned instead of ret-wait
+			wait = storiface.RWReturned
+		}
+		if ws.Status == wsDone {
+			wait = storiface.RWRetDone
 		}
 
 		out[uuid.UUID{}] = append(out[uuid.UUID{}], storiface.WorkerJob{
