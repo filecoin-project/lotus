@@ -187,10 +187,12 @@ var sealingJobsCmd = &cli.Command{
 
 		for _, l := range lines {
 			state := "running"
-			if l.RunWait > 0 {
+			switch {
+			case l.RunWait > 0:
 				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
-			}
-			if l.RunWait == -1 {
+			case l.RunWait == -2:
+				state = "returned"
+			case l.RunWait == -1:
 				state = "ret-wait"
 			}
 			dur := "n/a"

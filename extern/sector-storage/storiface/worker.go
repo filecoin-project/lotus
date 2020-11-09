@@ -46,7 +46,7 @@ type WorkerJob struct {
 	Sector abi.SectorID
 	Task   sealtasks.TaskType
 
-	RunWait int // -1 - ret-wait, 0 - running, 1+ - assigned
+	RunWait int // -2 - returned, -1 - ret-wait, 0 - running, 1+ - assigned
 	Start   time.Time
 
 	Hostname string `json:",omitempty"` // optional, set for ret-wait jobs
