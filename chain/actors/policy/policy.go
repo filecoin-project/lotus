@@ -32,7 +32,9 @@ func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
 	}
 	// Set for all miner versions.
 	miner0.SupportedProofTypes = newTypes
-	miner2.SupportedProofTypes = newTypes
+	miner2.PreCommitSealProofTypesV0 = newTypes
+	miner2.PreCommitSealProofTypesV7 = newTypes
+	miner2.PreCommitSealProofTypesV8 = newTypes
 }
 
 // AddSupportedProofTypes sets supported proof types, across all actor versions.
@@ -41,7 +43,9 @@ func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
 	for _, t := range types {
 		// Set for all miner versions.
 		miner0.SupportedProofTypes[t] = struct{}{}
-		miner2.SupportedProofTypes[t] = struct{}{}
+		miner2.PreCommitSealProofTypesV0[t] = struct{}{}
+		miner2.PreCommitSealProofTypesV7[t] = struct{}{}
+		miner2.PreCommitSealProofTypesV8[t] = struct{}{}
 	}
 }
 
@@ -133,9 +137,9 @@ func GetMaxPoStPartitions(p abi.RegisteredPoStProof) (int, error) {
 }
 
 func GetDefaultSectorSize() abi.SectorSize {
-	// supported proof types are the same across versions.
-	szs := make([]abi.SectorSize, 0, len(miner2.SupportedProofTypes))
-	for spt := range miner2.SupportedProofTypes {
+	// supported sector sizes are the same across versions.
+	szs := make([]abi.SectorSize, 0, len(miner2.PreCommitSealProofTypesV8))
+	for spt := range miner2.PreCommitSealProofTypesV8 {
 		ss, err := spt.SectorSize()
 		if err != nil {
 			panic(err)
