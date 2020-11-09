@@ -90,7 +90,7 @@ func (m MultiWallet) WalletHas(ctx context.Context, address address.Address) (bo
 }
 
 func (m MultiWallet) WalletList(ctx context.Context) ([]address.Address, error) {
-	var out []address.Address
+	out := make([]address.Address, 0)
 	seen := map[address.Address]struct{}{}
 
 	ws := nonNil(m.Remote, m.Ledger, m.Local)
