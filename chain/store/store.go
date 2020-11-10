@@ -809,12 +809,7 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 		return nil, err
 	}
 
-	genb, err := cs.bs.Get(c)
-	if err != nil {
-		return nil, err
-	}
-
-	return types.DecodeBlock(genb.RawData())
+	return cs.GetBlock(c)
 }
 
 func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {

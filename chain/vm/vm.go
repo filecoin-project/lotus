@@ -149,10 +149,10 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 		rt.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
 	}
 
-	rt.cst = &cbor.BasicIpldStore{
-		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
-		Atlas:  vm.cst.Atlas,
-	}
+	cbb := &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks}
+	cst := cbor.NewCborStore(cbb)
+	cst.Atlas = vm.cst.Atlas // associate the atlas.
+	rt.cst = cst
 
 	vmm := *msg
 	resF, ok := rt.ResolveAddress(msg.From)
