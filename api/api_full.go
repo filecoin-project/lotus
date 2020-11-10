@@ -514,8 +514,10 @@ type FullNode interface {
 	// along with the address removal.
 	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)
 
-	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) (cid.Cid, error)
-	// MarketFreeBalance
+	// MarketReserveFunds reserves funds for a deal
+	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error)
+	// MarketReleaseFunds releases funds reserved by MarketReserveFunds
+	MarketReleaseFunds(ctx context.Context, addr address.Address, amt types.BigInt) error
 
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels

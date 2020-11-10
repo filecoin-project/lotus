@@ -4,24 +4,19 @@ import (
 	"context"
 	"sync"
 
-	"golang.org/x/xerrors"
-
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-
-	"github.com/filecoin-project/lotus/build"
-
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
-
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("market_adapter")
@@ -35,6 +30,7 @@ type FundManagerAPI struct {
 }
 
 // fundManagerAPI is the specific methods called by the FundManager
+// (used by the tests)
 type fundManagerAPI interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (api.MarketBalance, error)
@@ -52,7 +48,22 @@ type FundManager struct {
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-func NewFundManager(api fundManagerAPI, ds datastore.Batching) *FundManager {
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds datastore.Batching) *FundManager {
+	fm := newFundManager(&api, ds)
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return fm.Start()
+		},
+		OnStop: func(ctx context.Context) error {
+			fm.Stop()
+			return nil
+		},
+	})
+	return fm
+}
+
+// newFundManager is used by the tests
+func newFundManager(api fundManagerAPI, ds datastore.Batching) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,

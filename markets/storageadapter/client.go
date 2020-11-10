@@ -38,7 +38,7 @@ type ClientNodeAdapter struct {
 	full.ChainAPI
 	full.MpoolAPI
 
-	fm        *market.FundMgr
+	fundmgr   *market.FundManager
 	ev        *events.Events
 	dsMatcher *dealStateMatcher
 }
@@ -48,14 +48,14 @@ type clientApi struct {
 	full.StateAPI
 }
 
-func NewClientNodeAdapter(stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fm *market.FundMgr) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *market.FundManager) storagemarket.StorageClientNode {
 	capi := &clientApi{chain, stateapi}
 	return &ClientNodeAdapter{
 		StateAPI: stateapi,
 		ChainAPI: chain,
 		MpoolAPI: mpool,
 
-		fm:        fm,
+		fundmgr:   fundmgr,
 		ev:        events.NewEvents(context.TODO(), capi),
 		dsMatcher: newDealStateMatcher(state.NewStatePredicates(capi)),
 	}
@@ -112,8 +112,12 @@ func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 	return smsg.Cid(), nil
 }
 
-func (c *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amount abi.TokenAmount, ts shared.TipSetToken) (cid.Cid, error) {
-	return c.fm.EnsureAvailable(ctx, addr, wallet, amount)
+func (c *ClientNodeAdapter) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
+	return c.fundmgr.Reserve(ctx, addr, wallet, amt)
+}
+
+func (c *ClientNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
+	return c.fundmgr.Release(addr, amt)
 }
 
 func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (storagemarket.Balance, error) {
