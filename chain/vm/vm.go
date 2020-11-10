@@ -90,7 +90,7 @@ func (bs *gasChargingBlocks) View(c cid.Cid, cb func([]byte) error) error {
 	}
 	// the underlying blockstore doesn't implement the viewer interface, fall back to normal Get behaviour.
 	blk, err := bs.Get(c)
-	if err != nil && blk != nil {
+	if err == nil && blk != nil {
 		return cb(blk.RawData())
 	}
 	return err
