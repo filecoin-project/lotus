@@ -108,6 +108,8 @@ type ChainStore struct {
 	localbs bstore.Blockstore
 	ds      dstore.Batching
 
+	localviewer bstore.Viewer
+
 	heaviestLk sync.Mutex
 	heaviest   *types.TipSet
 
@@ -148,6 +150,10 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
 		journal:  j,
+	}
+
+	if v, ok := localbs.(bstore.Viewer); ok {
+		cs.localviewer = v
 	}
 
 	cs.evtTypes = [1]journal.EventType{
@@ -545,12 +551,20 @@ func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 // GetBlock fetches a BlockHeader with the supplied CID. It returns
 // blockstore.ErrNotFound if the block was not found in the BlockStore.
 func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
-	sb, err := cs.localbs.Get(c)
-	if err != nil {
-		return nil, err
+	if cs.localviewer == nil {
+		sb, err := cs.localbs.Get(c)
+		if err != nil {
+			return nil, err
+		}
+		return types.DecodeBlock(sb.RawData())
 	}
 
-	return types.DecodeBlock(sb.RawData())
+	var blk *types.BlockHeader
+	err := cs.localviewer.View(c, func(b []byte) (err error) {
+		blk, err = types.DecodeBlock(b)
+		return err
+	})
+	return blk, err
 }
 
 func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
@@ -816,23 +830,39 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 }
 
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
-	sb, err := cs.localbs.Get(c)
-	if err != nil {
-		log.Errorf("get message get failed: %s: %s", c, err)
-		return nil, err
+	if cs.localviewer == nil {
+		sb, err := cs.localbs.Get(c)
+		if err != nil {
+			log.Errorf("get message get failed: %s: %s", c, err)
+			return nil, err
+		}
+		return types.DecodeMessage(sb.RawData())
 	}
 
-	return types.DecodeMessage(sb.RawData())
+	var msg *types.Message
+	err := cs.localviewer.View(c, func(b []byte) (err error) {
+		msg, err = types.DecodeMessage(b)
+		return err
+	})
+	return msg, err
 }
 
 func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
-	sb, err := cs.localbs.Get(c)
-	if err != nil {
-		log.Errorf("get message get failed: %s: %s", c, err)
-		return nil, err
+	if cs.localviewer == nil {
+		sb, err := cs.localbs.Get(c)
+		if err != nil {
+			log.Errorf("get message get failed: %s: %s", c, err)
+			return nil, err
+		}
+		return types.DecodeSignedMessage(sb.RawData())
 	}
 
-	return types.DecodeSignedMessage(sb.RawData())
+	var msg *types.SignedMessage
+	err := cs.localviewer.View(c, func(b []byte) (err error) {
+		msg, err = types.DecodeSignedMessage(b)
+		return err
+	})
+	return msg, err
 }
 
 func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
