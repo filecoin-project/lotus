@@ -70,11 +70,30 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 }
 
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
+var _ blockstore.Viewer = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
 	chargeGas func(GasCharge)
 	pricelist Pricelist
 	under     cbor.IpldBlockstore
+}
+
+func (bs *gasChargingBlocks) View(c cid.Cid, cb func([]byte) error) error {
+	if v, ok := bs.under.(blockstore.Viewer); ok {
+		bs.chargeGas(bs.pricelist.OnIpldGet())
+		return v.View(c, func(b []byte) error {
+			// we have successfully retrieved the value; charge for it, even if the user-provided function fails.
+			bs.chargeGas(newGasCharge("OnIpldViewEnd", 0, 0).WithExtra(len(b)))
+			bs.chargeGas(gasOnActorExec)
+			return cb(b)
+		})
+	}
+	// the underlying blockstore doesn't implement the viewer interface, fall back to normal Get behaviour.
+	blk, err := bs.Get(c)
+	if err != nil && blk != nil {
+		return cb(blk.RawData())
+	}
+	return err
 }
 
 func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {

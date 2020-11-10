@@ -16,6 +16,9 @@ var log = logging.Logger("bufbs")
 type BufferedBS struct {
 	read  bstore.Blockstore
 	write bstore.Blockstore
+
+	readviewer  bstore.Viewer
+	writeviewer bstore.Viewer
 }
 
 func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
@@ -27,10 +30,20 @@ func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
 		buf = bstore.NewTemporary()
 	}
 
-	return &BufferedBS{
+	bs := &BufferedBS{
 		read:  base,
 		write: buf,
 	}
+	if v, ok := base.(bstore.Viewer); ok {
+		bs.readviewer = v
+	}
+	if v, ok := buf.(bstore.Viewer); ok {
+		bs.writeviewer = v
+	}
+	if (bs.writeviewer == nil) != (bs.readviewer == nil) {
+		log.Warnf("one of the stores is not viewable; running less efficiently")
+	}
+	return bs
 }
 
 func NewTieredBstore(r bstore.Blockstore, w bstore.Blockstore) *BufferedBS {
@@ -40,7 +53,8 @@ func NewTieredBstore(r bstore.Blockstore, w bstore.Blockstore) *BufferedBS {
 	}
 }
 
-var _ (bstore.Blockstore) = &BufferedBS{}
+var _ bstore.Blockstore = (*BufferedBS)(nil)
+var _ bstore.Viewer = (*BufferedBS)(nil)
 
 func (bs *BufferedBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)
@@ -91,6 +105,25 @@ func (bs *BufferedBS) DeleteBlock(c cid.Cid) error {
 	}
 
 	return bs.write.DeleteBlock(c)
+}
+
+func (bs *BufferedBS) View(c cid.Cid, callback func([]byte) error) error {
+	if bs.writeviewer == nil || bs.readviewer == nil {
+		// none of the stores supports Viewer, just fall back to pure Get behaviour.
+		blk, err := bs.Get(c)
+		if err != nil {
+			return err
+		}
+		return callback(blk.RawData())
+	}
+
+	// both stores are viewable.
+	if err := bs.writeviewer.View(c, callback); err == bstore.ErrNotFound {
+		// not found in write blockstore; fall through.
+	} else {
+		return err // propagate errors, or nil, i.e. found.
+	}
+	return bs.readviewer.View(c, callback)
 }
 
 func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
