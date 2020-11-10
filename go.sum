@@ -241,8 +241,8 @@ github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349/go.mod h1:vgmwKBkx+ca5OIeEvstiQgzAZnb7R6QaqE1oEDSqa6g=
 github.com/filecoin-project/go-bitfield v0.2.0 h1:gCtLcjskIPtdg4NfN7gQZSQF9yrBQ7mkT0qCJxzGI2Q=
 github.com/filecoin-project/go-bitfield v0.2.0/go.mod h1:CNl9WG8hgR5mttCnUErjcQjGvuiZjRqK9rHVBsQF4oM=
-github.com/filecoin-project/go-bitfield v0.2.2 h1:eZE06fzOkc57bZJH4VC0QE7zOQVsYGNvdJ5sW0TC748=
-github.com/filecoin-project/go-bitfield v0.2.2/go.mod h1:CNl9WG8hgR5mttCnUErjcQjGvuiZjRqK9rHVBsQF4oM=
+github.com/filecoin-project/go-bitfield v0.2.3-0.20201110211213-fe2c1862e816 h1:RMdzMqe3mu2Z/3N3b9UEfkbGZxukstmZgNC024ybWhA=
+github.com/filecoin-project/go-bitfield v0.2.3-0.20201110211213-fe2c1862e816/go.mod h1:CNl9WG8hgR5mttCnUErjcQjGvuiZjRqK9rHVBsQF4oM=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2 h1:av5fw6wmm58FYMgJeoB/lK9XXrgdugYiTqkdxjTy9k8=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2/go.mod h1:pqTiPHobNkOVM5thSRsHYjyQfq7O5QSCMhvuu9JoDlg=
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03 h1:2pMXdBnCiXjfCYx/hLqFxccPoqsSveQFxVLvNxy9bus=
