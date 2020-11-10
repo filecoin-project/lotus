@@ -196,8 +196,6 @@ func (pmgr *PeerMgr) doExpand(ctx context.Context) {
 			wg.Add(1)
 			go func(bsp peer.AddrInfo) {
 				defer wg.Done()
-				ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-				defer cancel()
 				if err := pmgr.h.Connect(ctx, bsp); err != nil {
 					log.Warnf("failed to connect to bootstrap peer: %s", err)
 				}
