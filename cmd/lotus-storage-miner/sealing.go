@@ -187,10 +187,14 @@ var sealingJobsCmd = &cli.Command{
 
 		for _, l := range lines {
 			state := "running"
-			if l.RunWait > 0 {
+			switch {
+			case l.RunWait > 0:
 				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
-			}
-			if l.RunWait == -1 {
+			case l.RunWait == storiface.RWRetDone:
+				state = "ret-done"
+			case l.RunWait == storiface.RWReturned:
+				state = "returned"
+			case l.RunWait == storiface.RWRetWait:
 				state = "ret-wait"
 			}
 			dur := "n/a"
@@ -198,11 +202,16 @@ var sealingJobsCmd = &cli.Command{
 				dur = time.Now().Sub(l.Start).Truncate(time.Millisecond * 100).String()
 			}
 
+			hostname, ok := workerHostnames[l.wid]
+			if !ok {
+				hostname = l.Hostname
+			}
+
 			_, _ = fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
 				hex.EncodeToString(l.ID.ID[10:]),
 				l.Sector.Number,
 				hex.EncodeToString(l.wid[5:]),
-				workerHostnames[l.wid],
+				hostname,
 				l.Task.Short(),
 				state,
 				dur)
