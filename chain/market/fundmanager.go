@@ -52,10 +52,6 @@ type FundManager struct {
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-type WaitSentinel cid.Cid
-
-var WaitSentinelUndef = WaitSentinel(cid.Undef)
-
 func NewFundManager(api fundManagerAPI, ds datastore.Batching) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
@@ -103,7 +99,9 @@ func (fm *FundManager) getFundedAddress(addr address.Address) *fundedAddress {
 
 // Reserve adds amt to `reserved`. If there are not enough available funds for
 // the address, submits a message on chain to top up available funds.
-func (fm *FundManager) Reserve(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (WaitSentinel, error) {
+// Returns the cid of the message that was submitted on chain, or cid.Undef if
+// the required funds were already available.
+func (fm *FundManager) Reserve(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
 	return fm.getFundedAddress(addr).reserve(ctx, wallet, amt)
 }
 
@@ -114,14 +112,9 @@ func (fm *FundManager) Release(addr address.Address, amt abi.TokenAmount) error 
 
 // Withdraw unreserved funds. Only succeeds if there are enough unreserved
 // funds for the address.
-func (fm *FundManager) Withdraw(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (WaitSentinel, error) {
+// Returns the cid of the message that was submitted on chain.
+func (fm *FundManager) Withdraw(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
 	return fm.getFundedAddress(addr).withdraw(ctx, wallet, amt)
-}
-
-// Waits for a reserve or withdraw to complete.
-func (fm *FundManager) Wait(ctx context.Context, sentinel WaitSentinel) error {
-	_, err := fm.api.StateWaitMsg(ctx, cid.Cid(sentinel), build.MessageConfidence)
-	return err
 }
 
 // FundedAddressState keeps track of the state of an address with funds in the
@@ -178,7 +171,7 @@ func (a *fundedAddress) start() {
 	}
 }
 
-func (a *fundedAddress) reserve(ctx context.Context, wallet address.Address, amt abi.TokenAmount) (WaitSentinel, error) {
+func (a *fundedAddress) reserve(ctx context.Context, wallet address.Address, amt abi.TokenAmount) (cid.Cid, error) {
 	return a.requestAndWait(ctx, wallet, amt, &a.reservations)
 }
 
@@ -187,11 +180,11 @@ func (a *fundedAddress) release(amt abi.TokenAmount) error {
 	return err
 }
 
-func (a *fundedAddress) withdraw(ctx context.Context, wallet address.Address, amt abi.TokenAmount) (WaitSentinel, error) {
+func (a *fundedAddress) withdraw(ctx context.Context, wallet address.Address, amt abi.TokenAmount) (cid.Cid, error) {
 	return a.requestAndWait(ctx, wallet, amt, &a.withdrawals)
 }
 
-func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Address, amt abi.TokenAmount, reqs *[]*fundRequest) (WaitSentinel, error) {
+func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Address, amt abi.TokenAmount, reqs *[]*fundRequest) (cid.Cid, error) {
 	// Create a request and add it to the request queue
 	req := newFundRequest(ctx, wallet, amt)
 
@@ -205,9 +198,9 @@ func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Addre
 	// Wait for the results
 	select {
 	case <-ctx.Done():
-		return WaitSentinelUndef, ctx.Err()
+		return cid.Undef, ctx.Err()
 	case r := <-req.Result:
-		return WaitSentinel(r.msgCid), r.err
+		return r.msgCid, r.err
 	}
 }
 

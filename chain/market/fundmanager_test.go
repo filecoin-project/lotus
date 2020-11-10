@@ -41,9 +41,7 @@ func TestFundManagerBasic(t *testing.T) {
 	msg := s.mockApi.getSentMessage(sentinel)
 	checkAddMessageFields(t, msg, s.walletAddr, s.acctAddr, amt)
 
-	s.mockApi.completeMsg(cid.Cid(sentinel))
-	err = s.fm.Wait(s.ctx, sentinel)
-	require.NoError(t, err)
+	s.mockApi.completeMsg(sentinel)
 
 	// Reserve 7
 	// balance:  10 -> 17
@@ -55,9 +53,7 @@ func TestFundManagerBasic(t *testing.T) {
 	msg = s.mockApi.getSentMessage(sentinel)
 	checkAddMessageFields(t, msg, s.walletAddr, s.acctAddr, amt)
 
-	s.mockApi.completeMsg(cid.Cid(sentinel))
-	err = s.fm.Wait(s.ctx, sentinel)
-	require.NoError(t, err)
+	s.mockApi.completeMsg(sentinel)
 
 	// Release 5
 	// balance:  17
@@ -76,9 +72,7 @@ func TestFundManagerBasic(t *testing.T) {
 	msg = s.mockApi.getSentMessage(sentinel)
 	checkWithdrawMessageFields(t, msg, s.walletAddr, s.acctAddr, amt)
 
-	s.mockApi.completeMsg(cid.Cid(sentinel))
-	err = s.fm.Wait(s.ctx, sentinel)
-	require.NoError(t, err)
+	s.mockApi.completeMsg(sentinel)
 
 	// Reserve 3
 	// balance:  15
@@ -90,7 +84,7 @@ func TestFundManagerBasic(t *testing.T) {
 	sentinel, err = s.fm.Reserve(s.ctx, s.walletAddr, s.acctAddr, amt)
 	require.NoError(t, err)
 	require.Equal(t, msgCount, s.mockApi.messageCount())
-	require.Equal(t, sentinel, WaitSentinelUndef)
+	require.Equal(t, sentinel, cid.Undef)
 
 	// Reserve 1
 	// balance:  15 -> 16
@@ -102,7 +96,7 @@ func TestFundManagerBasic(t *testing.T) {
 	sentinel, err = s.fm.Reserve(s.ctx, s.walletAddr, s.acctAddr, amt)
 	require.NoError(t, err)
 
-	s.mockApi.completeMsg(cid.Cid(sentinel))
+	s.mockApi.completeMsg(sentinel)
 	msg = s.mockApi.getSentMessage(sentinel)
 	checkAddMessageFields(t, msg, s.walletAddr, s.acctAddr, topUp)
 
@@ -145,7 +139,7 @@ func TestFundManagerParallel(t *testing.T) {
 		withdrawReady <- err
 	}()
 
-	reserveSentinels := make(chan WaitSentinel)
+	reserveSentinels := make(chan cid.Cid)
 
 	// Reserve 3
 	go func() {
@@ -174,7 +168,7 @@ func TestFundManagerParallel(t *testing.T) {
 	<-queueReady
 
 	// Complete the "Reserve 10" message
-	s.mockApi.completeMsg(cid.Cid(sentinelReserve10))
+	s.mockApi.completeMsg(sentinelReserve10)
 	msg := s.mockApi.getSentMessage(sentinelReserve10)
 	checkAddMessageFields(t, msg, s.walletAddr, s.acctAddr, abi.NewTokenAmount(10))
 
@@ -193,7 +187,7 @@ func TestFundManagerParallel(t *testing.T) {
 	}
 
 	// Complete the message
-	s.mockApi.completeMsg(cid.Cid(rs1))
+	s.mockApi.completeMsg(rs1)
 	msg = s.mockApi.getSentMessage(rs1)
 
 	// "Reserve 3" +3
@@ -233,7 +227,7 @@ func TestFundManagerReserveByWallet(t *testing.T) {
 	})
 
 	type reserveResult struct {
-		ws  WaitSentinel
+		ws  cid.Cid
 		err error
 	}
 	results := make(chan *reserveResult)
@@ -282,9 +276,7 @@ func TestFundManagerReserveByWallet(t *testing.T) {
 	checkAddMessageFields(t, msg, walletAddrA, s.acctAddr, amtA1)
 
 	// Complete wallet A message
-	s.mockApi.completeMsg(cid.Cid(sentinelA1))
-	err = s.fm.Wait(s.ctx, sentinelA1)
-	require.NoError(t, err)
+	s.mockApi.completeMsg(sentinelA1)
 
 	resB1 := <-results
 	resB2 := <-results
@@ -313,7 +305,7 @@ func TestFundManagerWithdrawalLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Complete the "Reserve 10" message
-	s.mockApi.completeMsg(cid.Cid(sentinelReserve10))
+	s.mockApi.completeMsg(sentinelReserve10)
 
 	// Release 10
 	err = s.fm.Release(s.acctAddr, amt)
@@ -338,7 +330,7 @@ func TestFundManagerWithdrawalLimit(t *testing.T) {
 
 	type withdrawResult struct {
 		reqIndex int
-		ws       WaitSentinel
+		ws       cid.Cid
 		err      error
 	}
 	withdrawRes := make(chan *withdrawResult)
@@ -379,10 +371,6 @@ func TestFundManagerWithdrawalLimit(t *testing.T) {
 	// Expect withdrawal requests that fit under reserved amount to be combined
 	// into a single message on-chain
 	require.Equal(t, results[0].ws, results[1].ws)
-
-	s.mockApi.completeMsg(cid.Cid(results[0].ws))
-	err = s.fm.Wait(s.ctx, results[0].ws)
-	require.NoError(t, err)
 }
 
 // TestFundManagerWithdrawByWallet verifies that withdraw requests are grouped by wallet
@@ -399,7 +387,7 @@ func TestFundManagerWithdrawByWallet(t *testing.T) {
 	reserveAmt := abi.NewTokenAmount(10)
 	sentinelReserve, err := s.fm.Reserve(s.ctx, s.walletAddr, s.acctAddr, reserveAmt)
 	require.NoError(t, err)
-	s.mockApi.completeMsg(cid.Cid(sentinelReserve))
+	s.mockApi.completeMsg(sentinelReserve)
 
 	time.Sleep(10 * time.Millisecond)
 
@@ -408,7 +396,7 @@ func TestFundManagerWithdrawByWallet(t *testing.T) {
 	require.NoError(t, err)
 
 	type withdrawResult struct {
-		ws  WaitSentinel
+		ws  cid.Cid
 		err error
 	}
 	results := make(chan *withdrawResult)
@@ -476,9 +464,7 @@ func TestFundManagerWithdrawByWallet(t *testing.T) {
 	checkWithdrawMessageFields(t, msg, walletAddrA, s.acctAddr, amtA1)
 
 	// Complete wallet A message
-	s.mockApi.completeMsg(cid.Cid(sentinelA1))
-	err = s.fm.Wait(s.ctx, sentinelA1)
-	require.NoError(t, err)
+	s.mockApi.completeMsg(sentinelA1)
 
 	resB1 := <-results
 	resB2 := <-results
@@ -520,9 +506,7 @@ func TestFundManagerRestart(t *testing.T) {
 	checkAddMessageFields(t, msg2, s.walletAddr, acctAddr2, amt2)
 
 	// Complete "Address 1: Reserve 10"
-	s.mockApi.completeMsg(cid.Cid(sentinelAddr1))
-	err = s.fm.Wait(s.ctx, sentinelAddr1)
-	require.NoError(t, err)
+	s.mockApi.completeMsg(sentinelAddr1)
 
 	// Give the completed state a moment to be stored before restart
 	time.Sleep(time.Millisecond * 10)
@@ -534,7 +518,7 @@ func TestFundManagerRestart(t *testing.T) {
 	require.NoError(t, err)
 
 	amt3 := abi.NewTokenAmount(9)
-	reserveSentinel := make(chan WaitSentinel)
+	reserveSentinel := make(chan cid.Cid)
 	go func() {
 		// Address 2: Reserve 9
 		sentinel3, err := fmAfter.Reserve(s.ctx, s.walletAddr, acctAddr2, amt3)
@@ -551,9 +535,7 @@ func TestFundManagerRestart(t *testing.T) {
 	}
 
 	// Complete "Address 2: Reserve 7"
-	mockApiAfter.completeMsg(cid.Cid(sentinelAddr2Res7))
-	err = fmAfter.Wait(s.ctx, sentinelAddr2Res7)
-	require.NoError(t, err)
+	mockApiAfter.completeMsg(sentinelAddr2Res7)
 
 	// Expect waiting message to now be sent
 	sentinel3 := <-reserveSentinel
@@ -574,12 +556,12 @@ type scaffold struct {
 func setup(t *testing.T) *scaffold {
 	ctx := context.Background()
 
-	wallet, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	wllt, err := wallet.NewWallet(wallet.NewMemKeyStore())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	walletAddr, err := wallet.WalletNew(context.Background(), types.KTSecp256k1)
+	walletAddr, err := wllt.WalletNew(context.Background(), types.KTSecp256k1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,12 +569,12 @@ func setup(t *testing.T) *scaffold {
 	acctAddr := tutils.NewActorAddr(t, "addr")
 
 	mockApi := newMockFundManagerAPI(walletAddr)
-	ds := ds_sync.MutexWrap(ds.NewMapDatastore())
-	fm := NewFundManager(mockApi, ds)
+	dstore := ds_sync.MutexWrap(ds.NewMapDatastore())
+	fm := NewFundManager(mockApi, dstore)
 	return &scaffold{
 		ctx:        ctx,
-		ds:         ds,
-		wllt:       wallet,
+		ds:         dstore,
+		wllt:       wllt,
 		walletAddr: walletAddr,
 		acctAddr:   acctAddr,
 		mockApi:    mockApi,
@@ -658,11 +640,10 @@ func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, message *t
 	return smsg, nil
 }
 
-func (mapi *mockFundManagerAPI) getSentMessage(ws WaitSentinel) *types.Message {
+func (mapi *mockFundManagerAPI) getSentMessage(c cid.Cid) *types.Message {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
-	c := cid.Cid(ws)
 	for i := 0; i < 1000; i++ {
 		if pending, ok := mapi.sentMsgs[c]; ok {
 			return &pending.msg.Message
