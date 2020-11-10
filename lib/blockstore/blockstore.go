@@ -17,17 +17,10 @@ package blockstore
 import (
 	"context"
 
-	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
-
-// Viewer is a blockstore trait that can be implemented by blockstores
-// that offer zero-copy access to blocks.
-type Viewer interface {
-	View(cid cid.Cid, callback func([]byte) error) error
-}
 
 // NewTemporary returns a temporary blockstore.
 func NewTemporary() MemStore {
@@ -51,6 +44,7 @@ func NewBlockstore(dstore ds.Batching) blockstore.Blockstore {
 
 // Alias so other packages don't have to import go-ipfs-blockstore
 type Blockstore = blockstore.Blockstore
+type Viewer = blockstore.Viewer
 type GCBlockstore = blockstore.GCBlockstore
 type CacheOpts = blockstore.CacheOpts
 type GCLocker = blockstore.GCLocker
