@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/lotus/api"
@@ -14,6 +15,7 @@ import (
 )
 
 type getCurrentDealInfoAPI interface {
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
 	StateSearchMsg(context.Context, cid.Cid) (*api.MsgLookup, error)
 }
@@ -22,7 +24,11 @@ type getCurrentDealInfoAPI interface {
 func GetCurrentDealInfo(ctx context.Context, ts *types.TipSet, api getCurrentDealInfoAPI, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid) (abi.DealID, *api.MarketDeal, error) {
 	marketDeal, dealErr := api.StateMarketStorageDeal(ctx, dealID, ts.Key())
 	if dealErr == nil {
-		if marketDeal.Proposal == proposal {
+		equal, err := checkDealEquality(ctx, ts, api, proposal, marketDeal.Proposal)
+		if err != nil {
+			return dealID, nil, err
+		}
+		if equal {
 			return dealID, marketDeal, nil
 		}
 		dealErr = xerrors.Errorf("Deal proposals did not match")
@@ -58,9 +64,36 @@ func GetCurrentDealInfo(ctx context.Context, ts *types.TipSet, api getCurrentDea
 	dealID = retval.IDs[0]
 	marketDeal, err = api.StateMarketStorageDeal(ctx, dealID, ts.Key())
 
-	if err == nil && marketDeal.Proposal != proposal {
-		return dealID, nil, xerrors.Errorf("Deal proposals did not match")
+	if err == nil {
+		equal, err := checkDealEquality(ctx, ts, api, proposal, marketDeal.Proposal)
+		if err != nil {
+			return dealID, nil, err
+		}
+		if !equal {
+			return dealID, nil, xerrors.Errorf("Deal proposals did not match")
+		}
 	}
-
 	return dealID, marketDeal, err
+}
+
+func checkDealEquality(ctx context.Context, ts *types.TipSet, api getCurrentDealInfoAPI, p1, p2 market.DealProposal) (bool, error) {
+	p1ClientID, err := api.StateLookupID(ctx, p1.Client, ts.Key())
+	if err != nil {
+		return false, err
+	}
+	p2ClientID, err := api.StateLookupID(ctx, p2.Client, ts.Key())
+	if err != nil {
+		return false, err
+	}
+	return p1.PieceCID.Equals(p2.PieceCID) &&
+		p1.PieceSize == p2.PieceSize &&
+		p1.VerifiedDeal == p2.VerifiedDeal &&
+		p1.Label == p2.Label &&
+		p1.StartEpoch == p2.StartEpoch &&
+		p1.EndEpoch == p2.EndEpoch &&
+		p1.StoragePricePerEpoch.Equals(p2.StoragePricePerEpoch) &&
+		p1.ProviderCollateral.Equals(p2.ProviderCollateral) &&
+		p1.ClientCollateral.Equals(p2.ClientCollateral) &&
+		p1.Provider == p2.Provider &&
+		p1ClientID == p2ClientID, nil
 }

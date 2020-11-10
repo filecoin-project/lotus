@@ -248,6 +248,10 @@ func (mapi *mockGetCurrentDealInfoAPI) StateSearchMsg(context.Context, cid.Cid) 
 	return mapi.SearchMessageLookup, mapi.SearchMessageErr
 }
 
+func (mapi *mockGetCurrentDealInfoAPI) StateLookupID(ctx context.Context, addr address.Address, ts types.TipSetKey) (address.Address, error) {
+	return addr, nil
+}
+
 func makePublishDealsReturnBytes(t *testing.T, dealIDs []abi.DealID) []byte {
 	buf := new(bytes.Buffer)
 	dealsReturn := market.PublishStorageDealsReturn{
