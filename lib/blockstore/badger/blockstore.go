@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"runtime/debug"
 	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
@@ -187,9 +186,6 @@ func (b *Blockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return nil, ErrBlockstoreClosed
 	}
-
-	fmt.Println("***** badger/blockstore.Get called:")
-	debug.PrintStack()
 
 	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
