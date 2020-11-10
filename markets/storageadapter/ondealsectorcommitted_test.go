@@ -232,7 +232,15 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			expectedError:       errors.New("failed to set up called handler: something went wrong"),
 		},
 	}
-	for testCase, data := range testCases {
+	runTestCase := func(testCase string, data struct {
+		searchMessageLookup *api.MsgLookup
+		searchMessageErr    error
+		checkTsDeals        map[abi.DealID]*api.MarketDeal
+		matchStates         []matchState
+		expectedCBCallCount uint64
+		expectedCBError     error
+		expectedError       error
+	}) {
 		t.Run(testCase, func(t *testing.T) {
 			//	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			//	defer cancel()
@@ -284,6 +292,9 @@ func TestOnDealSectorCommitted(t *testing.T) {
 				require.EqualError(t, cbError, data.expectedCBError.Error())
 			}
 		})
+	}
+	for testCase, data := range testCases {
+		runTestCase(testCase, data)
 	}
 }
 
