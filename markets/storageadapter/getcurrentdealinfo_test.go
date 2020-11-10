@@ -185,7 +185,15 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			expectedError:  xerrors.Errorf("Deal proposals did not match"),
 		},
 	}
-	for testCase, data := range testCases {
+	runTestCase := func(testCase string, data struct {
+		searchMessageLookup *api.MsgLookup
+		searchMessageErr    error
+		marketDeals         map[abi.DealID]*api.MarketDeal
+		publishCid          *cid.Cid
+		expectedDealID      abi.DealID
+		expectedMarketDeal  *api.MarketDeal
+		expectedError       error
+	}) {
 		t.Run(testCase, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
@@ -210,6 +218,9 @@ func TestGetCurrentDealInfo(t *testing.T) {
 				require.EqualError(t, err, data.expectedError.Error())
 			}
 		})
+	}
+	for testCase, data := range testCases {
+		runTestCase(testCase, data)
 	}
 }
 
