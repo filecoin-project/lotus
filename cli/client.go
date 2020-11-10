@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -81,6 +82,7 @@ var clientCmd = &cli.Command{
 		WithCategory("storage", clientListDeals),
 		WithCategory("storage", clientGetDealCmd),
 		WithCategory("storage", clientListAsksCmd),
+		WithCategory("storage", clientDealStatsCmd),
 		WithCategory("data", clientImportCmd),
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
@@ -1109,6 +1111,80 @@ var clientRetrieveCmd = &cli.Command{
 				return xerrors.Errorf("retrieval timed out")
 			}
 		}
+	},
+}
+
+var clientDealStatsCmd = &cli.Command{
+	Name:  "deal-stats",
+	Usage: "Print statistics about local storage deals",
+	Flags: []cli.Flag{
+		&cli.DurationFlag{
+			Name: "newer-than",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		localDeals, err := api.ClientListDeals(ctx)
+		if err != nil {
+			return err
+		}
+
+		var totalSize uint64
+		byState := map[storagemarket.StorageDealStatus][]uint64{}
+		for _, deal := range localDeals {
+			if cctx.IsSet("newer-than") {
+				if time.Now().Sub(deal.CreationTime) > cctx.Duration("newer-than") {
+					continue
+				}
+			}
+
+			totalSize += deal.Size
+			byState[deal.State] = append(byState[deal.State], deal.Size)
+		}
+
+		fmt.Printf("Total: %d deals, %s\n", len(localDeals), types.SizeStr(types.NewInt(totalSize)))
+
+		type stateStat struct {
+			state storagemarket.StorageDealStatus
+			count int
+			bytes uint64
+		}
+
+		stateStats := make([]stateStat, 0, len(byState))
+		for state, deals := range byState {
+			if state == storagemarket.StorageDealActive {
+				state = math.MaxUint64 // for sort
+			}
+
+			st := stateStat{
+				state: state,
+				count: len(deals),
+			}
+			for _, b := range deals {
+				st.bytes += b
+			}
+
+			stateStats = append(stateStats, st)
+		}
+
+		sort.Slice(stateStats, func(i, j int) bool {
+			return int64(stateStats[i].state) < int64(stateStats[j].state)
+		})
+
+		for _, st := range stateStats {
+			if st.state == math.MaxUint64 {
+				st.state = storagemarket.StorageDealActive
+			}
+			fmt.Printf("%s: %d deals, %s\n", storagemarket.DealStates[st.state], st.count, types.SizeStr(types.NewInt(st.bytes)))
+		}
+
+		return nil
 	},
 }
 
