@@ -68,7 +68,7 @@ require (
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.6
 	github.com/ipfs/go-graphsync v0.4.2
-	github.com/ipfs/go-ipfs-blockstore v1.0.2-0.20201110131522-a7a0fdeb6234
+	github.com/ipfs/go-ipfs-blockstore v1.0.2
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
@@ -77,7 +77,7 @@ require (
 	github.com/ipfs/go-ipfs-http-client v0.0.5
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.2
-	github.com/ipfs/go-ipld-cbor v0.0.5-0.20201030204514-f689d2bb3874
+	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
 	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
