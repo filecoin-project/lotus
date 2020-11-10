@@ -311,17 +311,26 @@ func TestFundManagerWithdrawalLimit(t *testing.T) {
 	err = s.fm.Release(s.acctAddr, amt)
 	require.NoError(t, err)
 
-	// Wait until all the withdraw requests are queued up
+	// Queue up withdraw requests
 	queueReady := make(chan struct{})
 	fa := s.fm.getFundedAddress(s.acctAddr)
-	withdrawalReqCount := 0
-	withdrawalReqQueued := make(chan struct{}, 3)
+	withdrawalReqTotal := 3
+	withdrawalReqEnqueued := 0
+	withdrawalReqQueue := make(chan func(), withdrawalReqTotal)
 	fa.onProcessStart(func() bool {
-		if len(fa.withdrawals) > withdrawalReqCount {
-			withdrawalReqCount++
-			withdrawalReqQueued <- struct{}{}
+		// If a new withdrawal request was enqueued
+		if len(fa.withdrawals) > withdrawalReqEnqueued {
+			withdrawalReqEnqueued++
+
+			// Pop the next request and run it
+			select {
+			case fn := <-withdrawalReqQueue:
+				go fn()
+			default:
+			}
 		}
-		if withdrawalReqCount == 3 {
+		// Once all the requests have arrived, we're ready to process the queue
+		if withdrawalReqEnqueued == withdrawalReqTotal {
 			close(queueReady)
 			return true
 		}
@@ -334,22 +343,28 @@ func TestFundManagerWithdrawalLimit(t *testing.T) {
 		err      error
 	}
 	withdrawRes := make(chan *withdrawResult)
-	for i := 0; i < 3; i++ {
-		i := i
-		go func() {
-			if i > 0 {
-				<-withdrawalReqQueued
-			}
+
+	// Queue up three "Withdraw 5" requests
+	enqueuedCount := 0
+	for i := 0; i < withdrawalReqTotal; i++ {
+		withdrawalReqQueue <- func() {
+			idx := enqueuedCount
+			enqueuedCount++
+
 			amt := abi.NewTokenAmount(5)
 			ws, err := s.fm.Withdraw(s.ctx, s.walletAddr, s.acctAddr, amt)
-			withdrawRes <- &withdrawResult{reqIndex: i, ws: ws, err: err}
-		}()
+			withdrawRes <- &withdrawResult{reqIndex: idx, ws: ws, err: err}
+		}
 	}
+	// Start the first request
+	fn := <-withdrawalReqQueue
+	go fn()
 
-	// Withdrawal requests are queued up
+	// All withdrawal requests are queued up and ready to be processed
 	<-queueReady
 
-	results := make([]*withdrawResult, 3)
+	// Organize results in request order
+	results := make([]*withdrawResult, withdrawalReqTotal)
 	for i := 0; i < 3; i++ {
 		res := <-withdrawRes
 		results[res.reqIndex] = res

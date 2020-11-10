@@ -489,7 +489,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 		// request with an error
 		newWithdrawalAmt := types.BigAdd(withdrawalAmt, amt)
 		if newWithdrawalAmt.GreaterThan(netAvail) {
-			err := xerrors.Errorf("insufficient funds for withdrawal %d", amt)
+			err := xerrors.Errorf("insufficient funds for withdrawal of %d", amt)
 			a.debugf("%s", err)
 			req.Complete(cid.Undef, err)
 			continue
