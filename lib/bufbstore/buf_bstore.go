@@ -109,7 +109,7 @@ func (bs *BufferedBS) DeleteBlock(c cid.Cid) error {
 
 func (bs *BufferedBS) View(c cid.Cid, callback func([]byte) error) error {
 	if bs.writeviewer == nil || bs.readviewer == nil {
-		// none of the stores supports Viewer, just fall back to pure Get behaviour.
+		// one of the stores doesn't Viewer; fall back to pure Get behaviour.
 		blk, err := bs.Get(c)
 		if err != nil {
 			return err
