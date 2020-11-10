@@ -9,6 +9,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/multiformats/go-base32"
+	"go.uber.org/zap"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -57,14 +58,17 @@ func DefaultOptions(path string) Options {
 	}
 }
 
-// badgerLog is a local wrapper for go-log to make the interface
+// badgerLogger is a local wrapper for go-log to make the interface
 // compatible with badger.Logger (namely, aliasing Warnf to Warningf)
-type badgerLog struct {
-	logger.ZapEventLogger
+type badgerLogger struct {
+	*zap.SugaredLogger // skips 1 caller to get useful line info, skipping over badger.Options.
+
+	skip2 *zap.SugaredLogger // skips 2 callers, just like above + this logger.
 }
 
-func (b *badgerLog) Warningf(format string, args ...interface{}) {
-	b.Warnf(format, args...)
+// Warningf is required by the badger logger APIs.
+func (b *badgerLogger) Warningf(format string, args ...interface{}) {
+	b.skip2.Warnf(format, args...)
 }
 
 const (
@@ -96,7 +100,10 @@ var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
 func Open(opts Options) (*Blockstore, error) {
-	opts.Logger = &badgerLog{*log}
+	opts.Logger = &badgerLogger{
+		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
+		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+	}
 
 	db, err := badger.Open(opts.Options)
 	if err != nil {
