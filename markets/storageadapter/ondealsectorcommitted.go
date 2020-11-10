@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -19,9 +20,9 @@ type sectorCommittedEventsAPI interface {
 	Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error
 }
 
-func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		newDealID, sd, err := GetCurrentDealInfo(ctx, ts, api, dealID, publishCid)
+		newDealID, sd, err := GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
 		if err != nil {
 			// TODO: This may be fine for some errors
 			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
@@ -47,14 +48,14 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		}()
 		switch msg.Method {
 		case miner.Methods.PreCommitSector:
-			dealID, _, err = GetCurrentDealInfo(ctx, ts, api, dealID, publishCid)
-			if err != nil {
-				return false, err
-			}
-
 			var params miner.SectorPreCommitInfo
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
+			}
+
+			dealID, _, err = GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
+			if err != nil {
+				return false, err
 			}
 
 			for _, did := range params.DealIDs {
@@ -71,7 +72,7 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 				return false, nil
 			}
 
-			_, sd, err := GetCurrentDealInfo(ctx, ts, api, dealID, publishCid)
+			_, sd, err := GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
 			if err != nil {
 				return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 			}
@@ -105,13 +106,13 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		case miner.Methods.PreCommitSector:
 			return !sectorFound, nil
 		case miner.Methods.ProveCommitSector:
+			if !sectorFound {
+				return false, nil
+			}
+
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
-			}
-
-			if !sectorFound {
-				return false, nil
 			}
 
 			if params.SectorNumber != sectorNumber {

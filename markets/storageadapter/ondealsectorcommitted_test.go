@@ -29,17 +29,25 @@ func TestOnDealSectorCommitted(t *testing.T) {
 	ctx := context.Background()
 	publishCid := generateCids(1)[0]
 	sealedCid := generateCids(1)[0]
+	pieceCid := generateCids(1)[0]
 	startDealID := abi.DealID(rand.Uint64())
 	newDealID := abi.DealID(rand.Uint64())
 	newValueReturn := makePublishDealsReturnBytes(t, []abi.DealID{newDealID})
 	sectorNumber := abi.SectorNumber(rand.Uint64())
+	proposal := market.DealProposal{
+		PieceCID:  pieceCid,
+		PieceSize: abi.PaddedPieceSize(rand.Uint64()),
+		Label:     "success",
+	}
 	unfinishedDeal := &api.MarketDeal{
+		Proposal: proposal,
 		State: market.DealState{
 			SectorStartEpoch: -1,
 			LastUpdatedEpoch: 2,
 		},
 	}
 	successDeal := &api.MarketDeal{
+		Proposal: proposal,
 		State: market.DealState{
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
@@ -263,7 +271,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 				cbCallCount++
 				cbError = err
 			}
-			err = OnDealSectorCommitted(ctx, api, eventsAPI, provider, startDealID, &publishCid, cb)
+			err = OnDealSectorCommitted(ctx, api, eventsAPI, provider, startDealID, proposal, &publishCid, cb)
 			if data.expectedError == nil {
 				require.NoError(t, err)
 			} else {

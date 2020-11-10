@@ -19,10 +19,13 @@ type getCurrentDealInfoAPI interface {
 }
 
 // GetCurrentDealInfo gets current information on a deal, and corrects the deal ID as needed
-func GetCurrentDealInfo(ctx context.Context, ts *types.TipSet, api getCurrentDealInfoAPI, dealID abi.DealID, publishCid *cid.Cid) (abi.DealID, *api.MarketDeal, error) {
+func GetCurrentDealInfo(ctx context.Context, ts *types.TipSet, api getCurrentDealInfoAPI, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid) (abi.DealID, *api.MarketDeal, error) {
 	marketDeal, dealErr := api.StateMarketStorageDeal(ctx, dealID, ts.Key())
 	if dealErr == nil {
-		return dealID, marketDeal, nil
+		if marketDeal.Proposal == proposal {
+			return dealID, marketDeal, nil
+		}
+		dealErr = xerrors.Errorf("Deal proposals did not match")
 	}
 	if publishCid == nil {
 		return dealID, nil, dealErr
@@ -54,6 +57,10 @@ func GetCurrentDealInfo(ctx context.Context, ts *types.TipSet, api getCurrentDea
 
 	dealID = retval.IDs[0]
 	marketDeal, err = api.StateMarketStorageDeal(ctx, dealID, ts.Key())
+
+	if err == nil && marketDeal.Proposal != proposal {
+		return dealID, nil, xerrors.Errorf("Deal proposals did not match")
+	}
 
 	return dealID, marketDeal, err
 }

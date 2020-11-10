@@ -253,8 +253,8 @@ func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, 
 	return bounds.Min, bounds.Max, nil
 }
 
-func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return OnDealSectorCommitted(ctx, n, n.ev, provider, dealID, publishCid, cb)
+func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+	return OnDealSectorCommitted(ctx, n, n.ev, provider, dealID, market.DealProposal(proposal), publishCid, cb)
 }
 
 func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
