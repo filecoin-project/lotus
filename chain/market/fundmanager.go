@@ -379,7 +379,7 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 
 	// Work out the amount to add to the balance
 	amtToAdd := abi.NewTokenAmount(0)
-	if reserved.GreaterThan(abi.NewTokenAmount(0)) {
+	if len(toAdd) > 0 && reserved.GreaterThan(abi.NewTokenAmount(0)) {
 		// Get available funds for address
 		avail, err := a.env.AvailableFunds(a.ctx, a.state.Addr)
 		if err != nil {
@@ -487,9 +487,9 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 	// the rest
 	withdrawalAmt := abi.NewTokenAmount(0)
 	allowedAmt := abi.NewTokenAmount(0)
-	allowed := make([]*fundRequest, 0, len(a.withdrawals))
+	allowed := make([]*fundRequest, 0, len(withdrawals))
 	var batchWallet address.Address
-	for _, req := range a.withdrawals {
+	for _, req := range withdrawals {
 		amt := req.Amount()
 		if amt.IsZero() {
 			// If the context for the request was cancelled, bail out
