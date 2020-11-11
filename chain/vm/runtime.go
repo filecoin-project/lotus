@@ -539,7 +539,6 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 			ComputeGas: gas.ComputeGas,
 			StorageGas: gas.StorageGas,
 
-			TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
 			VirtualComputeGas: gas.VirtualCompute,
 			VirtualStorageGas: gas.VirtualStorage,
 
@@ -551,6 +550,8 @@ func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError
 		if gasTrace.VirtualComputeGas == 0 {
 			gasTrace.VirtualComputeGas = gasTrace.ComputeGas
 		}
+		gasTrace.TotalVirtualGas = gasTrace.VirtualComputeGas + gasTrace.VirtualStorageGas
+
 		rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
 		rt.lastGasChargeTime = now
 		rt.lastGasCharge = &gasTrace

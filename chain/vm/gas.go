@@ -13,11 +13,6 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-const (
-	GasStorageMulti = 1000
-	GasComputeMulti = 1
-)
-
 type GasCharge struct {
 	Name  string
 	Extra interface{}
