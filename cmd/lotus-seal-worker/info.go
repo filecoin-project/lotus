@@ -42,7 +42,7 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("checking worker status: %w", err)
 		}
-		fmt.Printf("Enabled: %t", enabled)
+		fmt.Printf("Enabled: %t\n", enabled)
 
 		info, err := api.Info(ctx)
 		if err != nil {
