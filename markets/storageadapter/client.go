@@ -113,7 +113,7 @@ func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 }
 
 func (c *ClientNodeAdapter) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
-	return c.fundmgr.Reserve(ctx, addr, wallet, amt)
+	return c.fundmgr.Reserve(ctx, wallet, addr, amt)
 }
 
 func (c *ClientNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
