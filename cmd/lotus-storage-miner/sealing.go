@@ -28,6 +28,7 @@ var sealingCmd = &cli.Command{
 		sealingJobsCmd,
 		sealingWorkersCmd,
 		sealingSchedDiagCmd,
+		sealingAbortCmd,
 	},
 }
 
@@ -124,7 +125,7 @@ var sealingWorkersCmd = &cli.Command{
 
 var sealingJobsCmd = &cli.Command{
 	Name:  "jobs",
-	Usage: "list workers",
+	Usage: "list running jobs",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{Name: "color"},
 		&cli.BoolFlag{
@@ -215,9 +216,9 @@ var sealingJobsCmd = &cli.Command{
 			}
 
 			_, _ = fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
-				hex.EncodeToString(l.ID.ID[10:]),
+				hex.EncodeToString(l.ID.ID[:4]),
 				l.Sector.Number,
-				hex.EncodeToString(l.wid[5:]),
+				hex.EncodeToString(l.wid[:4]),
 				hostname,
 				l.Task.Short(),
 				state,
@@ -258,5 +259,48 @@ var sealingSchedDiagCmd = &cli.Command{
 		fmt.Println(string(j))
 
 		return nil
+	},
+}
+
+var sealingAbortCmd = &cli.Command{
+	Name:  "abort",
+	Usage: "Abort a running job",
+	ArgsUsage: "[call id]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("expected 1 argument")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		jobs, err := nodeApi.WorkerJobs(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting worker jobs: %w", err)
+		}
+
+		var job *storiface.WorkerJob
+	outer:
+		for _, workerJobs := range jobs {
+			for _, j := range workerJobs {
+				if strings.HasPrefix(j.ID.ID.String(), cctx.Args().First()) {
+					job = &j
+					break outer
+				}
+			}
+		}
+
+		if job == nil {
+			return xerrors.Errorf("job with specified id prefix not found")
+		}
+
+		fmt.Printf("aborting job %s, task %s, sector %d, running on host %s\n", job.ID.String(), job.Task.Short(), job.Sector.Number, job.Hostname)
+
+		return nodeApi.SealingAbort(ctx, job.ID)
 	},
 }

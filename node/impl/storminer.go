@@ -300,6 +300,10 @@ func (sm *StorageMinerAPI) SealingSchedDiag(ctx context.Context, doSched bool) (
 	return sm.StorageMgr.SchedDiag(ctx, doSched)
 }
 
+func (sm *StorageMinerAPI) SealingAbort(ctx context.Context, call storiface.CallID) error {
+	return sm.StorageMgr.Abort(ctx, call)
+}
+
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
 	fi, err := os.Open(path)
 	if err != nil {
