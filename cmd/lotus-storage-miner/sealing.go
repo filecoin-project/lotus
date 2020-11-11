@@ -129,7 +129,7 @@ var sealingJobsCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.BoolFlag{Name: "color"},
 		&cli.BoolFlag{
-			Name: "show-ret-done",
+			Name:  "show-ret-done",
 			Usage: "show returned but not consumed calls",
 		},
 	},
@@ -263,8 +263,8 @@ var sealingSchedDiagCmd = &cli.Command{
 }
 
 var sealingAbortCmd = &cli.Command{
-	Name:  "abort",
-	Usage: "Abort a running job",
+	Name:      "abort",
+	Usage:     "Abort a running job",
 	ArgsUsage: "[call id]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
@@ -289,6 +289,7 @@ var sealingAbortCmd = &cli.Command{
 		for _, workerJobs := range jobs {
 			for _, j := range workerJobs {
 				if strings.HasPrefix(j.ID.ID.String(), cctx.Args().First()) {
+					j := j
 					job = &j
 					break outer
 				}

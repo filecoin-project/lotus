@@ -323,8 +323,8 @@ type StorageMinerStruct struct {
 		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err string) error                   `perm:"admin" retry:"true"`
 		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err string) error                            `perm:"admin" retry:"true"`
 
-		SealingSchedDiag func(context.Context, bool) (interface{}, error) `perm:"admin"`
-		SealingAbort func(ctx context.Context, call storiface.CallID) error `perm:"admin"`
+		SealingSchedDiag func(context.Context, bool) (interface{}, error)       `perm:"admin"`
+		SealingAbort     func(ctx context.Context, call storiface.CallID) error `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                   `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                          `perm:"admin"`

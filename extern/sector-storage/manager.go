@@ -700,22 +700,21 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 		}
 	}
 
-	si, err :=  m.sched.Info(ctx)
+	si, err := m.sched.Info(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	type SchedInfo interface{}
-	i := struct{
+	i := struct {
 		SchedInfo
 
 		ReturnedWork []string
-		Waiting []string
+		Waiting      []string
 
 		CallToWork map[string]string
 
 		EarlyRet []string
-
 	}{
 		SchedInfo: si,
 
