@@ -133,13 +133,13 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 // OnIpldGet returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldGet() GasCharge {
-	return newGasCharge("OnIpldGet", pl.ipldGetBase, 0)
+	return newGasCharge("OnIpldGet", pl.ipldGetBase, 0).WithVirtual(114617, 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
 	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte*pl.storageGasMulti).
-		WithExtra(dataSize)
+		WithExtra(dataSize).WithVirtual(400000, int64(dataSize)*1300)
 }
 
 // OnCreateActor returns the gas used for creating an actor
@@ -208,7 +208,7 @@ func (pl *pricelistV0) OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge 
 		gasUsed /= 2 // XXX: this is an artificial discount
 	}
 
-	return newGasCharge("OnVerifyPost", gasUsed, 0).
+	return newGasCharge("OnVerifyPost", gasUsed, 0).WithVirtual(117680921+43780len(info.ChallengedSectors), 0)
 		WithExtra(map[string]interface{}{
 			"type": sectorSize,
 			"size": len(info.ChallengedSectors),
