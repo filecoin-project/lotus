@@ -7,23 +7,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
-
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
 )
 
 // TestFundManagerBasic verifies that the basic fund manager operations work
@@ -528,7 +522,7 @@ func TestFundManagerRestart(t *testing.T) {
 
 	// Restart
 	mockApiAfter := s.mockApi
-	fmAfter := NewFundManager(mockApiAfter, s.ds)
+	fmAfter := newFundManager(mockApiAfter, s.ds)
 	err = fmAfter.Start()
 	require.NoError(t, err)
 
@@ -585,7 +579,7 @@ func setup(t *testing.T) *scaffold {
 
 	mockApi := newMockFundManagerAPI(walletAddr)
 	dstore := ds_sync.MutexWrap(ds.NewMapDatastore())
-	fm := NewFundManager(mockApi, dstore)
+	fm := newFundManager(mockApi, dstore)
 	return &scaffold{
 		ctx:        ctx,
 		ds:         dstore,
