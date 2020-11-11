@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/metrics"
 
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -16,6 +17,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -618,7 +620,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := Copy(ctx, from, to, root); err != nil {
+	if err := Copy(context.WithValue(ctx, "vm-flush", true), from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
@@ -675,6 +677,7 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
 	ctx, span := trace.StartSpan(ctx, "vm.Copy") // nolint
 	defer span.End()
+	start := time.Now()
 
 	var numBlocks int
 	var totalCopySize int
@@ -708,6 +711,10 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 		trace.Int64Attribute("numBlocks", int64(numBlocks)),
 		trace.Int64Attribute("copySize", int64(totalCopySize)),
 	)
+	if yes, ok := ctx.Value("vm-flush").(bool); yes && ok {
+		took := metrics.SinceInMilliseconds(start)
+		stats.Record(ctx, metrics.VMFlushCopyCount.M(int64(numBlocks)), metrics.VMFlushCopyDuration.M(took))
+	}
 
 	return nil
 }
