@@ -127,6 +127,10 @@ var sealingJobsCmd = &cli.Command{
 	Usage: "list workers",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name: "show-ret-done",
+			Usage: "show returned but not consumed calls",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
@@ -191,6 +195,9 @@ var sealingJobsCmd = &cli.Command{
 			case l.RunWait > 0:
 				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
 			case l.RunWait == storiface.RWRetDone:
+				if !cctx.Bool("show-ret-done") {
+					continue
+				}
 				state = "ret-done"
 			case l.RunWait == storiface.RWReturned:
 				state = "returned"
