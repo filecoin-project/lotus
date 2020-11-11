@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -45,6 +46,7 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 
+	"github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -240,6 +242,41 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 		},
 		OnStop: func(context.Context) error {
 			return h.Stop()
+		},
+	})
+}
+
+func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.FullNode, minerAddress dtypes.MinerAddress) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			b, err := ds.Get(datastore.NewKey("/marketfunds/provider"))
+			if err != nil {
+				if xerrors.Is(err, datastore.ErrNotFound) {
+					return nil
+				}
+				return err
+			}
+
+			var value abi.TokenAmount
+			if err = value.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+				return err
+			}
+			ts, err := node.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			mi, err := node.StateMinerInfo(ctx, address.Address(minerAddress), ts.Key())
+			if err != nil {
+				return err
+			}
+
+			_, err = node.MarketReserveFunds(ctx, mi.Worker, address.Address(minerAddress), value)
+			if err != nil {
+				return err
+			}
+
+			return ds.Delete(datastore.NewKey("/marketfunds/provider"))
 		},
 	})
 }
