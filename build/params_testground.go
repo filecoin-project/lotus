@@ -99,4 +99,4 @@ var (
 	Devnet = true
 )
 
-const BootstrapPeerThreshold = 4
+const BootstrapPeerThreshold = 1
