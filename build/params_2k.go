@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -53,3 +52,5 @@ const SlashablePowerDelay = 20
 
 // Epochs
 const InteractivePoRepConfidence = 6
+
+const BootstrapPeerThreshold = 1
