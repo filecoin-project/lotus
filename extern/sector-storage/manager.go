@@ -688,7 +688,49 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 		}
 	}
 
-	return m.sched.Info(ctx)
+	si, err :=  m.sched.Info(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	type SchedInfo interface{}
+	i := struct{
+		SchedInfo
+
+		ReturnedWork []string
+		Waiting []string
+
+		CallToWork map[string]string
+
+		EarlyRet []string
+
+	}{
+		SchedInfo: si,
+
+		CallToWork: map[string]string{},
+	}
+
+	m.workLk.Lock()
+
+	for w := range m.results {
+		i.ReturnedWork = append(i.ReturnedWork, w.String())
+	}
+
+	for id := range m.callRes {
+		i.EarlyRet = append(i.EarlyRet, id.String())
+	}
+
+	for w := range m.waitRes {
+		i.Waiting = append(i.Waiting, w.String())
+	}
+
+	for c, w := range m.callToWork {
+		i.CallToWork[c.String()] = w.String()
+	}
+
+	m.workLk.Unlock()
+
+	return i, nil
 }
 
 func (m *Manager) Close(ctx context.Context) error {
