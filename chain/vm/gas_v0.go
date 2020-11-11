@@ -208,7 +208,8 @@ func (pl *pricelistV0) OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge 
 		gasUsed /= 2 // XXX: this is an artificial discount
 	}
 
-	return newGasCharge("OnVerifyPost", gasUsed, 0).WithVirtual(117680921+43780len(info.ChallengedSectors), 0)
+	return newGasCharge("OnVerifyPost", gasUsed, 0).
+		WithVirtual(117680921+43780*int64(len(info.ChallengedSectors)), 0).
 		WithExtra(map[string]interface{}{
 			"type": sectorSize,
 			"size": len(info.ChallengedSectors),
