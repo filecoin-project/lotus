@@ -150,6 +150,8 @@ func (m *Miner) mine(ctx context.Context) {
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
 
+	go m.doWinPoStWarmup(ctx)
+
 	var lastBase MiningBase
 minerLoop:
 	for {
