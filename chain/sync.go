@@ -1618,8 +1618,8 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 				}
 
 				mx.Lock()
-				if requestResult != nil {
-					copy(batch[j+offset:], requestResult)
+				if requestResult != nil && nextI+len(requestResult) <= lastI {
+					copy(batch[nextI:], requestResult)
 					offset += len(requestResult)
 				} else {
 					log.Errorf("error fetching messages at %d: %s", nextI, requestErr)
