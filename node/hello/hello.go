@@ -161,7 +161,8 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		_ = s.SetReadDeadline(build.Clock.Now().Add(10 * time.Second))
 		err := cborutil.ReadCborRPC(s, lmsg)
 		if err != nil {
-			log.Infow("reading latency message", "error", err)
+			log.Debugw("reading latency message", "error", err)
+			// TODO: should we just return right here?
 		}
 
 		t3 := build.Clock.Now()
@@ -177,7 +178,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 				t2 := time.Unix(0, lmsg.TSent)
 				offset := t0.Sub(t1) + t3.Sub(t2)
 				offset /= 2
-				log.Infow("time offset", "offset", offset.Seconds(), "peerid", pid.String())
+				log.Debugw("time offset", "offset", offset.Seconds(), "peerid", pid.String())
 			}
 		}
 	}()
