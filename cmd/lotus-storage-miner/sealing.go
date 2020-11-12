@@ -265,7 +265,7 @@ var sealingSchedDiagCmd = &cli.Command{
 var sealingAbortCmd = &cli.Command{
 	Name:      "abort",
 	Usage:     "Abort a running job",
-	ArgsUsage: "[call id]",
+	ArgsUsage: "[callid]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
 			return xerrors.Errorf("expected 1 argument")
