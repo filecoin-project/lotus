@@ -64,7 +64,6 @@ var infoCmd = &cli.Command{
 			fmt.Printf("%s:\n", path.ID)
 			fmt.Printf("\tWeight: %d; Use: ", path.Weight)
 			if path.CanSeal || path.CanStore {
-				fmt.Printf("Weight: %d; Use: ", path.Weight)
 				if path.CanSeal {
 					fmt.Print("Seal ")
 				}
