@@ -443,6 +443,13 @@ func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, sta
 }
 
 func final(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+	if len(events) > 0 {
+		if gm, ok := events[0].User.(globalMutator); ok {
+			gm.applyGlobal(state)
+			return 1, nil
+		}
+	}
+
 	return 0, xerrors.Errorf("didn't expect any events in state %s, got %+v", state.State, events)
 }
 

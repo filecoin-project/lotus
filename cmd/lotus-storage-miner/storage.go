@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -43,6 +44,7 @@ stored while moving through the sealing pipeline (references as 'seal').`,
 		storageAttachCmd,
 		storageListCmd,
 		storageFindCmd,
+		storageCleanupCmd,
 	},
 }
 
@@ -573,4 +575,104 @@ func maybeStr(c bool, col color.Attribute, s string) string {
 	}
 
 	return color.New(col).Sprint(s)
+}
+
+var storageCleanupCmd = &cli.Command{
+	Name:  "cleanup",
+	Usage: "trigger cleanup actions",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "removed",
+			Usage: "cleanup remaining files from removed sectors",
+			Value: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		napi, closer2, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer2()
+
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Bool("removed") {
+			if err := cleanupRemovedSectorData(ctx, api, napi); err != nil {
+				return err
+			}
+		}
+
+		// TODO: proving sectors in sealing storage
+
+		return nil
+	},
+}
+
+func cleanupRemovedSectorData(ctx context.Context, api api.StorageMiner, napi api.FullNode) error {
+	sectors, err := api.SectorsList(ctx)
+	if err != nil {
+		return err
+	}
+
+	maddr, err := api.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+
+	aid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return err
+	}
+
+	sid := func(sn abi.SectorNumber) abi.SectorID {
+		return abi.SectorID{
+			Miner:  abi.ActorID(aid),
+			Number: sn,
+		}
+	}
+
+	mi, err := napi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	if err != nil {
+		return err
+	}
+
+	toRemove := map[abi.SectorNumber]struct{}{}
+
+	for _, sector := range sectors {
+		st, err := api.SectorsStatus(ctx, sector, false)
+		if err != nil {
+			return xerrors.Errorf("getting sector status for sector %d: %w", sector, err)
+		}
+
+		if sealing.SectorState(st.State) != sealing.Removed {
+			continue
+		}
+
+		for _, ft := range storiface.PathTypes {
+			si, err := api.StorageFindSector(ctx, sid(sector), ft, mi.SectorSize, false)
+			if err != nil {
+				return xerrors.Errorf("find sector %d: %w", sector, err)
+			}
+
+			if len(si) > 0 {
+				toRemove[sector] = struct{}{}
+			}
+		}
+	}
+
+	for sn := range toRemove {
+		fmt.Printf("cleaning up data for sector %d\n", sn)
+		err := api.SectorRemove(ctx, sn)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+
+	return nil
 }
