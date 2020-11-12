@@ -268,7 +268,7 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 					log.Warn("chain head sub exit loop")
 					return
 				}
-				if len(out) > 0 {
+				if len(out) > 5 {
 					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
 				}
 				select {
