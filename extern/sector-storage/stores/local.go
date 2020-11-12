@@ -313,7 +313,7 @@ func (st *Local) reportStorage(ctx context.Context) {
 			r.Err = err.Error()
 		}
 
-		toReport[id] =  r
+		toReport[id] = r
 	}
 
 	st.localLk.RUnlock()

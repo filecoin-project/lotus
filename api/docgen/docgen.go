@@ -3,12 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/google/uuid"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -19,6 +13,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
@@ -31,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
@@ -43,6 +39,10 @@ import (
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -202,7 +202,7 @@ func init() {
 	addExample(map[uuid.UUID][]storiface.WorkerJob{
 		uuid.MustParse("ef8d99a2-6865-4189-8ffa-9fef0f806eee"): {
 			{
-				ID:       storiface.CallID{
+				ID: storiface.CallID{
 					Sector: abi.SectorID{Miner: 1000, Number: 100},
 					ID:     uuid.MustParse("76081ba0-61bd-45a5-bc08-af05f1c26e5d"),
 				},
@@ -216,8 +216,8 @@ func init() {
 	})
 	addExample(map[uuid.UUID]storiface.WorkerStats{
 		uuid.MustParse("ef8d99a2-6865-4189-8ffa-9fef0f806eee"): {
-			Info:       storiface.WorkerInfo{
-				Hostname:  "host",
+			Info: storiface.WorkerInfo{
+				Hostname: "host",
 				Resources: storiface.WorkerResources{
 					MemPhysical: 256 << 30,
 					MemSwap:     120 << 30,
@@ -237,10 +237,10 @@ func init() {
 	// worker specific
 	addExample(storiface.AcquireMove)
 	addExample(storiface.UnpaddedByteIndex(abi.PaddedPieceSize(1 << 20).Unpadded()))
-	addExample(map[sealtasks.TaskType]struct {}{
+	addExample(map[sealtasks.TaskType]struct{}{
 		sealtasks.TTPreCommit2: {},
-		sealtasks.TTCommit1: {},
-		sealtasks.TTCommit2: {},
+		sealtasks.TTCommit1:    {},
+		sealtasks.TTCommit2:    {},
 	})
 }
 
