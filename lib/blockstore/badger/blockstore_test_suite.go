@@ -219,6 +219,9 @@ func (s *Suite) TestReopenPutGet(t *testing.T) {
 	fetched, err := bs.Get(orig.Cid())
 	require.NoError(t, err)
 	require.Equal(t, orig.RawData(), fetched.RawData())
+
+	err = bs.(io.Closer).Close()
+	require.NoError(t, err)
 }
 
 func (s *Suite) TestPutMany(t *testing.T) {

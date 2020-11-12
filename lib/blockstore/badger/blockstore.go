@@ -359,7 +359,11 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 				buf = make([]byte, reqlen)
 			}
 			if n, err := base32.RawStdEncoding.Decode(buf, k); err == nil {
-				ch <- cid.NewCidV1(cid.Raw, buf[:n])
+				select {
+				case ch <- cid.NewCidV1(cid.Raw, buf[:n]):
+				case <-ctx.Done():
+					return
+				}
 			} else {
 				log.Warnf("failed to decode key %s in badger AllKeysChan; err: %s", k, err)
 			}
