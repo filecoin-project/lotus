@@ -57,7 +57,7 @@ func NewClientNodeAdapter(stateapi full.StateAPI, chain full.ChainAPI, mpool ful
 
 		fundmgr:   fundmgr,
 		ev:        events.NewEvents(context.TODO(), capi),
-		dsMatcher: newDealStateMatcher(state.NewStatePredicates(capi)),
+		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi))),
 	}
 }
 
