@@ -2,6 +2,7 @@ package stores
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	gopath "path"
 	"sort"
@@ -35,7 +36,7 @@ type StorageInfo struct {
 
 type HealthReport struct {
 	Stat fsutil.FsStat
-	Err  error
+	Err  string
 }
 
 type SectorStorageInfo struct {
@@ -175,7 +176,9 @@ func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthRep
 	}
 
 	ent.fsi = report.Stat
-	ent.heartbeatErr = report.Err
+	if report.Err != "" {
+		ent.heartbeatErr = errors.New(report.Err)
+	}
 	ent.lastHeartbeat = time.Now()
 
 	return nil
