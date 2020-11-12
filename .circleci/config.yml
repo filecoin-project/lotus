@@ -359,6 +359,7 @@ jobs:
     steps:
       - install-deps
       - prepare
+      - run: make deps
       - run: make docsgen
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet

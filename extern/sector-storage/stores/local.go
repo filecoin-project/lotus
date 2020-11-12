@@ -308,11 +308,12 @@ func (st *Local) reportStorage(ctx context.Context) {
 	toReport := map[ID]HealthReport{}
 	for id, p := range st.paths {
 		stat, err := p.stat(st.localStorage)
-
-		toReport[id] = HealthReport{
-			Stat: stat,
-			Err:  err,
+		r := HealthReport{Stat: stat}
+		if err != nil {
+			r.Err = err.Error()
 		}
+
+		toReport[id] = r
 	}
 
 	st.localLk.RUnlock()

@@ -118,7 +118,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		hs.h.ConnManager().TagPeer(s.Conn().RemotePeer(), "fcpeer", 10)
 
 		// don't bother informing about genesis
-		log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
+		log.Debugf("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
 		hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
 	}
 
@@ -162,7 +162,6 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		err := cborutil.ReadCborRPC(s, lmsg)
 		if err != nil {
 			log.Debugw("reading latency message", "error", err)
-			// TODO: should we just return right here?
 		}
 
 		t3 := build.Clock.Now()
@@ -178,7 +177,9 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 				t2 := time.Unix(0, lmsg.TSent)
 				offset := t0.Sub(t1) + t3.Sub(t2)
 				offset /= 2
-				log.Debugw("time offset", "offset", offset.Seconds(), "peerid", pid.String())
+				if offset > 5*time.Second || offset < -5*time.Second {
+					log.Infow("time offset", "offset", offset.Seconds(), "peerid", pid.String())
+				}
 			}
 		}
 	}()
