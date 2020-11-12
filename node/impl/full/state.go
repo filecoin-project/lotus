@@ -123,7 +123,12 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 }
 
 func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
-	act, err := m.StateManager.LoadActorTsk(ctx, actor, tsk)
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return miner.MinerInfo{}, xerrors.Errorf("failed to load tipset: %w", err)
+	}
+
+	act, err := m.StateManager.LoadActor(ctx, actor, ts)
 	if err != nil {
 		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
