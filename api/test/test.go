@@ -122,7 +122,7 @@ var FullNodeWithActorsV2At = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 	}
 }
 
-var FullNodeWithSDRAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
+var FullNodeWithSDRAt = func(calico, persian abi.ChainEpoch) FullNodeOpts {
 	return FullNodeOpts{
 		Opts: func(nodes []TestNode) node.Option {
 			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
@@ -131,8 +131,11 @@ var FullNodeWithSDRAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 				Migration: stmgr.UpgradeActorsV2,
 			}, {
 				Network:   network.Version7,
-				Height:    upgradeHeight,
+				Height:    calico,
 				Migration: stmgr.UpgradeCalico,
+			}, {
+				Network: network.Version8,
+				Height:  persian,
 			}})
 		},
 	}
