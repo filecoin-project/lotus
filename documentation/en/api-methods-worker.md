@@ -483,8 +483,6 @@ Inputs: `null`
 Response:
 ```json
 {
-  "seal/v0/commit/1": {},
-  "seal/v0/commit/2": {},
   "seal/v0/precommit/2": {}
 }
 ```

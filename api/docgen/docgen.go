@@ -209,7 +209,7 @@ func init() {
 				Sector:   abi.SectorID{Miner: 1000, Number: 100},
 				Task:     sealtasks.TTPreCommit2,
 				RunWait:  0,
-				Start:    time.Unix(1605172927, 0),
+				Start:    time.Unix(1605172927, 0).UTC(),
 				Hostname: "host",
 			},
 		},
@@ -239,8 +239,6 @@ func init() {
 	addExample(storiface.UnpaddedByteIndex(abi.PaddedPieceSize(1 << 20).Unpadded()))
 	addExample(map[sealtasks.TaskType]struct{}{
 		sealtasks.TTPreCommit2: {},
-		sealtasks.TTCommit1:    {},
-		sealtasks.TTCommit2:    {},
 	})
 }
 
