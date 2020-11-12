@@ -552,6 +552,53 @@ func TestFundManagerRestart(t *testing.T) {
 	checkAddMessageFields(t, msg3, s.walletAddr, acctAddr2, amt3)
 }
 
+// TestFundManagerReleaseAfterPublish verifies that release is successful in
+// the following scenario:
+// 1. Deal A adds 5 to addr1:                     reserved  0 ->  5    available  0 ->  5
+// 2. Deal B adds 7 to addr1:                     reserved  5 -> 12    available  5 -> 12
+// 3. Deal B completes, reducing addr1 by 7:      reserved       12    available 12 ->  5
+// 4. Deal A releases 5 from addr1:               reserved 12 ->  7    available        5
+func TestFundManagerReleaseAfterPublish(t *testing.T) {
+	s := setup(t)
+	defer s.fm.Stop()
+
+	// Deal A: Reserve 5
+	// balance:  0 -> 5
+	// reserved: 0 -> 5
+	amt := abi.NewTokenAmount(5)
+	sentinel, err := s.fm.Reserve(s.ctx, s.walletAddr, s.acctAddr, amt)
+	require.NoError(t, err)
+	s.mockApi.completeMsg(sentinel)
+
+	// Deal B: Reserve 7
+	// balance:  5 -> 12
+	// reserved: 5 -> 12
+	amt = abi.NewTokenAmount(7)
+	sentinel, err = s.fm.Reserve(s.ctx, s.walletAddr, s.acctAddr, amt)
+	require.NoError(t, err)
+	s.mockApi.completeMsg(sentinel)
+
+	// Deal B: Publish (removes Deal B amount from balance)
+	// balance:  12 -> 5
+	// reserved: 12
+	amt = abi.NewTokenAmount(7)
+	s.mockApi.publish(s.acctAddr, amt)
+
+	// Deal A: Release 5
+	// balance:  5
+	// reserved: 12 -> 7
+	amt = abi.NewTokenAmount(5)
+	err = s.fm.Release(s.acctAddr, amt)
+	require.NoError(t, err)
+
+	// Deal B: Release 7
+	// balance:  5
+	// reserved: 12 -> 7
+	amt = abi.NewTokenAmount(5)
+	err = s.fm.Release(s.acctAddr, amt)
+	require.NoError(t, err)
+}
+
 type scaffold struct {
 	ctx        context.Context
 	ds         *ds_sync.MutexDatastore
@@ -729,6 +776,21 @@ func (mapi *mockFundManagerAPI) getEscrow(a address.Address) abi.TokenAmount {
 		return abi.NewTokenAmount(0)
 	}
 	return escrow
+}
+
+func (mapi *mockFundManagerAPI) publish(addr address.Address, amt abi.TokenAmount) {
+	mapi.lk.Lock()
+	defer mapi.lk.Unlock()
+
+	escrow := mapi.escrow[addr]
+	if escrow.Nil() {
+		return
+	}
+	escrow = types.BigSub(escrow, amt)
+	if escrow.LessThan(abi.NewTokenAmount(0)) {
+		escrow = abi.NewTokenAmount(0)
+	}
+	mapi.escrow[addr] = escrow
 }
 
 func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64) (*api.MsgLookup, error) {
