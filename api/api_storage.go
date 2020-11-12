@@ -71,6 +71,7 @@ type StorageMiner interface {
 
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error)
+	SealingAbort(ctx context.Context, call storiface.CallID) error
 
 	stores.SectorIndex
 

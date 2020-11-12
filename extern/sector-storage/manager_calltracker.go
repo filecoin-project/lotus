@@ -414,3 +414,7 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 
 	return nil
 }
+
+func (m *Manager) Abort(ctx context.Context, call storiface.CallID) error {
+	return m.returnResult(call, nil, "task aborted")
+}
