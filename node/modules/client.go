@@ -55,16 +55,20 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 				if xerrors.Is(err, datastore.ErrNotFound) {
 					return nil
 				}
-				return err
+				log.Errorf("client funds migration - getting datastore value: %w", err)
+				return nil
 			}
 
 			var value abi.TokenAmount
 			if err = value.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-				return err
+				log.Errorf("client funds migration - unmarshalling datastore value: %w", err)
+				return nil
 			}
 			_, err = fundMgr.Reserve(ctx, addr, addr, value)
 			if err != nil {
-				return err
+				log.Errorf("client funds migration - reserving funds (wallet %s, addr %s, funds %d): %w",
+					addr, addr, value, err)
+				return nil
 			}
 
 			return ds.Delete(datastore.NewKey("/marketfunds/client"))
