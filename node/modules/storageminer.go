@@ -263,17 +263,21 @@ func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.
 			}
 			ts, err := node.ChainHead(ctx)
 			if err != nil {
-				return err
+				log.Errorf("provider funds migration - getting chain head: %w", err)
+				return nil
 			}
 
 			mi, err := node.StateMinerInfo(ctx, address.Address(minerAddress), ts.Key())
 			if err != nil {
-				return err
+				log.Errorf("provider funds migration - getting miner info %s: %w", minerAddress, err)
+				return nil
 			}
 
 			_, err = node.MarketReserveFunds(ctx, mi.Worker, address.Address(minerAddress), value)
 			if err != nil {
-				return err
+				log.Errorf("provider funds migration - reserving funds (wallet %s, addr %s, funds %d): %w",
+					mi.Worker, minerAddress, value, err)
+				return nil
 			}
 
 			return ds.Delete(datastore.NewKey("/marketfunds/provider"))
