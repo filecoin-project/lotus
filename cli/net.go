@@ -18,9 +18,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	atypes "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/addrutil"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var netCmd = &cli.Command{
@@ -420,7 +420,7 @@ var NetBlockAddPeer = &cli.Command{
 			peers = append(peers, p)
 		}
 
-		return api.NetBlockAdd(ctx, dtypes.NetBlockList{Peers: peers})
+		return api.NetBlockAdd(ctx, atypes.NetBlockList{Peers: peers})
 	},
 }
 
@@ -436,7 +436,7 @@ var NetBlockAddIP = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		return api.NetBlockAdd(ctx, dtypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
+		return api.NetBlockAdd(ctx, atypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
 	},
 }
 
@@ -452,7 +452,7 @@ var NetBlockAddSubnet = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		return api.NetBlockAdd(ctx, dtypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
+		return api.NetBlockAdd(ctx, atypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
 	},
 }
 
@@ -488,7 +488,7 @@ var NetBlockRemovePeer = &cli.Command{
 			peers = append(peers, p)
 		}
 
-		return api.NetBlockRemove(ctx, dtypes.NetBlockList{Peers: peers})
+		return api.NetBlockRemove(ctx, atypes.NetBlockList{Peers: peers})
 	},
 }
 
@@ -504,7 +504,7 @@ var NetBlockRemoveIP = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		return api.NetBlockRemove(ctx, dtypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
+		return api.NetBlockRemove(ctx, atypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
 	},
 }
 
@@ -520,7 +520,7 @@ var NetBlockRemoveSubnet = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		return api.NetBlockRemove(ctx, dtypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
+		return api.NetBlockRemove(ctx, atypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
 	},
 }
 

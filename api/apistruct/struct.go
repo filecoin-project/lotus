@@ -60,9 +60,9 @@ type CommonStruct struct {
 		NetBandwidthStatsByPeer     func(ctx context.Context) (map[string]metrics.Stats, error)      `perm:"read"`
 		NetBandwidthStatsByProtocol func(ctx context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
 		NetAgentVersion             func(ctx context.Context, p peer.ID) (string, error)             `perm:"read"`
-		NetBlockAdd                 func(ctx context.Context, acl dtypes.NetBlockList) error         `perm:"admin"`
-		NetBlockRemove              func(ctx context.Context, acl dtypes.NetBlockList) error         `perm:"admin"`
-		NetBlockList                func(ctx context.Context) (dtypes.NetBlockList, error)           `perm:"read"`
+		NetBlockAdd                 func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
+		NetBlockRemove              func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
+		NetBlockList                func(ctx context.Context) (api.NetBlockList, error)              `perm:"read"`
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
@@ -498,15 +498,15 @@ func (c *CommonStruct) NetBandwidthStatsByProtocol(ctx context.Context) (map[pro
 	return c.Internal.NetBandwidthStatsByProtocol(ctx)
 }
 
-func (c *CommonStruct) NetBlockAdd(ctx context.Context, acl dtypes.NetBlockList) error {
+func (c *CommonStruct) NetBlockAdd(ctx context.Context, acl api.NetBlockList) error {
 	return c.Internal.NetBlockAdd(ctx, acl)
 }
 
-func (c *CommonStruct) NetBlockRemove(ctx context.Context, acl dtypes.NetBlockList) error {
+func (c *CommonStruct) NetBlockRemove(ctx context.Context, acl api.NetBlockList) error {
 	return c.Internal.NetBlockRemove(ctx, acl)
 }
 
-func (c *CommonStruct) NetBlockList(ctx context.Context) (dtypes.NetBlockList, error) {
+func (c *CommonStruct) NetBlockList(ctx context.Context) (api.NetBlockList, error) {
 	return c.Internal.NetBlockList(ctx)
 }
 

@@ -13,7 +13,6 @@ import (
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type Common interface {
@@ -48,9 +47,9 @@ type Common interface {
 	NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error)
 
 	// ConnectionGater API
-	NetBlockAdd(ctx context.Context, acl dtypes.NetBlockList) error
-	NetBlockRemove(ctx context.Context, acl dtypes.NetBlockList) error
-	NetBlockList(ctx context.Context) (dtypes.NetBlockList, error)
+	NetBlockAdd(ctx context.Context, acl NetBlockList) error
+	NetBlockRemove(ctx context.Context, acl NetBlockList) error
+	NetBlockList(ctx context.Context) (NetBlockList, error)
 
 	// MethodGroup: Common
 
