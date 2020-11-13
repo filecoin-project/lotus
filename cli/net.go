@@ -441,7 +441,7 @@ var NetBlockAddIP = &cli.Command{
 }
 
 var NetBlockAddSubnet = &cli.Command{
-	Name:      "ip",
+	Name:      "subnet",
 	Usage:     "Block an IP subnet",
 	ArgsUsage: "<CIDR> ...",
 	Action: func(cctx *cli.Context) error {
@@ -457,7 +457,7 @@ var NetBlockAddSubnet = &cli.Command{
 }
 
 var NetBlockRemoveCmd = &cli.Command{
-	Name:  "add",
+	Name:  "remove",
 	Usage: "Remove connection gating rules",
 	Subcommands: []*cli.Command{
 		NetBlockRemovePeer,
@@ -509,7 +509,7 @@ var NetBlockRemoveIP = &cli.Command{
 }
 
 var NetBlockRemoveSubnet = &cli.Command{
-	Name:      "ip",
+	Name:      "subnet",
 	Usage:     "Unblock an IP subnet",
 	ArgsUsage: "<CIDR> ...",
 	Action: func(cctx *cli.Context) error {
