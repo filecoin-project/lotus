@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# 1.1.3-rc1 / 2020-11-12
+# 1.1.3 / 2020-11-13
 
 This is an optional release of Lotus that upgrades Lotus dependencies, and includes many performance enhancements, bugfixes, and UX improvements.
 
