@@ -504,7 +504,6 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 }
 
 func StorageProvider(minerAddress dtypes.MinerAddress,
-	spt abi.RegisteredSealProof,
 	storedAsk *storedask.StoredAsk,
 	h host.Host, ds dtypes.MetadataDS,
 	mds dtypes.StagingMultiDstore,
@@ -522,7 +521,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), spt, storedAsk, opt)
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
