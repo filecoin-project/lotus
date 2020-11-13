@@ -6,14 +6,27 @@ import (
 
 	"golang.org/x/xerrors"
 
+	logging "github.com/ipfs/go-log/v2"
+	manet "github.com/multiformats/go-multiaddr/net"
+
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
+
+var cLog = logging.Logger("conngater")
 
 func (a *CommonAPI) NetBlockAdd(ctx context.Context, acl dtypes.NetBlockList) error {
 	for _, p := range acl.Peers {
 		err := a.ConnGater.BlockPeer(p)
 		if err != nil {
 			return xerrors.Errorf("error blocking peer %s: %w", p, err)
+		}
+
+		for _, c := range a.Host.Network().ConnsToPeer(p) {
+			err = c.Close()
+			if err != nil {
+				// just log this, don't fail
+				cLog.Warnf("error closing connection to %s: %s", p, err)
+			}
 		}
 	}
 
@@ -27,6 +40,22 @@ func (a *CommonAPI) NetBlockAdd(ctx context.Context, acl dtypes.NetBlockList) er
 		if err != nil {
 			return xerrors.Errorf("error blocking IP address %s: %w", addr, err)
 		}
+
+		for _, c := range a.Host.Network().Conns() {
+			remote := c.RemoteMultiaddr()
+			remoteIP, err := manet.ToIP(remote)
+			if err != nil {
+				continue
+			}
+
+			if ip.Equal(remoteIP) {
+				err = c.Close()
+				if err != nil {
+					// just log this, don't fail
+					cLog.Warnf("error closing connection to %s: %s", remoteIP, err)
+				}
+			}
+		}
 	}
 
 	for _, subnet := range acl.IPSubnets {
@@ -38,6 +67,22 @@ func (a *CommonAPI) NetBlockAdd(ctx context.Context, acl dtypes.NetBlockList) er
 		err = a.ConnGater.BlockSubnet(cidr)
 		if err != nil {
 			return xerrors.Errorf("error blocking subunet %s: %w", subnet, err)
+		}
+
+		for _, c := range a.Host.Network().Conns() {
+			remote := c.RemoteMultiaddr()
+			remoteIP, err := manet.ToIP(remote)
+			if err != nil {
+				continue
+			}
+
+			if cidr.Contains(remoteIP) {
+				err = c.Close()
+				if err != nil {
+					// just log this, don't fail
+					cLog.Warnf("error closing connection to %s: %s", remoteIP, err)
+				}
+			}
 		}
 	}
 
