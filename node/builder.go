@@ -25,6 +25,7 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
+	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -98,6 +99,7 @@ var (
 	ConnectionManagerKey = special{9}  // Libp2p option
 	AutoNATSvcKey        = special{10} // Libp2p option
 	BandwidthReporterKey = special{11} // Libp2p option
+	ConnGaterKey         = special{12} // libp2p option
 )
 
 type invoke int
@@ -220,6 +222,9 @@ func libp2p() Option {
 
 		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
 		Override(StartListeningKey, lp2p.StartListening(config.DefaultFullNode().Libp2p.ListenAddresses)),
+
+		Override(new(*conngater.BasicConnectionGater), lp2p.ConnGater),
+		Override(ConnGaterKey, lp2p.ConnGaterOption),
 	)
 }
 
