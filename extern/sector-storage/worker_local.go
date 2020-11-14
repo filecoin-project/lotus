@@ -160,6 +160,20 @@ func (l *LocalWorker) ffiExec() (ffiwrapper.Storage, error) {
 
 type ReturnType string
 
+const (
+	AddPiece        ReturnType = "AddPiece"
+	SealPreCommit1  ReturnType = "SealPreCommit1"
+	SealPreCommit2  ReturnType = "SealPreCommit2"
+	SealCommit1     ReturnType = "SealCommit1"
+	SealCommit2     ReturnType = "SealCommit2"
+	FinalizeSector  ReturnType = "FinalizeSector"
+	ReleaseUnsealed ReturnType = "ReleaseUnsealed"
+	MoveStorage     ReturnType = "MoveStorage"
+	UnsealPiece     ReturnType = "UnsealPiece"
+	ReadPiece       ReturnType = "ReadPiece"
+	Fetch           ReturnType = "Fetch"
+)
+
 // in: func(WorkerReturn, context.Context, CallID, err string)
 // in: func(WorkerReturn, context.Context, CallID, ret T, err string)
 func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, error) error {
@@ -195,17 +209,17 @@ func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.Wor
 }
 
 var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, error) error{
-	"AddPiece":        rfunc(storiface.WorkerReturn.ReturnAddPiece),
-	"SealPreCommit1":  rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
-	"SealPreCommit2":  rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
-	"SealCommit1":     rfunc(storiface.WorkerReturn.ReturnSealCommit1),
-	"SealCommit2":     rfunc(storiface.WorkerReturn.ReturnSealCommit2),
-	"FinalizeSector":  rfunc(storiface.WorkerReturn.ReturnFinalizeSector),
-	"ReleaseUnsealed": rfunc(storiface.WorkerReturn.ReturnReleaseUnsealed),
-	"MoveStorage":     rfunc(storiface.WorkerReturn.ReturnMoveStorage),
-	"UnsealPiece":     rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
-	"ReadPiece":       rfunc(storiface.WorkerReturn.ReturnReadPiece),
-	"Fetch":           rfunc(storiface.WorkerReturn.ReturnFetch),
+	AddPiece:        rfunc(storiface.WorkerReturn.ReturnAddPiece),
+	SealPreCommit1:  rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
+	SealPreCommit2:  rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
+	SealCommit1:     rfunc(storiface.WorkerReturn.ReturnSealCommit1),
+	SealCommit2:     rfunc(storiface.WorkerReturn.ReturnSealCommit2),
+	FinalizeSector:  rfunc(storiface.WorkerReturn.ReturnFinalizeSector),
+	ReleaseUnsealed: rfunc(storiface.WorkerReturn.ReturnReleaseUnsealed),
+	MoveStorage:     rfunc(storiface.WorkerReturn.ReturnMoveStorage),
+	UnsealPiece:     rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
+	ReadPiece:       rfunc(storiface.WorkerReturn.ReturnReadPiece),
+	Fetch:           rfunc(storiface.WorkerReturn.ReturnFetch),
 }
 
 func (l *LocalWorker) asyncCall(ctx context.Context, sector abi.SectorID, rt ReturnType, work func(ctx context.Context, ci storiface.CallID) (interface{}, error)) (storiface.CallID, error) {
@@ -298,13 +312,13 @@ func (l *LocalWorker) AddPiece(ctx context.Context, sector abi.SectorID, epcs []
 		return storiface.UndefCall, err
 	}
 
-	return l.asyncCall(ctx, sector, "AddPiece", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, AddPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		return sb.AddPiece(ctx, sector, epcs, sz, r)
 	})
 }
 
 func (l *LocalWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
-	return l.asyncCall(ctx, sector, "Fetch", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, Fetch, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		_, done, err := (&localWorkerPathProvider{w: l, op: am}).AcquireSector(ctx, sector, fileType, storiface.FTNone, ptype)
 		if err == nil {
 			done()
@@ -315,7 +329,7 @@ func (l *LocalWorker) Fetch(ctx context.Context, sector abi.SectorID, fileType s
 }
 
 func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
-	return l.asyncCall(ctx, sector, "SealPreCommit1", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, SealPreCommit1, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 
 		{
 			// cleanup previous failed attempts if they exist
@@ -343,7 +357,7 @@ func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector abi.SectorID, p
 		return storiface.UndefCall, err
 	}
 
-	return l.asyncCall(ctx, sector, "SealPreCommit2", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, SealPreCommit2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		return sb.SealPreCommit2(ctx, sector, phase1Out)
 	})
 }
@@ -354,7 +368,7 @@ func (l *LocalWorker) SealCommit1(ctx context.Context, sector abi.SectorID, tick
 		return storiface.UndefCall, err
 	}
 
-	return l.asyncCall(ctx, sector, "SealCommit1", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, SealCommit1, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		return sb.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 	})
 }
@@ -365,7 +379,7 @@ func (l *LocalWorker) SealCommit2(ctx context.Context, sector abi.SectorID, phas
 		return storiface.UndefCall, err
 	}
 
-	return l.asyncCall(ctx, sector, "SealCommit2", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, SealCommit2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		return sb.SealCommit2(ctx, sector, phase1Out)
 	})
 }
@@ -376,7 +390,7 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, k
 		return storiface.UndefCall, err
 	}
 
-	return l.asyncCall(ctx, sector, "FinalizeSector", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, FinalizeSector, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		if err := sb.FinalizeSector(ctx, sector, keepUnsealed); err != nil {
 			return nil, xerrors.Errorf("finalizing sector: %w", err)
 		}
@@ -412,7 +426,7 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 }
 
 func (l *LocalWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types storiface.SectorFileType) (storiface.CallID, error) {
-	return l.asyncCall(ctx, sector, "MoveStorage", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, MoveStorage, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		ssize, err := l.scfg.SealProofType.SectorSize()
 		if err != nil {
 			return nil, err
@@ -428,7 +442,7 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector abi.SectorID, inde
 		return storiface.UndefCall, err
 	}
 
-	return l.asyncCall(ctx, sector, "UnsealPiece", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, UnsealPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		if err = sb.UnsealPiece(ctx, sector, index, size, randomness, cid); err != nil {
 			return nil, xerrors.Errorf("unsealing sector: %w", err)
 		}
@@ -451,7 +465,7 @@ func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector ab
 		return storiface.UndefCall, err
 	}
 
-	return l.asyncCall(ctx, sector, "ReadPiece", func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, sector, ReadPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		return sb.ReadPiece(ctx, writer, sector, index, size)
 	})
 }

@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	BootstrapPeerThreshold = 4
+	BootstrapPeerThreshold = build.BootstrapPeerThreshold
 
 	RecentSyncBufferSize = 10
 	MaxSyncWorkers       = 5
@@ -194,7 +194,7 @@ func (sm *syncManager) scheduler() {
 }
 
 func (sm *syncManager) handlePeerHead(head peerHead) {
-	log.Infof("new peer head: %s %s", head.p, head.ts)
+	log.Debugf("new peer head: %s %s", head.p, head.ts)
 
 	// have we started syncing yet?
 	if sm.nextWorker == 0 {
@@ -410,7 +410,7 @@ func (sm *syncManager) addSyncTarget(ts *types.TipSet) (*types.TipSet, bool, err
 	// if we have not finished the initial sync or have too many workers, add it to the deferred queue;
 	// it will be processed once a worker is freed from syncing a chain (or the initial sync finishes)
 	if !sm.initialSyncDone || len(sm.state) >= MaxSyncWorkers {
-		log.Infof("deferring sync on %s", ts)
+		log.Debugf("deferring sync on %s", ts)
 		sm.deferred.Insert(ts)
 		return nil, false, nil
 	}

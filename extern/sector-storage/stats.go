@@ -67,12 +67,26 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 			continue
 		}
 
+		var ws WorkState
+		if err := m.work.Get(work).Get(&ws); err != nil {
+			log.Errorf("WorkerJobs: get work %s: %+v", work, err)
+		}
+
+		wait := storiface.RWRetWait
+		if _, ok := m.results[work]; ok {
+			wait = storiface.RWReturned
+		}
+		if ws.Status == wsDone {
+			wait = storiface.RWRetDone
+		}
+
 		out[uuid.UUID{}] = append(out[uuid.UUID{}], storiface.WorkerJob{
-			ID:      id,
-			Sector:  id.Sector,
-			Task:    work.Method,
-			RunWait: -1,
-			Start:   time.Time{},
+			ID:       id,
+			Sector:   id.Sector,
+			Task:     work.Method,
+			RunWait:  wait,
+			Start:    time.Unix(ws.StartTime, 0),
+			Hostname: ws.WorkerHostname,
 		})
 	}
 

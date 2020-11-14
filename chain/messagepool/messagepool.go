@@ -264,7 +264,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	}
 
 	if strict && nonceGap {
-		log.Warnf("adding nonce-gapped message from %s (nonce: %d, nextNonce: %d)",
+		log.Debugf("adding nonce-gapped message from %s (nonce: %d, nextNonce: %d)",
 			m.Message.From, m.Message.Nonce, nextNonce)
 	}
 
@@ -1219,7 +1219,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.Si
 			if smsg != nil {
 				out = append(out, smsg)
 			} else {
-				log.Warnf("could not recover signature for bls message %s", msg.Cid())
+				log.Debugf("could not recover signature for bls message %s", msg.Cid())
 			}
 		}
 	}

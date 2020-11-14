@@ -2,6 +2,9 @@ package modules
 
 import (
 	"context"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -25,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/sub"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
@@ -33,6 +37,19 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+var pubsubMsgsSyncEpochs = 10
+
+func init() {
+	if s := os.Getenv("LOTUS_MSGS_SYNC_EPOCHS"); s != "" {
+		val, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse LOTUS_MSGS_SYNC_EPOCHS: %s", err)
+			return
+		}
+		pubsubMsgsSyncEpochs = val
+	}
+}
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) error {
 	h.SetStreamHandler(hello.ProtocolID, svc.HandleStream)
@@ -82,13 +99,44 @@ func RunChainExchange(h host.Host, svc exchange.Server) {
 	h.SetStreamHandler(exchange.ChainExchangeProtocolID, svc.HandleStream) // new
 }
 
+func waitForSync(stmgr *stmgr.StateManager, epochs int, subscribe func()) {
+	nearsync := time.Duration(epochs*int(build.BlockDelaySecs)) * time.Second
+
+	// early check, are we synced at start up?
+	ts := stmgr.ChainStore().GetHeaviestTipSet()
+	timestamp := ts.MinTimestamp()
+	timestampTime := time.Unix(int64(timestamp), 0)
+	if build.Clock.Since(timestampTime) < nearsync {
+		subscribe()
+		return
+	}
+
+	// we are not synced, subscribe to head changes and wait for sync
+	stmgr.ChainStore().SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
+		if len(app) == 0 {
+			return nil
+		}
+
+		latest := app[0].MinTimestamp()
+		for _, ts := range app[1:] {
+			timestamp := ts.MinTimestamp()
+			if timestamp > latest {
+				latest = timestamp
+			}
+		}
+
+		latestTime := time.Unix(int64(latest), 0)
+		if build.Clock.Since(latestTime) < nearsync {
+			subscribe()
+			return store.ErrNotifeeDone
+		}
+
+		return nil
+	})
+}
+
 func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
-
-	blocksub, err := ps.Subscribe(build.BlocksTopic(nn)) //nolint
-	if err != nil {
-		panic(err)
-	}
 
 	v := sub.NewBlockValidator(
 		h.ID(), chain, stmgr,
@@ -101,16 +149,18 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		panic(err)
 	}
 
-	go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
-}
+	log.Infof("subscribing to pubsub topic %s", build.BlocksTopic(nn))
 
-func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool, h host.Host, nn dtypes.NetworkName) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-
-	msgsub, err := ps.Subscribe(build.MessagesTopic(nn)) //nolint:staticcheck
+	blocksub, err := ps.Subscribe(build.BlocksTopic(nn)) //nolint
 	if err != nil {
 		panic(err)
 	}
+
+	go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
+}
+
+func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, stmgr *stmgr.StateManager, mpool *messagepool.MessagePool, h host.Host, nn dtypes.NetworkName, bootstrapper dtypes.Bootstrapper) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	v := sub.NewMessageValidator(h.ID(), mpool)
 
@@ -118,7 +168,24 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		panic(err)
 	}
 
-	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
+	subscribe := func() {
+		log.Infof("subscribing to pubsub topic %s", build.MessagesTopic(nn))
+
+		msgsub, err := ps.Subscribe(build.MessagesTopic(nn)) //nolint
+		if err != nil {
+			panic(err)
+		}
+
+		go sub.HandleIncomingMessages(ctx, mpool, msgsub)
+	}
+
+	if bootstrapper {
+		subscribe()
+		return
+	}
+
+	// wait until we are synced within 10 epochs -- env var can override
+	waitForSync(stmgr, pubsubMsgsSyncEpochs, subscribe)
 }
 
 func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {

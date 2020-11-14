@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -1246,14 +1247,19 @@ var chainDecodeCmd = &cli.Command{
 }
 
 var chainDecodeParamsCmd = &cli.Command{
-	Name:  "params",
-	Usage: "Decode message params",
+	Name:      "params",
+	Usage:     "Decode message params",
+	ArgsUsage: "[toAddr method params]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name: "tipset",
 		},
+		&cli.StringFlag{
+			Name:  "encoding",
+			Value: "base64",
+			Usage: "specify input encoding to parse",
+		},
 	},
-	ArgsUsage: "[toAddr method hexParams]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -1276,11 +1282,21 @@ var chainDecodeParamsCmd = &cli.Command{
 			return xerrors.Errorf("parsing method id: %w", err)
 		}
 
-		params, err := hex.DecodeString(cctx.Args().Get(2))
-		if err != nil {
-			return xerrors.Errorf("parsing hex params: %w", err)
+		var params []byte
+		switch cctx.String("encoding") {
+		case "base64":
+			params, err = base64.StdEncoding.DecodeString(cctx.Args().Get(2))
+			if err != nil {
+				return xerrors.Errorf("decoding base64 value: %w", err)
+			}
+		case "hex":
+			params, err = hex.DecodeString(cctx.Args().Get(2))
+			if err != nil {
+				return xerrors.Errorf("decoding hex value: %w", err)
+			}
+		default:
+			return xerrors.Errorf("unrecognized encoding: %s", cctx.String("encoding"))
 		}
-
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err

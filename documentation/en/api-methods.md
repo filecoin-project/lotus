@@ -68,7 +68,8 @@
   * [LogList](#LogList)
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
-  * [MarketEnsureAvailable](#MarketEnsureAvailable)
+  * [MarketReleaseFunds](#MarketReleaseFunds)
+  * [MarketReserveFunds](#MarketReserveFunds)
 * [Miner](#Miner)
   * [MinerCreateBlock](#MinerCreateBlock)
   * [MinerGetBaseInfo](#MinerGetBaseInfo)
@@ -1612,8 +1613,24 @@ Response: `{}`
 ## Market
 
 
-### MarketEnsureAvailable
-MarketFreeBalance
+### MarketReleaseFunds
+MarketReleaseFunds releases funds reserved by MarketReserveFunds
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "0"
+]
+```
+
+Response: `{}`
+
+### MarketReserveFunds
+MarketReserveFunds reserves funds for a deal
 
 
 Perms: sign

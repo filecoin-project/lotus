@@ -220,7 +220,9 @@ func (m *Manager) readPiece(sink io.Writer, sector abi.SectorID, offset storifac
 		if err != nil {
 			return err
 		}
-		*rok = r.(bool)
+		if r != nil {
+			*rok = r.(bool)
+		}
 		return nil
 	}
 }
@@ -342,7 +344,9 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 		if err != nil {
 			return err
 		}
-		out = p.(abi.PieceInfo)
+		if p != nil {
+			out = p.(abi.PieceInfo)
+		}
 		return nil
 	})
 
@@ -366,7 +370,9 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 			waitErr = werr
 			return
 		}
-		out = p.(storage.PreCommit1Out)
+		if p != nil {
+			out = p.(storage.PreCommit1Out)
+		}
 	}
 
 	if wait { // already in progress
@@ -383,7 +389,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 	selector := newAllocSelector(m.index, storiface.FTCache|storiface.FTSealed, storiface.PathSealing)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, m.schedFetch(sector, storiface.FTUnsealed, storiface.PathSealing, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
-		err := m.startWork(ctx, wk)(w.SealPreCommit1(ctx, sector, ticket, pieces))
+		err := m.startWork(ctx, w, wk)(w.SealPreCommit1(ctx, sector, ticket, pieces))
 		if err != nil {
 			return err
 		}
@@ -415,7 +421,9 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 			waitErr = werr
 			return
 		}
-		out = p.(storage.SectorCids)
+		if p != nil {
+			out = p.(storage.SectorCids)
+		}
 	}
 
 	if wait { // already in progress
@@ -430,7 +438,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 	selector := newExistingSelector(m.index, sector, storiface.FTCache|storiface.FTSealed, true)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, m.schedFetch(sector, storiface.FTCache|storiface.FTSealed, storiface.PathSealing, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
-		err := m.startWork(ctx, wk)(w.SealPreCommit2(ctx, sector, phase1Out))
+		err := m.startWork(ctx, w, wk)(w.SealPreCommit2(ctx, sector, phase1Out))
 		if err != nil {
 			return err
 		}
@@ -462,7 +470,9 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 			waitErr = werr
 			return
 		}
-		out = p.(storage.Commit1Out)
+		if p != nil {
+			out = p.(storage.Commit1Out)
+		}
 	}
 
 	if wait { // already in progress
@@ -480,7 +490,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector abi.SectorID, ticket a
 	selector := newExistingSelector(m.index, sector, storiface.FTCache|storiface.FTSealed, false)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, m.schedFetch(sector, storiface.FTCache|storiface.FTSealed, storiface.PathSealing, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
-		err := m.startWork(ctx, wk)(w.SealCommit1(ctx, sector, ticket, seed, pieces, cids))
+		err := m.startWork(ctx, w, wk)(w.SealCommit1(ctx, sector, ticket, seed, pieces, cids))
 		if err != nil {
 			return err
 		}
@@ -509,7 +519,9 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 			waitErr = werr
 			return
 		}
-		out = p.(storage.Proof)
+		if p != nil {
+			out = p.(storage.Proof)
+		}
 	}
 
 	if wait { // already in progress
@@ -520,7 +532,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sector abi.SectorID, phase1Ou
 	selector := newTaskSelector()
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit2, selector, schedNop, func(ctx context.Context, w Worker) error {
-		err := m.startWork(ctx, wk)(w.SealCommit2(ctx, sector, phase1Out))
+		err := m.startWork(ctx, w, wk)(w.SealCommit2(ctx, sector, phase1Out))
 		if err != nil {
 			return err
 		}
@@ -688,7 +700,48 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 		}
 	}
 
-	return m.sched.Info(ctx)
+	si, err := m.sched.Info(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	type SchedInfo interface{}
+	i := struct {
+		SchedInfo
+
+		ReturnedWork []string
+		Waiting      []string
+
+		CallToWork map[string]string
+
+		EarlyRet []string
+	}{
+		SchedInfo: si,
+
+		CallToWork: map[string]string{},
+	}
+
+	m.workLk.Lock()
+
+	for w := range m.results {
+		i.ReturnedWork = append(i.ReturnedWork, w.String())
+	}
+
+	for id := range m.callRes {
+		i.EarlyRet = append(i.EarlyRet, id.String())
+	}
+
+	for w := range m.waitRes {
+		i.Waiting = append(i.Waiting, w.String())
+	}
+
+	for c, w := range m.callToWork {
+		i.CallToWork[c.String()] = w.String()
+	}
+
+	m.workLk.Unlock()
+
+	return i, nil
 }
 
 func (m *Manager) Close(ctx context.Context) error {

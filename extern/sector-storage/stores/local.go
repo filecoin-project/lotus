@@ -298,24 +298,29 @@ func (st *Local) reportHealth(ctx context.Context) {
 			return
 		}
 
-		st.localLk.RLock()
+		st.reportStorage(ctx)
+	}
+}
 
-		toReport := map[ID]HealthReport{}
-		for id, p := range st.paths {
-			stat, err := p.stat(st.localStorage)
+func (st *Local) reportStorage(ctx context.Context) {
+	st.localLk.RLock()
 
-			toReport[id] = HealthReport{
-				Stat: stat,
-				Err:  err,
-			}
+	toReport := map[ID]HealthReport{}
+	for id, p := range st.paths {
+		stat, err := p.stat(st.localStorage)
+		r := HealthReport{Stat: stat}
+		if err != nil {
+			r.Err = err.Error()
 		}
 
-		st.localLk.RUnlock()
+		toReport[id] = r
+	}
 
-		for id, report := range toReport {
-			if err := st.index.StorageReportHealth(ctx, id, report); err != nil {
-				log.Warnf("error reporting storage health for %s (%+v): %+v", id, report, err)
-			}
+	st.localLk.RUnlock()
+
+	for id, report := range toReport {
+		if err := st.index.StorageReportHealth(ctx, id, report); err != nil {
+			log.Warnf("error reporting storage health for %s (%+v): %+v", id, report, err)
 		}
 	}
 }
@@ -568,6 +573,8 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ storifa
 		log.Errorf("removing sector (%v) from %s: %+v", sid, spath, err)
 	}
 
+	st.reportStorage(ctx) // report freed space
+
 	return nil
 }
 
@@ -622,6 +629,8 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, ssize abi.Sect
 			return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", s, fileType, ID(storiface.PathByType(destIds, fileType)), err)
 		}
 	}
+
+	st.reportStorage(ctx) // report space use changes
 
 	return nil
 }

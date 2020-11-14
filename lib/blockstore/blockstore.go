@@ -44,6 +44,7 @@ func NewBlockstore(dstore ds.Batching) blockstore.Blockstore {
 
 // Alias so other packages don't have to import go-ipfs-blockstore
 type Blockstore = blockstore.Blockstore
+type Viewer = blockstore.Viewer
 type GCBlockstore = blockstore.GCBlockstore
 type CacheOpts = blockstore.CacheOpts
 type GCLocker = blockstore.GCLocker

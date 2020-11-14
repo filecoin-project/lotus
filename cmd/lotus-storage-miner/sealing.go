@@ -28,6 +28,7 @@ var sealingCmd = &cli.Command{
 		sealingJobsCmd,
 		sealingWorkersCmd,
 		sealingSchedDiagCmd,
+		sealingAbortCmd,
 	},
 }
 
@@ -124,9 +125,13 @@ var sealingWorkersCmd = &cli.Command{
 
 var sealingJobsCmd = &cli.Command{
 	Name:  "jobs",
-	Usage: "list workers",
+	Usage: "list running jobs",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name:  "show-ret-done",
+			Usage: "show returned but not consumed calls",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
@@ -187,10 +192,17 @@ var sealingJobsCmd = &cli.Command{
 
 		for _, l := range lines {
 			state := "running"
-			if l.RunWait > 0 {
+			switch {
+			case l.RunWait > 0:
 				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
-			}
-			if l.RunWait == -1 {
+			case l.RunWait == storiface.RWRetDone:
+				if !cctx.Bool("show-ret-done") {
+					continue
+				}
+				state = "ret-done"
+			case l.RunWait == storiface.RWReturned:
+				state = "returned"
+			case l.RunWait == storiface.RWRetWait:
 				state = "ret-wait"
 			}
 			dur := "n/a"
@@ -198,11 +210,16 @@ var sealingJobsCmd = &cli.Command{
 				dur = time.Now().Sub(l.Start).Truncate(time.Millisecond * 100).String()
 			}
 
+			hostname, ok := workerHostnames[l.wid]
+			if !ok {
+				hostname = l.Hostname
+			}
+
 			_, _ = fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
-				hex.EncodeToString(l.ID.ID[10:]),
+				hex.EncodeToString(l.ID.ID[:4]),
 				l.Sector.Number,
-				hex.EncodeToString(l.wid[5:]),
-				workerHostnames[l.wid],
+				hex.EncodeToString(l.wid[:4]),
+				hostname,
 				l.Task.Short(),
 				state,
 				dur)
@@ -242,5 +259,49 @@ var sealingSchedDiagCmd = &cli.Command{
 		fmt.Println(string(j))
 
 		return nil
+	},
+}
+
+var sealingAbortCmd = &cli.Command{
+	Name:      "abort",
+	Usage:     "Abort a running job",
+	ArgsUsage: "[callid]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("expected 1 argument")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		jobs, err := nodeApi.WorkerJobs(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting worker jobs: %w", err)
+		}
+
+		var job *storiface.WorkerJob
+	outer:
+		for _, workerJobs := range jobs {
+			for _, j := range workerJobs {
+				if strings.HasPrefix(j.ID.ID.String(), cctx.Args().First()) {
+					j := j
+					job = &j
+					break outer
+				}
+			}
+		}
+
+		if job == nil {
+			return xerrors.Errorf("job with specified id prefix not found")
+		}
+
+		fmt.Printf("aborting job %s, task %s, sector %d, running on host %s\n", job.ID.String(), job.Task.Short(), job.Sector.Number, job.Hostname)
+
+		return nodeApi.SealingAbort(ctx, job.ID)
 	},
 }

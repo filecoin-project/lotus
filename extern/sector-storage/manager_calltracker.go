@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -41,6 +42,9 @@ type WorkState struct {
 
 	WorkerCall storiface.CallID // Set when entering wsRunning
 	WorkError  string           // Status = wsDone, set when failed to start work
+
+	WorkerHostname string // hostname of last worker handling this job
+	StartTime      int64  // unix seconds
 }
 
 func newWorkID(method sealtasks.TaskType, params ...interface{}) (WorkID, error) {
@@ -85,8 +89,7 @@ func (m *Manager) setupWorkTracker() {
 				log.Errorf("cleannig up work state for %s", wid)
 			}
 		case wsDone:
-			// realistically this shouldn't ever happen as we return results
-			// immediately after getting them
+			// can happen after restart, abandoning work, and another restart
 			log.Warnf("dropping done work, no result, wid %s", wid)
 
 			if err := m.work.Get(wid).End(); err != nil {
@@ -167,8 +170,16 @@ func (m *Manager) getWork(ctx context.Context, method sealtasks.TaskType, params
 	}, nil
 }
 
-func (m *Manager) startWork(ctx context.Context, wk WorkID) func(callID storiface.CallID, err error) error {
+func (m *Manager) startWork(ctx context.Context, w Worker, wk WorkID) func(callID storiface.CallID, err error) error {
 	return func(callID storiface.CallID, err error) error {
+		var hostname string
+		info, ierr := w.Info(ctx)
+		if ierr != nil {
+			hostname = "[err]"
+		} else {
+			hostname = info.Hostname
+		}
+
 		m.workLk.Lock()
 		defer m.workLk.Unlock()
 
@@ -194,6 +205,8 @@ func (m *Manager) startWork(ctx context.Context, wk WorkID) func(callID storifac
 				ws.Status = wsRunning
 			}
 			ws.WorkerCall = callID
+			ws.WorkerHostname = hostname
+			ws.StartTime = time.Now().Unix()
 			return nil
 		})
 		if err != nil {
@@ -379,6 +392,20 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 
 	m.results[wid] = res
 
+	err = m.work.Get(wid).Mutate(func(ws *WorkState) error {
+		ws.Status = wsDone
+		return nil
+	})
+	if err != nil {
+		// in the unlikely case:
+		// * manager has restarted, and we're still tracking this work, and
+		// * the work is abandoned (storage-fsm doesn't do a matching call on the sector), and
+		// * the call is returned from the worker, and
+		// * this errors
+		// the user will get jobs stuck in ret-wait state
+		log.Errorf("marking work as done: %+v", err)
+	}
+
 	_, found := m.waitRes[wid]
 	if found {
 		close(m.waitRes[wid])
@@ -386,4 +413,8 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 	}
 
 	return nil
+}
+
+func (m *Manager) Abort(ctx context.Context, call storiface.CallID) error {
+	return m.returnResult(call, nil, "task aborted")
 }

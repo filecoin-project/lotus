@@ -304,7 +304,9 @@ method-gen:
 gen: type-gen method-gen
 
 docsgen:
-	go run ./api/docgen > documentation/en/api-methods.md
+	go run ./api/docgen "api/api_full.go" "FullNode" > documentation/en/api-methods.md
+	go run ./api/docgen "api/api_storage.go" "StorageMiner" > documentation/en/api-methods-miner.md
+	go run ./api/docgen "api/api_worker.go" "WorkerAPI" > documentation/en/api-methods-worker.md
 
 print-%:
 	@echo $*=$($*)

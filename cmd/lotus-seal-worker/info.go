@@ -42,7 +42,7 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("checking worker status: %w", err)
 		}
-		fmt.Printf("Enabled: %t", enabled)
+		fmt.Printf("Enabled: %t\n", enabled)
 
 		info, err := api.Info(ctx)
 		if err != nil {
@@ -64,7 +64,6 @@ var infoCmd = &cli.Command{
 			fmt.Printf("%s:\n", path.ID)
 			fmt.Printf("\tWeight: %d; Use: ", path.Weight)
 			if path.CanSeal || path.CanStore {
-				fmt.Printf("Weight: %d; Use: ", path.Weight)
 				if path.CanSeal {
 					fmt.Print("Seal ")
 				}
