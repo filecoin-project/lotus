@@ -12,14 +12,14 @@ import (
 )
 
 type MockAPI struct {
-	bs blockstore.Blockstore
+	bs blockstore.LotusBlockstore
 
 	lk                  sync.Mutex
 	ts                  map[types.TipSetKey]*types.Actor
 	stateGetActorCalled int
 }
 
-func NewMockAPI(bs blockstore.Blockstore) *MockAPI {
+func NewMockAPI(bs blockstore.LotusBlockstore) *MockAPI {
 	return &MockAPI{
 		bs: bs,
 		ts: make(map[types.TipSetKey]*types.Actor),

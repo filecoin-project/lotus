@@ -12,7 +12,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
+func SetupStorageMarketActor(bs bstore.LotusBlockstore) (*types.Actor, error) {
 	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
 
 	a, err := adt.MakeEmptyArray(store).Root()

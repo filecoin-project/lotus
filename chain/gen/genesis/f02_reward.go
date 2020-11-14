@@ -14,7 +14,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-func SetupRewardActor(bs bstore.Blockstore, qaPower big.Int) (*types.Actor, error) {
+func SetupRewardActor(bs bstore.LotusBlockstore, qaPower big.Int) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 
 	st := reward0.ConstructState(qaPower)

@@ -23,7 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	lblockstore "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -260,7 +260,7 @@ type fsLockedRepo struct {
 	dsErr  error
 	dsOnce sync.Once
 
-	bs     blockstore.Blockstore
+	bs     blockstore.LotusBlockstore
 	bsErr  error
 	bsOnce sync.Once
 
@@ -299,7 +299,7 @@ func (fsr *fsLockedRepo) Close() error {
 }
 
 // Blockstore returns a blockstore for the provided data domain.
-func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error) {
+func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.LotusBlockstore, error) {
 	if domain != BlockstoreMonolith {
 		return nil, ErrInvalidBlockstoreDomain
 	}
@@ -318,7 +318,7 @@ func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockst
 		if err != nil {
 			fsr.bsErr = err
 		}
-		fsr.bs = lblockstore.WrapIDStore(bs)
+		fsr.bs = blockstore.WrapIDStore(bs)
 	})
 
 	return fsr.bs, fsr.bsErr

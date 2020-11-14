@@ -11,7 +11,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
+func SetupCronActor(bs bstore.LotusBlockstore) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 	cas := cron.ConstructState(cron.BuiltInEntries())
 

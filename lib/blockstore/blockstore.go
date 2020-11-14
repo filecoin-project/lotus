@@ -15,8 +15,6 @@
 package blockstore
 
 import (
-	"context"
-
 	ds "github.com/ipfs/go-datastore"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -32,35 +30,32 @@ func NewTemporarySync() *SyncStore {
 	return &SyncStore{bs: make(MemStore)}
 }
 
-// WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
-func WrapIDStore(bstore blockstore.Blockstore) blockstore.Blockstore {
-	return blockstore.NewIdStore(bstore)
+// WrapIDStore wraps the underlying blockstore in an identity blockstore.
+// The identity blockstore resolves inlined CIDs immediately, without querying
+// the underlying blockstore.
+func WrapIDStore(bstore blockstore.Blockstore) LotusBlockstore {
+	idstore := blockstore.NewIdStore(bstore)
+	if lbs, ok := idstore.(LotusBlockstore); ok {
+		return lbs
+	}
+	panic("expected IdStore to implement LotusBlockstore")
 }
 
-// NewBlockstore creates a new blockstore wrapped by the given datastore.
-func NewBlockstore(dstore ds.Batching) blockstore.Blockstore {
+// NewFromDatastore creates a new blockstore wrapped by the given datastore.
+func NewFromDatastore(dstore ds.Batching) blockstore.Blockstore {
 	return WrapIDStore(blockstore.NewBlockstore(dstore))
 }
 
-// Alias so other packages don't have to import go-ipfs-blockstore
+// LotusBlockstore is a standard blockstore enhanced with a view operaiton
+// (zero-copy access to values), and potentially with cache management
+// operations, or others, in the future.
+type LotusBlockstore interface {
+	Blockstore
+	Viewer
+}
+
 type Blockstore = blockstore.Blockstore
 type Viewer = blockstore.Viewer
 type CacheOpts = blockstore.CacheOpts
 
 var ErrNotFound = blockstore.ErrNotFound
-
-func DefaultCacheOpts() CacheOpts {
-	return CacheOpts{
-		HasBloomFilterSize:   0,
-		HasBloomFilterHashes: 0,
-		HasARCCacheSize:      512 << 10,
-	}
-}
-
-func CachedBlockstore(ctx context.Context, bs Blockstore, opts CacheOpts) (Blockstore, error) {
-	bs, err := blockstore.CachedBlockstore(ctx, bs, opts)
-	if err != nil {
-		return nil, err
-	}
-	return WrapIDStore(bs), nil
-}

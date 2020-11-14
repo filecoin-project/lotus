@@ -94,7 +94,7 @@ type Blockstore struct {
 	prefixLen int
 }
 
-var _ blockstore.Blockstore = (*Blockstore)(nil)
+var _ blockstore.LotusBlockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
@@ -110,10 +110,7 @@ func Open(opts Options) (*Blockstore, error) {
 		return nil, fmt.Errorf("failed to open badger blockstore: %w", err)
 	}
 
-	bs := &Blockstore{
-		DB: db,
-	}
-
+	bs := &Blockstore{DB: db}
 	if p := opts.Prefix; p != "" {
 		bs.prefixing = true
 		bs.prefix = []byte(p)

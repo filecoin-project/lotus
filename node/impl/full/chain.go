@@ -341,7 +341,7 @@ func (s stringKey) Key() string {
 
 // TODO: ActorUpgrade: this entire function is a problem (in theory) as we don't know the HAMT version.
 // In practice, hamt v0 should work "just fine" for reading.
-func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
+func resolveOnce(bs blockstore.LotusBlockstore) func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
 	return func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
 		store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 

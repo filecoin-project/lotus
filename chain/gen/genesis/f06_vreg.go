@@ -26,7 +26,7 @@ func init() {
 	RootVerifierID = idk
 }
 
-func SetupVerifiedRegistryActor(bs bstore.Blockstore) (*types.Actor, error) {
+func SetupVerifiedRegistryActor(bs bstore.LotusBlockstore) (*types.Actor, error) {
 	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
 
 	h, err := adt.MakeEmptyMap(store).Root()

@@ -33,7 +33,7 @@ type MemRepo struct {
 
 	datastore  datastore.Datastore
 	keystore   map[string]types.KeyInfo
-	blockstore blockstore.Blockstore
+	blockstore blockstore.LotusBlockstore
 
 	// given a repo type, produce the default config
 	configF func(t RepoType) interface{}
@@ -244,7 +244,7 @@ func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
 }
 
-func (lmem *lockedMemRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error) {
+func (lmem *lockedMemRepo) Blockstore(domain BlockstoreDomain) (blockstore.LotusBlockstore, error) {
 	if domain != BlockstoreMonolith {
 		return nil, ErrInvalidBlockstoreDomain
 	}

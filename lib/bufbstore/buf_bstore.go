@@ -14,15 +14,12 @@ import (
 var log = logging.Logger("bufbs")
 
 type BufferedBS struct {
-	read  bstore.Blockstore
-	write bstore.Blockstore
-
-	readviewer  bstore.Viewer
-	writeviewer bstore.Viewer
+	read  bstore.LotusBlockstore
+	write bstore.LotusBlockstore
 }
 
-func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
-	var buf bstore.Blockstore
+func NewBufferedBstore(base bstore.LotusBlockstore) *BufferedBS {
+	var buf bstore.LotusBlockstore
 	if os.Getenv("LOTUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
 		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
 		buf = base
@@ -34,27 +31,17 @@ func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
 		read:  base,
 		write: buf,
 	}
-	if v, ok := base.(bstore.Viewer); ok {
-		bs.readviewer = v
-	}
-	if v, ok := buf.(bstore.Viewer); ok {
-		bs.writeviewer = v
-	}
-	if (bs.writeviewer == nil) != (bs.readviewer == nil) {
-		log.Warnf("one of the stores is not viewable; running less efficiently")
-	}
 	return bs
 }
 
-func NewTieredBstore(r bstore.Blockstore, w bstore.Blockstore) *BufferedBS {
+func NewTieredBstore(r bstore.LotusBlockstore, w bstore.LotusBlockstore) *BufferedBS {
 	return &BufferedBS{
 		read:  r,
 		write: w,
 	}
 }
 
-var _ bstore.Blockstore = (*BufferedBS)(nil)
-var _ bstore.Viewer = (*BufferedBS)(nil)
+var _ bstore.LotusBlockstore = (*BufferedBS)(nil)
 
 func (bs *BufferedBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)
@@ -108,22 +95,13 @@ func (bs *BufferedBS) DeleteBlock(c cid.Cid) error {
 }
 
 func (bs *BufferedBS) View(c cid.Cid, callback func([]byte) error) error {
-	if bs.writeviewer == nil || bs.readviewer == nil {
-		// one of the stores isn't Viewer; fall back to pure Get behaviour.
-		blk, err := bs.Get(c)
-		if err != nil {
-			return err
-		}
-		return callback(blk.RawData())
-	}
-
 	// both stores are viewable.
-	if err := bs.writeviewer.View(c, callback); err == bstore.ErrNotFound {
+	if err := bs.write.View(c, callback); err == bstore.ErrNotFound {
 		// not found in write blockstore; fall through.
 	} else {
 		return err // propagate errors, or nil, i.e. found.
 	}
-	return bs.readviewer.View(c, callback)
+	return bs.read.View(c, callback)
 }
 
 func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
@@ -181,6 +159,6 @@ func (bs *BufferedBS) PutMany(blks []block.Block) error {
 	return bs.write.PutMany(blks)
 }
 
-func (bs *BufferedBS) Read() bstore.Blockstore {
+func (bs *BufferedBS) Read() bstore.LotusBlockstore {
 	return bs.read
 }

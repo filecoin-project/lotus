@@ -10,6 +10,8 @@ import (
 // MemStore is a terminal blockstore that keeps blocks in memory.
 type MemStore map[cid.Cid]blocks.Block
 
+var _ LotusBlockstore = (MemStore)(nil)
+
 func (m MemStore) DeleteBlock(k cid.Cid) error {
 	delete(m, k)
 	return nil
@@ -43,6 +45,14 @@ func (m MemStore) GetSize(k cid.Cid) (int, error) {
 		return 0, ErrNotFound
 	}
 	return len(b.RawData()), nil
+}
+
+func (m MemStore) Peek(k cid.Cid) (blocks.Block, error) {
+	return m.Get(k)
+}
+
+func (m MemStore) Evict(k cid.Cid) {
+	// noop.
 }
 
 // Put puts a given block to the underlying datastore

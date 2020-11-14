@@ -107,13 +107,11 @@ type HeadChangeEvt struct {
 //   1. a tipset cache
 //   2. a block => messages references cache.
 type ChainStore struct {
-	chainBlockstore bstore.Blockstore
-	stateBlockstore bstore.Blockstore
+	chainBlockstore bstore.LotusBlockstore
+	stateBlockstore bstore.LotusBlockstore
 	metadataDs      dstore.Batching
 
-	chainLocalBlockstore bstore.Blockstore
-
-	localviewer bstore.Viewer
+	chainLocalBlockstore bstore.LotusBlockstore
 
 	heaviestLk sync.Mutex
 	heaviest   *types.TipSet
@@ -139,7 +137,7 @@ type ChainStore struct {
 }
 
 // chainLocalBlockstore is guaranteed to fail Get* if requested block isn't stored locally
-func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+func NewChainStore(chainBs bstore.LotusBlockstore, stateBs bstore.LotusBlockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -160,10 +158,6 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		tsCache:              tsc,
 		vmcalls:              vmcalls,
 		journal:              j,
-	}
-
-	if v, ok := localbs.(bstore.Viewer); ok {
-		cs.localviewer = v
 	}
 
 	cs.evtTypes = [1]journal.EventType{
@@ -588,16 +582,8 @@ func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 // GetBlock fetches a BlockHeader with the supplied CID. It returns
 // blockstore.ErrNotFound if the block was not found in the BlockStore.
 func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
-	if cs.localviewer == nil {
-		sb, err := cs.chainLocalBlockstore.Get(c)
-		if err != nil {
-			return nil, err
-		}
-		return types.DecodeBlock(sb.RawData())
-	}
-
 	var blk *types.BlockHeader
-	err := cs.localviewer.View(c, func(b []byte) (err error) {
+	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
 		blk, err = types.DecodeBlock(b)
 		return err
 	})
@@ -761,7 +747,7 @@ type storable interface {
 	ToStorageBlock() (block.Block, error)
 }
 
-func PutMessage(bs bstore.Blockstore, m storable) (cid.Cid, error) {
+func PutMessage(bs bstore.LotusBlockstore, m storable) (cid.Cid, error) {
 	b, err := m.ToStorageBlock()
 	if err != nil {
 		return cid.Undef, err
@@ -862,17 +848,8 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 }
 
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
-	if cs.localviewer == nil {
-		sb, err := cs.chainLocalBlockstore.Get(c)
-		if err != nil {
-			log.Errorf("get message get failed: %s: %s", c, err)
-			return nil, err
-		}
-		return types.DecodeMessage(sb.RawData())
-	}
-
 	var msg *types.Message
-	err := cs.localviewer.View(c, func(b []byte) (err error) {
+	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
 		msg, err = types.DecodeMessage(b)
 		return err
 	})
@@ -880,17 +857,8 @@ func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 }
 
 func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
-	if cs.localviewer == nil {
-		sb, err := cs.chainLocalBlockstore.Get(c)
-		if err != nil {
-			log.Errorf("get message get failed: %s: %s", c, err)
-			return nil, err
-		}
-		return types.DecodeSignedMessage(sb.RawData())
-	}
-
 	var msg *types.SignedMessage
-	err := cs.localviewer.View(c, func(b []byte) (err error) {
+	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
 		msg, err = types.DecodeSignedMessage(b)
 		return err
 	})
@@ -1140,18 +1108,18 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 // ChainBlockstore returns the chain blockstore. Currently the chain and state
 // // stores are both backed by the same physical store, albeit with different
 // // caching policies, but in the future they will segregate.
-func (cs *ChainStore) ChainBlockstore() bstore.Blockstore {
+func (cs *ChainStore) ChainBlockstore() bstore.LotusBlockstore {
 	return cs.chainBlockstore
 }
 
 // StateBlockstore returns the state blockstore. Currently the chain and state
 // stores are both backed by the same physical store, albeit with different
 // caching policies, but in the future they will segregate.
-func (cs *ChainStore) StateBlockstore() bstore.Blockstore {
+func (cs *ChainStore) StateBlockstore() bstore.LotusBlockstore {
 	return cs.stateBlockstore
 }
 
-func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
+func ActorStore(ctx context.Context, bs bstore.LotusBlockstore) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
 }
 
@@ -1308,7 +1276,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	return cs.LoadTipSet(lbts.Parents())
 }
 
-func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(bs bstore.LotusBlockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return in, nil
 	}

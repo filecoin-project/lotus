@@ -19,7 +19,9 @@ type apiBStore struct {
 	api ChainIO
 }
 
-func NewAPIBlockstore(cio ChainIO) blockstore.Blockstore {
+var _ blockstore.LotusBlockstore = (*apiBStore)(nil)
+
+func NewAPIBlockstore(cio ChainIO) blockstore.LotusBlockstore {
 	return &apiBStore{
 		api: cio,
 	}
@@ -31,6 +33,14 @@ func (a *apiBStore) DeleteBlock(cid.Cid) error {
 
 func (a *apiBStore) Has(c cid.Cid) (bool, error) {
 	return a.api.ChainHasObj(context.TODO(), c)
+}
+
+func (a *apiBStore) View(c cid.Cid, callback func([]byte) error) error {
+	bb, err := a.api.ChainReadObj(context.TODO(), c)
+	if err != nil {
+		return err
+	}
+	return callback(bb)
 }
 
 func (a *apiBStore) Get(c cid.Cid) (blocks.Block, error) {
@@ -65,4 +75,4 @@ func (a *apiBStore) HashOnRead(enabled bool) {
 	return
 }
 
-var _ blockstore.Blockstore = &apiBStore{}
+var _ blockstore.LotusBlockstore = &apiBStore{}

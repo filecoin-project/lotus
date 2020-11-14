@@ -25,6 +25,8 @@ type IpfsBstore struct {
 	api iface.CoreAPI
 }
 
+var _ blockstore.Blockstore = &IpfsBstore{}
+
 func NewIpfsBstore(ctx context.Context, onlineMode bool) (*IpfsBstore, error) {
 	localApi, err := httpapi.NewLocalApi()
 	if err != nil {
@@ -131,5 +133,3 @@ func (i *IpfsBstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 func (i *IpfsBstore) HashOnRead(enabled bool) {
 	return // TODO: We could technically support this, but..
 }
-
-var _ blockstore.Blockstore = &IpfsBstore{}

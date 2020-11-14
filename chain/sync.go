@@ -384,7 +384,7 @@ func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) bool {
 	return syncer.InformNewHead(from, fts)
 }
 
-func copyBlockstore(ctx context.Context, from, to bstore.Blockstore) error {
+func copyBlockstore(ctx context.Context, from, to bstore.LotusBlockstore) error {
 	ctx, span := trace.StartSpan(ctx, "copyBlockstore")
 	defer span.End()
 
@@ -1641,7 +1641,7 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 	return batch, nil
 }
 
-func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.CompactedMessages) error {
+func persistMessages(ctx context.Context, bs bstore.LotusBlockstore, bst *exchange.CompactedMessages) error {
 	_, span := trace.StartSpan(ctx, "persistMessages")
 	defer span.End()
 

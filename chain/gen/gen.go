@@ -58,7 +58,7 @@ var ValidWpostForTesting = []proof2.PoStProof{{
 type ChainGen struct {
 	msgsPerBlock int
 
-	bs blockstore.Blockstore
+	bs blockstore.LotusBlockstore
 
 	cs *store.ChainStore
 
@@ -86,11 +86,11 @@ type ChainGen struct {
 }
 
 type mybs struct {
-	blockstore.Blockstore
+	blockstore.LotusBlockstore
 }
 
 func (m mybs) Get(c cid.Cid) (block.Block, error) {
-	b, err := m.Blockstore.Get(c)
+	b, err := m.LotusBlockstore.Get(c)
 	if err != nil {
 		return nil, err
 	}

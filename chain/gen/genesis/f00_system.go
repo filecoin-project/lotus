@@ -12,7 +12,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-func SetupSystemActor(bs bstore.Blockstore) (*types.Actor, error) {
+func SetupSystemActor(bs bstore.LotusBlockstore) (*types.Actor, error) {
 	var st system.State
 
 	cst := cbor.NewCborStore(bs)

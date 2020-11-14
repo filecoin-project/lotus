@@ -82,7 +82,7 @@ type ExecuteTipsetResult struct {
 // This method returns the the receipts root, the poststate root, and the VM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
-func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
+func (d *Driver) ExecuteTipset(bs blockstore.LotusBlockstore, ds ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
 	var (
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 		vmRand   = NewFixedRand()
@@ -156,7 +156,7 @@ type ExecuteMessageParams struct {
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
-func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageParams) (*vm.ApplyRet, cid.Cid, error) {
+func (d *Driver) ExecuteMessage(bs blockstore.LotusBlockstore, params ExecuteMessageParams) (*vm.ApplyRet, cid.Cid, error) {
 	if !d.vmFlush {
 		// do not flush the VM, just the state tree; this should be used with
 		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.

@@ -18,9 +18,9 @@ var log = logging.Logger("blockstore")
 // UnwrapFallbackStore takes a blockstore, and returns the underlying blockstore
 // if it was a FallbackStore. Otherwise, it just returns the supplied store
 // unmodified.
-func UnwrapFallbackStore(bs blockstore.Blockstore) (blockstore.Blockstore, bool) {
+func UnwrapFallbackStore(bs LotusBlockstore) (LotusBlockstore, bool) {
 	if fbs, ok := bs.(*FallbackStore); ok {
-		return fbs.Blockstore, true
+		return fbs.LotusBlockstore, true
 	}
 	return bs, false
 }
@@ -29,7 +29,7 @@ func UnwrapFallbackStore(bs blockstore.Blockstore) (blockstore.Blockstore, bool)
 // remote) source if the block is not found locally. If the block is found
 // during the fallback, it stores it in the local store.
 type FallbackStore struct {
-	blockstore.Blockstore
+	LotusBlockstore
 
 	lk     sync.RWMutex
 	getter func(context.Context, cid.Cid) (blocks.Block, error)
@@ -78,7 +78,7 @@ func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
 }
 
 func (fbs *FallbackStore) Get(c cid.Cid) (blocks.Block, error) {
-	b, err := fbs.Blockstore.Get(c)
+	b, err := fbs.LotusBlockstore.Get(c)
 	switch err {
 	case nil:
 		return b, nil
@@ -90,7 +90,7 @@ func (fbs *FallbackStore) Get(c cid.Cid) (blocks.Block, error) {
 }
 
 func (fbs *FallbackStore) GetSize(c cid.Cid) (int, error) {
-	sz, err := fbs.Blockstore.GetSize(c)
+	sz, err := fbs.LotusBlockstore.GetSize(c)
 	switch err {
 	case nil:
 		return sz, nil

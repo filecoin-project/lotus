@@ -50,7 +50,7 @@ var genesisVerifyCmd = &cli.Command{
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass genesis car file")
 		}
-		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+		bs := blockstore.NewFromDatastore(datastore.NewMapDatastore())
 
 		cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, nil)
 

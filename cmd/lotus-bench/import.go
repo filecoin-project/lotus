@@ -172,7 +172,7 @@ var importBenchCmd = &cli.Command{
 
 		var (
 			ds  datastore.Batching
-			bs  blockstore.Blockstore
+			bs  blockstore.LotusBlockstore
 			err error
 		)
 
@@ -228,7 +228,7 @@ var importBenchCmd = &cli.Command{
 		if ds != nil {
 			ds = measure.New("dsbench", ds)
 			defer ds.Close() //nolint:errcheck
-			bs = blockstore.NewBlockstore(ds)
+			bs = blockstore.NewFromDatastore(ds)
 		}
 
 		if c, ok := bs.(io.Closer); ok {

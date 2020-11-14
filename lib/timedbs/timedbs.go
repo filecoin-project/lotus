@@ -31,6 +31,8 @@ type TimedCacheBS struct {
 	doneRotatingCh   chan struct{}
 }
 
+var _ blockstore.LotusBlockstore = (*TimedCacheBS)(nil)
+
 func NewTimedCacheBS(cacheTime time.Duration) *TimedCacheBS {
 	return &TimedCacheBS{
 		active:   blockstore.NewTemporary(),
@@ -100,6 +102,16 @@ func (t *TimedCacheBS) PutMany(bs []blocks.Block) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.active.PutMany(bs)
+}
+
+func (t *TimedCacheBS) View(k cid.Cid, callback func([]byte) error) error {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	err := t.active.View(k, callback)
+	if err == blockstore.ErrNotFound {
+		err = t.inactive.View(k, callback)
+	}
+	return err
 }
 
 func (t *TimedCacheBS) Get(k cid.Cid) (blocks.Block, error) {

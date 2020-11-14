@@ -108,7 +108,7 @@ Genesis: {
 
 */
 
-func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template genesis.Template) (*state.StateTree, map[address.Address]address.Address, error) {
+func MakeInitialStateTree(ctx context.Context, bs bstore.LotusBlockstore, template genesis.Template) (*state.StateTree, map[address.Address]address.Address, error) {
 	// Create empty state tree
 
 	cst := cbor.NewCborStore(bs)
@@ -333,7 +333,7 @@ func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.St
 	return nil
 }
 
-func createMultisigAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address) error {
+func createMultisigAccount(ctx context.Context, bs bstore.LotusBlockstore, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address) error {
 	if info.Type != genesis.TMultisig {
 		return fmt.Errorf("can only call createMultisigAccount with multisig Actor info")
 	}
@@ -467,7 +467,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 	return st, nil
 }
 
-func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blockstore, sys vm.SyscallBuilder, template genesis.Template) (*GenesisBootstrap, error) {
+func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.LotusBlockstore, sys vm.SyscallBuilder, template genesis.Template) (*GenesisBootstrap, error) {
 	if j == nil {
 		j = journal.NilJournal()
 	}

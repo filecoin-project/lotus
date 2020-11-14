@@ -211,7 +211,7 @@ type VMOpts struct {
 	StateBase      cid.Cid
 	Epoch          abi.ChainEpoch
 	Rand           Rand
-	Bstore         bstore.Blockstore
+	Bstore         bstore.LotusBlockstore
 	Syscalls       SyscallBuilder
 	CircSupplyCalc CircSupplyCalculator
 	NtwkVersion    NtwkVersionGetter // TODO: stebalien: In what cases do we actually need this? It seems like even when creating new networks we want to use the 'global'/build-default version getter
@@ -668,7 +668,7 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 	}
 }
 
-func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
+func Copy(ctx context.Context, from, to blockstore.LotusBlockstore, root cid.Cid) error {
 	ctx, span := trace.StartSpan(ctx, "vm.Copy") // nolint
 	defer span.End()
 
@@ -708,7 +708,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 	return nil
 }
 
-func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) error) error {
+func copyRec(from, to blockstore.LotusBlockstore, root cid.Cid, cp func(block.Block) error) error {
 	if root.Prefix().MhType == 0 {
 		// identity cid, skip
 		return nil

@@ -31,7 +31,7 @@ type Stores struct {
 	CBORStore    cbor.IpldStore
 	ADTStore     adt.Store
 	Datastore    ds.Batching
-	Blockstore   blockstore.Blockstore
+	Blockstore   blockstore.LotusBlockstore
 	BlockService blockservice.BlockService
 	Exchange     exchange.Interface
 	DAGService   format.DAGService
@@ -43,15 +43,15 @@ type Stores struct {
 func NewProxyingStores(ctx context.Context, api api.FullNode) *Stores {
 	ds := dssync.MutexWrap(ds.NewMapDatastore())
 	bs := &proxyingBlockstore{
-		ctx:        ctx,
-		api:        api,
-		Blockstore: blockstore.NewBlockstore(ds),
+		ctx:             ctx,
+		api:             api,
+		LotusBlockstore: blockstore.NewFromDatastore(ds),
 	}
 	return NewStores(ctx, ds, bs)
 }
 
 // NewStores creates a non-proxying set of Stores.
-func NewStores(ctx context.Context, ds ds.Batching, bs blockstore.Blockstore) *Stores {
+func NewStores(ctx context.Context, ds ds.Batching, bs blockstore.LotusBlockstore) *Stores {
 	var (
 		cborstore = cbor.NewCborStore(bs)
 		offl      = offline.Exchange(bs)
@@ -91,7 +91,7 @@ type proxyingBlockstore struct {
 	tracing bool
 	traced  map[cid.Cid]struct{}
 
-	blockstore.Blockstore
+	blockstore.LotusBlockstore
 }
 
 var _ TracingBlockstore = (*proxyingBlockstore)(nil)
@@ -119,7 +119,7 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	}
 	pb.lk.Unlock()
 
-	if block, err := pb.Blockstore.Get(cid); err == nil {
+	if block, err := pb.LotusBlockstore.Get(cid); err == nil {
 		return block, err
 	}
 
@@ -133,7 +133,7 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, err
 	}
 
-	err = pb.Blockstore.Put(block)
+	err = pb.LotusBlockstore.Put(block)
 	if err != nil {
 		return nil, err
 	}
@@ -147,5 +147,5 @@ func (pb *proxyingBlockstore) Put(block blocks.Block) error {
 		pb.traced[block.Cid()] = struct{}{}
 	}
 	pb.lk.Unlock()
-	return pb.Blockstore.Put(block)
+	return pb.LotusBlockstore.Put(block)
 }

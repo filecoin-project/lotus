@@ -154,7 +154,7 @@ func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.ApplyRet, 
 	}
 }
 
-func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstore.Blockstore, actual cid.Cid) {
+func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstore.LotusBlockstore, actual cid.Cid) {
 	// check if statediff exists; if not, skip.
 	if err := exec.Command("statediff", "--help").Run(); err != nil {
 		r.Log("could not dump 3-way state tree diff upon test failure: statediff command not found")
@@ -213,7 +213,7 @@ func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstore.
 
 // writeStateToTempCAR writes the provided roots to a temporary CAR that'll be
 // cleaned up via t.Cleanup(). It returns the full path of the temp file.
-func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, error) {
+func writeStateToTempCAR(bs blockstore.LotusBlockstore, roots ...cid.Cid) (string, error) {
 	tmp, err := ioutil.TempFile("", "lotus-tests-*.car")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file to dump CAR for diffing: %w", err)
@@ -248,7 +248,7 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 	return tmp.Name(), nil
 }
 
-func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore, error) {
+func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstore.LotusBlockstore, error) {
 	bs := blockstore.NewTemporary()
 
 	// Read the base64-encoded CAR from the vector, and inflate the gzip.
