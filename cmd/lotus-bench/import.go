@@ -235,7 +235,25 @@ var importBenchCmd = &cli.Command{
 			defer c.Close() //nolint:errcheck
 		}
 
-		bs, err = blockstore.WrapFreecacheCache(context.Background(), bs)
+		bs, err = blockstore.WrapFreecacheCache(context.Background(), bs, blockstore.FreecacheConfig{Name: "single"})
+		if err != nil {
+			return err
+		}
+
+		cbs, err := blockstore.WrapFreecacheCache(context.Background(), bs, blockstore.FreecacheConfig{
+			Name:           "chain",
+			BlockCapacity:  1 << 27, // 128MiB.
+			ExistsCapacity: 1 << 24, // 16MiB.
+		})
+		if err != nil {
+			return err
+		}
+
+		sbs, err := blockstore.WrapFreecacheCache(context.Background(), bs, blockstore.FreecacheConfig{
+			Name:           "state",
+			BlockCapacity:  1 << 28, // 256MiB.
+			ExistsCapacity: 1 << 25, // 32MiB.
+		})
 		if err != nil {
 			return err
 		}
@@ -258,7 +276,7 @@ var importBenchCmd = &cli.Command{
 		}
 
 		metadataDs := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, bs, metadataDs, vm.Syscalls(verifier), nil)
+		cs := store.NewChainStore(cbs, sbs, metadataDs, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
 
 		var carFile *os.File

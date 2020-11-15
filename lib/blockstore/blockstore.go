@@ -42,7 +42,7 @@ func WrapIDStore(bstore blockstore.Blockstore) LotusBlockstore {
 }
 
 // NewFromDatastore creates a new blockstore wrapped by the given datastore.
-func NewFromDatastore(dstore ds.Batching) blockstore.Blockstore {
+func NewFromDatastore(dstore ds.Batching) LotusBlockstore {
 	return WrapIDStore(blockstore.NewBlockstore(dstore))
 }
 
