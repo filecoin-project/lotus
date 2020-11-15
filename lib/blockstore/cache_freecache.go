@@ -307,7 +307,7 @@ func (c *FreecacheCachingBlockstore) cachedExists(k []byte) (have bool, conclusi
 // cachedValFn attempts to retrieve a value from cache. It checks the exists
 // cache first and short-circuits if a negative is stored. Else, it checks the
 // block cache.
-func (c *FreecacheCachingBlockstore) cachedValFn(k []byte, valFn func([]byte) error, peek bool) (have bool, err error, conclusive bool) {
+func (c *FreecacheCachingBlockstore) cachedValFn(k []byte, valFn func([]byte) error, peek bool) (have bool, err error, conclusive bool) { //nolint:golint
 	f := (*freecache.Cache).GetFn
 	if peek {
 		f = (*freecache.Cache).PeekFn
