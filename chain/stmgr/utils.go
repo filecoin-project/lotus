@@ -47,7 +47,7 @@ func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.N
 	if err != nil {
 		return "", err
 	}
-	ias, err := init_.Load(sm.cs.Store(ctx), act)
+	ias, err := init_.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return "", err
 	}
@@ -64,7 +64,7 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 	if err != nil {
 		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 	}
-	mas, err := miner.Load(sm.cs.Store(ctx), act)
+	mas, err := miner.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
@@ -74,7 +74,7 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 		return address.Undef, xerrors.Errorf("failed to load actor info: %w", err)
 	}
 
-	return vm.ResolveToKeyAddr(state, sm.cs.Store(ctx), info.Worker)
+	return vm.ResolveToKeyAddr(state, sm.cs.ActorStore(ctx), info.Worker)
 }
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (power.Claim, power.Claim, bool, error) {
@@ -87,7 +87,7 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
 
-	pas, err := power.Load(sm.cs.Store(ctx), act)
+	pas, err := power.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return power.Claim{}, power.Claim{}, false, err
 	}
@@ -122,7 +122,7 @@ func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address,
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 	}
 
-	mas, err := miner.Load(sm.cs.Store(ctx), act)
+	mas, err := miner.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
@@ -136,7 +136,7 @@ func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Addres
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 	}
 
-	mas, err := miner.Load(sm.cs.Store(ctx), act)
+	mas, err := miner.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
@@ -150,7 +150,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 	}
 
-	mas, err := miner.Load(sm.cs.Store(ctx), act)
+	mas, err := miner.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
@@ -164,7 +164,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	mas, err := miner.Load(sm.cs.Store(ctx), act)
+	mas, err := miner.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
@@ -261,7 +261,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 		return false, xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	spas, err := power.Load(sm.cs.Store(ctx), act)
+	spas, err := power.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return false, xerrors.Errorf("failed to load power actor state: %w", err)
 	}
@@ -284,7 +284,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 		return nil, xerrors.Errorf("failed to load market actor: %w", err)
 	}
 
-	state, err := market.Load(sm.cs.Store(ctx), act)
+	state, err := market.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load market actor state: %w", err)
 	}
@@ -328,7 +328,7 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 		return nil, xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	powState, err := power.Load(sm.cs.Store(ctx), act)
+	powState, err := power.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load power actor state: %w", err)
 	}
@@ -361,7 +361,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		StateBase:      base,
 		Epoch:          height,
 		Rand:           r,
-		Bstore:         sm.cs.Blockstore(),
+		Bstore:         sm.cs.StateBlockstore(),
 		Syscalls:       sm.cs.VMSys(),
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
@@ -482,7 +482,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
-	mas, err := miner.Load(sm.cs.Store(ctx), act)
+	mas, err := miner.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
@@ -628,7 +628,7 @@ func minerHasMinPower(ctx context.Context, sm *StateManager, addr address.Addres
 		return false, xerrors.Errorf("loading power actor state: %w", err)
 	}
 
-	ps, err := power.Load(sm.cs.Store(ctx), pact)
+	ps, err := power.Load(sm.cs.ActorStore(ctx), pact)
 	if err != nil {
 		return false, err
 	}
@@ -659,7 +659,7 @@ func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Add
 		return false, xerrors.Errorf("loading power actor state: %w", err)
 	}
 
-	pstate, err := power.Load(sm.cs.Store(ctx), pact)
+	pstate, err := power.Load(sm.cs.ActorStore(ctx), pact)
 	if err != nil {
 		return false, err
 	}
@@ -669,7 +669,7 @@ func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Add
 		return false, xerrors.Errorf("loading miner actor state: %w", err)
 	}
 
-	mstate, err := miner.Load(sm.cs.Store(ctx), mact)
+	mstate, err := miner.Load(sm.cs.ActorStore(ctx), mact)
 	if err != nil {
 		return false, err
 	}
@@ -701,7 +701,7 @@ func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Add
 }
 
 func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
-	str, err := state.LoadStateTree(sm.ChainStore().Store(ctx), ts.ParentState())
+	str, err := state.LoadStateTree(sm.ChainStore().ActorStore(ctx), ts.ParentState())
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}

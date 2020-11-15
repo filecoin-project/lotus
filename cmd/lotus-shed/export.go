@@ -72,7 +72,7 @@ var exportChainCmd = &cli.Command{
 
 		defer fi.Close() //nolint:errcheck
 
-		bs, err := lr.Blockstore(repo.BlockstoreChain)
+		bs, err := lr.Blockstore(repo.BlockstoreMonolith)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}

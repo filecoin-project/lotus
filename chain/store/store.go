@@ -107,9 +107,11 @@ type HeadChangeEvt struct {
 //   1. a tipset cache
 //   2. a block => messages references cache.
 type ChainStore struct {
-	bs      bstore.Blockstore
-	localbs bstore.Blockstore
-	ds      dstore.Batching
+	chainBlockstore bstore.Blockstore
+	stateBlockstore bstore.Blockstore
+	metadataDs      dstore.Batching
+
+	chainLocalBlockstore bstore.Blockstore
 
 	localviewer bstore.Viewer
 
@@ -136,23 +138,28 @@ type ChainStore struct {
 	journal  journal.Journal
 }
 
-// localbs is guaranteed to fail Get* if requested block isn't stored locally
-func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+// chainLocalBlockstore is guaranteed to fail Get* if requested block isn't stored locally
+func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
 		j = journal.NilJournal()
 	}
+
+	// unwraps the fallback store in case one is configured.
+	// some methods _need_ to operate on a local blockstore only.
+	localbs, _ := bstore.UnwrapFallbackStore(chainBs)
 	cs := &ChainStore{
-		bs:       bs,
-		localbs:  localbs,
-		ds:       ds,
-		bestTips: pubsub.New(64),
-		tipsets:  make(map[abi.ChainEpoch][]cid.Cid),
-		mmCache:  c,
-		tsCache:  tsc,
-		vmcalls:  vmcalls,
-		journal:  j,
+		chainBlockstore:      chainBs,
+		stateBlockstore:      stateBs,
+		chainLocalBlockstore: localbs,
+		metadataDs:           ds,
+		bestTips:             pubsub.New(64),
+		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
+		mmCache:              c,
+		tsCache:              tsc,
+		vmcalls:              vmcalls,
+		journal:              j,
 	}
 
 	if v, ok := localbs.(bstore.Viewer); ok {
@@ -205,7 +212,7 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 }
 
 func (cs *ChainStore) Load() error {
-	head, err := cs.ds.Get(chainHeadKey)
+	head, err := cs.metadataDs.Get(chainHeadKey)
 	if err == dstore.ErrNotFound {
 		log.Warn("no previous chain state found")
 		return nil
@@ -235,7 +242,7 @@ func (cs *ChainStore) writeHead(ts *types.TipSet) error {
 		return xerrors.Errorf("failed to marshal tipset: %w", err)
 	}
 
-	if err := cs.ds.Put(chainHeadKey, data); err != nil {
+	if err := cs.metadataDs.Put(chainHeadKey, data); err != nil {
 		return xerrors.Errorf("failed to write chain head to datastore: %w", err)
 	}
 
@@ -295,13 +302,13 @@ func (cs *ChainStore) SubscribeHeadChanges(f ReorgNotifee) {
 func (cs *ChainStore) IsBlockValidated(ctx context.Context, blkid cid.Cid) (bool, error) {
 	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
 
-	return cs.ds.Has(key)
+	return cs.metadataDs.Has(key)
 }
 
 func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
 	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
 
-	if err := cs.ds.Put(key, []byte{0}); err != nil {
+	if err := cs.metadataDs.Put(key, []byte{0}); err != nil {
 		return xerrors.Errorf("cache block validation: %w", err)
 	}
 
@@ -311,7 +318,7 @@ func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) e
 func (cs *ChainStore) UnmarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
 	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
 
-	if err := cs.ds.Delete(key); err != nil {
+	if err := cs.metadataDs.Delete(key); err != nil {
 		return xerrors.Errorf("removing from valid block cache: %w", err)
 	}
 
@@ -328,7 +335,7 @@ func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 		return err
 	}
 
-	return cs.ds.Put(dstore.NewKey("0"), b.Cid().Bytes())
+	return cs.metadataDs.Put(dstore.NewKey("0"), b.Cid().Bytes())
 }
 
 func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
@@ -513,7 +520,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 func (cs *ChainStore) FlushValidationCache() error {
 	log.Infof("clearing block validation cache...")
 
-	dsWalk, err := cs.ds.Query(query.Query{
+	dsWalk, err := cs.metadataDs.Query(query.Query{
 		// Potential TODO: the validation cache is not a namespace on its own
 		// but is rather constructed as prefixed-key `foo:bar` via .Instance(), which
 		// in turn does not work with the filter, which can match only on `foo/bar`
@@ -533,7 +540,7 @@ func (cs *ChainStore) FlushValidationCache() error {
 		return xerrors.Errorf("failed to run key listing query: %w", err)
 	}
 
-	batch, err := cs.ds.Batch()
+	batch, err := cs.metadataDs.Batch()
 	if err != nil {
 		return xerrors.Errorf("failed to open a DS batch: %w", err)
 	}
@@ -566,7 +573,7 @@ func (cs *ChainStore) SetHead(ts *types.TipSet) error {
 // Contains returns whether our BlockStore has all blocks in the supplied TipSet.
 func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 	for _, c := range ts.Cids() {
-		has, err := cs.bs.Has(c)
+		has, err := cs.chainBlockstore.Has(c)
 		if err != nil {
 			return false, err
 		}
@@ -582,7 +589,7 @@ func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 // blockstore.ErrNotFound if the block was not found in the BlockStore.
 func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
 	if cs.localviewer == nil {
-		sb, err := cs.localbs.Get(c)
+		sb, err := cs.chainLocalBlockstore.Get(c)
 		if err != nil {
 			return nil, err
 		}
@@ -744,7 +751,7 @@ func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) error {
 			end = len(b)
 		}
 
-		err = multierr.Append(err, cs.bs.PutMany(sbs[start:end]))
+		err = multierr.Append(err, cs.chainLocalBlockstore.PutMany(sbs[start:end]))
 	}
 
 	return err
@@ -768,7 +775,7 @@ func PutMessage(bs bstore.Blockstore, m storable) (cid.Cid, error) {
 }
 
 func (cs *ChainStore) PutMessage(m storable) (cid.Cid, error) {
-	return PutMessage(cs.bs, m)
+	return PutMessage(cs.chainBlockstore, m)
 }
 
 func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) {
@@ -829,7 +836,7 @@ func (cs *ChainStore) AddBlock(ctx context.Context, b *types.BlockHeader) error 
 }
 
 func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
-	data, err := cs.ds.Get(dstore.NewKey("0"))
+	data, err := cs.metadataDs.Get(dstore.NewKey("0"))
 	if err != nil {
 		return nil, err
 	}
@@ -856,7 +863,7 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 	if cs.localviewer == nil {
-		sb, err := cs.localbs.Get(c)
+		sb, err := cs.chainLocalBlockstore.Get(c)
 		if err != nil {
 			log.Errorf("get message get failed: %s: %s", c, err)
 			return nil, err
@@ -874,7 +881,7 @@ func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 
 func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
 	if cs.localviewer == nil {
-		sb, err := cs.localbs.Get(c)
+		sb, err := cs.chainLocalBlockstore.Get(c)
 		if err != nil {
 			log.Errorf("get message get failed: %s: %s", c, err)
 			return nil, err
@@ -893,7 +900,7 @@ func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) 
 func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	ctx := context.TODO()
 	// block headers use adt0, for now.
-	a, err := blockadt.AsArray(cs.Store(ctx), root)
+	a, err := blockadt.AsArray(cs.ActorStore(ctx), root)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -1017,7 +1024,7 @@ func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 		return mmcids.bls, mmcids.secpk, nil
 	}
 
-	cst := cbor.NewCborStore(cs.localbs)
+	cst := cbor.NewCborStore(cs.chainLocalBlockstore)
 	var msgmeta types.MsgMeta
 	if err := cst.Get(context.TODO(), mmc, &msgmeta); err != nil {
 		return nil, nil, xerrors.Errorf("failed to load msgmeta (%s): %w", mmc, err)
@@ -1087,7 +1094,7 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	ctx := context.TODO()
 	// block headers use adt0, for now.
-	a, err := blockadt.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
+	a, err := blockadt.AsArray(cs.ActorStore(ctx), b.ParentMessageReceipts)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -1130,16 +1137,26 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	return msgs, nil
 }
 
-func (cs *ChainStore) Blockstore() bstore.Blockstore {
-	return cs.bs
+// ChainBlockstore returns the chain blockstore. Currently the chain and state
+// // stores are both backed by the same physical store, albeit with different
+// // caching policies, but in the future they will segregate.
+func (cs *ChainStore) ChainBlockstore() bstore.Blockstore {
+	return cs.chainBlockstore
+}
+
+// StateBlockstore returns the state blockstore. Currently the chain and state
+// stores are both backed by the same physical store, albeit with different
+// caching policies, but in the future they will segregate.
+func (cs *ChainStore) StateBlockstore() bstore.Blockstore {
+	return cs.stateBlockstore
 }
 
 func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
 }
 
-func (cs *ChainStore) Store(ctx context.Context) adt.Store {
-	return ActorStore(ctx, cs.bs)
+func (cs *ChainStore) ActorStore(ctx context.Context) adt.Store {
+	return ActorStore(ctx, cs.stateBlockstore)
 }
 
 func (cs *ChainStore) VMSys() vm.SyscallBuilder {
@@ -1338,7 +1355,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	}
 
 	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, func(c cid.Cid) error {
-		blk, err := cs.bs.Get(c)
+		blk, err := cs.chainBlockstore.Get(c)
 		if err != nil {
 			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
 		}
@@ -1371,7 +1388,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 			return err
 		}
 
-		data, err := cs.bs.Get(blk)
+		data, err := cs.chainBlockstore.Get(blk)
 		if err != nil {
 			return xerrors.Errorf("getting block: %w", err)
 		}
@@ -1391,7 +1408,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		var cids []cid.Cid
 		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
 			if walked.Visit(b.Messages) {
-				mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
+				mcids, err := recurseLinks(cs.chainBlockstore, walked, b.Messages, []cid.Cid{b.Messages})
 				if err != nil {
 					return xerrors.Errorf("recursing messages failed: %w", err)
 				}
@@ -1412,7 +1429,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 
 		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
 			if walked.Visit(b.ParentStateRoot) {
-				cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+				cids, err := recurseLinks(cs.chainBlockstore, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
 				if err != nil {
 					return xerrors.Errorf("recursing genesis state failed: %w", err)
 				}
@@ -1454,7 +1471,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 }
 
 func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
-	header, err := car.LoadCar(cs.Blockstore(), r)
+	header, err := car.LoadCar(cs.StateBlockstore(), r)
 	if err != nil {
 		return nil, xerrors.Errorf("loadcar failed: %w", err)
 	}

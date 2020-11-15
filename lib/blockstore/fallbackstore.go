@@ -15,34 +15,47 @@ import (
 
 var log = logging.Logger("blockstore")
 
+// UnwrapFallbackStore takes a blockstore, and returns the underlying blockstore
+// if it was a FallbackStore. Otherwise, it just returns the supplied store
+// unmodified.
+func UnwrapFallbackStore(bs blockstore.Blockstore) (blockstore.Blockstore, bool) {
+	if fbs, ok := bs.(*FallbackStore); ok {
+		return fbs.Blockstore, true
+	}
+	return bs, false
+}
+
+// FallbackStore is a read-through store that queries another (potentially
+// remote) source if the block is not found locally. If the block is found
+// during the fallback, it stores it in the local store.
 type FallbackStore struct {
 	blockstore.Blockstore
 
-	fallbackGetBlock func(context.Context, cid.Cid) (blocks.Block, error)
-	lk               sync.RWMutex
+	lk     sync.RWMutex
+	getter func(context.Context, cid.Cid) (blocks.Block, error)
 }
 
 func (fbs *FallbackStore) SetFallback(fg func(context.Context, cid.Cid) (blocks.Block, error)) {
 	fbs.lk.Lock()
 	defer fbs.lk.Unlock()
 
-	fbs.fallbackGetBlock = fg
+	fbs.getter = fg
 }
 
 func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
-	log.Errorw("fallbackstore: Block not found locally, fetching from the network", "cid", c)
+	log.Warnf("fallbackstore: block not found locally, fetching from the network; cid: %s", c)
 	fbs.lk.RLock()
 	defer fbs.lk.RUnlock()
 
-	if fbs.fallbackGetBlock == nil {
+	if fbs.getter == nil {
 		// FallbackStore wasn't configured yet (chainstore/bitswap aren't up yet)
 		// Wait for a bit and retry
 		fbs.lk.RUnlock()
 		time.Sleep(5 * time.Second)
 		fbs.lk.RLock()
 
-		if fbs.fallbackGetBlock == nil {
-			log.Errorw("fallbackstore: fallbackGetBlock not configured yet")
+		if fbs.getter == nil {
+			log.Errorw("fallbackstore: getter not configured yet")
 			return nil, blockstore.ErrNotFound
 		}
 	}
@@ -50,7 +63,7 @@ func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 120*time.Second)
 	defer cancel()
 
-	b, err := fbs.fallbackGetBlock(ctx, c)
+	b, err := fbs.getter(ctx, c)
 	if err != nil {
 		return nil, err
 	}

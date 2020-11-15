@@ -20,7 +20,6 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	"github.com/ipfs/go-cid"
-	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -204,7 +203,7 @@ var importBenchCmd = &cli.Command{
 		case cctx.Bool("use-native-badger"):
 			log.Info("using native badger")
 			var opts badgerbs.Options
-			if opts, err = repo.BadgerBlockstoreOptions(repo.BlockstoreChain, tdir, false); err != nil {
+			if opts, err = repo.BadgerBlockstoreOptions(repo.BlockstoreMonolith, tdir, false); err != nil {
 				return err
 			}
 			opts.SyncWrites = false
@@ -236,10 +235,7 @@ var importBenchCmd = &cli.Command{
 			defer c.Close() //nolint:errcheck
 		}
 
-		ctx := metricsi.CtxScope(context.Background(), "lotus")
-		cacheOpts := blockstore.DefaultCacheOpts()
-		cacheOpts.HasBloomFilterSize = 0
-		bs, err = blockstore.CachedBlockstore(ctx, bs, cacheOpts)
+		bs, err = blockstore.WrapFreecacheCache(context.Background(), bs)
 		if err != nil {
 			return err
 		}
@@ -264,6 +260,15 @@ var importBenchCmd = &cli.Command{
 		metadataDs := datastore.NewMapDatastore()
 		cs := store.NewChainStore(bs, bs, metadataDs, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
+
+		var carFile *os.File
+		// open the CAR file if one is provided.
+		if path := cctx.String("car"); path != "" {
+			var err error
+			if carFile, err = os.Open(path); err != nil {
+				return xerrors.Errorf("failed to open provided CAR file: %w", err)
+			}
+		}
 
 		startTime := time.Now()
 
@@ -306,18 +311,7 @@ var importBenchCmd = &cli.Command{
 			writeProfile("allocs")
 		}()
 
-		var carFile *os.File
-
-		// open the CAR file if one is provided.
-		if path := cctx.String("car"); path != "" {
-			var err error
-			if carFile, err = os.Open(path); err != nil {
-				return xerrors.Errorf("failed to open provided CAR file: %w", err)
-			}
-		}
-
 		var head *types.TipSet
-
 		// --- IMPORT ---
 		if !cctx.Bool("no-import") {
 			if cctx.Bool("global-profile") {

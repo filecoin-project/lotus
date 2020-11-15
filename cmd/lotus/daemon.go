@@ -405,7 +405,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 	defer lr.Close() //nolint:errcheck
 
-	bs, err := lr.Blockstore(repo.BlockstoreChain)
+	bs, err := lr.Blockstore(repo.BlockstoreMonolith)
 	if err != nil {
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}

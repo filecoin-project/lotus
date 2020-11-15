@@ -406,7 +406,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 		StateBase:      stateroot,
 		Epoch:          0,
 		Rand:           &fakeRand{},
-		Bstore:         cs.Blockstore(),
+		Bstore:         cs.StateBlockstore(),
 		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
 		CircSupplyCalc: nil,
 		NtwkVersion:    genesisNetworkVersion,

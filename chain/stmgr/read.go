@@ -22,7 +22,7 @@ func (sm *StateManager) ParentStateTsk(tsk types.TipSetKey) (*state.StateTree, e
 }
 
 func (sm *StateManager) ParentState(ts *types.TipSet) (*state.StateTree, error) {
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	state, err := state.LoadStateTree(cst, sm.parentState(ts))
 	if err != nil {
 		return nil, xerrors.Errorf("load state tree: %w", err)
@@ -32,7 +32,7 @@ func (sm *StateManager) ParentState(ts *types.TipSet) (*state.StateTree, error) 
 }
 
 func (sm *StateManager) StateTree(st cid.Cid) (*state.StateTree, error) {
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	state, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return nil, xerrors.Errorf("load state tree: %w", err)

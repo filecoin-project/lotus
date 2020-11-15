@@ -245,7 +245,7 @@ func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 }
 
 func (lmem *lockedMemRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != BlockstoreChain {
+	if domain != BlockstoreMonolith {
 		return nil, ErrInvalidBlockstoreDomain
 	}
 	return lmem.mem.blockstore, nil

@@ -236,7 +236,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			StateBase:      base,
 			Epoch:          epoch,
 			Rand:           r,
-			Bstore:         sm.cs.Blockstore(),
+			Bstore:         sm.cs.StateBlockstore(),
 			Syscalls:       sm.cs.VMSys(),
 			CircSupplyCalc: sm.GetVMCirculatingSupply,
 			NtwkVersion:    sm.GetNtwkVersion,
@@ -381,7 +381,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	}
 
 	// XXX: Is the height correct? Or should it be epoch-1?
-	rectarr, err := adt.NewArray(sm.cs.Store(ctx), actors.VersionForNetwork(sm.GetNtwkVersion(ctx, epoch)))
+	rectarr, err := adt.NewArray(sm.cs.ActorStore(ctx), actors.VersionForNetwork(sm.GetNtwkVersion(ctx, epoch)))
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to create receipts amt: %w", err)
 	}
@@ -474,7 +474,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		return address.Undef, xerrors.Errorf("resolve address failed to get tipset state: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	tree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to load state tree")
@@ -497,7 +497,7 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 }
 
 func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	state, err := state.LoadStateTree(cst, sm.parentState(ts))
 	if err != nil {
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
@@ -823,7 +823,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 
-	mstate, err := market.Load(sm.cs.Store(ctx), act)
+	mstate, err := market.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return api.MarketBalance{}, err
 	}
@@ -922,7 +922,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 		return xerrors.Errorf("getting genesis tipset state: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	sTree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)
@@ -941,7 +941,7 @@ func (sm *StateManager) setupGenesisActors(ctx context.Context) error {
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 	err = sTree.ForEach(func(kaddr address.Address, act *types.Actor) error {
 		if builtin.IsMultisigActor(act.Code) {
-			s, err := multisig.Load(sm.cs.Store(ctx), act)
+			s, err := multisig.Load(sm.cs.ActorStore(ctx), act)
 			if err != nil {
 				return err
 			}
@@ -1034,7 +1034,7 @@ func (sm *StateManager) setupPreIgnitionGenesisActorsTestnet(ctx context.Context
 		return xerrors.Errorf("getting genesis tipset state: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	sTree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)
@@ -1109,7 +1109,7 @@ func (sm *StateManager) setupPostIgnitionGenesisActors(ctx context.Context) erro
 		return xerrors.Errorf("getting genesis tipset state: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	sTree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)
@@ -1382,7 +1382,7 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 			unCirc = big.Add(unCirc, actor.Balance)
 
 		case a == market.Address:
-			mst, err := market.Load(sm.cs.Store(ctx), actor)
+			mst, err := market.Load(sm.cs.ActorStore(ctx), actor)
 			if err != nil {
 				return err
 			}
@@ -1399,7 +1399,7 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 			circ = big.Add(circ, actor.Balance)
 
 		case builtin.IsStorageMinerActor(actor.Code):
-			mst, err := miner.Load(sm.cs.Store(ctx), actor)
+			mst, err := miner.Load(sm.cs.ActorStore(ctx), actor)
 			if err != nil {
 				return err
 			}
@@ -1416,7 +1416,7 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 			}
 
 		case builtin.IsMultisigActor(actor.Code):
-			mst, err := multisig.Load(sm.cs.Store(ctx), actor)
+			mst, err := multisig.Load(sm.cs.ActorStore(ctx), actor)
 			if err != nil {
 				return err
 			}
@@ -1470,7 +1470,7 @@ func (sm *StateManager) GetPaychState(ctx context.Context, addr address.Address,
 		return nil, nil, err
 	}
 
-	actState, err := paych.Load(sm.cs.Store(ctx), act)
+	actState, err := paych.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1488,7 +1488,7 @@ func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (m
 		return nil, err
 	}
 
-	actState, err := market.Load(sm.cs.Store(ctx), act)
+	actState, err := market.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, err
 	}

@@ -300,7 +300,7 @@ func (fsr *fsLockedRepo) Close() error {
 
 // Blockstore returns a blockstore for the provided data domain.
 func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != BlockstoreChain {
+	if domain != BlockstoreMonolith {
 		return nil, ErrInvalidBlockstoreDomain
 	}
 

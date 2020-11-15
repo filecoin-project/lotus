@@ -318,7 +318,7 @@ var datastoreRewriteCmd = &cli.Command{
 		)
 
 		// open the destination (to) store.
-		opts, err := repo.BadgerBlockstoreOptions(repo.BlockstoreChain, toPath, false)
+		opts, err := repo.BadgerBlockstoreOptions(repo.BlockstoreMonolith, toPath, false)
 		if err != nil {
 			return xerrors.Errorf("failed to get badger options: %w", err)
 		}
@@ -328,7 +328,7 @@ var datastoreRewriteCmd = &cli.Command{
 		}
 
 		// open the source (from) store.
-		opts, err = repo.BadgerBlockstoreOptions(repo.BlockstoreChain, fromPath, true)
+		opts, err = repo.BadgerBlockstoreOptions(repo.BlockstoreMonolith, fromPath, true)
 		if err != nil {
 			return xerrors.Errorf("failed to get badger options: %w", err)
 		}

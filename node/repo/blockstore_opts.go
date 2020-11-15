@@ -5,7 +5,7 @@ import badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 // BadgerBlockstoreOptions returns the badger options to apply for the provided
 // domain.
 func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool) (badgerbs.Options, error) {
-	if domain != BlockstoreChain {
+	if domain != BlockstoreMonolith {
 		return badgerbs.Options{}, ErrInvalidBlockstoreDomain
 	}
 

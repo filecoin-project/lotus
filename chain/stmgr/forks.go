@@ -295,7 +295,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 			}
 		case builtin0.StorageMinerActorCodeID:
 			var st miner0.State
-			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
+			if err := sm.ChainStore().ActorStore(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
@@ -339,7 +339,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 		return cid.Undef, xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
+	cst := cbor.NewCborStore(sm.ChainStore().StateBlockstore())
 	if err := cst.Get(ctx, powAct.Head, &ps); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to get power actor state: %w", err)
 	}
@@ -373,7 +373,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 			}
 		case builtin0.StorageMinerActorCodeID:
 			var st miner0.State
-			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
+			if err := sm.ChainStore().ActorStore(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
@@ -382,7 +382,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 				return xerrors.Errorf("failed to get miner info: %w", err)
 			}
 
-			sectorsArr, err := adt0.AsArray(sm.ChainStore().Store(ctx), st.Sectors)
+			sectorsArr, err := adt0.AsArray(sm.ChainStore().ActorStore(ctx), st.Sectors)
 			if err != nil {
 				return xerrors.Errorf("failed to load sectors array: %w", err)
 			}
@@ -402,11 +402,11 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 			lbact, err := lbtree.GetActor(addr)
 			if err == nil {
 				var lbst miner0.State
-				if err := sm.ChainStore().Store(ctx).Get(ctx, lbact.Head, &lbst); err != nil {
+				if err := sm.ChainStore().ActorStore(ctx).Get(ctx, lbact.Head, &lbst); err != nil {
 					return xerrors.Errorf("failed to load miner state: %w", err)
 				}
 
-				lbsectors, err := adt0.AsArray(sm.ChainStore().Store(ctx), lbst.Sectors)
+				lbsectors, err := adt0.AsArray(sm.ChainStore().ActorStore(ctx), lbst.Sectors)
 				if err != nil {
 					return xerrors.Errorf("failed to load lb sectors array: %w", err)
 				}
@@ -512,7 +512,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, cb ExecCal
 }
 
 func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	store := sm.cs.Store(ctx)
+	store := sm.cs.ActorStore(ctx)
 
 	if build.UpgradeLiftoffHeight <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
@@ -568,7 +568,7 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 
 func UpgradeRefuel(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 
-	store := sm.cs.Store(ctx)
+	store := sm.cs.ActorStore(ctx)
 	tree, err := sm.StateTree(root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
@@ -593,7 +593,7 @@ func UpgradeRefuel(ctx context.Context, sm *StateManager, cb ExecCallback, root 
 }
 
 func UpgradeActorsV2(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	buf := bufbstore.NewTieredBstore(sm.cs.Blockstore(), bstore.NewTemporarySync())
+	buf := bufbstore.NewTieredBstore(sm.cs.StateBlockstore(), bstore.NewTemporarySync())
 	store := store.ActorStore(ctx, buf)
 
 	info, err := store.Put(ctx, new(types.StateInfo0))
@@ -644,7 +644,7 @@ func UpgradeLiftoff(ctx context.Context, sm *StateManager, cb ExecCallback, root
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
 	}
 
-	err = setNetworkName(ctx, sm.cs.Store(ctx), tree, "mainnet")
+	err = setNetworkName(ctx, sm.cs.ActorStore(ctx), tree, "mainnet")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("setting network name: %w", err)
 	}
@@ -846,7 +846,7 @@ func resetGenesisMsigs0(ctx context.Context, sm *StateManager, store adt0.Store,
 		return xerrors.Errorf("getting genesis tipset: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	genesisTree, err := state.LoadStateTree(cst, gts.ParentState())
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)

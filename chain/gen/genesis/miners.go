@@ -72,7 +72,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		StateBase:      sroot,
 		Epoch:          0,
 		Rand:           &fakeRand{},
-		Bstore:         cs.Blockstore(),
+		Bstore:         cs.StateBlockstore(),
 		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
 		CircSupplyCalc: csc,
 		NtwkVersion:    genesisNetworkVersion,

@@ -79,7 +79,7 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 func ClientMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
 	ds, err := r.Datastore("/client")
 	if err != nil {
-		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
+		return nil, xerrors.Errorf("getting datastore out of repo: %w", err)
 	}
 
 	mds, err := multistore.NewMultiDstore(ds)

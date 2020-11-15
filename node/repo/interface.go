@@ -17,11 +17,11 @@ import (
 type BlockstoreDomain string
 
 const (
-	// BlockstoreChain represents the blockstore domain for chain data.
+	// BlockstoreMonolith represents the blockstore domain for chain data.
 	// Right now, this includes chain objects (tipsets, blocks, messages), as
 	// well as state. In the future, they may get segregated into different
 	// domains.
-	BlockstoreChain = BlockstoreDomain("chain")
+	BlockstoreMonolith = BlockstoreDomain("monolith")
 )
 
 var (
