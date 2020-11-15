@@ -2,6 +2,7 @@ package blockstore
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 	"time"
@@ -120,8 +121,8 @@ func (c *FreecacheCachingBlockstore) View(cid cid.Cid, callback func([]byte) err
 	k := []byte(cid.Hash())
 
 	// try the cache.
-	if val, have, conclusive := c.checkCache(k, true, false); conclusive && have {
-		return callback(val)
+	if have, err, conclusive := c.cachedValFn(k, callback, false); conclusive && have {
+		return err
 	} else if conclusive && !have {
 		return ErrNotFound
 	}
@@ -145,7 +146,7 @@ func (c *FreecacheCachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	k := []byte(cid.Hash())
 
 	// try the cache.
-	if val, have, conclusive := c.checkCache(k, true, false); conclusive && have {
+	if val, have, conclusive := c.cachedVal(k); conclusive && have {
 		return blocks.NewBlockWithCid(val, cid)
 	} else if conclusive && !have {
 		return nil, ErrNotFound
@@ -172,8 +173,8 @@ func (c *FreecacheCachingBlockstore) Peek(cid cid.Cid, callback func([]byte) err
 	k := []byte(cid.Hash())
 
 	// try the cache.
-	if val, have, conclusive := c.checkCache(k, true, true); conclusive && have {
-		return callback(val)
+	if have, err, conclusive := c.cachedValFn(k, callback, true); conclusive && have {
+		return err
 	} else if conclusive && !have {
 		return ErrNotFound
 	}
@@ -212,8 +213,8 @@ func (c *FreecacheCachingBlockstore) GetSize(cid cid.Cid) (int, error) {
 
 func (c *FreecacheCachingBlockstore) Has(cid cid.Cid) (bool, error) {
 	k := []byte(cid.Hash())
-	if has, err := c.existsCache.Get(k); err == nil {
-		return has[0] == HasTrue, nil
+	if have, conclusive := c.cachedExists(k); conclusive {
+		return have, nil
 	}
 	has, err := c.inner.Has(cid)
 	if err != nil {
@@ -229,7 +230,7 @@ func (c *FreecacheCachingBlockstore) Has(cid cid.Cid) (bool, error) {
 
 func (c *FreecacheCachingBlockstore) Put(block blocks.Block) error {
 	k := []byte(block.Cid().Hash())
-	if _, have, conclusive := c.checkCache(k, false, false); conclusive && have {
+	if have, conclusive := c.cachedExists(k); conclusive && have {
 		return nil
 	}
 	err := c.inner.Put(block)
@@ -245,7 +246,7 @@ func (c *FreecacheCachingBlockstore) PutMany(blks []blocks.Block) error {
 	miss := make([]blocks.Block, 0, len(blks))
 	for _, b := range blks {
 		k := []byte(b.Cid().Hash())
-		if _, have, conclusive := c.checkCache(k, false, false); conclusive && have {
+		if have, conclusive := c.cachedExists(k); conclusive && have {
 			continue
 		}
 		miss = append(miss, b)
@@ -286,30 +287,51 @@ func (c *FreecacheCachingBlockstore) HashOnRead(enabled bool) {
 	c.inner.HashOnRead(enabled)
 }
 
-// checkCache returns the cached element if we have it. The first boolean
-// indicates if we know for sure if the element exists; the second boolean is
-// true if the answer is conclusive. If false, the underlying store must be hit.
-func (c *FreecacheCachingBlockstore) checkCache(k []byte, wantValue bool, peekOnly bool) (v []byte, have bool, conclusive bool) {
-	f := (*freecache.Cache).Get
-	if peekOnly {
-		f = (*freecache.Cache).Peek
+var errNotExists = errors.New("block doesn't exist")
+
+var existsFn = func(v []byte) error {
+	if v[0] == HasTrue {
+		return nil
 	}
-	// check the has cache.
-	if has, err := f(c.existsCache, k); err == nil {
-		if exists := has[0] == HasTrue; !exists || !wantValue {
-			// if we have an entry, and we're only checking for existence, return immediately.
-			// if we have an entry, and it's negative, short-circuit.
-			return nil, exists, true
-		}
+	return errNotExists
+}
+
+// cachedExists checks if a value is in the exists cache.
+func (c *FreecacheCachingBlockstore) cachedExists(k []byte) (have bool, conclusive bool) {
+	if err := c.existsCache.GetFn(k, existsFn); err != ErrNotFound {
+		return err == nil, true
 	}
-	// the has cache was a miss, or we want the value.
-	// check the block cache.
-	if data, err := f(c.blockCache, k); err == nil {
-		if !peekOnly {
-			// it's ok to manipulate caches.
-			_ = c.existsCache.Set(k, HasTrueVal, 0) // update the exists cache.
-		}
-		return data, true, true
+	return false, false
+}
+
+// cachedValFn attempts to retrieve a value from cache. It checks the exists
+// cache first and short-circuits if a negative is stored. Else, it checks the
+// block cache.
+func (c *FreecacheCachingBlockstore) cachedValFn(k []byte, valFn func([]byte) error, peek bool) (have bool, err error, conclusive bool) {
+	f := (*freecache.Cache).GetFn
+	if peek {
+		f = (*freecache.Cache).PeekFn
+	}
+	// check the exists cache.
+	if err := f(c.existsCache, k, existsFn); err != errNotExists {
+		return false, nil, true
+	}
+	if err := f(c.blockCache, k, valFn); err != ErrNotFound {
+		return true, err, true
+	}
+	return false, nil, false
+}
+
+// cachedVal attempts to retrieve a value from cache. It checks the exists cache
+// first and short-circuits if a negative is stored. Else, it checks the block
+// cache.
+func (c *FreecacheCachingBlockstore) cachedVal(k []byte) (val []byte, have bool, conclusive bool) {
+	// check the exists cache.
+	if err := c.existsCache.GetFn(k, existsFn); err != errNotExists {
+		return nil, false, true
+	}
+	if val, err := c.blockCache.Get(k); err != ErrNotFound {
+		return val, true, true
 	}
 	return nil, false, false
 }
