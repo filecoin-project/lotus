@@ -298,7 +298,7 @@ var existsFn = func(v []byte) error {
 
 // cachedExists checks if a value is in the exists cache.
 func (c *FreecacheCachingBlockstore) cachedExists(k []byte) (have bool, conclusive bool) {
-	if err := c.existsCache.GetFn(k, existsFn); err != ErrNotFound {
+	if err := c.existsCache.GetFn(k, existsFn); err != freecache.ErrNotFound {
 		return err == nil, true
 	}
 	return false, false
@@ -313,10 +313,10 @@ func (c *FreecacheCachingBlockstore) cachedValFn(k []byte, valFn func([]byte) er
 		f = (*freecache.Cache).PeekFn
 	}
 	// check the exists cache.
-	if err := f(c.existsCache, k, existsFn); err != errNotExists {
+	if err := f(c.existsCache, k, existsFn); err == errNotExists {
 		return false, nil, true
 	}
-	if err := f(c.blockCache, k, valFn); err != ErrNotFound {
+	if err := f(c.blockCache, k, valFn); err != freecache.ErrNotFound {
 		return true, err, true
 	}
 	return false, nil, false
@@ -327,10 +327,10 @@ func (c *FreecacheCachingBlockstore) cachedValFn(k []byte, valFn func([]byte) er
 // cache.
 func (c *FreecacheCachingBlockstore) cachedVal(k []byte) (val []byte, have bool, conclusive bool) {
 	// check the exists cache.
-	if err := c.existsCache.GetFn(k, existsFn); err != errNotExists {
+	if err := c.existsCache.GetFn(k, existsFn); err == errNotExists {
 		return nil, false, true
 	}
-	if val, err := c.blockCache.Get(k); err != ErrNotFound {
+	if val, err := c.blockCache.Get(k); err != freecache.ErrNotFound {
 		return val, true, true
 	}
 	return nil, false, false
