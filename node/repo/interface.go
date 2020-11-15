@@ -3,8 +3,8 @@ package repo
 import (
 	"errors"
 
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
