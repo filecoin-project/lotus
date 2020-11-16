@@ -60,7 +60,7 @@ func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDA
 			dag:       dag,
 			secb:      secb,
 			ev:        events.NewEvents(context.TODO(), full),
-			dsMatcher: newDealStateMatcher(state.NewStatePredicates(full)),
+			dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
 		}
 		if fc != nil {
 			na.publishSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxPublishDealsFee)}

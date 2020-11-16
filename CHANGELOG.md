@@ -1,5 +1,132 @@
 # Lotus changelog
 
+# 1.1.3 / 2020-11-13
+
+This is an optional release of Lotus that upgrades Lotus dependencies, and includes many performance enhancements, bugfixes, and UX improvements.
+
+## Highlights
+
+- Refactored much of the miner code (https://github.com/filecoin-project/lotus/pull/3618), improving its recovery from restarts and overall sector success rate
+- Updated [proofs](https://github.com/filecoin-project/rust-fil-proofs) to v5.3.0, which brings significant performance improvements
+- Updated [markets](https://github.com/filecoin-project/go-fil-markets/releases/tag/v1.0.4) to v1.0.4, which reduces failures due to reorgs (https://github.com/filecoin-project/lotus/pull/4730) and uses the newly refactored fund manager (https://github.com/filecoin-project/lotus/pull/4736)
+
+## Changes
+
+#### Core Lotus
+
+- polish: add Equals method to MinerInfo shim (https://github.com/filecoin-project/lotus/pull/4604)
+- Fix messagepool accounting (https://github.com/filecoin-project/lotus/pull/4668)
+- Prep for gas balancing (https://github.com/filecoin-project/lotus/pull/4651)
+- Reduce badger ValueThreshold to 128 (https://github.com/filecoin-project/lotus/pull/4629)
+- Config for default max gas fee (https://github.com/filecoin-project/lotus/pull/4652)
+- bootstrap: don't return early when one drand resolution fails (https://github.com/filecoin-project/lotus/pull/4626)
+- polish: add ClaimsChanged and DiffClaims method to power shim (https://github.com/filecoin-project/lotus/pull/4628)
+- Simplify chain event Called API (https://github.com/filecoin-project/lotus/pull/4664)
+- Cache deal states for most recent old/new tipset (https://github.com/filecoin-project/lotus/pull/4623)
+- Add miner available balance and power info to state miner info (https://github.com/filecoin-project/lotus/pull/4618)
+- Call GetHeaviestTipSet() only once when syncing (https://github.com/filecoin-project/lotus/pull/4696)
+- modify runtime gasUsed printf (https://github.com/filecoin-project/lotus/pull/4704)
+- Rename builtin actor generators (https://github.com/filecoin-project/lotus/pull/4697)
+- Move gas multiplier as property of pricelist (https://github.com/filecoin-project/lotus/pull/4728)
+- polish: add msig pendingtxn diffing and comp (https://github.com/filecoin-project/lotus/pull/4719)
+- Optional chain Bitswap (https://github.com/filecoin-project/lotus/pull/4717)
+- rewrite sync manager (https://github.com/filecoin-project/lotus/pull/4599)
+- async connect to bootstrappers (https://github.com/filecoin-project/lotus/pull/4785)
+- head change coalescer (https://github.com/filecoin-project/lotus/pull/4688)
+- move to native badger blockstore; leverage zero-copy View() to deserialize in-place (https://github.com/filecoin-project/lotus/pull/4681)
+- badger blockstore: minor improvements (https://github.com/filecoin-project/lotus/pull/4811)
+- Do not fail wallet delete because of pre-existing trashed key (https://github.com/filecoin-project/lotus/pull/4589)
+- Correctly delete the default wallet address (https://github.com/filecoin-project/lotus/pull/4705)
+- Reduce badger ValueTreshold to 128 (https://github.com/filecoin-project/lotus/pull/4629)
+- predicates: Fast StateGetActor wrapper (https://github.com/filecoin-project/lotus/pull/4835)
+
+#### Mining
+
+- worker key should change when set sender found key not equal with the value on chain (https://github.com/filecoin-project/lotus/pull/4595)
+- extern/sector-storage: fix GPU usage overwrite bug (https://github.com/filecoin-project/lotus/pull/4627)
+- sectorstorage: Fix manager restart edge-case (https://github.com/filecoin-project/lotus/pull/4645)
+- storagefsm: Fix GetTicket loop when the sector is already precommitted (https://github.com/filecoin-project/lotus/pull/4643)
+- Debug flag to force running sealing scheduler (https://github.com/filecoin-project/lotus/pull/4662)
+- Fix worker reenabling, handle multiple restarts in worker (https://github.com/filecoin-project/lotus/pull/4666)
+- keep retrying the proof until we run out of sectors to skip (https://github.com/filecoin-project/lotus/pull/4633)
+- worker: Commands to pause/resume task processing (https://github.com/filecoin-project/lotus/pull/4615)
+- struct name incorrect (https://github.com/filecoin-project/lotus/pull/4699)
+- optimize code replace strings with constants (https://github.com/filecoin-project/lotus/pull/4769)
+- optimize pledge sector (https://github.com/filecoin-project/lotus/pull/4765)
+- Track sealing processes across lotus-miner restarts (https://github.com/filecoin-project/lotus/pull/3618)
+- Fix scheduler lockups after storage is freed (https://github.com/filecoin-project/lotus/pull/4778)
+- storage: Track worker hostnames with work (https://github.com/filecoin-project/lotus/pull/4779)
+- Expand sched-diag; Command to abort sealing calls (https://github.com/filecoin-project/lotus/pull/4804)
+- miner: Winning PoSt Warmup (https://github.com/filecoin-project/lotus/pull/4824)
+- docsgen: Support miner/worker (https://github.com/filecoin-project/lotus/pull/4817)
+- miner: Basic storage cleanup command (https://github.com/filecoin-project/lotus/pull/4834)
+
+#### Markets and Data Transfer
+
+- Flesh out data transfer features (https://github.com/filecoin-project/lotus/pull/4572)
+- Fix memory leaks in data transfer (https://github.com/filecoin-project/lotus/pull/4619)
+- Handle deal id changes in OnDealSectorCommitted (https://github.com/filecoin-project/lotus/pull/4730)
+- Refactor FundManager (https://github.com/filecoin-project/lotus/pull/4736)
+- refactor: integrate new FundManager (https://github.com/filecoin-project/lotus/pull/4787)
+- Fix race in paych manager when req context is cancelled (https://github.com/filecoin-project/lotus/pull/4803)
+- fix race in paych manager add funds (https://github.com/filecoin-project/lotus/pull/4597)
+- Fix panic in FundManager (https://github.com/filecoin-project/lotus/pull/4808)
+- Fix: dont crash on startup if funds migration fails (https://github.com/filecoin-project/lotus/pull/4827)
+
+#### UX
+
+- Make EarlyExpiration in sectors list less scary (https://github.com/filecoin-project/lotus/pull/4600)
+- Add commands to change the worker key (https://github.com/filecoin-project/lotus/pull/4513)
+- Expose ClientDealSize via CLI (https://github.com/filecoin-project/lotus/pull/4569)
+- client deal: Cache CommD when creating multiple deals (https://github.com/filecoin-project/lotus/pull/4535)
+- miner sectors list: flags for events/seal time (https://github.com/filecoin-project/lotus/pull/4649)
+- make IPFS online mode configurable (https://github.com/filecoin-project/lotus/pull/4650)
+- Add sync status to miner info command (https://github.com/filecoin-project/lotus/pull/4669)
+- Add a StateDecodeParams method (https://github.com/filecoin-project/lotus/pull/4105)
+- sched: Interactive RPC Shell (https://github.com/filecoin-project/lotus/pull/4692)
+- Add api for getting status given a code (https://github.com/filecoin-project/lotus/pull/4210)
+- Update lotus-stats with a richer cli (https://github.com/filecoin-project/lotus/pull/4718)
+- Use TSK passed to GasEstimateGasLimit (https://github.com/filecoin-project/lotus/pull/4739)
+- match data type for reward state api (https://github.com/filecoin-project/lotus/pull/4745)
+- Add `termination-estimate` to get an estimation for how much a termination penalty will be (https://github.com/filecoin-project/lotus/pull/4617)
+- Restrict `ParseFIL` input length (https://github.com/filecoin-project/lotus/pull/4780)
+- cmd sectors commitIDs len debug (https://github.com/filecoin-project/lotus/pull/4786)
+- Add client deal-stats CLI (https://github.com/filecoin-project/lotus/pull/4788)
+- Modify printf format (https://github.com/filecoin-project/lotus/pull/4795)
+- Updated msig inspect (https://github.com/filecoin-project/lotus/pull/4533)
+- Delete the duplicate output (https://github.com/filecoin-project/lotus/pull/4819)
+- miner: Storage list sectors command (https://github.com/filecoin-project/lotus/pull/4831)
+- drop a few logs down to debug (https://github.com/filecoin-project/lotus/pull/4832)
+
+#### Testing and Tooling
+
+- refactor: share code between CLI tests (https://github.com/filecoin-project/lotus/pull/4598)
+- Fix flaky TestCLIDealFlow (https://github.com/filecoin-project/lotus/pull/4608)
+- Fix flaky testMiningReal (https://github.com/filecoin-project/lotus/pull/4609)
+- Add election run-dummy command (https://github.com/filecoin-project/lotus/pull/4498)
+- Fix .gitmodules (https://github.com/filecoin-project/lotus/pull/4713)
+- fix metrics wiring.(https://github.com/filecoin-project/lotus/pull/4691)
+- shed: Util for creating ID CIDs (https://github.com/filecoin-project/lotus/pull/4726)
+- Run kumquat upgrade on devnets (https://github.com/filecoin-project/lotus/pull/4734)
+- Make pond work again (https://github.com/filecoin-project/lotus/pull/4775)
+- lotus-stats: fix influx flags (https://github.com/filecoin-project/lotus/pull/4810)
+- 2k sync BootstrapPeerThreshold (https://github.com/filecoin-project/lotus/pull/4797)
+- test for FundManager panic to ensure it is fixed (https://github.com/filecoin-project/lotus/pull/4825)
+- Stop mining at the end of tests (https://github.com/filecoin-project/lotus/pull/4826)
+- Make some logs quieter (https://github.com/filecoin-project/lotus/pull/4709)
+
+#### Dependencies
+
+- update filecoin-ffi in go mod (https://github.com/filecoin-project/lotus/pull/4584)
+- Update FFI (https://github.com/filecoin-project/lotus/pull/4613)
+- feat: integrate new optional blst backend and verification optimizations from proofs (https://github.com/filecoin-project/lotus/pull/4630)
+- Use https for blst submodule (https://github.com/filecoin-project/lotus/pull/4710)
+- Update go-bitfield (https://github.com/filecoin-project/lotus/pull/4756)
+- Update Yamux (https://github.com/filecoin-project/lotus/pull/4758)
+- Update to latest go-bitfield (https://github.com/filecoin-project/lotus/pull/4793)
+- Update to latest go-address (https://github.com/filecoin-project/lotus/pull/4798)
+- update libp2p for stream interface changes (https://github.com/filecoin-project/lotus/pull/4814)
+
 # 1.1.2 / 2020-10-24
 
 This is a patch release of Lotus that builds on the fixes involving worker keys that was introduced in v1.1.1. Miners and node operators should update to this release as soon as possible in order to ensure their blocks are propagated and validated.

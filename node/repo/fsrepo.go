@@ -12,9 +12,9 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-base32"

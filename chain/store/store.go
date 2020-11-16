@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"strconv"
@@ -58,6 +59,8 @@ var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 
 var DefaultTipSetCacheSize = 8192
 var DefaultMsgMetaCacheSize = 2048
+
+var ErrNotifeeDone = errors.New("notifee is done and should be removed")
 
 func init() {
 	if s := os.Getenv("LOTUS_CHAIN_TIPSET_CACHE"); s != "" {
@@ -268,7 +271,7 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 					log.Warn("chain head sub exit loop")
 					return
 				}
-				if len(out) > 0 {
+				if len(out) > 5 {
 					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
 				}
 				select {
@@ -435,11 +438,36 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					apply[i], apply[opp] = apply[opp], apply[i]
 				}
 
-				for _, hcf := range notifees {
-					if err := hcf(revert, apply); err != nil {
+				var toremove map[int]struct{}
+				for i, hcf := range notifees {
+					err := hcf(revert, apply)
+
+					switch err {
+					case nil:
+
+					case ErrNotifeeDone:
+						if toremove == nil {
+							toremove = make(map[int]struct{})
+						}
+						toremove[i] = struct{}{}
+
+					default:
 						log.Error("head change func errored (BAD): ", err)
 					}
 				}
+
+				if len(toremove) > 0 {
+					newNotifees := make([]ReorgNotifee, 0, len(notifees)-len(toremove))
+					for i, hcf := range notifees {
+						_, remove := toremove[i]
+						if remove {
+							continue
+						}
+						newNotifees = append(newNotifees, hcf)
+					}
+					notifees = newNotifees
+				}
+
 			case <-ctx.Done():
 				return
 			}
