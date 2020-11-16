@@ -111,8 +111,9 @@ func SetupFallbackBlockstore(cbs dtypes.ChainBlockstore, rem dtypes.ChainBitswap
 	return nil
 }
 
-func ChainStore(bs dtypes.ChainBlockstore, lbs dtypes.ChainRawBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
-	chain := store.NewChainStore(bs, lbs, ds, syscalls, j)
+func ChainStore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ChainBlockstore, lbs dtypes.ChainRawBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	chain := store.NewChainStore(ctx, bs, lbs, ds, syscalls, j)
 
 	if err := chain.Load(); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)

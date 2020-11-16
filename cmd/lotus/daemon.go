@@ -419,7 +419,10 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	if err != nil {
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}
-	cst := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cst := store.NewChainStore(ctx, bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
 
 	log.Infof("importing chain from %s...", fname)
 

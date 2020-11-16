@@ -137,7 +137,7 @@ type ChainStore struct {
 }
 
 // localbs is guaranteed to fail Get* if requested block isn't stored locally
-func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+func NewChainStore(ctx context.Context, bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -191,7 +191,6 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 	}
 
 	hcmetric := func(rev, app []*types.TipSet) error {
-		ctx := context.Background()
 		for _, r := range app {
 			stats.Record(ctx, metrics.ChainNodeHeight.M(int64(r.Height())))
 		}
@@ -199,7 +198,7 @@ func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Ba
 	}
 
 	cs.reorgNotifeeCh = make(chan ReorgNotifee)
-	cs.reorgCh = cs.reorgWorker(context.TODO(), []ReorgNotifee{hcnf, hcmetric})
+	cs.reorgCh = cs.reorgWorker(ctx, []ReorgNotifee{hcnf, hcmetric})
 
 	return cs
 }

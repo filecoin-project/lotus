@@ -262,7 +262,7 @@ var importBenchCmd = &cli.Command{
 		}
 
 		metadataDs := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, bs, metadataDs, vm.Syscalls(verifier), nil)
+		cs := store.NewChainStore(context.Background(), bs, bs, metadataDs, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
 
 		startTime := time.Now()
