@@ -420,9 +420,8 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	cst := store.NewChainStore(ctx, bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
+	cst := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
+	defer cst.Close()
 
 	log.Infof("importing chain from %s...", fname)
 
@@ -467,7 +466,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 
 	log.Infof("accepting %s as new head", ts.Cids())
-	if err := cst.ForceHeadSilent(ctx, ts); err != nil {
+	if err := cst.ForceHeadSilent(context.Background(), ts); err != nil {
 		return err
 	}
 
