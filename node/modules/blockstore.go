@@ -36,8 +36,8 @@ func BareMonolithBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.BareMono
 func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.StateBlockstore, error) {
 	sbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs, blockstore.FreecacheConfig{
 		Name:           "state",
-		BlockCapacity:  1 << 28, // 256MiB.
-		ExistsCapacity: 1 << 25, // 32MiB.
+		BlockCapacity:  288 * 1024 * 1024, // 288MiB.
+		ExistsCapacity: 48 * 1024 * 1024,  // 48MiB.
 	})
 	if err != nil {
 		return nil, err
@@ -55,8 +55,8 @@ func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMon
 func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.ChainBlockstore, error) {
 	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs, blockstore.FreecacheConfig{
 		Name:           "chain",
-		BlockCapacity:  1 << 27, // 128MiB.
-		ExistsCapacity: 1 << 24, // 16MiB.
+		BlockCapacity:  64 * 1024 * 1024, // 64MiB.
+		ExistsCapacity: 16 * 1024,        // 16MiB.
 	})
 	if err != nil {
 		return nil, err
