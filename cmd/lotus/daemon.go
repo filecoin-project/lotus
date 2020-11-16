@@ -467,7 +467,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 
 	log.Infof("accepting %s as new head", ts.Cids())
-	if err := cst.SetHead(ts); err != nil {
+	if err := cst.ForceHeadSilent(ctx, ts); err != nil {
 		return err
 	}
 

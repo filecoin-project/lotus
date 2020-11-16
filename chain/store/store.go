@@ -382,7 +382,7 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 // particular tipset to carry out a benchmark, verification, etc. on a chain
 // segment.
 func (cs *ChainStore) ForceHeadSilent(_ context.Context, ts *types.TipSet) error {
-	log.Warnf("(!!!) forcing a new head silently; only use this only for testing; new head: %s", ts)
+	log.Warnf("(!!!) forcing a new head silently; new head: %s", ts)
 
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
