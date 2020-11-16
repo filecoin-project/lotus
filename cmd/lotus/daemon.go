@@ -410,14 +410,6 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
 
-	defer func() {
-		if c, ok := bs.(io.Closer); ok {
-			if err := c.Close(); err != nil {
-				log.Warnf("failed to close blockstore: %s", err)
-			}
-		}
-	}()
-
 	mds, err := lr.Datastore("/metadata")
 	if err != nil {
 		return err
