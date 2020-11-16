@@ -2,7 +2,6 @@ package stores
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/specs-storage/storage"
 	"io"
 	"net/http"
 	"os"
@@ -13,6 +12,8 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
+
+	"github.com/filecoin-project/specs-storage/storage"
 )
 
 var log = logging.Logger("stores")
