@@ -19,9 +19,9 @@ type apiBStore struct {
 	api ChainIO
 }
 
-var _ blockstore.LotusBlockstore = (*apiBStore)(nil)
+var _ blockstore.Blockstore = (*apiBStore)(nil)
 
-func NewAPIBlockstore(cio ChainIO) blockstore.LotusBlockstore {
+func NewAPIBlockstore(cio ChainIO) blockstore.Blockstore {
 	return &apiBStore{
 		api: cio,
 	}
@@ -75,4 +75,4 @@ func (a *apiBStore) HashOnRead(enabled bool) {
 	return
 }
 
-var _ blockstore.LotusBlockstore = &apiBStore{}
+var _ blockstore.Blockstore = &apiBStore{}

@@ -31,7 +31,7 @@ type TimedCacheBS struct {
 	doneRotatingCh   chan struct{}
 }
 
-var _ blockstore.LotusBlockstore = (*TimedCacheBS)(nil)
+var _ blockstore.Blockstore = (*TimedCacheBS)(nil)
 
 func NewTimedCacheBS(cacheTime time.Duration) *TimedCacheBS {
 	return &TimedCacheBS{

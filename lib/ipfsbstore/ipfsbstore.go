@@ -25,7 +25,7 @@ type IpfsBstore struct {
 	api iface.CoreAPI
 }
 
-var _ blockstore.Blockstore = &IpfsBstore{}
+var _ blockstore.BasicBlockstore = &IpfsBstore{}
 
 func NewIpfsBstore(ctx context.Context, onlineMode bool) (*IpfsBstore, error) {
 	localApi, err := httpapi.NewLocalApi()

@@ -71,11 +71,11 @@ func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMon
 }
 
 func FallbackChainBlockstore(cbs dtypes.ChainBlockstore) dtypes.ChainBlockstore {
-	return &blockstore.FallbackStore{LotusBlockstore: cbs}
+	return &blockstore.FallbackStore{Blockstore: cbs}
 }
 
 func FallbackStateBlockstore(sbs dtypes.StateBlockstore) dtypes.StateBlockstore {
-	return &blockstore.FallbackStore{LotusBlockstore: sbs}
+	return &blockstore.FallbackStore{Blockstore: sbs}
 }
 
 func InitFallbackBlockstores(cbs dtypes.ChainBlockstore, sbs dtypes.StateBlockstore, rem dtypes.ChainBitswap) error {

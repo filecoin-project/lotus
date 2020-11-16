@@ -46,10 +46,10 @@ type FreecacheCachingBlockstore struct {
 	blockCache  *freecache.Cache
 	existsCache *freecache.Cache
 
-	inner LotusBlockstore
+	inner Blockstore
 }
 
-var _ LotusBlockstore = (*FreecacheCachingBlockstore)(nil)
+var _ Blockstore = (*FreecacheCachingBlockstore)(nil)
 var _ Viewer = (*FreecacheCachingBlockstore)(nil)
 
 type FreecacheConfig struct {
@@ -58,7 +58,7 @@ type FreecacheConfig struct {
 	ExistsCapacity int
 }
 
-func WrapFreecacheCache(ctx context.Context, inner LotusBlockstore, config FreecacheConfig) (*FreecacheCachingBlockstore, error) {
+func WrapFreecacheCache(ctx context.Context, inner Blockstore, config FreecacheConfig) (*FreecacheCachingBlockstore, error) {
 	c := &FreecacheCachingBlockstore{
 		blockCache:  freecache.NewCache(config.BlockCapacity),
 		existsCache: freecache.NewCache(config.ExistsCapacity),

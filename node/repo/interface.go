@@ -54,7 +54,7 @@ type LockedRepo interface {
 	Datastore(namespace string) (datastore.Batching, error)
 
 	// Blockstore returns an IPLD blockstore for the requested domain.
-	Blockstore(domain BlockstoreDomain) (blockstore.LotusBlockstore, error)
+	Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error)
 
 	// Returns config in this repo
 	Config() (interface{}, error)

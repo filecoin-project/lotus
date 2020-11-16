@@ -26,18 +26,18 @@ type MetadataDS datastore.Batching
 type (
 	// BareMonolithBlockstore is the current monolithic blockstore as opened from
 	// the filesystem, with no caching on top.
-	BareMonolithBlockstore blockstore.LotusBlockstore
+	BareMonolithBlockstore blockstore.Blockstore
 
 	// ChainBlockstore is a blockstore to store chain data (tipsets, blocks,
 	// messages). It is physically backed by the BareMonolithBlockstore, but it
 	// has a cache on top that is specially tuned for chain data access
 	// patterns.
-	ChainBlockstore blockstore.LotusBlockstore
+	ChainBlockstore blockstore.Blockstore
 
 	// StateBlockstore is a blockstore to store state data (state tree). It is
 	// physically backed by the BareMonolithBlockstore, but it has a cache on
 	// top that is specially tuned for state data access patterns.
-	StateBlockstore blockstore.LotusBlockstore
+	StateBlockstore blockstore.Blockstore
 
 	// ExposedBlockstore is a blockstore that interfaces directly with the
 	// network or with users, from which queries are served, and where incoming
@@ -46,7 +46,7 @@ type (
 	// could render caches dirty (e.g. a block is added when an existence cache
 	// holds a 'false' for that block), the process should signal so by calling
 	// blockstore.AllCaches.Dirty(cid).
-	ExposedBlockstore blockstore.LotusBlockstore
+	ExposedBlockstore blockstore.Blockstore
 )
 
 type ChainBitswap exchange.Interface
@@ -54,7 +54,7 @@ type ChainBlockService bserv.BlockService
 
 type ClientMultiDstore *multistore.MultiStore
 type ClientImportMgr *importmgr.Mgr
-type ClientBlockstore blockstore.Blockstore
+type ClientBlockstore blockstore.BasicBlockstore
 type ClientDealStore *statestore.StateStore
 type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
 type ClientDatastore datastore.Batching
@@ -73,6 +73,6 @@ type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 type ProviderDataTransfer datatransfer.Manager
 
 type StagingDAG format.DAGService
-type StagingBlockstore blockstore.Blockstore
+type StagingBlockstore blockstore.BasicBlockstore
 type StagingGraphsync graphsync.GraphExchange
 type StagingMultiDstore *multistore.MultiStore

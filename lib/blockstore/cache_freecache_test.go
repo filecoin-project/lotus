@@ -20,7 +20,7 @@ type interceptedMemStore struct {
 	Sizes    []cid.Cid
 }
 
-var _ LotusBlockstore = (*interceptedMemStore)(nil)
+var _ Blockstore = (*interceptedMemStore)(nil)
 
 func (ims *interceptedMemStore) Get(cid cid.Cid) (blocks.Block, error) {
 	ims.Gets = append(ims.Gets, cid)

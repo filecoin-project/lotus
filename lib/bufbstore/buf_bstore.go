@@ -14,12 +14,12 @@ import (
 var log = logging.Logger("bufbs")
 
 type BufferedBS struct {
-	read  bstore.LotusBlockstore
-	write bstore.LotusBlockstore
+	read  bstore.Blockstore
+	write bstore.Blockstore
 }
 
-func NewBufferedBstore(base bstore.LotusBlockstore) *BufferedBS {
-	var buf bstore.LotusBlockstore
+func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
+	var buf bstore.Blockstore
 	if os.Getenv("LOTUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
 		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
 		buf = base
@@ -34,14 +34,14 @@ func NewBufferedBstore(base bstore.LotusBlockstore) *BufferedBS {
 	return bs
 }
 
-func NewTieredBstore(r bstore.LotusBlockstore, w bstore.LotusBlockstore) *BufferedBS {
+func NewTieredBstore(r bstore.Blockstore, w bstore.Blockstore) *BufferedBS {
 	return &BufferedBS{
 		read:  r,
 		write: w,
 	}
 }
 
-var _ bstore.LotusBlockstore = (*BufferedBS)(nil)
+var _ bstore.Blockstore = (*BufferedBS)(nil)
 
 func (bs *BufferedBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)
@@ -159,6 +159,6 @@ func (bs *BufferedBS) PutMany(blks []block.Block) error {
 	return bs.write.PutMany(blks)
 }
 
-func (bs *BufferedBS) Read() bstore.LotusBlockstore {
+func (bs *BufferedBS) Read() bstore.Blockstore {
 	return bs.read
 }

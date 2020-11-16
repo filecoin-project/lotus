@@ -19,8 +19,8 @@ import (
 
 // TODO: move this to go-ipfs-blockstore.
 type Suite struct {
-	NewBlockstore  func(tb testing.TB) (bs blockstore.Blockstore, path string)
-	OpenBlockstore func(tb testing.TB, path string) (bs blockstore.Blockstore, err error)
+	NewBlockstore  func(tb testing.TB) (bs blockstore.BasicBlockstore, path string)
+	OpenBlockstore func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error)
 }
 
 func (s *Suite) RunTests(t *testing.T, prefix string) {
@@ -289,7 +289,7 @@ func (s *Suite) TestDelete(t *testing.T) {
 
 }
 
-func insertBlocks(t *testing.T, bs blockstore.Blockstore, count int) []cid.Cid {
+func insertBlocks(t *testing.T, bs blockstore.BasicBlockstore, count int) []cid.Cid {
 	keys := make([]cid.Cid, count)
 	for i := 0; i < count; i++ {
 		block := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))

@@ -33,28 +33,28 @@ func NewTemporarySync() *SyncStore {
 // WrapIDStore wraps the underlying blockstore in an identity blockstore.
 // The identity blockstore resolves inlined CIDs immediately, without querying
 // the underlying blockstore.
-func WrapIDStore(bstore blockstore.Blockstore) LotusBlockstore {
+func WrapIDStore(bstore blockstore.Blockstore) Blockstore {
 	idstore := blockstore.NewIdStore(bstore)
-	if lbs, ok := idstore.(LotusBlockstore); ok {
+	if lbs, ok := idstore.(Blockstore); ok {
 		return lbs
 	}
 	panic("expected IdStore to implement LotusBlockstore")
 }
 
 // NewFromDatastore creates a new blockstore wrapped by the given datastore.
-func NewFromDatastore(dstore ds.Batching) LotusBlockstore {
+func NewFromDatastore(dstore ds.Batching) Blockstore {
 	return WrapIDStore(blockstore.NewBlockstore(dstore))
 }
 
-// LotusBlockstore is a standard blockstore enhanced with a view operaiton
+// Blockstore is a standard blockstore enhanced with a view operation
 // (zero-copy access to values), and potentially with cache management
 // operations, or others, in the future.
-type LotusBlockstore interface {
-	Blockstore
+type Blockstore interface {
+	BasicBlockstore
 	Viewer
 }
 
-type Blockstore = blockstore.Blockstore
+type BasicBlockstore = blockstore.Blockstore
 type Viewer = blockstore.Viewer
 type CacheOpts = blockstore.CacheOpts
 

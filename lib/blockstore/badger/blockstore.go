@@ -94,7 +94,7 @@ type Blockstore struct {
 	prefixLen int
 }
 
-var _ blockstore.LotusBlockstore = (*Blockstore)(nil)
+var _ blockstore.Blockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 

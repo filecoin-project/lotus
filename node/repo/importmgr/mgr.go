@@ -16,7 +16,7 @@ type Mgr struct {
 	mds *multistore.MultiStore
 	ds  datastore.Batching
 
-	Blockstore blockstore.Blockstore
+	Blockstore blockstore.BasicBlockstore
 }
 
 type Label string

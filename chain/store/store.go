@@ -107,11 +107,11 @@ type HeadChangeEvt struct {
 //   1. a tipset cache
 //   2. a block => messages references cache.
 type ChainStore struct {
-	chainBlockstore bstore.LotusBlockstore
-	stateBlockstore bstore.LotusBlockstore
+	chainBlockstore bstore.Blockstore
+	stateBlockstore bstore.Blockstore
 	metadataDs      dstore.Batching
 
-	chainLocalBlockstore bstore.LotusBlockstore
+	chainLocalBlockstore bstore.Blockstore
 
 	heaviestLk sync.Mutex
 	heaviest   *types.TipSet
@@ -137,7 +137,7 @@ type ChainStore struct {
 }
 
 // chainLocalBlockstore is guaranteed to fail Get* if requested block isn't stored locally
-func NewChainStore(chainBs bstore.LotusBlockstore, stateBs bstore.LotusBlockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -747,7 +747,7 @@ type storable interface {
 	ToStorageBlock() (block.Block, error)
 }
 
-func PutMessage(bs bstore.LotusBlockstore, m storable) (cid.Cid, error) {
+func PutMessage(bs bstore.Blockstore, m storable) (cid.Cid, error) {
 	b, err := m.ToStorageBlock()
 	if err != nil {
 		return cid.Undef, err
@@ -1108,18 +1108,18 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 // ChainBlockstore returns the chain blockstore. Currently the chain and state
 // // stores are both backed by the same physical store, albeit with different
 // // caching policies, but in the future they will segregate.
-func (cs *ChainStore) ChainBlockstore() bstore.LotusBlockstore {
+func (cs *ChainStore) ChainBlockstore() bstore.Blockstore {
 	return cs.chainBlockstore
 }
 
 // StateBlockstore returns the state blockstore. Currently the chain and state
 // stores are both backed by the same physical store, albeit with different
 // caching policies, but in the future they will segregate.
-func (cs *ChainStore) StateBlockstore() bstore.LotusBlockstore {
+func (cs *ChainStore) StateBlockstore() bstore.Blockstore {
 	return cs.stateBlockstore
 }
 
-func ActorStore(ctx context.Context, bs bstore.LotusBlockstore) adt.Store {
+func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
 }
 
@@ -1276,7 +1276,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	return cs.LoadTipSet(lbts.Parents())
 }
 
-func recurseLinks(bs bstore.LotusBlockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return in, nil
 	}

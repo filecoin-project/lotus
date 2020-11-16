@@ -172,7 +172,7 @@ var importBenchCmd = &cli.Command{
 
 		var (
 			ds  datastore.Batching
-			bs  blockstore.LotusBlockstore
+			bs  blockstore.Blockstore
 			err error
 		)
 

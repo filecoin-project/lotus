@@ -259,7 +259,7 @@ type fsLockedRepo struct {
 	dsErr  error
 	dsOnce sync.Once
 
-	bs     blockstore.LotusBlockstore
+	bs     blockstore.Blockstore
 	bsErr  error
 	bsOnce sync.Once
 
@@ -298,7 +298,7 @@ func (fsr *fsLockedRepo) Close() error {
 }
 
 // Blockstore returns a blockstore for the provided data domain.
-func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.LotusBlockstore, error) {
+func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error) {
 	if domain != BlockstoreMonolith {
 		return nil, ErrInvalidBlockstoreDomain
 	}
