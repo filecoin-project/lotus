@@ -1422,7 +1422,7 @@ Response:
   "ToUpgrade": true,
   "LastErr": "string value",
   "Log": null,
-  "SealProof": 3,
+  "SealProof": 8,
   "Activation": 10101,
   "Expiration": 10101,
   "DealWeight": "0",
