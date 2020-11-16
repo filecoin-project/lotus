@@ -59,6 +59,10 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	return ctx.Send(SectorPacked{FillerPieces: fillerPieces})
 }
 
+func checkTicketExpired(sector SectorInfo, epoch abi.ChainEpoch) bool {
+	return epoch-sector.TicketEpoch > MaxTicketAge // TODO: allow configuring expected seal durations
+}
+
 func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, error) {
 	tok, epoch, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
@@ -79,6 +83,10 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 
 	if pci != nil {
 		ticketEpoch = pci.Info.SealRandEpoch
+	}
+
+	if checkTicketExpired(sector, ticketEpoch) {
+		return nil, 0, xerrors.Errorf("ticket expired for precommitted sector")
 	}
 
 	rand, err := m.api.ChainGetRandomnessFromTickets(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
@@ -132,25 +140,14 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		}
 	}
 
-	tok, height, err := m.api.ChainHead(ctx.Context())
+	_, height, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
 		return nil
 	}
 
-	if height-sector.TicketEpoch > MaxTicketAge {
-		pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
-		if err != nil {
-			log.Errorf("getting precommit info: %+v", err)
-		}
-
-		if pci == nil {
-			return ctx.Send(SectorOldTicket{}) // go get new ticket
-		}
-
-		// TODO: allow configuring expected seal durations, if we're here, it's
-		//  pretty unlikely that we'll precommit on time (unless the miner
-		//  process has just restarted and the worker had the result ready)
+	if checkTicketExpired(sector, height) {
+		return ctx.Send(SectorOldTicket{}) // go get new ticket
 	}
 
 	pc1o, err := m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.TicketValue, sector.pieceInfos())
