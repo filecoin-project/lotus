@@ -194,9 +194,10 @@ func (c *FreecacheCachingBlockstore) Evict(cid cid.Cid) {
 
 func (c *FreecacheCachingBlockstore) GetSize(cid cid.Cid) (int, error) {
 	k := []byte(cid.Hash())
-	// check the has cache.
-	if has, err := c.existsCache.Get(k); err == nil && has[0] == HasFalse {
-		// we know we don't have the item; short-circuit.
+	// try the cache.
+	if val, have, conclusive := c.cachedVal(k); conclusive && have {
+		return len(val), nil
+	} else if conclusive && !have {
 		return -1, ErrNotFound
 	}
 	res, err := c.inner.GetSize(cid)
