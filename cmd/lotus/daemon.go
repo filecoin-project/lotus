@@ -421,7 +421,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 
 	cst := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
-	defer cst.Close()
+	defer cst.Close() //nolint:errcheck
 
 	log.Infof("importing chain from %s...", fname)
 
