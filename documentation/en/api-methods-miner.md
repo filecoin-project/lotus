@@ -53,6 +53,9 @@
   * [NetBandwidthStats](#NetBandwidthStats)
   * [NetBandwidthStatsByPeer](#NetBandwidthStatsByPeer)
   * [NetBandwidthStatsByProtocol](#NetBandwidthStatsByProtocol)
+  * [NetBlockAdd](#NetBlockAdd)
+  * [NetBlockList](#NetBlockList)
+  * [NetBlockRemove](#NetBlockRemove)
   * [NetConnect](#NetConnect)
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
@@ -797,6 +800,58 @@ Response:
   }
 }
 ```
+
+### NetBlockAdd
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Peers": null,
+    "IPAddrs": null,
+    "IPSubnets": null
+  }
+]
+```
+
+Response: `{}`
+
+### NetBlockList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Peers": null,
+  "IPAddrs": null,
+  "IPSubnets": null
+}
+```
+
+### NetBlockRemove
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Peers": null,
+    "IPAddrs": null,
+    "IPSubnets": null
+  }
+]
+```
+
+Response: `{}`
 
 ### NetConnect
 
