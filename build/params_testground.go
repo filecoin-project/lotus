@@ -98,7 +98,8 @@ var (
 	NewestNetworkVersion       = network.Version8
 	ActorUpgradeNetworkVersion = network.Version4
 
-	Devnet = true
+	Devnet      = true
+	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 )
 
 const BootstrapPeerThreshold = 1
