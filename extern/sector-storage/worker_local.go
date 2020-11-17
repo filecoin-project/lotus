@@ -90,7 +90,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 
 	go func() {
 		for _, call := range unfinished {
-			err := xerrors.Errorf("worker restarted")
+			err := storiface.Err(storiface.ErrTempWorkerRestart, xerrors.New("worker restarted"))
 
 			// TODO: Handle restarting PC1 once support is merged
 
@@ -166,15 +166,15 @@ const (
 
 // in: func(WorkerReturn, context.Context, CallID, err string)
 // in: func(WorkerReturn, context.Context, CallID, ret T, err string)
-func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, error) error {
+func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, *storiface.CallError) error {
 	rf := reflect.ValueOf(in)
 	ft := rf.Type()
 	withRet := ft.NumIn() == 5
 
-	return func(ctx context.Context, ci storiface.CallID, wr storiface.WorkerReturn, i interface{}, err error) error {
+	return func(ctx context.Context, ci storiface.CallID, wr storiface.WorkerReturn, i interface{}, err *storiface.CallError) error {
 		rctx := reflect.ValueOf(ctx)
 		rwr := reflect.ValueOf(wr)
-		rerr := reflect.ValueOf(errstr(err))
+		rerr := reflect.ValueOf(err)
 		rci := reflect.ValueOf(ci)
 
 		var ro []reflect.Value
@@ -198,7 +198,7 @@ func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.Wor
 	}
 }
 
-var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, error) error{
+var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, *storiface.CallError) error{
 	AddPiece:        rfunc(storiface.WorkerReturn.ReturnAddPiece),
 	SealPreCommit1:  rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
 	SealPreCommit2:  rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
@@ -245,7 +245,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector storage.SectorRef, r
 			}
 		}
 
-		if doReturn(ctx, rt, ci, l.ret, res, err) {
+		if doReturn(ctx, rt, ci, l.ret, res, toCallError(err)) {
 			if err := l.ct.onReturned(ci); err != nil {
 				log.Errorf("tracking call (done): %+v", err)
 			}
@@ -255,8 +255,17 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector storage.SectorRef, r
 	return ci, nil
 }
 
+func toCallError(err error) *storiface.CallError {
+	var serr *storiface.CallError
+	if err != nil && !xerrors.As(err, &serr) {
+		serr = storiface.Err(storiface.ErrUnknown, err)
+	}
+
+	return serr
+}
+
 // doReturn tries to send the result to manager, returns true if successful
-func doReturn(ctx context.Context, rt ReturnType, ci storiface.CallID, ret storiface.WorkerReturn, res interface{}, rerr error) bool {
+func doReturn(ctx context.Context, rt ReturnType, ci storiface.CallID, ret storiface.WorkerReturn, res interface{}, rerr *storiface.CallError) bool {
 	for {
 		err := returnFunc[rt](ctx, ci, ret, res, rerr)
 		if err == nil {
@@ -277,14 +286,6 @@ func doReturn(ctx context.Context, rt ReturnType, ci storiface.CallID, ret stori
 	}
 
 	return true
-}
-
-func errstr(err error) string {
-	if err != nil {
-		return err.Error()
-	}
-
-	return ""
 }
 
 func (l *LocalWorker) NewSector(ctx context.Context, sector storage.SectorRef) error {

@@ -233,6 +233,7 @@ func init() {
 			CpuUse:     0,
 		},
 	})
+	addExample(storiface.ErrorCode(0))
 
 	// worker specific
 	addExample(storiface.AcquireMove)
