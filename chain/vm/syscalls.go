@@ -7,6 +7,10 @@ import (
 	goruntime "runtime"
 	"sync"
 
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -40,7 +44,9 @@ func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
 	return func(ctx context.Context, rt *Runtime) runtime2.Syscalls {
 
 		return &syscallShim{
-			ctx: ctx,
+			ctx:            ctx,
+			epoch:          rt.CurrEpoch(),
+			networkVersion: rt.NetworkVersion(),
 
 			actor:   rt.Receiver(),
 			cstate:  rt.state,
@@ -55,11 +61,13 @@ func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
 type syscallShim struct {
 	ctx context.Context
 
-	lbState  LookbackStateGetter
-	actor    address.Address
-	cstate   *state.StateTree
-	cst      cbor.IpldStore
-	verifier ffiwrapper.Verifier
+	epoch          abi.ChainEpoch
+	networkVersion network.Version
+	lbState        LookbackStateGetter
+	actor          address.Address
+	cstate         *state.StateTree
+	cst            cbor.IpldStore
+	verifier       ffiwrapper.Verifier
 }
 
 func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
@@ -202,6 +210,10 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 }
 
 func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch) (address.Address, error) {
+	if ss.networkVersion >= network.Version7 && height < ss.epoch-policy.ChainFinality {
+		return address.Undef, xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", ss.epoch, height)
+	}
+
 	lbState, err := ss.lbState(ss.ctx, height)
 	if err != nil {
 		return address.Undef, err
