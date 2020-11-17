@@ -90,16 +90,49 @@ type WorkerCalls interface {
 	Fetch(context.Context, storage.SectorRef, SectorFileType, PathType, AcquireMode) (CallID, error)
 }
 
+type ErrorCode int
+
+const (
+	ErrUnknown ErrorCode = iota
+)
+
+const (
+	// Temp Errors
+	ErrTempUnknown ErrorCode = iota + 100
+	ErrTempWorkerRestart
+	ErrTempAllocateSpace
+)
+
+type CallError struct {
+	Code ErrorCode
+	Sub  error
+}
+
+func (c *CallError) Error() string {
+	return fmt.Sprintf("storage call error %d: %s", c.Code, c.Sub.Error())
+}
+
+func (c *CallError) Unwrap() error {
+	return c.Sub
+}
+
+func Err(code ErrorCode, sub error) *CallError {
+	return &CallError{
+		Code: code,
+		Sub:  sub,
+	}
+}
+
 type WorkerReturn interface {
-	ReturnAddPiece(ctx context.Context, callID CallID, pi abi.PieceInfo, err string) error
-	ReturnSealPreCommit1(ctx context.Context, callID CallID, p1o storage.PreCommit1Out, err string) error
-	ReturnSealPreCommit2(ctx context.Context, callID CallID, sealed storage.SectorCids, err string) error
-	ReturnSealCommit1(ctx context.Context, callID CallID, out storage.Commit1Out, err string) error
-	ReturnSealCommit2(ctx context.Context, callID CallID, proof storage.Proof, err string) error
-	ReturnFinalizeSector(ctx context.Context, callID CallID, err string) error
-	ReturnReleaseUnsealed(ctx context.Context, callID CallID, err string) error
-	ReturnMoveStorage(ctx context.Context, callID CallID, err string) error
-	ReturnUnsealPiece(ctx context.Context, callID CallID, err string) error
-	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err string) error
-	ReturnFetch(ctx context.Context, callID CallID, err string) error
+	ReturnAddPiece(ctx context.Context, callID CallID, pi abi.PieceInfo, err *CallError) error
+	ReturnSealPreCommit1(ctx context.Context, callID CallID, p1o storage.PreCommit1Out, err *CallError) error
+	ReturnSealPreCommit2(ctx context.Context, callID CallID, sealed storage.SectorCids, err *CallError) error
+	ReturnSealCommit1(ctx context.Context, callID CallID, out storage.Commit1Out, err *CallError) error
+	ReturnSealCommit2(ctx context.Context, callID CallID, proof storage.Proof, err *CallError) error
+	ReturnFinalizeSector(ctx context.Context, callID CallID, err *CallError) error
+	ReturnReleaseUnsealed(ctx context.Context, callID CallID, err *CallError) error
+	ReturnMoveStorage(ctx context.Context, callID CallID, err *CallError) error
+	ReturnUnsealPiece(ctx context.Context, callID CallID, err *CallError) error
+	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err *CallError) error
+	ReturnFetch(ctx context.Context, callID CallID, err *CallError) error
 }

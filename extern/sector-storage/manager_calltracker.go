@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -350,15 +349,12 @@ func (m *Manager) waitCall(ctx context.Context, callID storiface.CallID) (interf
 	}
 }
 
-func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr string) error {
-	var err error
-	if serr != "" {
-		err = errors.New(serr)
-	}
-
+func (m *Manager) returnResult(callID storiface.CallID, r interface{}, cerr *storiface.CallError) error {
 	res := result{
-		r:   r,
-		err: err,
+		r: r,
+	}
+	if cerr != nil {
+		res.err = cerr
 	}
 
 	m.sched.workTracker.onDone(callID)
@@ -392,7 +388,7 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 
 	m.results[wid] = res
 
-	err = m.work.Get(wid).Mutate(func(ws *WorkState) error {
+	err := m.work.Get(wid).Mutate(func(ws *WorkState) error {
 		ws.Status = wsDone
 		return nil
 	})
@@ -416,5 +412,6 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, serr stri
 }
 
 func (m *Manager) Abort(ctx context.Context, call storiface.CallID) error {
-	return m.returnResult(call, nil, "task aborted")
+	// TODO: Allow temp error
+	return m.returnResult(call, nil, storiface.Err(storiface.ErrUnknown, xerrors.New("task aborted")))
 }

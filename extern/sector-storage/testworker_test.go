@@ -61,7 +61,7 @@ func (t *testWorker) asyncCall(sector storage.SectorRef, work func(ci storiface.
 func (t *testWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
 	return t.asyncCall(sector, func(ci storiface.CallID) {
 		p, err := t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
-		if err := t.ret.ReturnAddPiece(ctx, ci, p, errstr(err)); err != nil {
+		if err := t.ret.ReturnAddPiece(ctx, ci, p, toCallError(err)); err != nil {
 			log.Error(err)
 		}
 	})
@@ -79,7 +79,7 @@ func (t *testWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRe
 		defer t.pc1lk.Unlock()
 
 		p1o, err := t.mockSeal.SealPreCommit1(ctx, sector, ticket, pieces)
-		if err := t.ret.ReturnSealPreCommit1(ctx, ci, p1o, errstr(err)); err != nil {
+		if err := t.ret.ReturnSealPreCommit1(ctx, ci, p1o, toCallError(err)); err != nil {
 			log.Error(err)
 		}
 	})
@@ -87,7 +87,7 @@ func (t *testWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRe
 
 func (t *testWorker) Fetch(ctx context.Context, sector storage.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	return t.asyncCall(sector, func(ci storiface.CallID) {
-		if err := t.ret.ReturnFetch(ctx, ci, ""); err != nil {
+		if err := t.ret.ReturnFetch(ctx, ci, nil); err != nil {
 			log.Error(err)
 		}
 	})
