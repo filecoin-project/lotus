@@ -987,7 +987,10 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   },
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1008,7 +1011,10 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1029,7 +1035,10 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1050,7 +1059,10 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1072,7 +1084,10 @@ Inputs:
     "ID": "07070707-0707-0707-0707-070707070707"
   },
   true,
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1093,7 +1108,10 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1115,7 +1133,10 @@ Inputs:
     "ID": "07070707-0707-0707-0707-070707070707"
   },
   null,
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1137,7 +1158,10 @@ Inputs:
     "ID": "07070707-0707-0707-0707-070707070707"
   },
   null,
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1159,7 +1183,10 @@ Inputs:
     "ID": "07070707-0707-0707-0707-070707070707"
   },
   null,
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1188,7 +1215,10 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   },
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
@@ -1209,7 +1239,10 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
-  "string value"
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
 ]
 ```
 
