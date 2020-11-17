@@ -90,10 +90,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 
 	go func() {
 		for _, call := range unfinished {
-			err := &storiface.CallError{
-				Sub:  xerrors.New("worker restarted"),
-				Code: storiface.ErrTempWorkerRestart,
-			}
+			err := storiface.Err(storiface.ErrTempWorkerRestart, xerrors.New("worker restarted"))
 
 			// TODO: Handle restarting PC1 once support is merged
 
@@ -261,10 +258,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector storage.SectorRef, r
 func toCallError(err error) *storiface.CallError {
 	var serr *storiface.CallError
 	if err != nil && !xerrors.As(err, &serr) {
-		serr = &storiface.CallError{
-			Sub:  err,
-			Code: storiface.ErrUnknown,
-		}
+		serr = storiface.Err(storiface.ErrUnknown, err)
 	}
 
 	return serr

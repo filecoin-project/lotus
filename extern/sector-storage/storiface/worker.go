@@ -2,6 +2,7 @@ package storiface
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -104,22 +105,29 @@ const (
 )
 
 type CallError struct {
-	Code ErrorCode
-	Sub  error
+	Code    ErrorCode
+	Message string
+	sub     error
 }
 
 func (c *CallError) Error() string {
-	return fmt.Sprintf("storage call error %d: %s", c.Code, c.Sub.Error())
+	return fmt.Sprintf("storage call error %d: %s", c.Code, c.Message)
 }
 
 func (c *CallError) Unwrap() error {
-	return c.Sub
+	if c.sub != nil {
+		return c.sub
+	}
+
+	return errors.New(c.Message)
 }
 
 func Err(code ErrorCode, sub error) *CallError {
 	return &CallError{
-		Code: code,
-		Sub:  sub,
+		Code:    code,
+		Message: sub.Error(),
+
+		sub: sub,
 	}
 }
 
