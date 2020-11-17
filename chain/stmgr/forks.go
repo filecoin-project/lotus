@@ -97,6 +97,10 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeCalicoHeight,
 		Network:   network.Version7,
 		Migration: UpgradeCalico,
+	}, {
+		Height:    build.UpgradePersianHeight,
+		Network:   network.Version8,
+		Migration: nil,
 	}}
 
 	if build.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
@@ -661,20 +665,27 @@ func UpgradeLiftoff(ctx context.Context, sm *StateManager, cb ExecCallback, root
 
 func UpgradeCalico(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	store := sm.cs.Store(ctx)
-	info, err := store.Put(ctx, new(types.StateInfo0))
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create new state info for actors v2: %w", err)
+	var stateRoot types.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
 	}
 
-	newHamtRoot, err := nv7.MigrateStateTree(ctx, store, root, epoch, nv7.DefaultConfig())
+	if stateRoot.Version != types.StateTreeVersion1 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 1 for calico upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	newHamtRoot, err := nv7.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, nv7.DefaultConfig())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("running nv7 migration: %w", err)
 	}
 
 	newRoot, err := store.Put(ctx, &types.StateRoot{
-		Version: types.StateTreeVersion1,
+		Version: stateRoot.Version,
 		Actors:  newHamtRoot,
-		Info:    info,
+		Info:    stateRoot.Info,
 	})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)

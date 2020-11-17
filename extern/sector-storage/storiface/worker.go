@@ -77,17 +77,17 @@ var _ fmt.Stringer = &CallID{}
 var UndefCall CallID
 
 type WorkerCalls interface {
-	AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (CallID, error)
-	SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
-	SealPreCommit2(ctx context.Context, sector abi.SectorID, pc1o storage.PreCommit1Out) (CallID, error)
-	SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (CallID, error)
-	SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (CallID, error)
-	FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) (CallID, error)
-	ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) (CallID, error)
-	MoveStorage(ctx context.Context, sector abi.SectorID, types SectorFileType) (CallID, error)
-	UnsealPiece(context.Context, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
-	ReadPiece(context.Context, io.Writer, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize) (CallID, error)
-	Fetch(context.Context, abi.SectorID, SectorFileType, PathType, AcquireMode) (CallID, error)
+	AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (CallID, error)
+	SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
+	SealPreCommit2(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (CallID, error)
+	SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (CallID, error)
+	SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (CallID, error)
+	FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (CallID, error)
+	ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (CallID, error)
+	MoveStorage(ctx context.Context, sector storage.SectorRef, types SectorFileType) (CallID, error)
+	UnsealPiece(context.Context, storage.SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
+	ReadPiece(context.Context, io.Writer, storage.SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize) (CallID, error)
+	Fetch(context.Context, storage.SectorRef, SectorFileType, PathType, AcquireMode) (CallID, error)
 }
 
 type WorkerReturn interface {

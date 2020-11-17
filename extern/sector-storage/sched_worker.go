@@ -294,7 +294,7 @@ func (sw *schedWorker) workerCompactWindows() {
 			var moved []int
 
 			for ti, todo := range window.todo {
-				needRes := ResourceTable[todo.taskType][sw.sched.spt]
+				needRes := ResourceTable[todo.taskType][todo.sector.ProofType]
 				if !lower.allocated.canHandleRequest(needRes, sw.wid, "compactWindows", worker.info.Resources) {
 					continue
 				}
@@ -350,7 +350,7 @@ assignLoop:
 
 			worker.lk.Lock()
 			for t, todo := range firstWindow.todo {
-				needRes := ResourceTable[todo.taskType][sw.sched.spt]
+				needRes := ResourceTable[todo.taskType][todo.sector.ProofType]
 				if worker.preparing.canHandleRequest(needRes, sw.wid, "startPreparing", worker.info.Resources) {
 					tidx = t
 					break
@@ -364,7 +364,7 @@ assignLoop:
 
 			todo := firstWindow.todo[tidx]
 
-			log.Debugf("assign worker sector %d", todo.sector.Number)
+			log.Debugf("assign worker sector %d", todo.sector.ID.Number)
 			err := sw.startProcessingTask(sw.taskDone, todo)
 
 			if err != nil {
@@ -389,7 +389,7 @@ assignLoop:
 func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRequest) error {
 	w, sh := sw.worker, sw.sched
 
-	needRes := ResourceTable[req.taskType][sh.spt]
+	needRes := ResourceTable[req.taskType][req.sector.ProofType]
 
 	w.lk.Lock()
 	w.preparing.add(w.info.Resources, needRes)
