@@ -83,9 +83,9 @@ func VersionForType(nodeType NodeType) (Version, error) {
 
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion   = newVer(0, 17, 0)
-	MinerAPIVersion  = newVer(0, 18, 0)
-	WorkerAPIVersion = newVer(0, 17, 0)
+	FullAPIVersion   = newVer(1, 0, 0)
+	MinerAPIVersion  = newVer(1, 0, 0)
+	WorkerAPIVersion = newVer(1, 0, 0)
 )
 
 //nolint:varcheck,deadcode
