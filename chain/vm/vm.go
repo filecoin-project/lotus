@@ -608,6 +608,8 @@ func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorErr
 	return act.Balance, nil
 }
 
+type vmFlushKey struct{}
+
 func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	_, span := trace.StartSpan(ctx, "vm.Flush")
 	defer span.End()
@@ -620,7 +622,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := Copy(context.WithValue(ctx, "vm-flush", true), from, to, root); err != nil {
+	if err := Copy(context.WithValue(ctx, vmFlushKey{}, true), from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
@@ -740,7 +742,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 		trace.Int64Attribute("numBlocks", int64(numBlocks)),
 		trace.Int64Attribute("copySize", int64(totalCopySize)),
 	)
-	if yes, ok := ctx.Value("vm-flush").(bool); yes && ok {
+	if yes, ok := ctx.Value(vmFlushKey{}).(bool); yes && ok {
 		took := metrics.SinceInMilliseconds(start)
 		stats.Record(ctx, metrics.VMFlushCopyCount.M(int64(numBlocks)), metrics.VMFlushCopyDuration.M(took))
 	}
