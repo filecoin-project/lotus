@@ -47,6 +47,10 @@ import (
 type UpgradeFunc func(ctx context.Context, sm *StateManager, cb ExecCallback, oldState cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (newState cid.Cid, err error)
 
 type Upgrade struct {
+	Codename string
+
+	// Height is the height at which the upgrade kicks in, but it won't be
+	// considered active until the next epoch.
 	Height    abi.ChainEpoch
 	Network   network.Version
 	Expensive bool
@@ -59,34 +63,46 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 	var us UpgradeSchedule
 
 	updates := []Upgrade{{
+		Codename: "genesis",
+		Height:   0,
+		Network:  network.Version0,
+	}, {
+		Codename:  "breeze",
 		Height:    build.UpgradeBreezeHeight,
 		Network:   network.Version1,
 		Migration: UpgradeFaucetBurnRecovery,
 	}, {
+		Codename:  "smoke",
 		Height:    build.UpgradeSmokeHeight,
 		Network:   network.Version2,
 		Migration: nil,
 	}, {
+		Codename:  "ignition",
 		Height:    build.UpgradeIgnitionHeight,
 		Network:   network.Version3,
 		Migration: UpgradeIgnition,
 	}, {
+		Codename:  "refuel",
 		Height:    build.UpgradeRefuelHeight,
 		Network:   network.Version3,
 		Migration: UpgradeRefuel,
 	}, {
+		Codename:  "actorsv2",
 		Height:    build.UpgradeActorsV2Height,
 		Network:   network.Version4,
 		Expensive: true,
 		Migration: UpgradeActorsV2,
 	}, {
-		Height:  build.UpgradeTapeHeight,
-		Network: network.Version5,
+		Codename: "tape",
+		Height:   build.UpgradeTapeHeight,
+		Network:  network.Version5,
 	}, {
+		Codename:  "liftoff",
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version5,
 		Migration: UpgradeLiftoff,
 	}, {
+		Codename:  "kumquat",
 		Height:    build.UpgradeKumquatHeight,
 		Network:   network.Version6,
 		Migration: nil,
@@ -94,22 +110,27 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 
 	if build.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
 		updates = []Upgrade{{
+			Codename:  "breeze",
 			Height:    build.UpgradeBreezeHeight,
 			Network:   network.Version1,
 			Migration: UpgradeFaucetBurnRecovery,
 		}, {
+			Codename:  "smoke",
 			Height:    build.UpgradeSmokeHeight,
 			Network:   network.Version2,
 			Migration: nil,
 		}, {
+			Codename:  "ignition",
 			Height:    build.UpgradeIgnitionHeight,
 			Network:   network.Version3,
 			Migration: UpgradeIgnition,
 		}, {
+			Codename:  "refuel",
 			Height:    build.UpgradeRefuelHeight,
 			Network:   network.Version3,
 			Migration: UpgradeRefuel,
 		}, {
+			Codename:  "liftoff",
 			Height:    build.UpgradeLiftoffHeight,
 			Network:   network.Version3,
 			Migration: UpgradeLiftoff,
@@ -151,6 +172,17 @@ func (us UpgradeSchedule) Validate() error {
 		}
 	}
 	return nil
+}
+
+// ActiveAtHeight returns the Upgrade that was active at a given height.
+func (us UpgradeSchedule) ActiveAtHeight(height abi.ChainEpoch) Upgrade {
+	for i, v := range us {
+		if height < (v.Height + 1) { // + 1 because an upgrade is not considered active until the next epoch.
+			// found the cutoff, return previous.
+			return us[i-1]
+		}
+	}
+	return us[len(us)-1]
 }
 
 func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecCallback, ts *types.TipSet) (cid.Cid, error) {
@@ -567,7 +599,6 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 }
 
 func UpgradeRefuel(ctx context.Context, sm *StateManager, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-
 	store := sm.cs.Store(ctx)
 	tree, err := sm.StateTree(root)
 	if err != nil {

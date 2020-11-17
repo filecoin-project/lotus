@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -22,6 +23,7 @@ import (
 	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -315,5 +317,24 @@ func TestForkRefuseCall(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, ret.MsgRct.ExitCode.IsSuccess())
 		}
+	}
+}
+
+func TestUpgradeSchedule_ActiveAtHeight(t *testing.T) {
+	us := DefaultUpgradeSchedule()
+	if height := abi.ChainEpoch(100); us.ActiveAtHeight(height).Codename != "genesis" {
+		t.Fatal("expected genesis codename")
+	}
+
+	if height := abi.ChainEpoch(build.UpgradeBreezeHeight + 1); us.ActiveAtHeight(height).Codename != "breeze" {
+		t.Fatal("expected breeze codename")
+	}
+
+	if height := build.UpgradeActorsV2Height + 1; us.ActiveAtHeight(height).Codename != "actorsv2" {
+		t.Fatal("expected actorsv2 codename")
+	}
+
+	if height := abi.ChainEpoch(math.MaxInt64); us.ActiveAtHeight(height).Codename != us[len(us)-1].Codename {
+		t.Fatal("expected last codename")
 	}
 }

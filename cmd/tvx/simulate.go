@@ -16,6 +16,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/conformance"
 )
@@ -162,7 +163,7 @@ func runSimulateCmd(_ *cli.Context) error {
 		return err
 	}
 
-	codename := GetProtocolCodename(epoch)
+	codename := stmgr.DefaultUpgradeSchedule().ActiveAtHeight(epoch).Codename
 
 	// Write out the test vector.
 	vector := schema.TestVector{
