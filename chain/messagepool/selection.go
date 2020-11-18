@@ -21,6 +21,8 @@ import (
 
 var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
 
+var MaxBlockMessages = 16000
+
 // this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
 // away in the next fork.
 func allowNegativeChains(epoch abi.ChainEpoch) bool {
@@ -43,7 +45,7 @@ type msgChain struct {
 	prev         *msgChain
 }
 
-func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -54,10 +56,20 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) ([]*types.Si
 	// than any other block, then we don't bother with optimal selection because the
 	// first block will always have higher effective performance
 	if tq > 0.84 {
-		return mp.selectMessagesGreedy(mp.curTs, ts)
+		msgs, err = mp.selectMessagesGreedy(mp.curTs, ts)
+	} else {
+		msgs, err = mp.selectMessagesOptimal(mp.curTs, ts, tq)
 	}
 
-	return mp.selectMessagesOptimal(mp.curTs, ts, tq)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(msgs) > MaxBlockMessages {
+		msgs = msgs[:MaxBlockMessages]
+	}
+
+	return msgs, nil
 }
 
 func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
