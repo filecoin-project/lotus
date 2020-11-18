@@ -109,7 +109,7 @@ var OneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
 var OneFull = DefaultFullOpts(1)
 var TwoFull = DefaultFullOpts(2)
 
-var FullNodeWithUpgradeAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
+var FullNodeWithActorsV2At = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 	return FullNodeOpts{
 		Opts: func(nodes []TestNode) node.Option {
 			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
@@ -117,6 +117,25 @@ var FullNodeWithUpgradeAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 				Network:   network.Version5,
 				Height:    upgradeHeight,
 				Migration: stmgr.UpgradeActorsV2,
+			}})
+		},
+	}
+}
+
+var FullNodeWithSDRAt = func(calico, persian abi.ChainEpoch) FullNodeOpts {
+	return FullNodeOpts{
+		Opts: func(nodes []TestNode) node.Option {
+			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
+				Network:   network.Version6,
+				Height:    1,
+				Migration: stmgr.UpgradeActorsV2,
+			}, {
+				Network:   network.Version7,
+				Height:    calico,
+				Migration: stmgr.UpgradeCalico,
+			}, {
+				Network: network.Version8,
+				Height:  persian,
 			}})
 		},
 	}

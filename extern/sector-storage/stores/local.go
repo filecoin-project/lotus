@@ -14,6 +14,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -325,7 +326,12 @@ func (st *Local) reportStorage(ctx context.Context) {
 	}
 }
 
-func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
+func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
+	ssize, err := sid.ProofType.SectorSize()
+	if err != nil {
+		return nil, err
+	}
+
 	st.localLk.Lock()
 
 	done := func() {}
@@ -355,7 +361,7 @@ func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, ssize abi.Sector
 		overhead := int64(overheadTab[fileType]) * int64(ssize) / storiface.FSOverheadDen
 
 		if stat.Available < overhead {
-			return nil, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available)
+			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
 		}
 
 		p.reserved += overhead
@@ -375,9 +381,14 @@ func (st *Local) Reserve(ctx context.Context, sid abi.SectorID, ssize abi.Sector
 	return done, nil
 }
 
-func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
+func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
 	if existing|allocate != existing^allocate {
 		return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.New("can't both find and allocate a sector")
+	}
+
+	ssize, err := sid.ProofType.SectorSize()
+	if err != nil {
+		return storiface.SectorPaths{}, storiface.SectorPaths{}, err
 	}
 
 	st.localLk.RLock()
@@ -391,7 +402,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, ssize abi.
 			continue
 		}
 
-		si, err := st.index.StorageFindSector(ctx, sid, fileType, ssize, false)
+		si, err := st.index.StorageFindSector(ctx, sid.ID, fileType, ssize, false)
 		if err != nil {
 			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
 			continue
@@ -407,7 +418,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, ssize abi.
 				continue
 			}
 
-			spath := p.sectorPath(sid, fileType)
+			spath := p.sectorPath(sid.ID, fileType)
 			storiface.SetPathByType(&out, fileType, spath)
 			storiface.SetPathByType(&storageIDs, fileType, string(info.ID))
 
@@ -449,7 +460,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, ssize abi.
 
 			// TODO: Check free space
 
-			best = p.sectorPath(sid, fileType)
+			best = p.sectorPath(sid.ID, fileType)
 			bestID = si.ID
 			break
 		}
@@ -578,13 +589,13 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ storifa
 	return nil
 }
 
-func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, ssize abi.SectorSize, types storiface.SectorFileType) error {
-	dest, destIds, err := st.AcquireSector(ctx, s, ssize, storiface.FTNone, types, storiface.PathStorage, storiface.AcquireMove)
+func (st *Local) MoveStorage(ctx context.Context, s storage.SectorRef, types storiface.SectorFileType) error {
+	dest, destIds, err := st.AcquireSector(ctx, s, storiface.FTNone, types, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire dest storage: %w", err)
 	}
 
-	src, srcIds, err := st.AcquireSector(ctx, s, ssize, types, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+	src, srcIds, err := st.AcquireSector(ctx, s, types, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}
@@ -616,7 +627,7 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, ssize abi.Sect
 
 		log.Debugf("moving %v(%d) to storage: %s(se:%t; st:%t) -> %s(se:%t; st:%t)", s, fileType, sst.ID, sst.CanSeal, sst.CanStore, dst.ID, dst.CanSeal, dst.CanStore)
 
-		if err := st.index.StorageDropSector(ctx, ID(storiface.PathByType(srcIds, fileType)), s, fileType); err != nil {
+		if err := st.index.StorageDropSector(ctx, ID(storiface.PathByType(srcIds, fileType)), s.ID, fileType); err != nil {
 			return xerrors.Errorf("dropping source sector from index: %w", err)
 		}
 
@@ -625,7 +636,7 @@ func (st *Local) MoveStorage(ctx context.Context, s abi.SectorID, ssize abi.Sect
 			return xerrors.Errorf("moving sector %v(%d): %w", s, fileType, err)
 		}
 
-		if err := st.index.StorageDeclareSector(ctx, ID(storiface.PathByType(destIds, fileType)), s, fileType, true); err != nil {
+		if err := st.index.StorageDeclareSector(ctx, ID(storiface.PathByType(destIds, fileType)), s.ID, fileType, true); err != nil {
 			return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", s, fileType, ID(storiface.PathByType(destIds, fileType)), err)
 		}
 	}

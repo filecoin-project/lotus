@@ -12,6 +12,8 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
+
+	"github.com/filecoin-project/specs-storage/storage"
 )
 
 var log = logging.Logger("stores")
@@ -73,7 +75,12 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	// The caller has a lock on this sector already, no need to get one here
 
 	// passing 0 spt because we don't allocate anything
-	paths, _, err := handler.Local.AcquireSector(r.Context(), id, 0, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+	si := storage.SectorRef{
+		ID:        id,
+		ProofType: 0,
+	}
+
+	paths, _, err := handler.Local.AcquireSector(r.Context(), si, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)

@@ -46,7 +46,7 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 			for _, request := range window.todo {
 				out[uuid.UUID(id)] = append(out[uuid.UUID(id)], storiface.WorkerJob{
 					ID:      storiface.UndefCall,
-					Sector:  request.sector,
+					Sector:  request.sector.ID,
 					Task:    request.taskType,
 					RunWait: wi + 1,
 					Start:   request.start,

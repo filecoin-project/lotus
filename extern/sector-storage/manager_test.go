@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
@@ -90,28 +91,23 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 	st := newTestStorage(t)
 
 	si := stores.NewIndex()
-	cfg := &ffiwrapper.Config{
-		SealProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
-	}
 
 	lstor, err := stores.NewLocal(ctx, st, si, nil)
 	require.NoError(t, err)
 
-	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, spt: cfg.SealProofType}, cfg)
+	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	require.NoError(t, err)
 
 	stor := stores.NewRemote(lstor, si, nil, 6000)
 
 	m := &Manager{
-		scfg: cfg,
-
 		ls:         st,
 		storage:    stor,
 		localStore: lstor,
 		remoteHnd:  &stores.FetchHandler{Local: lstor},
 		index:      si,
 
-		sched: newScheduler(cfg.SealProofType),
+		sched: newScheduler(),
 
 		Prover: prover,
 
@@ -141,12 +137,14 @@ func TestSimple(t *testing.T) {
 	}
 
 	err := m.AddWorker(ctx, newTestWorker(WorkerConfig{
-		SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
 		TaskTypes: localTasks,
 	}, lstor, m))
 	require.NoError(t, err)
 
-	sid := abi.SectorID{Miner: 1000, Number: 1}
+	sid := storage.SectorRef{
+		ID:        abi.SectorID{Miner: 1000, Number: 1},
+		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
+	}
 
 	pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
 	require.NoError(t, err)
@@ -176,14 +174,16 @@ func TestRedoPC1(t *testing.T) {
 	}
 
 	tw := newTestWorker(WorkerConfig{
-		SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
 		TaskTypes: localTasks,
 	}, lstor, m)
 
 	err := m.AddWorker(ctx, tw)
 	require.NoError(t, err)
 
-	sid := abi.SectorID{Miner: 1000, Number: 1}
+	sid := storage.SectorRef{
+		ID:        abi.SectorID{Miner: 1000, Number: 1},
+		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
+	}
 
 	pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
 	require.NoError(t, err)
@@ -228,14 +228,16 @@ func TestRestartManager(t *testing.T) {
 			}
 
 			tw := newTestWorker(WorkerConfig{
-				SealProof: abi.RegisteredSealProof_StackedDrg2KiBV1,
 				TaskTypes: localTasks,
 			}, lstor, m)
 
 			err := m.AddWorker(ctx, tw)
 			require.NoError(t, err)
 
-			sid := abi.SectorID{Miner: 1000, Number: 1}
+			sid := storage.SectorRef{
+				ID:        abi.SectorID{Miner: 1000, Number: 1},
+				ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
+			}
 
 			pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
 			require.NoError(t, err)
@@ -329,14 +331,16 @@ func TestRestartWorker(t *testing.T) {
 	w := newLocalWorker(func() (ffiwrapper.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
-		SealProof: 0,
 		TaskTypes: localTasks,
 	}, stor, lstor, idx, m, statestore.New(wds))
 
 	err := m.AddWorker(ctx, w)
 	require.NoError(t, err)
 
-	sid := abi.SectorID{Miner: 1000, Number: 1}
+	sid := storage.SectorRef{
+		ID:        abi.SectorID{Miner: 1000, Number: 1},
+		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
+	}
 
 	apDone := make(chan struct{})
 
@@ -363,7 +367,6 @@ func TestRestartWorker(t *testing.T) {
 	w = newLocalWorker(func() (ffiwrapper.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
-		SealProof: 0,
 		TaskTypes: localTasks,
 	}, stor, lstor, idx, m, statestore.New(wds))
 
@@ -400,7 +403,6 @@ func TestReenableWorker(t *testing.T) {
 	w := newLocalWorker(func() (ffiwrapper.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
-		SealProof: 0,
 		TaskTypes: localTasks,
 	}, stor, lstor, idx, m, statestore.New(wds))
 
