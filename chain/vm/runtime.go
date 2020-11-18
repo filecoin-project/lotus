@@ -281,9 +281,19 @@ func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
-		if beneficiary == rt.Receiver() && rt.NetworkVersion() >= network.Version7 {
-			rt.Abortf(exitcode.SysErrorIllegalArgument, "benefactor cannot be beneficiary")
+		// TODO: Should be safe to drop the version-check,
+		//  since only the paych actor called this pre-version 7, but let's leave it for now
+		if rt.NetworkVersion() >= network.Version7 {
+			beneficiaryId, found := rt.ResolveAddress(beneficiary)
+			if !found {
+				rt.Abortf(exitcode.SysErrorIllegalArgument, "beneficiary doesn't exist")
+			}
+
+			if beneficiaryId == rt.Receiver() {
+				rt.Abortf(exitcode.SysErrorIllegalArgument, "benefactor cannot be beneficiary")
+			}
 		}
+
 		// Transfer the executing actor's balance to the beneficiary
 		if err := rt.vm.transfer(rt.Receiver(), beneficiary, act.Balance); err != nil {
 			panic(aerrors.Fatalf("failed to transfer balance to beneficiary actor: %s", err))
