@@ -24,7 +24,7 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 
 	var sector abi.SectorNumber = math.MaxUint64
 
-	out:
+out:
 	for dlIdx := range deadlines {
 		partitions, err := m.api.StateMinerPartitions(ctx, m.address, uint64(dlIdx), types.EmptyTSK)
 		if err != nil {
