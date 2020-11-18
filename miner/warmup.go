@@ -24,6 +24,7 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 
 	var sector abi.SectorNumber = math.MaxUint64
 
+out:
 	for dlIdx := range deadlines {
 		partitions, err := m.api.StateMinerPartitions(ctx, m.address, uint64(dlIdx), types.EmptyTSK)
 		if err != nil {
@@ -40,6 +41,7 @@ func (m *Miner) winPoStWarmup(ctx context.Context) error {
 			}
 
 			sector = abi.SectorNumber(b)
+			break out
 		}
 	}
 
