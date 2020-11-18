@@ -79,3 +79,7 @@ func (s *state0) Remove(addrs ...address.Address) (err error) {
 	s.State.AddressMap = amr
 	return nil
 }
+
+func (s *state0) addressMap() (adt.Map, error) {
+	return adt0.AsMap(s.store, s.AddressMap)
+}

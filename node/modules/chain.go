@@ -111,12 +111,18 @@ func SetupFallbackBlockstore(cbs dtypes.ChainBlockstore, rem dtypes.ChainBitswap
 	return nil
 }
 
-func ChainStore(bs dtypes.ChainBlockstore, lbs dtypes.ChainRawBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
+func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, lbs dtypes.ChainRawBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
 	chain := store.NewChainStore(bs, lbs, ds, syscalls, j)
 
 	if err := chain.Load(); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
 	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return chain.Close()
+		},
+	})
 
 	return chain
 }
