@@ -100,8 +100,8 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) error {
 	ticketValue, ticketEpoch, err := m.getTicket(ctx, sector)
 	if err != nil {
-		allocated, aerr := m.api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, nil)
-		if aerr == nil {
+		allocated, err := m.api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+		if err != nil {
 			log.Errorf("error checking if sector is allocated: %+v", err)
 		}
 
@@ -294,8 +294,10 @@ func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInf
 	switch mw.Receipt.ExitCode {
 	case exitcode.Ok:
 		// this is what we expect
+	case exitcode.SysErrInsufficientFunds:
+		fallthrough
 	case exitcode.SysErrOutOfGas:
-		// gas estimator guessed a wrong number
+		// gas estimator guessed a wrong number / out of funds:
 		return ctx.Send(SectorRetryPreCommit{})
 	default:
 		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
@@ -473,8 +475,10 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 	switch mw.Receipt.ExitCode {
 	case exitcode.Ok:
 		// this is what we expect
+	case exitcode.SysErrInsufficientFunds:
+		fallthrough
 	case exitcode.SysErrOutOfGas:
-		// gas estimator guessed a wrong number
+		// gas estimator guessed a wrong number / out of funds
 		return ctx.Send(SectorRetrySubmitCommit{})
 	default:
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.TicketValue, sector.SeedValue, sector.SeedEpoch, sector.Proof)})
