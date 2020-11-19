@@ -213,9 +213,6 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 		})
 
 	}
-	if err != nil {
-		return bitfield.BitField{}, xerrors.Errorf("iterating over bitfield: %w", err)
-	}
 
 	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck)
 	if err != nil {
