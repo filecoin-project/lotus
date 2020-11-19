@@ -1855,6 +1855,9 @@ var stateNtwkVersionCmd = &cli.Command{
 		}
 
 		nv, err := api.StateNetworkVersion(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
 
 		fmt.Printf("Network Version: %d\n", nv)
 
