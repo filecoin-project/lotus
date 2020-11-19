@@ -287,7 +287,7 @@ func (fsr *fsLockedRepo) Close() error {
 	}
 
 	// type assertion will return ok=false if fsr.bs is nil altogether.
-	if c, ok := fsr.bs.(io.Closer); ok && c != nil {
+	if c, ok := fsr.bs.(io.Closer); ok && fsr.bs != nil {
 		if err := c.Close(); err != nil {
 			return xerrors.Errorf("could not close blockstore: %w", err)
 		}
