@@ -809,7 +809,11 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 	msg.From = pa
 	bestReq := big.Add(msg.RequiredFunds(), msg.Value)
 	if avail.LessThan(bestReq) {
-		messagepool.CapGasFee(msg, big.Min(big.Sub(avail, msg.Value), msg.RequiredFunds()))
+		mff := func() (abi.TokenAmount, error) {
+			return msg.RequiredFunds(), nil
+		}
+
+		messagepool.CapGasFee(mff, msg, big.Min(big.Sub(avail, msg.Value), msg.RequiredFunds()))
 	}
 	return nil
 }
