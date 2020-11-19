@@ -98,6 +98,14 @@ func (m *mockStorageMinerAPI) StateWaitMsg(ctx context.Context, cid cid.Cid, con
 	}, nil
 }
 
+func (m *mockStorageMinerAPI) GasEstimateGasPremium(_ context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) {
+	return big.Zero(), nil
+}
+
+func (m *mockStorageMinerAPI) GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error) {
+	return big.Zero(), nil
+}
+
 type mockProver struct {
 }
 
