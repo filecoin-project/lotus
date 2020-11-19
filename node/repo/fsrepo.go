@@ -308,6 +308,11 @@ func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockst
 		path := fsr.join(filepath.Join(fsDatastore, "chain"))
 		readonly := fsr.readonly
 
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.bsErr = err
+			return
+		}
+
 		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
 		if err != nil {
 			fsr.bsErr = err
@@ -317,6 +322,7 @@ func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockst
 		bs, err := badgerbs.Open(opts)
 		if err != nil {
 			fsr.bsErr = err
+			return
 		}
 		fsr.bs = lblockstore.WrapIDStore(bs)
 	})
