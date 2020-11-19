@@ -119,7 +119,7 @@ var stateMinerInfo = &cli.Command{
 		}
 
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
-		fmt.Printf("Multiaddrs: \t")
+		fmt.Printf("Multiaddrs:\t")
 		for _, addr := range mi.Multiaddrs {
 			a, err := multiaddr.NewMultiaddrBytes(addr)
 			if err != nil {
@@ -127,6 +127,7 @@ var stateMinerInfo = &cli.Command{
 			}
 			fmt.Printf("%s ", a)
 		}
+		fmt.Printf("Consensus Fault End:\t%d\n", mi.ConsensusFaultElapsed)
 
 		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
 		pow, err := api.StateMinerPower(ctx, addr, ts.Key())

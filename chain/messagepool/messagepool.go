@@ -465,7 +465,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	epoch := curTs.Height()
 	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
-	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total()); err != nil {
+	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), build.NewestNetworkVersion); err != nil {
 		return false, xerrors.Errorf("message will not be included in a block: %w", err)
 	}
 
@@ -546,7 +546,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	}
 
 	// Perform syntactic validation, minGas=0 as we check the actual mingas before we add it
-	if err := m.Message.ValidForBlockInclusion(0); err != nil {
+	if err := m.Message.ValidForBlockInclusion(0, build.NewestNetworkVersion); err != nil {
 		return xerrors.Errorf("message not valid for block inclusion: %w", err)
 	}
 

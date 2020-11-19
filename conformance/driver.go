@@ -91,6 +91,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 		sm = stmgr.NewStateManager(cs)
 	)
 
+	defer cs.Close() //nolint:errcheck
+
 	blocks := make([]store.BlockMessages, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
 		sb := store.BlockMessages{
