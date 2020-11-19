@@ -3,8 +3,6 @@ package storage
 import (
 	"context"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -44,21 +42,9 @@ func AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use Ad
 		}
 	}
 
-	if bestAvail.GreaterThan(minFunds) {
-		log.Warnw("No address had enough funds to for full PoSt message Fee, selecting least bad address", "address", leastBad, "balance", types.FIL(bestAvail), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
+	log.Warnw("No address had enough funds to for full PoSt message Fee, selecting least bad address", "address", leastBad, "balance", types.FIL(bestAvail), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
 
-		return leastBad, bestAvail, nil
-	}
-
-	// This most likely won't work, but can't hurt to try
-
-	workerBalance, err := a.WalletBalance(ctx, mi.Worker)
-	if err != nil {
-		return address.Undef, big.Zero(), xerrors.Errorf("checking owner balance: %w", err)
-	}
-
-	log.Warnw("No address had enough funds to for minimum PoSt message Fee, selecting worker address as a fallback", "address", mi.Worker, "balance", types.FIL(workerBalance), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
-	return mi.Worker, workerBalance, nil
+	return leastBad, bestAvail, nil
 }
 
 func maybeUseAddress(ctx context.Context, a addrSelectApi, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
