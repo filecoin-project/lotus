@@ -5,23 +5,33 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
+// MemStore is a terminal blockstore that keeps blocks in memory.
 type MemStore map[cid.Cid]blocks.Block
 
 func (m MemStore) DeleteBlock(k cid.Cid) error {
 	delete(m, k)
 	return nil
 }
+
 func (m MemStore) Has(k cid.Cid) (bool, error) {
 	_, ok := m[k]
 	return ok, nil
 }
+
+func (m MemStore) View(k cid.Cid, callback func([]byte) error) error {
+	b, ok := m[k]
+	if !ok {
+		return ErrNotFound
+	}
+	return callback(b.RawData())
+}
+
 func (m MemStore) Get(k cid.Cid) (blocks.Block, error) {
 	b, ok := m[k]
 	if !ok {
-		return nil, blockstore.ErrNotFound
+		return nil, ErrNotFound
 	}
 	return b, nil
 }
@@ -30,7 +40,7 @@ func (m MemStore) Get(k cid.Cid) (blocks.Block, error) {
 func (m MemStore) GetSize(k cid.Cid) (int, error) {
 	b, ok := m[k]
 	if !ok {
-		return 0, blockstore.ErrNotFound
+		return 0, ErrNotFound
 	}
 	return len(b.RawData()), nil
 }

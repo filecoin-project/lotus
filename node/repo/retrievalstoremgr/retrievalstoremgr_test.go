@@ -9,13 +9,13 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	dss "github.com/ipfs/go-datastore/sync"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	format "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-multistore"
 
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )

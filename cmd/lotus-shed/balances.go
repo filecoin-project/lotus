@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/filecoin-project/lotus/chain/gen/genesis"
@@ -10,6 +11,7 @@ import (
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 
 	"github.com/docker/go-units"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -24,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -33,7 +36,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -168,19 +170,26 @@ var chainBalanceStateCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		ds, err := lkrepo.Datastore("/chain")
+		bs, err := lkrepo.Blockstore(repo.BlockstoreChain)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
+
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
 
 		mds, err := lkrepo.Datastore("/metadata")
 		if err != nil {
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
-
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
@@ -382,19 +391,26 @@ var chainPledgeCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		ds, err := lkrepo.Datastore("/chain")
+		bs, err := lkrepo.Blockstore(repo.BlockstoreChain)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to open blockstore: %w", err)
 		}
+
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
 
 		mds, err := lkrepo.Datastore("/metadata")
 		if err != nil {
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
-
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)

@@ -210,7 +210,7 @@ var sectorsListCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		commitedIDs := make(map[abi.SectorNumber]struct{}, len(activeSet))
+		commitedIDs := make(map[abi.SectorNumber]struct{}, len(sset))
 		for _, info := range sset {
 			commitedIDs[info.SectorNumber] = struct{}{}
 		}

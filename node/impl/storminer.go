@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -43,7 +42,6 @@ import (
 type StorageMinerAPI struct {
 	common.CommonAPI
 
-	ProofsConfig *ffiwrapper.Config
 	SectorBlocks *sectorblocks.SectorBlocks
 
 	PieceStore        dtypes.ProviderPieceStore
@@ -298,6 +296,10 @@ func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error 
 
 func (sm *StorageMinerAPI) SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) {
 	return sm.StorageMgr.SchedDiag(ctx, doSched)
+}
+
+func (sm *StorageMinerAPI) SealingAbort(ctx context.Context, call storiface.CallID) error {
+	return sm.StorageMgr.Abort(ctx, call)
 }
 
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {

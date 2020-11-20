@@ -278,6 +278,7 @@ func startNodes(
 	// Start mining blocks
 	bm := test.NewBlockMiner(ctx, t, miner, blocktime)
 	bm.MineBlocks()
+	t.Cleanup(bm.Stop)
 
 	return &testNodes{lite: lite, full: full, miner: miner, closer: closer}
 }

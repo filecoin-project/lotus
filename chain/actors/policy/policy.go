@@ -26,22 +26,29 @@ const (
 // SetSupportedProofTypes sets supported proof types, across all actor versions.
 // This should only be used for testing.
 func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
-	newTypes := make(map[abi.RegisteredSealProof]struct{}, len(types))
-	for _, t := range types {
-		newTypes[t] = struct{}{}
-	}
-	// Set for all miner versions.
-	miner0.SupportedProofTypes = newTypes
-	miner2.SupportedProofTypes = newTypes
+	miner0.SupportedProofTypes = make(map[abi.RegisteredSealProof]struct{}, len(types))
+	miner2.PreCommitSealProofTypesV0 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+	miner2.PreCommitSealProofTypesV7 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+	miner2.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+
+	AddSupportedProofTypes(types...)
 }
 
 // AddSupportedProofTypes sets supported proof types, across all actor versions.
 // This should only be used for testing.
 func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
 	for _, t := range types {
+		if t >= abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+			panic("must specify v1 proof types only")
+		}
 		// Set for all miner versions.
 		miner0.SupportedProofTypes[t] = struct{}{}
-		miner2.SupportedProofTypes[t] = struct{}{}
+		miner2.PreCommitSealProofTypesV0[t] = struct{}{}
+
+		miner2.PreCommitSealProofTypesV7[t] = struct{}{}
+		miner2.PreCommitSealProofTypesV7[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+
+		miner2.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
 	}
 }
 
@@ -133,9 +140,9 @@ func GetMaxPoStPartitions(p abi.RegisteredPoStProof) (int, error) {
 }
 
 func GetDefaultSectorSize() abi.SectorSize {
-	// supported proof types are the same across versions.
-	szs := make([]abi.SectorSize, 0, len(miner2.SupportedProofTypes))
-	for spt := range miner2.SupportedProofTypes {
+	// supported sector sizes are the same across versions.
+	szs := make([]abi.SectorSize, 0, len(miner2.PreCommitSealProofTypesV8))
+	for spt := range miner2.PreCommitSealProofTypesV8 {
 		ss, err := spt.SectorSize()
 		if err != nil {
 			panic(err)

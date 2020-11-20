@@ -87,9 +87,11 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 		vmRand   = NewFixedRand()
 
-		cs = store.NewChainStore(bs, ds, syscalls, nil)
+		cs = store.NewChainStore(bs, bs, ds, syscalls, nil)
 		sm = stmgr.NewStateManager(cs)
 	)
+
+	defer cs.Close() //nolint:errcheck
 
 	blocks := make([]store.BlockMessages, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {

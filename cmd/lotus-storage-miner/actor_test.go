@@ -50,7 +50,7 @@ func TestWorkerKeyChange(t *testing.T) {
 
 	blocktime := 1 * time.Millisecond
 
-	n, sn := builder.MockSbBuilder(t, []test.FullNodeOpts{test.FullNodeWithUpgradeAt(1), test.FullNodeWithUpgradeAt(1)}, test.OneMiner)
+	n, sn := builder.MockSbBuilder(t, []test.FullNodeOpts{test.FullNodeWithActorsV2At(1), test.FullNodeWithActorsV2At(1)}, test.OneMiner)
 
 	client1 := n[0]
 	client2 := n[1]

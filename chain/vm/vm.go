@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/metrics"
 
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -16,6 +17,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -70,11 +72,30 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 }
 
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
+var _ blockstore.Viewer = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
 	chargeGas func(GasCharge)
 	pricelist Pricelist
 	under     cbor.IpldBlockstore
+}
+
+func (bs *gasChargingBlocks) View(c cid.Cid, cb func([]byte) error) error {
+	if v, ok := bs.under.(blockstore.Viewer); ok {
+		bs.chargeGas(bs.pricelist.OnIpldGet())
+		return v.View(c, func(b []byte) error {
+			// we have successfully retrieved the value; charge for it, even if the user-provided function fails.
+			bs.chargeGas(newGasCharge("OnIpldViewEnd", 0, 0).WithExtra(len(b)))
+			bs.chargeGas(gasOnActorExec)
+			return cb(b)
+		})
+	}
+	// the underlying blockstore doesn't implement the viewer interface, fall back to normal Get behaviour.
+	blk, err := bs.Get(c)
+	if err == nil && blk != nil {
+		return cb(blk.RawData())
+	}
+	return err
 }
 
 func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
@@ -119,6 +140,10 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 	}
 
 	if parent != nil {
+		// TODO: The version check here should be unnecessary, but we can wait to take it out
+		if !parent.allowInternal && rt.NetworkVersion() >= network.Version7 {
+			rt.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
+		}
 		rt.gasUsed = parent.gasUsed
 		rt.origin = parent.origin
 		rt.originNonce = parent.originNonce
@@ -130,10 +155,10 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 		rt.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
 	}
 
-	rt.cst = &cbor.BasicIpldStore{
-		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
-		Atlas:  vm.cst.Atlas,
-	}
+	cbb := &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks}
+	cst := cbor.NewCborStore(cbb)
+	cst.Atlas = vm.cst.Atlas // associate the atlas.
+	rt.cst = cst
 
 	vmm := *msg
 	resF, ok := rt.ResolveAddress(msg.From)
@@ -583,6 +608,8 @@ func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorErr
 	return act.Balance, nil
 }
 
+type vmFlushKey struct{}
+
 func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	_, span := trace.StartSpan(ctx, "vm.Flush")
 	defer span.End()
@@ -595,7 +622,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := Copy(ctx, from, to, root); err != nil {
+	if err := Copy(context.WithValue(ctx, vmFlushKey{}, true), from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
@@ -652,21 +679,48 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
 	ctx, span := trace.StartSpan(ctx, "vm.Copy") // nolint
 	defer span.End()
+	start := time.Now()
 
 	var numBlocks int
 	var totalCopySize int
 
-	var batch []block.Block
+	const batchSize = 128
+	const bufCount = 3
+	freeBufs := make(chan []block.Block, bufCount)
+	toFlush := make(chan []block.Block, bufCount)
+	for i := 0; i < bufCount; i++ {
+		freeBufs <- make([]block.Block, 0, batchSize)
+	}
+
+	errFlushChan := make(chan error)
+
+	go func() {
+		for b := range toFlush {
+			if err := to.PutMany(b); err != nil {
+				close(freeBufs)
+				errFlushChan <- xerrors.Errorf("batch put in copy: %w", err)
+				return
+			}
+			freeBufs <- b[:0]
+		}
+		close(errFlushChan)
+		close(freeBufs)
+	}()
+
+	var batch = <-freeBufs
 	batchCp := func(blk block.Block) error {
 		numBlocks++
 		totalCopySize += len(blk.RawData())
 
 		batch = append(batch, blk)
-		if len(batch) > 100 {
-			if err := to.PutMany(batch); err != nil {
-				return xerrors.Errorf("batch put in copy: %w", err)
+
+		if len(batch) >= batchSize {
+			toFlush <- batch
+			var ok bool
+			batch, ok = <-freeBufs
+			if !ok {
+				return <-errFlushChan
 			}
-			batch = batch[:0]
 		}
 		return nil
 	}
@@ -676,15 +730,22 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 	}
 
 	if len(batch) > 0 {
-		if err := to.PutMany(batch); err != nil {
-			return xerrors.Errorf("batch put in copy: %w", err)
-		}
+		toFlush <- batch
+	}
+	close(toFlush)        // close the toFlush triggering the loop to end
+	err := <-errFlushChan // get error out or get nil if it was closed
+	if err != nil {
+		return err
 	}
 
 	span.AddAttributes(
 		trace.Int64Attribute("numBlocks", int64(numBlocks)),
 		trace.Int64Attribute("copySize", int64(totalCopySize)),
 	)
+	if yes, ok := ctx.Value(vmFlushKey{}).(bool); yes && ok {
+		took := metrics.SinceInMilliseconds(start)
+		stats.Record(ctx, metrics.VMFlushCopyCount.M(int64(numBlocks)), metrics.VMFlushCopyDuration.M(took))
+	}
 
 	return nil
 }

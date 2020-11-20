@@ -8,6 +8,8 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+// SyncStore is a terminal blockstore that is a synchronized version
+// of MemStore.
 type SyncStore struct {
 	mu sync.RWMutex
 	bs MemStore // specifically use a memStore to save indirection overhead.
@@ -18,11 +20,20 @@ func (m *SyncStore) DeleteBlock(k cid.Cid) error {
 	defer m.mu.Unlock()
 	return m.bs.DeleteBlock(k)
 }
+
 func (m *SyncStore) Has(k cid.Cid) (bool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.bs.Has(k)
 }
+
+func (m *SyncStore) View(k cid.Cid, callback func([]byte) error) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.bs.View(k, callback)
+}
+
 func (m *SyncStore) Get(k cid.Cid) (blocks.Block, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

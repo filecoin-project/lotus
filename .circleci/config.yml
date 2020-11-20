@@ -5,7 +5,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.14.6
+      - image: circleci/golang:1.15.5
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -276,7 +276,7 @@ jobs:
       - run: cd extern/filecoin-ffi && make
       - run:
           name: "replace lotus, filecoin-ffi, blst and fil-blst deps"
-          command: cd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi && go mod edit -replace github.com/supranational/blst=../../fil-blst/blst && go mod edit -replace github.com/filecoin-project/fil-blst=../../fil-blst
+          command: cd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi && go mod edit -replace github.com/supranational/blst=../../blst
       - run:
           name: "build lotus-soup testplan"
           command: pushd extern/oni/lotus-soup && go build -tags=testground .
@@ -294,8 +294,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.14.2.darwin-amd64.pkg && \
-            sudo installer -pkg go1.14.2.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.15.5.darwin-amd64.pkg && \
+            sudo installer -pkg go1.15.5.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -359,6 +359,7 @@ jobs:
     steps:
       - install-deps
       - prepare
+      - run: make deps
       - run: make docsgen
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet

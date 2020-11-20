@@ -31,6 +31,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
@@ -240,15 +241,6 @@ var sealBenchCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		spt, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
-		if err != nil {
-			return err
-		}
-
-		cfg := &ffiwrapper.Config{
-			SealProofType: spt,
-		}
-
 		// Only fetch parameters if actually needed
 		skipc2 := c.Bool("skip-commit2")
 		if !skipc2 {
@@ -261,7 +253,7 @@ var sealBenchCmd = &cli.Command{
 			Root: sbdir,
 		}
 
-		sb, err := ffiwrapper.New(sbfs, cfg)
+		sb, err := ffiwrapper.New(sbfs)
 		if err != nil {
 			return err
 		}
@@ -329,7 +321,7 @@ var sealBenchCmd = &cli.Command{
 
 		if !skipc2 {
 			log.Info("generating winning post candidates")
-			wipt, err := spt.RegisteredWinningPoStProof()
+			wipt, err := spt(sectorSize).RegisteredWinningPoStProof()
 			if err != nil {
 				return err
 			}
@@ -509,11 +501,13 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 	if numSectors%par.PreCommit1 != 0 {
 		return nil, nil, fmt.Errorf("parallelism factor must cleanly divide numSectors")
 	}
-
-	for i := abi.SectorNumber(0); i < abi.SectorNumber(numSectors); i++ {
-		sid := abi.SectorID{
-			Miner:  mid,
-			Number: i,
+	for i := abi.SectorNumber(1); i <= abi.SectorNumber(numSectors); i++ {
+		sid := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  mid,
+				Number: i,
+			},
+			ProofType: spt(sectorSize),
 		}
 
 		start := time.Now()
@@ -540,9 +534,13 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 				start := worker * sectorsPerWorker
 				end := start + sectorsPerWorker
 				for i := abi.SectorNumber(start); i < abi.SectorNumber(end); i++ {
-					sid := abi.SectorID{
-						Miner:  mid,
-						Number: i,
+					ix := int(i - 1)
+					sid := storage.SectorRef{
+						ID: abi.SectorID{
+							Miner:  mid,
+							Number: i,
+						},
+						ProofType: spt(sectorSize),
 					}
 
 					start := time.Now()
@@ -570,8 +568,8 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 					precommit2 := time.Now()
 					<-preCommit2Sema
 
-					sealedSectors[i] = saproof2.SectorInfo{
-						SealProof:    sb.SealProofType(),
+					sealedSectors[ix] = saproof2.SectorInfo{
+						SealProof:    sid.ProofType,
 						SectorNumber: i,
 						SealedCID:    cids.Sealed,
 					}
@@ -625,7 +623,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 						svi := saproof2.SealVerifyInfo{
 							SectorID:              sid,
 							SealedCID:             cids.Sealed,
-							SealProof:             sb.SealProofType(),
+							SealProof:             sid.ProofType,
 							Proof:                 proof,
 							DealIDs:               nil,
 							Randomness:            ticket,
@@ -742,24 +740,25 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
-		spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
+		sb, err := ffiwrapper.New(nil)
 		if err != nil {
 			return err
 		}
 
-		cfg := &ffiwrapper.Config{
-			SealProofType: spt,
-		}
+		start := time.Now()
 
-		sb, err := ffiwrapper.New(nil, cfg)
-		if err != nil {
-			return err
+		ref := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(c2in.SectorNum),
+			},
+			ProofType: spt(abi.SectorSize(c2in.SectorSize)),
 		}
 
 		fmt.Printf("----\nstart proof computation\n")
 		start := time.Now()
 
-		proof, err := sb.SealCommit2(context.TODO(), abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(c2in.SectorNum)}, c2in.Phase1Out)
+		proof, err := sb.SealCommit2(context.TODO(), ref, c2in.Phase1Out)
 		if err != nil {
 			return err
 		}
@@ -782,4 +781,13 @@ func bps(sectorSize abi.SectorSize, sectorNum int, d time.Duration) string {
 	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
 	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
 	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
+}
+
+func spt(ssize abi.SectorSize) abi.RegisteredSealProof {
+	spt, err := miner.SealProofTypeFromSectorSize(ssize, build.NewestNetworkVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	return spt
 }

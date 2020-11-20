@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"sync/atomic"
 	"time"
@@ -138,12 +139,20 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, xerrors.Errorf("failed to get metadata datastore: %w", err)
 	}
 
-	bds, err := lr.Datastore("/chain")
+	bs, err := lr.Blockstore(repo.BlockstoreChain)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get blocks datastore: %w", err)
+		return nil, err
 	}
 
-	bs := mybs{blockstore.NewBlockstore(bds)}
+	defer func() {
+		if c, ok := bs.(io.Closer); ok {
+			if err := c.Close(); err != nil {
+				log.Warnf("failed to close blockstore: %s", err)
+			}
+		}
+	}()
+
+	bs = mybs{bs}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
@@ -236,7 +245,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
 
-	cs := store.NewChainStore(bs, ds, sys, j)
+	cs := store.NewChainStore(bs, bs, ds, sys, j)
 
 	genfb := &types.FullBlock{Header: genb.Genesis}
 	gents := store.NewFullTipSet([]*types.FullBlock{genfb})

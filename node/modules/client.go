@@ -1,10 +1,14 @@
 package modules
 
 import (
+	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
 	"go.uber.org/fx"
@@ -19,7 +23,6 @@ import (
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-storedcounter"
@@ -27,6 +30,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/host"
 
+	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/markets"
@@ -39,6 +43,40 @@ import (
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
+
+func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full.WalletAPI, fundMgr *market.FundManager) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			addr, err := wallet.WalletDefaultAddress(ctx)
+			// nothing to be done if there is no default address
+			if err != nil {
+				return nil
+			}
+			b, err := ds.Get(datastore.NewKey("/marketfunds/client"))
+			if err != nil {
+				if xerrors.Is(err, datastore.ErrNotFound) {
+					return nil
+				}
+				log.Errorf("client funds migration - getting datastore value: %w", err)
+				return nil
+			}
+
+			var value abi.TokenAmount
+			if err = value.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+				log.Errorf("client funds migration - unmarshalling datastore value: %w", err)
+				return nil
+			}
+			_, err = fundMgr.Reserve(ctx, addr, addr, value)
+			if err != nil {
+				log.Errorf("client funds migration - reserving funds (wallet %s, addr %s, funds %d): %w",
+					addr, addr, value, err)
+				return nil
+			}
+
+			return ds.Delete(datastore.NewKey("/marketfunds/client"))
+		},
+	})
+}
 
 func ClientMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
 	ds, err := r.Datastore("/client")
@@ -80,13 +118,18 @@ func RegisterClientValidator(crv dtypes.ClientRequestValidator, dtm dtypes.Clien
 
 // NewClientGraphsyncDataTransfer returns a data transfer manager that just
 // uses the clients's Client DAG service for transfers
-func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Graphsync, ds dtypes.MetadataDS) (dtypes.ClientDataTransfer, error) {
+func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Graphsync, ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ClientDataTransfer, error) {
 	sc := storedcounter.New(ds, datastore.NewKey("/datatransfer/client/counter"))
 	net := dtnet.NewFromLibp2pHost(h)
 
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/client/transfers"))
 	transport := dtgstransport.NewTransport(h.ID(), gs)
-	dt, err := dtimpl.NewDataTransfer(dtDs, net, transport, sc)
+	err := os.MkdirAll(filepath.Join(r.Path(), "data-transfer"), 0755) //nolint: gosec
+	if err != nil && !os.IsExist(err) {
+		return nil, err
+	}
+
+	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, sc)
 	if err != nil {
 		return nil, err
 	}
@@ -108,15 +151,9 @@ func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey("/deals/client"))
 }
 
-type ClientDealFunds funds.DealFunds
-
-func NewClientDealFunds(ds dtypes.MetadataDS) (ClientDealFunds, error) {
-	return funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/client"))
-}
-
-func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, dealFunds ClientDealFunds, j journal.Journal) (storagemarket.StorageClient, error) {
+func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, j journal.Journal) (storagemarket.StorageClient, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, dealFunds, storageimpl.DealPollingInterval(time.Second))
+	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(time.Second))
 	if err != nil {
 		return nil, err
 	}

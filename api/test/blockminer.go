@@ -37,7 +37,12 @@ func (bm *BlockMiner) MineBlocks() {
 	go func() {
 		defer close(bm.done)
 		for atomic.LoadInt64(&bm.mine) == 1 {
-			time.Sleep(bm.blocktime)
+			select {
+			case <-bm.ctx.Done():
+				return
+			case <-time.After(bm.blocktime):
+			}
+
 			nulls := atomic.SwapInt64(&bm.nulls, 0)
 			if err := bm.miner.MineOne(bm.ctx, miner.MineReq{
 				InjectNulls: abi.ChainEpoch(nulls),

@@ -38,7 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainGCBlockstore) dtypes.ChainBitswap {
+func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainBlockstore) dtypes.ChainBitswap {
 	// prefix protocol for chain bitswap
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
 	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
@@ -76,13 +76,13 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 	return mp, nil
 }
 
-func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainBlockstore, error) {
-	blocks, err := r.Datastore("/chain")
+func ChainRawBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainRawBlockstore, error) {
+	bs, err := r.Blockstore(repo.BlockstoreChain)
 	if err != nil {
 		return nil, err
 	}
 
-	bs := blockstore.NewBlockstore(blocks)
+	// TODO potentially replace this cached blockstore by a CBOR cache.
 	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
 	if err != nil {
 		return nil, err
@@ -91,20 +91,38 @@ func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo
 	return cbs, nil
 }
 
-func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {
-	return blockstore.NewGCBlockstore(bs, gcl)
-}
-
-func ChainBlockService(bs dtypes.ChainBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
+func ChainBlockService(bs dtypes.ChainRawBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
 	return blockservice.New(bs, rem)
 }
 
-func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
-	chain := store.NewChainStore(bs, ds, syscalls, j)
+func FallbackChainBlockstore(rbs dtypes.ChainRawBlockstore) dtypes.ChainBlockstore {
+	return &blockstore.FallbackStore{
+		Blockstore: rbs,
+	}
+}
+
+func SetupFallbackBlockstore(cbs dtypes.ChainBlockstore, rem dtypes.ChainBitswap) error {
+	fbs, ok := cbs.(*blockstore.FallbackStore)
+	if !ok {
+		return xerrors.Errorf("expected a FallbackStore")
+	}
+
+	fbs.SetFallback(rem.GetBlock)
+	return nil
+}
+
+func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, lbs dtypes.ChainRawBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
+	chain := store.NewChainStore(bs, lbs, ds, syscalls, j)
 
 	if err := chain.Load(); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
 	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return chain.Close()
+		},
+	})
 
 	return chain
 }
