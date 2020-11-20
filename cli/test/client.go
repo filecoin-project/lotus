@@ -111,7 +111,7 @@ func dealComplete(t *testing.T, dealStatus string) bool {
 	switch dealStatus {
 	case "StorageDealFailing", "StorageDealError":
 		t.Fatal(xerrors.Errorf("Storage deal failed with status: " + dealStatus))
-	case "StorageDealStaged", "StorageDealSealing", "StorageDealActive", "StorageDealExpired", "StorageDealSlashed":
+	case "StorageDealStaged", "StorageDealAwaitingPreCommit", "StorageDealSealing", "StorageDealActive", "StorageDealExpired", "StorageDealSlashed":
 		return true
 	}
 

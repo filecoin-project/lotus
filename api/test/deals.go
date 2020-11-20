@@ -313,7 +313,7 @@ loop:
 			t.Fatal(err)
 		}
 		switch di.State {
-		case storagemarket.StorageDealSealing:
+		case storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing:
 			if noseal {
 				return
 			}
@@ -353,7 +353,7 @@ func waitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode,
 					t.Fatal("deal failed")
 				case storagemarket.StorageDealError:
 					t.Fatal("deal errored", di.Message)
-				case storagemarket.StorageDealFinalizing, storagemarket.StorageDealSealing, storagemarket.StorageDealActive:
+				case storagemarket.StorageDealFinalizing, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive:
 					fmt.Println("COMPLETE", di)
 					return
 				}
