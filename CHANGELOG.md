@@ -1,5 +1,44 @@
 # Lotus changelog
 
+# 1.2.0 / 2020-11-18
+
+This is a mandatory release of Lotus that introduces the second post-liftoff upgrade to the Filecoin network. The network upgrade occurs at height 265200, before which time all nodes must have update to this release (or later). This release also bumps the required version of Go to 1.15.
+
+The changes that break consensus are:
+
+- Upgrading to sepcs-actors 2.3.2 (https://github.com/filecoin-project/specs-actors/releases/tag/v2.3.2)
+- Introducing proofs v5.4.0 (https://github.com/filecoin-project/rust-fil-proofs/releases/tag/storage-proofs-v5.4.0), and switching between the proof types (https://github.com/filecoin-project/lotus/pull/4873)
+- Don't use terminated sectors for winning PoSt (https://github.com/filecoin-project/lotus/pull/4770)
+- Various small VM-level edge-case handling (https://github.com/filecoin-project/lotus/pull/4783)
+- Correction of the VM circulating supply calculation (https://github.com/filecoin-project/lotus/pull/4862)
+- Retuning gas costs (https://github.com/filecoin-project/lotus/pull/4830)
+- Avoid sending messages to the zero BLS address (https://github.com/filecoin-project/lotus/pull/4888)
+                                     
+## Other Changes
+
+- delayed pubsub subscribe for messages topic (https://github.com/filecoin-project/lotus/pull/3646)
+- add chain base64 decode params (https://github.com/filecoin-project/lotus/pull/4748)
+- chore(dep): update bitswap to fix an initialization race that could panic (https://github.com/filecoin-project/lotus/pull/4855)
+- Chore/blockstore nits (https://github.com/filecoin-project/lotus/pull/4813)
+- Print Consensus Faults in miner info (https://github.com/filecoin-project/lotus/pull/4853)
+- Truncate genesis file before generating (https://github.com/filecoin-project/lotus/pull/4851)
+- miner: Winning PoSt Warmup (https://github.com/filecoin-project/lotus/pull/4824)
+- Fix init actor address map diffing (https://github.com/filecoin-project/lotus/pull/4875)
+- Bump API versions to 1.0.0 (https://github.com/filecoin-project/lotus/pull/4884)
+- Fix cid recording issue (https://github.com/filecoin-project/lotus/pull/4874)
+- Speed up worker key retrieval (https://github.com/filecoin-project/lotus/pull/4885)
+- Add error codes to worker return (https://github.com/filecoin-project/lotus/pull/4890)
+- Update go to 1.15.5 (https://github.com/filecoin-project/lotus/pull/4896)
+- Fix MaxSealingSectrosForDeals getting reset to 0 (https://github.com/filecoin-project/lotus/pull/4879)
+- add sanity check for maximum block size (https://github.com/filecoin-project/lotus/pull/3171)
+- Check (pre)commit receipt before other checks in failed states (https://github.com/filecoin-project/lotus/pull/4712)
+- fix badger double open on daemon --import-snapshot; chainstore lifecycle (https://github.com/filecoin-project/lotus/pull/4872)
+- Update to ipfs-blockstore 1.0.3 (https://github.com/filecoin-project/lotus/pull/4897)
+- break loop when found warm up sector (https://github.com/filecoin-project/lotus/pull/4869)
+- Tweak handling of bad beneficaries in DeleteActor (https://github.com/filecoin-project/lotus/pull/4903)
+- cap maximum number of messages per block in selection (https://github.com/filecoin-project/lotus/pull/4905)
+- Set Calico epoch (https://github.com/filecoin-project/lotus/pull/4889)
+
 # 1.1.3 / 2020-11-13
 
 This is an optional release of Lotus that upgrades Lotus dependencies, and includes many performance enhancements, bugfixes, and UX improvements.

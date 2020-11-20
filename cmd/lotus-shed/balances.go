@@ -189,6 +189,7 @@ var chainBalanceStateCmd = &cli.Command{
 		}
 
 		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
@@ -409,6 +410,7 @@ var chainPledgeCmd = &cli.Command{
 		}
 
 		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)

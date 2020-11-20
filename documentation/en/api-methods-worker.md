@@ -55,8 +55,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   1,
   "sealing",
@@ -141,7 +144,7 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `4352`
+Response: `65536`
 
 ## Add
 
@@ -155,8 +158,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   null,
   1024,
@@ -187,8 +193,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   null
 ]
@@ -217,8 +226,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   1
 ]
@@ -262,8 +274,11 @@ Inputs:
 [
   {},
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   1040384,
   1024
@@ -293,8 +308,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   null
 ]
@@ -323,8 +341,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   null,
   null,
@@ -360,8 +381,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   null
 ]
@@ -387,8 +411,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   null,
   null
@@ -415,8 +442,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   null
 ]
@@ -499,8 +529,11 @@ Inputs:
 ```json
 [
   {
-    "Miner": 1000,
-    "Number": 9
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
   },
   1040384,
   1024,

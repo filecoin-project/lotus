@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -43,7 +42,6 @@ import (
 type StorageMinerAPI struct {
 	common.CommonAPI
 
-	ProofsConfig *ffiwrapper.Config
 	SectorBlocks *sectorblocks.SectorBlocks
 
 	PieceStore        dtypes.ProviderPieceStore

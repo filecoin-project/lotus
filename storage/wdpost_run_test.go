@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -116,7 +117,7 @@ func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, si
 type mockFaultTracker struct {
 }
 
-func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []abi.SectorID) ([]abi.SectorID, error) {
+func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) ([]abi.SectorID, error) {
 	// Returns "bad" sectors so just return nil meaning all sectors are good
 	return nil, nil
 }
