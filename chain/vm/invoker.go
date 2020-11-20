@@ -36,9 +36,9 @@ type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
 
 func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
-		nver := actors.VersionForNetwork(rt.NetworkVersion())
-		if nver != ver {
-			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrEpoch())
+		aver := actors.VersionForNetwork(rt.NetworkVersion())
+		if aver != ver {
+			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d and nver %d", v.Code(), ver, aver, rt.CurrEpoch(), rt.NetworkVersion())
 		}
 		return nil
 	}
