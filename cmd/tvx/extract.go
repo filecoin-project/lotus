@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/conformance"
@@ -355,7 +356,7 @@ func doExtract(opts extractOpts) error {
 		return err
 	}
 
-	codename := GetProtocolCodename(execTs.Height())
+	codename := stmgr.DefaultUpgradeSchedule().ActiveAtHeight(execTs.Height()).Codename
 
 	// Write out the test vector.
 	vector := schema.TestVector{
