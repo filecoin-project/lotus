@@ -726,6 +726,12 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 			log.Debug("tried to add block to tipset tracker that was already there")
 			return nil
 		}
+		h, err := cs.GetBlock(oc)
+		if err == nil && h != nil {
+			if h.Miner == b.Miner {
+				log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache %s-%s", b.Miner, b.Height, b.Cid(), h.Cid())
+			}
+		}
 	}
 
 	cs.tipsets[b.Height] = append(tss, b.Cid())
@@ -797,7 +803,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 		return types.NewTipSet(all)
 	}
 
-	inclMiners := map[address.Address]bool{b.Miner: true}
+	inclMiners := map[address.Address]cid.Cid{b.Miner: b.Cid()}
 	for _, bhc := range tsets {
 		if bhc == b.Cid() {
 			continue
@@ -808,14 +814,14 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
 		}
 
-		if inclMiners[h.Miner] {
-			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache", h.Miner, h.Height)
+		if cid, found := inclMiners[h.Miner]; found {
+			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache %s-%s", h.Miner, h.Height, h.Cid(), cid)
 			continue
 		}
 
 		if types.CidArrsEqual(h.Parents, b.Parents) {
 			all = append(all, h)
-			inclMiners[h.Miner] = true
+			inclMiners[h.Miner] = bhc
 		}
 	}
 
