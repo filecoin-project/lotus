@@ -34,7 +34,7 @@ const UpgradeLiftoffHeight = -5
 
 const UpgradeKumquatHeight = 90
 
-const UpgradeCalicoHeight = 265200
+const UpgradeCalicoHeight = 92000
 const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 
 func init() {
