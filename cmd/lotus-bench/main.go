@@ -501,7 +501,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 	if numSectors%par.PreCommit1 != 0 {
 		return nil, nil, fmt.Errorf("parallelism factor must cleanly divide numSectors")
 	}
-	for i := abi.SectorNumber(1); i <= abi.SectorNumber(numSectors); i++ {
+	for i := abi.SectorNumber(0); i < abi.SectorNumber(numSectors); i++ {
 		sid := storage.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
@@ -534,7 +534,6 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 				start := worker * sectorsPerWorker
 				end := start + sectorsPerWorker
 				for i := abi.SectorNumber(start); i < abi.SectorNumber(end); i++ {
-					ix := int(i - 1)
 					sid := storage.SectorRef{
 						ID: abi.SectorID{
 							Miner:  mid,
@@ -568,7 +567,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 					precommit2 := time.Now()
 					<-preCommit2Sema
 
-					sealedSectors[ix] = saproof2.SectorInfo{
+					sealedSectors[i] = saproof2.SectorInfo{
 						SealProof:    sid.ProofType,
 						SectorNumber: i,
 						SealedCID:    cids.Sealed,
@@ -621,7 +620,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 
 					if !skipc2 {
 						svi := saproof2.SealVerifyInfo{
-							SectorID:              sid,
+							SectorID:              abi.SectorID{Miner: mid, Number: i},
 							SealedCID:             cids.Sealed,
 							SealProof:             sid.ProofType,
 							Proof:                 proof,
@@ -744,8 +743,6 @@ var proveCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		start := time.Now()
 
 		ref := storage.SectorRef{
 			ID: abi.SectorID{
