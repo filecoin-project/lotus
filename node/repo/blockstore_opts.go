@@ -21,9 +21,8 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	opts.DetectConflicts = false
 
 	// This is to optimize the database on close so it can be opened
-	// read-only and efficiently queried. We don't do that and hanging on
-	// stop isn't nice.
-	opts.CompactL0OnClose = false
+	// read-only and efficiently queried.
+	opts.CompactL0OnClose = true
 
 	// The alternative is "crash on start and tell the user to fix it". This
 	// will truncate corrupt and unsynced data, which we don't guarantee to
@@ -41,6 +40,11 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 
 	// Default table size is already 64MiB. This is here to make it explicit.
 	opts.MaxTableSize = 64 << 20
+
+	// IndexCacheSize is 1GiB. If we don't set an index cache size, badger will
+	// retain all indices from all tables _in memory_. This is quite counter
+	// intuitive, but it's true. See badger/table.Table#initIndex.
+	opts.IndexCacheSize = 1 << 30
 
 	// NOTE: The chain blockstore doesn't require any GC (blocks are never
 	// deleted). This will change if we move to a tiered blockstore.
