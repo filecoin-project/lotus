@@ -73,7 +73,7 @@ var extractCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "exec-block",
-			Usage:       "optionally, the block CID of a block where this message was executed, to aovid",
+			Usage:       "optionally, the block CID of a block where this message was executed, to avoid expensive chain scanning",
 			Destination: &extractFlags.block,
 		},
 		&cli.StringFlag{
