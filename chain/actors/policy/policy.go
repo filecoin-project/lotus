@@ -28,7 +28,7 @@ const (
 func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
 	miner0.SupportedProofTypes = make(map[abi.RegisteredSealProof]struct{}, len(types))
 	miner2.PreCommitSealProofTypesV0 = make(map[abi.RegisteredSealProof]struct{}, len(types))
-	miner2.PreCommitSealProofTypesV7 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+	miner2.PreCommitSealProofTypesV7 = make(map[abi.RegisteredSealProof]struct{}, len(types)*2)
 	miner2.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 
 	AddSupportedProofTypes(types...)
