@@ -29,7 +29,7 @@ func buildType() string {
 }
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "1.1.3"
+const BuildVersion = "1.2.1"
 
 func UserVersion() string {
 	return BuildVersion + buildType() + CurrentCommit
@@ -83,9 +83,9 @@ func VersionForType(nodeType NodeType) (Version, error) {
 
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion   = newVer(0, 17, 0)
-	MinerAPIVersion  = newVer(0, 17, 0)
-	WorkerAPIVersion = newVer(0, 16, 0)
+	FullAPIVersion   = newVer(1, 0, 0)
+	MinerAPIVersion  = newVer(1, 0, 0)
+	WorkerAPIVersion = newVer(1, 0, 0)
 )
 
 //nolint:varcheck,deadcode

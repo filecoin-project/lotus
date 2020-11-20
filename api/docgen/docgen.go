@@ -90,7 +90,7 @@ func init() {
 	addExample(&pid)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
-	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1)
+	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
@@ -233,6 +233,7 @@ func init() {
 			CpuUse:     0,
 		},
 	})
+	addExample(storiface.ErrorCode(0))
 
 	// worker specific
 	addExample(storiface.AcquireMove)

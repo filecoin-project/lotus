@@ -2,6 +2,7 @@ package storiface
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -77,29 +78,69 @@ var _ fmt.Stringer = &CallID{}
 var UndefCall CallID
 
 type WorkerCalls interface {
-	AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (CallID, error)
-	SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
-	SealPreCommit2(ctx context.Context, sector abi.SectorID, pc1o storage.PreCommit1Out) (CallID, error)
-	SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (CallID, error)
-	SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (CallID, error)
-	FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) (CallID, error)
-	ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) (CallID, error)
-	MoveStorage(ctx context.Context, sector abi.SectorID, types SectorFileType) (CallID, error)
-	UnsealPiece(context.Context, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
-	ReadPiece(context.Context, io.Writer, abi.SectorID, UnpaddedByteIndex, abi.UnpaddedPieceSize) (CallID, error)
-	Fetch(context.Context, abi.SectorID, SectorFileType, PathType, AcquireMode) (CallID, error)
+	AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (CallID, error)
+	SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
+	SealPreCommit2(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (CallID, error)
+	SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (CallID, error)
+	SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (CallID, error)
+	FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (CallID, error)
+	ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (CallID, error)
+	MoveStorage(ctx context.Context, sector storage.SectorRef, types SectorFileType) (CallID, error)
+	UnsealPiece(context.Context, storage.SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
+	ReadPiece(context.Context, io.Writer, storage.SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize) (CallID, error)
+	Fetch(context.Context, storage.SectorRef, SectorFileType, PathType, AcquireMode) (CallID, error)
+}
+
+type ErrorCode int
+
+const (
+	ErrUnknown ErrorCode = iota
+)
+
+const (
+	// Temp Errors
+	ErrTempUnknown ErrorCode = iota + 100
+	ErrTempWorkerRestart
+	ErrTempAllocateSpace
+)
+
+type CallError struct {
+	Code    ErrorCode
+	Message string
+	sub     error
+}
+
+func (c *CallError) Error() string {
+	return fmt.Sprintf("storage call error %d: %s", c.Code, c.Message)
+}
+
+func (c *CallError) Unwrap() error {
+	if c.sub != nil {
+		return c.sub
+	}
+
+	return errors.New(c.Message)
+}
+
+func Err(code ErrorCode, sub error) *CallError {
+	return &CallError{
+		Code:    code,
+		Message: sub.Error(),
+
+		sub: sub,
+	}
 }
 
 type WorkerReturn interface {
-	ReturnAddPiece(ctx context.Context, callID CallID, pi abi.PieceInfo, err string) error
-	ReturnSealPreCommit1(ctx context.Context, callID CallID, p1o storage.PreCommit1Out, err string) error
-	ReturnSealPreCommit2(ctx context.Context, callID CallID, sealed storage.SectorCids, err string) error
-	ReturnSealCommit1(ctx context.Context, callID CallID, out storage.Commit1Out, err string) error
-	ReturnSealCommit2(ctx context.Context, callID CallID, proof storage.Proof, err string) error
-	ReturnFinalizeSector(ctx context.Context, callID CallID, err string) error
-	ReturnReleaseUnsealed(ctx context.Context, callID CallID, err string) error
-	ReturnMoveStorage(ctx context.Context, callID CallID, err string) error
-	ReturnUnsealPiece(ctx context.Context, callID CallID, err string) error
-	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err string) error
-	ReturnFetch(ctx context.Context, callID CallID, err string) error
+	ReturnAddPiece(ctx context.Context, callID CallID, pi abi.PieceInfo, err *CallError) error
+	ReturnSealPreCommit1(ctx context.Context, callID CallID, p1o storage.PreCommit1Out, err *CallError) error
+	ReturnSealPreCommit2(ctx context.Context, callID CallID, sealed storage.SectorCids, err *CallError) error
+	ReturnSealCommit1(ctx context.Context, callID CallID, out storage.Commit1Out, err *CallError) error
+	ReturnSealCommit2(ctx context.Context, callID CallID, proof storage.Proof, err *CallError) error
+	ReturnFinalizeSector(ctx context.Context, callID CallID, err *CallError) error
+	ReturnReleaseUnsealed(ctx context.Context, callID CallID, err *CallError) error
+	ReturnMoveStorage(ctx context.Context, callID CallID, err *CallError) error
+	ReturnUnsealPiece(ctx context.Context, callID CallID, err *CallError) error
+	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err *CallError) error
+	ReturnFetch(ctx context.Context, callID CallID, err *CallError) error
 }

@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	atypes "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )
@@ -34,6 +35,7 @@ var netCmd = &cli.Command{
 		netScores,
 		NetReachability,
 		NetBandwidthCmd,
+		NetBlockCmd,
 	},
 }
 
@@ -373,5 +375,204 @@ var NetBandwidthCmd = &cli.Command{
 
 		return tw.Flush()
 
+	},
+}
+
+var NetBlockCmd = &cli.Command{
+	Name:  "block",
+	Usage: "Manage network connection gating rules",
+	Subcommands: []*cli.Command{
+		NetBlockAddCmd,
+		NetBlockRemoveCmd,
+		NetBlockListCmd,
+	},
+}
+
+var NetBlockAddCmd = &cli.Command{
+	Name:  "add",
+	Usage: "Add connection gating rules",
+	Subcommands: []*cli.Command{
+		NetBlockAddPeer,
+		NetBlockAddIP,
+		NetBlockAddSubnet,
+	},
+}
+
+var NetBlockAddPeer = &cli.Command{
+	Name:      "peer",
+	Usage:     "Block a peer",
+	ArgsUsage: "<Peer> ...",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var peers []peer.ID
+		for _, s := range cctx.Args().Slice() {
+			p, err := peer.Decode(s)
+			if err != nil {
+				return err
+			}
+
+			peers = append(peers, p)
+		}
+
+		return api.NetBlockAdd(ctx, atypes.NetBlockList{Peers: peers})
+	},
+}
+
+var NetBlockAddIP = &cli.Command{
+	Name:      "ip",
+	Usage:     "Block an IP address",
+	ArgsUsage: "<IP> ...",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		return api.NetBlockAdd(ctx, atypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
+	},
+}
+
+var NetBlockAddSubnet = &cli.Command{
+	Name:      "subnet",
+	Usage:     "Block an IP subnet",
+	ArgsUsage: "<CIDR> ...",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		return api.NetBlockAdd(ctx, atypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
+	},
+}
+
+var NetBlockRemoveCmd = &cli.Command{
+	Name:  "remove",
+	Usage: "Remove connection gating rules",
+	Subcommands: []*cli.Command{
+		NetBlockRemovePeer,
+		NetBlockRemoveIP,
+		NetBlockRemoveSubnet,
+	},
+}
+
+var NetBlockRemovePeer = &cli.Command{
+	Name:      "peer",
+	Usage:     "Unblock a peer",
+	ArgsUsage: "<Peer> ...",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var peers []peer.ID
+		for _, s := range cctx.Args().Slice() {
+			p, err := peer.Decode(s)
+			if err != nil {
+				return err
+			}
+
+			peers = append(peers, p)
+		}
+
+		return api.NetBlockRemove(ctx, atypes.NetBlockList{Peers: peers})
+	},
+}
+
+var NetBlockRemoveIP = &cli.Command{
+	Name:      "ip",
+	Usage:     "Unblock an IP address",
+	ArgsUsage: "<IP> ...",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		return api.NetBlockRemove(ctx, atypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
+	},
+}
+
+var NetBlockRemoveSubnet = &cli.Command{
+	Name:      "subnet",
+	Usage:     "Unblock an IP subnet",
+	ArgsUsage: "<CIDR> ...",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		return api.NetBlockRemove(ctx, atypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
+	},
+}
+
+var NetBlockListCmd = &cli.Command{
+	Name:  "list",
+	Usage: "list connection gating rules",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		acl, err := api.NetBlockList(ctx)
+		if err != nil {
+			return err
+		}
+
+		if len(acl.Peers) != 0 {
+			sort.Slice(acl.Peers, func(i, j int) bool {
+				return strings.Compare(string(acl.Peers[i]), string(acl.Peers[j])) > 0
+			})
+
+			fmt.Println("Blocked Peers:")
+			for _, p := range acl.Peers {
+				fmt.Printf("\t%s\n", p)
+			}
+		}
+
+		if len(acl.IPAddrs) != 0 {
+			sort.Slice(acl.IPAddrs, func(i, j int) bool {
+				return strings.Compare(acl.IPAddrs[i], acl.IPAddrs[j]) < 0
+			})
+
+			fmt.Println("Blocked IPs:")
+			for _, a := range acl.IPAddrs {
+				fmt.Printf("\t%s\n", a)
+			}
+		}
+
+		if len(acl.IPSubnets) != 0 {
+			sort.Slice(acl.IPSubnets, func(i, j int) bool {
+				return strings.Compare(acl.IPSubnets[i], acl.IPSubnets[j]) < 0
+			})
+
+			fmt.Println("Blocked Subnets:")
+			for _, n := range acl.IPSubnets {
+				fmt.Printf("\t%s\n", n)
+			}
+		}
+
+		return nil
 	},
 }

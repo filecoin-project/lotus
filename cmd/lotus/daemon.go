@@ -410,14 +410,6 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
 
-	defer func() {
-		if c, ok := bs.(io.Closer); ok {
-			if err := c.Close(); err != nil {
-				log.Warnf("failed to close blockstore: %s", err)
-			}
-		}
-	}()
-
 	mds, err := lr.Datastore("/metadata")
 	if err != nil {
 		return err
@@ -427,7 +419,9 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	if err != nil {
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}
+
 	cst := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
+	defer cst.Close() //nolint:errcheck
 
 	log.Infof("importing chain from %s...", fname)
 
@@ -472,7 +466,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 
 	log.Infof("accepting %s as new head", ts.Cids())
-	if err := cst.SetHead(ts); err != nil {
+	if err := cst.ForceHeadSilent(context.Background(), ts); err != nil {
 		return err
 	}
 

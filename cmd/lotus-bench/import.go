@@ -59,7 +59,7 @@ type TipSetExec struct {
 
 var importBenchCmd = &cli.Command{
 	Name:  "import",
-	Usage: "benchmark chain import and validation",
+	Usage: "Benchmark chain import and validation",
 	Subcommands: []*cli.Command{
 		importAnalyzeCmd,
 	},
@@ -277,6 +277,8 @@ var importBenchCmd = &cli.Command{
 
 		metadataDs := datastore.NewMapDatastore()
 		cs := store.NewChainStore(cbs, sbs, metadataDs, vm.Syscalls(verifier), nil)
+		defer cs.Close() //nolint:errcheck
+
 		stm := stmgr.NewStateManager(cs)
 
 		var carFile *os.File

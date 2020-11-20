@@ -110,6 +110,9 @@
   * [NetBandwidthStats](#NetBandwidthStats)
   * [NetBandwidthStatsByPeer](#NetBandwidthStatsByPeer)
   * [NetBandwidthStatsByProtocol](#NetBandwidthStatsByProtocol)
+  * [NetBlockAdd](#NetBlockAdd)
+  * [NetBlockList](#NetBlockList)
+  * [NetBlockRemove](#NetBlockRemove)
   * [NetConnect](#NetConnect)
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
@@ -246,7 +249,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 4352,
+  "APIVersion": 65536,
   "BlockDelay": 42
 }
 ```
@@ -2639,6 +2642,58 @@ Response:
 }
 ```
 
+### NetBlockAdd
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Peers": null,
+    "IPAddrs": null,
+    "IPSubnets": null
+  }
+]
+```
+
+Response: `{}`
+
+### NetBlockList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Peers": null,
+  "IPAddrs": null,
+  "IPSubnets": null
+}
+```
+
+### NetBlockRemove
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Peers": null,
+    "IPAddrs": null,
+    "IPSubnets": null
+  }
+]
+```
+
+Response: `{}`
+
 ### NetConnect
 
 
@@ -3874,7 +3929,7 @@ Response:
   "WorkerChangeEpoch": 10101,
   "PeerId": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Multiaddrs": null,
-  "SealProofType": 3,
+  "SealProofType": 8,
   "SectorSize": 34359738368,
   "WindowPoStPartitionSectors": 42,
   "ConsensusFaultElapsed": 10101
@@ -3892,7 +3947,7 @@ Inputs:
 [
   "f01234",
   {
-    "SealProof": 3,
+    "SealProof": 8,
     "SectorNumber": 9,
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -3989,7 +4044,7 @@ Inputs:
 [
   "f01234",
   {
-    "SealProof": 3,
+    "SealProof": 8,
     "SectorNumber": 9,
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -4194,7 +4249,7 @@ Inputs:
 ]
 ```
 
-Response: `6`
+Response: `8`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4415,7 +4470,7 @@ Response:
 ```json
 {
   "SectorNumber": 9,
-  "SealProof": 3,
+  "SealProof": 8,
   "SealedCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
@@ -4486,7 +4541,7 @@ Response:
 ```json
 {
   "Info": {
-    "SealProof": 3,
+    "SealProof": 8,
     "SectorNumber": 9,
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

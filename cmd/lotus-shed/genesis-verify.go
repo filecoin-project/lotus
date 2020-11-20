@@ -53,6 +53,7 @@ var genesisVerifyCmd = &cli.Command{
 		bs := blockstore.NewFromDatastore(datastore.NewMapDatastore())
 
 		cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, nil)
+		defer cs.Close() //nolint:errcheck
 
 		cf := cctx.Args().Get(0)
 		f, err := os.Open(cf)

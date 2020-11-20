@@ -25,7 +25,7 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version6
+const NewestNetworkVersion = network.Version8
 const ActorUpgradeNetworkVersion = network.Version4
 
 // Epochs
@@ -60,6 +60,9 @@ const TicketRandomnessLookback = abi.ChainEpoch(1)
 // Address
 
 const AddressMainnetEnvVar = "_mainnet_"
+
+// the 'f' prefix doesn't matter
+var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
 // /////
 // Devnet settings
