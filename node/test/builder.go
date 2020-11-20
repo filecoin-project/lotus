@@ -23,11 +23,12 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
@@ -38,6 +39,7 @@ import (
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
@@ -49,6 +51,13 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	chain.BootstrapPeerThreshold = 1
+	messagepool.HeadChangeCoalesceMinDelay = time.Microsecond
+	messagepool.HeadChangeCoalesceMaxDelay = 2 * time.Microsecond
+	messagepool.HeadChangeCoalesceMergeInterval = 100 * time.Nanosecond
+}
 
 func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
 	r := repo.NewMemory(nil)
@@ -346,7 +355,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			preseals = test.GenesisPreseals
 		}
 
-		genm, k, err := mockstorage.PreSeal(2048, maddr, preseals)
+		genm, k, err := mockstorage.PreSeal(abi.RegisteredSealProof_StackedDrg2KiBV1, maddr, preseals)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -403,6 +412,9 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 
+			// so that we subscribe to pubsub topics immediately
+			node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
+
 			genesis,
 
 			fullOpts[i].Opts(fulls),
@@ -445,7 +457,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 
 		storers[i] = CreateTestStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
 			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
-				return mock.NewMockSectorMgr(policy.GetDefaultSectorSize(), sectors), nil
+				return mock.NewMockSectorMgr(sectors), nil
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Unset(new(*sectorstorage.Manager)),

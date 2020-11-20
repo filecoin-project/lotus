@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dgraph-io/badger/v2"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
-	badgerds "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
 	"github.com/polydawn/refmt/cbor"
@@ -312,30 +312,41 @@ var datastoreRewriteCmd = &cli.Command{
 			return xerrors.Errorf("cannot get toPath: %w", err)
 		}
 
-		opts := repo.ChainBadgerOptions()
-		opts.Options = opts.Options.WithSyncWrites(false)
-		to, err := badgerds.NewDatastore(toPath, &opts)
+		var (
+			from *badger.DB
+			to   *badger.DB
+		)
+
+		// open the destination (to) store.
+		opts, err := repo.BadgerBlockstoreOptions(repo.BlockstoreChain, toPath, false)
 		if err != nil {
-			return xerrors.Errorf("opennig 'to' datastore: %w", err)
+			return xerrors.Errorf("failed to get badger options: %w", err)
+		}
+		opts.SyncWrites = false
+		if to, err = badger.Open(opts.Options); err != nil {
+			return xerrors.Errorf("opening 'to' badger store: %w", err)
 		}
 
-		opts.Options = opts.Options.WithReadOnly(false)
-		from, err := badgerds.NewDatastore(fromPath, &opts)
+		// open the source (from) store.
+		opts, err = repo.BadgerBlockstoreOptions(repo.BlockstoreChain, fromPath, true)
 		if err != nil {
-			return xerrors.Errorf("opennig 'from' datastore: %w", err)
+			return xerrors.Errorf("failed to get badger options: %w", err)
+		}
+		if from, err = badger.Open(opts.Options); err != nil {
+			return xerrors.Errorf("opening 'from' datastore: %w", err)
 		}
 
 		pr, pw := io.Pipe()
 		errCh := make(chan error)
 		go func() {
 			bw := bufio.NewWriterSize(pw, 64<<20)
-			_, err := from.DB.Backup(bw, 0)
+			_, err := from.Backup(bw, 0)
 			_ = bw.Flush()
 			_ = pw.CloseWithError(err)
 			errCh <- err
 		}()
 		go func() {
-			err := to.DB.Load(pr, 256)
+			err := to.Load(pr, 256)
 			errCh <- err
 		}()
 

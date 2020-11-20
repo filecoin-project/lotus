@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -23,6 +22,8 @@ var UpgradeActorsV2Height = abi.ChainEpoch(10)
 var UpgradeLiftoffHeight = abi.ChainEpoch(-5)
 
 const UpgradeKumquatHeight = 15
+const UpgradeCalicoHeight = 20
+const UpgradePersianHeight = 25
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -53,3 +54,5 @@ const SlashablePowerDelay = 20
 
 // Epochs
 const InteractivePoRepConfidence = 6
+
+const BootstrapPeerThreshold = 1

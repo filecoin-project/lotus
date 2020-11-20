@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/lotus/chain/market"
+
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
@@ -61,6 +63,14 @@ func main() {
 	err = gen.WriteTupleEncodersToFile("./node/hello/cbor_gen.go", "hello",
 		hello.HelloMessage{},
 		hello.LatencyMessage{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./chain/market/cbor_gen.go", "market",
+		market.FundedAddressState{},
 	)
 	if err != nil {
 		fmt.Println(err)

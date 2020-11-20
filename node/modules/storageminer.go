@@ -1,10 +1,13 @@
 package modules
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"go.uber.org/fx"
@@ -36,7 +39,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -46,6 +48,7 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 
+	"github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -82,8 +85,8 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
-func GetParams(sbc *ffiwrapper.Config) error {
-	ssize, err := sbc.SealProofType.SectorSize()
+func GetParams(spt abi.RegisteredSealProof) error {
+	ssize, err := spt.SectorSize()
 	if err != nil {
 		return err
 	}
@@ -94,6 +97,7 @@ func GetParams(sbc *ffiwrapper.Config) error {
 		return nil
 	}
 
+	// TODO: We should fetch the params for the actual proof type, not just based on the size.
 	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), uint64(ssize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
@@ -118,22 +122,13 @@ func StorageNetworkName(ctx helpers.MetricsCtx, a lapi.FullNode) (dtypes.Network
 	return a.StateNetworkName(ctx)
 }
 
-func ProofsConfig(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (*ffiwrapper.Config, error) {
+func SealProofType(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (abi.RegisteredSealProof, error) {
 	mi, err := fnapi.StateMinerInfo(context.TODO(), address.Address(maddr), types.EmptyTSK)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
-	if err != nil {
-		return nil, xerrors.Errorf("bad sector size: %w", err)
-	}
-
-	sb := &ffiwrapper.Config{
-		SealProofType: spt,
-	}
-
-	return sb, nil
+	return mi.SealProofType, nil
 }
 
 type sidsc struct {
@@ -245,15 +240,59 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 	})
 }
 
+func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.FullNode, minerAddress dtypes.MinerAddress) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			b, err := ds.Get(datastore.NewKey("/marketfunds/provider"))
+			if err != nil {
+				if xerrors.Is(err, datastore.ErrNotFound) {
+					return nil
+				}
+				return err
+			}
+
+			var value abi.TokenAmount
+			if err = value.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+				return err
+			}
+			ts, err := node.ChainHead(ctx)
+			if err != nil {
+				log.Errorf("provider funds migration - getting chain head: %w", err)
+				return nil
+			}
+
+			mi, err := node.StateMinerInfo(ctx, address.Address(minerAddress), ts.Key())
+			if err != nil {
+				log.Errorf("provider funds migration - getting miner info %s: %w", minerAddress, err)
+				return nil
+			}
+
+			_, err = node.MarketReserveFunds(ctx, mi.Worker, address.Address(minerAddress), value)
+			if err != nil {
+				log.Errorf("provider funds migration - reserving funds (wallet %s, addr %s, funds %d): %w",
+					mi.Worker, minerAddress, value, err)
+				return nil
+			}
+
+			return ds.Delete(datastore.NewKey("/marketfunds/provider"))
+		},
+	})
+}
+
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS) (dtypes.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ProviderDataTransfer, error) {
 	sc := storedcounter.New(ds, datastore.NewKey("/datatransfer/provider/counter"))
 	net := dtnet.NewFromLibp2pHost(h)
 
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
 	transport := dtgstransport.NewTransport(h.ID(), gs)
-	dt, err := dtimpl.NewDataTransfer(dtDs, net, transport, sc)
+	err := os.MkdirAll(filepath.Join(r.Path(), "data-transfer"), 0755) //nolint: gosec
+	if err != nil && !os.IsExist(err) {
+		return nil, err
+	}
+
+	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, sc)
 	if err != nil {
 		return nil, err
 	}
@@ -395,12 +434,6 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	return storedAsk, nil
 }
 
-type ProviderDealFunds funds.DealFunds
-
-func NewProviderDealFunds(ds dtypes.MetadataDS) (ProviderDealFunds, error) {
-	return funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/provider"))
-}
-
 func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
@@ -478,7 +511,6 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 }
 
 func StorageProvider(minerAddress dtypes.MinerAddress,
-	ffiConfig *ffiwrapper.Config,
 	storedAsk *storedask.StoredAsk,
 	h host.Host, ds dtypes.MetadataDS,
 	mds dtypes.StagingMultiDstore,
@@ -487,7 +519,6 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
-	funds ProviderDealFunds,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -497,7 +528,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), ffiConfig.SealProofType, storedAsk, funds, opt)
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -562,13 +593,13 @@ func RetrievalProvider(h host.Host,
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
 var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, cfg *ffiwrapper.Config, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
 	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sectorstorage.New(ctx, ls, si, cfg, sc, urls, sa, wsts, smsts)
+	sst, err := sectorstorage.New(ctx, ls, si, sc, urls, sa, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}
@@ -685,9 +716,10 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 	return func(cfg sealiface.Config) (err error) {
 		err = mutateCfg(r, func(c *config.StorageMiner) {
 			c.Sealing = config.SealingConfig{
-				MaxWaitDealsSectors: cfg.MaxWaitDealsSectors,
-				MaxSealingSectors:   cfg.MaxSealingSectors,
-				WaitDealsDelay:      config.Duration(cfg.WaitDealsDelay),
+				MaxWaitDealsSectors:       cfg.MaxWaitDealsSectors,
+				MaxSealingSectors:         cfg.MaxSealingSectors,
+				MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
+				WaitDealsDelay:            config.Duration(cfg.WaitDealsDelay),
 			}
 		})
 		return

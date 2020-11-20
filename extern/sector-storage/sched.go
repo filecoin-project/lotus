@@ -11,6 +11,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -51,8 +52,6 @@ type WorkerSelector interface {
 }
 
 type scheduler struct {
-	spt abi.RegisteredSealProof
-
 	workersLk sync.RWMutex
 	workers   map[WorkerID]*workerHandle
 
@@ -122,7 +121,7 @@ type activeResources struct {
 }
 
 type workerRequest struct {
-	sector   abi.SectorID
+	sector   storage.SectorRef
 	taskType sealtasks.TaskType
 	priority int // larger values more important
 	sel      WorkerSelector
@@ -143,10 +142,8 @@ type workerResponse struct {
 	err error
 }
 
-func newScheduler(spt abi.RegisteredSealProof) *scheduler {
+func newScheduler() *scheduler {
 	return &scheduler{
-		spt: spt,
-
 		workers: map[WorkerID]*workerHandle{},
 
 		schedule:       make(chan *workerRequest),
@@ -168,7 +165,7 @@ func newScheduler(spt abi.RegisteredSealProof) *scheduler {
 	}
 }
 
-func (sh *scheduler) Schedule(ctx context.Context, sector abi.SectorID, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
+func (sh *scheduler) Schedule(ctx context.Context, sector storage.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
 	ret := make(chan workerResponse)
 
 	select {
@@ -315,7 +312,7 @@ func (sh *scheduler) diag() SchedDiagInfo {
 		task := (*sh.schedQueue)[sqi]
 
 		out.Requests = append(out.Requests, SchedDiagRequestInfo{
-			Sector:   task.sector,
+			Sector:   task.sector.ID,
 			TaskType: task.taskType,
 			Priority: task.priority,
 		})
@@ -378,7 +375,7 @@ func (sh *scheduler) trySched() {
 			}()
 
 			task := (*sh.schedQueue)[sqi]
-			needRes := ResourceTable[task.taskType][sh.spt]
+			needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
 			task.indexHeap = sqi
 			for wnd, windowRequest := range sh.openWindows {
@@ -400,7 +397,7 @@ func (sh *scheduler) trySched() {
 				}
 
 				rpcCtx, cancel := context.WithTimeout(task.ctx, SelectorTimeout)
-				ok, err := task.sel.Ok(rpcCtx, task.taskType, sh.spt, worker)
+				ok, err := task.sel.Ok(rpcCtx, task.taskType, task.sector.ProofType, worker)
 				cancel()
 				if err != nil {
 					log.Errorf("trySched(1) req.sel.Ok error: %+v", err)
@@ -456,21 +453,21 @@ func (sh *scheduler) trySched() {
 
 	for sqi := 0; sqi < sh.schedQueue.Len(); sqi++ {
 		task := (*sh.schedQueue)[sqi]
-		needRes := ResourceTable[task.taskType][sh.spt]
+		needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
 		selectedWindow := -1
 		for _, wnd := range acceptableWindows[task.indexHeap] {
 			wid := sh.openWindows[wnd].worker
 			wr := sh.workers[wid].info.Resources
 
-			log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.Number, wnd)
+			log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.ID.Number, wnd)
 
 			// TODO: allow bigger windows
 			if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", wr) {
 				continue
 			}
 
-			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.Number, task.taskType, wnd)
+			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.ID.Number, task.taskType, wnd)
 
 			windows[wnd].allocated.add(wr, needRes)
 			// TODO: We probably want to re-sort acceptableWindows here based on new

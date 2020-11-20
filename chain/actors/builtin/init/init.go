@@ -57,4 +57,6 @@ type State interface {
 
 	// Sets the network's name. This should only be used on upgrade/fork.
 	SetNetworkName(name string) error
+
+	addressMap() (adt.Map, error)
 }

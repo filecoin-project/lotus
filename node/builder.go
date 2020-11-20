@@ -8,6 +8,7 @@ import (
 
 	metricsi "github.com/ipfs/go-metrics-interface"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -55,7 +56,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -125,11 +125,12 @@ const (
 
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
-
+	HandleMigrateClientFundsKey
 	HandlePaymentChannelManagerKey
 
 	// miner
 	GetParamsKey
+	HandleMigrateProviderFundsKey
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
@@ -263,8 +264,6 @@ func Online() Option {
 			Override(new(api.WalletAPI), From(new(wallet.MultiWallet))),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
-			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
-			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
 			Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
 			Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
 
@@ -294,14 +293,14 @@ func Online() Option {
 			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
 			Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
-			Override(new(modules.ClientDealFunds), modules.NewClientDealFunds),
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
 			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 			Override(new(beacon.Schedule), modules.RandomSchedule),
 
 			Override(new(*paychmgr.Store), paychmgr.NewStore),
 			Override(new(*paychmgr.Manager), paychmgr.NewManager),
-			Override(new(*market.FundMgr), market.StartFundManager),
+			Override(new(*market.FundManager), market.NewFundManager),
+			Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
 			Override(HandlePaymentChannelManagerKey, paychmgr.HandleManager),
 			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 		),
@@ -341,7 +340,7 @@ func Online() Option {
 			Override(new(stores.SectorIndex), From(new(*stores.Index))),
 			Override(new(dtypes.MinerID), modules.MinerID),
 			Override(new(dtypes.MinerAddress), modules.MinerAddress),
-			Override(new(*ffiwrapper.Config), modules.ProofsConfig),
+			Override(new(abi.RegisteredSealProof), modules.SealProofType),
 			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
@@ -365,9 +364,9 @@ func Online() Option {
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
 			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
-			Override(new(modules.ProviderDealFunds), modules.NewProviderDealFunds),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(nil)),
+			Override(HandleMigrateProviderFundsKey, modules.HandleMigrateProviderFunds),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(GetParamsKey, modules.GetParams),
 			Override(HandleDealsKey, modules.HandleDeals),

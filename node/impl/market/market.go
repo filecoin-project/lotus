@@ -14,9 +14,13 @@ import (
 type MarketAPI struct {
 	fx.In
 
-	FMgr *market.FundMgr
+	FMgr *market.FundManager
 }
 
-func (a *MarketAPI) MarketEnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) (cid.Cid, error) {
-	return a.FMgr.EnsureAvailable(ctx, addr, wallet, amt)
+func (a *MarketAPI) MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error) {
+	return a.FMgr.Reserve(ctx, wallet, addr, amt)
+}
+
+func (a *MarketAPI) MarketReleaseFunds(ctx context.Context, addr address.Address, amt types.BigInt) error {
+	return a.FMgr.Release(addr, amt)
 }

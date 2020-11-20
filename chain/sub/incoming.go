@@ -95,7 +95,10 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			}
 
 			took := build.Clock.Since(start)
-			log.Infow("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			if took > 3*time.Second {
+				log.Warnw("Slow msg fetch", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			}
 			if delay := build.Clock.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
 				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
 			}
@@ -336,6 +339,13 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 
 func (bv *BlockValidator) validateLocalBlock(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
 	stats.Record(ctx, metrics.BlockPublished.M(1))
+
+	if size := msg.Size(); size > 1<<20-1<<15 {
+		log.Errorf("ignoring oversize block (%dB)", size)
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "oversize_block"))
+		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
+		return pubsub.ValidationIgnore
+	}
 
 	blk, what, err := bv.decodeAndCheckBlock(msg)
 	if err != nil {

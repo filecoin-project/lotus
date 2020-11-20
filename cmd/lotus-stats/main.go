@@ -113,12 +113,14 @@ var runCmd = &cli.Command{
 		heightFlag := cctx.Int("height")
 		headLagFlag := cctx.Int("head-lag")
 
-		influxAddrFlag := cctx.String("influx-addr")
-		influxUserFlag := cctx.String("influx-user")
-		influxPassFlag := cctx.String("influx-pass")
+		influxHostnameFlag := cctx.String("influx-hostname")
+		influxUsernameFlag := cctx.String("influx-username")
+		influxPasswordFlag := cctx.String("influx-password")
 		influxDatabaseFlag := cctx.String("influx-database")
 
-		influx, err := stats.InfluxClient(influxAddrFlag, influxUserFlag, influxPassFlag)
+		log.Infow("opening influx client", "hostname", influxHostnameFlag, "username", influxUsernameFlag, "database", influxDatabaseFlag)
+
+		influx, err := stats.InfluxClient(influxHostnameFlag, influxUsernameFlag, influxPasswordFlag)
 		if err != nil {
 			log.Fatal(err)
 		}

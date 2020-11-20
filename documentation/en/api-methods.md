@@ -68,7 +68,8 @@
   * [LogList](#LogList)
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
-  * [MarketEnsureAvailable](#MarketEnsureAvailable)
+  * [MarketReleaseFunds](#MarketReleaseFunds)
+  * [MarketReserveFunds](#MarketReserveFunds)
 * [Miner](#Miner)
   * [MinerCreateBlock](#MinerCreateBlock)
   * [MinerGetBaseInfo](#MinerGetBaseInfo)
@@ -245,7 +246,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 4352,
+  "APIVersion": 65536,
   "BlockDelay": 42
 }
 ```
@@ -1612,8 +1613,24 @@ Response: `{}`
 ## Market
 
 
-### MarketEnsureAvailable
-MarketFreeBalance
+### MarketReleaseFunds
+MarketReleaseFunds releases funds reserved by MarketReserveFunds
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "0"
+]
+```
+
+Response: `{}`
+
+### MarketReserveFunds
+MarketReserveFunds reserves funds for a deal
 
 
 Perms: sign
@@ -3857,7 +3874,7 @@ Response:
   "WorkerChangeEpoch": 10101,
   "PeerId": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Multiaddrs": null,
-  "SealProofType": 3,
+  "SealProofType": 8,
   "SectorSize": 34359738368,
   "WindowPoStPartitionSectors": 42,
   "ConsensusFaultElapsed": 10101
@@ -3875,7 +3892,7 @@ Inputs:
 [
   "f01234",
   {
-    "SealProof": 3,
+    "SealProof": 8,
     "SectorNumber": 9,
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -3972,7 +3989,7 @@ Inputs:
 [
   "f01234",
   {
-    "SealProof": 3,
+    "SealProof": 8,
     "SectorNumber": 9,
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -4177,7 +4194,7 @@ Inputs:
 ]
 ```
 
-Response: `6`
+Response: `8`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4398,7 +4415,7 @@ Response:
 ```json
 {
   "SectorNumber": 9,
-  "SealProof": 3,
+  "SealProof": 8,
   "SealedCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
@@ -4469,7 +4486,7 @@ Response:
 ```json
 {
   "Info": {
-    "SealProof": 3,
+    "SealProof": 8,
     "SectorNumber": 9,
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

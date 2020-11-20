@@ -81,6 +81,7 @@ type DealProposals interface {
 type PublishStorageDealsParams = market0.PublishStorageDealsParams
 type PublishStorageDealsReturn = market0.PublishStorageDealsReturn
 type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
+type WithdrawBalanceParams = market0.WithdrawBalanceParams
 
 type ClientDealProposal = market0.ClientDealProposal
 
