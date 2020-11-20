@@ -53,20 +53,23 @@ type PeerMgr struct {
 	h   host.Host
 	dht *dht.IpfsDHT
 
-	notifee        *net.NotifyBundle
-	addPeerEmitter event.Emitter
-	rmPeerEmitter  event.Emitter
+	notifee *net.NotifyBundle
+	emitter event.Emitter
 
 	done chan struct{}
 }
 
-type NewFilPeer struct {
-	Id peer.ID
+type FilPeerEvt struct {
+	Type FilPeerEvtType
+	ID   peer.ID
 }
 
-type RemoveFilPeer struct {
-	Id peer.ID
-}
+type FilPeerEvtType int
+
+const (
+	AddFilPeerEvt FilPeerEvtType = iota
+	RemoveFilPeerEvt
+)
 
 func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) (*PeerMgr, error) {
 	pm := &PeerMgr{
@@ -82,23 +85,16 @@ func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes
 
 		done: make(chan struct{}),
 	}
-	emitter, err := h.EventBus().Emitter(new(NewFilPeer))
+	emitter, err := h.EventBus().Emitter(new(FilPeerEvt))
 	if err != nil {
-		return nil, xerrors.Errorf("creating NewFilPeer emitter: %w", err)
+		return nil, xerrors.Errorf("creating FilPeerEvt emitter: %w", err)
 	}
-	pm.addPeerEmitter = emitter
-
-	emitter, err = h.EventBus().Emitter(new(RemoveFilPeer))
-	if err != nil {
-		return nil, xerrors.Errorf("creating RemoveFilPeer emitter: %w", err)
-	}
-	pm.rmPeerEmitter = emitter
+	pm.emitter = emitter
 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			return multierr.Combine(
-				pm.addPeerEmitter.Close(),
-				pm.rmPeerEmitter.Close(),
+				pm.emitter.Close(),
 				pm.Stop(ctx),
 			)
 		},
@@ -116,7 +112,7 @@ func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes
 }
 
 func (pmgr *PeerMgr) AddFilecoinPeer(p peer.ID) {
-	_ = pmgr.addPeerEmitter.Emit(NewFilPeer{Id: p}) //nolint:errcheck
+	_ = pmgr.emitter.Emit(FilPeerEvt{Type: AddFilPeerEvt, ID: p}) //nolint:errcheck
 	pmgr.peersLk.Lock()
 	defer pmgr.peersLk.Unlock()
 	pmgr.peers[p] = time.Duration(0)
@@ -151,7 +147,7 @@ func (pmgr *PeerMgr) Disconnect(p peer.ID) {
 	}
 
 	if disconnected {
-		_ = pmgr.rmPeerEmitter.Emit(RemoveFilPeer{Id: p}) //nolint:errcheck
+		_ = pmgr.emitter.Emit(FilPeerEvt{Type: RemoveFilPeerEvt, ID: p}) //nolint:errcheck
 	}
 }
 
