@@ -173,6 +173,10 @@ func (a *CommonAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protoc
 	return a.Reporter.GetBandwidthByProtocol(), nil
 }
 
+func (a *CommonAPI) Discover(ctx context.Context) (string, error) {
+	return string(build.OpenRPCDiscoverJSON_Full()), nil
+}
+
 func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
 	return a.Host.ID(), nil
 }

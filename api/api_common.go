@@ -46,6 +46,9 @@ type Common interface {
 	// usage and current rate per protocol
 	NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error)
 
+	// Discover returns an OpenRPC document describing an RPC API.
+	Discover(ctx context.Context) (string, error)
+
 	// MethodGroup: Common
 
 	// ID returns peerID of libp2p node backing this API
