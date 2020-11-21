@@ -328,7 +328,7 @@ func (rt *Runtime) Context() context.Context {
 }
 
 func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
-	log.Warnf("Abortf: " + fmt.Sprintf(msg, args...))
+	log.Warnf("from: %s, to:%s, Abortf: %s", rt.Caller(), rt.Receiver(), fmt.Sprintf(msg, args...))
 	panic(aerrors.NewfSkip(2, code, msg, args...))
 }
 
