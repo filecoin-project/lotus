@@ -10,13 +10,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	go_openrpc_reflect "github.com/etclabscore/go-openrpc-reflect"
-	"github.com/filecoin-project/lotus/api/openrpc"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	meta_schema "github.com/open-rpc/meta-schema"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
@@ -35,24 +32,10 @@ import (
 
 var log = logging.Logger("main")
 
-type RPCDiscovery struct {
-	doc *go_openrpc_reflect.Document
-}
-
-func (d *RPCDiscovery) Discover() (*meta_schema.OpenrpcDocument, error) {
-	return d.doc.Discover()
-}
-
 func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownCh <-chan struct{}) error {
 	rpcServer := jsonrpc.NewServer()
 	fullAPI := apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a))
 	rpcServer.Register("Filecoin", fullAPI)
-
-	doc := openrpc.NewLotusOpenRPCDocument()
-
-	doc.RegisterReceiverName("Filecoin", fullAPI)
-
-	rpcServer.Register("rpc", &RPCDiscovery{doc})
 
 	ah := &auth.Handler{
 		Verify: a.AuthVerify,
