@@ -372,7 +372,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m cbor.Marshal
 		if err.IsFatal() {
 			panic(err)
 		}
-		log.Warnf("vmctx send failed: from: %s, to: %s, method: %d: ret: %d, err: %s", rt.Receiver(), to, method, ret, err)
+		log.Warnf("vmctx send failed: call: %s, from: %s, to: %s, method: %d: ret: %d, err: %s", rt.Caller(), rt.Receiver(), to, method, ret, err)
 		return err.RetCode()
 	}
 	_ = rt.chargeGasSafe(gasOnActorExec)
