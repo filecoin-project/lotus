@@ -1,11 +1,21 @@
 package build
 
-import rice "github.com/GeertJohan/go.rice"
+import (
+	"encoding/json"
 
-func OpenRPCDiscoverJSON_Full() []byte {
-	return rice.MustFindBox("openrpc").MustBytes("full.json")
+	rice "github.com/GeertJohan/go.rice"
+)
+
+func OpenRPCDiscoverJSON_Full() map[string]interface{} {
+	data := rice.MustFindBox("openrpc").MustBytes("full.json")
+	m := map[string]interface{}{}
+	json.Unmarshal(data, &m)
+	return m
 }
 
-func OpenRPCDiscoverJSON_Miner() []byte {
-	return rice.MustFindBox("openrpc").MustBytes("miner.json")
+func OpenRPCDiscoverJSON_Miner() map[string]interface{} {
+	data := rice.MustFindBox("openrpc").MustBytes("miner.json")
+	m := map[string]interface{}{}
+	json.Unmarshal(data, &m)
+	return m
 }

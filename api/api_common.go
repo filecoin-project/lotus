@@ -47,7 +47,7 @@ type Common interface {
 	NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error)
 
 	// Discover returns an OpenRPC document describing an RPC API.
-	Discover(ctx context.Context) (string, error)
+	Discover(ctx context.Context) (map[string]interface{}, error)
 
 	// MethodGroup: Common
 
