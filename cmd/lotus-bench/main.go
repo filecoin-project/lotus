@@ -175,7 +175,7 @@ var sealBenchCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
-		policy.AddSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+		policy.AddSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1, abi.RegisteredSealProof_StackedDrg8MiBV1, abi.RegisteredSealProof_StackedDrg512MiBV1)
 
 		if c.Bool("no-gpu") {
 			err := os.Setenv("BELLMAN_NO_GPU", "1")
