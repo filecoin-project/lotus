@@ -10,27 +10,32 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	filecoin_filestore "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	sector_stores "github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/ipfs/go-filestore"
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
@@ -44,7 +49,6 @@ var ExampleValues = map[reflect.Type]interface{}{
 func addExample(v interface{}) {
 	ExampleValues[reflect.TypeOf(v)] = v
 }
-
 
 func init() {
 	c, err := cid.Decode("bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4")
@@ -77,6 +81,8 @@ func init() {
 	addExample(pid)
 	addExample(&pid)
 
+	multistoreIDExample := multistore.StoreID(50)
+
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1)
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
@@ -106,7 +112,8 @@ func init() {
 	addExample(time.Minute)
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
-	addExample(multistore.StoreID(50))
+	addExample(multistoreIDExample)
+	addExample(&multistoreIDExample)
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)
@@ -149,6 +156,67 @@ func init() {
 		},
 	})
 
+	addExample(filecoin_filestore.Path("/path/to/file"))
+	addExample(retrievalmarket.DealID(6))
+	addExample(abi.ActorID(42))
+	addExample(map[string][]api.SealedRef{
+		"t026363": {
+			{
+				SectorID: abi.SectorNumber(42),
+				Offset:   abi.PaddedPieceSize(42),
+				Size:     abi.UnpaddedPieceSize(42),
+			},
+			{
+				SectorID: abi.SectorNumber(43),
+				Offset:   abi.PaddedPieceSize(43),
+				Size:     abi.UnpaddedPieceSize(43),
+			},
+		},
+	})
+	addExample(api.SectorState(1))
+	addExample(sector_stores.ID("abc123"))
+	addExample(storiface.FTUnsealed)
+	addExample(storiface.PathStorage)
+	addExample(map[sector_stores.ID][]sector_stores.Decl{
+		"12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyFF": {
+			{
+				SectorID: abi.SectorID{
+					Miner:  42,
+					Number: 13,
+				},
+				SectorFileType: storiface.FTSealed,
+			},
+		},
+	})
+	addExample(map[sector_stores.ID]string{
+		"12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyFF": "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyAA",
+	})
+	addExample(sector_stores.HealthReport{
+		Stat: fsutil.FsStat{},
+		Err:  nil,
+	})
+	addExample(map[uuid.UUID][]storiface.WorkerJob{
+		uuid.MustParse("f47ac10b-58cc-c372-8567-0e02b2c3d479"): {
+			storiface.WorkerJob{
+				ID:      storiface.CallID{},
+				Sector:  abi.SectorID{},
+				Task:    "",
+				RunWait: 0,
+				Start:   time.Time{},
+			},
+		},
+	})
+	addExample(map[uuid.UUID]storiface.WorkerStats{
+		uuid.MustParse("f47ac10b-58cc-c372-8567-0e02b2c3d479"): storiface.WorkerStats{
+			Info:       storiface.WorkerInfo{},
+			Enabled:    false,
+			MemUsedMin: 0,
+			MemUsedMax: 0,
+			GpuUsed:    false,
+			CpuUse:     0,
+		},
+	})
+
 	maddr, err := multiaddr.NewMultiaddr("/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior")
 	if err != nil {
 		panic(err)
@@ -187,14 +255,14 @@ func ExampleValue(t, parent reflect.Type) interface{} {
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(t.Elem(), t)
-			//ExampleValues[t] = es
+			// ExampleValues[t] = es
 			return es
 		}
 	case reflect.Interface:
 		return struct{}{}
 	}
 
-	panic(fmt.Sprintf("No example value for type: %s", t))
+	panic(fmt.Sprintf("No example value for type: %s %v %s %s", t, t, t.Kind().String(), t.PkgPath()))
 }
 
 func exampleStruct(t, parent reflect.Type) interface{} {
