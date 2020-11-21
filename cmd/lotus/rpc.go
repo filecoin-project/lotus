@@ -36,6 +36,7 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 	rpcServer := jsonrpc.NewServer()
 	fullAPI := apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a))
 	rpcServer.Register("Filecoin", fullAPI)
+	rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
 	ah := &auth.Handler{
 		Verify: a.AuthVerify,
