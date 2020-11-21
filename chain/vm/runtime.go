@@ -141,7 +141,7 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				log.Warnf("VM.Call failure: %+v", ar)
+				log.Warnf("from: %s, to:%s, vm.call failure: %+v", rt.Caller(), rt.Receiver(), ar)
 				aerr = ar
 				return
 			}
