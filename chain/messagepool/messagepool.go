@@ -244,7 +244,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 					"newpremium", m.Message.GasPremium, "addr", m.Message.From, "nonce", m.Message.Nonce)
 			} else {
 				log.Debugf("add with duplicate nonce. message from %s with nonce %d already in mpool,"+
-					" increase GasPremium to %s from %s to trigger replace by fee: %w",
+					" increase GasPremium to %s from %s to trigger replace by fee: %s",
 					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
 					ErrRBFTooLowPremium)
 				return false, xerrors.Errorf("message from %s with nonce %d already in mpool,"+
