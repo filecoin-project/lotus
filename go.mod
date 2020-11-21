@@ -22,7 +22,7 @@ require (
 	github.com/drand/kyber v1.1.4
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-sysinfo v1.3.0
-	github.com/etclabscore/go-openrpc-reflect v0.0.34
+	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.9.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.4
