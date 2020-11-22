@@ -1,4 +1,4 @@
-package docgen_openrpc
+package docgenopenrpc
 
 import (
 	"encoding/json"
