@@ -15,7 +15,15 @@ import (
 	meta_schema "github.com/open-rpc/meta-schema"
 )
 
-var Comments, GroupDocs = docgen.ParseApiASTInfo(os.Args[1], os.Args[2])
+// Comments holds API method comments collected by AST parsing.
+var Comments map[string]string
+
+// GroupDocs holds documentation for documentation groups.
+var GroupDocs map[string]string
+
+func init() {
+	Comments, GroupDocs = docgen.ParseApiASTInfo(os.Args[1], os.Args[2])
+}
 
 // schemaDictEntry represents a type association passed to the jsonschema reflector.
 type schemaDictEntry struct {
@@ -126,7 +134,7 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 		return OpenRPCSchemaTypeMapper
 	}
 
-	appReflector.FnIsMethodEligible = func (m reflect.Method) bool {
+	appReflector.FnIsMethodEligible = func(m reflect.Method) bool {
 		for i := 0; i < m.Func.Type().NumOut(); i++ {
 			if m.Func.Type().Out(i).Kind() == reflect.Chan {
 				return false
@@ -154,12 +162,7 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 
 	appReflector.FnGetMethodExamples = func(r reflect.Value, m reflect.Method, funcDecl *ast.FuncDecl) (*meta_schema.MethodObjectExamples, error) {
 
-		var args []interface{}
 		ft := m.Func.Type()
-		for j := 2; j < ft.NumIn(); j++ {
-			inp := ft.In(j)
-			args = append(args, docgen.ExampleValue(m.Name, inp, nil))
-		}
 		params := []meta_schema.ExampleOrReference{}
 		for _, p := range params {
 			v := meta_schema.ExampleObjectValue(p)
@@ -204,7 +207,7 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 			meta_schema.AlwaysTrue(v),
 		}, nil
 	}
-	
+
 	// Finally, register the configured reflector to the document.
 	d.WithReflector(appReflector)
 	return d

@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/api/docgen"
 )
 
-
 func main() {
 	comments, groupComments := docgen.ParseApiASTInfo(os.Args[1], os.Args[2])
 

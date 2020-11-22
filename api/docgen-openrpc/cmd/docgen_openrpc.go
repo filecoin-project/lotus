@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/api/docgen-openrpc"
+	docgen_openrpc "github.com/filecoin-project/lotus/api/docgen-openrpc"
 )
 
 /*
