@@ -40,7 +40,7 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 			}
 
 			if !locked {
-				log.Warnw("CheckProvable Sector FAULT: can't acquire read lock", "sector", sector, "sealed")
+				log.Warnw("CheckProvable Sector FAULT: can't acquire read lock", "sector", sector)
 				bad = append(bad, sector.ID)
 				return nil
 			}

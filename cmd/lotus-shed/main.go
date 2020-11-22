@@ -30,6 +30,7 @@ func main() {
 		importObjectCmd,
 		commpToCidCmd,
 		fetchParamCmd,
+		postFindCmd,
 		proofsCmd,
 		verifRegCmd,
 		miscCmd,

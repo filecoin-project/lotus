@@ -3,13 +3,11 @@ package storage
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -28,67 +26,62 @@ type addrSelectApi interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
-func AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use AddrUse, minFunds abi.TokenAmount) (address.Address, error) {
+func AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 	switch use {
 	case PreCommitAddr, CommitAddr:
 		// always use worker, at least for now
-		return mi.Worker, nil
+		return mi.Worker, big.Zero(), nil
 	}
 
-	for _, addr := range mi.ControlAddresses {
-		b, err := a.WalletBalance(ctx, addr)
+	leastBad := mi.Worker
+	bestAvail := minFunds
+
+	for _, addr := range append(mi.ControlAddresses, mi.Owner, mi.Worker) {
+		if maybeUseAddress(ctx, a, addr, goodFunds, &leastBad, &bestAvail) {
+			return leastBad, bestAvail, nil
+		}
+	}
+
+	log.Warnw("No address had enough funds to for full PoSt message Fee, selecting least bad address", "address", leastBad, "balance", types.FIL(bestAvail), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
+
+	return leastBad, bestAvail, nil
+}
+
+func maybeUseAddress(ctx context.Context, a addrSelectApi, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
+	b, err := a.WalletBalance(ctx, addr)
+	if err != nil {
+		log.Errorw("checking control address balance", "addr", addr, "error", err)
+		return false
+	}
+
+	if b.GreaterThanEqual(goodFunds) {
+		k, err := a.StateAccountKey(ctx, addr, types.EmptyTSK)
 		if err != nil {
-			return address.Undef, xerrors.Errorf("checking control address balance: %w", err)
+			log.Errorw("getting account key", "error", err)
+			return false
 		}
 
-		if b.GreaterThanEqual(minFunds) {
-			k, err := a.StateAccountKey(ctx, addr, types.EmptyTSK)
-			if err != nil {
-				log.Errorw("getting account key", "error", err)
-				continue
-			}
-
-			have, err := a.WalletHas(ctx, k)
-			if err != nil {
-				return address.Undef, xerrors.Errorf("failed to check control address: %w", err)
-			}
-
-			if !have {
-				log.Errorw("don't have key", "key", k)
-				continue
-			}
-
-			return addr, nil
+		have, err := a.WalletHas(ctx, k)
+		if err != nil {
+			log.Errorw("failed to check control address", "addr", addr, "error", err)
+			return false
 		}
 
-		log.Warnw("control address didn't have enough funds for window post message", "address", addr, "required", types.FIL(minFunds), "balance", types.FIL(b))
+		if !have {
+			log.Errorw("don't have key", "key", k)
+			return false
+		}
+
+		*leastBad = addr
+		*bestAvail = b
+		return true
 	}
 
-	// Try to use the owner account if we can, fallback to worker if we can't
-
-	b, err := a.WalletBalance(ctx, mi.Owner)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("checking owner balance: %w", err)
+	if b.GreaterThan(*bestAvail) {
+		*leastBad = addr
+		*bestAvail = b
 	}
 
-	if !b.GreaterThanEqual(minFunds) {
-		return mi.Worker, nil
-	}
-
-	k, err := a.StateAccountKey(ctx, mi.Owner, types.EmptyTSK)
-	if err != nil {
-		log.Errorw("getting owner account key", "error", err)
-		return mi.Worker, nil
-	}
-
-	have, err := a.WalletHas(ctx, k)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to check owner address: %w", err)
-	}
-
-	if !have {
-		return mi.Worker, nil
-	}
-
-	return mi.Owner, nil
+	log.Warnw("address didn't have enough funds for window post message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
+	return false
 }

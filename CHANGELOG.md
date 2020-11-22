@@ -1,5 +1,15 @@
 # Lotus changelog
 
+# 1.2.1 / 2020-11-20
+
+This is a very small release of Lotus that fixes an issue users are experiencing when importing snapshots. There is no need to upgrade unless you experience an issue with creating a new `datastore` directory in the Lotus repo.
+
+## Changes
+
+- fix blockstore directory not created automatically (https://github.com/filecoin-project/lotus/pull/4922)
+- WindowPoStScheduler.checkSectors() delete useless judgment (https://github.com/filecoin-project/lotus/pull/4918)
+
+
 # 1.2.0 / 2020-11-18
 
 This is a mandatory release of Lotus that introduces the second post-liftoff upgrade to the Filecoin network. The network upgrade occurs at height 265200, before which time all nodes must have update to this release (or later). This release also bumps the required version of Go to 1.15.

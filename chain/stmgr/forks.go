@@ -6,30 +6,13 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
-
-	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"golang.org/x/xerrors"
-
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -38,6 +21,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
+	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 )
 
 // UpgradeFunc is a migration function run at every upgrade.
@@ -83,8 +77,9 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Expensive: true,
 		Migration: UpgradeActorsV2,
 	}, {
-		Height:  build.UpgradeTapeHeight,
-		Network: network.Version5,
+		Height:    build.UpgradeTapeHeight,
+		Network:   network.Version5,
+		Migration: nil,
 	}, {
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version5,
