@@ -240,6 +240,8 @@ func init() {
 	addExample(map[sealtasks.TaskType]struct{}{
 		sealtasks.TTPreCommit2: {},
 	})
+
+	addExample(map[string]interface{}{"yourbasic": "jsonobject"})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

@@ -2,13 +2,13 @@
     "openrpc": "1.2.6",
     "info": {
         "title": "Lotus RPC API",
-        "version": "1.1.2/generated=2020-11-21T07:44:09-06:00"
+        "version": "1.2.1/generated=2020-11-22T07:43:18-06:00"
     },
     "methods": [
         {
             "name": "Filecoin.ActorAddress",
             "description": "```go\nfunc (c *StorageMinerStruct) ActorAddress(ctx context.Context) (address.Address, error) {\n\treturn c.Internal.ActorAddress(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -40,13 +40,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1194"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1220"
             }
         },
         {
             "name": "Filecoin.ActorSectorSize",
             "description": "```go\nfunc (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {\n\treturn c.Internal.ActorSectorSize(ctx, addr)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -97,13 +97,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1202"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1228"
             }
         },
         {
             "name": "Filecoin.CreateBackup",
             "description": "```go\nfunc (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) error {\n\treturn c.Internal.CreateBackup(ctx, fpath)\n}\n```",
-            "summary": "CreateBackup creates node backup onder the specified file name. The\nmethod requires that the lotus daemon is running with the\nLOTUS_BACKUP_BASE_PATH environment variable set to some path, and that\nthe path specified when calling CreateBackup is within the base path\n",
+            "summary": "CreateBackup creates node backup onder the specified file name. The\nmethod requires that the lotus-miner is running with the\nLOTUS_BACKUP_BASE_PATH environment variable set to some path, and that\nthe path specified when calling CreateBackup is within the base path\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -146,13 +146,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1484"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1514"
             }
         },
         {
             "name": "Filecoin.DealsConsiderOfflineRetrievalDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {\n\treturn c.Internal.DealsConsiderOfflineRetrievalDeals(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -183,13 +183,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1456"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1486"
             }
         },
         {
             "name": "Filecoin.DealsConsiderOfflineStorageDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {\n\treturn c.Internal.DealsConsiderOfflineStorageDeals(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -220,13 +220,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1448"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1478"
             }
         },
         {
             "name": "Filecoin.DealsConsiderOnlineRetrievalDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {\n\treturn c.Internal.DealsConsiderOnlineRetrievalDeals(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -257,13 +257,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1432"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1462"
             }
         },
         {
             "name": "Filecoin.DealsConsiderOnlineStorageDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {\n\treturn c.Internal.DealsConsiderOnlineStorageDeals(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -294,13 +294,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1424"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1454"
             }
         },
         {
             "name": "Filecoin.DealsImportData",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {\n\treturn c.Internal.DealsImportData(ctx, dealPropCid, file)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -362,13 +362,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1416"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1446"
             }
         },
         {
             "name": "Filecoin.DealsList",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsList(ctx context.Context) ([]api.MarketDeal, error) {\n\treturn c.Internal.DealsList(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -478,13 +478,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1420"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1450"
             }
         },
         {
             "name": "Filecoin.DealsPieceCidBlocklist",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {\n\treturn c.Internal.DealsPieceCidBlocklist(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -521,13 +521,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1440"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1470"
             }
         },
         {
             "name": "Filecoin.DealsSetConsiderOfflineRetrievalDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {\n\treturn c.Internal.DealsSetConsiderOfflineRetrievalDeals(ctx, b)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -570,13 +570,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1460"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1490"
             }
         },
         {
             "name": "Filecoin.DealsSetConsiderOfflineStorageDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {\n\treturn c.Internal.DealsSetConsiderOfflineStorageDeals(ctx, b)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -619,13 +619,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1452"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1482"
             }
         },
         {
             "name": "Filecoin.DealsSetConsiderOnlineRetrievalDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {\n\treturn c.Internal.DealsSetConsiderOnlineRetrievalDeals(ctx, b)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -668,13 +668,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1436"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1466"
             }
         },
         {
             "name": "Filecoin.DealsSetConsiderOnlineStorageDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {\n\treturn c.Internal.DealsSetConsiderOnlineStorageDeals(ctx, b)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -717,13 +717,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1428"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1458"
             }
         },
         {
             "name": "Filecoin.DealsSetPieceCidBlocklist",
             "description": "```go\nfunc (c *StorageMinerStruct) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {\n\treturn c.Internal.DealsSetPieceCidBlocklist(ctx, cids)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -772,13 +772,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1444"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1474"
             }
         },
         {
             "name": "Filecoin.MarketCancelDataTransfer",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {\n\treturn c.Internal.MarketCancelDataTransfer(ctx, transferID, otherPeer, isInitiator)\n}\n```",
-            "summary": "",
+            "summary": "ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -854,13 +854,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1412"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1442"
             }
         },
         {
             "name": "Filecoin.MarketGetAsk",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {\n\treturn c.Internal.MarketGetAsk(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -966,13 +966,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1388"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1418"
             }
         },
         {
             "name": "Filecoin.MarketGetRetrievalAsk",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {\n\treturn c.Internal.MarketGetRetrievalAsk(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -1026,13 +1026,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1396"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1426"
             }
         },
         {
             "name": "Filecoin.MarketImportDealData",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error {\n\treturn c.Internal.MarketImportDealData(ctx, propcid, path)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1094,13 +1094,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1364"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1394"
             }
         },
         {
             "name": "Filecoin.MarketListDataTransfers",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {\n\treturn c.Internal.MarketListDataTransfers(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -1172,13 +1172,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1400"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1430"
             }
         },
         {
             "name": "Filecoin.MarketListDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketListDeals(ctx context.Context) ([]api.MarketDeal, error) {\n\treturn c.Internal.MarketListDeals(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -1288,13 +1288,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1368"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1398"
             }
         },
         {
             "name": "Filecoin.MarketListIncompleteDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {\n\treturn c.Internal.MarketListIncompleteDeals(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -1500,13 +1500,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1380"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1410"
             }
         },
         {
             "name": "Filecoin.MarketListRetrievalDeals",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {\n\treturn c.Internal.MarketListRetrievalDeals(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -1676,13 +1676,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1372"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1402"
             }
         },
         {
             "name": "Filecoin.MarketRestartDataTransfer",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {\n\treturn c.Internal.MarketRestartDataTransfer(ctx, transferID, otherPeer, isInitiator)\n}\n```",
-            "summary": "",
+            "summary": "MinerRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1758,13 +1758,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1408"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1438"
             }
         },
         {
             "name": "Filecoin.MarketSetAsk",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketSetAsk(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {\n\treturn c.Internal.MarketSetAsk(ctx, price, verifiedPrice, duration, minPieceSize, maxPieceSize)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1878,13 +1878,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1384"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1414"
             }
         },
         {
             "name": "Filecoin.MarketSetRetrievalAsk",
             "description": "```go\nfunc (c *StorageMinerStruct) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {\n\treturn c.Internal.MarketSetRetrievalAsk(ctx, rask)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1945,13 +1945,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1392"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1422"
             }
         },
         {
             "name": "Filecoin.MiningBase",
             "description": "```go\nfunc (c *StorageMinerStruct) MiningBase(ctx context.Context) (*types.TipSet, error) {\n\treturn c.Internal.MiningBase(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -1984,13 +1984,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1198"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1224"
             }
         },
         {
             "name": "Filecoin.PiecesGetCIDInfo",
             "description": "```go\nfunc (c *StorageMinerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {\n\treturn c.Internal.PiecesGetCIDInfo(ctx, payloadCid)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2073,13 +2073,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1480"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1510"
             }
         },
         {
             "name": "Filecoin.PiecesGetPieceInfo",
             "description": "```go\nfunc (c *StorageMinerStruct) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {\n\treturn c.Internal.PiecesGetPieceInfo(ctx, pieceCid)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2168,13 +2168,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1476"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1506"
             }
         },
         {
             "name": "Filecoin.PiecesListCidInfos",
             "description": "```go\nfunc (c *StorageMinerStruct) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {\n\treturn c.Internal.PiecesListCidInfos(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -2211,13 +2211,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1472"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1502"
             }
         },
         {
             "name": "Filecoin.PiecesListPieces",
             "description": "```go\nfunc (c *StorageMinerStruct) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {\n\treturn c.Internal.PiecesListPieces(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -2254,13 +2254,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1468"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1498"
             }
         },
         {
             "name": "Filecoin.PledgeSector",
             "description": "```go\nfunc (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {\n\treturn c.Internal.PledgeSector(ctx)\n}\n```",
-            "summary": "",
+            "summary": "Temp api for testing\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -2287,12 +2287,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1206"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1232"
             }
         },
         {
             "name": "Filecoin.ReturnAddPiece",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err string) error {\n\treturn c.Internal.ReturnAddPiece(ctx, callID, pi, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error {\n\treturn c.Internal.ReturnAddPiece(ctx, callID, pi, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -2364,14 +2364,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -2402,12 +2410,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1268"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1294"
             }
         },
         {
             "name": "Filecoin.ReturnFetch",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnFetch(ctx context.Context, callID storiface.CallID, err string) error {\n\treturn c.Internal.ReturnFetch(ctx, callID, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {\n\treturn c.Internal.ReturnFetch(ctx, callID, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -2419,7 +2427,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -2464,14 +2472,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -2502,12 +2518,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1308"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1334"
             }
         },
         {
             "name": "Filecoin.ReturnFinalizeSector",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err string) error {\n\treturn c.Internal.ReturnFinalizeSector(ctx, callID, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {\n\treturn c.Internal.ReturnFinalizeSector(ctx, callID, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -2519,7 +2535,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -2564,14 +2580,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -2602,12 +2626,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1288"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1314"
             }
         },
         {
             "name": "Filecoin.ReturnMoveStorage",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err string) error {\n\treturn c.Internal.ReturnMoveStorage(ctx, callID, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {\n\treturn c.Internal.ReturnMoveStorage(ctx, callID, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -2619,7 +2643,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -2664,14 +2688,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -2702,12 +2734,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1296"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1322"
             }
         },
         {
             "name": "Filecoin.ReturnReadPiece",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err string) error {\n\treturn c.Internal.ReturnReadPiece(ctx, callID, ok, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error {\n\treturn c.Internal.ReturnReadPiece(ctx, callID, ok, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -2719,7 +2751,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -2779,14 +2811,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -2817,12 +2857,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1304"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1330"
             }
         },
         {
             "name": "Filecoin.ReturnReleaseUnsealed",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnReleaseUnsealed(ctx context.Context, callID storiface.CallID, err string) error {\n\treturn c.Internal.ReturnReleaseUnsealed(ctx, callID, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnReleaseUnsealed(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {\n\treturn c.Internal.ReturnReleaseUnsealed(ctx, callID, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -2834,7 +2874,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -2879,14 +2919,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -2917,12 +2965,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1292"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1318"
             }
         },
         {
             "name": "Filecoin.ReturnSealCommit1",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err string) error {\n\treturn c.Internal.ReturnSealCommit1(ctx, callID, out, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err *storiface.CallError) error {\n\treturn c.Internal.ReturnSealCommit1(ctx, callID, out, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -2934,7 +2982,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -3001,14 +3049,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -3039,12 +3095,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1280"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1306"
             }
         },
         {
             "name": "Filecoin.ReturnSealCommit2",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err string) error {\n\treturn c.Internal.ReturnSealCommit2(ctx, callID, proof, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err *storiface.CallError) error {\n\treturn c.Internal.ReturnSealCommit2(ctx, callID, proof, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -3056,7 +3112,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -3123,14 +3179,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -3161,12 +3225,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1284"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1310"
             }
         },
         {
             "name": "Filecoin.ReturnSealPreCommit1",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err string) error {\n\treturn c.Internal.ReturnSealPreCommit1(ctx, callID, p1o, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err *storiface.CallError) error {\n\treturn c.Internal.ReturnSealPreCommit1(ctx, callID, p1o, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -3178,7 +3242,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -3245,14 +3309,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -3283,12 +3355,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1272"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1298"
             }
         },
         {
             "name": "Filecoin.ReturnSealPreCommit2",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err string) error {\n\treturn c.Internal.ReturnSealPreCommit2(ctx, callID, sealed, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err *storiface.CallError) error {\n\treturn c.Internal.ReturnSealPreCommit2(ctx, callID, sealed, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -3300,7 +3372,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -3368,14 +3440,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -3406,12 +3486,12 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1276"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1302"
             }
         },
         {
             "name": "Filecoin.ReturnUnsealPiece",
-            "description": "```go\nfunc (c *StorageMinerStruct) ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err string) error {\n\treturn c.Internal.ReturnUnsealPiece(ctx, callID, err)\n}\n```",
+            "description": "```go\nfunc (c *StorageMinerStruct) ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {\n\treturn c.Internal.ReturnUnsealPiece(ctx, callID, err)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
@@ -3423,7 +3503,7 @@
                         "examples": [
                             {
                                 "Sector": {
-                                    "Miner": 42,
+                                    "Miner": 1000,
                                     "Number": 9
                                 },
                                 "ID": "07070707-0707-0707-0707-070707070707"
@@ -3468,14 +3548,22 @@
                 },
                 {
                     "name": "err",
-                    "description": "string",
+                    "description": "*storiface.CallError",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            "string value"
-                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "Code": {
+                                "pattern": "^0x[a-fA-F0-9]+$",
+                                "title": "integer",
+                                "type": "string"
+                            },
+                            "Message": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -3506,13 +3594,98 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1300"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1326"
+            }
+        },
+        {
+            "name": "Filecoin.SealingAbort",
+            "description": "```go\nfunc (c *StorageMinerStruct) SealingAbort(ctx context.Context, call storiface.CallID) error {\n\treturn c.Internal.SealingAbort(ctx, call)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
+            "paramStructure": "by-position",
+            "params": [
+                {
+                    "name": "call",
+                    "description": "storiface.CallID",
+                    "summary": "",
+                    "schema": {
+                        "examples": [
+                            {
+                                "Sector": {
+                                    "Miner": 1000,
+                                    "Number": 9
+                                },
+                                "ID": "07070707-0707-0707-0707-070707070707"
+                            }
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "ID": {
+                                "items": {
+                                    "description": "Hex representation of the integer",
+                                    "pattern": "^0x[a-fA-F0-9]+$",
+                                    "title": "integer",
+                                    "type": "string"
+                                },
+                                "maxItems": 16,
+                                "minItems": 16,
+                                "type": "array"
+                            },
+                            "Sector": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "Miner": {
+                                        "pattern": "^0x[a-fA-F0-9]+$",
+                                        "title": "integer",
+                                        "type": "string"
+                                    },
+                                    "Number": {
+                                        "pattern": "^0x[a-fA-F0-9]+$",
+                                        "title": "integer",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "type": [
+                            "object"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
+                }
+            ],
+            "result": {
+                "name": "Null",
+                "description": "Null",
+                "schema": {
+                    "type": [
+                        "null"
+                    ]
+                },
+                "required": true,
+                "deprecated": false
+            },
+            "examples": [
+                {
+                    "name": null,
+                    "params": [],
+                    "result": {
+                        "value": {},
+                        "name": null
+                    }
+                }
+            ],
+            "deprecated": false,
+            "externalDocs": {
+                "description": "Github remote link",
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1342"
             }
         },
         {
             "name": "Filecoin.SealingSchedDiag",
             "description": "```go\nfunc (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) {\n\treturn c.Internal.SealingSchedDiag(ctx, doSched)\n}\n```",
-            "summary": "",
+            "summary": "SealingSchedDiag dumps internal sealing scheduler state\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3557,13 +3730,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1312"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1338"
             }
         },
         {
             "name": "Filecoin.SectorGetExpectedSealDuration",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorGetExpectedSealDuration(ctx context.Context) (time.Duration, error) {\n\treturn c.Internal.SectorGetExpectedSealDuration(ctx)\n}\n```",
-            "summary": "",
+            "summary": "SectorGetExpectedSealDuration gets the expected time for a sector to seal\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -3597,13 +3770,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1240"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1266"
             }
         },
         {
             "name": "Filecoin.SectorGetSealDelay",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {\n\treturn c.Internal.SectorGetSealDelay(ctx)\n}\n```",
-            "summary": "",
+            "summary": "SectorGetSealDelay gets the time that a newly-created sector\nwaits for more deals before it starts sealing\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -3637,13 +3810,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1232"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1258"
             }
         },
         {
             "name": "Filecoin.SectorMarkForUpgrade",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorMarkForUpgrade(ctx context.Context, number abi.SectorNumber) error {\n\treturn c.Internal.SectorMarkForUpgrade(ctx, number)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3689,13 +3862,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1252"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1278"
             }
         },
         {
             "name": "Filecoin.SectorRemove",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorRemove(ctx context.Context, number abi.SectorNumber) error {\n\treturn c.Internal.SectorRemove(ctx, number)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3741,13 +3914,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1248"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1274"
             }
         },
         {
             "name": "Filecoin.SectorSetExpectedSealDuration",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorSetExpectedSealDuration(ctx context.Context, delay time.Duration) error {\n\treturn c.Internal.SectorSetExpectedSealDuration(ctx, delay)\n}\n```",
-            "summary": "",
+            "summary": "SectorSetExpectedSealDuration sets the expected time for a sector to seal\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3793,13 +3966,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1236"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1262"
             }
         },
         {
             "name": "Filecoin.SectorSetSealDelay",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorSetSealDelay(ctx context.Context, delay time.Duration) error {\n\treturn c.Internal.SectorSetSealDelay(ctx, delay)\n}\n```",
-            "summary": "",
+            "summary": "SectorSetSealDelay sets the time that a newly-created sector\nwaits for more deals before it starts sealing\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3845,13 +4018,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1228"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1254"
             }
         },
         {
             "name": "Filecoin.SectorStartSealing",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {\n\treturn c.Internal.SectorStartSealing(ctx, number)\n}\n```",
-            "summary": "",
+            "summary": "SectorStartSealing can be called on sectors in Empty or WaitDeals states\nto trigger sealing early\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3897,13 +4070,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1224"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1250"
             }
         },
         {
             "name": "Filecoin.SectorsList",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorsList(ctx context.Context) ([ // List all staged sectors\n]abi.SectorNumber, error) {\n\treturn c.Internal.SectorsList(ctx)\n}\n```",
-            "summary": "",
+            "summary": "List all staged sectors\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -3941,13 +4114,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1216"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1242"
             }
         },
         {
             "name": "Filecoin.SectorsRefs",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]api.SealedRef, error) {\n\treturn c.Internal.SectorsRefs(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -3957,16 +4130,11 @@
                 "schema": {
                     "examples": [
                         {
-                            "t026363": [
+                            "98000": [
                                 {
-                                    "SectorID": 42,
-                                    "Offset": 42,
-                                    "Size": 42
-                                },
-                                {
-                                    "SectorID": 43,
-                                    "Offset": 43,
-                                    "Size": 43
+                                    "SectorID": 100,
+                                    "Offset": 10485760,
+                                    "Size": 1048576
                                 }
                             ]
                         }
@@ -4010,16 +4178,11 @@
                     "params": [],
                     "result": {
                         "value": {
-                            "t026363": [
+                            "98000": [
                                 {
-                                    "SectorID": 42,
-                                    "Offset": 42,
-                                    "Size": 42
-                                },
-                                {
-                                    "SectorID": 43,
-                                    "Offset": 43,
-                                    "Size": 43
+                                    "SectorID": 100,
+                                    "Offset": 10485760,
+                                    "Size": 1048576
                                 }
                             ]
                         },
@@ -4030,13 +4193,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1220"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1246"
             }
         },
         {
             "name": "Filecoin.SectorsStatus",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {\n\treturn c.Internal.SectorsStatus(ctx, sid, showOnChainInfo)\n}// Get the status of a given sector by ID\n\n```",
-            "summary": "",
+            "summary": "Get the status of a given sector by ID\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4245,7 +4408,7 @@
                     "result": {
                         "value": {
                             "SectorID": 9,
-                            "State": "\u0001",
+                            "State": "Proving",
                             "CommD": null,
                             "CommR": null,
                             "Proof": "Ynl0ZSBhcnJheQ==",
@@ -4264,7 +4427,7 @@
                             "ToUpgrade": true,
                             "LastErr": "string value",
                             "Log": null,
-                            "SealProof": 3,
+                            "SealProof": 8,
                             "Activation": 10101,
                             "Expiration": 10101,
                             "DealWeight": "0",
@@ -4280,13 +4443,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1211"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1237"
             }
         },
         {
             "name": "Filecoin.SectorsUpdate",
             "description": "```go\nfunc (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {\n\treturn c.Internal.SectorsUpdate(ctx, id, state)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4313,7 +4476,7 @@
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "\u0001"
+                            "Proving"
                         ],
                         "type": [
                             "string"
@@ -4347,13 +4510,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1244"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1270"
             }
         },
         {
             "name": "Filecoin.StorageAddLocal",
             "description": "```go\nfunc (c *StorageMinerStruct) StorageAddLocal(ctx context.Context, path string) error {\n\treturn c.Internal.StorageAddLocal(ctx, path)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4396,7 +4559,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1464"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1494"
             }
         },
         {
@@ -4495,7 +4658,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1316"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1346"
             }
         },
         {
@@ -4546,7 +4709,7 @@
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "storage"
+                            "sealing"
                         ],
                         "type": [
                             "string"
@@ -4611,7 +4774,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1348"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1378"
             }
         },
         {
@@ -4626,7 +4789,7 @@
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "abc123"
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"
                         ],
                         "type": [
                             "string"
@@ -4642,7 +4805,7 @@
                     "schema": {
                         "examples": [
                             {
-                                "Miner": 42,
+                                "Miner": 1000,
                                 "Number": 9
                             }
                         ],
@@ -4724,7 +4887,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1320"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1350"
             }
         },
         {
@@ -4739,7 +4902,7 @@
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "abc123"
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"
                         ],
                         "type": [
                             "string"
@@ -4755,7 +4918,7 @@
                     "schema": {
                         "examples": [
                             {
-                                "Miner": 42,
+                                "Miner": 1000,
                                 "Number": 9
                             }
                         ],
@@ -4822,7 +4985,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1324"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1354"
             }
         },
         {
@@ -4838,7 +5001,7 @@
                     "schema": {
                         "examples": [
                             {
-                                "Miner": 42,
+                                "Miner": 1000,
                                 "Number": 9
                             }
                         ],
@@ -4972,7 +5135,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1328"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1358"
             }
         },
         {
@@ -4987,7 +5150,7 @@
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "abc123"
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"
                         ],
                         "type": [
                             "string"
@@ -5004,7 +5167,7 @@
                 "schema": {
                     "examples": [
                         {
-                            "ID": "abc123",
+                            "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
                             "URLs": null,
                             "Weight": 42,
                             "CanSeal": true,
@@ -5047,7 +5210,7 @@
                     "params": [],
                     "result": {
                         "value": {
-                            "ID": "abc123",
+                            "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
                             "URLs": null,
                             "Weight": 42,
                             "CanSeal": true,
@@ -5060,13 +5223,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1344"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1374"
             }
         },
         {
             "name": "Filecoin.StorageList",
             "description": "```go\nfunc (c *StorageMinerStruct) StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error) {\n\treturn c.Internal.StorageList(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -5076,10 +5239,10 @@
                 "schema": {
                     "examples": [
                         {
-                            "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyFF": [
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": [
                                 {
-                                    "Miner": 42,
-                                    "Number": 13,
+                                    "Miner": 1000,
+                                    "Number": 100,
                                     "SectorFileType": 2
                                 }
                             ]
@@ -5119,10 +5282,10 @@
                     "params": [],
                     "result": {
                         "value": {
-                            "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyFF": [
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": [
                                 {
-                                    "Miner": 42,
-                                    "Number": 13,
+                                    "Miner": 1000,
+                                    "Number": 100,
                                     "SectorFileType": 2
                                 }
                             ]
@@ -5134,13 +5297,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1332"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1362"
             }
         },
         {
             "name": "Filecoin.StorageLocal",
             "description": "```go\nfunc (c *StorageMinerStruct) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {\n\treturn c.Internal.StorageLocal(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -5150,7 +5313,7 @@
                 "schema": {
                     "examples": [
                         {
-                            "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyFF": "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyAA"
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path"
                         }
                     ],
                     "patternProperties": {
@@ -5171,7 +5334,7 @@
                     "params": [],
                     "result": {
                         "value": {
-                            "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyFF": "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyAA"
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path"
                         },
                         "name": null
                     }
@@ -5180,7 +5343,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1336"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1366"
             }
         },
         {
@@ -5196,7 +5359,7 @@
                     "schema": {
                         "examples": [
                             {
-                                "Miner": 42,
+                                "Miner": 1000,
                                 "Number": 9
                             }
                         ],
@@ -5281,7 +5444,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1356"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1386"
             }
         },
         {
@@ -5296,7 +5459,7 @@
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "abc123"
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"
                         ],
                         "type": [
                             "string"
@@ -5310,20 +5473,10 @@
                     "description": "stores.HealthReport",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            {
-                                "Stat": {
-                                    "Capacity": 0,
-                                    "Available": 0,
-                                    "Reserved": 0
-                                },
-                                "Err": null
-                            }
-                        ],
                         "additionalProperties": false,
                         "properties": {
                             "Err": {
-                                "additionalProperties": true
+                                "type": "string"
                             },
                             "Stat": {
                                 "additionalProperties": false,
@@ -5379,13 +5532,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1352"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1382"
             }
         },
         {
             "name": "Filecoin.StorageStat",
             "description": "```go\nfunc (c *StorageMinerStruct) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {\n\treturn c.Internal.StorageStat(ctx, id)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -5394,7 +5547,7 @@
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "abc123"
+                            "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"
                         ],
                         "type": [
                             "string"
@@ -5458,7 +5611,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1340"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1370"
             }
         },
         {
@@ -5474,7 +5627,7 @@
                     "schema": {
                         "examples": [
                             {
-                                "Miner": 42,
+                                "Miner": 1000,
                                 "Number": 9
                             }
                         ],
@@ -5563,13 +5716,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1360"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1390"
             }
         },
         {
             "name": "Filecoin.WorkerConnect",
             "description": "```go\nfunc (c *StorageMinerStruct) WorkerConnect(ctx context.Context, url string) error {\n\treturn c.Internal.WorkerConnect(ctx, url)\n}\n```",
-            "summary": "",
+            "summary": "WorkerConnect tells the node to connect to workers RPC\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -5612,13 +5765,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1256"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1282"
             }
         },
         {
             "name": "Filecoin.WorkerJobs",
             "description": "```go\nfunc (c *StorageMinerStruct) WorkerJobs(ctx context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) {\n\treturn c.Internal.WorkerJobs(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -5628,22 +5781,23 @@
                 "schema": {
                     "examples": [
                         {
-                            "f47ac10b-58cc-c372-8567-0e02b2c3d479": [
+                            "ef8d99a2-6865-4189-8ffa-9fef0f806eee": [
                                 {
                                     "ID": {
                                         "Sector": {
-                                            "Miner": 0,
-                                            "Number": 0
+                                            "Miner": 1000,
+                                            "Number": 100
                                         },
-                                        "ID": "00000000-0000-0000-0000-000000000000"
+                                        "ID": "76081ba0-61bd-45a5-bc08-af05f1c26e5d"
                                     },
                                     "Sector": {
-                                        "Miner": 0,
-                                        "Number": 0
+                                        "Miner": 1000,
+                                        "Number": 100
                                     },
-                                    "Task": "",
+                                    "Task": "seal/v0/precommit/2",
                                     "RunWait": 0,
-                                    "Start": "0001-01-01T00:00:00Z"
+                                    "Start": "2020-11-12T09:22:07Z",
+                                    "Hostname": "host"
                                 }
                             ]
                         }
@@ -5653,6 +5807,9 @@
                             "items": {
                                 "additionalProperties": false,
                                 "properties": {
+                                    "Hostname": {
+                                        "type": "string"
+                                    },
                                     "ID": {
                                         "additionalProperties": false,
                                         "properties": {
@@ -5733,22 +5890,23 @@
                     "params": [],
                     "result": {
                         "value": {
-                            "f47ac10b-58cc-c372-8567-0e02b2c3d479": [
+                            "ef8d99a2-6865-4189-8ffa-9fef0f806eee": [
                                 {
                                     "ID": {
                                         "Sector": {
-                                            "Miner": 0,
-                                            "Number": 0
+                                            "Miner": 1000,
+                                            "Number": 100
                                         },
-                                        "ID": "00000000-0000-0000-0000-000000000000"
+                                        "ID": "76081ba0-61bd-45a5-bc08-af05f1c26e5d"
                                     },
                                     "Sector": {
-                                        "Miner": 0,
-                                        "Number": 0
+                                        "Miner": 1000,
+                                        "Number": 100
                                     },
-                                    "Task": "",
+                                    "Task": "seal/v0/precommit/2",
                                     "RunWait": 0,
-                                    "Start": "0001-01-01T00:00:00Z"
+                                    "Start": "2020-11-12T09:22:07Z",
+                                    "Hostname": "host"
                                 }
                             ]
                         },
@@ -5759,13 +5917,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1264"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1290"
             }
         },
         {
             "name": "Filecoin.WorkerStats",
             "description": "```go\nfunc (c *StorageMinerStruct) WorkerStats(ctx context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {\n\treturn c.Internal.WorkerStats(ctx)\n}\n```",
-            "summary": "",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -5775,18 +5933,20 @@
                 "schema": {
                     "examples": [
                         {
-                            "f47ac10b-58cc-c372-8567-0e02b2c3d479": {
+                            "ef8d99a2-6865-4189-8ffa-9fef0f806eee": {
                                 "Info": {
-                                    "Hostname": "",
+                                    "Hostname": "host",
                                     "Resources": {
-                                        "MemPhysical": 0,
-                                        "MemSwap": 0,
-                                        "MemReserved": 0,
-                                        "CPUs": 0,
-                                        "GPUs": null
+                                        "MemPhysical": 274877906944,
+                                        "MemSwap": 128849018880,
+                                        "MemReserved": 2147483648,
+                                        "CPUs": 64,
+                                        "GPUs": [
+                                            "aGPU 1337"
+                                        ]
                                     }
                                 },
-                                "Enabled": false,
+                                "Enabled": true,
                                 "MemUsedMin": 0,
                                 "MemUsedMax": 0,
                                 "GpuUsed": false,
@@ -5877,18 +6037,20 @@
                     "params": [],
                     "result": {
                         "value": {
-                            "f47ac10b-58cc-c372-8567-0e02b2c3d479": {
+                            "ef8d99a2-6865-4189-8ffa-9fef0f806eee": {
                                 "Info": {
-                                    "Hostname": "",
+                                    "Hostname": "host",
                                     "Resources": {
-                                        "MemPhysical": 0,
-                                        "MemSwap": 0,
-                                        "MemReserved": 0,
-                                        "CPUs": 0,
-                                        "GPUs": null
+                                        "MemPhysical": 274877906944,
+                                        "MemSwap": 128849018880,
+                                        "MemReserved": 2147483648,
+                                        "CPUs": 64,
+                                        "GPUs": [
+                                            "aGPU 1337"
+                                        ]
                                     }
                                 },
-                                "Enabled": false,
+                                "Enabled": true,
                                 "MemUsedMin": 0,
                                 "MemUsedMax": 0,
                                 "GpuUsed": false,
@@ -5902,7 +6064,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1260"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1286"
             }
         }
     ]

@@ -19,30 +19,20 @@ If not (no, or any other args), the document will describe the Full API.
 
 Use:
 
-	go run ./api/openrpc/cmd [|miner]
+	go run ./api/openrpc/cmd ["api/api_full.go"|"api/api_storage.go"|"api/api_worker.go"] ["FullNode"|"StorageMiner"|"WorkerAPI"]
 
 */
 
 func main() {
-	var full, miner bool
-	full = true
-	if len(os.Args) > 1 && os.Args[1] == "miner" {
-		log.Println("Running generation for Miner API")
-		miner = true
-		full = false
-	}
-
-	commonPermStruct := &apistruct.CommonStruct{}
-	fullStruct := &apistruct.FullNodeStruct{}
-	minerStruct := &apistruct.StorageMinerStruct{}
-
 	doc := openrpc.NewLotusOpenRPCDocument()
 
-	if full {
-		doc.RegisterReceiverName("Filecoin", commonPermStruct)
-		doc.RegisterReceiverName("Filecoin", fullStruct)
-	} else if miner {
-		doc.RegisterReceiverName("Filecoin", minerStruct)
+	switch os.Args[2] {
+	case "FullNode":
+		doc.RegisterReceiverName("Filecoin", &apistruct.FullNodeStruct{})
+	case "StorageMiner":
+		doc.RegisterReceiverName("Filecoin", &apistruct.StorageMinerStruct{})
+	case "WorkerAPI":
+		doc.RegisterReceiverName("Filecoin", &apistruct.WorkerStruct{})
 	}
 
 	out, err := doc.Discover()

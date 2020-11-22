@@ -2,123 +2,9 @@
     "openrpc": "1.2.6",
     "info": {
         "title": "Lotus RPC API",
-        "version": "1.1.2/generated=2020-11-21T07:05:32-06:00"
+        "version": "1.2.1/generated=2020-11-22T07:43:14-06:00"
     },
     "methods": [
-        {
-            "name": "Filecoin.AuthNew",
-            "description": "```go\nfunc (c *CommonStruct) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {\n\treturn c.Internal.AuthNew(ctx, perms)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "perms",
-                    "description": "[]auth.Permission",
-                    "summary": "",
-                    "schema": {
-                        "items": [
-                            {
-                                "type": [
-                                    "string"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "[]byte",
-                "description": "[]byte",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        "Ynl0ZSBhcnJheQ=="
-                    ],
-                    "type": [
-                        "string"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": "Ynl0ZSBhcnJheQ==",
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L448"
-            }
-        },
-        {
-            "name": "Filecoin.AuthVerify",
-            "description": "```go\nfunc (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {\n\treturn c.Internal.AuthVerify(ctx, token)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "token",
-                    "description": "string",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "string value"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "[]auth.Permission",
-                "description": "[]auth.Permission",
-                "summary": "",
-                "schema": {
-                    "items": [
-                        {
-                            "type": [
-                                "string"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": null,
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L444"
-            }
-        },
         {
             "name": "Filecoin.BeaconGetEntry",
             "description": "```go\nfunc (c *FullNodeStruct) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {\n\treturn c.Internal.BeaconGetEntry(ctx, epoch)\n}\n```",
@@ -186,7 +72,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L836"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L858"
             }
         },
         {
@@ -239,7 +125,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L796"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L818"
             }
         },
         {
@@ -480,7 +366,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L768"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L790"
             }
         },
         {
@@ -682,7 +568,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L776"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L798"
             }
         },
         {
@@ -721,7 +607,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L812"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L834"
             }
         },
         {
@@ -838,7 +724,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L824"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L846"
             }
         },
         {
@@ -904,7 +790,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L820"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L842"
             }
         },
         {
@@ -983,7 +869,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L784"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L806"
             }
         },
         {
@@ -1063,7 +949,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L780"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L802"
             }
         },
         {
@@ -1161,7 +1047,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L828"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L850"
             }
         },
         {
@@ -1280,7 +1166,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L704"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L726"
             }
         },
         {
@@ -1399,7 +1285,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L700"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L722"
             }
         },
         {
@@ -1462,7 +1348,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L772"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L794"
             }
         },
         {
@@ -1543,7 +1429,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L708"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L730"
             }
         },
         {
@@ -1600,7 +1486,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L800"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L822"
             }
         },
         {
@@ -1639,7 +1525,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L696"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L718"
             }
         },
         {
@@ -1696,7 +1582,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L792"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L814"
             }
         },
         {
@@ -1753,7 +1639,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L808"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L830"
             }
         },
         {
@@ -1842,7 +1728,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L804"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L826"
             }
         },
         {
@@ -1904,7 +1790,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L816"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L838"
             }
         },
         {
@@ -1971,7 +1857,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L592"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L614"
             }
         },
         {
@@ -2053,7 +1939,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L616"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L638"
             }
         },
         {
@@ -2130,7 +2016,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L588"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L610"
             }
         },
         {
@@ -2200,7 +2086,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L600"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L622"
             }
         },
         {
@@ -2333,7 +2219,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L548"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L570"
             }
         },
         {
@@ -2403,7 +2289,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L596"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L618"
             }
         },
         {
@@ -2552,7 +2438,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L560"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L582"
             }
         },
         {
@@ -2608,7 +2494,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L564"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L586"
             }
         },
         {
@@ -2665,7 +2551,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L544"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L566"
             }
         },
         {
@@ -2744,7 +2630,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L540"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L562"
             }
         },
         {
@@ -2822,7 +2708,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L604"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L626"
             }
         },
         {
@@ -2934,7 +2820,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L568"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L590"
             }
         },
         {
@@ -2996,7 +2882,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L532"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L554"
             }
         },
         {
@@ -3175,7 +3061,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L552"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L574"
             }
         },
         {
@@ -3290,7 +3176,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L584"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L606"
             }
         },
         {
@@ -3342,7 +3228,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L536"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L558"
             }
         },
         {
@@ -3424,7 +3310,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L612"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L634"
             }
         },
         {
@@ -3550,7 +3436,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L576"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L598"
             }
         },
         {
@@ -3600,7 +3486,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L620"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L642"
             }
         },
         {
@@ -3706,7 +3592,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L556"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L578"
             }
         },
         {
@@ -3755,7 +3641,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1188"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1214"
             }
         },
         {
@@ -3896,7 +3782,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L628"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L650"
             }
         },
         {
@@ -4021,7 +3907,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L636"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L658"
             }
         },
         {
@@ -4135,7 +4021,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L624"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L646"
             }
         },
         {
@@ -4336,81 +4222,42 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L632"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L654"
             }
         },
         {
-            "name": "Filecoin.LogList",
-            "description": "```go\nfunc (c *CommonStruct) LogList(ctx context.Context) ([]string, error) {\n\treturn c.Internal.LogList(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]string",
-                "description": "[]string",
-                "summary": "",
-                "schema": {
-                    "items": [
-                        {
-                            "type": [
-                                "string"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": null,
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L510"
-            }
-        },
-        {
-            "name": "Filecoin.LogSetLevel",
-            "description": "```go\nfunc (c *CommonStruct) LogSetLevel(ctx context.Context, group, level string) error {\n\treturn c.Internal.LogSetLevel(ctx, group, level)\n}\n```",
-            "summary": "",
+            "name": "Filecoin.MarketReleaseFunds",
+            "description": "```go\nfunc (c *FullNodeStruct) MarketReleaseFunds(ctx context.Context, addr address.Address, amt types.BigInt) error {\n\treturn c.Internal.MarketReleaseFunds(ctx, addr, amt)\n}\n```",
+            "summary": "MarketReleaseFunds releases funds reserved by MarketReserveFunds\n",
             "paramStructure": "by-position",
             "params": [
                 {
-                    "name": "group",
-                    "description": "string",
+                    "name": "addr",
+                    "description": "address.Address",
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "string value"
+                            "f01234"
                         ],
+                        "additionalProperties": false,
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
                     "deprecated": false
                 },
                 {
-                    "name": "level",
-                    "description": "string",
+                    "name": "amt",
+                    "description": "types.BigInt",
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "string value"
+                            "0"
                         ],
+                        "additionalProperties": false,
                         "type": [
-                            "string"
+                            "object"
                         ]
                     },
                     "required": true,
@@ -4441,17 +4288,17 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L514"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1146"
             }
         },
         {
-            "name": "Filecoin.MarketEnsureAvailable",
-            "description": "```go\nfunc (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) (cid.Cid, error) {\n\treturn c.Internal.MarketEnsureAvailable(ctx, addr, wallet, amt)\n}\n```",
-            "summary": "MarketFreeBalance\n",
+            "name": "Filecoin.MarketReserveFunds",
+            "description": "```go\nfunc (c *FullNodeStruct) MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error) {\n\treturn c.Internal.MarketReserveFunds(ctx, wallet, addr, amt)\n}\n```",
+            "summary": "MarketReserveFunds reserves funds for a deal\n",
             "paramStructure": "by-position",
             "params": [
                 {
-                    "name": "addr",
+                    "name": "wallet",
                     "description": "address.Address",
                     "summary": "",
                     "schema": {
@@ -4467,7 +4314,7 @@
                     "deprecated": false
                 },
                 {
-                    "name": "wallet",
+                    "name": "addr",
                     "description": "address.Address",
                     "summary": "",
                     "schema": {
@@ -4533,7 +4380,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1120"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1142"
             }
         },
         {
@@ -4961,7 +4808,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L692"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L714"
             }
         },
         {
@@ -5148,7 +4995,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L688"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L710"
             }
         },
         {
@@ -5283,7 +5130,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L672"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L694"
             }
         },
         {
@@ -5484,7 +5331,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L680"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L702"
             }
         },
         {
@@ -5619,7 +5466,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L676"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L698"
             }
         },
         {
@@ -5668,7 +5515,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L656"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L678"
             }
         },
         {
@@ -5740,7 +5587,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L640"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L662"
             }
         },
         {
@@ -5797,7 +5644,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L764"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L786"
             }
         },
         {
@@ -5934,7 +5781,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L652"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L674"
             }
         },
         {
@@ -6062,7 +5909,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L660"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L682"
             }
         },
         {
@@ -6272,7 +6119,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L668"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L690"
             }
         },
         {
@@ -6400,7 +6247,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L664"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L686"
             }
         },
         {
@@ -6552,7 +6399,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L648"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L670"
             }
         },
         {
@@ -6629,7 +6476,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L644"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L666"
             }
         },
         {
@@ -6770,7 +6617,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1096"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1118"
             }
         },
         {
@@ -6895,7 +6742,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1100"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1122"
             }
         },
         {
@@ -7002,7 +6849,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1092"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1114"
             }
         },
         {
@@ -7096,7 +6943,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1080"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1102"
             }
         },
         {
@@ -7271,7 +7118,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1084"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1106"
             }
         },
         {
@@ -7430,7 +7277,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1088"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1110"
             }
         },
         {
@@ -7578,7 +7425,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1072"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1094"
             }
         },
         {
@@ -7656,7 +7503,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1060"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1082"
             }
         },
         {
@@ -7757,7 +7604,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1068"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1090"
             }
         },
         {
@@ -7852,7 +7699,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1064"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1086"
             }
         },
         {
@@ -7993,7 +7840,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1076"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1098"
             }
         },
         {
@@ -8100,7 +7947,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1116"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1138"
             }
         },
         {
@@ -8242,7 +8089,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1108"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1130"
             }
         },
         {
@@ -8368,7 +8215,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1112"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1134"
             }
         },
         {
@@ -8476,748 +8323,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1104"
-            }
-        },
-        {
-            "name": "Filecoin.NetAddrsListen",
-            "description": "```go\nfunc (c *CommonStruct) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error) {\n\treturn c.Internal.NetAddrsListen(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "peer.AddrInfo",
-                "description": "peer.AddrInfo",
-                "summary": "",
-                "schema": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "Addrs": {
-                            "items": {
-                                "additionalProperties": true
-                            },
-                            "type": "array"
-                        },
-                        "ID": {
-                            "type": "string"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {
-                            "Addrs": null,
-                            "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        },
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L468"
-            }
-        },
-        {
-            "name": "Filecoin.NetAgentVersion",
-            "description": "```go\nfunc (c *CommonStruct) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {\n\treturn c.Internal.NetAgentVersion(ctx, p)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p",
-                    "description": "peer.ID",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "string",
-                "description": "string",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        "string value"
-                    ],
-                    "type": [
-                        "string"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": "string value",
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L496"
-            }
-        },
-        {
-            "name": "Filecoin.NetAutoNatStatus",
-            "description": "```go\nfunc (c *CommonStruct) NetAutoNatStatus(ctx context.Context) (api.NatInfo, error) {\n\treturn c.Internal.NetAutoNatStatus(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "api.NatInfo",
-                "description": "api.NatInfo",
-                "summary": "",
-                "schema": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "PublicAddr": {
-                            "type": "string"
-                        },
-                        "Reachability": {
-                            "pattern": "^0x[a-fA-F0-9]+$",
-                            "title": "integer",
-                            "type": "string"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {
-                            "Reachability": 1,
-                            "PublicAddr": "string value"
-                        },
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L480"
-            }
-        },
-        {
-            "name": "Filecoin.NetBandwidthStats",
-            "description": "```go\nfunc (c *CommonStruct) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {\n\treturn c.Internal.NetBandwidthStats(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "metrics.Stats",
-                "description": "metrics.Stats",
-                "summary": "",
-                "schema": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "RateIn": {
-                            "type": "number"
-                        },
-                        "RateOut": {
-                            "type": "number"
-                        },
-                        "TotalIn": {
-                            "pattern": "^0x[a-fA-F0-9]+$",
-                            "title": "integer",
-                            "type": "string"
-                        },
-                        "TotalOut": {
-                            "pattern": "^0x[a-fA-F0-9]+$",
-                            "title": "integer",
-                            "type": "string"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {
-                            "TotalIn": 9,
-                            "TotalOut": 9,
-                            "RateIn": 12.3,
-                            "RateOut": 12.3
-                        },
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L484"
-            }
-        },
-        {
-            "name": "Filecoin.NetBandwidthStatsByPeer",
-            "description": "```go\nfunc (c *CommonStruct) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {\n\treturn c.Internal.NetBandwidthStatsByPeer(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "map[string]metrics.Stats",
-                "description": "map[string]metrics.Stats",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": {
-                                "TotalIn": 174000,
-                                "TotalOut": 12500,
-                                "RateIn": 100,
-                                "RateOut": 50
-                            }
-                        }
-                    ],
-                    "patternProperties": {
-                        ".*": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "RateIn": {
-                                    "type": "number"
-                                },
-                                "RateOut": {
-                                    "type": "number"
-                                },
-                                "TotalIn": {
-                                    "pattern": "^0x[a-fA-F0-9]+$",
-                                    "title": "integer",
-                                    "type": "string"
-                                },
-                                "TotalOut": {
-                                    "pattern": "^0x[a-fA-F0-9]+$",
-                                    "title": "integer",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {
-                            "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": {
-                                "TotalIn": 174000,
-                                "TotalOut": 12500,
-                                "RateIn": 100,
-                                "RateOut": 50
-                            }
-                        },
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L488"
-            }
-        },
-        {
-            "name": "Filecoin.NetBandwidthStatsByProtocol",
-            "description": "```go\nfunc (c *CommonStruct) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {\n\treturn c.Internal.NetBandwidthStatsByProtocol(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "map[protocol.ID]metrics.Stats",
-                "description": "map[protocol.ID]metrics.Stats",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "/fil/hello/1.0.0": {
-                                "TotalIn": 174000,
-                                "TotalOut": 12500,
-                                "RateIn": 100,
-                                "RateOut": 50
-                            }
-                        }
-                    ],
-                    "patternProperties": {
-                        ".*": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "RateIn": {
-                                    "type": "number"
-                                },
-                                "RateOut": {
-                                    "type": "number"
-                                },
-                                "TotalIn": {
-                                    "pattern": "^0x[a-fA-F0-9]+$",
-                                    "title": "integer",
-                                    "type": "string"
-                                },
-                                "TotalOut": {
-                                    "pattern": "^0x[a-fA-F0-9]+$",
-                                    "title": "integer",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {
-                            "/fil/hello/1.0.0": {
-                                "TotalIn": 174000,
-                                "TotalOut": 12500,
-                                "RateIn": 100,
-                                "RateOut": 50
-                            }
-                        },
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L492"
-            }
-        },
-        {
-            "name": "Filecoin.NetConnect",
-            "description": "```go\nfunc (c *CommonStruct) NetConnect(ctx context.Context, p peer.AddrInfo) error {\n\treturn c.Internal.NetConnect(ctx, p)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p",
-                    "description": "peer.AddrInfo",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            {
-                                "Addrs": null,
-                                "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                            }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "Addrs": {
-                                "items": {
-                                    "additionalProperties": true
-                                },
-                                "type": "array"
-                            },
-                            "ID": {
-                                "type": "string"
-                            }
-                        },
-                        "type": [
-                            "object"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {},
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L464"
-            }
-        },
-        {
-            "name": "Filecoin.NetConnectedness",
-            "description": "```go\nfunc (c *CommonStruct) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {\n\treturn c.Internal.NetConnectedness(ctx, pid)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "pid",
-                    "description": "peer.ID",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "network.Connectedness",
-                "description": "network.Connectedness",
-                "summary": "",
-                "schema": {
-                    "title": "integer",
-                    "description": "Hex representation of the integer",
-                    "examples": [
-                        1
-                    ],
-                    "pattern": "^0x[a-fA-F0-9]+$",
-                    "type": [
-                        "string"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": 1,
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L456"
-            }
-        },
-        {
-            "name": "Filecoin.NetDisconnect",
-            "description": "```go\nfunc (c *CommonStruct) NetDisconnect(ctx context.Context, p peer.ID) error {\n\treturn c.Internal.NetDisconnect(ctx, p)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p",
-                    "description": "peer.ID",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {},
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L472"
-            }
-        },
-        {
-            "name": "Filecoin.NetFindPeer",
-            "description": "```go\nfunc (c *CommonStruct) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {\n\treturn c.Internal.NetFindPeer(ctx, p)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p",
-                    "description": "peer.ID",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "peer.AddrInfo",
-                "description": "peer.AddrInfo",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "Addrs": null,
-                            "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "Addrs": {
-                            "items": {
-                                "additionalProperties": true
-                            },
-                            "type": "array"
-                        },
-                        "ID": {
-                            "type": "string"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {
-                            "Addrs": null,
-                            "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        },
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L476"
-            }
-        },
-        {
-            "name": "Filecoin.NetPeers",
-            "description": "```go\nfunc (c *CommonStruct) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {\n\treturn c.Internal.NetPeers(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]peer.AddrInfo",
-                "description": "[]peer.AddrInfo",
-                "summary": "",
-                "schema": {
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Addrs": {
-                                    "items": {
-                                        "additionalProperties": true
-                                    },
-                                    "type": "array"
-                                },
-                                "ID": {
-                                    "type": "string"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": null,
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L460"
-            }
-        },
-        {
-            "name": "Filecoin.NetPubsubScores",
-            "description": "```go\nfunc (c *CommonStruct) NetPubsubScores(ctx context.Context) ([]api.PubsubScore, error) {\n\treturn c.Internal.NetPubsubScores(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]api.PubsubScore",
-                "description": "[]api.PubsubScore",
-                "summary": "",
-                "schema": {
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "ID": {
-                                    "type": "string"
-                                },
-                                "Score": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "AppSpecificScore": {
-                                            "type": "number"
-                                        },
-                                        "BehaviourPenalty": {
-                                            "type": "number"
-                                        },
-                                        "IPColocationFactor": {
-                                            "type": "number"
-                                        },
-                                        "Score": {
-                                            "type": "number"
-                                        },
-                                        "Topics": {
-                                            "patternProperties": {
-                                                ".*": {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "FirstMessageDeliveries": {
-                                                            "type": "number"
-                                                        },
-                                                        "InvalidMessageDeliveries": {
-                                                            "type": "number"
-                                                        },
-                                                        "MeshMessageDeliveries": {
-                                                            "type": "number"
-                                                        },
-                                                        "TimeInMesh": {
-                                                            "pattern": "^0x[a-fA-F0-9]+$",
-                                                            "title": "integer",
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "type": "object"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": null,
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L452"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1126"
             }
         },
         {
@@ -9274,7 +8380,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1176"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1202"
             }
         },
         {
@@ -9369,7 +8475,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1132"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1158"
             }
         },
         {
@@ -9480,7 +8586,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1136"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1162"
             }
         },
         {
@@ -9540,7 +8646,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1172"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1198"
             }
         },
         {
@@ -9639,7 +8745,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1124"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1150"
             }
         },
         {
@@ -9697,7 +8803,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1128"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1154"
             }
         },
         {
@@ -9739,7 +8845,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1140"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1166"
             }
         },
         {
@@ -9990,7 +9096,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1180"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1206"
             }
         },
         {
@@ -10050,7 +9156,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1168"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1194"
             }
         },
         {
@@ -10116,7 +9222,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1144"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1170"
             }
         },
         {
@@ -10313,7 +9419,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1156"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1182"
             }
         },
         {
@@ -10508,7 +9614,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1152"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1178"
             }
         },
         {
@@ -10669,7 +9775,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1148"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1174"
             }
         },
         {
@@ -10885,7 +9991,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1160"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1186"
             }
         },
         {
@@ -11042,7 +10148,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1164"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1190"
             }
         },
         {
@@ -11243,86 +10349,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1184"
-            }
-        },
-        {
-            "name": "Filecoin.Session",
-            "description": "```go\nfunc (c *CommonStruct) Session(ctx context.Context) (uuid.UUID, error) {\n\treturn c.Internal.Session(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "uuid.UUID",
-                "description": "uuid.UUID",
-                "summary": "",
-                "schema": {
-                    "items": [
-                        {
-                            "title": "integer",
-                            "description": "Hex representation of the integer",
-                            "pattern": "^0x[a-fA-F0-9]+$",
-                            "type": [
-                                "string"
-                            ]
-                        }
-                    ],
-                    "maxItems": 16,
-                    "minItems": 16,
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": "07070707-0707-0707-0707-070707070707",
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L522"
-            }
-        },
-        {
-            "name": "Filecoin.Shutdown",
-            "description": "```go\nfunc (c *CommonStruct) Shutdown(ctx context.Context) error {\n\treturn c.Internal.Shutdown(ctx)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {},
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L518"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1210"
             }
         },
         {
@@ -11400,7 +10427,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1008"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1030"
             }
         },
         {
@@ -11495,7 +10522,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L912"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L934"
             }
         },
         {
@@ -11968,7 +10995,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L952"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L974"
             }
         },
         {
@@ -12091,7 +11118,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1012"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1034"
             }
         },
         {
@@ -12153,7 +11180,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1048"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1070"
             }
         },
         {
@@ -12605,7 +11632,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1028"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1050"
             }
         },
         {
@@ -12710,7 +11737,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1044"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1066"
             }
         },
         {
@@ -12818,7 +11845,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1024"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1046"
             }
         },
         {
@@ -12921,7 +11948,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L960"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L982"
             }
         },
         {
@@ -13021,7 +12048,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1016"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1038"
             }
         },
         {
@@ -13087,7 +12114,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L984"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1006"
             }
         },
         {
@@ -13195,7 +12222,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1020"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1042"
             }
         },
         {
@@ -13261,7 +12288,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L980"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1002"
             }
         },
         {
@@ -13339,7 +12366,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1004"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1026"
             }
         },
         {
@@ -13433,7 +12460,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L988"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1010"
             }
         },
         {
@@ -13620,7 +12647,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L996"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1018"
             }
         },
         {
@@ -13707,7 +12734,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L992"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1014"
             }
         },
         {
@@ -13879,7 +12906,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1000"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1022"
             }
         },
         {
@@ -14016,7 +13043,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L884"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L906"
             }
         },
         {
@@ -14094,7 +13121,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L928"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L950"
             }
         },
         {
@@ -14182,7 +13209,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L900"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L922"
             }
         },
         {
@@ -14266,7 +13293,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L908"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L930"
             }
         },
         {
@@ -14399,7 +13426,7 @@
                             "WorkerChangeEpoch": 10101,
                             "PeerId": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
                             "Multiaddrs": null,
-                            "SealProofType": 3,
+                            "SealProofType": 8,
                             "SectorSize": 34359738368,
                             "WindowPoStPartitionSectors": 42,
                             "ConsensusFaultElapsed": 10101
@@ -14411,7 +13438,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L896"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L918"
             }
         },
         {
@@ -14555,7 +13582,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L924"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L946"
             }
         },
         {
@@ -14677,7 +13704,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L904"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L926"
             }
         },
         {
@@ -14795,7 +13822,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L892"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L914"
             }
         },
         {
@@ -14827,7 +13854,7 @@
                     "schema": {
                         "examples": [
                             {
-                                "SealProof": 3,
+                                "SealProof": 8,
                                 "SectorNumber": 9,
                                 "SealedCID": {
                                     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -14955,7 +13982,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L920"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L942"
             }
         },
         {
@@ -15105,7 +14132,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L888"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L910"
             }
         },
         {
@@ -15189,7 +14216,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L916"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L938"
             }
         },
         {
@@ -15284,7 +14311,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L932"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L954"
             }
         },
         {
@@ -15380,7 +14407,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L268"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L273"
             }
         },
         {
@@ -15530,7 +14557,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L880"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L902"
             }
         },
         {
@@ -15567,7 +14594,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L876"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L898"
             }
         },
         {
@@ -15608,7 +14635,7 @@
                     "title": "integer",
                     "description": "Hex representation of the integer",
                     "examples": [
-                        6
+                        8
                     ],
                     "pattern": "^0x[a-fA-F0-9]+$",
                     "type": [
@@ -15623,7 +14650,7 @@
                     "name": null,
                     "params": [],
                     "result": {
-                        "value": 6,
+                        "value": 8,
                         "name": null
                     }
                 }
@@ -15631,7 +14658,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1056"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1078"
             }
         },
         {
@@ -15719,7 +14746,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L964"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L986"
             }
         },
         {
@@ -16150,7 +15177,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L956"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L978"
             }
         },
         {
@@ -16265,7 +15292,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L976"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L998"
             }
         },
         {
@@ -16373,7 +15400,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L944"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L966"
             }
         },
         {
@@ -16515,7 +15542,7 @@
                     "result": {
                         "value": {
                             "SectorNumber": 9,
-                            "SealProof": 3,
+                            "SealProof": 8,
                             "SealedCID": {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             },
@@ -16535,7 +15562,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L940"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L962"
             }
         },
         {
@@ -16643,7 +15670,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L948"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L970"
             }
         },
         {
@@ -16806,7 +15833,7 @@
                     "result": {
                         "value": {
                             "Info": {
-                                "SealProof": 3,
+                                "SealProof": 8,
                                 "SectorNumber": 9,
                                 "SealedCID": {
                                     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -16831,7 +15858,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L936"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L958"
             }
         },
         {
@@ -16918,7 +15945,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1052"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1074"
             }
         },
         {
@@ -16993,7 +16020,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1036"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1058"
             }
         },
         {
@@ -17055,7 +16082,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1040"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1062"
             }
         },
         {
@@ -17130,7 +16157,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1032"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L1054"
             }
         },
         {
@@ -17263,7 +16290,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L968"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L990"
             }
         },
         {
@@ -17414,7 +16441,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L972"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L994"
             }
         },
         {
@@ -17471,7 +16498,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L868"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L890"
             }
         },
         {
@@ -17528,7 +16555,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L852"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L874"
             }
         },
         {
@@ -17581,7 +16608,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L856"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L878"
             }
         },
         {
@@ -17629,6 +16656,11 @@
                                     "Target": {
                                         "additionalProperties": false,
                                         "type": "object"
+                                    },
+                                    "WorkerID": {
+                                        "pattern": "^0x[a-fA-F0-9]+$",
+                                        "title": "integer",
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -17664,7 +16696,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L840"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L862"
             }
         },
         {
@@ -17885,7 +16917,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L844"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L866"
             }
         },
         {
@@ -17918,7 +16950,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L864"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L886"
             }
         },
         {
@@ -17971,7 +17003,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L860"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L882"
             }
         },
         {
@@ -18032,57 +17064,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L872"
-            }
-        },
-        {
-            "name": "Filecoin.Version",
-            "description": "```go\nfunc (c *CommonStruct) Version(ctx context.Context) (api.Version, error) {\n\treturn c.Internal.Version(ctx)\n}// Version implements API.Version\n\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "api.Version",
-                "description": "api.Version",
-                "summary": "",
-                "schema": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "APIVersion": {},
-                        "BlockDelay": {
-                            "pattern": "^0x[a-fA-F0-9]+$",
-                            "title": "integer",
-                            "type": "string"
-                        },
-                        "Version": {
-                            "type": "string"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": {
-                            "Version": "string value",
-                            "APIVersion": 4352,
-                            "BlockDelay": 42
-                        },
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L506"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L894"
             }
         },
         {
@@ -18137,7 +17119,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L724"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L746"
             }
         },
         {
@@ -18175,7 +17157,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L740"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L762"
             }
         },
         {
@@ -18225,7 +17207,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L756"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L778"
             }
         },
         {
@@ -18291,7 +17273,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L748"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L770"
             }
         },
         {
@@ -18345,7 +17327,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L716"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L738"
             }
         },
         {
@@ -18408,7 +17390,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L752"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L774"
             }
         },
         {
@@ -18450,7 +17432,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L720"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L742"
             }
         },
         {
@@ -18504,7 +17486,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L712"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L734"
             }
         },
         {
@@ -18554,7 +17536,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L744"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L766"
             }
         },
         {
@@ -18637,7 +17619,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L728"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L750"
             }
         },
         {
@@ -18844,7 +17826,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L732"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L754"
             }
         },
         {
@@ -18898,7 +17880,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L760"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L782"
             }
         },
         {
@@ -18993,44 +17975,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L736"
-            }
-        },
-        {
-            "name": "Filecoin_ID",
-            "description": "```go\nfunc (c *CommonStruct) ID(ctx context.Context) (peer.ID, error) {\n\treturn c.Internal.ID(ctx)\n}// ID implements API.ID\n\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "peer.ID",
-                "description": "peer.ID",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                    ],
-                    "type": [
-                        "string"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "examples": [
-                {
-                    "name": null,
-                    "params": [],
-                    "result": {
-                        "value": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                        "name": null
-                    }
-                }
-            ],
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L501"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/apistruct/struct.go#L758"
             }
         }
     ]
