@@ -53,6 +53,8 @@ var (
 	PubsubSendRPC                       = stats.Int64("pubsub/send_rpc", "Counter for total sent RPCs", stats.UnitDimensionless)
 	PubsubDropRPC                       = stats.Int64("pubsub/drop_rpc", "Counter for total dropped RPCs", stats.UnitDimensionless)
 	APIRequestDuration                  = stats.Float64("api/request_duration_ms", "Duration of API requests", stats.UnitMilliseconds)
+	VMFlushCopyDuration                 = stats.Float64("vm/flush_copy_ms", "Time spent in VM Flush Copy", stats.UnitMilliseconds)
+	VMFlushCopyCount                    = stats.Int64("vm/flush_copy_count", "Number of copied objects", stats.UnitDimensionless)
 )
 
 var (
@@ -146,6 +148,14 @@ var (
 		Aggregation: defaultMillisecondsDistribution,
 		TagKeys:     []tag.Key{APIInterface, Endpoint},
 	}
+	VMFlushCopyDurationView = &view.View{
+		Measure:     VMFlushCopyDuration,
+		Aggregation: view.Sum(),
+	}
+	VMFlushCopyCountView = &view.View{
+		Measure:     VMFlushCopyCount,
+		Aggregation: view.Sum(),
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
@@ -171,6 +181,8 @@ var DefaultViews = append([]*view.View{
 	PubsubSendRPCView,
 	PubsubDropRPCView,
 	APIRequestDurationView,
+	VMFlushCopyCountView,
+	VMFlushCopyDurationView,
 },
 	rpcmetrics.DefaultViews...)
 

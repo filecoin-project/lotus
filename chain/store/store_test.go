@@ -3,6 +3,7 @@ package store_test
 import (
 	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	datastore "github.com/ipfs/go-datastore"
@@ -51,19 +52,26 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	bds, err := lr.Datastore("/chain")
+	bs, err := lr.Blockstore(repo.BlockstoreChain)
 	if err != nil {
 		b.Fatal(err)
 	}
+
+	defer func() {
+		if c, ok := bs.(io.Closer); ok {
+			if err := c.Close(); err != nil {
+				b.Logf("WARN: failed to close blockstore: %s", err)
+			}
+		}
+	}()
 
 	mds, err := lr.Datastore("/metadata")
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	bs := blockstore.NewBlockstore(bds)
-
-	cs := store.NewChainStore(bs, mds, nil, nil)
+	cs := store.NewChainStore(bs, bs, mds, nil, nil)
+	defer cs.Close() //nolint:errcheck
 
 	b.ResetTimer()
 
@@ -97,7 +105,8 @@ func TestChainExportImport(t *testing.T) {
 	}
 
 	nbs := blockstore.NewTemporary()
-	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, nil)
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
+	defer cs.Close() //nolint:errcheck
 
 	root, err := cs.Import(buf)
 	if err != nil {
@@ -131,7 +140,9 @@ func TestChainExportImportFull(t *testing.T) {
 	}
 
 	nbs := blockstore.NewTemporary()
-	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, nil)
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
+	defer cs.Close() //nolint:errcheck
+
 	root, err := cs.Import(buf)
 	if err != nil {
 		t.Fatal(err)

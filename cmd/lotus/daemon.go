@@ -36,7 +36,6 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
@@ -406,9 +405,9 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 	defer lr.Close() //nolint:errcheck
 
-	ds, err := lr.Datastore("/chain")
+	bs, err := lr.Blockstore(repo.BlockstoreChain)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
 
 	mds, err := lr.Datastore("/metadata")
@@ -416,13 +415,13 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 		return err
 	}
 
-	bs := blockstore.NewBlockstore(ds)
-
 	j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
 	if err != nil {
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}
-	cst := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
+
+	cst := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
+	defer cst.Close() //nolint:errcheck
 
 	log.Infof("importing chain from %s...", fname)
 
@@ -467,7 +466,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 
 	log.Infof("accepting %s as new head", ts.Cids())
-	if err := cst.SetHead(ts); err != nil {
+	if err := cst.ForceHeadSilent(context.Background(), ts); err != nil {
 		return err
 	}
 

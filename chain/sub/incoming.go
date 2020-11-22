@@ -6,9 +6,18 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/impl/client"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
@@ -21,19 +30,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
-
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
-	"github.com/filecoin-project/lotus/chain/messagepool"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/lotus/node/impl/client"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("sub")
@@ -95,7 +92,10 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			}
 
 			took := build.Clock.Since(start)
-			log.Infow("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			if took > 3*time.Second {
+				log.Warnw("Slow msg fetch", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			}
 			if delay := build.Clock.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
 				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
 			}
@@ -337,11 +337,16 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 func (bv *BlockValidator) validateLocalBlock(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
 	stats.Record(ctx, metrics.BlockPublished.M(1))
 
+	if size := msg.Size(); size > 1<<20-1<<15 {
+		log.Errorf("ignoring oversize block (%dB)", size)
+		recordFailure(ctx, metrics.BlockValidationFailure, "oversize_block")
+		return pubsub.ValidationIgnore
+	}
+
 	blk, what, err := bv.decodeAndCheckBlock(msg)
 	if err != nil {
 		log.Errorf("got invalid local block: %s", err)
-		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, what))
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
+		recordFailure(ctx, metrics.BlockValidationFailure, what)
 		return pubsub.ValidationIgnore
 	}
 

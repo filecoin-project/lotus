@@ -23,10 +23,9 @@ import (
 // dy default it's namespaced under /metadata in main repo datastore
 type MetadataDS datastore.Batching
 
-type ChainBlockstore blockstore.Blockstore
+type ChainRawBlockstore blockstore.Blockstore
+type ChainBlockstore blockstore.Blockstore // optionally bitswap backed
 
-type ChainGCLocker blockstore.GCLocker
-type ChainGCBlockstore blockstore.GCBlockstore
 type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService
 

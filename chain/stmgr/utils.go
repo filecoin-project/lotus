@@ -158,7 +158,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return mas.LoadSectors(snos)
 }
 
-func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	act, err := sm.LoadActorRaw(ctx, maddr, st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -169,21 +169,27 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	// TODO (!!): Actor Update: Make this active sectors
+	var provingSectors bitfield.BitField
+	if nv < network.Version7 {
+		allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
+		if err != nil {
+			return nil, xerrors.Errorf("get all sectors: %w", err)
+		}
 
-	allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
-	if err != nil {
-		return nil, xerrors.Errorf("get all sectors: %w", err)
-	}
+		faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+		if err != nil {
+			return nil, xerrors.Errorf("get faulty sectors: %w", err)
+		}
 
-	faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
-	if err != nil {
-		return nil, xerrors.Errorf("get faulty sectors: %w", err)
-	}
-
-	provingSectors, err := bitfield.SubtractBitField(allSectors, faultySectors) // TODO: This is wrong, as it can contain faaults, change to just ActiveSectors in an upgrade
-	if err != nil {
-		return nil, xerrors.Errorf("calc proving sectors: %w", err)
+		provingSectors, err = bitfield.SubtractBitField(allSectors, faultySectors)
+		if err != nil {
+			return nil, xerrors.Errorf("calc proving sectors: %w", err)
+		}
+	} else {
+		provingSectors, err = miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+		if err != nil {
+			return nil, xerrors.Errorf("get active sectors sectors: %w", err)
+		}
 	}
 
 	numProvSect, err := provingSectors.Count()
@@ -201,12 +207,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
-	if err != nil {
-		return nil, xerrors.Errorf("getting seal proof type: %w", err)
-	}
-
-	wpt, err := spt.RegisteredWinningPoStProof()
+	wpt, err := info.SealProofType.RegisteredWinningPoStProof()
 	if err != nil {
 		return nil, xerrors.Errorf("getting window proof type: %w", err)
 	}
@@ -246,7 +247,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 	out := make([]builtin.SectorInfo, len(sectors))
 	for i, sinfo := range sectors {
 		out[i] = builtin.SectorInfo{
-			SealProof:    spt,
+			SealProof:    sinfo.SealProof,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,
 		}
@@ -497,7 +498,9 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
 
-	sectors, err := GetSectorsForWinningPoSt(ctx, pv, sm, lbst, maddr, prand)
+	nv := sm.GetNtwkVersion(ctx, ts.Height())
+
+	sectors, err := GetSectorsForWinningPoSt(ctx, nv, pv, sm, lbst, maddr, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("getting winning post proving set: %w", err)
 	}

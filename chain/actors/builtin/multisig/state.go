@@ -1,6 +1,7 @@
 package multisig
 
 import (
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -47,6 +48,10 @@ type State interface {
 	Signers() ([]address.Address, error)
 
 	ForEachPendingTxn(func(id int64, txn Transaction) error) error
+	PendingTxnChanged(State) (bool, error)
+
+	transactions() (adt.Map, error)
+	decodeTransaction(val *cbg.Deferred) (Transaction, error)
 }
 
 type Transaction = msig0.Transaction

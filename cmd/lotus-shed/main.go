@@ -30,6 +30,7 @@ func main() {
 		importObjectCmd,
 		commpToCidCmd,
 		fetchParamCmd,
+		postFindCmd,
 		proofsCmd,
 		verifRegCmd,
 		miscCmd,
@@ -48,6 +49,7 @@ func main() {
 		msgCmd,
 		electionCmd,
 		rpcCmd,
+		cidCmd,
 	}
 
 	app := &cli.App{

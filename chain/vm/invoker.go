@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/ipfs/go-cid"
@@ -34,9 +36,9 @@ type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
 
 func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
-		nver := actors.VersionForNetwork(rt.NetworkVersion())
-		if nver != ver {
-			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrEpoch())
+		aver := actors.VersionForNetwork(rt.NetworkVersion())
+		if aver != ver {
+			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d and nver %d", v.Code(), ver, aver, rt.CurrEpoch(), rt.NetworkVersion())
 		}
 		return nil
 	}
@@ -173,9 +175,14 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 				paramT := meth.Type().In(1).Elem()
 				param := reflect.New(paramT)
 
+				rt := in[0].Interface().(*Runtime)
 				inBytes := in[1].Interface().([]byte)
 				if err := DecodeParams(inBytes, param.Interface()); err != nil {
-					aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
+					ec := exitcode.ErrSerialization
+					if rt.NetworkVersion() < network.Version7 {
+						ec = 1
+					}
+					aerr := aerrors.Absorb(err, ec, "failed to decode parameters")
 					return []reflect.Value{
 						reflect.ValueOf([]byte{}),
 						// Below is a hack, fixed in Go 1.13
@@ -183,7 +190,6 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 						reflect.ValueOf(&aerr).Elem(),
 					}
 				}
-				rt := in[0].Interface().(*Runtime)
 				rval, aerror := rt.shimCall(func() interface{} {
 					ret := meth.Call([]reflect.Value{
 						reflect.ValueOf(rt),

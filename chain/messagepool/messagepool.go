@@ -264,7 +264,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	}
 
 	if strict && nonceGap {
-		log.Warnf("adding nonce-gapped message from %s (nonce: %d, nextNonce: %d)",
+		log.Debugf("adding nonce-gapped message from %s (nonce: %d, nextNonce: %d)",
 			m.Message.From, m.Message.Nonce, nextNonce)
 	}
 
@@ -465,7 +465,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	epoch := curTs.Height()
 	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
-	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total()); err != nil {
+	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), build.NewestNetworkVersion); err != nil {
 		return false, xerrors.Errorf("message will not be included in a block: %w", err)
 	}
 
@@ -546,7 +546,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	}
 
 	// Perform syntactic validation, minGas=0 as we check the actual mingas before we add it
-	if err := m.Message.ValidForBlockInclusion(0); err != nil {
+	if err := m.Message.ValidForBlockInclusion(0, build.NewestNetworkVersion); err != nil {
 		return xerrors.Errorf("message not valid for block inclusion: %w", err)
 	}
 
@@ -1219,7 +1219,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.Si
 			if smsg != nil {
 				out = append(out, smsg)
 			} else {
-				log.Warnf("could not recover signature for bls message %s", msg.Cid())
+				log.Debugf("could not recover signature for bls message %s", msg.Cid())
 			}
 		}
 	}

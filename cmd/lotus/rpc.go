@@ -8,6 +8,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/ipfs/go-cid"
@@ -69,6 +70,10 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 	}
 
 	http.Handle("/debug/metrics", exporter)
+	http.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
+	http.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction",
+		func(x int) { runtime.SetMutexProfileFraction(x) },
+	))
 
 	lst, err := manet.Listen(addr)
 	if err != nil {
