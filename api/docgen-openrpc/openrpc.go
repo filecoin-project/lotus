@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"reflect"
-	"time"
 
 	"github.com/alecthomas/jsonschema"
 	go_openrpc_reflect "github.com/etclabscore/go-openrpc-reflect"
@@ -110,7 +109,7 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 			title := "Lotus RPC API"
 			info.Title = (*meta_schema.InfoObjectProperties)(&title)
 
-			version := build.UserVersion() + "/generated=" + time.Now().Format(time.RFC3339)
+			version := build.UserVersion()
 			info.Version = (*meta_schema.InfoObjectVersion)(&version)
 			return info
 		},
