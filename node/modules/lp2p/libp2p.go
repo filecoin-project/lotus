@@ -20,8 +20,8 @@ import (
 var log = logging.Logger("p2pnode")
 
 const (
-	KLibp2pHost  = "libp2p-host"
-	KTLibp2pHost = KLibp2pHost
+	KLibp2pHost                = "libp2p-host"
+	KTLibp2pHost types.KeyType = KLibp2pHost
 )
 
 type Libp2pOpts struct {

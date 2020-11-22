@@ -8,12 +8,16 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/metrics"
+
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -23,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -36,6 +39,8 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
+
+const MaxCallDepth = 4096
 
 var log = logging.Logger("vm")
 var actorLog = logging.Logger("actors")
@@ -67,11 +72,30 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 }
 
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
+var _ blockstore.Viewer = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
 	chargeGas func(GasCharge)
 	pricelist Pricelist
 	under     cbor.IpldBlockstore
+}
+
+func (bs *gasChargingBlocks) View(c cid.Cid, cb func([]byte) error) error {
+	if v, ok := bs.under.(blockstore.Viewer); ok {
+		bs.chargeGas(bs.pricelist.OnIpldGet())
+		return v.View(c, func(b []byte) error {
+			// we have successfully retrieved the value; charge for it, even if the user-provided function fails.
+			bs.chargeGas(newGasCharge("OnIpldViewEnd", 0, 0).WithExtra(len(b)))
+			bs.chargeGas(gasOnActorExec)
+			return cb(b)
+		})
+	}
+	// the underlying blockstore doesn't implement the viewer interface, fall back to normal Get behaviour.
+	blk, err := bs.Get(c)
+	if err == nil && blk != nil {
+		return cb(blk.RawData())
+	}
+	return err
 }
 
 func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
@@ -96,33 +120,45 @@ func (bs *gasChargingBlocks) Put(blk block.Block) error {
 	return nil
 }
 
-func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin address.Address, originNonce uint64, usedGas int64, nac uint64) *Runtime {
+func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runtime) *Runtime {
 	rt := &Runtime{
 		ctx:         ctx,
 		vm:          vm,
 		state:       vm.cstate,
-		origin:      origin,
-		originNonce: originNonce,
+		origin:      msg.From,
+		originNonce: msg.Nonce,
 		height:      vm.blockHeight,
 
-		gasUsed:          usedGas,
+		gasUsed:          0,
 		gasAvailable:     msg.GasLimit,
-		numActorsCreated: nac,
+		depth:            0,
+		numActorsCreated: 0,
 		pricelist:        PricelistByEpoch(vm.blockHeight),
 		allowInternal:    true,
 		callerValidated:  false,
 		executionTrace:   types.ExecutionTrace{Msg: msg},
 	}
 
-	rt.cst = &cbor.BasicIpldStore{
-		Blocks: &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks},
-		Atlas:  vm.cst.Atlas,
+	if parent != nil {
+		// TODO: The version check here should be unnecessary, but we can wait to take it out
+		if !parent.allowInternal && rt.NetworkVersion() >= network.Version7 {
+			rt.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
+		}
+		rt.gasUsed = parent.gasUsed
+		rt.origin = parent.origin
+		rt.originNonce = parent.originNonce
+		rt.numActorsCreated = parent.numActorsCreated
+		rt.depth = parent.depth + 1
 	}
-	rt.Syscalls = pricedSyscalls{
-		under:     vm.Syscalls(ctx, vm.cstate, rt.cst),
-		chargeGas: rt.chargeGasFunc(1),
-		pl:        rt.pricelist,
+
+	if rt.depth > MaxCallDepth && rt.NetworkVersion() >= network.Version6 {
+		rt.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
 	}
+
+	cbb := &gasChargingBlocks{rt.chargeGasFunc(2), rt.pricelist, vm.cst.Blocks}
+	cst := cbor.NewCborStore(cbb)
+	cst.Atlas = vm.cst.Atlas // associate the atlas.
+	rt.cst = cst
 
 	vmm := *msg
 	resF, ok := rt.ResolveAddress(msg.From)
@@ -130,7 +166,21 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin addres
 		rt.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
 	}
 	vmm.From = resF
-	rt.Message = vmm
+
+	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+		rt.Message = &vmm
+	} else {
+		resT, _ := rt.ResolveAddress(msg.To)
+		// may be set to undef if recipient doesn't exist yet
+		vmm.To = resT
+		rt.Message = &Message{msg: vmm}
+	}
+
+	rt.Syscalls = pricedSyscalls{
+		under:     vm.Syscalls(ctx, rt),
+		chargeGas: rt.chargeGasFunc(1),
+		pl:        rt.pricelist,
+	}
 
 	return rt
 }
@@ -139,12 +189,13 @@ type UnsafeVM struct {
 	VM *VM
 }
 
-func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message, origin address.Address, originNonce uint64, usedGas int64, nac uint64) *Runtime {
-	return vm.VM.makeRuntime(ctx, msg, origin, originNonce, usedGas, nac)
+func (vm *UnsafeVM) MakeRuntime(ctx context.Context, msg *types.Message) *Runtime {
+	return vm.VM.makeRuntime(ctx, msg, nil)
 }
 
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
 type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
+type LookbackStateGetter func(context.Context, abi.ChainEpoch) (*state.StateTree, error)
 
 type VM struct {
 	cstate         *state.StateTree
@@ -152,11 +203,12 @@ type VM struct {
 	cst            *cbor.BasicIpldStore
 	buf            *bufbstore.BufferedBS
 	blockHeight    abi.ChainEpoch
-	inv            *Invoker
+	areg           *ActorRegistry
 	rand           Rand
 	circSupplyCalc CircSupplyCalculator
 	ntwkVersion    NtwkVersionGetter
 	baseFee        abi.TokenAmount
+	lbStateGet     LookbackStateGetter
 
 	Syscalls SyscallBuilder
 }
@@ -170,6 +222,7 @@ type VMOpts struct {
 	CircSupplyCalc CircSupplyCalculator
 	NtwkVersion    NtwkVersionGetter // TODO: stebalien: In what cases do we actually need this? It seems like even when creating new networks we want to use the 'global'/build-default version getter
 	BaseFee        abi.TokenAmount
+	LookbackState  LookbackStateGetter
 }
 
 func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
@@ -186,12 +239,13 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		cst:            cst,
 		buf:            buf,
 		blockHeight:    opts.Epoch,
-		inv:            NewInvoker(),
+		areg:           NewActorRegistry(),
 		rand:           opts.Rand, // TODO: Probably should be a syscall
 		circSupplyCalc: opts.CircSupplyCalc,
 		ntwkVersion:    opts.NtwkVersion,
 		Syscalls:       opts.Syscalls,
 		baseFee:        opts.BaseFee,
+		lbStateGet:     opts.LookbackState,
 	}, nil
 }
 
@@ -205,7 +259,7 @@ type ApplyRet struct {
 	ActorErr       aerrors.ActorError
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
-	GasCosts       GasOutputs
+	GasCosts       *GasOutputs
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
@@ -215,26 +269,22 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 
 	st := vm.cstate
 
-	origin := msg.From
-	on := msg.Nonce
-	var nac uint64 = 0
-	var gasUsed int64
-	if parent != nil {
-		gasUsed = parent.gasUsed
-		origin = parent.origin
-		on = parent.originNonce
-		nac = parent.numActorsCreated
+	rt := vm.makeRuntime(ctx, msg, parent)
+	if EnableGasTracing {
+		rt.lastGasChargeTime = start
+		if parent != nil {
+			rt.lastGasChargeTime = parent.lastGasChargeTime
+			rt.lastGasCharge = parent.lastGasCharge
+			defer func() {
+				parent.lastGasChargeTime = rt.lastGasChargeTime
+				parent.lastGasCharge = rt.lastGasCharge
+			}()
+		}
 	}
 
-	rt := vm.makeRuntime(ctx, msg, origin, on, gasUsed, nac)
-	rt.lastGasChargeTime = start
 	if parent != nil {
-		rt.lastGasChargeTime = parent.lastGasChargeTime
-		rt.lastGasCharge = parent.lastGasCharge
 		defer func() {
 			parent.gasUsed = rt.gasUsed
-			parent.lastGasChargeTime = rt.lastGasChargeTime
-			parent.lastGasCharge = rt.lastGasCharge
 		}()
 	}
 	if gasCharge != nil {
@@ -249,11 +299,24 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		toActor, err := st.GetActor(msg.To)
 		if err != nil {
 			if xerrors.Is(err, types.ErrActorNotFound) {
-				a, err := TryCreateAccountActor(rt, msg.To)
+				a, aid, err := TryCreateAccountActor(rt, msg.To)
 				if err != nil {
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
+				if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+					// Leave the rt.Message as is
+				} else {
+					nmsg := Message{
+						msg: types.Message{
+							To:    aid,
+							From:  rt.Message.Caller(),
+							Value: rt.Message.ValueReceived(),
+						},
+					}
+
+					rt.Message = &nmsg
+				}
 			} else {
 				return nil, aerrors.Escalate(err, "getting actor")
 			}
@@ -332,7 +395,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		GasCosts:       GasOutputs{},
+		GasCosts:       nil,
 		Duration:       time.Since(start),
 	}, actorErr
 }
@@ -368,7 +431,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				ExitCode: exitcode.SysErrOutOfGas,
 				GasUsed:  0,
 			},
-			GasCosts: gasOutputs,
+			GasCosts: &gasOutputs,
 			Duration: time.Since(start),
 		}, nil
 	}
@@ -388,7 +451,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 					GasUsed:  0,
 				},
 				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
-				GasCosts: gasOutputs,
+				GasCosts: &gasOutputs,
 				Duration: time.Since(start),
 			}, nil
 		}
@@ -396,7 +459,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 
 	// this should never happen, but is currently still exercised by some tests
-	if !fromActor.IsAccountActor() {
+	if !builtin.IsAccountActor(fromActor.Code) {
 		gasOutputs := ZeroGasOutputs()
 		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &ApplyRet{
@@ -405,7 +468,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				GasUsed:  0,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
-			GasCosts: gasOutputs,
+			GasCosts: &gasOutputs,
 			Duration: time.Since(start),
 		}, nil
 	}
@@ -421,7 +484,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
 
-			GasCosts: gasOutputs,
+			GasCosts: &gasOutputs,
 			Duration: time.Since(start),
 		}, nil
 	}
@@ -437,7 +500,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
-			GasCosts: gasOutputs,
+			GasCosts: &gasOutputs,
 			Duration: time.Since(start),
 		}, nil
 	}
@@ -531,7 +594,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
-		GasCosts:       gasOutputs,
+		GasCosts:       &gasOutputs,
 		Duration:       time.Since(start),
 	}, nil
 }
@@ -545,6 +608,8 @@ func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorErr
 	return act.Balance, nil
 }
 
+type vmFlushKey struct{}
+
 func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	_, span := trace.StartSpan(ctx, "vm.Flush")
 	defer span.End()
@@ -557,7 +622,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := Copy(ctx, from, to, root); err != nil {
+	if err := Copy(context.WithValue(ctx, vmFlushKey{}, true), from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
@@ -614,21 +679,48 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
 	ctx, span := trace.StartSpan(ctx, "vm.Copy") // nolint
 	defer span.End()
+	start := time.Now()
 
 	var numBlocks int
 	var totalCopySize int
 
-	var batch []block.Block
+	const batchSize = 128
+	const bufCount = 3
+	freeBufs := make(chan []block.Block, bufCount)
+	toFlush := make(chan []block.Block, bufCount)
+	for i := 0; i < bufCount; i++ {
+		freeBufs <- make([]block.Block, 0, batchSize)
+	}
+
+	errFlushChan := make(chan error)
+
+	go func() {
+		for b := range toFlush {
+			if err := to.PutMany(b); err != nil {
+				close(freeBufs)
+				errFlushChan <- xerrors.Errorf("batch put in copy: %w", err)
+				return
+			}
+			freeBufs <- b[:0]
+		}
+		close(errFlushChan)
+		close(freeBufs)
+	}()
+
+	var batch = <-freeBufs
 	batchCp := func(blk block.Block) error {
 		numBlocks++
 		totalCopySize += len(blk.RawData())
 
 		batch = append(batch, blk)
-		if len(batch) > 100 {
-			if err := to.PutMany(batch); err != nil {
-				return xerrors.Errorf("batch put in copy: %w", err)
+
+		if len(batch) >= batchSize {
+			toFlush <- batch
+			var ok bool
+			batch, ok = <-freeBufs
+			if !ok {
+				return <-errFlushChan
 			}
-			batch = batch[:0]
 		}
 		return nil
 	}
@@ -638,15 +730,22 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 	}
 
 	if len(batch) > 0 {
-		if err := to.PutMany(batch); err != nil {
-			return xerrors.Errorf("batch put in copy: %w", err)
-		}
+		toFlush <- batch
+	}
+	close(toFlush)        // close the toFlush triggering the loop to end
+	err := <-errFlushChan // get error out or get nil if it was closed
+	if err != nil {
+		return err
 	}
 
 	span.AddAttributes(
 		trace.Int64Attribute("numBlocks", int64(numBlocks)),
 		trace.Int64Attribute("copySize", int64(totalCopySize)),
 	)
+	if yes, ok := ctx.Value(vmFlushKey{}).(bool); yes && ok {
+		took := metrics.SinceInMilliseconds(start)
+		stats.Record(ctx, metrics.VMFlushCopyCount.M(int64(numBlocks)), metrics.VMFlushCopyDuration.M(took))
+	}
 
 	return nil
 }
@@ -734,15 +833,15 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	defer func() {
 		rt.ctx = oldCtx
 	}()
-	ret, err := vm.inv.Invoke(act.Code, rt, method, params)
+	ret, err := vm.areg.Invoke(act.Code, rt, method, params)
 	if err != nil {
 		return nil, err
 	}
 	return ret, nil
 }
 
-func (vm *VM) SetInvoker(i *Invoker) {
-	vm.inv = i
+func (vm *VM) SetInvoker(i *ActorRegistry) {
+	vm.areg = i
 }
 
 func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {

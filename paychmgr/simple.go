@@ -12,14 +12,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
-	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -39,8 +36,6 @@ type fundsReq struct {
 	lk sync.Mutex
 	// merge parent, if this req is part of a merge
 	merge *mergedFundsReq
-	// whether the req's context has been cancelled
-	active bool
 }
 
 func newFundsReq(ctx context.Context, amt types.BigInt) *fundsReq {
@@ -49,7 +44,6 @@ func newFundsReq(ctx context.Context, amt types.BigInt) *fundsReq {
 		ctx:     ctx,
 		promise: promise,
 		amt:     amt,
-		active:  true,
 	}
 }
 
@@ -64,25 +58,18 @@ func (r *fundsReq) onComplete(res *paychFundsRes) {
 // cancel is called when the req's context is cancelled
 func (r *fundsReq) cancel() {
 	r.lk.Lock()
-
-	r.active = false
-	m := r.merge
-
-	r.lk.Unlock()
+	defer r.lk.Unlock()
 
 	// If there's a merge parent, tell the merge parent to check if it has any
 	// active reqs left
-	if m != nil {
-		m.checkActive()
+	if r.merge != nil {
+		r.merge.checkActive()
 	}
 }
 
 // isActive indicates whether the req's context has been cancelled
 func (r *fundsReq) isActive() bool {
-	r.lk.Lock()
-	defer r.lk.Unlock()
-
-	return r.active
+	return r.ctx.Err() == nil
 }
 
 // setMergeParent sets the merge that this req is part of
@@ -104,10 +91,13 @@ type mergedFundsReq struct {
 
 func newMergedFundsReq(reqs []*fundsReq) *mergedFundsReq {
 	ctx, cancel := context.WithCancel(context.Background())
+
+	rqs := make([]*fundsReq, len(reqs))
+	copy(rqs, reqs)
 	m := &mergedFundsReq{
 		ctx:    ctx,
 		cancel: cancel,
-		reqs:   reqs,
+		reqs:   rqs,
 	}
 
 	for _, r := range m.reqs {
@@ -204,7 +194,7 @@ func (ca *channelAccessor) processQueue(channelID string) (*api.ChannelAvailable
 	// Merge all pending requests into one.
 	// For example if there are pending requests for 3, 2, 4 then
 	// amt = 3 + 2 + 4 = 9
-	merged := newMergedFundsReq(ca.fundsReqQueue[:])
+	merged := newMergedFundsReq(ca.fundsReqQueue)
 	amt := merged.sum()
 	if amt.IsZero() {
 		// Note: The amount can be zero if requests are cancelled as we're
@@ -312,7 +302,7 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt typ
 			return nil, err
 		}
 
-		laneStates, err := ca.laneState(ca.chctx, pchState, ch)
+		laneStates, err := ca.laneState(pchState, ch)
 		if err != nil {
 			return nil, err
 		}
@@ -387,25 +377,13 @@ func (ca *channelAccessor) processTask(ctx context.Context, amt types.BigInt) *p
 
 // createPaych sends a message to create the channel and returns the message cid
 func (ca *channelAccessor) createPaych(ctx context.Context, amt types.BigInt) (cid.Cid, error) {
-	params, aerr := actors.SerializeParams(&paych0.ConstructorParams{From: ca.from, To: ca.to})
-	if aerr != nil {
-		return cid.Undef, aerr
+	mb, err := ca.messageBuilder(ctx, ca.from)
+	if err != nil {
+		return cid.Undef, err
 	}
-
-	enc, aerr := actors.SerializeParams(&init0.ExecParams{
-		CodeCID:           builtin.PaymentChannelActorCodeID,
-		ConstructorParams: params,
-	})
-	if aerr != nil {
-		return cid.Undef, aerr
-	}
-
-	msg := &types.Message{
-		To:     lotusinit.Address,
-		From:   ca.from,
-		Value:  amt,
-		Method: builtin.MethodsInit.Exec,
-		Params: enc,
+	msg, err := mb.Create(ca.to, amt)
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
@@ -457,7 +435,10 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 		return err
 	}
 
-	var decodedReturn init0.ExecReturn
+	// TODO: ActorUpgrade abstract over this.
+	// This "works" because it hasn't changed from v0 to v2, but we still
+	// need an abstraction here.
+	var decodedReturn init2.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)

@@ -4,19 +4,16 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
-	"github.com/filecoin-project/lotus/build"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 )
 
@@ -102,16 +99,10 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrApi{xerrors.Errorf("calling StateNetworkVersion: %w", err)}
 	}
 
-	var msd abi.ChainEpoch
-	if nv < build.ActorUpgradeNetworkVersion {
-		msd = miner0.MaxSealDuration[si.SectorType]
-	} else {
-		// TODO: ActorUpgrade(use MaxProveCommitDuration)
-		msd = 0
-	}
+	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), si.SectorType)
 
-	if height-(si.TicketEpoch+SealRandomnessLookback) > msd {
-		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+SealRandomnessLookback, height)}
+	if height-(si.TicketEpoch+policy.SealRandomnessLookback) > msd {
+		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+policy.SealRandomnessLookback, height)}
 	}
 
 	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)
@@ -174,23 +165,14 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrBadSeed{xerrors.Errorf("seed has changed")}
 	}
 
-	ss, err := m.api.StateMinerSectorSize(ctx, m.maddr, tok)
-	if err != nil {
-		return &ErrApi{err}
-	}
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(ss)
-	if err != nil {
-		return err
-	}
-
 	if *si.CommR != pci.Info.SealedCID {
 		log.Warn("on-chain sealed CID doesn't match!")
 	}
 
-	ok, err := m.verif.VerifySeal(proof0.SealVerifyInfo{
-		SectorID:              m.minerSector(si.SectorNumber),
+	ok, err := m.verif.VerifySeal(proof2.SealVerifyInfo{
+		SectorID:              m.minerSectorID(si.SectorNumber),
 		SealedCID:             pci.Info.SealedCID,
-		SealProof:             spt,
+		SealProof:             pci.Info.SealProof,
 		Proof:                 proof,
 		Randomness:            si.TicketValue,
 		InteractiveRandomness: si.SeedValue,

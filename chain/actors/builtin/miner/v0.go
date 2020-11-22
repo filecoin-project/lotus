@@ -4,20 +4,33 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-	cbg "github.com/whyrusleeping/cbor-gen"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 var _ State = (*state0)(nil)
+
+func load0(store adt.Store, root cid.Cid) (State, error) {
+	out := state0{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
 
 type state0 struct {
 	miner0.State
@@ -34,8 +47,16 @@ type partition0 struct {
 	store adt.Store
 }
 
-func (s *state0) AvailableBalance(bal abi.TokenAmount) (abi.TokenAmount, error) {
-	return s.GetAvailableBalance(bal), nil
+func (s *state0) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = xerrors.Errorf("failed to get available balance: %w", r)
+			available = abi.NewTokenAmount(0)
+		}
+	}()
+	// this panics if the miner doesnt have enough funds to cover their locked pledge
+	available = s.GetAvailableBalance(bal)
+	return available, err
 }
 
 func (s *state0) VestedFunds(epoch abi.ChainEpoch) (abi.TokenAmount, error) {
@@ -48,6 +69,10 @@ func (s *state0) LockedFunds() (LockedFunds, error) {
 		InitialPledgeRequirement: s.State.InitialPledgeRequirement,
 		PreCommitDeposits:        s.State.PreCommitDeposits,
 	}, nil
+}
+
+func (s *state0) FeeDebt() (abi.TokenAmount, error) {
+	return big.Zero(), nil
 }
 
 func (s *state0) InitialPledge() (abi.TokenAmount, error) {
@@ -96,9 +121,7 @@ func (s *state0) NumLiveSectors() (uint64, error) {
 
 // GetSectorExpiration returns the effective expiration of the given sector.
 //
-// If the sector isn't found or has already been terminated, this method returns
-// nil and no error. If the sector does not expire early, the Early expiration
-// field is 0.
+// If the sector does not expire early, the Early expiration field is 0.
 func (s *state0) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -161,7 +184,7 @@ func (s *state0) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 		return nil, err
 	}
 	if out.Early == 0 && out.OnTime == 0 {
-		return nil, nil
+		return nil, xerrors.Errorf("failed to find sector %d", num)
 	}
 	return &out, nil
 }
@@ -251,7 +274,16 @@ func (s *state0) DeadlinesChanged(other State) (bool, error) {
 		return true, nil
 	}
 
-	return s.State.Deadlines.Equals(other0.Deadlines), nil
+	return !s.State.Deadlines.Equals(other0.Deadlines), nil
+}
+
+func (s *state0) MinerInfoChanged(other State) (bool, error) {
+	other0, ok := other.(*state0)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.Info.Equals(other0.State.Info), nil
 }
 
 func (s *state0) Info() (MinerInfo, error) {
@@ -278,6 +310,7 @@ func (s *state0) Info() (MinerInfo, error) {
 		SealProofType:              info.SealProofType,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
+		ConsensusFaultElapsed:      -1,
 	}
 
 	if info.PendingWorkerKey != nil {
@@ -346,7 +379,7 @@ func (d *deadline0) PartitionsChanged(other Deadline) (bool, error) {
 		return true, nil
 	}
 
-	return d.Deadline.Partitions.Equals(other0.Deadline.Partitions), nil
+	return !d.Deadline.Partitions.Equals(other0.Deadline.Partitions), nil
 }
 
 func (d *deadline0) PostSubmissions() (bitfield.BitField, error) {

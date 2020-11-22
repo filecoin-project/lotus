@@ -7,10 +7,15 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"go.opencensus.io/tag"
+
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/metrics"
+
 	logging "github.com/ipfs/go-log"
+	"go.opencensus.io/stats/view"
 
 	"github.com/gorilla/mux"
 	"github.com/urfave/cli/v2"
@@ -64,6 +69,13 @@ var runCmd = &cli.Command{
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
+		// Register all metric views
+		if err := view.Register(
+			metrics.DefaultViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
+
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -76,7 +88,7 @@ var runCmd = &cli.Command{
 		log.Info("Setting up API endpoint at " + address)
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", &GatewayAPI{api: api})
+		rpcServer.Register("Filecoin", metrics.MetricedGatewayAPI(NewGatewayAPI(api)))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux)
@@ -89,6 +101,7 @@ var runCmd = &cli.Command{
 		srv := &http.Server{
 			Handler: mux,
 			BaseContext: func(listener net.Listener) context.Context {
+				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-gateway"))
 				return ctx
 			},
 		}

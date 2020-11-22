@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -44,6 +46,11 @@ type Common interface {
 	// usage and current rate per protocol
 	NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error)
 
+	// ConnectionGater API
+	NetBlockAdd(ctx context.Context, acl NetBlockList) error
+	NetBlockRemove(ctx context.Context, acl NetBlockList) error
+	NetBlockList(ctx context.Context) (NetBlockList, error)
+
 	// MethodGroup: Common
 
 	// ID returns peerID of libp2p node backing this API
@@ -57,6 +64,9 @@ type Common interface {
 
 	// trigger graceful shutdown
 	Shutdown(context.Context) error
+
+	// Session returns a random UUID of api provider session
+	Session(context.Context) (uuid.UUID, error)
 
 	Closing(context.Context) (<-chan struct{}, error)
 }

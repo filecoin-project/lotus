@@ -33,6 +33,12 @@ var infoCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		infoAllCmd,
 	},
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "hide-sectors-info",
+			Usage: "hide sectors info",
+		},
+	},
 	Action: infoCmdAct,
 }
 
@@ -52,6 +58,24 @@ func infoCmdAct(cctx *cli.Context) error {
 	defer acloser()
 
 	ctx := lcli.ReqContext(cctx)
+
+	fmt.Print("Full node: ")
+
+	head, err := api.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*3/2): // within 1.5 epochs
+		fmt.Printf("[%s]", color.GreenString("sync ok"))
+	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*5): // within 5 epochs
+		fmt.Printf("[%s]", color.YellowString("sync slow (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
+	default:
+		fmt.Printf("[%s]", color.RedString("sync behind! (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
+	}
+
+	fmt.Println()
 
 	maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 	if err != nil {
@@ -199,10 +223,12 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Printf("Expected Seal Duration: %s\n\n", sealdur)
 
-	fmt.Println("Sectors:")
-	err = sectorsInfo(ctx, nodeApi)
-	if err != nil {
-		return err
+	if !cctx.Bool("hide-sectors-info") {
+		fmt.Println("Sectors:")
+		err = sectorsInfo(ctx, nodeApi)
+		if err != nil {
+			return err
+		}
 	}
 
 	// TODO: grab actr state / info

@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,27 +12,42 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
-// Unchanged between v0 and v1 actors
+func init() {
+	builtin.RegisterActorState(builtin0.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load0(store, root)
+	})
+	builtin.RegisterActorState(builtin2.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load2(store, root)
+	})
+}
+
+var Methods = builtin2.MethodsMiner
+
+// Unchanged between v0 and v2 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
+var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
+var WPoStChallengeWindow = miner0.WPoStChallengeWindow
+var WPoStChallengeLookback = miner0.WPoStChallengeLookback
+var FaultDeclarationCutoff = miner0.FaultDeclarationCutoff
 
 const MinSectorExpiration = miner0.MinSectorExpiration
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code {
 	case builtin0.StorageMinerActorCodeID:
-		out := state0{store: store}
-		err := store.Get(store.Context(), act.Head, &out)
-		if err != nil {
-			return nil, err
-		}
-		return &out, nil
+		return load0(store, act.Head)
+	case builtin2.StorageMinerActorCodeID:
+		return load2(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
@@ -45,6 +61,7 @@ type State interface {
 	VestedFunds(abi.ChainEpoch) (abi.TokenAmount, error)
 	// Funds locked for various reasons.
 	LockedFunds() (LockedFunds, error)
+	FeeDebt() (abi.TokenAmount, error)
 
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
@@ -60,6 +77,7 @@ type State interface {
 	DeadlinesChanged(State) (bool, error)
 
 	Info() (MinerInfo, error)
+	MinerInfoChanged(State) (bool, error)
 
 	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
 
@@ -131,6 +149,21 @@ type MinerInfo struct {
 	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
+	ConsensusFaultElapsed      abi.ChainEpoch
+}
+
+func (mi MinerInfo) IsController(addr address.Address) bool {
+	if addr == mi.Owner || addr == mi.Worker {
+		return true
+	}
+
+	for _, ca := range mi.ControlAddresses {
+		if addr == ca {
+			return true
+		}
+	}
+
+	return false
 }
 
 type SectorExpiration struct {
@@ -166,4 +199,8 @@ type LockedFunds struct {
 	VestingFunds             abi.TokenAmount
 	InitialPledgeRequirement abi.TokenAmount
 	PreCommitDeposits        abi.TokenAmount
+}
+
+func (lf LockedFunds) TotalLockedFunds() abi.TokenAmount {
+	return big.Add(lf.VestingFunds, big.Add(lf.InitialPledgeRequirement, lf.PreCommitDeposits))
 }

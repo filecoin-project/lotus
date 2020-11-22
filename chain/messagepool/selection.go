@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	tbig "github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -19,6 +20,8 @@ import (
 )
 
 var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
+
+var MaxBlockMessages = 16000
 
 // this is *temporary* mutilation until we have implemented uncapped miner penalties -- it will go
 // away in the next fork.
@@ -42,7 +45,7 @@ type msgChain struct {
 	prev         *msgChain
 }
 
-func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -53,10 +56,20 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) ([]*types.Si
 	// than any other block, then we don't bother with optimal selection because the
 	// first block will always have higher effective performance
 	if tq > 0.84 {
-		return mp.selectMessagesGreedy(mp.curTs, ts)
+		msgs, err = mp.selectMessagesGreedy(mp.curTs, ts)
+	} else {
+		msgs, err = mp.selectMessagesOptimal(mp.curTs, ts, tq)
 	}
 
-	return mp.selectMessagesOptimal(mp.curTs, ts, tq)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(msgs) > MaxBlockMessages {
+		msgs = msgs[:MaxBlockMessages]
+	}
+
+	return msgs, nil
 }
 
 func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
@@ -751,11 +764,10 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		balance = new(big.Int).Sub(balance, required)
 
 		value := m.Message.Value.Int
-		if balance.Cmp(value) >= 0 {
-			// Note: we only account for the value if the balance doesn't drop below 0
-			//       otherwise the message will fail and the miner can reap the gas rewards
-			balance = new(big.Int).Sub(balance, value)
+		if balance.Cmp(value) < 0 {
+			break
 		}
+		balance = new(big.Int).Sub(balance, value)
 
 		gasReward := mp.getGasReward(m, baseFee)
 		rewards = append(rewards, gasReward)

@@ -3,14 +3,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
@@ -37,29 +38,31 @@ var verifRegCmd = &cli.Command{
 }
 
 var verifRegAddVerifierCmd = &cli.Command{
-	Name:  "add-verifier",
-	Usage: "make a given account a verifier",
+	Name:      "add-verifier",
+	Usage:     "make a given account a verifier",
+	ArgsUsage: "<message sender> <new verifier> <allowance>",
 	Action: func(cctx *cli.Context) error {
-		fromk, err := address.NewFromString("t3qfoulel6fy6gn3hjmbhpdpf6fs5aqjb5fkurhtwvgssizq4jey5nw4ptq5up6h7jk7frdvvobv52qzmgjinq")
+		if cctx.Args().Len() != 3 {
+			return fmt.Errorf("must specify three arguments: sender, verifier, and allowance")
+		}
+
+		sender, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
 			return err
 		}
 
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must specify two arguments: address and allowance")
-		}
-
-		target, err := address.NewFromString(cctx.Args().Get(0))
+		verifier, err := address.NewFromString(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
 
-		allowance, err := types.BigFromString(cctx.Args().Get(1))
+		allowance, err := types.BigFromString(cctx.Args().Get(2))
 		if err != nil {
 			return err
 		}
 
-		params, err := actors.SerializeParams(&verifreg0.AddVerifierParams{Address: target, Allowance: allowance})
+		// TODO: ActorUpgrade: Abstract
+		params, err := actors.SerializeParams(&verifreg2.AddVerifierParams{Address: verifier, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -71,21 +74,19 @@ var verifRegAddVerifierCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		msg := &types.Message{
-			To:     verifreg.Address,
-			From:   fromk,
-			Method: builtin0.MethodsVerifiedRegistry.AddVerifier,
-			Params: params,
-		}
-
-		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
+		smsg, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.AddVerifier), params)
+		if err != nil {
+			return err
+		}
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		fmt.Printf("message sent, now waiting on cid: %s\n", smsg)
+
+		mwait, err := api.StateWaitMsg(ctx, smsg, build.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -94,6 +95,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return fmt.Errorf("failed to add verifier: %d", mwait.Receipt.ExitCode)
 		}
 
+		//TODO: Internal msg might still have failed
 		return nil
 
 	},
@@ -133,7 +135,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&verifreg0.AddVerifiedClientParams{Address: target, Allowance: allowance})
+		params, err := actors.SerializeParams(&verifreg2.AddVerifiedClientParams{Address: target, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -148,7 +150,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 		msg := &types.Message{
 			To:     verifreg.Address,
 			From:   fromk,
-			Method: builtin0.MethodsVerifiedRegistry.AddVerifiedClient,
+			Method: verifreg.Methods.AddVerifiedClient,
 			Params: params,
 		}
 

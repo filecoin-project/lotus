@@ -3,12 +3,13 @@ package vm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 type scalingCost struct {
@@ -17,6 +18,8 @@ type scalingCost struct {
 }
 
 type pricelistV0 struct {
+	computeGasMulti int64
+	storageGasMulti int64
 	///////////////////////////////////////////////////////////////////////////
 	// System operations
 	///////////////////////////////////////////////////////////////////////////
@@ -89,6 +92,7 @@ type pricelistV0 struct {
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
 	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
+	verifyPostDiscount           bool
 	verifyConsensusFault         int64
 }
 
@@ -97,12 +101,12 @@ var _ Pricelist = (*pricelistV0)(nil)
 // OnChainMessage returns the gas used for storing a message of a given size in the chain.
 func (pl *pricelistV0) OnChainMessage(msgSize int) GasCharge {
 	return newGasCharge("OnChainMessage", pl.onChainMessageComputeBase,
-		pl.onChainMessageStorageBase+pl.onChainMessageStoragePerByte*int64(msgSize))
+		(pl.onChainMessageStorageBase+pl.onChainMessageStoragePerByte*int64(msgSize))*pl.storageGasMulti)
 }
 
 // OnChainReturnValue returns the gas used for storing the response of a message in the chain.
 func (pl *pricelistV0) OnChainReturnValue(dataSize int) GasCharge {
-	return newGasCharge("OnChainReturnValue", 0, int64(dataSize)*pl.onChainReturnValuePerByte)
+	return newGasCharge("OnChainReturnValue", 0, int64(dataSize)*pl.onChainReturnValuePerByte*pl.storageGasMulti)
 }
 
 // OnMethodInvocation returns the gas used when invoking a method.
@@ -129,23 +133,23 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 // OnIpldGet returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldGet() GasCharge {
-	return newGasCharge("OnIpldGet", pl.ipldGetBase, 0)
+	return newGasCharge("OnIpldGet", pl.ipldGetBase, 0).WithVirtual(114617, 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
-	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).
-		WithExtra(dataSize)
+	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte*pl.storageGasMulti).
+		WithExtra(dataSize).WithVirtual(400000, int64(dataSize)*1300)
 }
 
 // OnCreateActor returns the gas used for creating an actor
 func (pl *pricelistV0) OnCreateActor() GasCharge {
-	return newGasCharge("OnCreateActor", pl.createActorCompute, pl.createActorStorage)
+	return newGasCharge("OnCreateActor", pl.createActorCompute, pl.createActorStorage*pl.storageGasMulti)
 }
 
 // OnDeleteActor returns the gas used for deleting an actor
 func (pl *pricelistV0) OnDeleteActor() GasCharge {
-	return newGasCharge("OnDeleteActor", 0, pl.deleteActor)
+	return newGasCharge("OnDeleteActor", 0, pl.deleteActor*pl.storageGasMulti)
 }
 
 // OnVerifySignature
@@ -175,14 +179,14 @@ func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealPr
 }
 
 // OnVerifySeal
-func (pl *pricelistV0) OnVerifySeal(info proof.SealVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
 	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
 // OnVerifyPost
-func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge {
 	sectorSize := "unknown"
 	var proofType abi.RegisteredPoStProof
 
@@ -200,9 +204,12 @@ func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
 	}
 
 	gasUsed := cost.flat + int64(len(info.ChallengedSectors))*cost.scale
-	gasUsed /= 2 // XXX: this is an artificial discount
+	if pl.verifyPostDiscount {
+		gasUsed /= 2 // XXX: this is an artificial discount
+	}
 
 	return newGasCharge("OnVerifyPost", gasUsed, 0).
+		WithVirtual(117680921+43780*int64(len(info.ChallengedSectors)), 0).
 		WithExtra(map[string]interface{}{
 			"type": sectorSize,
 			"size": len(info.ChallengedSectors),

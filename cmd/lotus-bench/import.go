@@ -16,20 +16,38 @@ import (
 	"sort"
 	"time"
 
+	ocprom "contrib.go.opencensus.io/exporter/prometheus"
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/bloom"
+	"github.com/ipfs/go-cid"
+	metricsi "github.com/ipfs/go-metrics-interface"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/node/repo"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
+	"github.com/ipld/go-car"
+
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
+	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
+	measure "github.com/ipfs/go-ds-measure"
+	pebbleds "github.com/ipfs/go-ds-pebble"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -42,14 +60,30 @@ type TipSetExec struct {
 
 var importBenchCmd = &cli.Command{
 	Name:  "import",
-	Usage: "benchmark chain import and validation",
+	Usage: "Benchmark chain import and validation",
 	Subcommands: []*cli.Command{
 		importAnalyzeCmd,
 	},
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "start-tipset",
+			Usage: "start validation at the given tipset key; in format cid1,cid2,cid3...",
+		},
+		&cli.StringFlag{
+			Name:  "end-tipset",
+			Usage: "halt validation at the given tipset key; in format cid1,cid2,cid3...",
+		},
+		&cli.StringFlag{
+			Name:  "genesis-tipset",
+			Usage: "genesis tipset key; in format cid1,cid2,cid3...",
+		},
 		&cli.Int64Flag{
-			Name:  "height",
-			Usage: "halt validation after given height",
+			Name:  "start-height",
+			Usage: "start validation at given height; beware that chain traversal by height is very slow",
+		},
+		&cli.Int64Flag{
+			Name:  "end-height",
+			Usage: "halt validation after given height; beware that chain traversal by height is very slow",
 		},
 		&cli.IntFlag{
 			Name:  "batch-seal-verify-threads",
@@ -60,19 +94,71 @@ var importBenchCmd = &cli.Command{
 			Name:  "repodir",
 			Usage: "set the repo directory for the lotus bench run (defaults to /tmp)",
 		},
+		&cli.StringFlag{
+			Name:  "syscall-cache",
+			Usage: "read and write syscall results from datastore",
+		},
+		&cli.BoolFlag{
+			Name:  "export-traces",
+			Usage: "should we export execution traces",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "no-import",
+			Usage: "should we import the chain? if set to true chain has to be previously imported",
+		},
+		&cli.BoolFlag{
+			Name:  "global-profile",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name: "only-import",
+		},
+		&cli.BoolFlag{
+			Name: "use-pebble",
+		},
+		&cli.BoolFlag{
+			Name: "use-native-badger",
+		},
+		&cli.StringFlag{
+			Name: "car",
+			Usage: "path to CAR file; required for import; on validation, either " +
+				"a CAR path or the --head flag are required",
+		},
+		&cli.StringFlag{
+			Name: "head",
+			Usage: "tipset key of the head, useful when benchmarking validation " +
+				"on an existing chain store, where a CAR is not available; " +
+				"if both --car and --head are provided, --head takes precedence " +
+				"over the CAR root; the format is cid1,cid2,cid3...",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		metricsprometheus.Inject() //nolint:errcheck
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
-		if !cctx.Args().Present() {
-			fmt.Println("must pass car file of chain to benchmark importing")
-			return nil
-		}
 
-		cfi, err := os.Open(cctx.Args().First())
-		if err != nil {
-			return err
-		}
-		defer cfi.Close() //nolint:errcheck // read only file
+		go func() {
+			// Prometheus globals are exposed as interfaces, but the prometheus
+			// OpenCensus exporter expects a concrete *Registry. The concrete type of
+			// the globals are actually *Registry, so we downcast them, staying
+			// defensive in case things change under the hood.
+			registry, ok := prometheus.DefaultRegisterer.(*prometheus.Registry)
+			if !ok {
+				log.Warnf("failed to export default prometheus registry; some metrics will be unavailable; unexpected type: %T", prometheus.DefaultRegisterer)
+				return
+			}
+			exporter, err := ocprom.NewExporter(ocprom.Options{
+				Registry:  registry,
+				Namespace: "lotus",
+			})
+			if err != nil {
+				log.Fatalf("could not create the prometheus stats exporter: %v", err)
+			}
+
+			http.Handle("/debug/metrics", exporter)
+
+			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
+		}()
 
 		var tdir string
 		if rdir := cctx.String("repodir"); rdir != "" {
@@ -85,111 +171,360 @@ var importBenchCmd = &cli.Command{
 			tdir = tmp
 		}
 
-		bds, err := badger.NewDatastore(tdir, nil)
+		var (
+			ds  datastore.Batching
+			bs  blockstore.Blockstore
+			err error
+		)
+
+		switch {
+		case cctx.Bool("use-pebble"):
+			log.Info("using pebble")
+			cache := 512
+			ds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
+				// Pebble has a single combined cache area and the write
+				// buffers are taken from this too. Assign all available
+				// memory allowance for cache.
+				Cache: pebble.NewCache(int64(cache * 1024 * 1024)),
+				// The size of memory table(as well as the write buffer).
+				// Note, there may have more than two memory tables in the system.
+				// MemTableStopWritesThreshold can be configured to avoid the memory abuse.
+				MemTableSize: cache * 1024 * 1024 / 4,
+				// The default compaction concurrency(1 thread),
+				// Here use all available CPUs for faster compaction.
+				MaxConcurrentCompactions: runtime.NumCPU(),
+				// Per-level options. Options for at least one level must be specified. The
+				// options for the last level are used for all subsequent levels.
+				Levels: []pebble.LevelOptions{
+					{TargetFileSize: 16 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10), Compression: pebble.NoCompression},
+				},
+				Logger: log,
+			})
+
+		case cctx.Bool("use-native-badger"):
+			log.Info("using native badger")
+			var opts badgerbs.Options
+			if opts, err = repo.BadgerBlockstoreOptions(repo.BlockstoreChain, tdir, false); err != nil {
+				return err
+			}
+			opts.SyncWrites = false
+			bs, err = badgerbs.Open(opts)
+
+		default: // legacy badger via datastore.
+			log.Info("using legacy badger")
+			bdgOpt := badger.DefaultOptions
+			bdgOpt.GcInterval = 0
+			bdgOpt.Options = bdg.DefaultOptions("")
+			bdgOpt.Options.SyncWrites = false
+			bdgOpt.Options.Truncate = true
+			bdgOpt.Options.DetectConflicts = false
+
+			ds, err = badger.NewDatastore(tdir, &bdgOpt)
+		}
+
 		if err != nil {
 			return err
 		}
-		bs := blockstore.NewBlockstore(bds)
-		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, blockstore.DefaultCacheOpts())
+
+		if ds != nil {
+			ds = measure.New("dsbench", ds)
+			defer ds.Close() //nolint:errcheck
+			bs = blockstore.NewBlockstore(ds)
+		}
+
+		if c, ok := bs.(io.Closer); ok {
+			defer c.Close() //nolint:errcheck
+		}
+
+		ctx := metricsi.CtxScope(context.Background(), "lotus")
+		cacheOpts := blockstore.DefaultCacheOpts()
+		cacheOpts.HasBloomFilterSize = 0
+		bs, err = blockstore.CachedBlockstore(ctx, bs, cacheOpts)
 		if err != nil {
 			return err
 		}
-		bs = cbs
-		ds := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, ds, vm.Syscalls(ffiwrapper.ProofVerifier))
+
+		var verifier ffiwrapper.Verifier = ffiwrapper.ProofVerifier
+		if cctx.IsSet("syscall-cache") {
+			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &badger.DefaultOptions)
+			if err != nil {
+				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
+			}
+			defer scds.Close() //nolint:errcheck
+
+			verifier = &cachingVerifier{
+				ds:      scds,
+				backend: verifier,
+			}
+		}
+		if cctx.Bool("only-gc") {
+			return nil
+		}
+
+		metadataDs := datastore.NewMapDatastore()
+		cs := store.NewChainStore(bs, bs, metadataDs, vm.Syscalls(verifier), nil)
+		defer cs.Close() //nolint:errcheck
+
 		stm := stmgr.NewStateManager(cs)
 
-		prof, err := os.Create("import-bench.prof")
-		if err != nil {
-			return err
-		}
-		defer prof.Close() //nolint:errcheck
+		startTime := time.Now()
 
-		if err := pprof.StartCPUProfile(prof); err != nil {
-			return err
+		// register a gauge that reports how long since the measurable
+		// operation began.
+		promauto.NewGaugeFunc(prometheus.GaugeOpts{
+			Name: "lotus_bench_time_taken_secs",
+		}, func() float64 {
+			return time.Since(startTime).Seconds()
+		})
+
+		defer func() {
+			end := time.Now().Format(time.RFC3339)
+
+			resp, err := http.Get("http://localhost:6060/debug/metrics")
+			if err != nil {
+				log.Warnf("failed to scape prometheus: %s", err)
+			}
+
+			metricsfi, err := os.Create("bench.metrics")
+			if err != nil {
+				log.Warnf("failed to write prometheus data: %s", err)
+			}
+
+			_, _ = io.Copy(metricsfi, resp.Body) //nolint:errcheck
+			_ = metricsfi.Close()                //nolint:errcheck
+
+			writeProfile := func(name string) {
+				if file, err := os.Create(fmt.Sprintf("%s.%s.%s.pprof", name, startTime.Format(time.RFC3339), end)); err == nil {
+					if err := pprof.Lookup(name).WriteTo(file, 0); err != nil {
+						log.Warnf("failed to write %s pprof: %s", name, err)
+					}
+					_ = file.Close()
+				} else {
+					log.Warnf("failed to create %s pprof file: %s", name, err)
+				}
+			}
+
+			writeProfile("heap")
+			writeProfile("allocs")
+		}()
+
+		var carFile *os.File
+
+		// open the CAR file if one is provided.
+		if path := cctx.String("car"); path != "" {
+			var err error
+			if carFile, err = os.Open(path); err != nil {
+				return xerrors.Errorf("failed to open provided CAR file: %w", err)
+			}
 		}
 
-		head, err := cs.Import(cfi)
-		if err != nil {
-			return err
-		}
+		var head *types.TipSet
 
-		gb, err := cs.GetTipsetByHeight(context.TODO(), 0, head, true)
-		if err != nil {
-			return err
-		}
+		// --- IMPORT ---
+		if !cctx.Bool("no-import") {
+			if cctx.Bool("global-profile") {
+				prof, err := os.Create("bench.import.pprof")
+				if err != nil {
+					return err
+				}
+				defer prof.Close() //nolint:errcheck
 
-		err = cs.SetGenesis(gb.Blocks()[0])
-		if err != nil {
-			return err
-		}
+				if err := pprof.StartCPUProfile(prof); err != nil {
+					return err
+				}
+			}
 
-		if h := cctx.Int64("height"); h != 0 {
-			tsh, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
+			// import is NOT suppressed; do it.
+			if carFile == nil { // a CAR is compulsory for the import.
+				return fmt.Errorf("no CAR file provided for import")
+			}
+
+			head, err = cs.Import(carFile)
 			if err != nil {
 				return err
 			}
-			head = tsh
+
+			pprof.StopCPUProfile()
 		}
 
-		ts := head
-		tschain := []*types.TipSet{ts}
-		for ts.Height() != 0 {
+		if cctx.Bool("only-import") {
+			return nil
+		}
+
+		// --- VALIDATION ---
+		//
+		// we are now preparing for the validation benchmark.
+		// a HEAD needs to be set; --head takes precedence over the root
+		// of the CAR, if both are provided.
+		if h := cctx.String("head"); h != "" {
+			cids, err := lcli.ParseTipSetString(h)
+			if err != nil {
+				return xerrors.Errorf("failed to parse head tipset key: %w", err)
+			}
+
+			head, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+			if err != nil {
+				return err
+			}
+		} else if carFile != nil && head == nil {
+			cr, err := car.NewCarReader(carFile)
+			if err != nil {
+				return err
+			}
+			head, err = cs.LoadTipSet(types.NewTipSetKey(cr.Header.Roots...))
+			if err != nil {
+				return err
+			}
+		} else if h == "" && carFile == nil {
+			return xerrors.Errorf("neither --car nor --head flags supplied")
+		}
+
+		log.Infof("chain head is tipset: %s", head.Key())
+
+		var genesis *types.TipSet
+		log.Infof("getting genesis block")
+		if tsk := cctx.String("genesis-tipset"); tsk != "" {
+			var cids []cid.Cid
+			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
+				return xerrors.Errorf("failed to parse genesis tipset key: %w", err)
+			}
+			genesis, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+		} else {
+			log.Warnf("getting genesis by height; this will be slow; pass in the genesis tipset through --genesis-tipset")
+			// fallback to the slow path of walking the chain.
+			genesis, err = cs.GetTipsetByHeight(context.TODO(), 0, head, true)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if err = cs.SetGenesis(genesis.Blocks()[0]); err != nil {
+			return err
+		}
+
+		// Resolve the end tipset, falling back to head if not provided.
+		end := head
+		if tsk := cctx.String("end-tipset"); tsk != "" {
+			var cids []cid.Cid
+			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
+				return xerrors.Errorf("failed to end genesis tipset key: %w", err)
+			}
+			end, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+		} else if h := cctx.Int64("end-height"); h != 0 {
+			log.Infof("getting end tipset at height %d...", h)
+			end, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		// Resolve the start tipset, if provided; otherwise, fallback to
+		// height 1 for a start point.
+		var (
+			startEpoch = abi.ChainEpoch(1)
+			start      *types.TipSet
+		)
+
+		if tsk := cctx.String("start-tipset"); tsk != "" {
+			var cids []cid.Cid
+			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
+				return xerrors.Errorf("failed to start genesis tipset key: %w", err)
+			}
+			start, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+		} else if h := cctx.Int64("start-height"); h != 0 {
+			log.Infof("getting start tipset at height %d...", h)
+			// lookback from the end tipset (which falls back to head if not supplied).
+			start, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), end, true)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if start != nil {
+			startEpoch = start.Height()
+			if err := cs.ForceHeadSilent(context.Background(), start); err != nil {
+				// if err := cs.SetHead(start); err != nil {
+				return err
+			}
+		}
+
+		inverseChain := append(make([]*types.TipSet, 0, end.Height()), end)
+		for ts := end; ts.Height() > startEpoch; {
+			if h := ts.Height(); h%100 == 0 {
+				log.Infof("walking back the chain; loaded tipset at height %d...", h)
+			}
 			next, err := cs.LoadTipSet(ts.Parents())
 			if err != nil {
 				return err
 			}
 
-			tschain = append(tschain, next)
+			inverseChain = append(inverseChain, next)
 			ts = next
 		}
 
-		ibj, err := os.Create("import-bench.json")
-		if err != nil {
-			return err
+		var enc *json.Encoder
+		if cctx.Bool("export-traces") {
+			ibj, err := os.Create("bench.json")
+			if err != nil {
+				return err
+			}
+			defer ibj.Close() //nolint:errcheck
+
+			enc = json.NewEncoder(ibj)
 		}
-		defer ibj.Close() //nolint:errcheck
 
-		enc := json.NewEncoder(ibj)
+		if cctx.Bool("global-profile") {
+			prof, err := os.Create("bench.validation.pprof")
+			if err != nil {
+				return err
+			}
+			defer prof.Close() //nolint:errcheck
 
-		var lastTse *TipSetExec
+			if err := pprof.StartCPUProfile(prof); err != nil {
+				return err
+			}
+		}
 
-		lastState := tschain[len(tschain)-1].ParentState()
-		for i := len(tschain) - 2; i >= 0; i-- {
-			cur := tschain[i]
+		for i := len(inverseChain) - 1; i >= 1; i-- {
+			cur := inverseChain[i]
+			start := time.Now()
 			log.Infof("computing state (height: %d, ts=%s)", cur.Height(), cur.Cids())
-			if cur.ParentState() != lastState {
-				lastTrace := lastTse.Trace
+			st, trace, err := stm.ExecutionTrace(context.TODO(), cur)
+			if err != nil {
+				return err
+			}
+			tse := &TipSetExec{
+				TipSet:   cur.Key(),
+				Trace:    trace,
+				Duration: time.Since(start),
+			}
+			if enc != nil {
+				stripCallers(tse.Trace)
+
+				if err := enc.Encode(tse); err != nil {
+					return xerrors.Errorf("failed to write out tipsetexec: %w", err)
+				}
+			}
+			if inverseChain[i-1].ParentState() != st {
+				stripCallers(tse.Trace)
+				lastTrace := tse.Trace
 				d, err := json.MarshalIndent(lastTrace, "", "  ")
 				if err != nil {
 					panic(err)
 				}
 				fmt.Println("TRACE")
 				fmt.Println(string(d))
-				return xerrors.Errorf("tipset chain had state mismatch at height %d (%s != %s)", cur.Height(), cur.ParentState(), lastState)
-			}
-			start := time.Now()
-			st, trace, err := stm.ExecutionTrace(context.TODO(), cur)
-			if err != nil {
-				return err
-			}
-			stripCallers(trace)
-
-			lastTse = &TipSetExec{
-				TipSet:   cur.Key(),
-				Trace:    trace,
-				Duration: time.Since(start),
-			}
-			lastState = st
-			if err := enc.Encode(lastTse); err != nil {
-				return xerrors.Errorf("failed to write out tipsetexec: %w", err)
+				//fmt.Println(statediff.Diff(context.Background(), bs, tschain[i-1].ParentState(), st, statediff.ExpandActors))
+				return xerrors.Errorf("tipset chain had state mismatch at height %d (%s != %s)", cur.Height(), cur.ParentState(), st)
 			}
 		}
 
 		pprof.StopCPUProfile()
 
 		return nil
-
 	},
 }
 

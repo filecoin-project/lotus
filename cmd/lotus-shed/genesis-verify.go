@@ -6,6 +6,8 @@ import (
 	"os"
 	"sort"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/fatih/color"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -50,7 +52,8 @@ var genesisVerifyCmd = &cli.Command{
 		}
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		cs := store.NewChainStore(bs, datastore.NewMapDatastore(), nil)
+		cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, nil)
+		defer cs.Close() //nolint:errcheck
 
 		cf := cctx.Args().Get(0)
 		f, err := os.Open(cf)
@@ -95,14 +98,14 @@ var genesisVerifyCmd = &cli.Command{
 
 		if err := stree.ForEach(func(addr address.Address, act *types.Actor) error {
 			switch {
-			case act.IsStorageMinerActor():
+			case builtin.IsStorageMinerActor(act.Code):
 				_, err := miner.Load(store, act)
 				if err != nil {
 					return xerrors.Errorf("miner actor: %w", err)
 				}
 				// TODO: actually verify something here?
 				kminers[addr] = minerInfo{}
-			case act.IsMultisigActor():
+			case builtin.IsMultisigActor(act.Code):
 				st, err := multisig.Load(store, act)
 				if err != nil {
 					return xerrors.Errorf("multisig actor: %w", err)
@@ -123,7 +126,7 @@ var genesisVerifyCmd = &cli.Command{
 					Threshold: threshold,
 				}
 				msigAddrs = append(msigAddrs, addr)
-			case act.IsAccountActor():
+			case builtin.IsAccountActor(act.Code):
 				st, err := account.Load(store, act)
 				if err != nil {
 					// TODO: magik6k: this _used_ to log instead of failing, why?

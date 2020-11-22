@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/gbrlsnchs/jwt/v3"
+	"github.com/google/uuid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -15,6 +15,7 @@ import (
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -27,6 +28,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
+var session = uuid.New()
+
 type CommonAPI struct {
 	fx.In
 
@@ -34,6 +37,7 @@ type CommonAPI struct {
 	RawHost      lp2p.RawHost
 	Host         host.Host
 	Router       lp2p.BaseIpfsRouting
+	ConnGater    *conngater.BasicConnectionGater
 	Reporter     metrics.Reporter
 	Sk           *dtypes.ScoreKeeper
 	ShutdownChan dtypes.ShutdownChan
@@ -121,6 +125,12 @@ func (a *CommonAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, 
 func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
 	autonat := a.RawHost.(*basichost.BasicHost).AutoNat
 
+	if autonat == nil {
+		return api.NatInfo{
+			Reachability: network.ReachabilityUnknown,
+		}, nil
+	}
+
 	var maddr string
 	if autonat.Status() == network.ReachabilityPublic {
 		pa, err := autonat.PublicAddr()
@@ -194,6 +204,10 @@ func (a *CommonAPI) LogSetLevel(ctx context.Context, subsystem, level string) er
 func (a *CommonAPI) Shutdown(ctx context.Context) error {
 	a.ShutdownChan <- struct{}{}
 	return nil
+}
+
+func (a *CommonAPI) Session(ctx context.Context) (uuid.UUID, error) {
+	return session, nil
 }
 
 func (a *CommonAPI) Closing(ctx context.Context) (<-chan struct{}, error) {

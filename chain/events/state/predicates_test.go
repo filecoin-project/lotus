@@ -4,28 +4,26 @@ import (
 	"context"
 	"testing"
 
+	test "github.com/filecoin-project/lotus/chain/events/state/mock"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-bitfield"
 
-	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
-
 	"github.com/filecoin-project/lotus/chain/types"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
@@ -36,60 +34,27 @@ func init() {
 	dummyCid, _ = cid.Parse("bafkqaaa")
 }
 
-type mockAPI struct {
-	ts map[types.TipSetKey]*types.Actor
-	bs bstore.Blockstore
-}
-
-func newMockAPI(bs bstore.Blockstore) *mockAPI {
-	return &mockAPI{
-		bs: bs,
-		ts: make(map[types.TipSetKey]*types.Actor),
-	}
-}
-
-func (m mockAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
-	return m.bs.Has(c)
-}
-
-func (m mockAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
-	blk, err := m.bs.Get(c)
-	if err != nil {
-		return nil, xerrors.Errorf("blockstore get: %w", err)
-	}
-
-	return blk.RawData(), nil
-}
-
-func (m mockAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	return m.ts[tsk], nil
-}
-
-func (m mockAPI) setActor(tsk types.TipSetKey, act *types.Actor) {
-	m.ts[tsk] = act
-}
-
 func TestMarketPredicates(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewTemporarySync()
-	store := adt.WrapStore(ctx, cbornode.NewCborStore(bs))
+	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))
 
-	oldDeal1 := &market0.DealState{
+	oldDeal1 := &market2.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 2,
 		SlashEpoch:       0,
 	}
-	oldDeal2 := &market0.DealState{
+	oldDeal2 := &market2.DealState{
 		SectorStartEpoch: 4,
 		LastUpdatedEpoch: 5,
 		SlashEpoch:       0,
 	}
-	oldDeals := map[abi.DealID]*market0.DealState{
+	oldDeals := map[abi.DealID]*market2.DealState{
 		abi.DealID(1): oldDeal1,
 		abi.DealID(2): oldDeal2,
 	}
 
-	oldProp1 := &market0.DealProposal{
+	oldProp1 := &market2.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -101,7 +66,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	oldProp2 := &market0.DealProposal{
+	oldProp2 := &market2.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -113,7 +78,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	oldProps := map[abi.DealID]*market0.DealProposal{
+	oldProps := map[abi.DealID]*market2.DealProposal{
 		abi.DealID(1): oldProp1,
 		abi.DealID(2): oldProp2,
 	}
@@ -127,7 +92,7 @@ func TestMarketPredicates(t *testing.T) {
 
 	oldStateC := createMarketState(ctx, t, store, oldDeals, oldProps, oldBalances)
 
-	newDeal1 := &market0.DealState{
+	newDeal1 := &market2.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 3,
 		SlashEpoch:       0,
@@ -136,19 +101,19 @@ func TestMarketPredicates(t *testing.T) {
 	// deal 2 removed
 
 	// added
-	newDeal3 := &market0.DealState{
+	newDeal3 := &market2.DealState{
 		SectorStartEpoch: 1,
 		LastUpdatedEpoch: 2,
 		SlashEpoch:       3,
 	}
-	newDeals := map[abi.DealID]*market0.DealState{
+	newDeals := map[abi.DealID]*market2.DealState{
 		abi.DealID(1): newDeal1,
 		// deal 2 was removed
 		abi.DealID(3): newDeal3,
 	}
 
 	// added
-	newProp3 := &market0.DealProposal{
+	newProp3 := &market2.DealProposal{
 		PieceCID:             dummyCid,
 		PieceSize:            0,
 		VerifiedDeal:         false,
@@ -160,7 +125,7 @@ func TestMarketPredicates(t *testing.T) {
 		ProviderCollateral:   big.Zero(),
 		ClientCollateral:     big.Zero(),
 	}
-	newProps := map[abi.DealID]*market0.DealProposal{
+	newProps := map[abi.DealID]*market2.DealProposal{
 		abi.DealID(1): oldProp1, // 1 was persisted
 		// prop 2 was removed
 		abi.DealID(3): newProp3, // new
@@ -177,14 +142,14 @@ func TestMarketPredicates(t *testing.T) {
 
 	minerAddr, err := address.NewFromString("t00")
 	require.NoError(t, err)
-	oldState, err := mockTipset(minerAddr, 1)
+	oldState, err := test.MockTipset(minerAddr, 1)
 	require.NoError(t, err)
-	newState, err := mockTipset(minerAddr, 2)
+	newState, err := test.MockTipset(minerAddr, 2)
 	require.NoError(t, err)
 
-	api := newMockAPI(bs)
-	api.setActor(oldState.Key(), &types.Actor{Code: builtin0.StorageMarketActorCodeID, Head: oldStateC})
-	api.setActor(newState.Key(), &types.Actor{Code: builtin0.StorageMarketActorCodeID, Head: newStateC})
+	api := test.NewMockAPI(bs)
+	api.SetActor(oldState.Key(), &types.Actor{Code: builtin2.StorageMarketActorCodeID, Head: oldStateC})
+	api.SetActor(newState.Key(), &types.Actor{Code: builtin2.StorageMarketActorCodeID, Head: newStateC})
 
 	t.Run("deal ID predicate", func(t *testing.T) {
 		preds := NewStatePredicates(api)
@@ -239,11 +204,11 @@ func TestMarketPredicates(t *testing.T) {
 			t.Fatal("No state change so this should not be called")
 			return false, nil, nil
 		})
-		marketState0 := createEmptyMarketState(t, store)
+		marketState0 := test.CreateEmptyMarketState(t, store)
 		marketCid, err := store.Put(ctx, marketState0)
 		require.NoError(t, err)
 		marketState, err := market.Load(store, &types.Actor{
-			Code: builtin0.StorageMarketActorCodeID,
+			Code: builtin2.StorageMarketActorCodeID,
 			Head: marketCid,
 		})
 		require.NoError(t, err)
@@ -352,11 +317,11 @@ func TestMarketPredicates(t *testing.T) {
 			t.Fatal("No state change so this should not be called")
 			return false, nil, nil
 		})
-		marketState0 := createEmptyMarketState(t, store)
+		marketState0 := test.CreateEmptyMarketState(t, store)
 		marketCid, err := store.Put(ctx, marketState0)
 		require.NoError(t, err)
 		marketState, err := market.Load(store, &types.Actor{
-			Code: builtin0.StorageMarketActorCodeID,
+			Code: builtin2.StorageMarketActorCodeID,
 			Head: marketCid,
 		})
 		require.NoError(t, err)
@@ -370,7 +335,7 @@ func TestMarketPredicates(t *testing.T) {
 func TestMinerSectorChange(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewTemporarySync()
-	store := adt.WrapStore(ctx, cbornode.NewCborStore(bs))
+	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))
 
 	nextID := uint64(0)
 	nextIDAddrF := func() address.Address {
@@ -379,12 +344,12 @@ func TestMinerSectorChange(t *testing.T) {
 	}
 
 	owner, worker := nextIDAddrF(), nextIDAddrF()
-	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0", &miner0.SealedCIDPrefix), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
-	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1", &miner0.SealedCIDPrefix), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
-	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2", &miner0.SealedCIDPrefix), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
+	si0 := newSectorOnChainInfo(0, tutils.MakeCID("0", &miner2.SealedCIDPrefix), big.NewInt(0), abi.ChainEpoch(0), abi.ChainEpoch(10))
+	si1 := newSectorOnChainInfo(1, tutils.MakeCID("1", &miner2.SealedCIDPrefix), big.NewInt(1), abi.ChainEpoch(1), abi.ChainEpoch(11))
+	si2 := newSectorOnChainInfo(2, tutils.MakeCID("2", &miner2.SealedCIDPrefix), big.NewInt(2), abi.ChainEpoch(2), abi.ChainEpoch(11))
 	oldMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si0, si1, si2})
 
-	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3", &miner0.SealedCIDPrefix), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
+	si3 := newSectorOnChainInfo(3, tutils.MakeCID("3", &miner2.SealedCIDPrefix), big.NewInt(3), abi.ChainEpoch(3), abi.ChainEpoch(12))
 	// 0 delete
 	// 1 extend
 	// 2 same
@@ -394,14 +359,14 @@ func TestMinerSectorChange(t *testing.T) {
 	newMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si1Ext, si2, si3})
 
 	minerAddr := nextIDAddrF()
-	oldState, err := mockTipset(minerAddr, 1)
+	oldState, err := test.MockTipset(minerAddr, 1)
 	require.NoError(t, err)
-	newState, err := mockTipset(minerAddr, 2)
+	newState, err := test.MockTipset(minerAddr, 2)
 	require.NoError(t, err)
 
-	api := newMockAPI(bs)
-	api.setActor(oldState.Key(), &types.Actor{Head: oldMinerC, Code: builtin0.StorageMinerActorCodeID})
-	api.setActor(newState.Key(), &types.Actor{Head: newMinerC, Code: builtin0.StorageMinerActorCodeID})
+	api := test.NewMockAPI(bs)
+	api.SetActor(oldState.Key(), &types.Actor{Head: oldMinerC, Code: builtin2.StorageMinerActorCodeID})
+	api.SetActor(newState.Key(), &types.Actor{Head: newMinerC, Code: builtin2.StorageMinerActorCodeID})
 
 	preds := NewStatePredicates(api)
 
@@ -449,29 +414,16 @@ func TestMinerSectorChange(t *testing.T) {
 	require.Equal(t, si1Ext, sectorChanges.Extended[0].From)
 }
 
-func mockTipset(minerAddr address.Address, timestamp uint64) (*types.TipSet, error) {
-	return types.NewTipSet([]*types.BlockHeader{{
-		Miner:                 minerAddr,
-		Height:                5,
-		ParentStateRoot:       dummyCid,
-		Messages:              dummyCid,
-		ParentMessageReceipts: dummyCid,
-		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
-		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
-		Timestamp:             timestamp,
-	}})
-}
-
 type balance struct {
 	available abi.TokenAmount
 	locked    abi.TokenAmount
 }
 
-func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market0.DealState, props map[abi.DealID]*market0.DealProposal, balances map[address.Address]balance) cid.Cid {
-	dealRootCid := createDealAMT(ctx, t, store, deals)
+func createMarketState(ctx context.Context, t *testing.T, store adt2.Store, deals map[abi.DealID]*market2.DealState, props map[abi.DealID]*market2.DealProposal, balances map[address.Address]balance) cid.Cid {
+	dealRootCid := test.CreateDealAMT(ctx, t, store, deals)
 	propRootCid := createProposalAMT(ctx, t, store, props)
 	balancesCids := createBalanceTable(ctx, t, store, balances)
-	state := createEmptyMarketState(t, store)
+	state := test.CreateEmptyMarketState(t, store)
 	state.States = dealRootCid
 	state.Proposals = propRootCid
 	state.EscrowTable = balancesCids[0]
@@ -482,27 +434,8 @@ func createMarketState(ctx context.Context, t *testing.T, store adt.Store, deals
 	return stateC
 }
 
-func createEmptyMarketState(t *testing.T, store adt.Store) *market0.State {
-	emptyArrayCid, err := adt.MakeEmptyArray(store).Root()
-	require.NoError(t, err)
-	emptyMap, err := adt.MakeEmptyMap(store).Root()
-	require.NoError(t, err)
-	return market0.ConstructState(emptyArrayCid, emptyMap, emptyMap)
-}
-
-func createDealAMT(ctx context.Context, t *testing.T, store adt.Store, deals map[abi.DealID]*market0.DealState) cid.Cid {
-	root := adt.MakeEmptyArray(store)
-	for dealID, dealState := range deals {
-		err := root.Set(uint64(dealID), dealState)
-		require.NoError(t, err)
-	}
-	rootCid, err := root.Root()
-	require.NoError(t, err)
-	return rootCid
-}
-
-func createProposalAMT(ctx context.Context, t *testing.T, store adt.Store, props map[abi.DealID]*market0.DealProposal) cid.Cid {
-	root := adt.MakeEmptyArray(store)
+func createProposalAMT(ctx context.Context, t *testing.T, store adt2.Store, props map[abi.DealID]*market2.DealProposal) cid.Cid {
+	root := adt2.MakeEmptyArray(store)
 	for dealID, prop := range props {
 		err := root.Set(uint64(dealID), prop)
 		require.NoError(t, err)
@@ -512,16 +445,16 @@ func createProposalAMT(ctx context.Context, t *testing.T, store adt.Store, props
 	return rootCid
 }
 
-func createBalanceTable(ctx context.Context, t *testing.T, store adt.Store, balances map[address.Address]balance) [2]cid.Cid {
-	escrowMapRoot := adt.MakeEmptyMap(store)
+func createBalanceTable(ctx context.Context, t *testing.T, store adt2.Store, balances map[address.Address]balance) [2]cid.Cid {
+	escrowMapRoot := adt2.MakeEmptyMap(store)
 	escrowMapRootCid, err := escrowMapRoot.Root()
 	require.NoError(t, err)
-	escrowRoot, err := adt.AsBalanceTable(store, escrowMapRootCid)
+	escrowRoot, err := adt2.AsBalanceTable(store, escrowMapRootCid)
 	require.NoError(t, err)
-	lockedMapRoot := adt.MakeEmptyMap(store)
+	lockedMapRoot := adt2.MakeEmptyMap(store)
 	lockedMapRootCid, err := lockedMapRoot.Root()
 	require.NoError(t, err)
-	lockedRoot, err := adt.AsBalanceTable(store, lockedMapRootCid)
+	lockedRoot, err := adt2.AsBalanceTable(store, lockedMapRootCid)
 	require.NoError(t, err)
 
 	for addr, balance := range balances {
@@ -538,7 +471,7 @@ func createBalanceTable(ctx context.Context, t *testing.T, store adt.Store, bala
 	return [2]cid.Cid{escrowRootCid, lockedRootCid}
 }
 
-func createMinerState(ctx context.Context, t *testing.T, store adt.Store, owner, worker address.Address, sectors []miner.SectorOnChainInfo) cid.Cid {
+func createMinerState(ctx context.Context, t *testing.T, store adt2.Store, owner, worker address.Address, sectors []miner.SectorOnChainInfo) cid.Cid {
 	rootCid := createSectorsAMT(ctx, t, store, sectors)
 
 	state := createEmptyMinerState(ctx, t, store, owner, worker)
@@ -549,20 +482,20 @@ func createMinerState(ctx context.Context, t *testing.T, store adt.Store, owner,
 	return stateC
 }
 
-func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, owner, worker address.Address) *miner0.State {
-	emptyArrayCid, err := adt.MakeEmptyArray(store).Root()
+func createEmptyMinerState(ctx context.Context, t *testing.T, store adt2.Store, owner, worker address.Address) *miner2.State {
+	emptyArrayCid, err := adt2.MakeEmptyArray(store).Root()
 	require.NoError(t, err)
-	emptyMap, err := adt.MakeEmptyMap(store).Root()
-	require.NoError(t, err)
-
-	emptyDeadline, err := store.Put(store.Context(), miner0.ConstructDeadline(emptyArrayCid))
+	emptyMap, err := adt2.MakeEmptyMap(store).Root()
 	require.NoError(t, err)
 
-	emptyVestingFunds := miner0.ConstructVestingFunds()
+	emptyDeadline, err := store.Put(store.Context(), miner2.ConstructDeadline(emptyArrayCid))
+	require.NoError(t, err)
+
+	emptyVestingFunds := miner2.ConstructVestingFunds()
 	emptyVestingFundsCid, err := store.Put(store.Context(), emptyVestingFunds)
 	require.NoError(t, err)
 
-	emptyDeadlines := miner0.ConstructDeadlines(emptyDeadline)
+	emptyDeadlines := miner2.ConstructDeadlines(emptyDeadline)
 	emptyDeadlinesCid, err := store.Put(store.Context(), emptyDeadlines)
 	require.NoError(t, err)
 
@@ -572,16 +505,30 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt.Store, o
 	emptyBitfieldCid, err := store.Put(store.Context(), emptyBitfield)
 	require.NoError(t, err)
 
-	state, err := miner0.ConstructState(minerInfo, 123, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
+	state, err := miner2.ConstructState(minerInfo, 123, 4, emptyBitfieldCid, emptyArrayCid, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	require.NoError(t, err)
 	return state
 
 }
 
-func createSectorsAMT(ctx context.Context, t *testing.T, store adt.Store, sectors []miner.SectorOnChainInfo) cid.Cid {
-	root := adt.MakeEmptyArray(store)
+func createSectorsAMT(ctx context.Context, t *testing.T, store adt2.Store, sectors []miner.SectorOnChainInfo) cid.Cid {
+	root := adt2.MakeEmptyArray(store)
 	for _, sector := range sectors {
-		sector := (miner0.SectorOnChainInfo)(sector)
+		sector := miner2.SectorOnChainInfo{
+			SectorNumber:          sector.SectorNumber,
+			SealProof:             sector.SealProof,
+			SealedCID:             sector.SealedCID,
+			DealIDs:               sector.DealIDs,
+			Activation:            sector.Activation,
+			Expiration:            sector.Expiration,
+			DealWeight:            sector.DealWeight,
+			VerifiedDealWeight:    sector.VerifiedDealWeight,
+			InitialPledge:         sector.InitialPledge,
+			ExpectedDayReward:     sector.ExpectedDayReward,
+			ExpectedStoragePledge: sector.ExpectedStoragePledge,
+			ReplacedSectorAge:     0,
+			ReplacedDayReward:     big.NewInt(0),
+		}
 		err := root.Set(uint64(sector.SectorNumber), &sector)
 		require.NoError(t, err)
 	}
@@ -614,8 +561,8 @@ const (
 )
 
 // returns a unique SectorPreCommitInfo with each invocation with SectorNumber set to `sectorNo`.
-func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiration abi.ChainEpoch) *miner0.SectorPreCommitInfo {
-	return &miner0.SectorPreCommitInfo{
+func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiration abi.ChainEpoch) *miner2.SectorPreCommitInfo {
+	return &miner2.SectorPreCommitInfo{
 		SealProof:     abi.RegisteredSealProof_StackedDrg32GiBV1,
 		SectorNumber:  sectorNo,
 		SealedCID:     sealed,
@@ -625,7 +572,7 @@ func newSectorPreCommitInfo(sectorNo abi.SectorNumber, sealed cid.Cid, expiratio
 	}
 }
 
-func dealEquality(expected market0.DealState, actual market.DealState) bool {
+func dealEquality(expected market2.DealState, actual market.DealState) bool {
 	return expected.LastUpdatedEpoch == actual.LastUpdatedEpoch &&
 		expected.SectorStartEpoch == actual.SectorStartEpoch &&
 		expected.SlashEpoch == actual.SlashEpoch

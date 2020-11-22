@@ -7,14 +7,14 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type sectorFile struct {
 	abi.SectorID
-	stores.SectorFileType
+	storiface.SectorFileType
 }
 
 type Provider struct {
@@ -24,24 +24,24 @@ type Provider struct {
 	waitSector map[sectorFile]chan struct{}
 }
 
-func (b *Provider) AcquireSector(ctx context.Context, id abi.SectorID, existing stores.SectorFileType, allocate stores.SectorFileType, ptype stores.PathType) (stores.SectorPaths, func(), error) {
-	if err := os.Mkdir(filepath.Join(b.Root, stores.FTUnsealed.String()), 0755); err != nil && !os.IsExist(err) { // nolint
-		return stores.SectorPaths{}, nil, err
+func (b *Provider) AcquireSector(ctx context.Context, id storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
+	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTUnsealed.String()), 0755); err != nil && !os.IsExist(err) { // nolint
+		return storiface.SectorPaths{}, nil, err
 	}
-	if err := os.Mkdir(filepath.Join(b.Root, stores.FTSealed.String()), 0755); err != nil && !os.IsExist(err) { // nolint
-		return stores.SectorPaths{}, nil, err
+	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTSealed.String()), 0755); err != nil && !os.IsExist(err) { // nolint
+		return storiface.SectorPaths{}, nil, err
 	}
-	if err := os.Mkdir(filepath.Join(b.Root, stores.FTCache.String()), 0755); err != nil && !os.IsExist(err) { // nolint
-		return stores.SectorPaths{}, nil, err
+	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTCache.String()), 0755); err != nil && !os.IsExist(err) { // nolint
+		return storiface.SectorPaths{}, nil, err
 	}
 
 	done := func() {}
 
-	out := stores.SectorPaths{
-		ID: id,
+	out := storiface.SectorPaths{
+		ID: id.ID,
 	}
 
-	for _, fileType := range stores.PathTypes {
+	for _, fileType := range storiface.PathTypes {
 		if !existing.Has(fileType) && !allocate.Has(fileType) {
 			continue
 		}
@@ -50,10 +50,10 @@ func (b *Provider) AcquireSector(ctx context.Context, id abi.SectorID, existing 
 		if b.waitSector == nil {
 			b.waitSector = map[sectorFile]chan struct{}{}
 		}
-		ch, found := b.waitSector[sectorFile{id, fileType}]
+		ch, found := b.waitSector[sectorFile{id.ID, fileType}]
 		if !found {
 			ch = make(chan struct{}, 1)
-			b.waitSector[sectorFile{id, fileType}] = ch
+			b.waitSector[sectorFile{id.ID, fileType}] = ch
 		}
 		b.lk.Unlock()
 
@@ -61,10 +61,10 @@ func (b *Provider) AcquireSector(ctx context.Context, id abi.SectorID, existing 
 		case ch <- struct{}{}:
 		case <-ctx.Done():
 			done()
-			return stores.SectorPaths{}, nil, ctx.Err()
+			return storiface.SectorPaths{}, nil, ctx.Err()
 		}
 
-		path := filepath.Join(b.Root, fileType.String(), stores.SectorName(id))
+		path := filepath.Join(b.Root, fileType.String(), storiface.SectorName(id.ID))
 
 		prevDone := done
 		done = func() {
@@ -75,11 +75,11 @@ func (b *Provider) AcquireSector(ctx context.Context, id abi.SectorID, existing 
 		if !allocate.Has(fileType) {
 			if _, err := os.Stat(path); os.IsNotExist(err) {
 				done()
-				return stores.SectorPaths{}, nil, storiface.ErrSectorNotFound
+				return storiface.SectorPaths{}, nil, storiface.ErrSectorNotFound
 			}
 		}
 
-		stores.SetPathByType(&out, fileType, path)
+		storiface.SetPathByType(&out, fileType, path)
 	}
 
 	return out, done, nil

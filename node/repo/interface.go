@@ -3,6 +3,7 @@ package repo
 import (
 	"errors"
 
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
 
@@ -12,11 +13,26 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// BlockstoreDomain represents the domain of a blockstore.
+type BlockstoreDomain string
+
+const (
+	// BlockstoreChain represents the blockstore domain for chain data.
+	// Right now, this includes chain objects (tipsets, blocks, messages), as
+	// well as state. In the future, they may get segregated into different
+	// domains.
+	BlockstoreChain = BlockstoreDomain("chain")
+)
+
 var (
 	ErrNoAPIEndpoint     = errors.New("API not running (no endpoint)")
 	ErrNoAPIToken        = errors.New("API token not set")
 	ErrRepoAlreadyLocked = errors.New("repo is already locked (lotus daemon already running)")
 	ErrClosedRepo        = errors.New("repo is no longer open")
+
+	// ErrInvalidBlockstoreDomain is returned by LockedRepo#Blockstore() when
+	// an unrecognized domain is requested.
+	ErrInvalidBlockstoreDomain = errors.New("invalid blockstore domain")
 )
 
 type Repo interface {
@@ -36,6 +52,9 @@ type LockedRepo interface {
 
 	// Returns datastore defined in this repo.
 	Datastore(namespace string) (datastore.Batching, error)
+
+	// Blockstore returns an IPLD blockstore for the requested domain.
+	Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error)
 
 	// Returns config in this repo
 	Config() (interface{}, error)

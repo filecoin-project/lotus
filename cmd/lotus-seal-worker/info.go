@@ -32,6 +32,18 @@ var infoCmd = &cli.Command{
 		cli.VersionPrinter(cctx)
 		fmt.Println()
 
+		sess, err := api.ProcessSession(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting session: %w", err)
+		}
+		fmt.Printf("Session: %s\n", sess)
+
+		enabled, err := api.Enabled(ctx)
+		if err != nil {
+			return xerrors.Errorf("checking worker status: %w", err)
+		}
+		fmt.Printf("Enabled: %t\n", enabled)
+
 		info, err := api.Info(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting info: %w", err)
@@ -52,7 +64,6 @@ var infoCmd = &cli.Command{
 			fmt.Printf("%s:\n", path.ID)
 			fmt.Printf("\tWeight: %d; Use: ", path.Weight)
 			if path.CanSeal || path.CanStore {
-				fmt.Printf("Weight: %d; Use: ", path.Weight)
 				if path.CanSeal {
 					fmt.Print("Seal ")
 				}

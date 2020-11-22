@@ -3,7 +3,6 @@ package storageadapter
 // this file implements storagemarket.StorageProviderNode
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"time"
@@ -12,8 +11,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -25,15 +23,14 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/events"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -50,14 +47,26 @@ type ProviderNodeAdapter struct {
 
 	secb *sectorblocks.SectorBlocks
 	ev   *events.Events
+
+	publishSpec, addBalanceSpec *api.MessageSendSpec
+	dsMatcher                   *dealStateMatcher
 }
 
-func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
-	return &ProviderNodeAdapter{
-		FullNode: full,
-		dag:      dag,
-		secb:     secb,
-		ev:       events.NewEvents(context.TODO(), full),
+func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
+	return func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
+		na := &ProviderNodeAdapter{
+			FullNode: full,
+
+			dag:       dag,
+			secb:      secb,
+			ev:        events.NewEvents(context.TODO(), full),
+			dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
+		}
+		if fc != nil {
+			na.publishSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxPublishDealsFee)}
+			na.addBalanceSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
+		}
+		return na
 	}
 }
 
@@ -69,8 +78,8 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		return cid.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&market0.PublishStorageDealsParams{
-		Deals: []market0.ClientDealProposal{deal.ClientDealProposal},
+	params, err := actors.SerializeParams(&market2.PublishStorageDealsParams{
+		Deals: []market2.ClientDealProposal{deal.ClientDealProposal},
 	})
 
 	if err != nil {
@@ -82,9 +91,9 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		To:     market.Address,
 		From:   mi.Worker,
 		Value:  types.NewInt(0),
-		Method: builtin0.MethodsMarket.PublishStorageDeals,
+		Method: market.Methods.PublishStorageDeals,
 		Params: params,
-	}, nil)
+	}, n.publishSpec)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -158,6 +167,19 @@ func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, miner a
 	return mi.Worker, nil
 }
 
+func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, miner address.Address, tok shared.TipSetToken) (abi.RegisteredSealProof, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return 0, err
+	}
+
+	mi, err := n.StateMinerInfo(ctx, miner, tsk)
+	if err != nil {
+		return 0, err
+	}
+	return mi.SealProofType, nil
+}
+
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
 	signer, err := n.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
@@ -171,8 +193,12 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	return localSignature, nil
 }
 
-func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amt abi.TokenAmount, encodedTs shared.TipSetToken) (cid.Cid, error) {
-	return n.MarketEnsureAvailable(ctx, addr, wallet, amt)
+func (n *ProviderNodeAdapter) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
+	return n.MarketReserveFunds(ctx, wallet, addr, amt)
+}
+
+func (n *ProviderNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
+	return n.MarketReleaseFunds(ctx, addr, amt)
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
@@ -182,8 +208,8 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		To:     market.Address,
 		From:   addr,
 		Value:  amount,
-		Method: builtin0.MethodsMarket.AddBalance,
-	}, nil)
+		Method: market.Methods.AddBalance,
+	}, n.addBalanceSpec)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -244,107 +270,8 @@ func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, 
 	return bounds.Min, bounds.Max, nil
 }
 
-func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
-	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts.Key())
-
-		if err != nil {
-			// TODO: This may be fine for some errors
-			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
-		}
-
-		if sd.State.SectorStartEpoch > 0 {
-			cb(nil)
-			return true, false, nil
-		}
-
-		return false, true, nil
-	}
-
-	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
-		defer func() {
-			if err != nil {
-				cb(xerrors.Errorf("handling applied event: %w", err))
-			}
-		}()
-
-		if msg == nil {
-			log.Error("timed out waiting for deal activation... what now?")
-			return false, nil
-		}
-
-		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts.Key())
-		if err != nil {
-			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
-		}
-
-		if sd.State.SectorStartEpoch < 1 {
-			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", dealID, ts.ParentState(), ts.Height())
-		}
-
-		log.Infof("Storage deal %d activated at epoch %d", dealID, sd.State.SectorStartEpoch)
-
-		cb(nil)
-
-		return false, nil
-	}
-
-	revert := func(ctx context.Context, ts *types.TipSet) error {
-		log.Warn("deal activation reverted; TODO: actually handle this!")
-		// TODO: Just go back to DealSealing?
-		return nil
-	}
-
-	var sectorNumber abi.SectorNumber
-	var sectorFound bool
-
-	matchEvent := func(msg *types.Message) (matchOnce bool, matched bool, err error) {
-		if msg.To != provider {
-			return true, false, nil
-		}
-
-		switch msg.Method {
-		case builtin0.MethodsMiner.PreCommitSector:
-			var params miner.SectorPreCommitInfo
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return true, false, xerrors.Errorf("unmarshal pre commit: %w", err)
-			}
-
-			for _, did := range params.DealIDs {
-				if did == dealID {
-					sectorNumber = params.SectorNumber
-					sectorFound = true
-					return true, false, nil
-				}
-			}
-
-			return true, false, nil
-		case builtin0.MethodsMiner.ProveCommitSector:
-			var params miner.ProveCommitSectorParams
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return true, false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
-			}
-
-			if !sectorFound {
-				return true, false, nil
-			}
-
-			if params.SectorNumber != sectorNumber {
-				return true, false, nil
-			}
-
-			return false, true, nil
-		default:
-			return true, false, nil
-		}
-
-	}
-
-	if err := n.ev.Called(checkFunc, called, revert, int(build.MessageConfidence+1), events.NoTimeout, matchEvent); err != nil {
-		return xerrors.Errorf("failed to set up called handler: %w", err)
-	}
-
-	return nil
+func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+	return OnDealSectorCommitted(ctx, n, n.ev, provider, dealID, market.DealProposal(proposal), publishCid, cb)
 }
 
 func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
@@ -452,13 +379,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	}
 
 	// Watch for state changes to the deal
-	preds := state.NewStatePredicates(n)
-	dealDiff := preds.OnStorageMarketActorChanged(
-		preds.OnDealStateChanged(
-			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
-	match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
-		return dealDiff(ctx, oldTs.Key(), newTs.Key())
-	}
+	match := n.dsMatcher.matcher(ctx, dealID)
 
 	// Wait until after the end epoch for the deal and then timeout
 	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1

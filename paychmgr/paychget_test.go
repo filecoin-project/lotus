@@ -15,9 +15,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
@@ -26,7 +26,7 @@ import (
 )
 
 func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt {
-	createChannelRet := init_.ExecReturn{
+	createChannelRet := init2.ExecReturn{
 		IDAddress:     ch,
 		RobustAddress: ch,
 	}
@@ -663,6 +663,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 		defer addFundsSent.Done()
 
 		// Request add funds - should block until create channel has completed
+		var err error
 		addFundsCh1, addFundsMcid1, err = mgr.GetPaych(ctx, from, to, addFundsAmt1)
 		require.NoError(t, err)
 	}()
@@ -671,6 +672,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 		defer addFundsSent.Done()
 
 		// Request add funds again - should merge with waiting add funds request
+		var err error
 		addFundsCh2, addFundsMcid2, err = mgr.GetPaych(ctx, from, to, addFundsAmt2)
 		require.NoError(t, err)
 	}()
@@ -766,6 +768,7 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 		defer addFundsSent.Done()
 
 		// Request add funds again - should merge with waiting add funds request
+		var err error
 		addFundsCh2, addFundsMcid2, err = mgr.GetPaych(ctx, from, to, addFundsAmt2)
 		require.NoError(t, err)
 	}()
@@ -861,7 +864,6 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 
 		// Request add funds again - should merge with waiting add funds request
 		_, _, addFundsErr2 = mgr.GetPaych(addFundsCtx2, from, to, big.NewInt(3))
-		require.NoError(t, err)
 	}()
 	// Wait for add funds requests to be queued up
 	waitForQueueSize(t, mgr, from, to, 2)
@@ -950,6 +952,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 		defer addFundsSent.Done()
 
 		// Request add funds - should block until create channel has completed
+		var err error
 		_, addFundsMcid, err = mgr.GetPaych(ctx, from, to, addFundsAmt)
 		require.NoError(t, err)
 	}()
@@ -978,7 +981,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 		Nonce:   0,
 		Balance: createAmt,
 	}
-	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), big.NewInt(0), make(map[uint64]paych.LaneState)))
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 	// Send create channel response
 	response := testChannelResponse(t, ch)
 	mock.receiveMsgResponse(createMsgCid, response)

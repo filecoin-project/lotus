@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 )
@@ -38,16 +38,16 @@ func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo)
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSealPrecommit1Failed(%d): temp error: %+v", sector.SectorNumber, err)
-		return nil, true
+		return nil, false
 	}
 
 	info, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
 	if err != nil {
 		log.Errorf("handleSealPrecommit1Failed(%d): temp error: %+v", sector.SectorNumber, err)
-		return nil, true
+		return nil, false
 	}
 
-	return info, false
+	return info, true
 }
 
 func (m *Sealing) handleSealPrecommit1Failed(ctx statemachine.Context, sector SectorInfo) error {
@@ -75,6 +75,34 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	if err != nil {
 		log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
 		return nil
+	}
+
+	if sector.PreCommitMessage != nil {
+		mw, err := m.api.StateSearchMsg(ctx.Context(), *sector.PreCommitMessage)
+		if err != nil {
+			// API error
+			if err := failedCooldown(ctx, sector); err != nil {
+				return err
+			}
+
+			return ctx.Send(SectorRetryPreCommitWait{})
+		}
+
+		if mw == nil {
+			// API error in precommit
+			return ctx.Send(SectorRetryPreCommitWait{})
+		}
+
+		switch mw.Receipt.ExitCode {
+		case exitcode.Ok:
+			// API error in PreCommitWait
+			return ctx.Send(SectorRetryPreCommitWait{})
+		case exitcode.SysErrOutOfGas:
+			// API error in PreCommitWait AND gas estimator guessed a wrong number in PreCommit
+			return ctx.Send(SectorRetryPreCommit{})
+		default:
+			// something else went wrong
+		}
 	}
 
 	if err := checkPrecommit(ctx.Context(), m.Address(), sector, tok, height, m.api); err != nil {
@@ -108,7 +136,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	}
 
 	if pci, is := m.checkPreCommitted(ctx, sector); is && pci != nil {
-		if sector.PreCommitMessage != nil {
+		if sector.PreCommitMessage == nil {
 			log.Warn("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorNumber)
 			return ctx.Send(SectorPreCommitLanded{TipSet: tok})
 		}
@@ -160,6 +188,34 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		return nil
 	}
 
+	if sector.CommitMessage != nil {
+		mw, err := m.api.StateSearchMsg(ctx.Context(), *sector.CommitMessage)
+		if err != nil {
+			// API error
+			if err := failedCooldown(ctx, sector); err != nil {
+				return err
+			}
+
+			return ctx.Send(SectorRetryCommitWait{})
+		}
+
+		if mw == nil {
+			// API error in commit
+			return ctx.Send(SectorRetryCommitWait{})
+		}
+
+		switch mw.Receipt.ExitCode {
+		case exitcode.Ok:
+			// API error in CcommitWait
+			return ctx.Send(SectorRetryCommitWait{})
+		case exitcode.SysErrOutOfGas:
+			// API error in CommitWait AND gas estimator guessed a wrong number in SubmitCommit
+			return ctx.Send(SectorRetrySubmitCommit{})
+		default:
+			// something else went wrong
+		}
+	}
+
 	if err := checkPrecommit(ctx.Context(), m.maddr, sector, tok, height, m.api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
@@ -170,7 +226,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
 		case *ErrBadTicket:
-			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
+			return ctx.Send(SectorTicketExpired{xerrors.Errorf("expired ticket: %w", err)})
 		case *ErrInvalidDeals:
 			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
 			return ctx.Send(SectorInvalidDealIDs{Return: RetCommitFailed})

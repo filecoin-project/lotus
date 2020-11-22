@@ -50,12 +50,27 @@ func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value
 	return ret.Return, nil
 }
 
-var GenesisNetworkVersion = func() network.Version { // TODO: Get from build/
-	if build.UseNewestNetwork() { // TODO: Get from build/
-		return build.NewestNetworkVersion // TODO: Get from build/
-	} // TODO: Get from build/
-	return network.Version1 // TODO: Get from build/
-}() // TODO: Get from build/
+// TODO: Get from build
+// TODO: make a list/schedule of these.
+var GenesisNetworkVersion = func() network.Version {
+	// returns the version _before_ the first upgrade.
+	if build.UpgradeBreezeHeight >= 0 {
+		return network.Version0
+	}
+	if build.UpgradeSmokeHeight >= 0 {
+		return network.Version1
+	}
+	if build.UpgradeIgnitionHeight >= 0 {
+		return network.Version2
+	}
+	if build.UpgradeActorsV2Height >= 0 {
+		return network.Version3
+	}
+	if build.UpgradeLiftoffHeight >= 0 {
+		return network.Version3
+	}
+	return build.ActorUpgradeNetworkVersion - 1 // genesis requires actors v0.
+}()
 
 func genesisNetworkVersion(context.Context, abi.ChainEpoch) network.Version { // TODO: Get from build/
 	return GenesisNetworkVersion // TODO: Get from build/

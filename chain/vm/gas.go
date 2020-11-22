@@ -3,20 +3,15 @@ package vm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+	vmr2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
-)
-
-const (
-	GasStorageMulti = 1000
-	GasComputeMulti = 1
 )
 
 type GasCharge struct {
@@ -31,7 +26,7 @@ type GasCharge struct {
 }
 
 func (g GasCharge) Total() int64 {
-	return g.ComputeGas*GasComputeMulti + g.StorageGas*GasStorageMulti
+	return g.ComputeGas + g.StorageGas
 }
 func (g GasCharge) WithVirtual(compute, storage int64) GasCharge {
 	out := g
@@ -79,13 +74,16 @@ type Pricelist interface {
 	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
 	OnHashing(dataSize int) GasCharge
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
-	OnVerifySeal(info proof.SealVerifyInfo) GasCharge
-	OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge
+	OnVerifySeal(info proof2.SealVerifyInfo) GasCharge
+	OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
 }
 
 var prices = map[abi.ChainEpoch]Pricelist{
 	abi.ChainEpoch(0): &pricelistV0{
+		computeGasMulti: 1,
+		storageGasMulti: 1000,
+
 		onChainMessageComputeBase:    38863,
 		onChainMessageStorageBase:    36,
 		onChainMessageStoragePerByte: 1,
@@ -127,6 +125,55 @@ var prices = map[abi.ChainEpoch]Pricelist{
 				scale: 85639,
 			},
 		},
+		verifyPostDiscount:   true,
+		verifyConsensusFault: 495422,
+	},
+	abi.ChainEpoch(build.UpgradeCalicoHeight): &pricelistV0{
+		computeGasMulti: 1,
+		storageGasMulti: 1300,
+
+		onChainMessageComputeBase:    38863,
+		onChainMessageStorageBase:    36,
+		onChainMessageStoragePerByte: 1,
+
+		onChainReturnValuePerByte: 1,
+
+		sendBase:                29233,
+		sendTransferFunds:       27500,
+		sendTransferOnlyPremium: 159672,
+		sendInvokeMethod:        -5377,
+
+		ipldGetBase:    114617,
+		ipldPutBase:    353640,
+		ipldPutPerByte: 1,
+
+		createActorCompute: 1108454,
+		createActorStorage: 36 + 40,
+		deleteActor:        -(36 + 40), // -createActorStorage
+
+		verifySignature: map[crypto.SigType]int64{
+			crypto.SigTypeBLS:       16598605,
+			crypto.SigTypeSecp256k1: 1637292,
+		},
+
+		hashingBase:                  31355,
+		computeUnsealedSectorCidBase: 98647,
+		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+				flat:  117680921,
+				scale: 43780,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+				flat:  117680921,
+				scale: 43780,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+				flat:  117680921,
+				scale: 43780,
+			},
+		},
+		verifyPostDiscount:   false,
 		verifyConsensusFault: 495422,
 	},
 }
@@ -151,7 +198,7 @@ func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 }
 
 type pricedSyscalls struct {
-	under     vmr.Syscalls
+	under     vmr2.Syscalls
 	pl        Pricelist
 	chargeGas func(GasCharge)
 }
@@ -185,7 +232,7 @@ func (ps pricedSyscalls) ComputeUnsealedSectorCID(reg abi.RegisteredSealProof, p
 }
 
 // Verifies a sector seal proof.
-func (ps pricedSyscalls) VerifySeal(vi proof.SealVerifyInfo) error {
+func (ps pricedSyscalls) VerifySeal(vi proof2.SealVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifySeal(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -193,7 +240,7 @@ func (ps pricedSyscalls) VerifySeal(vi proof.SealVerifyInfo) error {
 }
 
 // Verifies a proof of spacetime.
-func (ps pricedSyscalls) VerifyPoSt(vi proof.WindowPoStVerifyInfo) error {
+func (ps pricedSyscalls) VerifyPoSt(vi proof2.WindowPoStVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifyPost(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -210,14 +257,14 @@ func (ps pricedSyscalls) VerifyPoSt(vi proof.WindowPoStVerifyInfo) error {
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*runtime.ConsensusFault, error) {
+func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr2.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.VerifyConsensusFault(h1, h2, extra)
 }
 
-func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof2.SealVerifyInfo) (map[address.Address][]bool, error) {
 	count := int64(0)
 	for _, svis := range inp {
 		count += int64(len(svis))

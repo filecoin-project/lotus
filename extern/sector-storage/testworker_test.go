@@ -2,12 +2,11 @@ package sectorstorage
 
 import (
 	"context"
-	"io"
-
-	"github.com/ipfs/go-cid"
+	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -18,16 +17,20 @@ import (
 type testWorker struct {
 	acceptTasks map[sealtasks.TaskType]struct{}
 	lstor       *stores.Local
+	ret         storiface.WorkerReturn
 
 	mockSeal *mock.SectorMgr
+
+	pc1s    int
+	pc1lk   sync.Mutex
+	pc1wait *sync.WaitGroup
+
+	session uuid.UUID
+
+	Worker
 }
 
-func newTestWorker(wcfg WorkerConfig, lstor *stores.Local) *testWorker {
-	ssize, err := wcfg.SealProof.SectorSize()
-	if err != nil {
-		panic(err)
-	}
-
+func newTestWorker(wcfg WorkerConfig, lstor *stores.Local, ret storiface.WorkerReturn) *testWorker {
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
@@ -36,61 +39,58 @@ func newTestWorker(wcfg WorkerConfig, lstor *stores.Local) *testWorker {
 	return &testWorker{
 		acceptTasks: acceptTasks,
 		lstor:       lstor,
+		ret:         ret,
 
-		mockSeal: mock.NewMockSectorMgr(ssize, nil),
+		mockSeal: mock.NewMockSectorMgr(nil),
+
+		session: uuid.New(),
 	}
 }
 
-func (t *testWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {
-	return t.mockSeal.SealPreCommit1(ctx, sector, ticket, pieces)
+func (t *testWorker) asyncCall(sector storage.SectorRef, work func(ci storiface.CallID)) (storiface.CallID, error) {
+	ci := storiface.CallID{
+		Sector: sector.ID,
+		ID:     uuid.New(),
+	}
+
+	go work(ci)
+
+	return ci, nil
 }
 
-func (t *testWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
-	panic("implement me")
+func (t *testWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+	return t.asyncCall(sector, func(ci storiface.CallID) {
+		p, err := t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
+		if err := t.ret.ReturnAddPiece(ctx, ci, p, toCallError(err)); err != nil {
+			log.Error(err)
+		}
+	})
 }
 
-func (t *testWorker) UnsealPiece(ctx context.Context, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) error {
-	panic("implement me")
+func (t *testWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
+	return t.asyncCall(sector, func(ci storiface.CallID) {
+		t.pc1s++
+
+		if t.pc1wait != nil {
+			t.pc1wait.Done()
+		}
+
+		t.pc1lk.Lock()
+		defer t.pc1lk.Unlock()
+
+		p1o, err := t.mockSeal.SealPreCommit1(ctx, sector, ticket, pieces)
+		if err := t.ret.ReturnSealPreCommit1(ctx, ci, p1o, toCallError(err)); err != nil {
+			log.Error(err)
+		}
+	})
 }
 
-func (t *testWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
-	panic("implement me")
-}
-
-func (t *testWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
-	return t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
-}
-
-func (t *testWorker) SealPreCommit2(ctx context.Context, sector abi.SectorID, pc1o storage.PreCommit1Out) (storage.SectorCids, error) {
-	panic("implement me")
-}
-
-func (t *testWorker) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) {
-	panic("implement me")
-}
-
-func (t *testWorker) SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (storage.Proof, error) {
-	panic("implement me")
-}
-
-func (t *testWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) error {
-	panic("implement me")
-}
-
-func (t *testWorker) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
-	panic("implement me")
-}
-
-func (t *testWorker) Remove(ctx context.Context, sector abi.SectorID) error {
-	panic("implement me")
-}
-
-func (t *testWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
-	panic("implement me")
-}
-
-func (t *testWorker) Fetch(ctx context.Context, id abi.SectorID, fileType stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error {
-	return nil
+func (t *testWorker) Fetch(ctx context.Context, sector storage.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
+	return t.asyncCall(sector, func(ci storiface.CallID) {
+		if err := t.ret.ReturnFetch(ctx, ci, nil); err != nil {
+			log.Error(err)
+		}
+	})
 }
 
 func (t *testWorker) TaskTypes(ctx context.Context) (map[sealtasks.TaskType]struct{}, error) {
@@ -116,8 +116,8 @@ func (t *testWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 	}, nil
 }
 
-func (t *testWorker) Closing(ctx context.Context) (<-chan struct{}, error) {
-	return ctx.Done(), nil
+func (t *testWorker) Session(context.Context) (uuid.UUID, error) {
+	return t.session, nil
 }
 
 func (t *testWorker) Close() error {

@@ -5,19 +5,27 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
@@ -32,13 +40,15 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	dstore "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	car "github.com/ipld/go-car"
+	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	pubsub "github.com/whyrusleeping/pubsub"
+	"github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
 )
 
@@ -49,6 +59,8 @@ var blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 
 var DefaultTipSetCacheSize = 8192
 var DefaultMsgMetaCacheSize = 2048
+
+var ErrNotifeeDone = errors.New("notifee is done and should be removed")
 
 func init() {
 	if s := os.Getenv("LOTUS_CHAIN_TIPSET_CACHE"); s != "" {
@@ -95,8 +107,11 @@ type HeadChangeEvt struct {
 //   1. a tipset cache
 //   2. a block => messages references cache.
 type ChainStore struct {
-	bs bstore.Blockstore
-	ds dstore.Datastore
+	bs      bstore.Blockstore
+	localbs bstore.Blockstore
+	ds      dstore.Batching
+
+	localviewer bstore.Viewer
 
 	heaviestLk sync.Mutex
 	heaviest   *types.TipSet
@@ -118,23 +133,40 @@ type ChainStore struct {
 	vmcalls vm.SyscallBuilder
 
 	evtTypes [1]journal.EventType
+	journal  journal.Journal
+
+	cancelFn context.CancelFunc
+	wg       sync.WaitGroup
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder) *ChainStore {
-	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
-	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
+// localbs is guaranteed to fail Get* if requested block isn't stored locally
+func NewChainStore(bs bstore.Blockstore, localbs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+	mmCache, _ := lru.NewARC(DefaultMsgMetaCacheSize)
+	tsCache, _ := lru.NewARC(DefaultTipSetCacheSize)
+	if j == nil {
+		j = journal.NilJournal()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 	cs := &ChainStore{
 		bs:       bs,
+		localbs:  localbs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
 		tipsets:  make(map[abi.ChainEpoch][]cid.Cid),
-		mmCache:  c,
-		tsCache:  tsc,
+		mmCache:  mmCache,
+		tsCache:  tsCache,
 		vmcalls:  vmcalls,
+		cancelFn: cancel,
+		journal:  j,
+	}
+
+	if v, ok := localbs.(bstore.Viewer); ok {
+		cs.localviewer = v
 	}
 
 	cs.evtTypes = [1]journal.EventType{
-		evtTypeHeadChange: journal.J.RegisterEventType("sync", "head_change"),
+		evtTypeHeadChange: j.RegisterEventType("sync", "head_change"),
 	}
 
 	ci := NewChainIndex(cs.LoadTipSet)
@@ -165,17 +197,22 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallB
 	}
 
 	hcmetric := func(rev, app []*types.TipSet) error {
-		ctx := context.Background()
 		for _, r := range app {
-			stats.Record(ctx, metrics.ChainNodeHeight.M(int64(r.Height())))
+			stats.Record(context.Background(), metrics.ChainNodeHeight.M(int64(r.Height())))
 		}
 		return nil
 	}
 
 	cs.reorgNotifeeCh = make(chan ReorgNotifee)
-	cs.reorgCh = cs.reorgWorker(context.TODO(), []ReorgNotifee{hcnf, hcmetric})
+	cs.reorgCh = cs.reorgWorker(ctx, []ReorgNotifee{hcnf, hcmetric})
 
 	return cs
+}
+
+func (cs *ChainStore) Close() error {
+	cs.cancelFn()
+	cs.wg.Wait()
+	return nil
 }
 
 func (cs *ChainStore) Load() error {
@@ -245,7 +282,7 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 					log.Warn("chain head sub exit loop")
 					return
 				}
-				if len(out) > 0 {
+				if len(out) > 5 {
 					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
 				}
 				select {
@@ -277,6 +314,16 @@ func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) e
 
 	if err := cs.ds.Put(key, []byte{0}); err != nil {
 		return xerrors.Errorf("cache block validation: %w", err)
+	}
+
+	return nil
+}
+
+func (cs *ChainStore) UnmarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
+	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
+
+	if err := cs.ds.Delete(key); err != nil {
+		return xerrors.Errorf("removing from valid block cache: %w", err)
 	}
 
 	return nil
@@ -334,8 +381,30 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
 		return cs.takeHeaviestTipSet(ctx, ts)
+	} else if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
+		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
 	}
 	return nil
+}
+
+// ForceHeadSilent forces a chain head tipset without triggering a reorg
+// operation.
+//
+// CAUTION: Use it only for testing, such as to teleport the chain to a
+// particular tipset to carry out a benchmark, verification, etc. on a chain
+// segment.
+func (cs *ChainStore) ForceHeadSilent(_ context.Context, ts *types.TipSet) error {
+	log.Warnf("(!!!) forcing a new head silently; new head: %s", ts)
+
+	cs.heaviestLk.Lock()
+	defer cs.heaviestLk.Unlock()
+	cs.heaviest = ts
+
+	err := cs.writeHead(ts)
+	if err != nil {
+		err = xerrors.Errorf("failed to write chain head: %s", err)
+	}
+	return err
 }
 
 type reorg struct {
@@ -348,7 +417,9 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 	notifees := make([]ReorgNotifee, len(initialNotifees))
 	copy(notifees, initialNotifees)
 
+	cs.wg.Add(1)
 	go func() {
+		defer cs.wg.Done()
 		defer log.Warn("reorgWorker quit")
 
 		for {
@@ -363,7 +434,7 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					continue
 				}
 
-				journal.J.RecordEvent(cs.evtTypes[evtTypeHeadChange], func() interface{} {
+				cs.journal.RecordEvent(cs.evtTypes[evtTypeHeadChange], func() interface{} {
 					return HeadChangeEvt{
 						From:        r.old.Key(),
 						FromHeight:  r.old.Height(),
@@ -380,11 +451,36 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 					apply[i], apply[opp] = apply[opp], apply[i]
 				}
 
-				for _, hcf := range notifees {
-					if err := hcf(revert, apply); err != nil {
+				var toremove map[int]struct{}
+				for i, hcf := range notifees {
+					err := hcf(revert, apply)
+
+					switch err {
+					case nil:
+
+					case ErrNotifeeDone:
+						if toremove == nil {
+							toremove = make(map[int]struct{})
+						}
+						toremove[i] = struct{}{}
+
+					default:
 						log.Error("head change func errored (BAD): ", err)
 					}
 				}
+
+				if len(toremove) > 0 {
+					newNotifees := make([]ReorgNotifee, 0, len(notifees)-len(toremove))
+					for i, hcf := range notifees {
+						_, remove := toremove[i]
+						if remove {
+							continue
+						}
+						newNotifees = append(newNotifees, hcf)
+					}
+					notifees = newNotifees
+				}
+
 			case <-ctx.Done():
 				return
 			}
@@ -425,6 +521,53 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 	return nil
 }
 
+// FlushValidationCache removes all results of block validation from the
+// chain metadata store. Usually the first step after a new chain import.
+func (cs *ChainStore) FlushValidationCache() error {
+	log.Infof("clearing block validation cache...")
+
+	dsWalk, err := cs.ds.Query(query.Query{
+		// Potential TODO: the validation cache is not a namespace on its own
+		// but is rather constructed as prefixed-key `foo:bar` via .Instance(), which
+		// in turn does not work with the filter, which can match only on `foo/bar`
+		//
+		// If this is addressed (blockcache goes into its own sub-namespace) then
+		// strings.HasPrefix(...) below can be skipped
+		//
+		//Prefix: blockValidationCacheKeyPrefix.String()
+		KeysOnly: true,
+	})
+	if err != nil {
+		return xerrors.Errorf("failed to initialize key listing query: %w", err)
+	}
+
+	allKeys, err := dsWalk.Rest()
+	if err != nil {
+		return xerrors.Errorf("failed to run key listing query: %w", err)
+	}
+
+	batch, err := cs.ds.Batch()
+	if err != nil {
+		return xerrors.Errorf("failed to open a DS batch: %w", err)
+	}
+
+	delCnt := 0
+	for _, k := range allKeys {
+		if strings.HasPrefix(k.Key, blockValidationCacheKeyPrefix.String()) {
+			delCnt++
+			batch.Delete(datastore.RawKey(k.Key)) // nolint:errcheck
+		}
+	}
+
+	if err := batch.Commit(); err != nil {
+		return xerrors.Errorf("failed to commit the DS batch: %w", err)
+	}
+
+	log.Infof("%d block validation entries cleared.", delCnt)
+
+	return nil
+}
+
 // SetHead sets the chainstores current 'best' head node.
 // This should only be called if something is broken and needs fixing
 func (cs *ChainStore) SetHead(ts *types.TipSet) error {
@@ -451,12 +594,20 @@ func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 // GetBlock fetches a BlockHeader with the supplied CID. It returns
 // blockstore.ErrNotFound if the block was not found in the BlockStore.
 func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
-	sb, err := cs.bs.Get(c)
-	if err != nil {
-		return nil, err
+	if cs.localviewer == nil {
+		sb, err := cs.localbs.Get(c)
+		if err != nil {
+			return nil, err
+		}
+		return types.DecodeBlock(sb.RawData())
 	}
 
-	return types.DecodeBlock(sb.RawData())
+	var blk *types.BlockHeader
+	err := cs.localviewer.View(c, func(b []byte) (err error) {
+		blk, err = types.DecodeBlock(b)
+		return err
+	})
+	return blk, err
 }
 
 func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
@@ -465,14 +616,25 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 		return v.(*types.TipSet), nil
 	}
 
-	var blks []*types.BlockHeader
-	for _, c := range tsk.Cids() {
-		b, err := cs.GetBlock(c)
-		if err != nil {
-			return nil, xerrors.Errorf("get block %s: %w", c, err)
-		}
+	// Fetch tipset block headers from blockstore in parallel
+	var eg errgroup.Group
+	cids := tsk.Cids()
+	blks := make([]*types.BlockHeader, len(cids))
+	for i, c := range cids {
+		i, c := i, c
+		eg.Go(func() error {
+			b, err := cs.GetBlock(c)
+			if err != nil {
+				return xerrors.Errorf("get block %s: %w", c, err)
+			}
 
-		blks = append(blks, b)
+			blks[i] = b
+			return nil
+		})
+	}
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	ts, err := types.NewTipSet(blks)
@@ -564,6 +726,12 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 			log.Debug("tried to add block to tipset tracker that was already there")
 			return nil
 		}
+		h, err := cs.GetBlock(oc)
+		if err == nil && h != nil {
+			if h.Miner == b.Miner {
+				log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache %s-%s", b.Miner, b.Height, b.Cid(), h.Cid())
+			}
+		}
 	}
 
 	cs.tipsets[b.Height] = append(tss, b.Cid())
@@ -635,7 +803,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 		return types.NewTipSet(all)
 	}
 
-	inclMiners := map[address.Address]bool{b.Miner: true}
+	inclMiners := map[address.Address]cid.Cid{b.Miner: b.Cid()}
 	for _, bhc := range tsets {
 		if bhc == b.Cid() {
 			continue
@@ -646,14 +814,14 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
 		}
 
-		if inclMiners[h.Miner] {
-			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache", h.Miner, h.Height)
+		if cid, found := inclMiners[h.Miner]; found {
+			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache %s-%s", h.Miner, h.Height, h.Cid(), cid)
 			continue
 		}
 
 		if types.CidArrsEqual(h.Parents, b.Parents) {
 			all = append(all, h)
-			inclMiners[h.Miner] = true
+			inclMiners[h.Miner] = bhc
 		}
 	}
 
@@ -690,12 +858,7 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 		return nil, err
 	}
 
-	genb, err := cs.bs.Get(c)
-	if err != nil {
-		return nil, err
-	}
-
-	return types.DecodeBlock(genb.RawData())
+	return cs.GetBlock(c)
 }
 
 func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
@@ -711,28 +874,45 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 }
 
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
-	sb, err := cs.bs.Get(c)
-	if err != nil {
-		log.Errorf("get message get failed: %s: %s", c, err)
-		return nil, err
+	if cs.localviewer == nil {
+		sb, err := cs.localbs.Get(c)
+		if err != nil {
+			log.Errorf("get message get failed: %s: %s", c, err)
+			return nil, err
+		}
+		return types.DecodeMessage(sb.RawData())
 	}
 
-	return types.DecodeMessage(sb.RawData())
+	var msg *types.Message
+	err := cs.localviewer.View(c, func(b []byte) (err error) {
+		msg, err = types.DecodeMessage(b)
+		return err
+	})
+	return msg, err
 }
 
 func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
-	sb, err := cs.bs.Get(c)
-	if err != nil {
-		log.Errorf("get message get failed: %s: %s", c, err)
-		return nil, err
+	if cs.localviewer == nil {
+		sb, err := cs.localbs.Get(c)
+		if err != nil {
+			log.Errorf("get message get failed: %s: %s", c, err)
+			return nil, err
+		}
+		return types.DecodeSignedMessage(sb.RawData())
 	}
 
-	return types.DecodeSignedMessage(sb.RawData())
+	var msg *types.SignedMessage
+	err := cs.localviewer.View(c, func(b []byte) (err error) {
+		msg, err = types.DecodeSignedMessage(b)
+		return err
+	})
+	return msg, err
 }
 
 func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	ctx := context.TODO()
-	a, err := adt.AsArray(cs.Store(ctx), root)
+	// block headers use adt0, for now.
+	a, err := blockadt.AsArray(cs.Store(ctx), root)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -856,7 +1036,7 @@ func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 		return mmcids.bls, mmcids.secpk, nil
 	}
 
-	cst := cbor.NewCborStore(cs.bs)
+	cst := cbor.NewCborStore(cs.localbs)
 	var msgmeta types.MsgMeta
 	if err := cst.Get(context.TODO(), mmc, &msgmeta); err != nil {
 		return nil, nil, xerrors.Errorf("failed to load msgmeta (%s): %w", mmc, err)
@@ -925,7 +1105,8 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 
 func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	ctx := context.TODO()
-	a, err := adt.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
+	// block headers use adt0, for now.
+	a, err := blockadt.AsArray(cs.Store(ctx), b.ParentMessageReceipts)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -1166,13 +1347,6 @@ func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.
 }
 
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
-	if ts == nil {
-		ts = cs.GetHeaviestTipSet()
-	}
-
-	seen := cid.NewSet()
-	walked := cid.NewSet()
-
 	h := &car.CarHeader{
 		Roots:   ts.Cids(),
 		Version: 1,
@@ -1182,11 +1356,38 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 		return xerrors.Errorf("failed to write car header: %s", err)
 	}
 
+	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, func(c cid.Cid) error {
+		blk, err := cs.bs.Get(c)
+		if err != nil {
+			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
+		}
+
+		if err := carutil.LdWrite(w, c.Bytes(), blk.RawData()); err != nil {
+			return xerrors.Errorf("failed to write block to car output: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, cb func(cid.Cid) error) error {
+	if ts == nil {
+		ts = cs.GetHeaviestTipSet()
+	}
+
+	seen := cid.NewSet()
+	walked := cid.NewSet()
+
 	blocksToWalk := ts.Cids()
+	currentMinHeight := ts.Height()
 
 	walkChain := func(blk cid.Cid) error {
 		if !seen.Visit(blk) {
 			return nil
+		}
+
+		if err := cb(blk); err != nil {
+			return err
 		}
 
 		data, err := cs.bs.Get(blk)
@@ -1194,22 +1395,27 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 			return xerrors.Errorf("getting block: %w", err)
 		}
 
-		if err := carutil.LdWrite(w, blk.Bytes(), data.RawData()); err != nil {
-			return xerrors.Errorf("failed to write block to car output: %w", err)
-		}
-
 		var b types.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
+		if currentMinHeight > b.Height {
+			currentMinHeight = b.Height
+			if currentMinHeight%builtin.EpochsInDay == 0 {
+				log.Infow("export", "height", currentMinHeight)
+			}
+		}
+
 		var cids []cid.Cid
 		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
-			mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
-			if err != nil {
-				return xerrors.Errorf("recursing messages failed: %w", err)
+			if walked.Visit(b.Messages) {
+				mcids, err := recurseLinks(cs.bs, walked, b.Messages, []cid.Cid{b.Messages})
+				if err != nil {
+					return xerrors.Errorf("recursing messages failed: %w", err)
+				}
+				cids = mcids
 			}
-			cids = mcids
 		}
 
 		if b.Height > 0 {
@@ -1224,12 +1430,14 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 		out := cids
 
 		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
-			cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
-			if err != nil {
-				return xerrors.Errorf("recursing genesis state failed: %w", err)
-			}
+			if walked.Visit(b.ParentStateRoot) {
+				cids, err := recurseLinks(cs.bs, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+				if err != nil {
+					return xerrors.Errorf("recursing genesis state failed: %w", err)
+				}
 
-			out = append(out, cids...)
+				out = append(out, cids...)
+			}
 		}
 
 		for _, c := range out {
@@ -1237,19 +1445,19 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 				if c.Prefix().Codec != cid.DagCBOR {
 					continue
 				}
-				data, err := cs.bs.Get(c)
-				if err != nil {
-					return xerrors.Errorf("writing object to car (get %s): %w", c, err)
+
+				if err := cb(c); err != nil {
+					return err
 				}
 
-				if err := carutil.LdWrite(w, c.Bytes(), data.RawData()); err != nil {
-					return xerrors.Errorf("failed to write out car object: %w", err)
-				}
 			}
 		}
 
 		return nil
 	}
+
+	log.Infow("export started")
+	exportStart := build.Clock.Now()
 
 	for len(blocksToWalk) > 0 {
 		next := blocksToWalk[0]
@@ -1258,6 +1466,8 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 			return xerrors.Errorf("walk chain failed: %w", err)
 		}
 	}
+
+	log.Infow("export finished", "duration", build.Clock.Now().Sub(exportStart).Seconds())
 
 	return nil
 }

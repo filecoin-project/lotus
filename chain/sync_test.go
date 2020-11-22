@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	"github.com/ipfs/go-cid"
 
 	ds "github.com/ipfs/go-datastore"
@@ -19,6 +17,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -221,8 +221,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	sourceRepo, genesis, blocks := tu.repoWithChain(tu.t, gen)
 	var out api.FullNode
 
-	// TODO: Don't ignore stop
-	_, err := node.New(tu.ctx,
+	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
 		node.Online(),
 		node.Repo(sourceRepo),
@@ -232,6 +231,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
 	)
 	require.NoError(tu.t, err)
+	tu.t.Cleanup(func() { _ = stop(context.Background()) })
 
 	lastTs := blocks[len(blocks)-1].Blocks
 	for _, lastB := range lastTs {
@@ -253,8 +253,7 @@ func (tu *syncTestUtil) addClientNode() int {
 
 	var out api.FullNode
 
-	// TODO: Don't ignore stop
-	_, err := node.New(tu.ctx,
+	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
@@ -264,6 +263,7 @@ func (tu *syncTestUtil) addClientNode() int {
 		node.Override(new(modules.Genesis), modules.LoadGenesis(tu.genesis)),
 	)
 	require.NoError(tu.t, err)
+	tu.t.Cleanup(func() { _ = stop(context.Background()) })
 
 	tu.nds = append(tu.nds, out)
 	return len(tu.nds) - 1
@@ -469,8 +469,8 @@ func (wpp badWpp) GenerateCandidates(context.Context, abi.PoStRandomness, uint64
 	return []uint64{1}, nil
 }
 
-func (wpp badWpp) ComputeProof(context.Context, []proof.SectorInfo, abi.PoStRandomness) ([]proof.PoStProof, error) {
-	return []proof.PoStProof{
+func (wpp badWpp) ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) {
+	return []proof2.PoStProof{
 		{
 			PoStProof:  abi.RegisteredPoStProof_StackedDrgWinning2KiBV1,
 			ProofBytes: []byte("evil"),
@@ -593,7 +593,7 @@ func TestDuplicateNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -685,7 +685,7 @@ func TestBadNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().Sign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes())
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -732,7 +732,7 @@ func TestSyncInputs(t *testing.T) {
 
 	err := s.ValidateBlock(context.TODO(), &types.FullBlock{
 		Header: &types.BlockHeader{},
-	})
+	}, false)
 	if err == nil {
 		t.Fatal("should error on empty block")
 	}
@@ -741,7 +741,7 @@ func TestSyncInputs(t *testing.T) {
 
 	h.ElectionProof = nil
 
-	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h})
+	err = s.ValidateBlock(context.TODO(), &types.FullBlock{Header: h}, false)
 	if err == nil {
 		t.Fatal("should error on block with nil election proof")
 	}

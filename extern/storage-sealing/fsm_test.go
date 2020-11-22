@@ -44,6 +44,9 @@ func TestHappyPath(t *testing.T) {
 	}
 
 	m.planSingle(SectorPacked{})
+	require.Equal(m.t, m.state.State, GetTicket)
+
+	m.planSingle(SectorTicket{})
 	require.Equal(m.t, m.state.State, PreCommit1)
 
 	m.planSingle(SectorPreCommit1{})
@@ -73,7 +76,7 @@ func TestHappyPath(t *testing.T) {
 	m.planSingle(SectorFinalized{})
 	require.Equal(m.t, m.state.State, Proving)
 
-	expected := []SectorState{Packing, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector, Proving}
+	expected := []SectorState{Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector, Proving}
 	for i, n := range notif {
 		if n.before.State != expected[i] {
 			t.Fatalf("expected before state: %s, got: %s", expected[i], n.before.State)
@@ -98,6 +101,9 @@ func TestSeedRevert(t *testing.T) {
 	}
 
 	m.planSingle(SectorPacked{})
+	require.Equal(m.t, m.state.State, GetTicket)
+
+	m.planSingle(SectorTicket{})
 	require.Equal(m.t, m.state.State, PreCommit1)
 
 	m.planSingle(SectorPreCommit1{})

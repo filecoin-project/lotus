@@ -9,6 +9,10 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/go-state-types/network"
+
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -17,26 +21,18 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/rt"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
-	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
+	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -102,6 +98,7 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 	}
 
 	var mpow power.Claim
+	var minpow bool
 	if maddr != address.Undef {
 		var found bool
 		mpow, found, err = pas.MinerPower(maddr)
@@ -109,11 +106,11 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 			// TODO: return an error when not found?
 			return power.Claim{}, power.Claim{}, false, err
 		}
-	}
 
-	minpow, err := pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
-	if err != nil {
-		return power.Claim{}, power.Claim{}, false, err
+		minpow, err = pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
+		if err != nil {
+			return power.Claim{}, power.Claim{}, false, err
+		}
 	}
 
 	return mpow, tpow, minpow, nil
@@ -161,7 +158,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return mas.LoadSectors(snos)
 }
 
-func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof0.SectorInfo, error) {
+func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	act, err := sm.LoadActorRaw(ctx, maddr, st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -172,21 +169,27 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	// TODO (!!): Actor Update: Make this active sectors
+	var provingSectors bitfield.BitField
+	if nv < network.Version7 {
+		allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
+		if err != nil {
+			return nil, xerrors.Errorf("get all sectors: %w", err)
+		}
 
-	allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
-	if err != nil {
-		return nil, xerrors.Errorf("get all sectors: %w", err)
-	}
+		faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+		if err != nil {
+			return nil, xerrors.Errorf("get faulty sectors: %w", err)
+		}
 
-	faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
-	if err != nil {
-		return nil, xerrors.Errorf("get faulty sectors: %w", err)
-	}
-
-	provingSectors, err := bitfield.SubtractBitField(allSectors, faultySectors) // TODO: This is wrong, as it can contain faaults, change to just ActiveSectors in an upgrade
-	if err != nil {
-		return nil, xerrors.Errorf("calc proving sectors: %w", err)
+		provingSectors, err = bitfield.SubtractBitField(allSectors, faultySectors)
+		if err != nil {
+			return nil, xerrors.Errorf("calc proving sectors: %w", err)
+		}
+	} else {
+		provingSectors, err = miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+		if err != nil {
+			return nil, xerrors.Errorf("get active sectors sectors: %w", err)
+		}
 	}
 
 	numProvSect, err := provingSectors.Count()
@@ -204,12 +207,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
-	if err != nil {
-		return nil, xerrors.Errorf("getting seal proof type: %w", err)
-	}
-
-	wpt, err := spt.RegisteredWinningPoStProof()
+	wpt, err := info.SealProofType.RegisteredWinningPoStProof()
 	if err != nil {
 		return nil, xerrors.Errorf("getting window proof type: %w", err)
 	}
@@ -246,35 +244,16 @@ func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, sm *S
 		return nil, xerrors.Errorf("loading proving sectors: %w", err)
 	}
 
-	out := make([]proof0.SectorInfo, len(sectors))
+	out := make([]builtin.SectorInfo, len(sectors))
 	for i, sinfo := range sectors {
-		out[i] = proof0.SectorInfo{
-			SealProof:    spt,
+		out[i] = builtin.SectorInfo{
+			SealProof:    sinfo.SealProof,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,
 		}
 	}
 
 	return out, nil
-}
-
-func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*miner.MinerInfo, error) {
-	act, err := sm.LoadActor(ctx, maddr, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
-	}
-
-	mas, err := miner.Load(sm.cs.Store(ctx), act)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
-	}
-
-	mi, err := mas.Info()
-	if err != nil {
-		return nil, err
-	}
-
-	return &mi, err
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
@@ -368,6 +347,16 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
+	for i := ts.Height(); i < height; i++ {
+		// handle state forks
+		base, err = sm.handleStateForks(ctx, base, i, traceFunc(&trace), ts)
+		if err != nil {
+			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
+		}
+
+		// TODO: should we also run cron here?
+	}
+
 	r := store.NewChainRand(sm.cs, ts.Cids())
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
@@ -375,23 +364,14 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		Rand:           r,
 		Bstore:         sm.cs.Blockstore(),
 		Syscalls:       sm.cs.VMSys(),
-		CircSupplyCalc: sm.GetCirculatingSupply,
+		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
+		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
-	vmi, err := vm.NewVM(ctx, vmopt)
+	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, nil, err
-	}
-
-	for i := ts.Height(); i < height; i++ {
-		// handle state forks
-		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
-		if err != nil {
-			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
-		}
-
-		// TODO: should we also run cron here?
 	}
 
 	for i, msg := range msgs {
@@ -413,23 +393,51 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	return root, trace, nil
 }
 
-func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.TipSet, round abi.ChainEpoch) (*types.TipSet, error) {
+func LookbackStateGetterForTipset(sm *StateManager, ts *types.TipSet) vm.LookbackStateGetter {
+	return func(ctx context.Context, round abi.ChainEpoch) (*state.StateTree, error) {
+		_, st, err := GetLookbackTipSetForRound(ctx, sm, ts, round)
+		if err != nil {
+			return nil, err
+		}
+		return sm.StateTree(st)
+	}
+}
+
+func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.TipSet, round abi.ChainEpoch) (*types.TipSet, cid.Cid, error) {
 	var lbr abi.ChainEpoch
-	if round > build.WinningPoStSectorSetLookback {
-		lbr = round - build.WinningPoStSectorSetLookback
+	lb := policy.GetWinningPoStSectorSetLookback(sm.GetNtwkVersion(ctx, round))
+	if round > lb {
+		lbr = round - lb
 	}
 
 	// more null blocks than our lookback
-	if lbr > ts.Height() {
-		return ts, nil
+	if lbr >= ts.Height() {
+		// This should never happen at this point, but may happen before
+		// network version 3 (where the lookback was only 10 blocks).
+		st, _, err := sm.TipSetState(ctx, ts)
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+		return ts, st, nil
 	}
 
-	lbts, err := sm.ChainStore().GetTipsetByHeight(ctx, lbr, ts, true)
+	// Get the tipset after the lookback tipset, or the next non-null one.
+	nextTs, err := sm.ChainStore().GetTipsetByHeight(ctx, lbr+1, ts, false)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get lookback tipset: %w", err)
+		return nil, cid.Undef, xerrors.Errorf("failed to get lookback tipset+1: %w", err)
 	}
 
-	return lbts, nil
+	if lbr > nextTs.Height() {
+		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), ts.Height(), nextTs.Key(), nextTs.Height())
+
+	}
+
+	lbts, err := sm.ChainStore().GetTipSetFromKey(nextTs.Parents())
+	if err != nil {
+		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %w", err)
+	}
+
+	return lbts, nextTs.ParentState(), nil
 }
 
 func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*api.MiningBaseInfo, error) {
@@ -457,17 +465,20 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		rbase = entries[len(entries)-1]
 	}
 
-	lbts, err := GetLookbackTipSetForRound(ctx, sm, ts, round)
+	lbts, lbst, err := GetLookbackTipSetForRound(ctx, sm, ts, round)
 	if err != nil {
 		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
 	}
 
-	lbst, _, err := sm.TipSetState(ctx, lbts)
-	if err != nil {
-		return nil, err
-	}
-
 	act, err := sm.LoadActorRaw(ctx, maddr, lbst)
+	if xerrors.Is(err, types.ErrActorNotFound) {
+		_, err := sm.LoadActor(ctx, maddr, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("loading miner in current state: %w", err)
+		}
+
+		return nil, nil
+	}
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
@@ -487,7 +498,9 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
 
-	sectors, err := GetSectorsForWinningPoSt(ctx, pv, sm, lbst, maddr, prand)
+	nv := sm.GetNtwkVersion(ctx, ts.Height())
+
+	sectors, err := GetSectorsForWinningPoSt(ctx, nv, pv, sm, lbst, maddr, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("getting winning post proving set: %w", err)
 	}
@@ -496,7 +509,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, nil
 	}
 
-	mpow, tpow, hmp, err := GetPowerRaw(ctx, sm, lbst, maddr)
+	mpow, tpow, _, err := GetPowerRaw(ctx, sm, lbst, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %w", err)
 	}
@@ -511,15 +524,21 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}
 
+	// TODO: Not ideal performance...This method reloads miner and power state (already looked up here and in GetPowerRaw)
+	eligible, err := MinerEligibleToMine(ctx, sm, maddr, ts, lbts)
+	if err != nil {
+		return nil, xerrors.Errorf("determining miner eligibility: %w", err)
+	}
+
 	return &api.MiningBaseInfo{
-		MinerPower:      mpow.QualityAdjPower,
-		NetworkPower:    tpow.QualityAdjPower,
-		Sectors:         sectors,
-		WorkerKey:       worker,
-		SectorSize:      info.SectorSize,
-		PrevBeaconEntry: *prev,
-		BeaconEntries:   entries,
-		HasMinPower:     hmp,
+		MinerPower:        mpow.QualityAdjPower,
+		NetworkPower:      tpow.QualityAdjPower,
+		Sectors:           sectors,
+		WorkerKey:         worker,
+		SectorSize:        info.SectorSize,
+		PrevBeaconEntry:   *prev,
+		BeaconEntries:     entries,
+		EligibleForMining: eligible,
 	}, nil
 }
 
@@ -533,40 +552,20 @@ type MethodMeta struct {
 var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 
 func init() {
-	cidToMethods := map[cid.Cid][2]interface{}{
-		// builtin.SystemActorCodeID:        {builtin.MethodsSystem, system.Actor{} }- apparently it doesn't have methods
-		builtin0.InitActorCodeID:             {builtin0.MethodsInit, init0.Actor{}},
-		builtin0.CronActorCodeID:             {builtin0.MethodsCron, cron0.Actor{}},
-		builtin0.AccountActorCodeID:          {builtin0.MethodsAccount, account0.Actor{}},
-		builtin0.StoragePowerActorCodeID:     {builtin0.MethodsPower, power0.Actor{}},
-		builtin0.StorageMinerActorCodeID:     {builtin0.MethodsMiner, miner0.Actor{}},
-		builtin0.StorageMarketActorCodeID:    {builtin0.MethodsMarket, market0.Actor{}},
-		builtin0.PaymentChannelActorCodeID:   {builtin0.MethodsPaych, paych0.Actor{}},
-		builtin0.MultisigActorCodeID:         {builtin0.MethodsMultisig, msig0.Actor{}},
-		builtin0.RewardActorCodeID:           {builtin0.MethodsReward, reward0.Actor{}},
-		builtin0.VerifiedRegistryActorCodeID: {builtin0.MethodsVerifiedRegistry, verifreg0.Actor{}},
-	}
+	// TODO: combine with the runtime actor registry.
+	var actors []rt.VMActor
+	actors = append(actors, exported0.BuiltinActors()...)
+	actors = append(actors, exported2.BuiltinActors()...)
 
-	for c, m := range cidToMethods {
-		exports := m[1].(vm.Invokee).Exports()
+	for _, actor := range actors {
+		exports := actor.Exports()
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
 
 		// Explicitly add send, it's special.
-		methods[builtin0.MethodSend] = MethodMeta{
+		methods[builtin.MethodSend] = MethodMeta{
 			Name:   "Send",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
 			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
-		}
-
-		// Learn method names from the builtin.Methods* structs.
-		rv := reflect.ValueOf(m[0])
-		rt := rv.Type()
-		nf := rt.NumField()
-		methodToName := make([]string, len(exports))
-		for i := 0; i < nf; i++ {
-			name := rt.Field(i).Name
-			number := rv.Field(i).Interface().(abi.MethodNum)
-			methodToName[number] = name
 		}
 
 		// Iterate over exported methods. Some of these _may_ be nil and
@@ -579,22 +578,17 @@ func init() {
 			ev := reflect.ValueOf(export)
 			et := ev.Type()
 
-			// Make sure the method name is correct.
-			// This is just a nice sanity check.
+			// Extract the method names using reflection. These
+			// method names always match the field names in the
+			// `builtin.Method*` structs (tested in the specs-actors
+			// tests).
 			fnName := runtime.FuncForPC(ev.Pointer()).Name()
 			fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
-			mName := methodToName[number]
-			if mName != fnName {
-				panic(fmt.Sprintf(
-					"actor method name is %s but exported method name is %s",
-					fnName, mName,
-				))
-			}
 
 			switch abi.MethodNum(number) {
-			case builtin0.MethodSend:
+			case builtin.MethodSend:
 				panic("method 0 is reserved for Send")
-			case builtin0.MethodConstructor:
+			case builtin.MethodConstructor:
 				if fnName != "Constructor" {
 					panic("method 1 is reserved for Constructor")
 				}
@@ -606,7 +600,7 @@ func init() {
 				Ret:    et.Out(0),
 			}
 		}
-		MethodsMap[c] = methods
+		MethodsMap[actor.Code()] = methods
 	}
 }
 
@@ -623,7 +617,15 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
 
-func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
+func GetParamType(actCode cid.Cid, method abi.MethodNum) (cbg.CBORUnmarshaler, error) {
+	m, found := MethodsMap[actCode][method]
+	if !found {
+		return nil, fmt.Errorf("unknown method %d for actor %s", method, actCode)
+	}
+	return reflect.New(m.Params.Elem()).Interface().(cbg.CBORUnmarshaler), nil
+}
+
+func minerHasMinPower(ctx context.Context, sm *StateManager, addr address.Address, ts *types.TipSet) (bool, error) {
 	pact, err := sm.LoadActor(ctx, power.Address, ts)
 	if err != nil {
 		return false, xerrors.Errorf("loading power actor state: %w", err)
@@ -635,6 +637,70 @@ func MinerHasMinPower(ctx context.Context, sm *StateManager, addr address.Addres
 	}
 
 	return ps.MinerNominalPowerMeetsConsensusMinimum(addr)
+}
+
+func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Address, baseTs *types.TipSet, lookbackTs *types.TipSet) (bool, error) {
+	hmp, err := minerHasMinPower(ctx, sm, addr, lookbackTs)
+
+	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
+	if sm.GetNtwkVersion(ctx, baseTs.Height()) <= network.Version3 {
+		return hmp, err
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	if !hmp {
+		return false, nil
+	}
+
+	// Post actors v2, also check MinerEligibleForElection with base ts
+
+	pact, err := sm.LoadActor(ctx, power.Address, baseTs)
+	if err != nil {
+		return false, xerrors.Errorf("loading power actor state: %w", err)
+	}
+
+	pstate, err := power.Load(sm.cs.Store(ctx), pact)
+	if err != nil {
+		return false, err
+	}
+
+	mact, err := sm.LoadActor(ctx, addr, baseTs)
+	if err != nil {
+		return false, xerrors.Errorf("loading miner actor state: %w", err)
+	}
+
+	mstate, err := miner.Load(sm.cs.Store(ctx), mact)
+	if err != nil {
+		return false, err
+	}
+
+	// Non-empty power claim.
+	if claim, found, err := pstate.MinerPower(addr); err != nil {
+		return false, err
+	} else if !found {
+		return false, err
+	} else if claim.QualityAdjPower.LessThanEqual(big.Zero()) {
+		return false, err
+	}
+
+	// No fee debt.
+	if debt, err := mstate.FeeDebt(); err != nil {
+		return false, err
+	} else if !debt.IsZero() {
+		return false, err
+	}
+
+	// No active consensus faults.
+	if mInfo, err := mstate.Info(); err != nil {
+		return false, err
+	} else if baseTs.Height() <= mInfo.ConsensusFaultElapsed {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
@@ -653,4 +719,17 @@ func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi
 	}
 
 	return sum, nil
+}
+
+func MakeMsgGasCost(msg *types.Message, ret *vm.ApplyRet) api.MsgGasCost {
+	return api.MsgGasCost{
+		Message:            msg.Cid(),
+		GasUsed:            big.NewInt(ret.GasUsed),
+		BaseFeeBurn:        ret.GasCosts.BaseFeeBurn,
+		OverEstimationBurn: ret.GasCosts.OverEstimationBurn,
+		MinerPenalty:       ret.GasCosts.MinerPenalty,
+		MinerTip:           ret.GasCosts.MinerTip,
+		Refund:             ret.GasCosts.Refund,
+		TotalCost:          big.Sub(msg.RequiredFunds(), ret.GasCosts.Refund),
+	}
 }

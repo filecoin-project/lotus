@@ -32,7 +32,7 @@ func (m *Sealing) handleFaultReported(ctx statemachine.Context, sector SectorInf
 }
 
 func (m *Sealing) handleRemoving(ctx statemachine.Context, sector SectorInfo) error {
-	if err := m.sealer.Remove(ctx.Context(), m.minerSector(sector.SectorNumber)); err != nil {
+	if err := m.sealer.Remove(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return ctx.Send(SectorRemoveFailed{err})
 	}
 

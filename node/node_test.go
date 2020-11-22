@@ -93,6 +93,22 @@ func TestDealMining(t *testing.T) {
 	test.TestDealMining(t, builder.MockSbBuilder, 50*time.Millisecond, false)
 }
 
+func TestSDRUpgrade(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
+
+	test.TestSDRUpgrade(t, builder.MockSbBuilder, 50*time.Millisecond)
+}
+
 func TestPledgeSectors(t *testing.T) {
 	logging.SetLogLevel("miner", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
@@ -115,6 +131,16 @@ func TestPledgeSectors(t *testing.T) {
 
 		test.TestPledgeSector(t, builder.MockSbBuilder, 50*time.Millisecond, 1000)
 	})
+}
+
+func TestTapeFix(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestTapeFix(t, builder.MockSbBuilder, 2*time.Millisecond)
 }
 
 func TestWindowedPost(t *testing.T) {

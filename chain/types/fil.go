@@ -12,11 +12,15 @@ import (
 type FIL BigInt
 
 func (f FIL) String() string {
+	return f.Unitless() + " FIL"
+}
+
+func (f FIL) Unitless() string {
 	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(build.FilecoinPrecision)))
 	if r.Sign() == 0 {
-		return "0 FIL"
+		return "0"
 	}
-	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".") + " FIL"
+	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".")
 }
 
 func (f FIL) Format(s fmt.State, ch rune) {
@@ -57,6 +61,10 @@ func ParseFIL(s string) (FIL, error) {
 		}
 	}
 
+	if len(s) > 50 {
+		return FIL{}, fmt.Errorf("string length too large: %d", len(s))
+	}
+
 	r, ok := new(big.Rat).SetString(s)
 	if !ok {
 		return FIL{}, fmt.Errorf("failed to parse %q as a decimal number", s)
@@ -75,6 +83,15 @@ func ParseFIL(s string) (FIL, error) {
 	}
 
 	return FIL{r.Num()}, nil
+}
+
+func MustParseFIL(s string) FIL {
+	n, err := ParseFIL(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return n
 }
 
 var _ encoding.TextMarshaler = (*FIL)(nil)

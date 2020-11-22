@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
@@ -49,7 +49,7 @@ func randTimeOffset(width time.Duration) time.Duration {
 	return val - (width / 2)
 }
 
-func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter) *Miner {
+func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter, j journal.Journal) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
 		panic(err)
@@ -74,8 +74,9 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address,
 		sf:                sf,
 		minedBlockHeights: arc,
 		evtTypes: [...]journal.EventType{
-			evtTypeBlockMined: journal.J.RegisterEventType("miner", "block_mined"),
+			evtTypeBlockMined: j.RegisterEventType("miner", "block_mined"),
 		},
+		journal: j,
 	}
 }
 
@@ -97,6 +98,7 @@ type Miner struct {
 	minedBlockHeights *lru.ARCCache
 
 	evtTypes [1]journal.EventType
+	journal  journal.Journal
 }
 
 func (m *Miner) Address() address.Address {
@@ -147,6 +149,8 @@ func (m *Miner) niceSleep(d time.Duration) bool {
 func (m *Miner) mine(ctx context.Context) {
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
+
+	go m.doWinPoStWarmup(ctx)
 
 	var lastBase MiningBase
 minerLoop:
@@ -211,6 +215,8 @@ minerLoop:
 			base = prebase
 		}
 
+		base.NullRounds += injectNulls // testing
+
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
 			if !m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second) {
@@ -218,8 +224,6 @@ minerLoop:
 			}
 			continue
 		}
-
-		base.NullRounds += injectNulls // testing
 
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
@@ -239,7 +243,7 @@ minerLoop:
 		onDone(b != nil, h, nil)
 
 		if b != nil {
-			journal.J.RecordEvent(m.evtTypes[evtTypeBlockMined], func() interface{} {
+			m.journal.RecordEvent(m.evtTypes[evtTypeBlockMined], func() interface{} {
 				return map[string]interface{}{
 					"parents":   base.TipSet.Cids(),
 					"nulls":     base.NullRounds,
@@ -278,7 +282,7 @@ minerLoop:
 			m.minedBlockHeights.Add(blkKey, true)
 
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
-				log.Errorf("failed to submit newly mined block: %s", err)
+				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
 		} else {
 			base.NullRounds++
@@ -327,6 +331,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 		}
 		ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.TipSet.Key())
 		if err != nil {
+			m.lastWork = nil
 			return nil, err
 		}
 
@@ -362,7 +367,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	if mbi == nil {
 		return nil, nil
 	}
-	if !mbi.HasMinPower {
+	if !mbi.EligibleForMining {
 		// slashed or just have no power yet
 		return nil, nil
 	}
@@ -383,7 +388,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, &rbase, base)
+	ticket, err := m.computeTicket(ctx, &rbase, base, mbi)
 	if err != nil {
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
@@ -453,16 +458,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	return b, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase) (*types.Ticket, error) {
-	mi, err := m.api.StateMinerInfo(ctx, m.address, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-	worker, err := m.api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := m.address.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
@@ -478,7 +474,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 		return nil, err
 	}
 
-	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, worker, input)
+	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, mbi.WorkerKey, input)
 	if err != nil {
 		return nil, err
 	}
@@ -489,7 +485,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof0.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
 	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1

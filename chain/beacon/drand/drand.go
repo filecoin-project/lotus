@@ -65,6 +65,11 @@ type DrandBeacon struct {
 	localCache map[uint64]types.BeaconEntry
 }
 
+// DrandHTTPClient interface overrides the user agent used by drand
+type DrandHTTPClient interface {
+	SetUserAgent(string)
+}
+
 func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes.DrandConfig) (*DrandBeacon, error) {
 	if genesisTs == 0 {
 		panic("what are you doing this cant be zero")
@@ -84,6 +89,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 		if err != nil {
 			return nil, xerrors.Errorf("could not create http drand client: %w", err)
 		}
+		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + build.BuildVersion)
 		clients = append(clients, hc)
 
 	}
@@ -92,7 +98,6 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 		dclient.WithChainInfo(drandChain),
 		dclient.WithCacheSize(1024),
 		dclient.WithLogger(dlogger),
-		dclient.WithAutoWatch(),
 	}
 
 	if ps != nil {

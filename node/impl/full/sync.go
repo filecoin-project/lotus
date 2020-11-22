@@ -37,13 +37,14 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 	for i := range states {
 		ss := &states[i]
 		out.ActiveSyncs = append(out.ActiveSyncs, api.ActiveSync{
-			Base:    ss.Base,
-			Target:  ss.Target,
-			Stage:   ss.Stage,
-			Height:  ss.Height,
-			Start:   ss.Start,
-			End:     ss.End,
-			Message: ss.Message,
+			WorkerID: ss.WorkerID,
+			Base:     ss.Base,
+			Target:   ss.Target,
+			Stage:    ss.Stage,
+			Height:   ss.Height,
+			Start:    ss.Start,
+			End:      ss.End,
+			Message:  ss.Message,
 		})
 	}
 	return out, nil
@@ -118,6 +119,12 @@ func (a *SyncAPI) SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error {
 	return nil
 }
 
+func (a *SyncAPI) SyncUnmarkAllBad(ctx context.Context) error {
+	log.Warnf("Dropping bad block cache")
+	a.Syncer.UnmarkAllBad()
+	return nil
+}
+
 func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) {
 	reason, ok := a.Syncer.CheckBadBlockCache(bcid)
 	if !ok {
@@ -125,4 +132,23 @@ func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error
 	}
 
 	return reason, nil
+}
+
+func (a *SyncAPI) SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error) {
+	ts, err := a.Syncer.ChainStore().LoadTipSet(tsk)
+	if err != nil {
+		return false, err
+	}
+
+	fts, err := a.Syncer.ChainStore().TryFillTipSet(ts)
+	if err != nil {
+		return false, err
+	}
+
+	err = a.Syncer.ValidateTipSet(ctx, fts, false)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

@@ -2,7 +2,10 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -106,6 +109,20 @@ func (m *Message) Cid() cid.Cid {
 	return b.Cid()
 }
 
+type mCid struct {
+	*RawMessage
+	CID cid.Cid
+}
+
+type RawMessage Message
+
+func (m *Message) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&mCid{
+		RawMessage: (*RawMessage)(m),
+		CID:        m.Cid(),
+	})
+}
+
 func (m *Message) RequiredFunds() BigInt {
 	return BigMul(m.GasFeeCap, NewInt(uint64(m.GasLimit)))
 }
@@ -129,13 +146,17 @@ func (m *Message) EqualCall(o *Message) bool {
 	return (&m1).Equals(&m2)
 }
 
-func (m *Message) ValidForBlockInclusion(minGas int64) error {
+func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) error {
 	if m.Version != 0 {
 		return xerrors.New("'Version' unsupported")
 	}
 
 	if m.To == address.Undef {
 		return xerrors.New("'To' address cannot be empty")
+	}
+
+	if m.To == build.ZeroAddress && version >= network.Version7 {
+		return xerrors.New("invalid 'To' address")
 	}
 
 	if m.From == address.Undef {
@@ -180,7 +201,7 @@ func (m *Message) ValidForBlockInclusion(minGas int64) error {
 
 	// since prices might vary with time, this is technically semantic validation
 	if m.GasLimit < minGas {
-		return xerrors.New("'GasLimit' field cannot be less than the cost of storing a message on chain")
+		return xerrors.Errorf("'GasLimit' field cannot be less than the cost of storing a message on chain %d < %d", m.GasLimit, minGas)
 	}
 
 	return nil

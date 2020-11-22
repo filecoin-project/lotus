@@ -5,7 +5,10 @@ import (
 	"context"
 	"time"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -62,11 +65,13 @@ type StorageMiner interface {
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
-	WorkerStats(context.Context) (map[uint64]storiface.WorkerStats, error)
-	WorkerJobs(context.Context) (map[uint64][]storiface.WorkerJob, error)
+	WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error)
+	WorkerJobs(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error)
+	storiface.WorkerReturn
 
 	// SealingSchedDiag dumps internal sealing scheduler state
-	SealingSchedDiag(context.Context) (interface{}, error)
+	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error)
+	SealingAbort(ctx context.Context, call storiface.CallID) error
 
 	stores.SectorIndex
 
@@ -81,6 +86,10 @@ type StorageMiner interface {
 	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)
 	MarketListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
 	MarketDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
+	// MinerRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
+	// ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]MarketDeal, error)
@@ -101,6 +110,12 @@ type StorageMiner interface {
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)
 	PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error)
 	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)
+
+	// CreateBackup creates node backup onder the specified file name. The
+	// method requires that the lotus-miner is running with the
+	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
+	// the path specified when calling CreateBackup is within the base path
+	CreateBackup(ctx context.Context, fpath string) error
 }
 
 type SealRes struct {

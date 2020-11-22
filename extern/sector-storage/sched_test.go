@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
@@ -43,58 +44,58 @@ type schedTestWorker struct {
 	paths     []stores.StoragePath
 
 	closed  bool
-	closing chan struct{}
+	session uuid.UUID
 }
 
-func (s *schedTestWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {
+func (s *schedTestWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) SealPreCommit2(ctx context.Context, sector abi.SectorID, pc1o storage.PreCommit1Out) (storage.SectorCids, error) {
+func (s *schedTestWorker) SealPreCommit2(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storage.Commit1Out, error) {
+func (s *schedTestWorker) SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (storage.Proof, error) {
+func (s *schedTestWorker) SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) error {
+func (s *schedTestWorker) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) error {
+func (s *schedTestWorker) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) Remove(ctx context.Context, sector abi.SectorID) error {
+func (s *schedTestWorker) Remove(ctx context.Context, sector storage.SectorRef) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
+func (s *schedTestWorker) NewSector(ctx context.Context, sector storage.SectorRef) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
+func (s *schedTestWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types stores.SectorFileType) error {
+func (s *schedTestWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) Fetch(ctx context.Context, id abi.SectorID, ft stores.SectorFileType, ptype stores.PathType, am stores.AcquireMode) error {
+func (s *schedTestWorker) Fetch(ctx context.Context, id storage.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) UnsealPiece(ctx context.Context, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) error {
+func (s *schedTestWorker) UnsealPiece(ctx context.Context, id storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+func (s *schedTestWorker) ReadPiece(ctx context.Context, writer io.Writer, id storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (storiface.CallID, error) {
 	panic("implement me")
 }
 
@@ -121,15 +122,15 @@ func (s *schedTestWorker) Info(ctx context.Context) (storiface.WorkerInfo, error
 	}, nil
 }
 
-func (s *schedTestWorker) Closing(ctx context.Context) (<-chan struct{}, error) {
-	return s.closing, nil
+func (s *schedTestWorker) Session(context.Context) (uuid.UUID, error) {
+	return s.session, nil
 }
 
 func (s *schedTestWorker) Close() error {
 	if !s.closed {
 		log.Info("close schedTestWorker")
 		s.closed = true
-		close(s.closing)
+		s.session = uuid.UUID{}
 	}
 	return nil
 }
@@ -142,7 +143,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 		taskTypes: taskTypes,
 		paths:     []stores.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
 
-		closing: make(chan struct{}),
+		session: uuid.New(),
 	}
 
 	for _, path := range w.paths {
@@ -160,23 +161,11 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 		require.NoError(t, err)
 	}
 
-	info, err := w.Info(context.TODO())
-	require.NoError(t, err)
-
-	sched.newWorkers <- &workerHandle{
-		w: w,
-		wt: &workTracker{
-			running: map[uint64]storiface.WorkerJob{},
-		},
-		info:      info,
-		preparing: &activeResources{},
-		active:    &activeResources{},
-	}
+	require.NoError(t, sched.runWorker(context.TODO(), w))
 }
 
 func TestSchedStartStop(t *testing.T) {
-	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
-	sched := newScheduler(spt)
+	sched := newScheduler()
 	go sched.runSched()
 
 	addTestWorker(t, sched, stores.NewIndex(), "fred", nil)
@@ -215,18 +204,21 @@ func TestSched(t *testing.T) {
 			done := make(chan struct{})
 			rm.done[taskName] = done
 
-			sel := newAllocSelector(index, stores.FTCache, stores.PathSealing)
+			sel := newAllocSelector(index, storiface.FTCache, storiface.PathSealing)
 
 			rm.wg.Add(1)
 			go func() {
 				defer rm.wg.Done()
 
-				sectorNum := abi.SectorID{
-					Miner:  8,
-					Number: sid,
+				sectorRef := storage.SectorRef{
+					ID: abi.SectorID{
+						Miner:  8,
+						Number: sid,
+					},
+					ProofType: spt,
 				}
 
-				err := sched.Schedule(ctx, sectorNum, taskType, sel, func(ctx context.Context, w Worker) error {
+				err := sched.Schedule(ctx, sectorRef, taskType, sel, func(ctx context.Context, w Worker) error {
 					wi, err := w.Info(ctx)
 					require.NoError(t, err)
 
@@ -290,10 +282,13 @@ func TestSched(t *testing.T) {
 	}
 
 	testFunc := func(workers []workerSpec, tasks []task) func(t *testing.T) {
+		ParallelNum = 1
+		ParallelDenom = 1
+
 		return func(t *testing.T) {
 			index := stores.NewIndex()
 
-			sched := newScheduler(spt)
+			sched := newScheduler()
 			sched.testSync = make(chan struct{})
 
 			go sched.runSched()
@@ -432,7 +427,7 @@ func TestSched(t *testing.T) {
 
 			type line struct {
 				storiface.WorkerJob
-				wid uint64
+				wid uuid.UUID
 			}
 
 			lines := make([]line, 0)
@@ -525,7 +520,6 @@ func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b 
 var _ WorkerSelector = slowishSelector(true)
 
 func BenchmarkTrySched(b *testing.B) {
-	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
 	logging.SetAllLoggers(logging.LevelInfo)
 	defer logging.SetAllLoggers(logging.LevelDebug)
 	ctx := context.Background()
@@ -535,9 +529,9 @@ func BenchmarkTrySched(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				b.StopTimer()
 
-				sched := newScheduler(spt)
-				sched.workers[0] = &workerHandle{
-					w: nil,
+				sched := newScheduler()
+				sched.workers[WorkerID{}] = &workerHandle{
+					workerRpc: nil,
 					info: storiface.WorkerInfo{
 						Hostname:  "t",
 						Resources: decentWorkerResources,
@@ -548,7 +542,7 @@ func BenchmarkTrySched(b *testing.B) {
 
 				for i := 0; i < windows; i++ {
 					sched.openWindows = append(sched.openWindows, &schedWindowRequest{
-						worker: 0,
+						worker: WorkerID{},
 						done:   make(chan *schedWindow, 1000),
 					})
 				}
@@ -575,9 +569,8 @@ func BenchmarkTrySched(b *testing.B) {
 }
 
 func TestWindowCompact(t *testing.T) {
-	sh := scheduler{
-		spt: abi.RegisteredSealProof_StackedDrg32GiBV1,
-	}
+	sh := scheduler{}
+	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
 
 	test := func(start [][]sealtasks.TaskType, expect [][]sealtasks.TaskType) func(t *testing.T) {
 		return func(t *testing.T) {
@@ -591,22 +584,30 @@ func TestWindowCompact(t *testing.T) {
 				window := &schedWindow{}
 
 				for _, task := range windowTasks {
-					window.todo = append(window.todo, &workerRequest{taskType: task})
-					window.allocated.add(wh.info.Resources, ResourceTable[task][sh.spt])
+					window.todo = append(window.todo, &workerRequest{
+						taskType: task,
+						sector:   storage.SectorRef{ProofType: spt},
+					})
+					window.allocated.add(wh.info.Resources, ResourceTable[task][spt])
 				}
 
 				wh.activeWindows = append(wh.activeWindows, window)
 			}
 
-			n := sh.workerCompactWindows(wh, 0)
-			require.Equal(t, len(start)-len(expect), n)
+			sw := schedWorker{
+				sched:  &sh,
+				worker: wh,
+			}
+
+			sw.workerCompactWindows()
+			require.Equal(t, len(start)-len(expect), -sw.windowsRequested)
 
 			for wi, tasks := range expect {
 				var expectRes activeResources
 
 				for ti, task := range tasks {
 					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)
-					expectRes.add(wh.info.Resources, ResourceTable[task][sh.spt])
+					expectRes.add(wh.info.Resources, ResourceTable[task][spt])
 				}
 
 				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].allocated.cpuUse, "%d", wi)

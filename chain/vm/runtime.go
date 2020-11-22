@@ -5,19 +5,17 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	gruntime "runtime"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
@@ -29,9 +27,34 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+type Message struct {
+	msg types.Message
+}
+
+func (m *Message) Caller() address.Address {
+	if m.msg.From.Protocol() != address.ID {
+		panic("runtime message has a non-ID caller")
+	}
+	return m.msg.From
+}
+
+func (m *Message) Receiver() address.Address {
+	if m.msg.To != address.Undef && m.msg.To.Protocol() != address.ID {
+		panic("runtime message has a non-ID receiver")
+	}
+	return m.msg.To
+}
+
+func (m *Message) ValueReceived() abi.TokenAmount {
+	return m.msg.Value
+}
+
+// EnableGasTracing, if true, outputs gas tracing in execution traces.
+var EnableGasTracing = false
+
 type Runtime struct {
-	types.Message
-	rt0.Syscalls
+	rt2.Message
+	rt2.Syscalls
 
 	ctx context.Context
 
@@ -49,6 +72,7 @@ type Runtime struct {
 	originNonce uint64
 
 	executionTrace    types.ExecutionTrace
+	depth             uint64
 	numActorsCreated  uint64
 	allowInternal     bool
 	callerValidated   bool
@@ -111,6 +135,7 @@ func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 }
 
 var _ rt0.Runtime = (*Runtime)(nil)
+var _ rt2.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -123,7 +148,11 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 			//log.Desugar().WithOptions(zap.AddStacktrace(zapcore.ErrorLevel)).
 			//Sugar().Errorf("spec actors failure: %s", r)
 			log.Errorf("spec actors failure: %s", r)
-			aerr = aerrors.Newf(1, "spec actors failure: %s", r)
+			if rt.NetworkVersion() <= network.Version3 {
+				aerr = aerrors.Newf(1, "spec actors failure: %s", r)
+			} else {
+				aerr = aerrors.Newf(exitcode.SysErrReserved1, "spec actors failure: %s", r)
+			}
 		}
 	}()
 
@@ -215,28 +244,23 @@ func (rt *Runtime) NewActorAddress() address.Address {
 	return addr
 }
 
-func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
-	if !builtin.IsBuiltinActor(codeID) {
-		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
+func (rt *Runtime) CreateActor(codeID cid.Cid, addr address.Address) {
+	if addr == address.Undef && rt.NetworkVersion() >= network.Version7 {
+		rt.Abortf(exitcode.SysErrorIllegalArgument, "CreateActor with Undef address")
+	}
+	act, aerr := rt.vm.areg.Create(codeID, rt)
+	if aerr != nil {
+		rt.Abortf(aerr.RetCode(), aerr.Error())
 	}
 
-	if builtin.IsSingletonActor(codeID) {
-		rt.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
-	}
-
-	_, err := rt.state.GetActor(address)
+	_, err := rt.state.GetActor(addr)
 	if err == nil {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
 	}
 
 	rt.chargeGas(rt.Pricelist().OnCreateActor())
 
-	err = rt.state.SetActor(address, &types.Actor{
-		Code:    codeID,
-		Head:    EmptyObjectCid,
-		Nonce:   0,
-		Balance: big.Zero(),
-	})
+	err = rt.state.SetActor(addr, act)
 	if err != nil {
 		panic(aerrors.Fatalf("creating actor entry: %v", err))
 	}
@@ -245,7 +269,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, address address.Address) {
 
 // DeleteActor deletes the executing actor from the state tree, transferring
 // any balance to beneficiary.
-// Aborts if the beneficiary does not exist.
+// Aborts if the beneficiary does not exist or is the calling actor.
 // May only be called by the actor itself.
 func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 	rt.chargeGas(rt.Pricelist().OnDeleteActor())
@@ -257,6 +281,19 @@ func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !act.Balance.IsZero() {
+		// TODO: Should be safe to drop the version-check,
+		//  since only the paych actor called this pre-version 7, but let's leave it for now
+		if rt.NetworkVersion() >= network.Version7 {
+			beneficiaryId, found := rt.ResolveAddress(beneficiary)
+			if !found {
+				rt.Abortf(exitcode.SysErrorIllegalArgument, "beneficiary doesn't exist")
+			}
+
+			if beneficiaryId == rt.Receiver() {
+				rt.Abortf(exitcode.SysErrorIllegalArgument, "benefactor cannot be beneficiary")
+			}
+		}
+
 		// Transfer the executing actor's balance to the beneficiary
 		if err := rt.vm.transfer(rt.Receiver(), beneficiary, act.Balance); err != nil {
 			panic(aerrors.Fatalf("failed to transfer balance to beneficiary actor: %s", err))
@@ -460,8 +497,10 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 }
 
 func (rt *Runtime) finilizeGasTracing() {
-	if rt.lastGasCharge != nil {
-		rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
+	if EnableGasTracing {
+		if rt.lastGasCharge != nil {
+			rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
+		}
 	}
 }
 
@@ -492,37 +531,48 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
-	var callers [10]uintptr
-	cout := gruntime.Callers(2+skip, callers[:])
+	if EnableGasTracing {
+		var callers [10]uintptr
 
-	now := build.Clock.Now()
-	if rt.lastGasCharge != nil {
-		rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
+		cout := 0 //gruntime.Callers(2+skip, callers[:])
+
+		now := build.Clock.Now()
+		if rt.lastGasCharge != nil {
+			rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
+		}
+
+		gasTrace := types.GasTrace{
+			Name:  gas.Name,
+			Extra: gas.Extra,
+
+			TotalGas:   toUse,
+			ComputeGas: gas.ComputeGas,
+			StorageGas: gas.StorageGas,
+
+			VirtualComputeGas: gas.VirtualCompute,
+			VirtualStorageGas: gas.VirtualStorage,
+
+			Callers: callers[:cout],
+		}
+		if gasTrace.VirtualStorageGas == 0 {
+			gasTrace.VirtualStorageGas = gasTrace.StorageGas
+		}
+		if gasTrace.VirtualComputeGas == 0 {
+			gasTrace.VirtualComputeGas = gasTrace.ComputeGas
+		}
+		gasTrace.TotalVirtualGas = gasTrace.VirtualComputeGas + gasTrace.VirtualStorageGas
+
+		rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
+		rt.lastGasChargeTime = now
+		rt.lastGasCharge = &gasTrace
 	}
-
-	gasTrace := types.GasTrace{
-		Name:  gas.Name,
-		Extra: gas.Extra,
-
-		TotalGas:   toUse,
-		ComputeGas: gas.ComputeGas,
-		StorageGas: gas.StorageGas,
-
-		TotalVirtualGas:   gas.VirtualCompute*GasComputeMulti + gas.VirtualStorage*GasStorageMulti,
-		VirtualComputeGas: gas.VirtualCompute,
-		VirtualStorageGas: gas.VirtualStorage,
-
-		Callers: callers[:cout],
-	}
-	rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
-	rt.lastGasChargeTime = now
-	rt.lastGasCharge = &gasTrace
 
 	// overflow safe
 	if rt.gasUsed > rt.gasAvailable-toUse {
+		gasUsed := rt.gasUsed
 		rt.gasUsed = rt.gasAvailable
-		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d",
-			rt.gasUsed, rt.gasAvailable)
+		return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d, use=%d",
+			gasUsed, rt.gasAvailable, toUse)
 	}
 	rt.gasUsed += toUse
 	return nil

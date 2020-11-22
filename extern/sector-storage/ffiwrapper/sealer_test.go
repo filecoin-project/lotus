@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	saproof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 
@@ -30,7 +30,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 func init() {
@@ -43,7 +43,7 @@ var sectorSize, _ = sealProofType.SectorSize()
 var sealRand = abi.SealRandomness{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2}
 
 type seal struct {
-	id     abi.SectorID
+	ref    storage.SectorRef
 	cids   storage.SectorCids
 	pi     abi.PieceInfo
 	ticket abi.SealRandomness
@@ -56,12 +56,12 @@ func data(sn abi.SectorNumber, dlen abi.UnpaddedPieceSize) io.Reader {
 	)
 }
 
-func (s *seal) precommit(t *testing.T, sb *Sealer, id abi.SectorID, done func()) {
+func (s *seal) precommit(t *testing.T, sb *Sealer, id storage.SectorRef, done func()) {
 	defer done()
 	dlen := abi.PaddedPieceSize(sectorSize).Unpadded()
 
 	var err error
-	r := data(id.Number, dlen)
+	r := data(id.ID.Number, dlen)
 	s.pi, err = sb.AddPiece(context.TODO(), id, []abi.UnpaddedPieceSize{}, dlen, r)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -84,19 +84,19 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 	defer done()
 	seed := abi.InteractiveSealRandomness{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
 
-	pc1, err := sb.SealCommit1(context.TODO(), s.id, s.ticket, seed, []abi.PieceInfo{s.pi}, s.cids)
+	pc1, err := sb.SealCommit1(context.TODO(), s.ref, s.ticket, seed, []abi.PieceInfo{s.pi}, s.cids)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	proof, err := sb.SealCommit2(context.TODO(), s.id, pc1)
+	proof, err := sb.SealCommit2(context.TODO(), s.ref, pc1)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := ProofVerifier.VerifySeal(saproof.SealVerifyInfo{
-		SectorID:              s.id,
+	ok, err := ProofVerifier.VerifySeal(proof2.SealVerifyInfo{
+		SectorID:              s.ref.ID,
 		SealedCID:             s.cids.Sealed,
-		SealProof:             sealProofType,
+		SealProof:             s.ref.ProofType,
 		Proof:                 proof,
 		Randomness:            s.ticket,
 		InteractiveRandomness: seed,
@@ -111,7 +111,7 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 	}
 }
 
-func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.SectorID, done func()) {
+func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si storage.SectorRef, done func()) {
 	defer done()
 
 	var b bytes.Buffer
@@ -120,12 +120,12 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 		t.Fatal(err)
 	}
 
-	expect, _ := ioutil.ReadAll(data(si.Number, 1016))
+	expect, _ := ioutil.ReadAll(data(si.ID.Number, 1016))
 	if !bytes.Equal(b.Bytes(), expect) {
 		t.Fatal("read wrong bytes")
 	}
 
-	p, sd, err := sp.AcquireSector(context.TODO(), si, stores.FTUnsealed, stores.FTNone, stores.PathStorage)
+	p, sd, err := sp.AcquireSector(context.TODO(), si, storiface.FTUnsealed, storiface.FTNone, storiface.PathStorage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 		t.Fatal(err)
 	}
 
-	expect, _ = ioutil.ReadAll(data(si.Number, 1016))
+	expect, _ = ioutil.ReadAll(data(si.ID.Number, 1016))
 	require.Equal(t, expect, b.Bytes())
 
 	b.Reset()
@@ -171,16 +171,16 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si abi.Sec
 func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 	randomness := abi.PoStRandomness{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 7}
 
-	sis := make([]saproof.SectorInfo, len(seals))
+	sis := make([]proof2.SectorInfo, len(seals))
 	for i, s := range seals {
-		sis[i] = saproof.SectorInfo{
-			SealProof:    sealProofType,
-			SectorNumber: s.id.Number,
+		sis[i] = proof2.SectorInfo{
+			SealProof:    s.ref.ProofType,
+			SectorNumber: s.ref.ID.Number,
 			SealedCID:    s.cids.Sealed,
 		}
 	}
 
-	proofs, skp, err := sealer.GenerateWindowPoSt(context.TODO(), seals[0].id.Miner, sis, randomness)
+	proofs, skp, err := sealer.GenerateWindowPoSt(context.TODO(), seals[0].ref.ID.Miner, sis, randomness)
 	if len(skipped) > 0 {
 		require.Error(t, err)
 		require.EqualValues(t, skipped, skp)
@@ -191,11 +191,11 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := ProofVerifier.VerifyWindowPoSt(context.TODO(), saproof.WindowPoStVerifyInfo{
+	ok, err := ProofVerifier.VerifyWindowPoSt(context.TODO(), proof2.WindowPoStVerifyInfo{
 		Randomness:        randomness,
 		Proofs:            proofs,
 		ChallengedSectors: sis,
-		Prover:            seals[0].id.Miner,
+		Prover:            seals[0].ref.ID.Miner,
 	})
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -205,8 +205,8 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 	}
 }
 
-func corrupt(t *testing.T, sealer *Sealer, id abi.SectorID) {
-	paths, done, err := sealer.sectors.AcquireSector(context.Background(), id, stores.FTSealed, 0, stores.PathStorage)
+func corrupt(t *testing.T, sealer *Sealer, id storage.SectorRef) {
+	paths, done, err := sealer.sectors.AcquireSector(context.Background(), id, storiface.FTSealed, 0, storiface.PathStorage)
 	require.NoError(t, err)
 	defer done()
 
@@ -264,14 +264,10 @@ func TestSealAndVerify(t *testing.T) {
 	}
 	miner := abi.ActorID(123)
 
-	cfg := &Config{
-		SealProofType: sealProofType,
-	}
-
 	sp := &basicfs.Provider{
 		Root: cdir,
 	}
-	sb, err := New(sp, cfg)
+	sb, err := New(sp)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -286,9 +282,12 @@ func TestSealAndVerify(t *testing.T) {
 	}
 	defer cleanup()
 
-	si := abi.SectorID{Miner: miner, Number: 1}
+	si := storage.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
 
-	s := seal{id: si}
+	s := seal{ref: si}
 
 	start := time.Now()
 
@@ -338,13 +337,10 @@ func TestSealPoStNoCommit(t *testing.T) {
 
 	miner := abi.ActorID(123)
 
-	cfg := &Config{
-		SealProofType: sealProofType,
-	}
 	sp := &basicfs.Provider{
 		Root: dir,
 	}
-	sb, err := New(sp, cfg)
+	sb, err := New(sp)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -360,9 +356,12 @@ func TestSealPoStNoCommit(t *testing.T) {
 	}
 	defer cleanup()
 
-	si := abi.SectorID{Miner: miner, Number: 1}
+	si := storage.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
 
-	s := seal{id: si}
+	s := seal{ref: si}
 
 	start := time.Now()
 
@@ -403,13 +402,10 @@ func TestSealAndVerify3(t *testing.T) {
 
 	miner := abi.ActorID(123)
 
-	cfg := &Config{
-		SealProofType: sealProofType,
-	}
 	sp := &basicfs.Provider{
 		Root: dir,
 	}
-	sb, err := New(sp, cfg)
+	sb, err := New(sp)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -424,13 +420,22 @@ func TestSealAndVerify3(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	si1 := abi.SectorID{Miner: miner, Number: 1}
-	si2 := abi.SectorID{Miner: miner, Number: 2}
-	si3 := abi.SectorID{Miner: miner, Number: 3}
+	si1 := storage.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
+	si2 := storage.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 2},
+		ProofType: sealProofType,
+	}
+	si3 := storage.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 3},
+		ProofType: sealProofType,
+	}
 
-	s1 := seal{id: si1}
-	s2 := seal{id: si2}
-	s3 := seal{id: si3}
+	s1 := seal{ref: si1}
+	s2 := seal{ref: si2}
+	s3 := seal{ref: si3}
 
 	wg.Add(3)
 	go s1.precommit(t, sb, si1, wg.Done) //nolint: staticcheck
@@ -451,7 +456,7 @@ func TestSealAndVerify3(t *testing.T) {
 	corrupt(t, sb, si1)
 	corrupt(t, sb, si2)
 
-	post(t, sb, []abi.SectorID{si1, si2}, s1, s2, s3)
+	post(t, sb, []abi.SectorID{si1.ID, si2.ID}, s1, s2, s3)
 }
 
 func BenchmarkWriteWithAlignment(b *testing.B) {
