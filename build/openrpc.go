@@ -6,16 +6,18 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 )
 
-func OpenRPCDiscoverJSON_Full() map[string]interface{} {
+type OpenRPCDocument map[string]interface{}
+
+func OpenRPCDiscoverJSON_Full() OpenRPCDocument {
 	data := rice.MustFindBox("openrpc").MustBytes("full.json")
-	m := map[string]interface{}{}
+	m := OpenRPCDocument{}
 	json.Unmarshal(data, &m)
 	return m
 }
 
-func OpenRPCDiscoverJSON_Miner() map[string]interface{} {
+func OpenRPCDiscoverJSON_Miner() OpenRPCDocument {
 	data := rice.MustFindBox("openrpc").MustBytes("miner.json")
-	m := map[string]interface{}{}
+	m := OpenRPCDocument{}
 	json.Unmarshal(data, &m)
 	return m
 }

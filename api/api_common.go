@@ -52,7 +52,7 @@ type Common interface {
 	NetBlockList(ctx context.Context) (NetBlockList, error)
 
 	// Discover returns an OpenRPC document describing an RPC API.
-	Discover(ctx context.Context) (map[string]interface{}, error)
+	Discover(ctx context.Context) (build.OpenRPCDocument, error)
 
 	// MethodGroup: Common
 

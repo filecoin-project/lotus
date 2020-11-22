@@ -515,7 +515,7 @@ func (c *CommonStruct) NetAgentVersion(ctx context.Context, p peer.ID) (string, 
 	return c.Internal.NetAgentVersion(ctx, p)
 }
 
-func (c *CommonStruct) Discover(ctx context.Context) (map[string]interface{}, error) {
+func (c *CommonStruct) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
 	return c.Internal.Discover(ctx)
 }
 

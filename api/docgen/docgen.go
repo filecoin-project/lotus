@@ -241,7 +241,14 @@ func init() {
 		sealtasks.TTPreCommit2: {},
 	})
 
-	addExample(map[string]interface{}{"yourbasic": "jsonobject"})
+	addExample(build.OpenRPCDocument{
+		"openrpc": "1.2.6",
+		"info": map[string]interface{}{
+			"title":   "Lotus RPC API",
+			"version": "1.2.1/generated=2020-11-22T08:22:42-06:00",
+		},
+		"methods": []interface{}{}},
+	)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

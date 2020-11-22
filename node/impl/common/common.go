@@ -175,7 +175,7 @@ func (a *CommonAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protoc
 	return a.Reporter.GetBandwidthByProtocol(), nil
 }
 
-func (a *CommonAPI) Discover(ctx context.Context) (map[string]interface{}, error) {
+func (a *CommonAPI) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
 	return build.OpenRPCDiscoverJSON_Full(), nil
 }
 
