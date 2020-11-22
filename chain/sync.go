@@ -62,10 +62,11 @@ const (
 	MaxHeightDrift = 5
 	// LocalIncoming is the _local_ pubsub (unrelated to libp2p pubsub) topic
 	// where the Syncer publishes candidate chain heads to be synced.
-	LocalIncoming          = "incoming"
-	concurrentSyncRequests = exchange.ShufflePeersPrefix
-	syncRequestBatchSize   = 8
-	syncRequestRetries     = 5
+	LocalIncoming = "incoming"
+
+	ConcurrentSyncRequests = exchange.ShufflePeersPrefix
+	SyncRequestBatchSize   = 8
+	SyncRequestRetries     = 5
 )
 
 var log = logging.Logger("chain")
@@ -1525,7 +1526,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 			continue
 		}
 
-		batchSize := concurrentSyncRequests * syncRequestBatchSize
+		batchSize := ConcurrentSyncRequests * SyncRequestBatchSize
 		if i < batchSize {
 			batchSize = i + 1
 		}
@@ -1583,12 +1584,12 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 
 	start := build.Clock.Now()
 
-	for j := 0; j < batchSize; j += syncRequestBatchSize {
+	for j := 0; j < batchSize; j += SyncRequestBatchSize {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
 
-			nreq := syncRequestBatchSize
+			nreq := SyncRequestBatchSize
 			if j+nreq > batchSize {
 				nreq = batchSize - j
 			}
@@ -1600,7 +1601,7 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 
 				var requestErr error
 				var requestResult []*exchange.CompactedMessages
-				for retry := 0; requestResult == nil && retry < syncRequestRetries; retry++ {
+				for retry := 0; requestResult == nil && retry < SyncRequestRetries; retry++ {
 					if retry > 0 {
 						log.Infof("fetching messages at %d (retry %d)", startOffset+nextI, retry)
 					} else {
