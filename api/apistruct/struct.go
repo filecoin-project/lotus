@@ -364,6 +364,8 @@ type StorageMinerStruct struct {
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
+
+		Discover func(ctx context.Context) (build.OpenRPCDocument, error) `perm:"read"`
 	}
 }
 
@@ -399,6 +401,8 @@ type WorkerStruct struct {
 
 		ProcessSession func(context.Context) (uuid.UUID, error) `perm:"admin"`
 		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
+
+		Discover func(ctx context.Context) (build.OpenRPCDocument, error) `perm:"read"`
 	}
 }
 
@@ -1515,6 +1519,10 @@ func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) err
 	return c.Internal.CreateBackup(ctx, fpath)
 }
 
+func (c *StorageMinerStruct) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+	return c.Internal.Discover(ctx)
+}
+
 // WorkerStruct
 
 func (w *WorkerStruct) Version(ctx context.Context) (build.Version, error) {
@@ -1603,6 +1611,10 @@ func (w *WorkerStruct) ProcessSession(ctx context.Context) (uuid.UUID, error) {
 
 func (w *WorkerStruct) Session(ctx context.Context) (uuid.UUID, error) {
 	return w.Internal.Session(ctx)
+}
+
+func (c *WorkerStruct) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+	return c.Internal.Discover(ctx)
 }
 
 func (g GatewayStruct) ChainGetBlockMessages(ctx context.Context, c cid.Cid) (*api.BlockMessages, error) {

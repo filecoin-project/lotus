@@ -51,10 +51,10 @@ type Common interface {
 	NetBlockRemove(ctx context.Context, acl NetBlockList) error
 	NetBlockList(ctx context.Context) (NetBlockList, error)
 
+	// MethodGroup: Common
+
 	// Discover returns an OpenRPC document describing an RPC API.
 	Discover(ctx context.Context) (build.OpenRPCDocument, error)
-
-	// MethodGroup: Common
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)

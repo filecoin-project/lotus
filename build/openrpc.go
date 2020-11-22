@@ -21,3 +21,10 @@ func OpenRPCDiscoverJSON_Miner() OpenRPCDocument {
 	json.Unmarshal(data, &m)
 	return m
 }
+
+func OpenRPCDiscoverJSON_Worker() OpenRPCDocument {
+	data := rice.MustFindBox("openrpc").MustBytes("worker.json")
+	m := OpenRPCDocument{}
+	json.Unmarshal(data, &m)
+	return m
+}

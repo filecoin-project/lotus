@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -541,6 +542,10 @@ func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.
 
 func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error {
 	return backup(sm.DS, fpath)
+}
+
+func (sm *StorageMinerAPI) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+	return build.OpenRPCDiscoverJSON_Miner(), nil
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
