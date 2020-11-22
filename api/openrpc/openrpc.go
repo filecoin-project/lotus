@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"go/ast"
 	"net"
+	"os"
 	"reflect"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 	meta_schema "github.com/open-rpc/meta-schema"
 )
 
-var Comments, GroupDocs = docgen.ParseApiASTInfo()
+var Comments, GroupDocs = docgen.ParseApiASTInfo(os.Args[1], os.Args[2])
 
 // schemaDictEntry represents a type association passed to the jsonschema reflector.
 type schemaDictEntry struct {
@@ -158,7 +159,7 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 		ft := m.Func.Type()
 		for j := 2; j < ft.NumIn(); j++ {
 			inp := ft.In(j)
-			args = append(args, docgen.ExampleValue(inp, nil))
+			args = append(args, docgen.ExampleValue(m.Name, inp, nil))
 		}
 		params := []meta_schema.ExampleOrReference{}
 		for _, p := range params {
@@ -170,7 +171,7 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 		}
 		pairingParams := meta_schema.ExamplePairingObjectParams(params)
 
-		outv := docgen.ExampleValue(ft.Out(0), nil)
+		outv := docgen.ExampleValue(m.Name, ft.Out(0), nil)
 		resultV := meta_schema.ExampleObjectValue(outv)
 		result := &meta_schema.ExampleObject{
 			Summary:     nil,

@@ -1,18 +1,17 @@
-package main
+package docgen
 
 import (
-	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"reflect"
-	"sort"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -23,8 +22,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -36,7 +33,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -127,17 +123,17 @@ func init() {
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)
 	addExample(&types.ExecutionTrace{
-		Msg:    exampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
-		MsgRct: exampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
+		Msg:    ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
+		MsgRct: ExampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
 	})
 	addExample(map[string]types.Actor{
-		"t01236": exampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
+		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})
 	addExample(map[string]api.MarketDeal{
-		"t026363": exampleValue("init", reflect.TypeOf(api.MarketDeal{}), nil).(api.MarketDeal),
+		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketDeal{}), nil).(api.MarketDeal),
 	})
 	addExample(map[string]api.MarketBalance{
-		"t026363": exampleValue("init", reflect.TypeOf(api.MarketBalance{}), nil).(api.MarketBalance),
+		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketBalance{}), nil).(api.MarketBalance),
 	})
 	addExample(map[string]*pubsub.TopicScoreSnapshot{
 		"/blocks": {
@@ -246,7 +242,7 @@ func init() {
 	})
 }
 
-func exampleValue(method string, t, parent reflect.Type) interface{} {
+func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	v, ok := ExampleValues[t]
 	if ok {
 		return v
@@ -255,10 +251,10 @@ func exampleValue(method string, t, parent reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(exampleValue(method, t.Elem(), t)))
+		reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
-		return exampleValue(method, t.Elem(), nil)
+		return ExampleValue(method, t.Elem(), nil)
 	case reflect.Struct:
 		es := exampleStruct(method, t, parent)
 		v := reflect.ValueOf(es).Elem().Interface()
@@ -267,7 +263,7 @@ func exampleValue(method string, t, parent reflect.Type) interface{} {
 	case reflect.Array:
 		out := reflect.New(t).Elem()
 		for i := 0; i < t.Len(); i++ {
-			out.Index(i).Set(reflect.ValueOf(exampleValue(method, t.Elem(), t)))
+			out.Index(i).Set(reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		}
 		return out.Interface()
 
@@ -292,7 +288,7 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 			continue
 		}
 		if strings.Title(f.Name) == f.Name {
-			ns.Elem().Field(i).Set(reflect.ValueOf(exampleValue(method, f.Type, t)))
+			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}
 
@@ -326,7 +322,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 
 const NoComment = "There are not yet any comments for this method."
 
-func ParseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
+func ParseApiASTInfo(apiFile, iface string) (map[string]string, map[string]string) { //nolint:golint
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, "./api", nil, parser.AllErrors|parser.ParseComments)
 	if err != nil {
@@ -392,127 +388,4 @@ func MethodGroupFromName(mn string) string {
 		return ""
 	}
 	return mn[:i+1]
-}
-
-func main() {
-	comments, groupComments := parseApiASTInfo(os.Args[1], os.Args[2])
-
-	groups := make(map[string]*MethodGroup)
-
-	var t reflect.Type
-	var permStruct, commonPermStruct reflect.Type
-
-	switch os.Args[2] {
-	case "FullNode":
-		t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
-		permStruct = reflect.TypeOf(apistruct.FullNodeStruct{}.Internal)
-		commonPermStruct = reflect.TypeOf(apistruct.CommonStruct{}.Internal)
-	case "StorageMiner":
-		t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
-		permStruct = reflect.TypeOf(apistruct.StorageMinerStruct{}.Internal)
-		commonPermStruct = reflect.TypeOf(apistruct.CommonStruct{}.Internal)
-	case "WorkerAPI":
-		t = reflect.TypeOf(new(struct{ api.WorkerAPI })).Elem()
-		permStruct = reflect.TypeOf(apistruct.WorkerStruct{}.Internal)
-		commonPermStruct = reflect.TypeOf(apistruct.WorkerStruct{}.Internal)
-	default:
-		panic("unknown type")
-	}
-
-	for i := 0; i < t.NumMethod(); i++ {
-		m := t.Method(i)
-
-		groupName := methodGroupFromName(m.Name)
-
-		g, ok := groups[groupName]
-		if !ok {
-			g = new(MethodGroup)
-			g.Header = groupComments[groupName]
-			g.GroupName = groupName
-			groups[groupName] = g
-		}
-
-		var args []interface{}
-		ft := m.Func.Type()
-		for j := 2; j < ft.NumIn(); j++ {
-			inp := ft.In(j)
-			args = append(args, exampleValue(m.Name, inp, nil))
-		}
-
-		v, err := json.MarshalIndent(args, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-
-		outv := exampleValue(m.Name, ft.Out(0), nil)
-
-		ov, err := json.MarshalIndent(outv, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-
-		g.Methods = append(g.Methods, &Method{
-			Name:            m.Name,
-			Comment:         comments[m.Name],
-			InputExample:    string(v),
-			ResponseExample: string(ov),
-		})
-	}
-
-	var groupslice []*MethodGroup
-	for _, g := range groups {
-		groupslice = append(groupslice, g)
-	}
-
-	sort.Slice(groupslice, func(i, j int) bool {
-		return groupslice[i].GroupName < groupslice[j].GroupName
-	})
-
-	fmt.Printf("# Groups\n")
-
-	for _, g := range groupslice {
-		fmt.Printf("* [%s](#%s)\n", g.GroupName, g.GroupName)
-		for _, method := range g.Methods {
-			fmt.Printf("  * [%s](#%s)\n", method.Name, method.Name)
-		}
-	}
-
-	for _, g := range groupslice {
-		g := g
-		fmt.Printf("## %s\n", g.GroupName)
-		fmt.Printf("%s\n\n", g.Header)
-
-		sort.Slice(g.Methods, func(i, j int) bool {
-			return g.Methods[i].Name < g.Methods[j].Name
-		})
-
-		for _, m := range g.Methods {
-			fmt.Printf("### %s\n", m.Name)
-			fmt.Printf("%s\n\n", m.Comment)
-
-			meth, ok := permStruct.FieldByName(m.Name)
-			if !ok {
-				meth, ok = commonPermStruct.FieldByName(m.Name)
-				if !ok {
-					panic("no perms for method: " + m.Name)
-				}
-			}
-
-			perms := meth.Tag.Get("perm")
-
-			fmt.Printf("Perms: %s\n\n", perms)
-
-			if strings.Count(m.InputExample, "\n") > 0 {
-				fmt.Printf("Inputs:\n```json\n%s\n```\n\n", m.InputExample)
-			} else {
-				fmt.Printf("Inputs: `%s`\n\n", m.InputExample)
-			}
-
-			if strings.Count(m.ResponseExample, "\n") > 0 {
-				fmt.Printf("Response:\n```json\n%s\n```\n\n", m.ResponseExample)
-			} else {
-				fmt.Printf("Response: `%s`\n\n", m.ResponseExample)
-			}
-		}
-	}
 }

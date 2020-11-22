@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -12,14 +13,32 @@ import (
 	"github.com/filecoin-project/lotus/api/docgen"
 )
 
-func main() {
 
-	comments, groupComments := docgen.ParseApiASTInfo()
+func main() {
+	comments, groupComments := docgen.ParseApiASTInfo(os.Args[1], os.Args[2])
 
 	groups := make(map[string]*docgen.MethodGroup)
 
-	var api struct{ api.FullNode }
-	t := reflect.TypeOf(api)
+	var t reflect.Type
+	var permStruct, commonPermStruct reflect.Type
+
+	switch os.Args[2] {
+	case "FullNode":
+		t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
+		permStruct = reflect.TypeOf(apistruct.FullNodeStruct{}.Internal)
+		commonPermStruct = reflect.TypeOf(apistruct.CommonStruct{}.Internal)
+	case "StorageMiner":
+		t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
+		permStruct = reflect.TypeOf(apistruct.StorageMinerStruct{}.Internal)
+		commonPermStruct = reflect.TypeOf(apistruct.CommonStruct{}.Internal)
+	case "WorkerAPI":
+		t = reflect.TypeOf(new(struct{ api.WorkerAPI })).Elem()
+		permStruct = reflect.TypeOf(apistruct.WorkerStruct{}.Internal)
+		commonPermStruct = reflect.TypeOf(apistruct.WorkerStruct{}.Internal)
+	default:
+		panic("unknown type")
+	}
+
 	for i := 0; i < t.NumMethod(); i++ {
 		m := t.Method(i)
 
@@ -37,7 +56,7 @@ func main() {
 		ft := m.Func.Type()
 		for j := 2; j < ft.NumIn(); j++ {
 			inp := ft.In(j)
-			args = append(args, docgen.ExampleValue(inp, nil))
+			args = append(args, docgen.ExampleValue(m.Name, inp, nil))
 		}
 
 		v, err := json.MarshalIndent(args, "", "  ")
@@ -45,7 +64,7 @@ func main() {
 			panic(err)
 		}
 
-		outv := docgen.ExampleValue(ft.Out(0), nil)
+		outv := docgen.ExampleValue(m.Name, ft.Out(0), nil)
 
 		ov, err := json.MarshalIndent(outv, "", "  ")
 		if err != nil {
@@ -77,9 +96,6 @@ func main() {
 			fmt.Printf("  * [%s](#%s)\n", method.Name, method.Name)
 		}
 	}
-
-	permStruct := reflect.TypeOf(apistruct.FullNodeStruct{}.Internal)
-	commonPermStruct := reflect.TypeOf(apistruct.CommonStruct{}.Internal)
 
 	for _, g := range groupslice {
 		g := g
