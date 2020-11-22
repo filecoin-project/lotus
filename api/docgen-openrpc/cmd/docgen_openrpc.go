@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/api/openrpc"
+	"github.com/filecoin-project/lotus/api/docgen-openrpc"
 )
 
 /*
@@ -24,7 +24,7 @@ Use:
 */
 
 func main() {
-	doc := openrpc.NewLotusOpenRPCDocument()
+	doc := docgen_openrpc.NewLotusOpenRPCDocument()
 
 	switch os.Args[2] {
 	case "FullNode":
