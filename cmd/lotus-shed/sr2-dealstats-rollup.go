@@ -341,9 +341,9 @@ var rollupDealStatsCmd = &cli.Command{
 
 				defer outListFd.Close() //nolint:errcheck
 
+				ridiculousLintMandatedRebind := dl
 				sort.Slice(dl, func(i, j int) bool {
-					dl := dl
-					return dl[j].PaddedSize < dl[i].PaddedSize
+					return ridiculousLintMandatedRebind[j].PaddedSize < ridiculousLintMandatedRebind[i].PaddedSize
 				})
 
 				if err := json.NewEncoder(outListFd).Encode(
