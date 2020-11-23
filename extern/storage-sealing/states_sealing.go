@@ -83,10 +83,10 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 
 	if pci != nil {
 		ticketEpoch = pci.Info.SealRandEpoch
-	}
 
-	if checkTicketExpired(sector, ticketEpoch) {
-		return nil, 0, xerrors.Errorf("ticket expired for precommitted sector")
+		if checkTicketExpired(sector, ticketEpoch) {
+			return nil, 0, xerrors.Errorf("ticket expired for precommitted sector")
+		}
 	}
 
 	rand, err := m.api.ChainGetRandomnessFromTickets(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
@@ -100,9 +100,9 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) error {
 	ticketValue, ticketEpoch, err := m.getTicket(ctx, sector)
 	if err != nil {
-		allocated, err := m.api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, nil)
-		if err != nil {
-			log.Errorf("error checking if sector is allocated: %+v", err)
+		allocated, aerr := m.api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+		if aerr != nil {
+			log.Errorf("error checking if sector is allocated: %+v", aerr)
 		}
 
 		if allocated {
