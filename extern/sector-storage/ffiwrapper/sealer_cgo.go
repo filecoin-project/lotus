@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -176,7 +176,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 }
 
 func (sb *Sealer) pieceCid(spt abi.RegisteredSealProof, in []byte) (cid.Cid, error) {
-	prf, werr, err := ffiwrapper.ToReadableFile(bytes.NewReader(in), int64(len(in)))
+	prf, werr, err := commpffi.ToReadableFile(bytes.NewReader(in), int64(len(in)))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting tee reader pipe: %w", err)
 	}
