@@ -793,7 +793,7 @@ func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.A
 	if err != nil {
 		return miner.SectorPreCommitOnChainInfo{}, err
 	} else if pci == nil {
-		return nil, xerrors.Errorf("precommit info is not exists")
+		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("precommit info is not exists")
 	}
 
 	return *pci, err
