@@ -495,7 +495,11 @@ workflows:
           packages: "./conformance"
           vectors-branch: master
       - build-lotus-soup
-      - trigger-testplans
+      - trigger-testplans:
+          filters:
+            branches:
+              only:
+                - master
       - build-debug
       - build-all:
           requires:
