@@ -142,7 +142,7 @@ var rollupDealStatsCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				defer resp.Body.Close()
+				defer resp.Body.Close() //nolint:errcheck
 
 				if resp.StatusCode != http.StatusOK {
 					return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
@@ -164,7 +164,7 @@ var rollupDealStatsCmd = &cli.Command{
 			if _, err := projListFh.Seek(0, 0); err != nil {
 				return err
 			}
-			defer projListFh.Close()
+			defer projListFh.Close() //nolint:errcheck
 
 			projList, err := gabs.ParseJSONBuffer(projListFh)
 			if err != nil {
@@ -192,19 +192,19 @@ var rollupDealStatsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer outClientStatsFd.Close()
+		defer outClientStatsFd.Close() //nolint:errcheck
 
 		outBasicStatsFd, err := os.Create(outDirName + "/basic_stats.json")
 		if err != nil {
 			return err
 		}
-		defer outBasicStatsFd.Close()
+		defer outBasicStatsFd.Close() //nolint:errcheck
 
 		outUnfilteredStatsFd, err := os.Create(outDirName + "/unfiltered_basic_stats.json")
 		if err != nil {
 			return err
 		}
-		defer outUnfilteredStatsFd.Close()
+		defer outUnfilteredStatsFd.Close() //nolint:errcheck
 
 		api, apiCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -339,9 +339,10 @@ var rollupDealStatsCmd = &cli.Command{
 					return err
 				}
 
-				defer outListFd.Close()
+				defer outListFd.Close() //nolint:errcheck
 
 				sort.Slice(dl, func(i, j int) bool {
+					dl := dl
 					return dl[j].PaddedSize < dl[i].PaddedSize
 				})
 
