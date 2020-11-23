@@ -300,6 +300,7 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 	dt.OnReady(marketevents.ReadyLogger("provider data transfer"))
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			dt.SubscribeToEvents(marketevents.DataTransferLogger)
 			return dt.Start(ctx)
 		},
 		OnStop: func(ctx context.Context) error {
