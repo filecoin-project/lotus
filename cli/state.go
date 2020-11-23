@@ -72,6 +72,7 @@ var stateCmd = &cli.Command{
 		stateMinerInfo,
 		stateMarketCmd,
 		stateExecTraceCmd,
+		stateNtwkVersionCmd,
 	},
 }
 
@@ -1758,6 +1759,9 @@ var stateSectorCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		if si == nil {
+			return xerrors.Errorf("sector %d for miner %s not found", sid, maddr)
+		}
 
 		fmt.Println("SectorNumber: ", si.SectorNumber)
 		fmt.Println("SealProof: ", si.SealProof)
@@ -1827,6 +1831,38 @@ var stateMarketBalanceCmd = &cli.Command{
 
 		fmt.Printf("Escrow: %s\n", types.FIL(balance.Escrow))
 		fmt.Printf("Locked: %s\n", types.FIL(balance.Locked))
+
+		return nil
+	},
+}
+
+var stateNtwkVersionCmd = &cli.Command{
+	Name:  "network-version",
+	Usage: "Returns the network version",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Present() {
+			return ShowHelp(cctx, fmt.Errorf("doesn't expect any arguments"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		nv, err := api.StateNetworkVersion(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Network Version: %d\n", nv)
 
 		return nil
 	},

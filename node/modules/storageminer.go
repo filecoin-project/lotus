@@ -423,15 +423,8 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 	if err != nil {
 		return nil, err
 	}
-	storedAsk, err := storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
+	return storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
 		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
-	if err != nil {
-		return nil, err
-	}
-	if err != nil {
-		return storedAsk, err
-	}
-	return storedAsk, nil
 }
 
 func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
