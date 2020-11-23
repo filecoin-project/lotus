@@ -102,10 +102,6 @@ var sendCmd = &cli.Command{
 			fromAddr = addr
 		}
 
-		if fromAddr == toAddr {
-			return fmt.Errorf("failed to fromAdd (%s) == toAdder (%s)", fromAddr, toAddr)
-		}
-
 		gp, err := types.BigFromString(cctx.String("gas-premium"))
 		if err != nil {
 			return err
@@ -116,6 +112,9 @@ var sendCmd = &cli.Command{
 		}
 
 		method := abi.MethodNum(cctx.Uint64("method"))
+		if method == 0 && fromAddr == toAddr {
+			return fmt.Errorf("failed to send fromAdd (%s) == toAdder (%s)", fromAddr, toAddr)
+		}
 
 		var params []byte
 		if cctx.IsSet("params-json") {
