@@ -102,6 +102,10 @@ var sendCmd = &cli.Command{
 			fromAddr = addr
 		}
 
+		if fromAddr == toAddr {
+			return fmt.Errorf("failed to fromAdd (%s) == toAdder (%s)", fromAddr, toAddr)
+		}
+
 		gp, err := types.BigFromString(cctx.String("gas-premium"))
 		if err != nil {
 			return err
