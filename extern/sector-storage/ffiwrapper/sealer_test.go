@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
+
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
@@ -465,7 +467,7 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		rf, w, _ := ToReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, int(bt/2))), int64(bt))
+		rf, w, _ := commpffi.ToReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, int(bt/2))), int64(bt))
 		tf, _ := ioutil.TempFile("/tmp/", "scrb-")
 		b.StartTimer()
 
@@ -524,7 +526,7 @@ func TestGenerateUnsealedCID(t *testing.T) {
 	ups := int(abi.PaddedPieceSize(2048).Unpadded())
 
 	commP := func(b []byte) cid.Cid {
-		pf, werr, err := ToReadableFile(bytes.NewReader(b), int64(len(b)))
+		pf, werr, err := commpffi.ToReadableFile(bytes.NewReader(b), int64(len(b)))
 		require.NoError(t, err)
 
 		c, err := ffi.GeneratePieceCIDFromFile(pt, pf, abi.UnpaddedPieceSize(len(b)))
