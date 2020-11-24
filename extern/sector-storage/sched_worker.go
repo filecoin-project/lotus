@@ -368,7 +368,7 @@ assignLoop:
 			err := sw.startProcessingTask(sw.taskDone, todo)
 
 			if err != nil {
-				log.Error("startProcessingTask error: %+v", err)
+				log.Errorf("startProcessingTask error: %+v", err)
 				go todo.respond(xerrors.Errorf("startProcessingTask error: %w", err))
 			}
 

@@ -129,7 +129,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	if err := e.tsc.add(cur[0].Val); err != nil {
-		log.Warn("tsc.add: adding current tipset failed: %w", err)
+		log.Warnf("tsc.add: adding current tipset failed: %w", err)
 	}
 
 	e.readyOnce.Do(func() {

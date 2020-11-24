@@ -357,7 +357,7 @@ func (m *Sealing) newDealSector(ctx context.Context) (abi.SectorNumber, abi.Sect
 
 			m.unsealedInfoMap.lk.Unlock()
 			if err := m.StartPacking(best); err != nil {
-				log.Error("newDealSector StartPacking error: %+v", err)
+				log.Errorf("newDealSector StartPacking error: %+v", err)
 				continue // let's pretend this is fine
 			}
 			m.unsealedInfoMap.lk.Lock()
