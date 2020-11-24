@@ -2,10 +2,12 @@ package store
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
+	dstore "github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,11 +18,14 @@ import (
 
 const CompactionThreshold = 5 * build.Finality
 
+var baseEpochKey = dstore.NewKey("baseEpoch")
+
 type SplitStore struct {
 	baseEpoch abi.ChainEpoch
 	curTs     *types.TipSet
 
 	cs *ChainStore
+	ds dstore.Datastore
 
 	hot  bstore2.Blockstore
 	cold bstore2.Blockstore
@@ -167,11 +172,35 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 }
 
 // State tracking
-func (s *SplitStore) Start(cs *ChainStore) {
-	// TODO load base epoch from metadata ds -- if none, then use current epoch
+func (s *SplitStore) Start(cs *ChainStore) error {
 	s.cs = cs
 	s.curTs = cs.GetHeaviestTipSet()
+
+	// load base epoch from metadata ds
+	// if none, then use current epoch because it's a fresh start
+	bs, err := s.ds.Get(baseEpochKey)
+	switch err {
+	case nil:
+		epoch, n := binary.Uvarint(bs)
+		if n < 0 {
+			panic("bogus base epoch")
+		}
+		s.baseEpoch = abi.ChainEpoch(epoch)
+
+	case dstore.ErrNotFound:
+		err = s.setBaseEpoch(s.curTs.Height())
+		if err != nil {
+			return err
+		}
+
+	default:
+		return err
+	}
+
+	// watch the chain
 	cs.SubscribeHeadChanges(s.HeadChange)
+
+	return nil
 }
 
 func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
@@ -288,6 +317,18 @@ func (s *SplitStore) compact() {
 		}
 	}
 
-	// TODO persist base epoch to metadata ds
-	s.baseEpoch = coldEpoch
+	err = s.setBaseEpoch(coldEpoch)
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+}
+
+func (s *SplitStore) setBaseEpoch(epoch abi.ChainEpoch) error {
+	s.baseEpoch = epoch
+	// write to datastore
+	bs := make([]byte, 16)
+	n := binary.PutUvarint(bs, uint64(epoch))
+	bs = bs[:n]
+	return s.ds.Put(baseEpochKey, bs)
 }
