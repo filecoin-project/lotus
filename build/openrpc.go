@@ -15,9 +15,12 @@ func mustReadGzippedOpenRPCDocument(data []byte) OpenRPCDocument {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer zr.Close()
 	m := OpenRPCDocument{}
 	err = json.NewDecoder(zr).Decode(&m)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = zr.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
