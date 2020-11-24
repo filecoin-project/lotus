@@ -202,6 +202,34 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 	return cs
 }
 
+func (cs *ChainStore) TipsetReached(ctx context.Context, ts *types.TipSet) error {
+	bss := []bstore.Blockstore{
+		cs.chainBlockstore,
+		cs.stateBlockstore,
+		cs.chainLocalBlockstore,
+	}
+
+	// crude de-duplicator
+	for i := 0; i < len(bss); i++ {
+		for j := 0; j < i; j++ {
+			if bss[i] == bss[j] {
+				copy(bss[i:], bss[i+1:])
+				bss = bss[:len(bss)-1]
+				i--
+				break
+			}
+		}
+	}
+
+	for i := range bss {
+		if err := bss[i].Flush(ctx); err != nil {
+			return err
+		}
+	}
+
+	return cs.metadataDs.Sync(ctx, dstore.NewKey(""))
+}
+
 func (cs *ChainStore) Close() error {
 	cs.cancelFn()
 	cs.wg.Wait()
@@ -711,6 +739,10 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 		}
 	} else {
 		log.Warnf("no previous heaviest tipset found, using %s", ts.Cids())
+	}
+
+	if err := cs.TipsetReached(ctx, ts); err != nil {
+		return err
 	}
 
 	return nil
