@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 	"github.com/filecoin-project/lotus/genesis"
 )
 
