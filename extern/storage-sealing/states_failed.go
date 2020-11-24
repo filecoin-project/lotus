@@ -137,12 +137,12 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 
 	if pci, is := m.checkPreCommitted(ctx, sector); is && pci != nil {
 		if sector.PreCommitMessage == nil {
-			log.Warn("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorNumber)
+			log.Warnf("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorNumber)
 			return ctx.Send(SectorPreCommitLanded{TipSet: tok})
 		}
 
 		if pci.Info.SealedCID != *sector.CommR {
-			log.Warn("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorNumber, pci.Info.SealedCID, sector.CommR)
+			log.Warnf("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorNumber, pci.Info.SealedCID, sector.CommR)
 			return nil // TODO: remove when the actor allows re-precommit
 		}
 
@@ -387,7 +387,7 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 
 		if p.DealInfo.PublishCid == nil {
 			// TODO: check if we are in an early enough state try to remove this piece
-			log.Error("can't fix sector deals: piece %d (of %d) of sector %d has nil DealInfo.PublishCid (refers to deal %d)", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID)
+			log.Errorf("can't fix sector deals: piece %d (of %d) of sector %d has nil DealInfo.PublishCid (refers to deal %d)", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID)
 			// Not much to do here (and this can only happen for old spacerace sectors)
 			return ctx.Send(SectorRemove{})
 		}

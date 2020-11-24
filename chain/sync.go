@@ -1331,7 +1331,7 @@ loop:
 			continue
 		}
 		if !xerrors.Is(err, bstore.ErrNotFound) {
-			log.Warn("loading local tipset: %s", err)
+			log.Warnf("loading local tipset: %s", err)
 		}
 
 		// NB: GetBlocks validates that the blocks are in-fact the ones we

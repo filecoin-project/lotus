@@ -437,7 +437,7 @@ func (sh *scheduler) trySched() {
 
 				r, err := task.sel.Cmp(rpcCtx, task.taskType, wi, wj)
 				if err != nil {
-					log.Error("selecting best worker: %s", err)
+					log.Errorf("selecting best worker: %s", err)
 				}
 				return r
 			})

@@ -366,7 +366,7 @@ func importKey(ctx context.Context, api api.FullNode, f string) error {
 		return err
 	}
 
-	log.Info("successfully imported key for %s", addr)
+	log.Infof("successfully imported key for %s", addr)
 	return nil
 }
 
