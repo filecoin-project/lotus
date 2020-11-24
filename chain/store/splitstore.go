@@ -222,7 +222,7 @@ func (s *SplitStore) compact() {
 	// Phase 1: mark all reachable CIDs with the current epoch
 	curTs := s.curTs
 	epoch := curTs.Height()
-	err := s.cs.WalkSnapshot(context.Background(), curTs, epoch-s.baseEpoch, false, false,
+	err := s.cs.WalkSnapshot(context.Background(), curTs, epoch-s.baseEpoch+1, false, false,
 		func(cid cid.Cid) error {
 			return s.sweep.Put(cid, epoch)
 		})
