@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"io"
 
 	rice "github.com/GeertJohan/go.rice"
 )
@@ -12,22 +11,13 @@ import (
 type OpenRPCDocument map[string]interface{}
 
 func mustReadGzippedOpenRPCDocument(data []byte) OpenRPCDocument {
-	buf := bytes.NewBuffer(data)
-	zr, err := gzip.NewReader(buf)
+	zr, err := gzip.NewReader(bytes.NewBuffer(data))
 	if err != nil {
 		log.Fatal(err)
 	}
-	uncompressed := bytes.NewBuffer([]byte{})
-	_, err = io.Copy(uncompressed, zr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = zr.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
+	defer zr.Close()
 	m := OpenRPCDocument{}
-	err = json.Unmarshal(uncompressed.Bytes(), &m)
+	err = json.NewDecoder(zr).Decode(&m)
 	if err != nil {
 		log.Fatal(err)
 	}
