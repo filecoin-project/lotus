@@ -105,10 +105,11 @@ type Metrics struct {
 }
 
 type Client struct {
-	UseIpfs             bool
-	IpfsOnlineMode      bool
-	IpfsMAddr           string
-	IpfsUseForRetrieval bool
+	UseIpfs               bool
+	IpfsOnlineMode        bool
+	IpfsMAddr             string
+	IpfsUseForRetrieval   bool
+	SimultaneousTransfers uint64
 }
 
 type Wallet struct {
@@ -149,6 +150,7 @@ func defCommon() Common {
 }
 
 var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+var DefaultSimultaneousTransfers = uint64(20)
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
@@ -156,6 +158,9 @@ func DefaultFullNode() *FullNode {
 		Common: defCommon(),
 		Fees: FeeConfig{
 			DefaultMaxFee: DefaultDefaultMaxFee,
+		},
+		Client: Client{
+			SimultaneousTransfers: DefaultSimultaneousTransfers,
 		},
 	}
 }
