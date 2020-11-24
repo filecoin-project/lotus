@@ -311,9 +311,9 @@ docsgen-documentation-md:
 	go run ./api/docgen/cmd "api/api_worker.go" "WorkerAPI" > documentation/en/api-methods-worker.md
 
 docsgen-openrpc-json:
-	go run ./api/docgen-openrpc/cmd "api/api_full.go" "FullNode" > build/openrpc/full.json
-	go run ./api/docgen-openrpc/cmd "api/api_storage.go" "StorageMiner" > build/openrpc/miner.json
-	go run ./api/docgen-openrpc/cmd "api/api_worker.go" "WorkerAPI" > build/openrpc/worker.json
+	go run ./api/docgen-openrpc/cmd "api/api_full.go" "FullNode" -gzip > build/openrpc/full.json.gz
+	go run ./api/docgen-openrpc/cmd "api/api_storage.go" "StorageMiner" -gzip > build/openrpc/miner.json.gz
+	go run ./api/docgen-openrpc/cmd "api/api_worker.go" "WorkerAPI" -gzip > build/openrpc/worker.json.gz
 
 print-%:
 	@echo $*=$($*)

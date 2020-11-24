@@ -1,8 +1,9 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
-	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -19,7 +20,11 @@ If not (no, or any other args), the document will describe the Full API.
 
 Use:
 
-	go run ./api/openrpc/cmd ["api/api_full.go"|"api/api_storage.go"|"api/api_worker.go"] ["FullNode"|"StorageMiner"|"WorkerAPI"]
+		go run ./api/openrpc/cmd ["api/api_full.go"|"api/api_storage.go"|"api/api_worker.go"] ["FullNode"|"StorageMiner"|"WorkerAPI"]
+
+	With gzip compression: a '-gzip' flag is made available as an optional third argument. Note that position matters.
+
+		go run ./api/openrpc/cmd ["api/api_full.go"|"api/api_storage.go"|"api/api_worker.go"] ["FullNode"|"StorageMiner"|"WorkerAPI"] -gzip
 
 */
 
@@ -40,10 +45,33 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	jsonOut, err := json.MarshalIndent(out, "", "    ")
+	var jsonOut []byte
+	var writer io.WriteCloser
+
+	// Use os.Args to handle a somewhat hacky flag for the gzip option.
+	// Could use flags package to handle this more cleanly, but that requires changes elsewhere
+	// the scope of which just isn't warranted by this one use case which will usually be run
+	// programmatically anyways.
+	if len(os.Args) > 3 && os.Args[3] == "-gzip" {
+		jsonOut, err = json.Marshal(out)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		writer = gzip.NewWriter(os.Stdout)
+	} else {
+		jsonOut, err = json.MarshalIndent(out, "", "    ")
+		if err != nil {
+			log.Fatalln(err)
+		}
+		writer = os.Stdout
+	}
+
+	_, err = writer.Write(jsonOut)
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	fmt.Println(string(jsonOut))
+	err = writer.Close()
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
