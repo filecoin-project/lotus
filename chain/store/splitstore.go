@@ -9,6 +9,7 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	bstore2 "github.com/filecoin-project/lotus/lib/blockstore"
 )
@@ -16,6 +17,8 @@ import (
 type SplitStore struct {
 	baseEpoch abi.ChainEpoch
 	curTs     *types.TipSet
+
+	cs *ChainStore
 
 	hot  bstore2.Blockstore
 	cold bstore2.Blockstore
@@ -86,14 +89,13 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 }
 
 func (s *SplitStore) Put(blk blocks.Block) error {
-	err := s.hot.Put(blk)
+	epoch := s.curTs.Height()
+	err := s.snoop.Put(blk.Cid(), epoch)
 	if err != nil {
 		return err
 	}
 
-	epoch := s.curTs.Height()
-
-	return s.snoop.Put(blk.Cid(), epoch)
+	return s.hot.Put(blk)
 }
 
 func (s *SplitStore) PutMany(blks []blocks.Block) error {
@@ -158,4 +160,108 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	default:
 		return err
 	}
+}
+
+// Compaction/GC Algorithm
+func (s *SplitStore) compact() {
+	// Phase 1: mark all reachable CIDs with the current epoch
+	curTs := s.curTs
+	epoch := curTs.Height()
+	err := s.cs.WalkSnapshot(context.Background(), curTs, epoch-s.baseEpoch, false, false,
+		func(cid cid.Cid) error {
+			return s.sweep.Put(cid, epoch)
+		})
+
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+
+	// Phase 2: sweep cold objects, moving reachable ones to the coldstore and deleting the others
+	coldEpoch := s.baseEpoch + build.Finality
+
+	ch, err := s.snoop.Keys()
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+
+	for cid := range ch {
+		wrEpoch, err := s.snoop.Get(cid)
+		if err != nil {
+			// TODO do something better here
+			panic(err)
+		}
+
+		// is the object stil hot?
+		if wrEpoch >= coldEpoch {
+			// yes, just clear the mark and continue
+			err := s.sweep.Delete(cid)
+			if err != nil {
+				// TODO do something better here
+				panic(err)
+			}
+			continue
+		}
+
+		// the object is cold -- check whether it is reachable
+		mark, err := s.sweep.Has(cid)
+		if err != nil {
+			// TODO do something better here
+			panic(err)
+		}
+
+		if mark {
+			// the object is reachable, move it to the cold store and delete the mark
+			blk, err := s.hot.Get(cid)
+			if err != nil {
+				// TODO do something better here
+				panic(err)
+			}
+
+			err = s.cold.Put(blk)
+			if err != nil {
+				// TODO do something better here
+				panic(err)
+			}
+
+			err = s.sweep.Delete(cid)
+			if err != nil {
+				// TODO do something better here
+				panic(err)
+			}
+		}
+
+		// delete the object from the hotstore
+		err = s.hot.DeleteBlock(cid)
+		if err != nil {
+			// TODO do something better here
+			panic(err)
+		}
+
+		// remove the snoop tracking
+		err = s.snoop.Delete(cid)
+		if err != nil {
+			// TODO do something better here
+			panic(err)
+		}
+	}
+
+	// clear all remaining marks for cold objects that may have been reachable
+	ch, err = s.sweep.Keys()
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+
+	for cid := range ch {
+		err = s.sweep.Delete(cid)
+		if err != nil {
+			// TODO do something better here
+			panic(err)
+		}
+	}
+
+	// TODO persist base epoch to metadata ds
+	s.baseEpoch = coldEpoch
 }
