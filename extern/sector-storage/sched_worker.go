@@ -486,6 +486,6 @@ func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {
 		}
 		sh.openWindows = newWindows
 
-		log.Debugf("worker %d dropped", wid)
+		log.Debugf("worker %s dropped", wid)
 	}
 }

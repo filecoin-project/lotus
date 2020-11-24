@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
+	"github.com/filecoin-project/go-commp-utils/zerocomm"
 )
 
 const minRetryTime = 1 * time.Minute

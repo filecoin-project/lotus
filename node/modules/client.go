@@ -137,6 +137,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 	dt.OnReady(marketevents.ReadyLogger("client data transfer"))
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			dt.SubscribeToEvents(marketevents.DataTransferLogger)
 			return dt.Start(ctx)
 		},
 		OnStop: func(ctx context.Context) error {
