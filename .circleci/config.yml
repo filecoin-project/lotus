@@ -264,22 +264,44 @@ jobs:
           path: /tmp/test-artifacts/conformance-coverage.html
   build-lotus-soup:
     description: |
-      Compile `lotus-soup` Testground test plan using the current version of Lotus.
+      Compile `lotus-soup` Testground test plan
     parameters:
       <<: *test-params
     executor: << parameters.executor >>
     steps:
       - install-deps
       - prepare
-      - run: cd extern/oni && git submodule sync
-      - run: cd extern/oni && git submodule update --init
       - run: cd extern/filecoin-ffi && make
       - run:
-          name: "replace lotus, filecoin-ffi, blst and fil-blst deps"
-          command: cd extern/oni/lotus-soup && go mod edit -replace github.com/filecoin-project/lotus=../../../ && go mod edit -replace github.com/filecoin-project/filecoin-ffi=../../filecoin-ffi && go mod edit -replace github.com/supranational/blst=../../blst
-      - run:
           name: "build lotus-soup testplan"
-          command: pushd extern/oni/lotus-soup && go build -tags=testground .
+          command: pushd testplans/lotus-soup && go build -tags=testground .
+  trigger-testplans:
+    description: |
+      Trigger `lotus-soup` test cases on TaaS
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          name: "download testground"
+          command: wget https://gist.github.com/nonsense/5fbf3167cac79945f658771aed32fc44/raw/2e17eb0debf7ec6bdf027c1bdafc2c92dd97273b/testground-d3e9603 -O ~/testground-cli && chmod +x ~/testground-cli
+      - run:
+          name: "prepare .env.toml"
+          command: pushd testplans/lotus-soup && mkdir -p $HOME/testground && cp env-ci.toml $HOME/testground/.env.toml && echo 'endpoint="https://ci.testground.ipfs.team"' >> $HOME/testground/.env.toml && echo 'user="circleci"' >> $HOME/testground/.env.toml
+      - run:
+          name: "prepare testground home dir"
+          command: mkdir -p $HOME/testground/plans && mv testplans/lotus-soup testplans/graphsync $HOME/testground/plans/
+      - run:
+          name: "trigger deals baseline testplan on taas"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
+      - run:
+          name: "trigger payment channel stress testplan on taas"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
+      - run:
+          name: "trigger graphsync testplan on taas"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/graphsync/_compositions/stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
 
 
   build-macos:
@@ -473,6 +495,11 @@ workflows:
           packages: "./conformance"
           vectors-branch: master
       - build-lotus-soup
+      - trigger-testplans:
+          filters:
+            branches:
+              only:
+                - master
       - build-debug
       - build-all:
           requires:

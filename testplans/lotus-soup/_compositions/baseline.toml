@@ -1,0 +1,55 @@
+[metadata]
+  name = "lotus-soup"
+  author = ""
+
+[global]
+  plan = "lotus-soup"
+  case = "deals-e2e"
+  total_instances = 6
+  builder = "exec:go"
+  runner = "local:exec"
+
+[global.build]
+  selectors = ["testground"]
+
+[global.run_config]
+  exposed_ports = { pprof = "6060", node_rpc = "1234", miner_rpc = "2345" }
+
+[global.build_config]
+  enable_go_build_cache = true
+
+[global.run.test_params]
+  clients = "3"
+  miners = "2"
+  genesis_timestamp_offset = "0"
+  balance = "20000000.5" # These balances will work for maximum 100 nodes, as TotalFilecoin is 2B
+  sectors = "10"
+  random_beacon_type = "mock"
+  mining_mode = "natural"
+
+[[groups]]
+  id = "bootstrapper"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "bootstrapper"
+
+[[groups]]
+  id = "miners"
+  [groups.instances]
+    count = 2
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "miner"
+
+[[groups]]
+  id = "clients"
+  [groups.instances]
+    count = 3
+    percentage = 0.0
+  [groups.run]
+    [groups.run.test_params]
+      role = "client"
