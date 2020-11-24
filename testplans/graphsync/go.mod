@@ -3,6 +3,7 @@ module github.com/filecoin-project/lotus/testplans/graphsync
 go 1.14
 
 require (
+	github.com/dustin/go-humanize v1.0.0
 	github.com/hannahhoward/all-selector v0.1.0
 	github.com/ipfs/go-blockservice v0.1.3
 	github.com/ipfs/go-cid v0.0.6
@@ -23,7 +24,7 @@ require (
 	github.com/libp2p/go-libp2p-secio v0.2.2
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/testground/sdk-go v0.2.6-0.20201016180515-1e40e1b0ec3a
+	github.com/testground/sdk-go v0.2.7-0.20201112151952-8ee00c80c3ec
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	google.golang.org/protobuf v1.25.0 // indirect

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	goruntime "runtime"
+	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	allselector "github.com/hannahhoward/all-selector"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -211,7 +213,10 @@ func runRequestor(ctx context.Context, runenv *runtime.RunEnv, initCtx *run.Init
 
 				runenv.RecordMessage("\t<<< request complete with no errors")
 				runenv.RecordMessage("***** ROUND %d observed duration (lat=%s,bw=%d): %s", round, np.latency, np.bandwidth, dur)
-				runenv.R().RecordPoint(fmt.Sprintf("duration,lat=%s,bw=%d,concurrency=%d,size=%d", np.latency, np.bandwidth, concurrency, size), float64(dur))
+
+				measurement := fmt.Sprintf("duration.sec,lat=%s,bw=%s,concurrency=%d,size=%s", np.latency, humanize.IBytes(np.bandwidth), concurrency, humanize.Bytes(size))
+				measurement = strings.Replace(measurement, " ", "", -1)
+				runenv.R().RecordPoint(measurement, float64(dur)/float64(time.Second))
 
 				// verify that we have the CID now.
 				if node, err := dagsrv.Get(grpctx, c); err != nil {
