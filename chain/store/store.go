@@ -363,7 +363,7 @@ func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 
 // MaybeTakeHeavierTipSet evaluates the incoming tipset and locks it in our
 // internal state as our new head, if and only if it is heavier than the current
-// head.
+// head and does not exceed the maximum fork length.
 func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipSet) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
@@ -380,11 +380,81 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
+
+		exceeds, err := cs.exceedsForkLength(cs.heaviest, ts)
+		if err != nil {
+			return err
+		}
+		if exceeds {
+			return nil
+		}
+
 		return cs.takeHeaviestTipSet(ctx, ts)
 	} else if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
 		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
 	}
 	return nil
+}
+
+// Check if the two tipsets have a fork length above `ForkLengthThreshold`.
+// `synced` is the head of the chain we are currently synced to and `external`
+// is the incoming tipset potentially belonging to a forked chain. It assumes
+// the external chain has already been validated and available in the ChainStore.
+// The "fast forward" case is covered in this logic as a valid fork of length 0.
+//
+// FIXME: We may want to replace some of the logic in `syncFork()` with this.
+//  `syncFork()` counts the length on both sides of the fork at the moment (we
+//  need to settle on that) but here we just enforce it on the `synced` side.
+func (cs *ChainStore) exceedsForkLength(synced, external *types.TipSet) (bool, error) {
+	if synced == nil || external == nil {
+		// FIXME: If `cs.heaviest` is nil we should just bypass the entire
+		//  `MaybeTakeHeavierTipSet` logic (instead of each of the called
+		//  functions having to handle the nil case on their own).
+		return false, nil
+	}
+
+	var err error
+	// `forkLength`: number of tipsets we need to walk back from the our `synced`
+	// chain to the common ancestor with the new `external` head in order to
+	// adopt the fork.
+	for forkLength := 0; forkLength < int(build.ForkLengthThreshold); forkLength++ {
+		// First walk back as many tipsets in the external chain to match the
+		// `synced` height to compare them. If we go past the `synced` height
+		// the subsequent match will fail but it will still be useful to get
+		// closer to the `synced` head parent's height in the next loop.
+		for external.Height() > synced.Height() {
+			if external.Height() == 0 {
+				// We reached the genesis of the external chain without a match;
+				// this is considered a fork outside the allowed limit (of "infinite"
+				// length).
+				return true, nil
+			}
+			external, err = cs.LoadTipSet(external.Parents())
+			if err != nil {
+				return false, xerrors.Errorf("failed to load parent tipset in external chain: %w", err)
+			}
+		}
+
+		// Now check if we arrived at the common ancestor.
+		if synced.Equals(external) {
+			return false, nil
+		}
+
+		// If we didn't, go back *one* tipset on the `synced` side (incrementing
+		// the `forkLength`).
+		if synced.Height() == 0 {
+			// Same check as the `external` side, if we reach the start (genesis)
+			// there is no common ancestor.
+			return true, nil
+		}
+		synced, err = cs.LoadTipSet(synced.Parents())
+		if err != nil {
+			return false, xerrors.Errorf("failed to load parent tipset in synced chain: %w", err)
+		}
+	}
+
+	// We traversed the fork length allowed without finding a common ancestor.
+	return true, nil
 }
 
 // ForceHeadSilent forces a chain head tipset without triggering a reorg
