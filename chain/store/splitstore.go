@@ -54,7 +54,7 @@ var _ bstore2.Blockstore = (*SplitStore)(nil)
 // Blockstore interface
 func (s *SplitStore) DeleteBlock(cid cid.Cid) error {
 	// afaict we don't seem to be using this method, so it's not implemented
-	return errors.New("DeleteBlock not implemented on SplitStore; don't do this Luke!")
+	return errors.New("DeleteBlock not implemented on SplitStore; don't do this Luke!") //nolint
 }
 
 func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
@@ -132,6 +132,7 @@ func (s *SplitStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 
 	chHot, err := s.hot.AllKeysChan(ctx)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
@@ -360,5 +361,5 @@ func (s *SplitStore) setBaseEpoch(epoch abi.ChainEpoch) error {
 
 func (s *SplitStore) newLiveSet() (LiveSet, error) {
 	// TODO implementation
-	return nil, errors.New("newLiveSet: IMPLEMENT ME!!!")
+	return nil, errors.New("newLiveSet: IMPLEMENT ME!!!") //nolint
 }
