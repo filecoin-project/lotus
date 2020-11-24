@@ -179,3 +179,7 @@ func (b *idstore) Close() error {
 	}
 	return nil
 }
+
+func (b *idstore) Flush(ctx context.Context) error {
+	return b.bs.Flush(ctx)
+}

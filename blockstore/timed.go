@@ -93,6 +93,16 @@ func (t *TimedCacheBlockstore) rotate() {
 	t.mu.Unlock()
 }
 
+func (t *TimedCacheBlockstore) Flush(ctx context.Context) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if err := t.active.Flush(ctx); err != nil {
+		return err
+	}
+	return t.inactive.Flush(ctx)
+}
+
 func (t *TimedCacheBlockstore) Put(ctx context.Context, b blocks.Block) error {
 	// Don't check the inactive set here. We want to keep this block for at
 	// least one interval.
