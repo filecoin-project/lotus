@@ -40,7 +40,7 @@ func main() {
 		mpoolStatsCmd,
 		exportChainCmd,
 		consensusCmd,
-		serveDealStatsCmd,
+		rollupDealStatsCmd,
 		syncCmd,
 		stateTreePruneCmd,
 		datastoreCmd,
