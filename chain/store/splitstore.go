@@ -14,6 +14,8 @@ import (
 	bstore2 "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
+const CompactionThreshold = 5 * build.Finality
+
 type SplitStore struct {
 	baseEpoch abi.ChainEpoch
 	curTs     *types.TipSet
@@ -25,6 +27,8 @@ type SplitStore struct {
 
 	snoop TrackingStore
 	sweep TrackingStore
+
+	compacting bool
 }
 
 type TrackingStore interface {
@@ -160,6 +164,28 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	default:
 		return err
 	}
+}
+
+// State tracking
+func (s *SplitStore) Start(cs *ChainStore) {
+	// TODO load base epoch from metadata ds -- if none, then use current epoch
+	s.cs = cs
+	s.curTs = cs.GetHeaviestTipSet()
+	cs.SubscribeHeadChanges(s.HeadChange)
+}
+
+func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
+	s.curTs = apply[len(apply)-1]
+	epoch := s.curTs.Height()
+	if epoch-s.baseEpoch > CompactionThreshold && !s.compacting {
+		s.compacting = true
+		go func() {
+			defer func() { s.compacting = false }()
+			s.compact()
+		}()
+	}
+
+	return nil
 }
 
 // Compaction/GC Algorithm
