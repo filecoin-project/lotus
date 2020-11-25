@@ -125,6 +125,11 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		return nil, err
 	}
 
+	if t.GroupSeq != 1 {
+		fmt.Println("sleeping for 11sec.")
+		time.Sleep(11 * time.Second)
+	}
+
 	// prepare the repo
 	minerRepoDir, err := ioutil.TempDir("", "miner-repo-dir")
 	if err != nil {

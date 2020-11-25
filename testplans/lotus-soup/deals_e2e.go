@@ -75,7 +75,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	// give some time to the miner, otherwise, we get errors like:
 	// deal errored deal failed: (State=26) error calling node: publishing deal: GasEstimateMessageGas
 	// error: estimating gas used: message execution failed: exit 19, reason: failed to lock balance: failed to lock client funds: not enough balance to lock for addr t0102: escrow balance 0 < locked 0 + required 640297000 (RetCode=19)
-	time.Sleep(40 * time.Second)
+	time.Sleep(50 * time.Second)
 
 	// generate 1600 bytes of random data
 	data := make([]byte, 1600)
