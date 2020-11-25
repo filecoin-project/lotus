@@ -145,8 +145,8 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 		sigsS[i] = sigs[i].Data
 	}
 
-	aggregator := new(bls.AggregateSignature).AggregateCompressed(sigsS)
-	if aggregator == nil {
+	aggregator := new(bls.AggregateSignature)
+	if !aggregator.AggregateCompressed(sigsS, true) {
 		if len(sigs) > 0 {
 			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}

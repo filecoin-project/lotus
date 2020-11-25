@@ -50,7 +50,8 @@ func (blsSigner) Sign(p []byte, msg []byte) ([]byte, error) {
 }
 
 func (blsSigner) Verify(sig []byte, a address.Address, msg []byte) error {
-	if !new(Signature).VerifyCompressed(sig, a.Payload()[:], msg, []byte(DST)) {
+	// Need to allow infinity sig/key up until block X?
+	if !new(Signature).VerifyCompressed(sig, true, a.Payload()[:], true, msg, []byte(DST)) {
 		return fmt.Errorf("bls signature failed to verify")
 	}
 	return nil
