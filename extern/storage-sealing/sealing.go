@@ -306,11 +306,16 @@ func (m *Sealing) getSectorAndPadding(ctx context.Context, size abi.UnpaddedPiec
 				ssize:      ssize,
 			}
 		case errTooManySealing:
-			log.Infow("")
 			m.unsealedInfoMap.lk.Unlock()
-			time.Sleep(2 * time.Second)
-			m.unsealedInfoMap.lk.Lock()
 
+			select {
+			case <-time.After(2 * time.Second):
+			case <-ctx.Done():
+				m.unsealedInfoMap.lk.Lock()
+				return 0, nil, xerrors.Errorf("getting sector for piece: %w", ctx.Err())
+			}
+
+			m.unsealedInfoMap.lk.Lock()
 			continue
 		default:
 			return 0, nil, xerrors.Errorf("creating new sector: %w", err)
@@ -339,37 +344,34 @@ func (m *Sealing) newDealSector(ctx context.Context) (abi.SectorNumber, abi.Sect
 		}
 	}
 
-	if cfg.MaxWaitDealsSectors > 0 {
+	if cfg.MaxWaitDealsSectors > 0 && uint64(len(m.unsealedInfoMap.infos)) >= cfg.MaxWaitDealsSectors {
 		// Too many sectors are sealing in parallel. Start sealing one, and retry
 		// allocating the piece to a sector (we're dropping the lock here, so in
 		// case other goroutines are also trying to create a sector, we retry in
 		// getSectorAndPadding instead of here - otherwise if we have lots of
 		// parallel deals in progress, we can start creating a ton of sectors
 		// with just a single deal in them)
-		if uint64(len(m.unsealedInfoMap.infos)) >= cfg.MaxWaitDealsSectors {
+		var mostStored abi.PaddedPieceSize = math.MaxUint64
+		var best abi.SectorNumber = math.MaxUint64
 
-			var mostStored abi.PaddedPieceSize = math.MaxUint64
-			var best abi.SectorNumber = math.MaxUint64
-
-			for sn, info := range m.unsealedInfoMap.infos {
-				if info.stored+1 > mostStored+1 { // 18446744073709551615 + 1 = 0
-					best = sn
-				}
+		for sn, info := range m.unsealedInfoMap.infos {
+			if info.stored+1 > mostStored+1 { // 18446744073709551615 + 1 = 0
+				best = sn
 			}
-
-			if best != math.MaxUint64 {
-				m.unsealedInfoMap.lk.Unlock()
-				err := m.StartPacking(best)
-				m.unsealedInfoMap.lk.Lock()
-
-				if err != nil {
-					log.Errorf("newDealSector StartPacking error: %+v", err)
-					// let's pretend this is fine
-				}
-			}
-
-			return 0, 0, errTooManySealing // will wait a bit and retry
 		}
+
+		if best != math.MaxUint64 {
+			m.unsealedInfoMap.lk.Unlock()
+			err := m.StartPacking(best)
+			m.unsealedInfoMap.lk.Lock()
+
+			if err != nil {
+				log.Errorf("newDealSector StartPacking error: %+v", err)
+				// let's pretend this is fine
+			}
+		}
+
+		return 0, 0, errTooManySealing // will wait a bit and retry
 	}
 
 	spt, err := m.currentSealProof(ctx)
