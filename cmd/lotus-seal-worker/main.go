@@ -362,6 +362,17 @@ var runCmd = &cli.Command{
 
 		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"))
 
+		fh := &stores.FetchHandler{Local: localStore}
+		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
+			if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
+				w.WriteHeader(401)
+				_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing admin permission"})
+				return
+			}
+
+			fh.ServeHTTP(w, r)
+		}
+
 		// Create / expose the worker
 
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
@@ -385,7 +396,7 @@ var runCmd = &cli.Command{
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
-		mux.PathPrefix("/remote").HandlerFunc((&stores.FetchHandler{Local: localStore}).ServeHTTP)
+		mux.PathPrefix("/remote").HandlerFunc(remoteHandler)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 		ah := &auth.Handler{
