@@ -8,12 +8,11 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	bstore2 "github.com/filecoin-project/lotus/lib/blockstore"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 const CompactionThreshold = 5 * build.Finality
@@ -27,8 +26,8 @@ type SplitStore struct {
 	cs *ChainStore
 	ds dstore.Datastore
 
-	hot  bstore2.Blockstore
-	cold bstore2.Blockstore
+	hot  bstore.Blockstore
+	cold bstore.Blockstore
 
 	snoop TrackingStore
 
@@ -49,7 +48,7 @@ type LiveSet interface {
 	Close() error
 }
 
-var _ bstore2.Blockstore = (*SplitStore)(nil)
+var _ bstore.Blockstore = (*SplitStore)(nil)
 
 // Blockstore interface
 func (s *SplitStore) DeleteBlock(cid cid.Cid) error {
