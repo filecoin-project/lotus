@@ -145,6 +145,7 @@ func (s *SplitStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	ch := make(chan cid.Cid)
 	go func() {
 		defer cancel()
+		defer close(ch)
 
 		for _, in := range []<-chan cid.Cid{chHot, chCold} {
 			for cid := range in {
