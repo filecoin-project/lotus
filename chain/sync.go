@@ -1199,8 +1199,8 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signat
 		return nil
 	}
 
-	valid := new(bls.Signature).AggregateVerifyCompressed(sig.Data, pubks,
-		msgsS, []byte(bls.DST))
+	valid := new(bls.Signature).AggregateVerifyCompressed(sig.Data, true, pubks,
+		true, msgsS, []byte(bls.DST))
 	if !valid {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
