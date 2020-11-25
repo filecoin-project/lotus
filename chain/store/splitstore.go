@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"sync"
 
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -31,6 +32,7 @@ type SplitStore struct {
 
 	snoop TrackingStore
 
+	stateMx    sync.Mutex
 	compacting bool
 }
 
@@ -211,15 +213,27 @@ func (s *SplitStore) Start(cs *ChainStore) error {
 func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
 	s.curTs = apply[len(apply)-1]
 	epoch := s.curTs.Height()
-	if epoch-s.baseEpoch > CompactionThreshold && !s.compacting {
-		s.compacting = true
+	if epoch-s.baseEpoch > CompactionThreshold && !s.isCompacting() {
+		s.setCompacting(true)
 		go func() {
-			defer func() { s.compacting = false }()
+			defer s.setCompacting(false)
 			s.compact()
 		}()
 	}
 
 	return nil
+}
+
+func (s *SplitStore) isCompacting() bool {
+	s.stateMx.Lock()
+	defer s.stateMx.Unlock()
+	return s.compacting
+}
+
+func (s *SplitStore) setCompacting(state bool) {
+	s.stateMx.Lock()
+	defer s.stateMx.Unlock()
+	s.compacting = state
 }
 
 // Compaction/GC Algorithm
