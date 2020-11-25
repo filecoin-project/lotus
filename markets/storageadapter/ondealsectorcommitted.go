@@ -20,12 +20,7 @@ type sectorCommittedEventsAPI interface {
 	Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error
 }
 
-type sectorPreCommitAPI interface {
-	getCurrentDealInfoAPI
-	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
-}
-
-func OnDealSectorPreCommitted(ctx context.Context, api sectorPreCommitAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
 	// First check if the deal is already active, and if so, bail out
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		isActive, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
@@ -46,23 +41,10 @@ func OnDealSectorPreCommitted(ctx context.Context, api sectorPreCommitAPI, event
 		return false, true, nil
 	}
 
-	// Watch for a pre-commit or prove-commit message to the provider.
-	// It's possible (when the node restarts) that the pre-commit has already
-	// been submitted, in which case we wait for the prove-commit message,
-	// so match both pre-commit and prove-commit messages.
-	matchEvent := func(msg *types.Message) (matched bool, err error) {
-		if msg.To != provider {
-			return false, nil
-		}
-
-		switch msg.Method {
-		case miner.Methods.PreCommitSector:
-			return true, nil
-		case miner.Methods.ProveCommitSector:
-			return true, nil
-		}
-
-		return false, nil
+	// Watch for a pre-commit message to the provider.
+	matchEvent := func(msg *types.Message) (bool, error) {
+		matched := msg.To == provider && msg.Method == miner.Methods.PreCommitSector
+		return matched, nil
 	}
 
 	// Check if the message params included the deal ID we're looking for.
@@ -78,37 +60,10 @@ func OnDealSectorPreCommitted(ctx context.Context, api sectorPreCommitAPI, event
 			return false, xerrors.Errorf("timed out waiting for deal %d pre-commit", dealID)
 		}
 
-		var sectorNumber abi.SectorNumber
-		var msgDealIDs []abi.DealID
-		if msg.Method == miner.Methods.PreCommitSector {
-			// If it's a pre-commit message, the deal IDs are in the message parameters
-			var params miner.SectorPreCommitInfo
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
-			}
-			msgDealIDs = params.DealIDs
-			sectorNumber = params.SectorNumber
-		} else {
-			// If it's a prove-commit message, the parameters don't have deal IDs,
-			// just a sector number
-			var params miner.ProveCommitSectorParams
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
-			}
-
-			// Look up the sector number in miner state to get the deal IDs
-			sectorNumber = params.SectorNumber
-			sectorInfo, err := api.StateSectorGetInfo(ctx, provider, sectorNumber, ts.Key())
-			if err != nil {
-				return false, xerrors.Errorf("failed to get sector info for sector %d: %w", sectorNumber, err)
-			}
-
-			// If there is no sector info for this sector, ignore it
-			if sectorInfo == nil {
-				return true, nil
-			}
-
-			msgDealIDs = sectorInfo.DealIDs
+		// Extract the message parameters
+		var params miner.SectorPreCommitInfo
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, xerrors.Errorf("unmarshal pre commit: %w", err)
 		}
 
 		// When the deal is published, the deal ID may change, so get the
@@ -119,12 +74,10 @@ func OnDealSectorPreCommitted(ctx context.Context, api sectorPreCommitAPI, event
 		}
 
 		// Check through the deal IDs associated with this message
-		for _, did := range msgDealIDs {
+		for _, did := range params.DealIDs {
 			if did == dealID {
 				// Found the deal ID in this message. Callback with the sector ID.
-				// If the message is a prove-commit, then the sector is already active.
-				isActive := msg.Method == miner.Methods.ProveCommitSector
-				cb(sectorNumber, isActive, nil)
+				cb(params.SectorNumber, false, nil)
 				return false, nil
 			}
 		}

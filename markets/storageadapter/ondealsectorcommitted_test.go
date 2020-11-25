@@ -58,7 +58,6 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		searchMessageErr       error
 		checkTsDeals           map[abi.DealID]*api.MarketDeal
 		matchStates            []matchState
-		sectorInfo             *miner.SectorOnChainInfo
 		expectedCBCallCount    uint64
 		expectedCBSectorNumber abi.SectorNumber
 		expectedCBIsActive     bool
@@ -85,7 +84,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBIsActive:     false,
 			expectedCBSectorNumber: sectorNumber,
 		},
-		"pre-commit, deal id changes in called": {
+		"deal id changes in called": {
 			searchMessageLookup: &api.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
@@ -110,49 +109,6 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBCallCount:    1,
 			expectedCBIsActive:     false,
 			expectedCBSectorNumber: sectorNumber,
-		},
-		"prove-commit, deal id changes in called": {
-			searchMessageLookup: &api.MsgLookup{
-				Receipt: types.MessageReceipt{
-					ExitCode: exitcode.Ok,
-					Return:   newValueReturn,
-				},
-			},
-			checkTsDeals: map[abi.DealID]*api.MarketDeal{
-				newDealID: unfinishedDeal,
-			},
-			matchStates: []matchState{
-				{
-					msg: makeMessage(t, provider, miner.Methods.ProveCommitSector, &miner.ProveCommitSectorParams{
-						SectorNumber: sectorNumber,
-					}),
-					deals: map[abi.DealID]*api.MarketDeal{
-						newDealID: successDeal,
-					},
-				},
-			},
-			sectorInfo: &miner.SectorOnChainInfo{
-				DealIDs: []abi.DealID{newDealID},
-			},
-			expectedCBCallCount:    1,
-			expectedCBIsActive:     true,
-			expectedCBSectorNumber: sectorNumber,
-		},
-		"prove-commit but no sector info": {
-			checkTsDeals: map[abi.DealID]*api.MarketDeal{
-				startDealID: unfinishedDeal,
-			},
-			matchStates: []matchState{
-				{
-					msg: makeMessage(t, provider, miner.Methods.ProveCommitSector, &miner.ProveCommitSectorParams{
-						SectorNumber: sectorNumber,
-					}),
-					deals: map[abi.DealID]*api.MarketDeal{
-						startDealID: successDeal,
-					},
-				},
-			},
-			expectedCBCallCount: 0,
 		},
 		"error on deal in check": {
 			checkTsDeals:        map[abi.DealID]*api.MarketDeal{},
@@ -192,7 +148,6 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		searchMessageErr       error
 		checkTsDeals           map[abi.DealID]*api.MarketDeal
 		matchStates            []matchState
-		sectorInfo             *miner.SectorOnChainInfo
 		expectedCBCallCount    uint64
 		expectedCBSectorNumber abi.SectorNumber
 		expectedCBIsActive     bool
@@ -202,12 +157,10 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		t.Run(testCase, func(t *testing.T) {
 			//	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			//	defer cancel()
-			api := &mockSectorPreCommitAPI{
-				mockGetCurrentDealInfoAPI: mockGetCurrentDealInfoAPI{
-					SearchMessageLookup: data.searchMessageLookup,
-					SearchMessageErr:    data.searchMessageErr,
-					MarketDeals:         make(map[marketDealKey]*api.MarketDeal),
-				},
+			api := &mockGetCurrentDealInfoAPI{
+				SearchMessageLookup: data.searchMessageLookup,
+				SearchMessageErr:    data.searchMessageErr,
+				MarketDeals:         make(map[marketDealKey]*api.MarketDeal),
 			}
 			checkTs, err := test.MockTipset(provider, rand.Uint64())
 			require.NoError(t, err)
@@ -228,7 +181,6 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 					ts:         matchTs,
 				}
 			}
-			api.SectorInfo = data.sectorInfo
 			eventsAPI := &fakeEvents{
 				Ctx:           ctx,
 				CheckTs:       checkTs,
@@ -497,15 +449,6 @@ func makeMessage(t *testing.T, to address.Address, method abi.MethodNum, params 
 		Method: method,
 		Params: buf.Bytes(),
 	}
-}
-
-type mockSectorPreCommitAPI struct {
-	mockGetCurrentDealInfoAPI
-	SectorInfo *miner.SectorOnChainInfo
-}
-
-func (mapi *mockSectorPreCommitAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
-	return mapi.SectorInfo, nil
 }
 
 var seq int
