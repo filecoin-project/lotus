@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"sync"
+	"time"
 
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -217,7 +218,13 @@ func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
 		s.setCompacting(true)
 		go func() {
 			defer s.setCompacting(false)
+
+			log.Info("compacting splitstore")
+			start := time.Now()
+
 			s.compact()
+
+			log.Infow("compaction done", "took", time.Since(start))
 		}()
 	}
 
@@ -254,6 +261,10 @@ func (s *SplitStore) compact() {
 	}
 	defer coldSet.Close() //nolint:errcheck
 
+	// Phase 1: marking
+	log.Info("marking live objects")
+	startMark := time.Now()
+
 	// Phase 1a: mark all reachable CIDs in the hot range
 	curTs := s.curTs
 	epoch := curTs.Height()
@@ -285,6 +296,8 @@ func (s *SplitStore) compact() {
 		panic(err)
 	}
 
+	log.Infow("marking done", "took", time.Since(startMark))
+
 	// Phase 2: sweep cold objects:
 	// - If a cold object is reachable in the hot range, it stays in the hotstore.
 	// - If a cold object is reachable in the cold range, it is moved to the coldstore.
@@ -294,6 +307,12 @@ func (s *SplitStore) compact() {
 		// TODO do something better here
 		panic(err)
 	}
+
+	startSweep := time.Now()
+	log.Info("sweeping cold objects")
+
+	// some stats for logging
+	var stHot, stCold, stDead int
 
 	for cid := range ch {
 		wrEpoch, err := s.snoop.Get(cid)
@@ -305,6 +324,7 @@ func (s *SplitStore) compact() {
 		// is the object stil hot?
 		if wrEpoch >= coldEpoch {
 			// yes, stay in the hotstore
+			stHot++
 			continue
 		}
 
@@ -317,6 +337,7 @@ func (s *SplitStore) compact() {
 
 		if mark {
 			// the object is reachable in the hot range, stay in the hotstore
+			stHot++
 			continue
 		}
 
@@ -340,6 +361,10 @@ func (s *SplitStore) compact() {
 				// TODO do something better here
 				panic(err)
 			}
+
+			stCold++
+		} else {
+			stDead++
 		}
 
 		// delete the object from the hotstore
@@ -356,6 +381,9 @@ func (s *SplitStore) compact() {
 			panic(err)
 		}
 	}
+
+	log.Infow("sweeping done", "took", time.Since(startSweep))
+	log.Infow("compaction stats", "hot", stHot, "cold", stCold, "dead", stDead)
 
 	err = s.setBaseEpoch(coldEpoch)
 	if err != nil {
