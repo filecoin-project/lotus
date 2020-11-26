@@ -159,8 +159,12 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorFaultReported{}, FaultReported),
 	),
 
+	FaultReported: final, // not really supported right now
+
 	FaultedFinal: final,
 	Removed:      final,
+
+	FailedUnrecoverable: final,
 }
 
 func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, uint64, error) {
