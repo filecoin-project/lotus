@@ -290,7 +290,7 @@ func Online() Option {
 			Override(new(exchange.Server), exchange.NewServer),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
-			Override(new(dtypes.Graphsync), modules.Graphsync),
+			Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultFullNode().Client.SimultaneousTransfers)),
 			Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 			Override(new(*discoveryimpl.Local), modules.NewLocalDiscovery),
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
@@ -465,12 +465,15 @@ func ConfigFullNode(c interface{}) Option {
 	ipfsMaddr := cfg.Client.IpfsMAddr
 	return Options(
 		ConfigCommon(&cfg.Common),
+
 		If(cfg.Client.UseIpfs,
 			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
 			If(cfg.Client.IpfsUseForRetrieval,
 				Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager),
 			),
 		),
+		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfers)),
+
 		If(cfg.Metrics.HeadNotifs,
 			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
 		),
