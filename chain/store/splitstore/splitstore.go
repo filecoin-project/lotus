@@ -41,20 +41,6 @@ type SplitStore struct {
 	compacting bool
 }
 
-type TrackingStore interface {
-	Put(cid.Cid, abi.ChainEpoch) error
-	PutBatch([]cid.Cid, abi.ChainEpoch) error
-	Get(cid.Cid) (abi.ChainEpoch, error)
-	Delete(cid.Cid) error
-	Keys() (<-chan cid.Cid, error)
-}
-
-type LiveSet interface {
-	Mark(cid.Cid) error
-	Has(cid.Cid) (bool, error)
-	Close() error
-}
-
 var _ bstore.Blockstore = (*SplitStore)(nil)
 
 // Blockstore interface
