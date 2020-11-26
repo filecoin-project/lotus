@@ -552,7 +552,8 @@ Response:
     "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "ID": 3
-  }
+  },
+  "SectorNumber": 9
 }
 ```
 
