@@ -363,6 +363,8 @@ type StorageMinerStruct struct {
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
+
+		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) (map[abi.SectorNumber]string, error) `perm:"admin"`
 	}
 }
 
@@ -1508,6 +1510,10 @@ func (c *StorageMinerStruct) PiecesGetCIDInfo(ctx context.Context, payloadCid ci
 
 func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) error {
 	return c.Internal.CreateBackup(ctx, fpath)
+}
+
+func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) (map[abi.SectorNumber]string, error) {
+	return c.Internal.CheckProvable(ctx, pp, sectors)
 }
 
 // WorkerStruct
