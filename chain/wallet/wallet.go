@@ -306,23 +306,27 @@ func (w *LocalWallet) walletDelete(ctx context.Context, addr address.Address) er
 	return nil
 }
 
+func (w *LocalWallet) deleteDefault() error {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+	if err := w.keystore.Delete(KDefault); err != nil {
+		if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+			log.Warnf("failed to unregister current default key: %s", err)
+		}
+	}
+	return nil
+}
+
 func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
 	if err := w.walletDelete(ctx, addr); err != nil {
 		return xerrors.Errorf("wallet delete: %w", err)
 	}
 
-	def, err := w.GetDefault()
-	if err != nil {
-		return xerrors.Errorf("getting default address: %w", err)
-	}
-
-	if def == addr {
-		err = w.SetDefault(address.Undef)
-		if err != nil {
-			return xerrors.Errorf("unsetting default address: %w", err)
+	if def, err := w.GetDefault(); err == nil {
+		if def == addr {
+			w.deleteDefault()
 		}
 	}
-
 	return nil
 }
 
