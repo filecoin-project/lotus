@@ -49,6 +49,7 @@ type LocalWorker struct {
 	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
 	running     sync.WaitGroup
+	taskLk      sync.Mutex
 
 	session     uuid.UUID
 	testDisable int64
@@ -457,7 +458,26 @@ func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector st
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {
+	l.taskLk.Lock()
+	defer l.taskLk.Unlock()
+
 	return l.acceptTasks, nil
+}
+
+func (l *LocalWorker) DisableTask(ctx context.Context, tt sealtasks.TaskType) error {
+	l.taskLk.Lock()
+	defer l.taskLk.Unlock()
+
+	delete(l.acceptTasks, tt)
+	return nil
+}
+
+func (l *LocalWorker) EnableTask(ctx context.Context, tt sealtasks.TaskType) error {
+	l.taskLk.Lock()
+	defer l.taskLk.Unlock()
+
+	l.acceptTasks[tt] = struct{}{}
+	return nil
 }
 
 func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
