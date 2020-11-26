@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bmatsuo/lmdb-go/lmdb"
+
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -39,6 +41,8 @@ type SplitStore struct {
 
 	stateMx    sync.Mutex
 	compacting bool
+
+	env *lmdb.Env
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -201,6 +205,17 @@ func (s *SplitStore) Start(cs *store.ChainStore) error {
 	return nil
 }
 
+func (s *SplitStore) Close() error {
+	if s.isCompacting() {
+		log.Warn("ongoing compaction; waiting for it to finish...")
+		for s.isCompacting() {
+			time.Sleep(time.Second)
+		}
+	}
+
+	return s.env.Close()
+}
+
 func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
 	s.curTs = apply[len(apply)-1]
 	epoch := s.curTs.Height()
@@ -237,14 +252,14 @@ func (s *SplitStore) setCompacting(state bool) {
 func (s *SplitStore) compact() {
 	// create two on disk live sets, one for marking the cold finality region
 	// and one for marking the hot region
-	hotSet, err := s.newLiveSet()
+	hotSet, err := NewLiveSet(s.env, "hot")
 	if err != nil {
 		// TODO do something better here
 		panic(err)
 	}
 	defer hotSet.Close() //nolint:errcheck
 
-	coldSet, err := s.newLiveSet()
+	coldSet, err := NewLiveSet(s.env, "cold")
 	if err != nil {
 		// TODO do something better here
 		panic(err)
@@ -389,9 +404,4 @@ func (s *SplitStore) setBaseEpoch(epoch abi.ChainEpoch) error {
 	n := binary.PutUvarint(bs, uint64(epoch))
 	bs = bs[:n]
 	return s.ds.Put(baseEpochKey, bs)
-}
-
-func (s *SplitStore) newLiveSet() (LiveSet, error) {
-	// TODO implementation
-	return nil, errors.New("newLiveSet: IMPLEMENT ME!!!") //nolint
 }
