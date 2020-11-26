@@ -183,11 +183,7 @@ func (s *SplitStore) Start(cs *store.ChainStore) error {
 	bs, err := s.ds.Get(baseEpochKey)
 	switch err {
 	case nil:
-		epoch, n := binary.Uvarint(bs)
-		if n < 0 {
-			panic("bogus base epoch")
-		}
-		s.baseEpoch = abi.ChainEpoch(epoch)
+		s.baseEpoch = bytesToEpoch(bs)
 
 	case dstore.ErrNotFound:
 		err = s.setBaseEpoch(s.curTs.Height())
@@ -307,7 +303,7 @@ func (s *SplitStore) compact() {
 	// - If a cold object is reachable in the hot range, it stays in the hotstore.
 	// - If a cold object is reachable in the cold range, it is moved to the coldstore.
 	// - If a cold object is unreachable, it is deleted.
-	ch, err := s.snoop.Keys()
+	ch, err := s.snoop.Keys(context.Background())
 	if err != nil {
 		// TODO do something better here
 		panic(err)
@@ -400,8 +396,19 @@ func (s *SplitStore) compact() {
 func (s *SplitStore) setBaseEpoch(epoch abi.ChainEpoch) error {
 	s.baseEpoch = epoch
 	// write to datastore
-	bs := make([]byte, 16)
-	n := binary.PutUvarint(bs, uint64(epoch))
-	bs = bs[:n]
-	return s.ds.Put(baseEpochKey, bs)
+	return s.ds.Put(baseEpochKey, epochToBytes(epoch))
+}
+
+func epochToBytes(epoch abi.ChainEpoch) []byte {
+	buf := make([]byte, 16)
+	n := binary.PutUvarint(buf, uint64(epoch))
+	return buf[:n]
+}
+
+func bytesToEpoch(buf []byte) abi.ChainEpoch {
+	epoch, n := binary.Uvarint(buf)
+	if n < 0 {
+		panic("bogus base epoch bytes")
+	}
+	return abi.ChainEpoch(epoch)
 }
