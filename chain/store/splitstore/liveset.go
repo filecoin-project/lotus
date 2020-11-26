@@ -17,7 +17,7 @@ type liveSet struct {
 	db  lmdb.DBI
 }
 
-var markBytes = []byte{1}
+var markBytes = []byte{}
 
 func NewLiveSet(env *lmdb.Env, name string) (LiveSet, error) {
 	var db lmdb.DBI
