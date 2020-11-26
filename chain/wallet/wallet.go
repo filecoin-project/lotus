@@ -6,18 +6,16 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/lotus/api"
-	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
-
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
 )
 
 var log = logging.Logger("wallet")
@@ -270,7 +268,7 @@ func (w *LocalWallet) WalletHas(ctx context.Context, addr address.Address) (bool
 	return k != nil, nil
 }
 
-func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
+func (w *LocalWallet) walletDelete(ctx context.Context, addr address.Address) error {
 	k, err := w.findKey(addr)
 
 	if err != nil {
@@ -304,6 +302,14 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 	_ = w.keystore.Delete(KNamePrefix + tAddr)
 
 	delete(w.keys, addr)
+
+	return nil
+}
+
+func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
+	if err := w.walletDelete(ctx, addr); err != nil {
+		return xerrors.Errorf("wallet delete: %w", err)
+	}
 
 	def, err := w.GetDefault()
 	if err != nil {
