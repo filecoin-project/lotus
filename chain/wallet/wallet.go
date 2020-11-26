@@ -306,7 +306,7 @@ func (w *LocalWallet) walletDelete(ctx context.Context, addr address.Address) er
 	return nil
 }
 
-func (w *LocalWallet) deleteDefault() error {
+func (w *LocalWallet) deleteDefault() {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 	if err := w.keystore.Delete(KDefault); err != nil {
@@ -314,7 +314,6 @@ func (w *LocalWallet) deleteDefault() error {
 			log.Warnf("failed to unregister current default key: %s", err)
 		}
 	}
-	return nil
 }
 
 func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
