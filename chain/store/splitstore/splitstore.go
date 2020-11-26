@@ -1,4 +1,4 @@
-package store
+package splitstore
 
 import (
 	"context"
@@ -10,9 +10,11 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
@@ -21,11 +23,13 @@ const CompactionThreshold = 5 * build.Finality
 
 var baseEpochKey = dstore.NewKey("baseEpoch")
 
+var log = logging.Logger("splitstore")
+
 type SplitStore struct {
 	baseEpoch abi.ChainEpoch
 	curTs     *types.TipSet
 
-	cs *ChainStore
+	cs *store.ChainStore
 	ds dstore.Datastore
 
 	hot  bstore.Blockstore
@@ -180,7 +184,7 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 }
 
 // State tracking
-func (s *SplitStore) Start(cs *ChainStore) error {
+func (s *SplitStore) Start(cs *store.ChainStore) error {
 	s.cs = cs
 	s.curTs = cs.GetHeaviestTipSet()
 
