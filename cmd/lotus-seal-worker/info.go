@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"sort"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -60,8 +62,15 @@ var infoCmd = &cli.Command{
 		fmt.Printf("Reserved memory: %s\n", types.SizeStr(types.NewInt(info.Resources.MemReserved)))
 
 		fmt.Printf("Task types: ")
+		tasks := make([]sealtasks.TaskType, 0, len(tt))
 		for taskType := range tt {
-			fmt.Printf("%s ", taskType.Short())
+			tasks = append(tasks, taskType)
+		}
+		sort.Slice(tasks, func(i, j int) bool {
+			return tasks[i].Less(tasks[j])
+		})
+		for _, t := range tasks {
+			fmt.Printf("%s ", t.Short())
 		}
 		fmt.Println()
 
