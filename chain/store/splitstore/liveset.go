@@ -41,6 +41,8 @@ func (s *liveSet) Mark(cid cid.Cid) error {
 
 func (s *liveSet) Has(cid cid.Cid) (has bool, err error) {
 	err = s.env.View(func(txn *lmdb.Txn) error {
+		txn.RawRead = true
+
 		_, err := txn.Get(s.db, cid.Hash())
 		if err != nil {
 			if lmdb.IsNotFound(err) {
