@@ -388,8 +388,8 @@ type WorkerStruct struct {
 		ReadPiece       func(context.Context, io.Writer, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (storiface.CallID, error)                                                             `perm:"admin"`
 		Fetch           func(context.Context, storage.SectorRef, storiface.SectorFileType, storiface.PathType, storiface.AcquireMode) (storiface.CallID, error)                                                       `perm:"admin"`
 
-		DisableTask func(ctx context.Context, tt sealtasks.TaskType) error
-		EnableTask  func(ctx context.Context, tt sealtasks.TaskType) error
+		DisableTask func(ctx context.Context, tt sealtasks.TaskType) error `perm:"admin"`
+		EnableTask  func(ctx context.Context, tt sealtasks.TaskType) error `perm:"admin"`
 
 		Remove          func(ctx context.Context, sector abi.SectorID) error `perm:"admin"`
 		StorageAddLocal func(ctx context.Context, path string) error         `perm:"admin"`

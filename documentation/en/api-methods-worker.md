@@ -191,7 +191,7 @@ Response:
 ### DisableTask
 There are not yet any comments for this method.
 
-Perms: 
+Perms: admin
 
 Inputs:
 ```json
@@ -208,7 +208,7 @@ Response: `{}`
 ### EnableTask
 There are not yet any comments for this method.
 
-Perms: 
+Perms: admin
 
 Inputs:
 ```json
