@@ -26,7 +26,6 @@ var allowSetting = map[sealtasks.TaskType]struct{}{
 	sealtasks.TTPreCommit1: {},
 	sealtasks.TTPreCommit2: {},
 	sealtasks.TTCommit2:    {},
-	sealtasks.TTCommit1:    {},
 	sealtasks.TTUnseal:     {},
 }
 
