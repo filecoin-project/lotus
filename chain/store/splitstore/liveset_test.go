@@ -83,9 +83,9 @@ func TestLiveSet(t *testing.T) {
 	k3 := makeCid("c")
 	k4 := makeCid("d")
 
-	hotSet.Mark(k1)
-	hotSet.Mark(k2)
-	coldSet.Mark(k3)
+	hotSet.Mark(k1)  //nolint
+	hotSet.Mark(k2)  //nolint
+	coldSet.Mark(k3) //nolint
 
 	mustHave(hotSet, k1)
 	mustHave(hotSet, k2)
@@ -119,9 +119,9 @@ func TestLiveSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hotSet.Mark(k3)
-	hotSet.Mark(k4)
-	coldSet.Mark(k1)
+	hotSet.Mark(k3)  //nolint
+	hotSet.Mark(k4)  //nolint
+	coldSet.Mark(k1) //nolint
 
 	mustNotHave(hotSet, k1)
 	mustNotHave(hotSet, k2)
