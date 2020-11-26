@@ -68,8 +68,8 @@ func TestTrackingStore(t *testing.T) {
 	mustHave(s, k3, 3)
 	mustHave(s, k4, 4)
 
-	s.PutBatch([]cid.Cid{k1}, 1)
-	s.PutBatch([]cid.Cid{k2}, 2)
+	s.PutBatch([]cid.Cid{k1}, 1) //nolint
+	s.PutBatch([]cid.Cid{k2}, 2) //nolint
 
 	mustHave(s, k1, 1)
 	mustHave(s, k2, 2)
@@ -77,10 +77,10 @@ func TestTrackingStore(t *testing.T) {
 	mustHave(s, k4, 4)
 
 	allKeys := map[string]struct{}{
-		k1.String(): struct{}{},
-		k2.String(): struct{}{},
-		k3.String(): struct{}{},
-		k4.String(): struct{}{},
+		k1.String(): {},
+		k2.String(): {},
+		k3.String(): {},
+		k4.String(): {},
 	}
 
 	ch, _ := s.Keys(context.Background()) //nolint:errcheck
