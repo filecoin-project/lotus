@@ -234,6 +234,9 @@ func init() {
 		},
 	})
 	addExample(storiface.ErrorCode(0))
+	addExample(map[abi.SectorNumber]string{
+		123: "can't acquire read lock",
+	})
 
 	// worker specific
 	addExample(storiface.AcquireMove)
