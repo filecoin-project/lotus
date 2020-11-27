@@ -160,49 +160,8 @@ func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
 		return "", nil // noComment
 	}
 
-	appReflector.FnGetMethodExamples = func(r reflect.Value, m reflect.Method, funcDecl *ast.FuncDecl) (*meta_schema.MethodObjectExamples, error) {
-
-		ft := m.Func.Type()
-		params := []meta_schema.ExampleOrReference{}
-		for _, p := range params {
-			v := meta_schema.ExampleObjectValue(p)
-			params = append(params, meta_schema.ExampleOrReference{
-				ExampleObject:   &meta_schema.ExampleObject{Value: &v},
-				ReferenceObject: nil,
-			})
-		}
-		pairingParams := meta_schema.ExamplePairingObjectParams(params)
-
-		outv := docgen.ExampleValue(m.Name, ft.Out(0), nil)
-		resultV := meta_schema.ExampleObjectValue(outv)
-		result := &meta_schema.ExampleObject{
-			Summary:     nil,
-			Value:       &resultV,
-			Description: nil,
-			Name:        nil,
-		}
-
-		pairingResult := meta_schema.ExamplePairingObjectResult{
-			ExampleObject:   result,
-			ReferenceObject: nil,
-		}
-		ex := meta_schema.ExamplePairingOrReference{
-			ExamplePairingObject: &meta_schema.ExamplePairingObject{
-				Name:        nil,
-				Description: nil,
-				Params:      &pairingParams,
-				Result:      &pairingResult,
-			},
-		}
-
-		return &meta_schema.MethodObjectExamples{ex}, nil
-	}
-
 	appReflector.FnSchemaExamples = func(ty reflect.Type) (examples *meta_schema.Examples, err error) {
-		v, ok := docgen.ExampleValues[ty]
-		if !ok {
-			return nil, nil
-		}
+		v := docgen.ExampleValue("unknown", ty, ty) // This isn't ideal, but seems to work well enough.
 		return &meta_schema.Examples{
 			meta_schema.AlwaysTrue(v),
 		}, nil
