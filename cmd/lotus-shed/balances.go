@@ -596,13 +596,13 @@ var fillBalancesCmd = &cli.Command{
 		}
 
 		w := csv.NewWriter(os.Stdout)
-		w.Write(append([]string{"Wallet Address"}, datestrs...))
+		w.Write(append([]string{"Wallet Address"}, datestrs...)) // nolint:errcheck
 		for i := 0; i < len(addrs); i++ {
 			row := []string{addrs[i].String()}
 			for _, b := range balances[i] {
 				row = append(row, types.FIL(b).String())
 			}
-			w.Write(row)
+			w.Write(row) // nolint:errcheck
 		}
 		w.Flush()
 		return nil
