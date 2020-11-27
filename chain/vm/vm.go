@@ -8,9 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/metrics"
-
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -31,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -38,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 const MaxCallDepth = 4096
@@ -538,6 +537,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 
 	if len(ret) != 0 {
+		log.Debugw("prime send gasUsed", "from", msg.From, "to", msg.To, "nonce", msg.Nonce, "method",
+			msg.Method, "gasLimit", msg.GasLimit, "gasUsed", rt.gasUsed, "height", vm.blockHeight)
 		// safely override actorErr since it must be nil
 		actorErr = rt.chargeGasSafe(rt.Pricelist().OnChainReturnValue(len(ret)))
 		if actorErr != nil {
@@ -558,6 +559,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	rt.finilizeGasTracing()
 
 	gasUsed = rt.gasUsed
+	log.Debugw("final send gasUsed", "from", msg.From, "to", msg.To, "nonce", msg.Nonce, "method",
+		msg.Method, "gasLimit", msg.GasLimit, "gasUsed", gasUsed, "height", vm.blockHeight)
 	if gasUsed < 0 {
 		gasUsed = 0
 	}
