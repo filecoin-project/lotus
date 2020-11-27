@@ -1825,6 +1825,11 @@ var clientCancelTransfer = &cli.Command{
 			Usage: "specify only transfers where peer is/is not initiator",
 			Value: true,
 		},
+		&cli.DurationFlag{
+			Name:  "cancel-timeout",
+			Usage: "time to wait for cancel to be sent to storage provider",
+			Value: 5 * time.Second,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -1868,7 +1873,9 @@ var clientCancelTransfer = &cli.Command{
 			}
 		}
 
-		return api.ClientCancelDataTransfer(ctx, transferID, other, initiator)
+		timeoutCtx, cancel := context.WithTimeout(ctx, cctx.Duration("cancel-timeout"))
+		defer cancel()
+		return api.ClientCancelDataTransfer(timeoutCtx, transferID, other, initiator)
 	},
 }
 
