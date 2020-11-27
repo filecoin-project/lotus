@@ -78,7 +78,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	time.Sleep(50 * time.Second)
 
 	// generate 1600 bytes of random data
-	data := make([]byte, 1600)
+	data := make([]byte, 5000000)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
 
 	file, err := ioutil.TempFile("/tmp", "data")

@@ -108,7 +108,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 
 	sectors := t.IntParam("sectors")
-	genMiner, _, err := seed.PreSeal(minerAddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, sectors, presealDir, []byte("TODO: randomize this"), &walletKey.KeyInfo, false)
+	genMiner, _, err := seed.PreSeal(minerAddr, abi.RegisteredSealProof_StackedDrg8MiBV1, 0, sectors, presealDir, []byte("TODO: randomize this"), &walletKey.KeyInfo, false)
 	if err != nil {
 		return nil, err
 	}
@@ -125,10 +125,10 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		return nil, err
 	}
 
-	if t.GroupSeq != 1 {
-		fmt.Println("sleeping for 11sec.")
-		time.Sleep(11 * time.Second)
-	}
+	//if t.GroupSeq != 1 {
+	//fmt.Println("sleeping for 11sec.")
+	//time.Sleep(11 * time.Second)
+	//}
 
 	// prepare the repo
 	minerRepoDir, err := ioutil.TempDir("", "miner-repo-dir")
