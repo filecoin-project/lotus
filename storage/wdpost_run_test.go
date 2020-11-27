@@ -125,9 +125,9 @@ func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, si
 type mockFaultTracker struct {
 }
 
-func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) ([]abi.SectorID, error) {
+func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) (map[abi.SectorID]string, error) {
 	// Returns "bad" sectors so just return nil meaning all sectors are good
-	return nil, nil
+	return map[abi.SectorID]string{}, nil
 }
 
 // TestWDPostDoPost verifies that doPost will send the correct number of window

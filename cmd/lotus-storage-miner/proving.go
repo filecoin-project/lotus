@@ -443,6 +443,9 @@ var provingCheckProvableCmd = &cli.Command{
 			sectors := make(map[abi.SectorNumber]struct{})
 
 			sectorInfos, err := api.StateMinerSectors(ctx, addr, &par.AllSectors, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
 
 			var tocheck []storage.SectorRef
 			for _, info := range sectorInfos {
