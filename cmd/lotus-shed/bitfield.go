@@ -196,14 +196,8 @@ var bitFieldStatCmd = &cli.Command{
 
 var bitFieldDecodeCmd = &cli.Command{
 	Name:        "decode",
+	Usage:       "Bitfield to decimal number",
 	Description: "decode bitfield and print all numbers in it",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "enc",
-			Value: "base64",
-			Usage: "specify input encoding to parse",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		rle, err := decode(cctx, 0)
 		if err != nil {
@@ -348,16 +342,16 @@ var bitFieldEncodeCmd = &cli.Command{
 	},
 }
 
-func decode(cctx *cli.Context, a int) (bitfield.BitField, error) {
+func decode(cctx *cli.Context, i int) (bitfield.BitField, error) {
 	var val string
 	if cctx.Args().Present() {
-		if a >= cctx.NArg() {
-			return bitfield.BitField{}, xerrors.Errorf("need more than %d args", a)
+		if i >= cctx.NArg() {
+			return bitfield.BitField{}, xerrors.Errorf("need more than %d args", i)
 		}
-		val = cctx.Args().Get(a)
+		val = cctx.Args().Get(i)
 	} else {
-		if a > 0 {
-			return bitfield.BitField{}, xerrors.Errorf("need more than %d args", a)
+		if i > 0 {
+			return bitfield.BitField{}, xerrors.Errorf("need more than %d args", i)
 		}
 		b, err := ioutil.ReadAll(os.Stdin)
 		if err != nil {
