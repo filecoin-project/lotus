@@ -10,17 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/gen/genesis"
-
-	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-
 	"github.com/docker/go-units"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -32,7 +22,13 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	ainit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -72,6 +68,7 @@ var auditsCmd = &cli.Command{
 
 var chainBalanceCmd = &cli.Command{
 	Name:        "chain-balances",
+	Usage:       "Produces all account balances",
 	Description: "Produces a csv file of all account balances",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -210,12 +207,12 @@ var chainBalanceStateCmd = &cli.Command{
 
 		robustMap := make(map[address.Address]address.Address)
 		if cctx.Bool("robust-addresses") {
-			iact, err := tree.GetActor(_init.Address)
+			iact, err := tree.GetActor(ainit.Address)
 			if err != nil {
 				return xerrors.Errorf("failed to load init actor: %w", err)
 			}
 
-			ist, err := _init.Load(store, iact)
+			ist, err := ainit.Load(store, iact)
 			if err != nil {
 				return xerrors.Errorf("failed to load init actor state: %w", err)
 			}
