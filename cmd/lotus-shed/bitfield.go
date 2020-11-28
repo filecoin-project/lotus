@@ -306,26 +306,39 @@ var bitFieldEncodeCmd = &cli.Command{
 			out.Set(i)
 		}
 
-		s, err := out.RunIterator()
+		str, err := encode(cctx, out)
 		if err != nil {
 			return err
 		}
-
-		bytes, err := rlepluslazy.EncodeRuns(s, []byte{})
-		if err != nil {
-			return err
-		}
-		switch cctx.String("enc") {
-		case "base64":
-			fmt.Println(base64.StdEncoding.EncodeToString(bytes))
-		case "hex":
-			fmt.Println(hex.EncodeToString(bytes))
-		default:
-			return fmt.Errorf("unrecognized encoding: %s", cctx.String("enc"))
-		}
+		fmt.Println(str)
 
 		return nil
 	},
+}
+
+func encode(cctx *cli.Context, field bitfield.BitField) (string, error) {
+	s, err := field.RunIterator()
+	if err != nil {
+		return "", err
+	}
+
+	bytes, err := rlepluslazy.EncodeRuns(s, []byte{})
+	if err != nil {
+		return "", err
+	}
+
+	var str string
+	switch cctx.String("enc") {
+	case "base64":
+		str = base64.StdEncoding.EncodeToString(bytes)
+	case "hex":
+		str = hex.EncodeToString(bytes)
+	default:
+		return "", fmt.Errorf("unrecognized encoding: %s", cctx.String("enc"))
+	}
+
+	return str, nil
+
 }
 
 func decode(cctx *cli.Context, i int) (bitfield.BitField, error) {
