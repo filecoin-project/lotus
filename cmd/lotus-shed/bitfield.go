@@ -17,6 +17,7 @@ import (
 
 var bitFieldCmd = &cli.Command{
 	Name:        "bitfield",
+	Usage:       "Analyze tool",
 	Description: "analyze bitfields",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -305,15 +306,9 @@ var bitFieldSubCmd = &cli.Command{
 
 var bitFieldEncodeCmd = &cli.Command{
 	Name:        "encode",
+	Usage:       "Decimal number to bitfield",
 	Description: "encode a series of decimal numbers into a bitfield",
 	ArgsUsage:   "[infile]",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "enc",
-			Value: "base64",
-			Usage: "specify input encoding to parse",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		f, err := os.Open(cctx.Args().First())
 		if err != nil {
@@ -340,8 +335,14 @@ var bitFieldEncodeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		fmt.Println(base64.StdEncoding.EncodeToString(bytes))
+		switch cctx.String("enc") {
+		case "base64":
+			fmt.Println(base64.StdEncoding.EncodeToString(bytes))
+		case "hex":
+			fmt.Println(hex.EncodeToString(bytes))
+		default:
+			return fmt.Errorf("unrecognized encoding: %s", cctx.String("enc"))
+		}
 
 		return nil
 	},
