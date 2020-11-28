@@ -13,12 +13,15 @@ import (
 
 var base16Cmd = &cli.Command{
 	Name:        "base16",
+	Usage:       "Base16 encode or decode",
+	ArgsUsage:   "[base16]",
 	Description: "standard hex",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "decode",
-			Value: false,
-			Usage: "Decode the value",
+			Name:    "decode",
+			Aliases: []string{"d"},
+			Value:   false,
+			Usage:   "Decode the value",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
