@@ -27,10 +27,11 @@ var bitFieldCmd = &cli.Command{
 		},
 	},
 	Subcommands: []*cli.Command{
-		bitFieldRunsCmd,
-		bitFieldStatCmd,
 		bitFieldEncodeCmd,
 		bitFieldDecodeCmd,
+		bitFieldRunsCmd,
+		bitFieldStatCmd,
+		bitFieldMergeCmd,
 		bitFieldIntersectCmd,
 		bitFieldSubCmd,
 	},
@@ -147,6 +148,36 @@ var bitFieldDecodeCmd = &cli.Command{
 			return xerrors.Errorf("getting all items: %w", err)
 		}
 		fmt.Println(vals)
+
+		return nil
+	},
+}
+
+var bitFieldMergeCmd = &cli.Command{
+	Name:        "merge",
+	Usage:       "Merge 2 bitfields",
+	Description: "Merge 2 bitfields and print the resulting bitfield",
+	Action: func(cctx *cli.Context) error {
+		a, err := decode(cctx, 0)
+		if err != nil {
+			return err
+		}
+
+		b, err := decode(cctx, 1)
+		if err != nil {
+			return err
+		}
+
+		o, err := bitfield.MergeBitFields(a, b)
+		if err != nil {
+			return xerrors.Errorf("merge: %w", err)
+		}
+
+		str, err := encode(cctx, o)
+		if err != nil {
+			return err
+		}
+		fmt.Println(str)
 
 		return nil
 	},
