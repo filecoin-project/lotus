@@ -109,7 +109,7 @@ var chainBalanceCmd = &cli.Command{
 			ai := accountInfo{
 				Address: addr,
 				Balance: types.FIL(act.Balance),
-				Type:    string(act.Code.Hash()[2:]),
+				Type:    builtin.ActorNameByCode(act.Code),
 			}
 
 			if builtin.IsStorageMinerActor(act.Code) {
