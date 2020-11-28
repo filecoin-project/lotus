@@ -113,23 +113,23 @@ var chainBalanceCmd = &cli.Command{
 				Balance: types.FIL(act.Balance),
 				Type:    builtin.ActorNameByCode(act.Code),
 			}
-			if minerInfo {
-				if builtin.IsStorageMinerActor(act.Code) {
-					pow, err := api.StateMinerPower(ctx, addr, tsk)
-					if err != nil {
-						return xerrors.Errorf("failed to get power: %w", err)
-					}
 
-					ai.Power = pow.MinerPower.RawBytePower
-					info, err := api.StateMinerInfo(ctx, addr, tsk)
-					if err != nil {
-						return xerrors.Errorf("failed to get miner info: %w", err)
-					}
-					ai.Worker = info.Worker
-					ai.Owner = info.Owner
-					fmt.Printf("miner:%s, owner:%s, worker:%s, power:%s\n", ai.Address, ai.Owner, ai.Worker, types.SizeStr(ai.Power))
-
+			if minerInfo && builtin.IsStorageMinerActor(act.Code) {
+				pow, err := api.StateMinerPower(ctx, addr, tsk)
+				if err != nil {
+					return xerrors.Errorf("failed to get power: %w", err)
 				}
+
+				ai.Power = pow.MinerPower.RawBytePower
+				info, err := api.StateMinerInfo(ctx, addr, tsk)
+				if err != nil {
+					return xerrors.Errorf("failed to get miner info: %w", err)
+				}
+				ai.Worker = info.Worker
+				ai.Owner = info.Owner
+				fmt.Printf("miner:%s, owner:%s, worker:%s, power:%s(%s)\n", ai.Address, ai.Owner,
+					ai.Worker, ai.Power.String(), types.SizeStr(ai.Power))
+
 			}
 			infos = append(infos, ai)
 		}
