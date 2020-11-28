@@ -202,21 +202,15 @@ var bitFieldDecodeCmd = &cli.Command{
 
 var bitFieldIntersectCmd = &cli.Command{
 	Name:        "intersect",
+	Usage:       "Two bitfields intersect",
 	Description: "intersect 2 bitfields and print the resulting bitfield as base64",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "enc",
-			Value: "base64",
-			Usage: "specify input encoding to parse",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
-		b, err := decode(cctx, 1)
+		a, err := decode(cctx, 0)
 		if err != nil {
 			return err
 		}
 
-		a, err := decode(cctx, 0)
+		b, err := decode(cctx, 1)
 		if err != nil {
 			return err
 		}
@@ -226,17 +220,11 @@ var bitFieldIntersectCmd = &cli.Command{
 			return xerrors.Errorf("intersect: %w", err)
 		}
 
-		s, err := o.RunIterator()
+		str, err := encode(cctx, o)
 		if err != nil {
 			return err
 		}
-
-		bytes, err := rlepluslazy.EncodeRuns(s, []byte{})
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(base64.StdEncoding.EncodeToString(bytes))
+		fmt.Println(str)
 
 		return nil
 	},
