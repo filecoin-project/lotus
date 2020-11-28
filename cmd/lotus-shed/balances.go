@@ -75,8 +75,13 @@ var chainBalanceCmd = &cli.Command{
 			Name:  "tipset",
 			Usage: "specify tipset to start from",
 		},
+		&cli.BoolFlag{
+			Name:  "miner-info",
+			Usage: "print miner info",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		minerInfo := cctx.Bool("miner-info")
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -127,7 +132,7 @@ var chainBalanceCmd = &cli.Command{
 			infos = append(infos, ai)
 		}
 
-		printAccountInfos(infos, false)
+		printAccountInfos(infos, minerInfo)
 
 		return nil
 	},
