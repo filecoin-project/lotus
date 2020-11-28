@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/lotus/build"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
-
-	"github.com/filecoin-project/lotus/build"
 )
 
 var log = logging.Logger("lotus-shed")
@@ -16,6 +15,7 @@ func main() {
 	logging.SetLogLevel("*", "INFO")
 
 	local := []*cli.Command{
+		base64Cmd,
 		base32Cmd,
 		base16Cmd,
 		bitFieldCmd,
@@ -62,14 +62,13 @@ func main() {
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
 				Hidden:  true,
-				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+				Value:   "~/.lotus",
 			},
 			&cli.StringFlag{
 				Name:    "miner-repo",
-				Aliases: []string{"storagerepo"},
-				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
-				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
-				Usage:   fmt.Sprintf("Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON"),
+				EnvVars: []string{"LOTUS_MINER_PATH"},
+				Value:   "~/.lotusminer",
+				Usage:   fmt.Sprintf("Specify miner repo path"),
 			},
 			&cli.StringFlag{
 				Name:  "log-level",
