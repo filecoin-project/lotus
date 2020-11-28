@@ -7,19 +7,21 @@ import (
 	"os"
 	"strings"
 
-	"github.com/urfave/cli/v2"
-
 	"github.com/multiformats/go-base32"
+	"github.com/urfave/cli/v2"
 )
 
 var base32Cmd = &cli.Command{
 	Name:        "base32",
+	Usage:       "Base32 encode or decode",
+	ArgsUsage:   "[base32]",
 	Description: "multiformats base32",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "decode",
-			Value: false,
-			Usage: "Decode the multiformats base32",
+			Name:    "decode",
+			Aliases: []string{"d"},
+			Value:   false,
+			Usage:   "Decode the multiformats base32",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
