@@ -38,14 +38,8 @@ var bitFieldCmd = &cli.Command{
 
 var bitFieldRunsCmd = &cli.Command{
 	Name:        "runs",
+	Usage:       "Bitfield bit runs",
 	Description: "print bit runs in a bitfield",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "enc",
-			Value: "base64",
-			Usage: "specify input encoding to parse",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		var val string
 		if cctx.Args().Present() {
@@ -99,7 +93,7 @@ var bitFieldRunsCmd = &cli.Command{
 				s = "FALSE"
 			}
 
-			fmt.Printf("@%d %s * %d\n", idx, s, r.Len)
+			fmt.Printf("@%08d %s * %d\n", idx, s, r.Len)
 
 			idx += r.Len
 		}
