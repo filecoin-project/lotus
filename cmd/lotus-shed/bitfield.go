@@ -110,14 +110,8 @@ var bitFieldRunsCmd = &cli.Command{
 
 var bitFieldStatCmd = &cli.Command{
 	Name:        "stat",
+	Usage:       "Bitfield stats",
 	Description: "print bitfield stats",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "enc",
-			Value: "base64",
-			Usage: "specify input encoding to parse",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		var val string
 		if cctx.Args().Present() {
@@ -147,6 +141,7 @@ var bitFieldStatCmd = &cli.Command{
 		default:
 			return fmt.Errorf("unrecognized encoding: %s", cctx.String("enc"))
 		}
+		fmt.Printf("Raw length: %d bits (%d bytes)\n", len(dec)*8, len(dec))
 
 		rle, err := rlepluslazy.FromBuf(dec)
 		if err != nil {
@@ -158,10 +153,7 @@ var bitFieldStatCmd = &cli.Command{
 			return xerrors.Errorf("getting run iterator: %w", err)
 		}
 
-		fmt.Printf("Raw length: %d bits (%d bytes)\n", len(dec)*8, len(dec))
-
 		var ones, zeros, oneRuns, zeroRuns, invalid uint64
-
 		for rit.HasNext() {
 			r, err := rit.NextRun()
 			if err != nil {
