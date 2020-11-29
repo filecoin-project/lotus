@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-var TrackingStoreMapSize int64 = 1 << 34 // 16G
+var TrackingStoreMapSize int64 = 1 << 34 // 16G; TODO this may be a little too big, we should figure out how to gradually grow the map.
 
 type TrackingStore interface {
 	Put(cid.Cid, abi.ChainEpoch) error
