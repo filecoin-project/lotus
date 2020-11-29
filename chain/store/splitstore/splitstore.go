@@ -103,7 +103,8 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 
 	err := s.snoop.Put(blk.Cid(), epoch)
 	if err != nil {
-		return err
+		log.Errorf("error tracking CID in hotstore: %s; falling back to coldstore", err)
+		return s.cold.Put(blk)
 	}
 
 	return s.hot.Put(blk)
@@ -112,7 +113,8 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 func (s *SplitStore) PutMany(blks []blocks.Block) error {
 	err := s.hot.PutMany(blks)
 	if err != nil {
-		return err
+		log.Errorf("error tracking CIDs in hotstore: %s; falling back to coldstore", err)
+		return s.cold.PutMany(blks)
 	}
 
 	s.mx.Lock()
