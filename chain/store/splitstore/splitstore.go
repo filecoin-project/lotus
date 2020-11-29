@@ -55,12 +55,8 @@ func (s *SplitStore) DeleteBlock(cid cid.Cid) error {
 func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 	has, err := s.hot.Has(cid)
 
-	if err != nil {
-		return false, err
-	}
-
-	if has {
-		return true, nil
+	if err != nil || has {
+		return has, err
 	}
 
 	return s.cold.Has(cid)
