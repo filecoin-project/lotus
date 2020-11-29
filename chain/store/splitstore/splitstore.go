@@ -28,8 +28,10 @@ var baseEpochKey = dstore.NewKey("baseEpoch")
 var log = logging.Logger("splitstore")
 
 type SplitStore struct {
-	baseEpoch abi.ChainEpoch
-	curTs     *types.TipSet
+	mx         sync.Mutex
+	baseEpoch  abi.ChainEpoch
+	curTs      *types.TipSet
+	compacting bool
 
 	cs *store.ChainStore
 	ds dstore.Datastore
@@ -38,9 +40,6 @@ type SplitStore struct {
 	cold bstore.Blockstore
 
 	snoop TrackingStore
-
-	stateMx    sync.Mutex
-	compacting bool
 
 	env *lmdb.Env
 }
@@ -98,7 +97,10 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 }
 
 func (s *SplitStore) Put(blk blocks.Block) error {
+	s.mx.Lock()
 	epoch := s.curTs.Height()
+	s.mx.Unlock()
+
 	err := s.snoop.Put(blk.Cid(), epoch)
 	if err != nil {
 		return err
@@ -113,7 +115,9 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 		return err
 	}
 
+	s.mx.Lock()
 	epoch := s.curTs.Height()
+	s.mx.Unlock()
 
 	batch := make([]cid.Cid, 0, len(blks))
 	for _, blk := range blks {
@@ -213,9 +217,12 @@ func (s *SplitStore) Close() error {
 }
 
 func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
+	s.mx.Lock()
 	s.curTs = apply[len(apply)-1]
 	epoch := s.curTs.Height()
-	if epoch-s.baseEpoch > CompactionThreshold && !s.isCompacting() {
+	s.mx.Unlock()
+
+	if !s.isCompacting() && epoch-s.baseEpoch > CompactionThreshold {
 		s.setCompacting(true)
 		go func() {
 			defer s.setCompacting(false)
@@ -233,14 +240,14 @@ func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
 }
 
 func (s *SplitStore) isCompacting() bool {
-	s.stateMx.Lock()
-	defer s.stateMx.Unlock()
+	s.mx.Lock()
+	defer s.mx.Unlock()
 	return s.compacting
 }
 
 func (s *SplitStore) setCompacting(state bool) {
-	s.stateMx.Lock()
-	defer s.stateMx.Unlock()
+	s.mx.Lock()
+	defer s.mx.Unlock()
 	s.compacting = state
 }
 
@@ -267,7 +274,10 @@ func (s *SplitStore) compact() {
 	startMark := time.Now()
 
 	// Phase 1a: mark all reachable CIDs in the hot range
+	s.mx.Lock()
 	curTs := s.curTs
+	s.mx.Unlock()
+
 	epoch := curTs.Height()
 	coldEpoch := s.baseEpoch + build.Finality
 	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch+1, false, false,
