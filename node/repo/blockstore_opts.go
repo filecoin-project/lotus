@@ -11,6 +11,12 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 
 	opts := badgerbs.DefaultOptions(path)
 
+	// FIXME - to be revisited after tiered store work
+	// By default badger is exceptionally fsync()-happy
+	// It is less safe to run this way, but chain-loss is hardly a catastrophic event
+	// at present
+	opts.SyncWrites = false
+
 	// Due to legacy usage of blockstore.Blockstore, over a datastore, all
 	// blocks are prefixed with this namespace. In the future, this can go away,
 	// in order to shorten keys, but it'll require a migration.
