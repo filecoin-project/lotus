@@ -655,19 +655,19 @@ uiLoop:
 				state = "find"
 			}
 		case "find":
-			asks, err := getAsks(ctx, api)
+			asks, err := GetAsks(ctx, api)
 			if err != nil {
 				return err
 			}
 
 			for _, ask := range asks {
-				if ask.MinPieceSize > ds.PieceSize {
+				if ask.Ask.MinPieceSize > ds.PieceSize {
 					continue
 				}
-				if ask.MaxPieceSize < ds.PieceSize {
+				if ask.Ask.MaxPieceSize < ds.PieceSize {
 					continue
 				}
-				candidateAsks = append(candidateAsks, ask)
+				candidateAsks = append(candidateAsks, ask.Ask)
 			}
 
 			afmt.Printf("Found %d candidate asks\n", len(candidateAsks))
@@ -1191,6 +1191,11 @@ var clientDealStatsCmd = &cli.Command{
 var clientListAsksCmd = &cli.Command{
 	Name:  "list-asks",
 	Usage: "List asks for top miners",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "by-ping",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -1199,17 +1204,26 @@ var clientListAsksCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		asks, err := getAsks(ctx, api)
+		asks, err := GetAsks(ctx, api)
 		if err != nil {
 			return err
 		}
 
-		for _, ask := range asks {
-			fmt.Printf("%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch\n", ask.Miner,
+		if cctx.Bool("by-ping") {
+			sort.Slice(asks, func(i, j int) bool {
+				return asks[i].Ping < asks[j].Ping
+			})
+		}
+
+		for _, a := range asks {
+			ask := a.Ask
+
+			fmt.Printf("%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch ping:%s\n", ask.Miner,
 				types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))),
 				types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))),
 				types.FIL(ask.Price),
 				types.FIL(ask.VerifiedPrice),
+				a.Ping,
 			)
 		}
 
@@ -1217,7 +1231,12 @@ var clientListAsksCmd = &cli.Command{
 	},
 }
 
-func getAsks(ctx context.Context, api lapi.FullNode) ([]*storagemarket.StorageAsk, error) {
+type QueriedAsk struct {
+	Ask  *storagemarket.StorageAsk
+	Ping time.Duration
+}
+
+func GetAsks(ctx context.Context, api lapi.FullNode) ([]QueriedAsk, error) {
 	color.Blue(".. getting miner list")
 	miners, err := api.StateListMiners(ctx, types.EmptyTSK)
 	if err != nil {
@@ -1272,7 +1291,7 @@ loop:
 
 	color.Blue(".. querying asks")
 
-	var asks []*storagemarket.StorageAsk
+	var asks []QueriedAsk
 	var queried, got int64
 
 	done = make(chan struct{})
@@ -1308,9 +1327,19 @@ loop:
 					return
 				}
 
+				rt := time.Now()
+
+				_, err = api.ClientQueryAsk(ctx, *mi.PeerId, miner)
+				if err != nil {
+					return
+				}
+
 				atomic.AddInt64(&got, 1)
 				lk.Lock()
-				asks = append(asks, ask)
+				asks = append(asks, QueriedAsk{
+					Ask:  ask,
+					Ping: time.Now().Sub(rt),
+				})
 				lk.Unlock()
 			}(miner)
 		}
@@ -1328,7 +1357,7 @@ loop2:
 	fmt.Printf("\r* Queried %d asks, got %d responses\n", atomic.LoadInt64(&queried), atomic.LoadInt64(&got))
 
 	sort.Slice(asks, func(i, j int) bool {
-		return asks[i].Price.LessThan(asks[j].Price)
+		return asks[i].Ask.Price.LessThan(asks[j].Ask.Price)
 	})
 
 	return asks, nil
