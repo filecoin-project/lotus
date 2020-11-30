@@ -53,7 +53,7 @@ var tasksDisableCmd = &cli.Command{
 
 func taskAction(tf func(a api.WorkerAPI, ctx context.Context, tt sealtasks.TaskType) error) func(cctx *cli.Context) error {
 	return func(cctx *cli.Context) error {
-		if cctx.NArg() != 0 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("expected 1 argument")
 		}
 
