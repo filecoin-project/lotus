@@ -108,49 +108,49 @@ var rpcCmd = &cli.Command{
 			}
 
 			return send(cctx.Args().Get(0), params)
-		} else {
-			cctx.App.Metadata["repoType"] = repo.FullNode
-			if err := lcli.VersionCmd.Action(cctx); err != nil {
-				return err
-			}
-			fmt.Println("Usage: > Method [Param1, Param2, ...]")
+		}
 
-			rl, err := readline.NewEx(&readline.Config{
-				Stdin:             cs,
-				HistoryFile:       "/tmp/lotusrpc.tmp",
-				Prompt:            "> ",
-				EOFPrompt:         "exit",
-				HistorySearchFold: true,
+		cctx.App.Metadata["repoType"] = repo.FullNode
+		if err := lcli.VersionCmd.Action(cctx); err != nil {
+			return err
+		}
+		fmt.Println("Usage: > Method [Param1, Param2, ...]")
 
-				// TODO: Some basic auto completion
-			})
-			if err != nil {
-				return err
-			}
+		rl, err := readline.NewEx(&readline.Config{
+			Stdin:             cs,
+			HistoryFile:       "/tmp/lotusrpc.tmp",
+			Prompt:            "> ",
+			EOFPrompt:         "exit",
+			HistorySearchFold: true,
 
-			for {
-				line, err := rl.Readline()
-				if err == readline.ErrInterrupt {
-					if len(line) == 0 {
-						break
-					} else {
-						continue
-					}
-				} else if err == io.EOF {
+			// TODO: Some basic auto completion
+		})
+		if err != nil {
+			return err
+		}
+
+		for {
+			line, err := rl.Readline()
+			if err == readline.ErrInterrupt {
+				if len(line) == 0 {
 					break
+				} else {
+					continue
 				}
+			} else if err == io.EOF {
+				break
+			}
 
-				var s scanner.Scanner
-				s.Init(strings.NewReader(line))
-				s.Scan()
-				method := s.TokenText()
+			var s scanner.Scanner
+			s.Init(strings.NewReader(line))
+			s.Scan()
+			method := s.TokenText()
 
-				s.Scan()
-				params := line[s.Position.Offset:]
+			s.Scan()
+			params := line[s.Position.Offset:]
 
-				if err := send(method, params); err != nil {
-					_, _ = fmt.Fprintf(os.Stderr, "%v", err)
-				}
+			if err := send(method, params); err != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "%v", err)
 			}
 		}
 
