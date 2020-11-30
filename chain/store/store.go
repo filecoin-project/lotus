@@ -733,10 +733,24 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 			}
 		}
 	}
+	// This function is called 5 times per epoch on average
+	// It is also called with tipsets that are done with initial validation
+	// so they cannot be from the future.
+	// We are guaranteed not to use tipsets older than 900 epochs (fork limit)
+	// This means that we ideally want to keep only most recent 900 epochs in here
+	// Golang's map iteration starts at a random point in a map.
+	// With 5 tries per epoch, and 900 entries to keep, on average we will have
+	// ~136 garbage entires in the `cs.tipsets` map. (solve for 1-(1-x/(900+x))^5 == 0.5)
+	// Seems good enough to me
+
+	for height := range cs.tipsets {
+		if height < b.Height-build.Finality {
+			delete(cs.tipsets, height)
+		}
+		break
+	}
 
 	cs.tipsets[b.Height] = append(tss, b.Cid())
-
-	// TODO: do we want to look for slashable submissions here? might as well...
 
 	return nil
 }
