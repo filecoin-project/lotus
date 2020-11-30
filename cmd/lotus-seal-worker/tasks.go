@@ -41,14 +41,14 @@ var tasksEnableCmd = &cli.Command{
 	Name:      "enable",
 	Usage:     "Enable a task type",
 	ArgsUsage: "[" + settableStr + "]",
-	Action:    taskAction(api.WorkerAPI.EnableTask),
+	Action:    taskAction(api.WorkerAPI.TaskEnable),
 }
 
 var tasksDisableCmd = &cli.Command{
 	Name:      "disable",
 	Usage:     "Disable a task type",
 	ArgsUsage: "[" + settableStr + "]",
-	Action:    taskAction(api.WorkerAPI.DisableTask),
+	Action:    taskAction(api.WorkerAPI.TaskDisable),
 }
 
 func taskAction(tf func(a api.WorkerAPI, ctx context.Context, tt sealtasks.TaskType) error) func(cctx *cli.Context) error {

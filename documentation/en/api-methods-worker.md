@@ -9,10 +9,6 @@
   * [Version](#Version)
 * [Add](#Add)
   * [AddPiece](#AddPiece)
-* [Disable](#Disable)
-  * [DisableTask](#DisableTask)
-* [Enable](#Enable)
-  * [EnableTask](#EnableTask)
 * [Finalize](#Finalize)
   * [FinalizeSector](#FinalizeSector)
 * [Move](#Move)
@@ -33,6 +29,8 @@
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
 * [Task](#Task)
+  * [TaskDisable](#TaskDisable)
+  * [TaskEnable](#TaskEnable)
   * [TaskTypes](#TaskTypes)
 * [Unseal](#Unseal)
   * [UnsealPiece](#UnsealPiece)
@@ -184,40 +182,6 @@ Response:
   "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
-
-## Disable
-
-
-### DisableTask
-There are not yet any comments for this method.
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "seal/v0/commit/2"
-]
-```
-
-Response: `{}`
-
-## Enable
-
-
-### EnableTask
-There are not yet any comments for this method.
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "seal/v0/commit/2"
-]
-```
-
-Response: `{}`
 
 ## Finalize
 
@@ -539,6 +503,34 @@ Response: `{}`
 
 ## Task
 
+
+### TaskDisable
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "seal/v0/commit/2"
+]
+```
+
+Response: `{}`
+
+### TaskEnable
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "seal/v0/commit/2"
+]
+```
+
+Response: `{}`
 
 ### TaskTypes
 TaskType -> Weight

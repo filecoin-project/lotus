@@ -464,7 +464,7 @@ func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{
 	return l.acceptTasks, nil
 }
 
-func (l *LocalWorker) DisableTask(ctx context.Context, tt sealtasks.TaskType) error {
+func (l *LocalWorker) TaskDisable(ctx context.Context, tt sealtasks.TaskType) error {
 	l.taskLk.Lock()
 	defer l.taskLk.Unlock()
 
@@ -472,7 +472,7 @@ func (l *LocalWorker) DisableTask(ctx context.Context, tt sealtasks.TaskType) er
 	return nil
 }
 
-func (l *LocalWorker) EnableTask(ctx context.Context, tt sealtasks.TaskType) error {
+func (l *LocalWorker) TaskEnable(ctx context.Context, tt sealtasks.TaskType) error {
 	l.taskLk.Lock()
 	defer l.taskLk.Unlock()
 
