@@ -442,7 +442,9 @@ var mpoolReplaceCmd = &cli.Command{
 
 			messagepool.CapGasFee(mff, &msg, mss.Get().MaxFee)
 		} else {
-			msg.GasLimit = cctx.Int64("gas-limit")
+			if cctx.IsSet("gas-limit") {
+				msg.GasLimit = cctx.Int64("gas-limit")
+			}
 			msg.GasPremium, err = types.BigFromString(cctx.String("gas-premium"))
 			if err != nil {
 				return fmt.Errorf("parsing gas-premium: %w", err)
