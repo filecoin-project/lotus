@@ -30,6 +30,11 @@ var cidIdCmd = &cli.Command{
 			Value: "base64",
 			Usage: "specify input encoding to parse",
 		},
+		&cli.StringFlag{
+			Name:  "codec",
+			Value: "abi",
+			Usage: "multicodec-packed content types: abi or raw",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -54,18 +59,24 @@ var cidIdCmd = &cli.Command{
 			return xerrors.Errorf("unrecognized encoding: %s", cctx.String("encoding"))
 		}
 
-		builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
-		rCid, err := builder.Sum(dec)
-		if err != nil {
-			return err
+		switch cctx.String("codec") {
+		case "abi":
+			aCid, err := abi.CidBuilder.Sum(dec)
+			if err != nil {
+				return xerrors.Errorf("cidBuilder abi: %w", err)
+			}
+			fmt.Println(aCid)
+		case "raw":
+			builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
+			rCid, err := builder.Sum(dec)
+			if err != nil {
+				return xerrors.Errorf("cidBuilder raw: %w", err)
+			}
+			fmt.Println(rCid)
+		default:
+			return xerrors.Errorf("unrecognized codec: %s", cctx.String("codec"))
 		}
-		fmt.Printf("Raw Cid:%s\n", rCid)
 
-		aCid, err := abi.CidBuilder.Sum(dec)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Abi Cid:%s\n", aCid)
 		return nil
 	},
 }
