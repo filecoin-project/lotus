@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,6 +16,7 @@ import (
 	dstore "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/filecoin-project/go-bs-lmdb"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -36,18 +38,53 @@ type SplitStore struct {
 	mx    sync.Mutex
 	curTs *types.TipSet
 
-	cs *store.ChainStore
-	ds dstore.Datastore
-
-	hot  bstore.Blockstore
-	cold bstore.Blockstore
-
+	cs    *store.ChainStore
+	ds    dstore.Datastore
+	hot   bstore.Blockstore
+	cold  bstore.Blockstore
 	snoop TrackingStore
 
 	env *lmdb.Env
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
+
+// NewSplitStore creates a new SplitStore instance, given a path for the hotstore dbs and a cold
+// blockstore. The SplitStore must be attached to the ChainStore with Start in order to trigger
+// compaction.
+func NewSplitStore(path string, ds dstore.Datastore, cold bstore.Blockstore) (*SplitStore, error) {
+	// the hot store
+	hot, err := lmdbbs.Open(filepath.Join(path, "hot.db"))
+	if err != nil {
+		return nil, err
+	}
+
+	// the tracking store
+	snoop, err := NewTrackingStore(filepath.Join(path, "snoop.db"))
+	if err != nil {
+		hot.Close() //nolint:errcheck
+		return nil, err
+	}
+
+	// the liveset env
+	env, err := NewLiveSetEnv(filepath.Join(path, "sweep.db"))
+	if err != nil {
+		hot.Close()   //nolint:errcheck
+		snoop.Close() //nolint:errcheck
+		return nil, err
+	}
+
+	// and now we can make a SplitStore
+	ss := &SplitStore{
+		ds:    ds,
+		hot:   hot,
+		cold:  cold,
+		snoop: snoop,
+		env:   env,
+	}
+
+	return ss, nil
+}
 
 // Blockstore interface
 func (s *SplitStore) DeleteBlock(cid cid.Cid) error {
