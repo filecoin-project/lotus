@@ -591,6 +591,7 @@ func Repo(r repo.Repo) Option {
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
+			Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore),
 			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 			Override(new(dtypes.StateBlockstore), modules.StateBlockstore),
 			Override(new(dtypes.ExposedBlockstore), From(new(dtypes.UniversalBlockstore))),

@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/store/splitstore"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
@@ -72,11 +73,20 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 	return mp, nil
 }
 
-func ChainStore(lc fx.Lifecycle, cbs dtypes.ChainBlockstore, sbs dtypes.StateBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
+func ChainStore(lc fx.Lifecycle, cbs dtypes.ChainBlockstore, sbs dtypes.StateBlockstore, ds dtypes.MetadataDS, ss dtypes.SplitBlockstore, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
 	chain := store.NewChainStore(cbs, sbs, ds, syscalls, j)
 
 	if err := chain.Load(); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
+	}
+
+	if ssp, ok := ss.(*splitstore.SplitStore); ok {
+		err := ssp.Start(chain)
+		if err != nil {
+			log.Errorf("error starting splitstore: %s", err)
+		}
+	} else {
+		log.Warnf("unexpected splitstore type: %+v", ss)
 	}
 
 	lc.Append(fx.Hook{
