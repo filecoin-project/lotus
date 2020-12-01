@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/store/splitstore"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -193,7 +194,18 @@ var chainBalanceStateCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		ssPath, err := lkrepo.SplitstorePath()
+		if err != nil {
+			return err
+		}
+
+		ss, err := splitstore.NewSplitStore(ssPath, mds, bs)
+		if err != nil {
+			return err
+		}
+		defer ss.Close() //nolint:errcheck
+
+		cs := store.NewChainStore(ss, ss, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
@@ -414,7 +426,18 @@ var chainPledgeCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		ssPath, err := lkrepo.SplitstorePath()
+		if err != nil {
+			return err
+		}
+
+		ss, err := splitstore.NewSplitStore(ssPath, mds, bs)
+		if err != nil {
+			return err
+		}
+		defer ss.Close() //nolint:errcheck
+
+		cs := store.NewChainStore(ss, ss, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
 		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
