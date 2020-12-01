@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/urfave/cli/v2"
 	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
 
@@ -249,7 +250,9 @@ var ledgerSignTestCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Signature: %x\n", sig.SignatureBytes())
+		sigBytes := append([]byte{byte(crypto.SigTypeSecp256k1)}, sig.SignatureBytes()...)
+
+		fmt.Printf("Signature: %x\n", sigBytes)
 
 		return nil
 	},
