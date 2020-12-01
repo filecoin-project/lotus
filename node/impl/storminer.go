@@ -545,7 +545,7 @@ func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error
 }
 
 func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
-	var rg sectorstorage.RGetter
+	var rg storiface.RGetter
 	if expensive {
 		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, error) {
 			si, err := sm.Miner.GetSectorInfo(id.Number)

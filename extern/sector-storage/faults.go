@@ -9,8 +9,6 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/ipfs/go-cid"
-
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
@@ -21,13 +19,11 @@ import (
 
 // FaultTracker TODO: Track things more actively
 type FaultTracker interface {
-	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, rg RGetter) (map[abi.SectorID]string, error)
+	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error)
 }
 
-type RGetter func(ctx context.Context, id abi.SectorID) (cid.Cid, error)
-
 // CheckProvable returns unprovable sectors
-func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, rg RGetter) (map[abi.SectorID]string, error) {
+func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	var bad = make(map[abi.SectorID]string)
 
 	ssize, err := pp.SectorSize()
