@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
@@ -54,12 +55,17 @@ var cidIdCmd = &cli.Command{
 		}
 
 		builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
-		c, err := builder.Sum(dec)
+		rCid, err := builder.Sum(dec)
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Raw Cid:%s\n", rCid)
 
-		fmt.Println(c)
+		aCid, err := abi.CidBuilder.Sum(dec)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Abi Cid:%s\n", aCid)
 		return nil
 	},
 }
