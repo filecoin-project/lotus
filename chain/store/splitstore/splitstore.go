@@ -134,6 +134,11 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 
 func (s *SplitStore) Put(blk blocks.Block) error {
 	s.mx.Lock()
+	if s.curTs == nil {
+		s.mx.Unlock()
+		return s.cold.Put(blk)
+	}
+
 	epoch := s.curTs.Height()
 	s.mx.Unlock()
 
@@ -147,15 +152,20 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 }
 
 func (s *SplitStore) PutMany(blks []blocks.Block) error {
+	s.mx.Lock()
+	if s.curTs == nil {
+		s.mx.Unlock()
+		return s.cold.PutMany(blks)
+	}
+
+	epoch := s.curTs.Height()
+	s.mx.Unlock()
+
 	err := s.hot.PutMany(blks)
 	if err != nil {
 		log.Errorf("error tracking CIDs in hotstore: %s; falling back to coldstore", err)
 		return s.cold.PutMany(blks)
 	}
-
-	s.mx.Lock()
-	epoch := s.curTs.Height()
-	s.mx.Unlock()
 
 	batch := make([]cid.Cid, 0, len(blks))
 	for _, blk := range blks {
@@ -228,6 +238,11 @@ func (s *SplitStore) Start(cs *store.ChainStore) error {
 		s.baseEpoch = bytesToEpoch(bs)
 
 	case dstore.ErrNotFound:
+		if s.curTs == nil {
+			// this can happen in some tests
+			break
+		}
+
 		err = s.setBaseEpoch(s.curTs.Height())
 		if err != nil {
 			return err
