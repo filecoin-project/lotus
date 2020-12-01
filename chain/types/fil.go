@@ -23,18 +23,19 @@ func (f FIL) Unitless() string {
 	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".")
 }
 
-var unitPrefixes = []string{"a", "f", "p", "n", "μ", "m", ""}
+var unitPrefixes = []string{"a", "f", "p", "n", "μ", "m"}
 
 func (f FIL) Short() string {
 	n := BigInt(f)
 
 	dn := uint64(1)
 	var prefix string
-	for _, prefix = range unitPrefixes {
+	for _, p := range unitPrefixes {
 		if n.LessThan(NewInt(dn * 1000)) {
+			prefix = p
 			break
 		}
-		dn = dn * 1000
+		dn *= 1000
 	}
 
 	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(dn)))

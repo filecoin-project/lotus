@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFilShort(t *testing.T) {
@@ -10,8 +11,16 @@ func TestFilShort(t *testing.T) {
 		fil   string
 		expect string
 	}{
+
 		{fil: "1", expect: "1 FIL"},
 		{fil: "1.1", expect: "1.1 FIL"},
+		{fil: "12", expect: "12 FIL"},
+		{fil: "123", expect: "123 FIL"},
+		{fil: "123456", expect: "123456 FIL"},
+		{fil: "123.23", expect: "123.23 FIL"},
+		{fil: "123456.234", expect: "123456.234 FIL"},
+		{fil: "123456.2341234", expect: "123456.234 FIL"},
+		{fil: "123456.234123445", expect: "123456.234 FIL"},
 
 		{fil: "0.1", expect: "100 mFIL"},
 		{fil: "0.01", expect: "10 mFIL"},
