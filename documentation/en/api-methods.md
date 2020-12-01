@@ -2299,7 +2299,7 @@ Response:
 ### MsigCreate
 MsigCreate creates a multisig wallet
 It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
-<initial balance>, <sender address of the create msg>, <gas price>
+<initial balance>, <sender address of the create msg>
 
 
 Perms: sign
@@ -2311,8 +2311,7 @@ Inputs:
   null,
   10101,
   "0",
-  "f01234",
-  "0"
+  "f01234"
 ]
 ```
 

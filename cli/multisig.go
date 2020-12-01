@@ -144,9 +144,7 @@ var msigCreateCmd = &cli.Command{
 
 		d := abi.ChainEpoch(cctx.Uint64("duration"))
 
-		gp := types.NewInt(1)
-
-		msgCid, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
+		msgCid, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr)
 		if err != nil {
 			return err
 		}
