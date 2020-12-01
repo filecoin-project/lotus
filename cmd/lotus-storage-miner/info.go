@@ -236,13 +236,6 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
-	sealdur, err := nodeApi.SectorGetExpectedSealDuration(ctx)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Expected Seal Duration: %s\n\n", sealdur)
-
 	if !cctx.Bool("hide-sectors-info") {
 		fmt.Println("Sectors:")
 		err = sectorsInfo(ctx, nodeApi)
