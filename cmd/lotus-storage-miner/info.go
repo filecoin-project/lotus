@@ -215,22 +215,24 @@ func infoCmdAct(cctx *cli.Context) error {
 		return xerrors.Errorf("getting available balance: %w", err)
 	}
 	fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
-	fmt.Printf("\tPreCommit:   %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
-	fmt.Printf("\tPledge:      %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
-	fmt.Printf("\tVesting:     %s\n", types.FIL(lockedFunds.VestingFunds).Short())
-	color.Green("\tAvailable:   %s", types.FIL(availBalance).Short())
-	wb, err := api.WalletBalance(ctx, mi.Worker)
-	if err != nil {
-		return xerrors.Errorf("getting worker balance: %w", err)
-	}
-	color.Cyan("Worker Balance: %s", types.FIL(wb).Short())
+	fmt.Printf("\tPreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
+	fmt.Printf("\tPledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
+	fmt.Printf("\tVesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
+	color.Green("\tAvailable: %s", types.FIL(availBalance).Short())
 
 	mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getting market balance: %w", err)
 	}
-	fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow).Short())
-	fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked).Short())
+	fmt.Printf("Market Balance: %s\n", types.FIL(mb.Escrow).Short())
+	fmt.Printf("\tLocked:    %s\n", types.FIL(mb.Locked).Short())
+	color.Green("\tAvailable: %s\n", types.FIL(big.Sub(mb.Escrow, mb.Locked)).Short())
+
+	wb, err := api.WalletBalance(ctx, mi.Worker)
+	if err != nil {
+		return xerrors.Errorf("getting worker balance: %w", err)
+	}
+	color.Cyan("Worker Balance: %s", types.FIL(wb).Short())
 
 	fmt.Println()
 
