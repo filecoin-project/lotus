@@ -326,9 +326,9 @@ var clientDealCmd = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
-			Name:  "verified-deal",
-			Usage: "indicate that the deal counts towards verified client total",
-			Value: false,
+			Name:        "verified-deal",
+			Usage:       "indicate that the deal counts towards verified client total",
+			DefaultText: "true if client is verified, false otherwise",
 		},
 		&cli.StringFlag{
 			Name:  "provider-collateral",
