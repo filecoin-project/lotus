@@ -126,7 +126,7 @@ type mockFaultTracker struct {
 }
 
 func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) (map[abi.SectorID]string, error) {
-	// Returns "bad" sectors so just return nil meaning all sectors are good
+	// Returns "bad" sectors so just return empty map meaning all sectors are good
 	return map[abi.SectorID]string{}, nil
 }
 
