@@ -16,7 +16,7 @@ import (
 	dstore "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-bs-lmdb"
+	lmdbbs "github.com/filecoin-project/go-bs-lmdb"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
