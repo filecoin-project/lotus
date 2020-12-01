@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/big"
 	"sort"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/filecoin-project/lotus/api"
@@ -125,15 +125,15 @@ func infoCmdAct(cctx *cli.Context) error {
 	rpercI := types.BigDiv(types.BigMul(pow.MinerPower.RawBytePower, types.NewInt(1000000)), pow.TotalPower.RawBytePower)
 	qpercI := types.BigDiv(types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
 
-	fmt.Printf("Byte Power:   %s / %s (%0.4f%%)\n",
-		color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
-		types.SizeStr(pow.TotalPower.RawBytePower),
-		float64(rpercI.Int64())/10000)
-
-	fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n",
+	fmt.Printf("Power: %s / %s (%0.4f%%)\n",
 		color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
 		types.DeciStr(pow.TotalPower.QualityAdjPower),
 		float64(qpercI.Int64())/10000)
+
+	fmt.Printf("\tRaw: %s / %s (%0.4f%%)\n",
+		color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
+		types.SizeStr(pow.TotalPower.RawBytePower),
+		float64(rpercI.Int64())/10000)
 
 	secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
 	if err != nil {
@@ -214,25 +214,25 @@ func infoCmdAct(cctx *cli.Context) error {
 	if err != nil {
 		return xerrors.Errorf("getting available balance: %w", err)
 	}
-	fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
-	fmt.Printf("\tPreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
-	fmt.Printf("\tPledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
-	fmt.Printf("\tVesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
-	color.Green("\tAvailable: %s", types.FIL(availBalance).Short())
+	fmt.Printf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
+	fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
+	fmt.Printf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
+	fmt.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
+	color.Green("      Available:  %s", types.FIL(availBalance).Short())
 
 	mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getting market balance: %w", err)
 	}
-	fmt.Printf("Market Balance: %s\n", types.FIL(mb.Escrow).Short())
-	fmt.Printf("\tLocked:    %s\n", types.FIL(mb.Locked).Short())
-	color.Green("\tAvailable: %s\n", types.FIL(big.Sub(mb.Escrow, mb.Locked)).Short())
+	fmt.Printf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short())
+	fmt.Printf("       Locked:    %s\n", types.FIL(mb.Locked).Short())
+	color.Green("       Available: %s\n", types.FIL(big.Sub(mb.Escrow, mb.Locked)).Short())
 
 	wb, err := api.WalletBalance(ctx, mi.Worker)
 	if err != nil {
 		return xerrors.Errorf("getting worker balance: %w", err)
 	}
-	color.Cyan("Worker Balance: %s", types.FIL(wb).Short())
+	color.Cyan("Worker Balance:   %s", types.FIL(wb).Short())
 
 	fmt.Println()
 
