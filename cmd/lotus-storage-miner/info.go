@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/big"
 	"sort"
 	"time"
 
@@ -59,7 +60,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	ctx := lcli.ReqContext(cctx)
 
-	fmt.Print("Full node: ")
+	fmt.Print("Chain: ")
 
 	head, err := api.ChainHead(ctx)
 	if err != nil {
@@ -74,6 +75,20 @@ func infoCmdAct(cctx *cli.Context) error {
 	default:
 		fmt.Printf("[%s]", color.RedString("sync behind! (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
 	}
+
+	basefee := head.MinTicketBlock().ParentBaseFee
+	gasCol := []color.Attribute{color.FgBlue}
+	switch {
+	case basefee.GreaterThan(big.NewInt(7000_000_000)): // 7 nFIL
+		gasCol = []color.Attribute{color.BgRed, color.FgBlack}
+	case basefee.GreaterThan(big.NewInt(3000_000_000)): // 3 nFIL
+		gasCol = []color.Attribute{color.FgRed}
+	case basefee.GreaterThan(big.NewInt(750_000_000)): // 750 uFIL
+		gasCol = []color.Attribute{color.FgYellow}
+	case basefee.GreaterThan(big.NewInt(100_000_000)): // 100 uFIL
+		gasCol = []color.Attribute{color.FgGreen}
+	}
+	fmt.Printf("[basefee %s]", color.New(gasCol...).Sprint(types.FIL(basefee).Short()))
 
 	fmt.Println()
 
