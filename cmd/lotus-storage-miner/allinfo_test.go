@@ -70,7 +70,7 @@ func TestMinerAllInfo(t *testing.T) {
 		return n, sn
 	}
 
-	test.TestDealFlow(t, bp, time.Second, false, false)
+	test.TestDealFlow(t, bp, time.Second, false, false, 0)
 
 	t.Run("post-info-all", run)
 }

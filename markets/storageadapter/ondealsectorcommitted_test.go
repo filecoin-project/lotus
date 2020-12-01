@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"golang.org/x/xerrors"
+
 	blocks "github.com/ipfs/go-block-format"
 
 	"github.com/filecoin-project/go-address"
@@ -53,17 +55,19 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			LastUpdatedEpoch: 2,
 		},
 	}
-	testCases := map[string]struct {
+	type testCase struct {
 		searchMessageLookup    *api.MsgLookup
 		searchMessageErr       error
 		checkTsDeals           map[abi.DealID]*api.MarketDeal
 		matchStates            []matchState
+		dealStartEpochTimeout  bool
 		expectedCBCallCount    uint64
 		expectedCBSectorNumber abi.SectorNumber
 		expectedCBIsActive     bool
 		expectedCBError        error
 		expectedError          error
-	}{
+	}
+	testCases := map[string]testCase{
 		"normal sequence": {
 			checkTsDeals: map[abi.DealID]*api.MarketDeal{
 				startDealID: unfinishedDeal,
@@ -142,18 +146,16 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBError:     errors.New("handling applied event: something went wrong"),
 			expectedError:       errors.New("failed to set up called handler: something went wrong"),
 		},
+		"proposed deal epoch timeout": {
+			checkTsDeals: map[abi.DealID]*api.MarketDeal{
+				startDealID: unfinishedDeal,
+			},
+			dealStartEpochTimeout: true,
+			expectedCBCallCount:   1,
+			expectedCBError:       xerrors.Errorf("handling applied event: deal %d was not activated by proposed deal start epoch 0", startDealID),
+		},
 	}
-	runTestCase := func(testCase string, data struct {
-		searchMessageLookup    *api.MsgLookup
-		searchMessageErr       error
-		checkTsDeals           map[abi.DealID]*api.MarketDeal
-		matchStates            []matchState
-		expectedCBCallCount    uint64
-		expectedCBSectorNumber abi.SectorNumber
-		expectedCBIsActive     bool
-		expectedCBError        error
-		expectedError          error
-	}) {
+	runTestCase := func(testCase string, data testCase) {
 		t.Run(testCase, func(t *testing.T) {
 			//	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			//	defer cancel()
@@ -182,9 +184,10 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 				}
 			}
 			eventsAPI := &fakeEvents{
-				Ctx:           ctx,
-				CheckTs:       checkTs,
-				MatchMessages: matchMessages,
+				Ctx:                   ctx,
+				CheckTs:               checkTs,
+				MatchMessages:         matchMessages,
+				DealStartEpochTimeout: data.dealStartEpochTimeout,
 			}
 			cbCallCount := uint64(0)
 			var cbSectorNumber abi.SectorNumber
@@ -245,15 +248,17 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			LastUpdatedEpoch: 2,
 		},
 	}
-	testCases := map[string]struct {
-		searchMessageLookup *api.MsgLookup
-		searchMessageErr    error
-		checkTsDeals        map[abi.DealID]*api.MarketDeal
-		matchStates         []matchState
-		expectedCBCallCount uint64
-		expectedCBError     error
-		expectedError       error
-	}{
+	type testCase struct {
+		searchMessageLookup   *api.MsgLookup
+		searchMessageErr      error
+		checkTsDeals          map[abi.DealID]*api.MarketDeal
+		matchStates           []matchState
+		dealStartEpochTimeout bool
+		expectedCBCallCount   uint64
+		expectedCBError       error
+		expectedError         error
+	}
+	testCases := map[string]testCase{
 		"normal sequence": {
 			checkTsDeals: map[abi.DealID]*api.MarketDeal{
 				startDealID: unfinishedDeal,
@@ -323,16 +328,16 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			expectedCBError:     errors.New("handling applied event: failed to look up deal on chain: something went wrong"),
 			expectedError:       errors.New("failed to set up called handler: failed to look up deal on chain: something went wrong"),
 		},
+		"proposed deal epoch timeout": {
+			checkTsDeals: map[abi.DealID]*api.MarketDeal{
+				startDealID: unfinishedDeal,
+			},
+			dealStartEpochTimeout: true,
+			expectedCBCallCount:   1,
+			expectedCBError:       xerrors.Errorf("handling applied event: deal %d was not activated by proposed deal start epoch 0", startDealID),
+		},
 	}
-	runTestCase := func(testCase string, data struct {
-		searchMessageLookup *api.MsgLookup
-		searchMessageErr    error
-		checkTsDeals        map[abi.DealID]*api.MarketDeal
-		matchStates         []matchState
-		expectedCBCallCount uint64
-		expectedCBError     error
-		expectedError       error
-	}) {
+	runTestCase := func(testCase string, data testCase) {
 		t.Run(testCase, func(t *testing.T) {
 			//	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			//	defer cancel()
@@ -361,9 +366,10 @@ func TestOnDealSectorCommitted(t *testing.T) {
 				}
 			}
 			eventsAPI := &fakeEvents{
-				Ctx:           ctx,
-				CheckTs:       checkTs,
-				MatchMessages: matchMessages,
+				Ctx:                   ctx,
+				CheckTs:               checkTs,
+				MatchMessages:         matchMessages,
+				DealStartEpochTimeout: data.dealStartEpochTimeout,
 			}
 			cbCallCount := uint64(0)
 			var cbError error
@@ -403,12 +409,18 @@ type matchMessage struct {
 	doesRevert bool
 }
 type fakeEvents struct {
-	Ctx           context.Context
-	CheckTs       *types.TipSet
-	MatchMessages []matchMessage
+	Ctx                   context.Context
+	CheckTs               *types.TipSet
+	MatchMessages         []matchMessage
+	DealStartEpochTimeout bool
 }
 
 func (fe *fakeEvents) Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error {
+	if fe.DealStartEpochTimeout {
+		msgHnd(nil, nil, nil, 100) // nolint:errcheck
+		return nil
+	}
+
 	_, more, err := check(fe.CheckTs)
 	if err != nil {
 		return err

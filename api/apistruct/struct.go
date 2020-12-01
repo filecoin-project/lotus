@@ -363,6 +363,8 @@ type StorageMinerStruct struct {
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
+
+		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) (map[abi.SectorNumber]string, error) `perm:"admin"`
 	}
 }
 
@@ -387,6 +389,9 @@ type WorkerStruct struct {
 		UnsealPiece     func(context.Context, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (storiface.CallID, error)                                           `perm:"admin"`
 		ReadPiece       func(context.Context, io.Writer, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (storiface.CallID, error)                                                             `perm:"admin"`
 		Fetch           func(context.Context, storage.SectorRef, storiface.SectorFileType, storiface.PathType, storiface.AcquireMode) (storiface.CallID, error)                                                       `perm:"admin"`
+
+		TaskDisable func(ctx context.Context, tt sealtasks.TaskType) error `perm:"admin"`
+		TaskEnable  func(ctx context.Context, tt sealtasks.TaskType) error `perm:"admin"`
 
 		Remove          func(ctx context.Context, sector abi.SectorID) error `perm:"admin"`
 		StorageAddLocal func(ctx context.Context, path string) error         `perm:"admin"`
@@ -1511,6 +1516,10 @@ func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) err
 	return c.Internal.CreateBackup(ctx, fpath)
 }
 
+func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) (map[abi.SectorNumber]string, error) {
+	return c.Internal.CheckProvable(ctx, pp, sectors)
+}
+
 // WorkerStruct
 
 func (w *WorkerStruct) Version(ctx context.Context) (build.Version, error) {
@@ -1571,6 +1580,14 @@ func (w *WorkerStruct) ReadPiece(ctx context.Context, sink io.Writer, sector sto
 
 func (w *WorkerStruct) Fetch(ctx context.Context, id storage.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	return w.Internal.Fetch(ctx, id, fileType, ptype, am)
+}
+
+func (w *WorkerStruct) TaskDisable(ctx context.Context, tt sealtasks.TaskType) error {
+	return w.Internal.TaskDisable(ctx, tt)
+}
+
+func (w *WorkerStruct) TaskEnable(ctx context.Context, tt sealtasks.TaskType) error {
+	return w.Internal.TaskEnable(ctx, tt)
 }
 
 func (w *WorkerStruct) Remove(ctx context.Context, sector abi.SectorID) error {

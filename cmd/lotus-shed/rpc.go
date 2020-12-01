@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"text/scanner"
 
@@ -55,6 +56,60 @@ var rpcCmd = &cli.Command{
 			cs.Close() // nolint:errcheck
 		}()
 
+		send := func(method, params string) error {
+			jreq, err := json.Marshal(struct {
+				Jsonrpc string          `json:"jsonrpc"`
+				ID      int             `json:"id"`
+				Method  string          `json:"method"`
+				Params  json.RawMessage `json:"params"`
+			}{
+				Jsonrpc: "2.0",
+				Method:  "Filecoin." + method,
+				Params:  json.RawMessage(params),
+				ID:      0,
+			})
+			if err != nil {
+				return err
+			}
+
+			req, err := http.NewRequest("POST", addr, bytes.NewReader(jreq))
+			if err != nil {
+				return err
+			}
+			req.Header = headers
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return err
+			}
+
+			rb, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(string(rb))
+
+			if err := resp.Body.Close(); err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		if cctx.Args().Present() {
+			if cctx.Args().Len() > 2 {
+				return xerrors.Errorf("expected 1 or 2 arguments: method [params]")
+			}
+
+			params := cctx.Args().Get(1)
+			if params == "" {
+				// TODO: try to be smart and use zero-values for method
+				params = "[]"
+			}
+
+			return send(cctx.Args().Get(0), params)
+		}
+
 		cctx.App.Metadata["repoType"] = repo.FullNode
 		if err := lcli.VersionCmd.Action(cctx); err != nil {
 			return err
@@ -94,40 +149,8 @@ var rpcCmd = &cli.Command{
 			s.Scan()
 			params := line[s.Position.Offset:]
 
-			jreq, err := json.Marshal(struct {
-				Jsonrpc string          `json:"jsonrpc"`
-				ID      int             `json:"id"`
-				Method  string          `json:"method"`
-				Params  json.RawMessage `json:"params"`
-			}{
-				Jsonrpc: "2.0",
-				Method:  "Filecoin." + method,
-				Params:  json.RawMessage(params),
-				ID:      0,
-			})
-			if err != nil {
-				return err
-			}
-
-			req, err := http.NewRequest("POST", addr, bytes.NewReader(jreq))
-			if err != nil {
-				return err
-			}
-			req.Header = headers
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return err
-			}
-
-			rb, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return err
-			}
-
-			fmt.Println(string(rb))
-
-			if err := resp.Body.Close(); err != nil {
-				return err
+			if err := send(method, params); err != nil {
+				_, _ = fmt.Fprintf(os.Stderr, "%v", err)
 			}
 		}
 

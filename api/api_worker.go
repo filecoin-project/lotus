@@ -23,6 +23,9 @@ type WorkerAPI interface {
 
 	storiface.WorkerCalls
 
+	TaskDisable(ctx context.Context, tt sealtasks.TaskType) error
+	TaskEnable(ctx context.Context, tt sealtasks.TaskType) error
+
 	// Storage / Other
 	Remove(ctx context.Context, sector abi.SectorID) error
 

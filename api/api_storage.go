@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/specs-storage/storage"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -116,6 +117,8 @@ type StorageMiner interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error
+
+	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) (map[abi.SectorNumber]string, error)
 }
 
 type SealRes struct {
