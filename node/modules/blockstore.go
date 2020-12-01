@@ -9,6 +9,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/store/splitstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -31,18 +32,67 @@ func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 	return bs, err
 }
 
+func SplitBlockstore(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, bs dtypes.UniversalBlockstore) (dtypes.SplitBlockstore, error) {
+	path, err := r.SplitstorePath()
+	if err != nil {
+		return nil, err
+	}
+
+	ss, err := splitstore.NewSplitStore(path, ds, bs)
+	if err != nil {
+		return nil, err
+	}
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			return ss.Close()
+		},
+	})
+
+	return ss, err
+}
+
+// StateBlockstore returns the blockstore to use to store the state tree.
 // StateBlockstore is a hook to overlay caches for state objects, or in the
 // future, to segregate the universal blockstore into different physical state
 // and chain stores.
-func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.UniversalBlockstore) (dtypes.StateBlockstore, error) {
-	return bs, nil
+func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.SplitBlockstore) (dtypes.StateBlockstore, error) {
+	sbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs, blockstore.FreecacheConfig{
+		Name:           "state",
+		BlockCapacity:  288 * 1024 * 1024, // 288MiB.
+		ExistsCapacity: 48 * 1024 * 1024,  // 48MiB.
+	})
+	if err != nil {
+		return nil, err
+	}
+	// this may end up double closing the underlying blockstore, but all
+	// blockstores should be lenient or idempotent on double-close. The native
+	// badger blockstore is (and unit tested).
+	if c, ok := bs.(io.Closer); ok {
+		lc.Append(closerStopHook(c))
+	}
+	return sbs, nil
 }
 
+// ChainBlockstore returns the blockstore to use for chain data (tipsets, blocks, messages).
 // ChainBlockstore is a hook to overlay caches for state objects, or in the
 // future, to segregate the universal blockstore into different physical state
 // and chain stores.
-func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.UniversalBlockstore) (dtypes.ChainBlockstore, error) {
-	return bs, nil
+func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.SplitBlockstore) (dtypes.ChainBlockstore, error) {
+	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs, blockstore.FreecacheConfig{
+		Name:           "chain",
+		BlockCapacity:  64 * 1024 * 1024, // 64MiB.
+		ExistsCapacity: 16 * 1024,        // 16MiB.
+	})
+	if err != nil {
+		return nil, err
+	}
+	// this may end up double closing the underlying blockstore, but all
+	// blockstores should be lenient or idempotent on double-close. The native
+	// badger blockstore is (and unit tested).
+	if c, ok := bs.(io.Closer); ok {
+		lc.Append(closerStopHook(c))
+	}
+	return cbs, nil
 }
 
 func FallbackChainBlockstore(cbs dtypes.ChainBlockstore) dtypes.ChainBlockstore {
