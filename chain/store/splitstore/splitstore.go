@@ -24,7 +24,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-const CompactionThreshold = 5 * build.Finality
+var CompactionThreshold = 5 * build.Finality
 
 var baseEpochKey = dstore.NewKey("baseEpoch")
 
