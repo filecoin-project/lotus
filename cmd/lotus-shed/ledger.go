@@ -242,13 +242,14 @@ var ledgerSignTestCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Message: %x\n", b.RawData())
 
 		sig, err := fl.SignSECP256K1(p, b.RawData())
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(sig.SignatureBytes())
+		fmt.Printf("Signature: %x\n", sig.SignatureBytes())
 
 		return nil
 	},
