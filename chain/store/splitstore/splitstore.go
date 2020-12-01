@@ -339,7 +339,7 @@ func (s *SplitStore) compact() {
 
 	epoch := curTs.Height()
 	coldEpoch := s.baseEpoch + build.Finality
-	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch+1, false, false,
+	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch, false, false,
 		func(cid cid.Cid) error {
 			return hotSet.Mark(cid)
 		})
@@ -350,7 +350,7 @@ func (s *SplitStore) compact() {
 	}
 
 	// Phase 1b: mark all reachable CIDs in the cold range
-	coldTs, err := s.cs.GetTipsetByHeight(context.Background(), coldEpoch-1, curTs, true)
+	coldTs, err := s.cs.GetTipsetByHeight(context.Background(), coldEpoch, curTs, true)
 	if err != nil {
 		// TODO do something better here
 		panic(err)
@@ -392,7 +392,7 @@ func (s *SplitStore) compact() {
 		}
 
 		// is the object stil hot?
-		if wrEpoch >= coldEpoch {
+		if wrEpoch > coldEpoch {
 			// yes, stay in the hotstore
 			stHot++
 			continue
