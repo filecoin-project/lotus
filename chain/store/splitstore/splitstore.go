@@ -144,6 +144,11 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 
 	err := s.snoop.Put(blk.Cid(), epoch)
 	if err != nil {
+		if lmdb.IsErrno(err, lmdb.KeyExist) {
+			// duplicate write, ignore
+			return nil
+		}
+
 		log.Errorf("error tracking CID in hotstore: %s; falling back to coldstore", err)
 		return s.cold.Put(blk)
 	}
@@ -161,18 +166,29 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 	epoch := s.curTs.Height()
 	s.mx.Unlock()
 
-	err := s.hot.PutMany(blks)
-	if err != nil {
-		log.Errorf("error tracking CIDs in hotstore: %s; falling back to coldstore", err)
-		return s.cold.PutMany(blks)
-	}
-
 	batch := make([]cid.Cid, 0, len(blks))
 	for _, blk := range blks {
 		batch = append(batch, blk.Cid())
 	}
 
-	return s.snoop.PutBatch(batch, epoch)
+	err := s.snoop.PutBatch(batch, epoch)
+	if err != nil {
+		if lmdb.IsErrno(err, lmdb.KeyExist) {
+			// a write is duplicate, but we don't know which; write each block separately
+			for _, blk := range blks {
+				err = s.Put(blk)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		log.Errorf("error tracking CIDs in hotstore: %s; falling back to coldstore", err)
+		return s.cold.PutMany(blks)
+	}
+
+	return s.hot.PutMany(blks)
 }
 
 func (s *SplitStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
