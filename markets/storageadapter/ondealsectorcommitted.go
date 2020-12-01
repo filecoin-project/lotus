@@ -3,6 +3,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -20,7 +21,15 @@ type sectorCommittedEventsAPI interface {
 	Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error
 }
 
-func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid, callback storagemarket.DealSectorPreCommittedCallback) error {
+	// Ensure callback is only called once
+	var once sync.Once
+	cb := func(sectorNumber abi.SectorNumber, isActive bool, err error) {
+		once.Do(func() {
+			callback(sectorNumber, isActive, err)
+		})
+	}
+
 	// First check if the deal is already active, and if so, bail out
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		isActive, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
@@ -47,6 +56,10 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 		return matched, nil
 	}
 
+	// The deal must be accepted by the deal proposal start epoch, so timeout
+	// if the chain reaches that epoch
+	timeoutEpoch := proposal.StartEpoch + 1
+
 	// Check if the message params included the deal ID we're looking for.
 	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
 		defer func() {
@@ -55,9 +68,11 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 			}
 		}()
 
-		// Check if waiting for pre-commit timed out
+		// If the deal hasn't been activated by the proposed start epoch, the
+		// deal will timeout (when msg == nil it means the timeout epoch was reached)
 		if msg == nil {
-			return false, xerrors.Errorf("timed out waiting for deal %d pre-commit", dealID)
+			err = xerrors.Errorf("deal %d was not activated by proposed deal start epoch %d", dealID, proposal.StartEpoch)
+			return false, err
 		}
 
 		// Extract the message parameters
@@ -92,14 +107,22 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 		return nil
 	}
 
-	if err := eventsApi.Called(checkFunc, called, revert, int(build.MessageConfidence+1), events.NoTimeout, matchEvent); err != nil {
+	if err := eventsApi.Called(checkFunc, called, revert, int(build.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
 	return nil
 }
 
-func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market.DealProposal, publishCid *cid.Cid, callback storagemarket.DealSectorCommittedCallback) error {
+	// Ensure callback is only called once
+	var once sync.Once
+	cb := func(err error) {
+		once.Do(func() {
+			callback(err)
+		})
+	}
+
 	// First check if the deal is already active, and if so, bail out
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		isActive, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
@@ -134,6 +157,10 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		return params.SectorNumber == sectorNumber, nil
 	}
 
+	// The deal must be accepted by the deal proposal start epoch, so timeout
+	// if the chain reaches that epoch
+	timeoutEpoch := proposal.StartEpoch + 1
+
 	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
 		defer func() {
 			if err != nil {
@@ -141,9 +168,11 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 			}
 		}()
 
-		// Check if waiting for prove-commit timed out
+		// If the deal hasn't been activated by the proposed start epoch, the
+		// deal will timeout (when msg == nil it means the timeout epoch was reached)
 		if msg == nil {
-			return false, xerrors.Errorf("timed out waiting for deal activation for deal %d", dealID)
+			err := xerrors.Errorf("deal %d was not activated by proposed deal start epoch %d", dealID, proposal.StartEpoch)
+			return false, err
 		}
 
 		// Get the deal info
@@ -170,7 +199,7 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		return nil
 	}
 
-	if err := eventsApi.Called(checkFunc, called, revert, int(build.MessageConfidence+1), events.NoTimeout, matchEvent); err != nil {
+	if err := eventsApi.Called(checkFunc, called, revert, int(build.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
@@ -185,6 +214,14 @@ func checkIfDealAlreadyActive(ctx context.Context, api getCurrentDealInfoAPI, ts
 	}
 
 	// Sector with deal is already active
-	isActive := sd.State.SectorStartEpoch > 0
-	return isActive, nil
+	if sd.State.SectorStartEpoch > 0 {
+		return true, nil
+	}
+
+	// Sector was slashed
+	if sd.State.SlashEpoch > 0 {
+		return false, xerrors.Errorf("deal %d was slashed at epoch %d", dealID, sd.State.SlashEpoch)
+	}
+
+	return false, nil
 }
