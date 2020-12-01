@@ -82,7 +82,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 		fmt.Println("list-deals:\n", out)
 
 		lines := strings.Split(out, "\n")
-		require.Len(t, lines, 2)
+		require.GreaterOrEqual(t, len(lines), 2)
 		re := regexp.MustCompile(`\s+`)
 		parts := re.Split(lines[1], -1)
 		if len(parts) < 4 {
