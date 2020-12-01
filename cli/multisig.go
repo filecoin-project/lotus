@@ -81,8 +81,13 @@ var msigCreateCmd = &cli.Command{
 			Value: "0",
 		},
 		&cli.StringFlag{
-			Name:  "duration",
-			Usage: "length of the period over which funds unlock",
+			Name:  "vesting-start",
+			Usage: "epoch at which funds start unlocking",
+			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "vesting-duration",
+			Usage: "length of the period (in epochs) over which funds unlock",
 			Value: "0",
 		},
 		&cli.StringFlag{
@@ -142,9 +147,14 @@ var msigCreateCmd = &cli.Command{
 			required = uint64(len(addrs))
 		}
 
-		d := abi.ChainEpoch(cctx.Uint64("duration"))
+		if cctx.IsSet("vesting-start") != cctx.IsSet("vesting-duration") {
+			return ShowHelp(cctx, fmt.Errorf("cannot specify only one of vesting-start and vesting-duration"))
+		}
 
-		msgCid, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr)
+		vestingStart := abi.ChainEpoch(cctx.Uint64("vesting-start"))
+		vestingDuration := abi.ChainEpoch(cctx.Uint64("vesting-duration"))
+
+		msgCid, err := api.MsigCreate(ctx, required, addrs, vestingStart, vestingDuration, intVal, sendAddr)
 		if err != nil {
 			return err
 		}

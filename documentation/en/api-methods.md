@@ -2298,7 +2298,7 @@ Response:
 
 ### MsigCreate
 MsigCreate creates a multisig wallet
-It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
+It takes the following params: <required number of senders>, <approving addresses>, <vesting start epoch>, <vesting duration>,
 <initial balance>, <sender address of the create msg>
 
 
@@ -2309,6 +2309,7 @@ Inputs:
 [
   42,
   null,
+  10101,
   10101,
   "0",
   "f01234"

@@ -35,15 +35,14 @@ func (a *MsigAPI) messageBuilder(ctx context.Context, from address.Address) (mul
 	return multisig.Message(actors.VersionForNetwork(nver), from), nil
 }
 
-// TODO: Add "vesting start" to arguments.
-func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address) (cid.Cid, error) {
+func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, vestingStart abi.ChainEpoch, vestingDuration abi.ChainEpoch, val types.BigInt, src address.Address) (cid.Cid, error) {
 
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	msg, err := mb.Create(addrs, req, 0, duration, val)
+	msg, err := mb.Create(addrs, req, vestingStart, vestingDuration, val)
 	if err != nil {
 		return cid.Undef, err
 	}

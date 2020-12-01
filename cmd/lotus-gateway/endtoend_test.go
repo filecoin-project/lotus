@@ -100,7 +100,7 @@ func TestWalletMsig(t *testing.T) {
 	// Create an msig with three of the addresses and threshold of two sigs
 	msigAddrs := walletAddrs[:3]
 	amt := types.NewInt(1000)
-	addProposal, err := lite.MsigCreate(ctx, 2, msigAddrs, abi.ChainEpoch(50), amt, liteWalletAddr)
+	addProposal, err := lite.MsigCreate(ctx, 2, msigAddrs, abi.ChainEpoch(0), abi.ChainEpoch(50), amt, liteWalletAddr)
 	require.NoError(t, err)
 
 	res, err := lite.StateWaitMsg(ctx, addProposal, 1)
