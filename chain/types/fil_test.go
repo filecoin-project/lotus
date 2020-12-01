@@ -8,7 +8,7 @@ import (
 
 func TestFilShort(t *testing.T) {
 	for _, s := range []struct {
-		fil   string
+		fil    string
 		expect string
 	}{
 
