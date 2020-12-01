@@ -71,7 +71,7 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 		// If the deal hasn't been activated by the proposed start epoch, the
 		// deal will timeout (when msg == nil it means the timeout epoch was reached)
 		if msg == nil {
-			err := xerrors.Errorf("deal %d was not activated by proposed deal start epoch %d", dealID, proposal.StartEpoch)
+			err = xerrors.Errorf("deal %d was not activated by proposed deal start epoch %d", dealID, proposal.StartEpoch)
 			return false, err
 		}
 
