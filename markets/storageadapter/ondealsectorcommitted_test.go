@@ -60,7 +60,6 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		searchMessageErr       error
 		checkTsDeals           map[abi.DealID]*api.MarketDeal
 		matchStates            []matchState
-		chainAtErr             error
 		dealStartEpochTimeout  bool
 		expectedCBCallCount    uint64
 		expectedCBSectorNumber abi.SectorNumber
@@ -147,21 +146,13 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBError:     errors.New("handling applied event: something went wrong"),
 			expectedError:       errors.New("failed to set up called handler: something went wrong"),
 		},
-		"chainAt error": {
-			checkTsDeals: map[abi.DealID]*api.MarketDeal{
-				startDealID: unfinishedDeal,
-			},
-			chainAtErr:          errors.New("chain at err"),
-			expectedCBCallCount: 1,
-			expectedCBError:     xerrors.Errorf("error waiting for deal %d to become activated: chain at err", startDealID),
-		},
 		"proposed deal epoch timeout": {
 			checkTsDeals: map[abi.DealID]*api.MarketDeal{
 				startDealID: unfinishedDeal,
 			},
 			dealStartEpochTimeout: true,
 			expectedCBCallCount:   1,
-			expectedCBError:       xerrors.Errorf("deal %d was not activated by deal start epoch 0", startDealID),
+			expectedCBError:       xerrors.Errorf("handling applied event: deal %d was not activated by proposed deal start epoch 0", startDealID),
 		},
 	}
 	runTestCase := func(testCase string, data testCase) {
@@ -196,7 +187,6 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 				Ctx:                   ctx,
 				CheckTs:               checkTs,
 				MatchMessages:         matchMessages,
-				ChainAtErr:            data.chainAtErr,
 				DealStartEpochTimeout: data.dealStartEpochTimeout,
 			}
 			cbCallCount := uint64(0)
@@ -263,7 +253,6 @@ func TestOnDealSectorCommitted(t *testing.T) {
 		searchMessageErr      error
 		checkTsDeals          map[abi.DealID]*api.MarketDeal
 		matchStates           []matchState
-		chainAtErr            error
 		dealStartEpochTimeout bool
 		expectedCBCallCount   uint64
 		expectedCBError       error
@@ -339,21 +328,13 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			expectedCBError:     errors.New("handling applied event: failed to look up deal on chain: something went wrong"),
 			expectedError:       errors.New("failed to set up called handler: failed to look up deal on chain: something went wrong"),
 		},
-		"chainAt error": {
-			checkTsDeals: map[abi.DealID]*api.MarketDeal{
-				startDealID: unfinishedDeal,
-			},
-			chainAtErr:          errors.New("chain at err"),
-			expectedCBCallCount: 1,
-			expectedCBError:     xerrors.Errorf("error waiting for deal %d to become activated: chain at err", startDealID),
-		},
 		"proposed deal epoch timeout": {
 			checkTsDeals: map[abi.DealID]*api.MarketDeal{
 				startDealID: unfinishedDeal,
 			},
 			dealStartEpochTimeout: true,
 			expectedCBCallCount:   1,
-			expectedCBError:       xerrors.Errorf("deal %d was not activated by deal start epoch 0", startDealID),
+			expectedCBError:       xerrors.Errorf("handling applied event: deal %d was not activated by proposed deal start epoch 0", startDealID),
 		},
 	}
 	runTestCase := func(testCase string, data testCase) {
@@ -388,7 +369,6 @@ func TestOnDealSectorCommitted(t *testing.T) {
 				Ctx:                   ctx,
 				CheckTs:               checkTs,
 				MatchMessages:         matchMessages,
-				ChainAtErr:            data.chainAtErr,
 				DealStartEpochTimeout: data.dealStartEpochTimeout,
 			}
 			cbCallCount := uint64(0)
@@ -432,11 +412,15 @@ type fakeEvents struct {
 	Ctx                   context.Context
 	CheckTs               *types.TipSet
 	MatchMessages         []matchMessage
-	ChainAtErr            error
 	DealStartEpochTimeout bool
 }
 
 func (fe *fakeEvents) Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error {
+	if fe.DealStartEpochTimeout {
+		msgHnd(nil, nil, nil, 100) // nolint:errcheck
+		return nil
+	}
+
 	_, more, err := check(fe.CheckTs)
 	if err != nil {
 		return err
@@ -464,16 +448,6 @@ func (fe *fakeEvents) Called(check events.CheckFunc, msgHnd events.MsgHandler, r
 				return nil
 			}
 		}
-	}
-	return nil
-}
-
-func (fe *fakeEvents) ChainAt(hnd events.HeightHandler, rev events.RevertHandler, confidence int, h abi.ChainEpoch) error {
-	if fe.ChainAtErr != nil {
-		return fe.ChainAtErr
-	}
-	if fe.DealStartEpochTimeout {
-		_ = hnd(context.Background(), nil, abi.ChainEpoch(0))
 	}
 	return nil
 }
