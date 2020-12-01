@@ -73,7 +73,11 @@ func NewLiveSet(env *lmdb.Env, name string) (LiveSet, error) {
 
 func (s *liveSet) Mark(cid cid.Cid) error {
 	return s.env.Update(func(txn *lmdb.Txn) error {
-		return txn.Put(s.db, cid.Hash(), markBytes, 0)
+		err := txn.Put(s.db, cid.Hash(), markBytes, 0)
+		if err == nil || lmdb.IsErrno(err, lmdb.KeyExist) {
+			return nil
+		}
+		return err
 	})
 }
 
