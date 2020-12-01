@@ -143,12 +143,7 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 	s.mx.Unlock()
 
 	err := s.snoop.Put(blk.Cid(), epoch)
-	if err != nil {
-		if lmdb.IsErrno(err, lmdb.KeyExist) {
-			// duplicate write, ignore
-			return nil
-		}
-
+	if err != nil && !lmdb.IsErrno(err, lmdb.KeyExist) {
 		log.Errorf("error tracking CID in hotstore: %s; falling back to coldstore", err)
 		return s.cold.Put(blk)
 	}
