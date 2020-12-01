@@ -232,7 +232,8 @@ Inputs:
 ```json
 [
   8,
-  null
+  null,
+  true
 ]
 ```
 
