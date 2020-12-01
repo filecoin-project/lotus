@@ -88,7 +88,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	case basefee.GreaterThan(big.NewInt(100_000_000)): // 100 uFIL
 		gasCol = []color.Attribute{color.FgGreen}
 	}
-	fmt.Printf("[basefee %s]", color.New(gasCol...).Sprint(types.FIL(basefee).Short()))
+	fmt.Printf(" [basefee %s]", color.New(gasCol...).Sprint(types.FIL(basefee).Short()))
 
 	fmt.Println()
 
@@ -182,6 +182,10 @@ func infoCmdAct(cctx *cli.Context) error {
 	var nactiveDeals, nVerifDeals, ndeals uint64
 	var activeDealBytes, activeVerifDealBytes, dealBytes abi.PaddedPieceSize
 	for _, deal := range deals {
+		if deal.State == storagemarket.StorageDealError {
+			continue
+		}
+
 		ndeals++
 		dealBytes += deal.Proposal.PieceSize
 
@@ -210,23 +214,23 @@ func infoCmdAct(cctx *cli.Context) error {
 	if err != nil {
 		return xerrors.Errorf("getting available balance: %w", err)
 	}
-	fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance)))
-	fmt.Printf("\tPreCommit:   %s\n", types.FIL(lockedFunds.PreCommitDeposits))
-	fmt.Printf("\tPledge:      %s\n", types.FIL(lockedFunds.InitialPledgeRequirement))
-	fmt.Printf("\tVesting:     %s\n", types.FIL(lockedFunds.VestingFunds))
-	color.Green("\tAvailable:   %s", types.FIL(availBalance))
+	fmt.Printf("Miner Balance: %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
+	fmt.Printf("\tPreCommit:   %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
+	fmt.Printf("\tPledge:      %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
+	fmt.Printf("\tVesting:     %s\n", types.FIL(lockedFunds.VestingFunds).Short())
+	color.Green("\tAvailable:   %s", types.FIL(availBalance).Short())
 	wb, err := api.WalletBalance(ctx, mi.Worker)
 	if err != nil {
 		return xerrors.Errorf("getting worker balance: %w", err)
 	}
-	color.Cyan("Worker Balance: %s", types.FIL(wb))
+	color.Cyan("Worker Balance: %s", types.FIL(wb).Short())
 
 	mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getting market balance: %w", err)
 	}
-	fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow))
-	fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked))
+	fmt.Printf("Market (Escrow):  %s\n", types.FIL(mb.Escrow).Short())
+	fmt.Printf("Market (Locked):  %s\n", types.FIL(mb.Locked).Short())
 
 	fmt.Println()
 
