@@ -108,15 +108,14 @@ func infoCmdAct(cctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
-
 	// Sector size
 	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Sector Size: %s\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))))
+	ssize := types.SizeStr(types.NewInt(uint64(mi.SectorSize)))
+	fmt.Printf("Miner: %s (%s sectors)\n", color.BlueString("%s", maddr), ssize)
 
 	pow, err := api.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	if err != nil {
