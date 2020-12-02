@@ -277,9 +277,9 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ActorAddress    func(context.Context) (address.Address, error)                 `perm:"read"`
-		ActorSectorSize func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
-		ActorAddressConfig func(ctx context.Context) (api.AddressConfig, error)`perm:"read"`
+		ActorAddress       func(context.Context) (address.Address, error)                 `perm:"read"`
+		ActorSectorSize    func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
+		ActorAddressConfig func(ctx context.Context) (api.AddressConfig, error)           `perm:"read"`
 
 		MiningBase func(context.Context) (*types.TipSet, error) `perm:"read"`
 

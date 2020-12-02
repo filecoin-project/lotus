@@ -6,6 +6,7 @@
   * [Version](#Version)
 * [Actor](#Actor)
   * [ActorAddress](#ActorAddress)
+  * [ActorAddressConfig](#ActorAddressConfig)
   * [ActorSectorSize](#ActorSectorSize)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
@@ -174,6 +175,21 @@ Perms: read
 Inputs: `null`
 
 Response: `"f01234"`
+
+### ActorAddressConfig
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "PreCommitControl": null,
+  "CommitControl": null
+}
+```
 
 ### ActorSectorSize
 There are not yet any comments for this method.

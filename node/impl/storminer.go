@@ -574,7 +574,6 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 	return out, nil
 }
 
-
 func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressConfig, error) {
 	return sm.AddrSel.AddressConfig, nil
 }
