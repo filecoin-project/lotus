@@ -67,9 +67,8 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 func (s *allocSelector) Cmp(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a, b *workerHandle) (bool, error) {
 	if s.ptype == storiface.PathSealing {
 		return a.utilization() < b.utilization(), nil
-	} else {
-		return s.storageCmp(ctx, spt, a, b)
 	}
+	return s.storageCmp(ctx, spt, a, b)
 }
 
 func (s *allocSelector) storageCmp(ctx context.Context, spt abi.RegisteredSealProof, a, b *workerHandle) (bool, error) {
