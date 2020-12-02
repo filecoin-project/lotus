@@ -13,7 +13,7 @@ import (
 
 var electionCmd = &cli.Command{
 	Name:  "election",
-	Usage: "commands related to leader election",
+	Usage: "Commands related to leader election",
 	Subcommands: []*cli.Command{
 		electionRunDummy,
 	},
@@ -21,16 +21,19 @@ var electionCmd = &cli.Command{
 
 var electionRunDummy = &cli.Command{
 	Name:  "run-dummy",
-	Usage: "runs dummy elections with given power",
+	Usage: "Runs dummy elections with given power",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "network-power",
+			Name:  "network-power",
+			Usage: "network storage power",
 		},
 		&cli.StringFlag{
-			Name: "miner-power",
+			Name:  "miner-power",
+			Usage: "miner storage power",
 		},
 		&cli.Uint64Flag{
 			Name:  "seed",
+			Usage: "rand number",
 			Value: 0,
 		},
 	},
@@ -42,7 +45,7 @@ var electionRunDummy = &cli.Command{
 		}
 		networkPow, err := types.BigFromString(cctx.String("network-power"))
 		if err != nil {
-			return xerrors.Errorf("decoding miner-power: %w", err)
+			return xerrors.Errorf("decoding network-power: %w", err)
 		}
 
 		ep := &types.ElectionProof{}
