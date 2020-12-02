@@ -18,7 +18,9 @@ var (
 const EnvMaximumHeap = "LOTUS_MAX_HEAP"
 
 // ResourceConstraints represents resource constraints that Lotus and the go
-// runtime should abide by.
+// runtime should abide by. It is a singleton object that's populated on
+// initialization, and can be used by components for size calculations
+// (e.g. caches).
 var ResourceConstraints struct {
 	// MaxHeapMem is the maximum heap memory that has been set by the user
 	// through the LOTUS_MAX_HEAP env variable. If zero, there is no max heap

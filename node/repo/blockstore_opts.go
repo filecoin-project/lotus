@@ -1,9 +1,6 @@
 package repo
 
-import (
-	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
-	"github.com/filecoin-project/lotus/system"
-)
+import badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 
 // BadgerBlockstoreOptions returns the badger options to apply for the provided
 // domain.
@@ -43,22 +40,6 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 
 	// Default table size is already 64MiB. This is here to make it explicit.
 	opts.MaxTableSize = 64 << 20
-
-	// If we don't set an index cache size, badger will retain all indices from
-	// all tables _in memory_. This is quite counter intuitive, but it's true.
-	// See badger/table.Table#initIndex.
-	//
-	// We vary the cache size depending on the configured system limits, taking
-	// up to 20% of the configured limit, with a min of 256MiB, and a max
-	// of 1GiB.
-	var icachesize int64
-	switch icachesize = int64(float64(system.ResourceConstraints.EffectiveMemLimit) * 0.20); {
-	case icachesize < 256<<20: // 256MiB.
-		icachesize = 256 << 20
-	case icachesize > 1<<30: // 1GiB.
-		icachesize = 1 << 30
-	}
-	opts.IndexCacheSize = icachesize
 
 	// NOTE: The chain blockstore doesn't require any GC (blocks are never
 	// deleted). This will change if we move to a tiered blockstore.
