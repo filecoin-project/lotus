@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/journal"
 )
 
@@ -125,7 +126,7 @@ func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, si
 type mockFaultTracker struct {
 }
 
-func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) (map[abi.SectorID]string, error) {
+func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	// Returns "bad" sectors so just return empty map meaning all sectors are good
 	return map[abi.SectorID]string{}, nil
 }
