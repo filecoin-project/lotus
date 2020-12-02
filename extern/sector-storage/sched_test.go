@@ -512,7 +512,7 @@ func (s slowishSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt ab
 	return bool(s), nil
 }
 
-func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType,  _ abi.RegisteredSealProof, a, b *workerHandle) (bool, error) {
+func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, _ abi.RegisteredSealProof, a, b *workerHandle) (bool, error) {
 	time.Sleep(100 * time.Microsecond)
 	return true, nil
 }
