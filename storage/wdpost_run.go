@@ -799,7 +799,7 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 	goodFunds := big.Add(msg.RequiredFunds(), msg.Value)
 	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
 
-	pa, avail, err := AddressFor(ctx, s.api, mi, PoStAddr, goodFunds, minFunds)
+	pa, avail, err := s.addrSel.AddressFor(ctx, s.api, mi, PoStAddr, goodFunds, minFunds)
 	if err != nil {
 		log.Errorw("error selecting address for window post", "error", err)
 		return nil

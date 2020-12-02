@@ -5,8 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -24,19 +22,72 @@ type addrSelectApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
-func AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
-	switch use {
-	case PreCommitAddr, CommitAddr:
-		// always use worker, at least for now
-		return mi.Worker, big.Zero(), nil
-	}
+type AddressSelector struct {
+	PreCommitControl []address.Address
+	CommitControl    []address.Address
+}
 
+func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	var addrs []address.Address
+	switch use {
+	case PreCommitAddr:
+		addrs = append(addrs, as.PreCommitControl...)
+	case CommitAddr:
+		addrs = append(addrs, as.CommitControl...)
+	default:
+		defaultCtl := map[address.Address]struct{}{}
+		for _, a := range mi.ControlAddresses {
+			defaultCtl[a] = struct{}{}
+		}
+		delete(defaultCtl, mi.Owner)
+		delete(defaultCtl, mi.Worker)
+
+		for _, addr := range append(append([]address.Address{}, as.PreCommitControl...), as.CommitControl...) {
+			if addr.Protocol() != address.ID {
+				var err error
+				addr, err = a.StateLookupID(ctx, addr, types.EmptyTSK)
+				if err != nil {
+					log.Warnw("looking up control address", "address", addr, "error", err)
+					continue
+				}
+			}
+
+			delete(defaultCtl, addr)
+		}
+
+		for a := range defaultCtl {
+			addrs = append(addrs, a)
+		}
+	}
+	addrs = append(addrs, mi.Owner, mi.Worker)
+
+	return pickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
+}
+
+func pickAddress(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
 	leastBad := mi.Worker
 	bestAvail := minFunds
 
-	for _, addr := range append(mi.ControlAddresses, mi.Owner, mi.Worker) {
+	ctl := map[address.Address]struct{}{}
+	for _, a := range append(mi.ControlAddresses, mi.Owner, mi.Worker) {
+		ctl[a] = struct{}{}
+	}
+
+	for _, addr := range addrs {
+		addr, err := a.StateLookupID(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			log.Warnw("looking up control address", "address", addr, "error", err)
+			continue
+		}
+
+		if _, ok := ctl[addr]; !ok {
+			log.Warnw("non-control address configured for sending messages", "address", addr)
+			continue
+		}
+
 		if maybeUseAddress(ctx, a, addr, goodFunds, &leastBad, &bestAvail) {
 			return leastBad, bestAvail, nil
 		}
@@ -68,7 +119,7 @@ func maybeUseAddress(ctx context.Context, a addrSelectApi, addr address.Address,
 		}
 
 		if !have {
-			log.Errorw("don't have key", "key", k)
+			log.Errorw("don't have key", "key", k, "address", addr)
 			return false
 		}
 
