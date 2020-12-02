@@ -32,8 +32,8 @@ var cidIdCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "codec",
-			Value: "abi",
-			Usage: "multicodec-packed content types: abi or raw",
+			Value: "id",
+			Usage: "multicodec-packed content types: abi or id",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -66,7 +66,7 @@ var cidIdCmd = &cli.Command{
 				return xerrors.Errorf("cidBuilder abi: %w", err)
 			}
 			fmt.Println(aCid)
-		case "raw":
+		case "id":
 			builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
 			rCid, err := builder.Sum(dec)
 			if err != nil {
