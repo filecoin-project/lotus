@@ -11,14 +11,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type AddrUse int
-
-const (
-	PreCommitAddr AddrUse = iota
-	CommitAddr
-	PoStAddr
-)
-
 type addrSelectApi interface {
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletHas(context.Context, address.Address) (bool, error)
@@ -31,12 +23,12 @@ type AddressSelector struct {
 	api.AddressConfig
 }
 
-func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 	var addrs []address.Address
 	switch use {
-	case PreCommitAddr:
+	case api.PreCommitAddr:
 		addrs = append(addrs, as.PreCommitControl...)
-	case CommitAddr:
+	case api.CommitAddr:
 		addrs = append(addrs, as.CommitControl...)
 	default:
 		defaultCtl := map[address.Address]struct{}{}
