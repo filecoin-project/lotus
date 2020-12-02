@@ -63,11 +63,10 @@ func MemoryConstraints() system.MemoryConstraints {
 // constraints.
 func MemoryWatchdog(lc fx.Lifecycle, constraints system.MemoryConstraints) {
 	cfg := watchdog.MemConfig{
-		Resolution: 10 * time.Second,
+		Resolution: 5 * time.Second,
 		Policy: &watchdog.WatermarkPolicy{
 			Watermarks:         []float64{0.50, 0.60, 0.70, 0.85, 0.90, 0.925, 0.95},
 			EmergencyWatermark: 0.95,
-			Silence:            45 * time.Second, // avoid forced GC within 45 seconds of previous GC.
 		},
 		Logger: logWatchdog,
 	}
