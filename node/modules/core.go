@@ -49,9 +49,19 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	}
 }
 
+// MemoryConstraints returns the memory constraints configured for this system.
+func MemoryConstraints() system.MemoryConstraints {
+	constraints := system.GetMemoryConstraints()
+	log.Infow("memory limits initialized",
+		"max_mem_heap", constraints.MaxHeapMem,
+		"total_system_mem", constraints.TotalSystemMem,
+		"effective_mem_limit", constraints.EffectiveMemLimit)
+	return constraints
+}
+
 // MemoryWatchdog starts the memory watchdog, applying the computed resource
 // constraints.
-func MemoryWatchdog(lc fx.Lifecycle) {
+func MemoryWatchdog(lc fx.Lifecycle, constraints system.MemoryConstraints) {
 	cfg := watchdog.MemConfig{
 		Resolution: 10 * time.Second,
 		Policy: &watchdog.WatermarkPolicy{
@@ -64,13 +74,13 @@ func MemoryWatchdog(lc fx.Lifecycle) {
 
 	// if user has set max heap limit, apply it. Otherwise, fall back to total
 	// system memory constraint.
-	if maxHeap := system.ResourceConstraints.MaxHeapMem; maxHeap != 0 {
+	if maxHeap := constraints.MaxHeapMem; maxHeap != 0 {
 		log.Infof("memory watchdog will apply max heap constraint: %d bytes", maxHeap)
 		cfg.Limit = maxHeap
 		cfg.Scope = watchdog.ScopeHeap
 	} else {
-		log.Infof("max heap size not provided; memory watchdog will apply total system memory constraint: %d bytes", system.ResourceConstraints.TotalSystemMem)
-		cfg.Limit = system.ResourceConstraints.TotalSystemMem
+		log.Infof("max heap size not provided; memory watchdog will apply total system memory constraint: %d bytes", constraints.TotalSystemMem)
+		cfg.Limit = constraints.TotalSystemMem
 		cfg.Scope = watchdog.ScopeSystem
 	}
 
