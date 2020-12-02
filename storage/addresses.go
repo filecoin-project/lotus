@@ -5,6 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -26,8 +28,7 @@ type addrSelectApi interface {
 }
 
 type AddressSelector struct {
-	PreCommitControl []address.Address
-	CommitControl    []address.Address
+	api.AddressConfig
 }
 
 func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
@@ -77,10 +78,12 @@ func pickAddress(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, goodF
 	}
 
 	for _, addr := range addrs {
-		addr, err := a.StateLookupID(ctx, addr, types.EmptyTSK)
-		if err != nil {
-			log.Warnw("looking up control address", "address", addr, "error", err)
-			continue
+		if addr.Protocol() != address.ID {
+			addr, err := a.StateLookupID(ctx, addr, types.EmptyTSK)
+			if err != nil {
+				log.Warnw("looking up control address", "address", addr, "error", err)
+				continue
+			}
 		}
 
 		if _, ok := ctl[addr]; !ok {

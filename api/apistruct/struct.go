@@ -279,6 +279,7 @@ type StorageMinerStruct struct {
 	Internal struct {
 		ActorAddress    func(context.Context) (address.Address, error)                 `perm:"read"`
 		ActorSectorSize func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
+		ActorAddressConfig func(ctx context.Context) (api.AddressConfig, error)`perm:"read"`
 
 		MiningBase func(context.Context) (*types.TipSet, error) `perm:"read"`
 
@@ -1228,6 +1229,10 @@ func (c *StorageMinerStruct) MiningBase(ctx context.Context) (*types.TipSet, err
 
 func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
 	return c.Internal.ActorSectorSize(ctx, addr)
+}
+
+func (c *StorageMinerStruct) ActorAddressConfig(ctx context.Context) (api.AddressConfig, error) {
+	return c.Internal.ActorAddressConfig(ctx)
 }
 
 func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {

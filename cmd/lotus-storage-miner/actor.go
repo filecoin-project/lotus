@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
-	"github.com/filecoin-project/lotus/storage"
 )
 
 var actorCmd = &cli.Command{
@@ -414,9 +413,37 @@ var actorControlList = &cli.Command{
 			tablewriter.Col("balance"),
 		)
 
-		postAddr, _, err := storage.AddressFor(ctx, api, mi, storage.PoStAddr, types.FromFil(1), types.FromFil(1))
+		ac, err := nodeApi.ActorAddressConfig(ctx)
 		if err != nil {
-			return xerrors.Errorf("getting address for post: %w", err)
+			return err
+		}
+
+		commit := map[address.Address]struct{}{}
+		precommit := map[address.Address]struct{}{}
+		post := map[address.Address]struct{}{}
+
+		for _, ca := range mi.ControlAddresses {
+			post[ca] = struct{}{}
+		}
+
+		for _, ca := range ac.PreCommitControl {
+			ca, err := api.StateLookupID(ctx, ca, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			delete(post, ca)
+			precommit[ca] = struct{}{}
+		}
+
+		for _, ca := range ac.CommitControl {
+			ca, err := api.StateLookupID(ctx, ca, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			delete(post, ca)
+			commit[ca] = struct{}{}
 		}
 
 		printKey := func(name string, a address.Address) {
@@ -451,8 +478,14 @@ var actorControlList = &cli.Command{
 			if a == mi.Worker {
 				uses = append(uses, color.YellowString("other"))
 			}
-			if a == postAddr {
+			if _, ok := post[a]; ok {
 				uses = append(uses, color.GreenString("post"))
+			}
+			if _, ok := precommit[a]; ok {
+				uses = append(uses, color.CyanString("precommit"))
+			}
+			if _, ok := commit[a]; ok {
+				uses = append(uses, color.BlueString("commit"))
 			}
 
 			tw.Write(map[string]interface{}{
