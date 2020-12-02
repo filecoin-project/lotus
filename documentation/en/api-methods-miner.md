@@ -10,6 +10,8 @@
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
+* [Check](#Check)
+  * [CheckProvable](#CheckProvable)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Deals](#Deals)
@@ -53,6 +55,9 @@
   * [NetBandwidthStats](#NetBandwidthStats)
   * [NetBandwidthStatsByPeer](#NetBandwidthStatsByPeer)
   * [NetBandwidthStatsByProtocol](#NetBandwidthStatsByProtocol)
+  * [NetBlockAdd](#NetBlockAdd)
+  * [NetBlockList](#NetBlockList)
+  * [NetBlockRemove](#NetBlockRemove)
   * [NetConnect](#NetConnect)
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
@@ -214,6 +219,30 @@ Inputs:
 ```
 
 Response: `null`
+
+## Check
+
+
+### CheckProvable
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  8,
+  null,
+  true
+]
+```
+
+Response:
+```json
+{
+  "123": "can't acquire read lock"
+}
+```
 
 ## Create
 
@@ -549,7 +578,8 @@ Response:
     "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "ID": 3
-  }
+  },
+  "SectorNumber": 9
 }
 ```
 
@@ -797,6 +827,58 @@ Response:
   }
 }
 ```
+
+### NetBlockAdd
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Peers": null,
+    "IPAddrs": null,
+    "IPSubnets": null
+  }
+]
+```
+
+Response: `{}`
+
+### NetBlockList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Peers": null,
+  "IPAddrs": null,
+  "IPSubnets": null
+}
+```
+
+### NetBlockRemove
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Peers": null,
+    "IPAddrs": null,
+    "IPSubnets": null
+  }
+]
+```
+
+Response: `{}`
 
 ### NetConnect
 

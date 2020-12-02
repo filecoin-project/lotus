@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -783,6 +784,22 @@ type StartDealParams struct {
 	DealStartEpoch     abi.ChainEpoch
 	FastRetrieval      bool
 	VerifiedDeal       bool
+}
+
+func (s *StartDealParams) UnmarshalJSON(raw []byte) (err error) {
+	type sdpAlias StartDealParams
+
+	sdp := sdpAlias{
+		FastRetrieval: true,
+	}
+
+	if err := json.Unmarshal(raw, &sdp); err != nil {
+		return err
+	}
+
+	*s = StartDealParams(sdp)
+
+	return nil
 }
 
 type IpldObject struct {

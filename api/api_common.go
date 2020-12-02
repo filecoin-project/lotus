@@ -46,6 +46,11 @@ type Common interface {
 	// usage and current rate per protocol
 	NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error)
 
+	// ConnectionGater API
+	NetBlockAdd(ctx context.Context, acl NetBlockList) error
+	NetBlockRemove(ctx context.Context, acl NetBlockList) error
+	NetBlockList(ctx context.Context) (NetBlockList, error)
+
 	// MethodGroup: Common
 
 	// ID returns peerID of libp2p node backing this API

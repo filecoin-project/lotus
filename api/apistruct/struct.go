@@ -60,6 +60,9 @@ type CommonStruct struct {
 		NetBandwidthStatsByPeer     func(ctx context.Context) (map[string]metrics.Stats, error)      `perm:"read"`
 		NetBandwidthStatsByProtocol func(ctx context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
 		NetAgentVersion             func(ctx context.Context, p peer.ID) (string, error)             `perm:"read"`
+		NetBlockAdd                 func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
+		NetBlockRemove              func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
+		NetBlockList                func(ctx context.Context) (api.NetBlockList, error)              `perm:"read"`
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
@@ -360,6 +363,8 @@ type StorageMinerStruct struct {
 		PiecesGetCIDInfo   func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
+
+		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 	}
 }
 
@@ -384,6 +389,9 @@ type WorkerStruct struct {
 		UnsealPiece     func(context.Context, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (storiface.CallID, error)                                           `perm:"admin"`
 		ReadPiece       func(context.Context, io.Writer, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (storiface.CallID, error)                                                             `perm:"admin"`
 		Fetch           func(context.Context, storage.SectorRef, storiface.SectorFileType, storiface.PathType, storiface.AcquireMode) (storiface.CallID, error)                                                       `perm:"admin"`
+
+		TaskDisable func(ctx context.Context, tt sealtasks.TaskType) error `perm:"admin"`
+		TaskEnable  func(ctx context.Context, tt sealtasks.TaskType) error `perm:"admin"`
 
 		Remove          func(ctx context.Context, sector abi.SectorID) error `perm:"admin"`
 		StorageAddLocal func(ctx context.Context, path string) error         `perm:"admin"`
@@ -424,6 +432,7 @@ type GatewayStruct struct {
 		StateMarketBalance                func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
 		StateMarketStorageDeal            func(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
 		StateNetworkVersion               func(ctx context.Context, tsk types.TipSetKey) (stnetwork.Version, error)
+		StateSectorGetInfo                func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
 		StateVerifiedClientStatus         func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 		StateWaitMsg                      func(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 	}
@@ -493,6 +502,18 @@ func (c *CommonStruct) NetBandwidthStatsByPeer(ctx context.Context) (map[string]
 
 func (c *CommonStruct) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
 	return c.Internal.NetBandwidthStatsByProtocol(ctx)
+}
+
+func (c *CommonStruct) NetBlockAdd(ctx context.Context, acl api.NetBlockList) error {
+	return c.Internal.NetBlockAdd(ctx, acl)
+}
+
+func (c *CommonStruct) NetBlockRemove(ctx context.Context, acl api.NetBlockList) error {
+	return c.Internal.NetBlockRemove(ctx, acl)
+}
+
+func (c *CommonStruct) NetBlockList(ctx context.Context) (api.NetBlockList, error) {
+	return c.Internal.NetBlockList(ctx)
 }
 
 func (c *CommonStruct) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
@@ -1495,6 +1516,10 @@ func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) err
 	return c.Internal.CreateBackup(ctx, fpath)
 }
 
+func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
+	return c.Internal.CheckProvable(ctx, pp, sectors, expensive)
+}
+
 // WorkerStruct
 
 func (w *WorkerStruct) Version(ctx context.Context) (build.Version, error) {
@@ -1555,6 +1580,14 @@ func (w *WorkerStruct) ReadPiece(ctx context.Context, sink io.Writer, sector sto
 
 func (w *WorkerStruct) Fetch(ctx context.Context, id storage.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	return w.Internal.Fetch(ctx, id, fileType, ptype, am)
+}
+
+func (w *WorkerStruct) TaskDisable(ctx context.Context, tt sealtasks.TaskType) error {
+	return w.Internal.TaskDisable(ctx, tt)
+}
+
+func (w *WorkerStruct) TaskEnable(ctx context.Context, tt sealtasks.TaskType) error {
+	return w.Internal.TaskEnable(ctx, tt)
 }
 
 func (w *WorkerStruct) Remove(ctx context.Context, sector abi.SectorID) error {
@@ -1679,6 +1712,10 @@ func (g GatewayStruct) StateMinerPower(ctx context.Context, addr address.Address
 
 func (g GatewayStruct) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (stnetwork.Version, error) {
 	return g.Internal.StateNetworkVersion(ctx, tsk)
+}
+
+func (g GatewayStruct) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	return g.Internal.StateSectorGetInfo(ctx, maddr, n, tsk)
 }
 
 func (g GatewayStruct) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {

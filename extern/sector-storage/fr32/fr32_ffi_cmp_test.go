@@ -7,10 +7,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+
+	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -29,7 +30,7 @@ func TestWriteTwoPcs(t *testing.T) {
 		buf := bytes.Repeat([]byte{0xab * byte(i)}, int(paddedSize.Unpadded()))
 		rawBytes = append(rawBytes, buf...)
 
-		rf, w, _ := ffiwrapper.ToReadableFile(bytes.NewReader(buf), int64(len(buf)))
+		rf, w, _ := commpffi.ToReadableFile(bytes.NewReader(buf), int64(len(buf)))
 
 		_, _, _, err := ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg32GiBV1, rf, abi.UnpaddedPieceSize(len(buf)), tf, nil)
 		if err != nil {

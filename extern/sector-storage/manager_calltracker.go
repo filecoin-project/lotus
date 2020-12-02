@@ -146,7 +146,7 @@ func (m *Manager) getWork(ctx context.Context, method sealtasks.TaskType, params
 
 			switch ws.Status {
 			case wsStarted:
-				log.Warn("canceling started (not running) work %s", wid)
+				log.Warnf("canceling started (not running) work %s", wid)
 
 				if err := m.work.Get(wid).End(); err != nil {
 					log.Errorf("cancel: failed to cancel started work %s: %+v", wid, err)
@@ -154,9 +154,9 @@ func (m *Manager) getWork(ctx context.Context, method sealtasks.TaskType, params
 				}
 			case wsDone:
 				// TODO: still remove?
-				log.Warn("cancel called on work %s in 'done' state", wid)
+				log.Warnf("cancel called on work %s in 'done' state", wid)
 			case wsRunning:
-				log.Warn("cancel called on work %s in 'running' state (manager shutting down?)", wid)
+				log.Warnf("cancel called on work %s in 'running' state (manager shutting down?)", wid)
 			}
 
 		}, nil

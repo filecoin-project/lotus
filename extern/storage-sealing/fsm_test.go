@@ -160,3 +160,18 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 
 	require.Equal(t, CommitFailed, m.state.State)
 }
+
+func TestPlannerList(t *testing.T) {
+	for state := range ExistSectorStateList {
+		_, ok := fsmPlanners[state]
+		require.True(t, ok, "state %s", state)
+	}
+
+	for state := range fsmPlanners {
+		if state == UndefinedSectorState {
+			continue
+		}
+		_, ok := ExistSectorStateList[state]
+		require.True(t, ok, "state %s", state)
+	}
+}

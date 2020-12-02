@@ -726,11 +726,31 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 			log.Debug("tried to add block to tipset tracker that was already there")
 			return nil
 		}
+		h, err := cs.GetBlock(oc)
+		if err == nil && h != nil {
+			if h.Miner == b.Miner {
+				log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache %s-%s", b.Miner, b.Height, b.Cid(), h.Cid())
+			}
+		}
+	}
+	// This function is called 5 times per epoch on average
+	// It is also called with tipsets that are done with initial validation
+	// so they cannot be from the future.
+	// We are guaranteed not to use tipsets older than 900 epochs (fork limit)
+	// This means that we ideally want to keep only most recent 900 epochs in here
+	// Golang's map iteration starts at a random point in a map.
+	// With 5 tries per epoch, and 900 entries to keep, on average we will have
+	// ~136 garbage entires in the `cs.tipsets` map. (solve for 1-(1-x/(900+x))^5 == 0.5)
+	// Seems good enough to me
+
+	for height := range cs.tipsets {
+		if height < b.Height-build.Finality {
+			delete(cs.tipsets, height)
+		}
+		break
 	}
 
 	cs.tipsets[b.Height] = append(tss, b.Cid())
-
-	// TODO: do we want to look for slashable submissions here? might as well...
 
 	return nil
 }
@@ -797,7 +817,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 		return types.NewTipSet(all)
 	}
 
-	inclMiners := map[address.Address]bool{b.Miner: true}
+	inclMiners := map[address.Address]cid.Cid{b.Miner: b.Cid()}
 	for _, bhc := range tsets {
 		if bhc == b.Cid() {
 			continue
@@ -808,14 +828,14 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
 		}
 
-		if inclMiners[h.Miner] {
-			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache", h.Miner, h.Height)
+		if cid, found := inclMiners[h.Miner]; found {
+			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache %s-%s", h.Miner, h.Height, h.Cid(), cid)
 			continue
 		}
 
 		if types.CidArrsEqual(h.Parents, b.Parents) {
 			all = append(all, h)
-			inclMiners[h.Miner] = true
+			inclMiners[h.Miner] = bhc
 		}
 	}
 

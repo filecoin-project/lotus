@@ -8,6 +8,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/ipfs/go-cid"
@@ -32,8 +33,12 @@ import (
 
 var log = logging.Logger("main")
 
-func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownCh <-chan struct{}) error {
-	rpcServer := jsonrpc.NewServer()
+func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownCh <-chan struct{}, maxRequestSize int64) error {
+	serverOptions := make([]jsonrpc.ServerOption, 0)
+	if maxRequestSize != 0 { // config set
+		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
+	}
+	rpcServer := jsonrpc.NewServer(serverOptions...)
 	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a)))
 
 	ah := &auth.Handler{
@@ -67,6 +72,10 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 	}
 
 	http.Handle("/debug/metrics", exporter)
+	http.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
+	http.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction",
+		func(x int) { runtime.SetMutexProfileFraction(x) },
+	))
 
 	lst, err := manet.Listen(addr)
 	if err != nil {
