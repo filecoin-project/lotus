@@ -19,6 +19,8 @@
   * [DealsConsiderOfflineStorageDeals](#DealsConsiderOfflineStorageDeals)
   * [DealsConsiderOnlineRetrievalDeals](#DealsConsiderOnlineRetrievalDeals)
   * [DealsConsiderOnlineStorageDeals](#DealsConsiderOnlineStorageDeals)
+  * [DealsConsiderUnverifiedStorageDeals](#DealsConsiderUnverifiedStorageDeals)
+  * [DealsConsiderVerifiedStorageDeals](#DealsConsiderVerifiedStorageDeals)
   * [DealsImportData](#DealsImportData)
   * [DealsList](#DealsList)
   * [DealsPieceCidBlocklist](#DealsPieceCidBlocklist)
@@ -26,6 +28,8 @@
   * [DealsSetConsiderOfflineStorageDeals](#DealsSetConsiderOfflineStorageDeals)
   * [DealsSetConsiderOnlineRetrievalDeals](#DealsSetConsiderOnlineRetrievalDeals)
   * [DealsSetConsiderOnlineStorageDeals](#DealsSetConsiderOnlineStorageDeals)
+  * [DealsSetConsiderUnverifiedStorageDeals](#DealsSetConsiderUnverifiedStorageDeals)
+  * [DealsSetConsiderVerifiedStorageDeals](#DealsSetConsiderVerifiedStorageDeals)
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
 * [I](#I)
   * [ID](#ID)
@@ -304,6 +308,24 @@ Inputs: `null`
 
 Response: `true`
 
+### DealsConsiderUnverifiedStorageDeals
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
+
+### DealsConsiderVerifiedStorageDeals
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
+
 ### DealsImportData
 There are not yet any comments for this method.
 
@@ -382,6 +404,34 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineStorageDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true
+]
+```
+
+Response: `{}`
+
+### DealsSetConsiderUnverifiedStorageDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true
+]
+```
+
+Response: `{}`
+
+### DealsSetConsiderVerifiedStorageDeals
 There are not yet any comments for this method.
 
 Perms: admin
