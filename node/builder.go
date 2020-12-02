@@ -111,8 +111,10 @@ const (
 	// the system starts, so that it's available for all other components.
 	InitJournalKey = invoke(iota)
 
-	// libp2p
+	// System processes.
+	InitMemoryWatchdog
 
+	// libp2p
 	PstoreAddSelfKeysKey
 	StartListeningKey
 	BootstrapKey
@@ -173,6 +175,8 @@ func defaults() []Option {
 		// global system journal.
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
+
+		Override(InitMemoryWatchdog, modules.MemoryWatchdog),
 
 		Override(new(helpers.MetricsCtx), func() context.Context {
 			return metricsi.CtxScope(context.Background(), "lotus")
