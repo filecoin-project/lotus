@@ -271,7 +271,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 	from, _, err := m.addrSel(ctx.Context(), mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("no good address to send precommit message from", err)})
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("no good address to send precommit message from: %w", err)})
 	}
 
 	log.Infof("submitting precommit for sector %d (deposit: %s): ", sector.SectorNumber, deposit)
@@ -461,7 +461,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 
 	from, _, err := m.addrSel(ctx.Context(), mi, api.PreCommitAddr, goodFunds, collateral)
 	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("no good address to send commit message from", err)})
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("no good address to send commit message from: %w", err)})
 	}
 
 	// TODO: check seed / ticket / deals are up to date
