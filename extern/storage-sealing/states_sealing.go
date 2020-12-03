@@ -459,7 +459,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 
 	goodFunds := big.Add(collateral, m.feeCfg.MaxCommitGasFee)
 
-	from, _, err := m.addrSel(ctx.Context(), mi, api.PreCommitAddr, goodFunds, collateral)
+	from, _, err := m.addrSel(ctx.Context(), mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("no good address to send commit message from: %w", err)})
 	}
