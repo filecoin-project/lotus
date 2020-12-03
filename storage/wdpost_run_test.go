@@ -180,6 +180,7 @@ func TestWDPostDoPost(t *testing.T) {
 		proofType:    proofType,
 		actor:        postAct,
 		journal:      journal.NilJournal(),
+		addrSel:      &AddressSelector{},
 	}
 
 	di := &dline.Info{
