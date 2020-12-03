@@ -5,21 +5,22 @@ import (
 	"context"
 	"time"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-storage/storage"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/specs-storage/storage"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -29,6 +30,7 @@ type StorageMiner interface {
 	ActorAddress(context.Context) (address.Address, error)
 
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error)
+	ActorAddressConfig(ctx context.Context) (AddressConfig, error)
 
 	MiningBase(context.Context) (*types.TipSet, error)
 
@@ -198,3 +200,16 @@ func (st *SealSeed) Equals(ost *SealSeed) bool {
 }
 
 type SectorState string
+
+type AddrUse int
+
+const (
+	PreCommitAddr AddrUse = iota
+	CommitAddr
+	PoStAddr
+)
+
+type AddressConfig struct {
+	PreCommitControl []address.Address
+	CommitControl    []address.Address
+}

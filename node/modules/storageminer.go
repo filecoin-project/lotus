@@ -145,6 +145,35 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
+func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.AddressSelector, error) {
+	return func() (*storage.AddressSelector, error) {
+		as := &storage.AddressSelector{}
+		if addrConf == nil {
+			return as, nil
+		}
+
+		for _, s := range addrConf.PreCommitControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing precommit control address: %w", err)
+			}
+
+			as.PreCommitControl = append(as.PreCommitControl, addr)
+		}
+
+		for _, s := range addrConf.CommitControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing commit control address: %w", err)
+			}
+
+			as.CommitControl = append(as.CommitControl, addr)
+		}
+
+		return as, nil
+	}
+}
+
 type StorageMinerParams struct {
 	fx.In
 
@@ -158,6 +187,7 @@ type StorageMinerParams struct {
 	Verifier           ffiwrapper.Verifier
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
 	Journal            journal.Journal
+	AddrSel            *storage.AddressSelector
 }
 
 func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
@@ -173,6 +203,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			verif  = params.Verifier
 			gsd    = params.GetSealingConfigFn
 			j      = params.Journal
+			as     = params.AddrSel
 		)
 
 		maddr, err := minerAddrFromDS(ds)
@@ -182,12 +213,12 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, sealer, sealer, j, maddr)
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, sealer, j, maddr)
 		if err != nil {
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, gsd, fc, j)
+		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, gsd, fc, j, as)
 		if err != nil {
 			return nil, err
 		}
