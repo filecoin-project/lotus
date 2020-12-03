@@ -281,8 +281,6 @@ var rollupDealStatsCmd = &cli.Command{
 			}
 
 			grandTotals.seenProject[projID] = true
-			grandTotals.seenClient[clientAddr] = true
-
 			projStatEntry, ok := projStats[projID]
 			if !ok {
 				projStatEntry = &projectAggregateStats{
@@ -294,6 +292,11 @@ var rollupDealStatsCmd = &cli.Command{
 				projStats[projID] = projStatEntry
 			}
 
+			if projStatEntry.cidDeals[dealInfo.Proposal.PieceCID] >= 10 {
+				continue
+			}
+
+			grandTotals.seenClient[clientAddr] = true
 			clientStatEntry, ok := projStatEntry.ClientStats[clientAddr.String()]
 			if !ok {
 				clientStatEntry = &clientAggregateStats{
