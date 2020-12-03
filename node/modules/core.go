@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
@@ -28,6 +29,13 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/system"
 	"github.com/raulk/go-watchdog"
+)
+
+const (
+	// EnvWatchdogDisabled is an escape hatch to disable the watchdog explicitly
+	// in case an OS/kernel appears to report incorrect information. The
+	// watchdog will be disabled if the value of this env variable is 1.
+	EnvWatchdogDisabled = "LOTUS_DISABLE_WATCHDOG"
 )
 
 const (
@@ -62,6 +70,11 @@ func MemoryConstraints() system.MemoryConstraints {
 // MemoryWatchdog starts the memory watchdog, applying the computed resource
 // constraints.
 func MemoryWatchdog(lc fx.Lifecycle, constraints system.MemoryConstraints) {
+	if os.Getenv(EnvWatchdogDisabled) == "1" {
+		log.Infof("memory watchdog is disabled via %s", EnvWatchdogDisabled)
+		return
+	}
+
 	cfg := watchdog.MemConfig{
 		Resolution: 5 * time.Second,
 		Policy: &watchdog.WatermarkPolicy{
