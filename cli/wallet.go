@@ -16,11 +16,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
@@ -585,27 +582,13 @@ var walletMarketWithdraw = &cli.Command{
 			return xerrors.Errorf("zero unlocked funds available to withdraw")
 		}
 
-		params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
-			ProviderOrClientAddress: addr,
-			Amount:                  amt,
-		})
-		if err != nil {
-			return xerrors.Errorf("serializing params: %w", err)
-		}
-
 		fmt.Printf("Submitting WithdrawBalance message for amount %s for address %s\n", types.FIL(amt), from.String())
-		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			To:     builtin.StorageMarketActorAddr,
-			From:   from,
-			Value:  types.NewInt(0),
-			Method: builtin.MethodsMarket.WithdrawBalance,
-			Params: params,
-		}, nil)
+		smsg, err := api.MarketWithdraw(ctx, from, addr, amt)
 		if err != nil {
-			return xerrors.Errorf("submitting WithdrawBalance message: %w", err)
+			return xerrors.Errorf("fund manager withdraw error: %w", err)
 		}
 
-		fmt.Printf("WithdrawBalance message cid: %s\n", smsg.Cid())
+		fmt.Printf("WithdrawBalance message cid: %s\n", smsg)
 
 		return nil
 	},
