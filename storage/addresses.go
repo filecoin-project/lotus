@@ -71,7 +71,8 @@ func pickAddress(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, goodF
 
 	for _, addr := range addrs {
 		if addr.Protocol() != address.ID {
-			addr, err := a.StateLookupID(ctx, addr, types.EmptyTSK)
+			var err error
+			addr, err = a.StateLookupID(ctx, addr, types.EmptyTSK)
 			if err != nil {
 				log.Warnw("looking up control address", "address", addr, "error", err)
 				continue
