@@ -204,6 +204,12 @@ lotus-wallet:
 .PHONY: lotus-wallet
 BINS+=lotus-wallet
 
+lotus-keygen:
+	rm -f lotus-keygen
+	go build -o lotus-keygen ./cmd/lotus-keygen
+.PHONY: lotus-keygen
+BINS+=lotus-keygen
+
 testground:
 	go build -tags testground -o /dev/null ./cmd/lotus
 .PHONY: testground
