@@ -218,6 +218,49 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 	return out, nil
 }
 
+func (sm *StorageMinerAPI) SectorsListInStates(ctx context.Context, states []api.SectorState) ([]abi.SectorNumber, error) {
+	filterStates := make(map[sealing.SectorState]struct{})
+	for _, state := range states {
+		st := sealing.SectorState(state)
+		if _, ok := sealing.ExistSectorStateList[st]; !ok {
+			continue
+		}
+		filterStates[st] = struct{}{}
+	}
+
+	var sns []abi.SectorNumber
+	if len(filterStates) == 0 {
+		return sns, nil
+	}
+
+	sectors, err := sm.Miner.ListSectors()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range sectors {
+		if _, ok := filterStates[sectors[i].State]; ok {
+			sns = append(sns, sectors[i].SectorNumber)
+		}
+	}
+	return sns, nil
+}
+
+func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorState]int, error) {
+	sectors, err := sm.Miner.ListSectors()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[api.SectorState]int)
+	for i := range sectors {
+		state := api.SectorState(sectors[i].State)
+		out[state] += 1
+	}
+
+	return out, nil
+}
+
 func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
 	return sm.StorageMgr.StorageLocal(ctx)
 }
