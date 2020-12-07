@@ -291,8 +291,11 @@ jobs:
           name: "prepare .env.toml"
           command: pushd testplans/lotus-soup && mkdir -p $HOME/testground && cp env-ci.toml $HOME/testground/.env.toml && echo 'endpoint="https://ci.testground.ipfs.team"' >> $HOME/testground/.env.toml && echo 'user="circleci"' >> $HOME/testground/.env.toml
       - run:
-          name: "prepare testground home dir"
-          command: mkdir -p $HOME/testground/plans && mv testplans/lotus-soup testplans/graphsync $HOME/testground/plans/
+          name: "prepare testground home dir and link test plans"
+          command: mkdir -p $HOME/testground/plans && ln -s $(pwd)/testplans/lotus-soup $HOME/testground/plans/lotus-soup && ln -s $(pwd)/testplans/graphsync $HOME/testground/plans/graphsync
+      - run:
+          name: "go get lotus@master"
+          command: cd testplans/lotus-soup && go get github.com/filecoin-project/lotus@master
       - run:
           name: "trigger deals baseline testplan on taas"
           command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
@@ -500,6 +503,7 @@ workflows:
             branches:
               only:
                 - master
+                - lock-lotus-version-in-testplan
       - build-debug
       - build-all:
           requires:
