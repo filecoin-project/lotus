@@ -8,13 +8,16 @@ download-proofs:
 build-images:
 	docker build -t "iptestground/oni-buildbase:v12-lotus" -f "docker-images/Dockerfile.oni-buildbase" "docker-images"
 	docker build -t "iptestground/oni-runtime:v6" -f "docker-images/Dockerfile.oni-runtime" "docker-images"
+	docker build -t "iptestground/oni-runtime:v6-debug" -f "docker-images/Dockerfile.oni-runtime-debug" "docker-images"
 
 push-images:
 	docker push iptestground/oni-buildbase:v12-lotus
 	docker push iptestground/oni-runtime:v6
+	docker push iptestground/oni-runtime:v6-debug
 
 pull-images:
 	docker pull iptestground/oni-buildbase:v12-lotus
 	docker pull iptestground/oni-runtime:v6
+	docker pull iptestground/oni-runtime:v6-debug
 
 .PHONY: download-proofs build-images push-images pull-images

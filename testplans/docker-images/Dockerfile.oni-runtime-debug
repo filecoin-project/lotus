@@ -10,21 +10,21 @@ FROM golang:${GO_VERSION}-buster as downloader
 
 RUN go get github.com/filecoin-project/go-paramfetch/paramfetch
 COPY /proof-parameters.json /
-RUN paramfetch 2048 /proof-parameters.json
+RUN paramfetch 8388608 /proof-parameters.json
 
-ARG LOTUS_COMMIT=25070314c
+ARG LOTUS_COMMIT=b13226bc2f8a0233b3beb9bd18ab266547bc29c7
 
 ## for debug purposes
-RUN apt update && apt install -y mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl && git clone https://github.com/filecoin-project/lotus.git && cd lotus/ && git checkout ${LOTUS_COMMIT} && make clean && make all && make install
+RUN apt update && apt install -y mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config libhwloc-dev curl && git clone https://github.com/filecoin-project/lotus.git && cd lotus/ && git checkout ${LOTUS_COMMIT} && make clean && make all && make install
 
 FROM ubuntu:18.04
 
-RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc pkg-config net-tools netcat traceroute iputils-ping wget vim curl telnet iproute2 dnsutils
+RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc pkg-config libhwloc-dev net-tools netcat traceroute iputils-ping wget vim curl telnet iproute2 dnsutils
 COPY --from=downloader /var/tmp/filecoin-proof-parameters /var/tmp/filecoin-proof-parameters
 
 ## for debug purposes
 COPY --from=downloader /usr/local/bin/lotus /usr/local/bin/lll
 COPY --from=downloader /usr/local/bin/lotus-miner /usr/local/bin/lm
 
-ENV FULLNODE_API_INFO="dummytoken:/ip4/127.0.0.1/tcp/1234/http"
-ENV MINER_API_INFO="dummytoken:/ip4/127.0.0.1/tcp/2345/http"
+ENV FULLNODE_API_INFO="/ip4/127.0.0.1/tcp/1234/http"
+ENV MINER_API_INFO="/ip4/127.0.0.1/tcp/2345/http"

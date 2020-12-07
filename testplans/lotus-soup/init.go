@@ -39,7 +39,6 @@ func init() {
 	policy.SetPreCommitChallengeDelay(abi.ChainEpoch(10))
 
 	policy.SetConsensusMinerMinPower(abi.NewTokenAmount(2048))
-	//policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 
 	policy.SetMinVerifiedDealSize(abi.NewTokenAmount(256))
