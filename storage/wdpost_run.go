@@ -812,7 +812,7 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 			return msg.RequiredFunds(), nil
 		}
 
-		messagepool.CapGasFee(mff, msg, big.Min(big.Sub(avail, msg.Value), msg.RequiredFunds()))
+		messagepool.CapGasFee(mff, msg, &api.MessageSendSpec{MaxFee: big.Min(big.Sub(avail, msg.Value), msg.RequiredFunds())})
 	}
 	return nil
 }
