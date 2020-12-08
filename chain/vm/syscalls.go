@@ -194,7 +194,7 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime2.Conse
 }
 
 func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
-	waddr, err := ss.workerKeyAtLookback(blk.Height)
+	waddr, err := ss.workerKeyAtLookback(blk.Height, blk.Miner)
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 	return nil
 }
 
-func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch) (address.Address, error) {
+func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch, minerAddr address.Address) (address.Address, error) {
 	if ss.networkVersion >= network.Version7 && height < ss.epoch-policy.ChainFinality {
 		return address.Undef, xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", ss.epoch, height)
 	}
@@ -216,7 +216,7 @@ func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch) (address.Addre
 		return address.Undef, err
 	}
 	// get appropriate miner actor
-	act, err := lbState.GetActor(ss.actor)
+	act, err := lbState.GetActor(minerAddr)
 	if err != nil {
 		return address.Undef, err
 	}
