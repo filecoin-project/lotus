@@ -1322,14 +1322,9 @@ loop:
 					return
 				}
 
-				ask, err := api.ClientQueryAsk(ctx, *mi.PeerId, miner)
-				if err != nil {
-					return
-				}
-
 				rt := time.Now()
 
-				_, err = api.ClientQueryAsk(ctx, *mi.PeerId, miner)
+				ask, err := api.ClientQueryAsk(ctx, *mi.PeerId, miner)
 				if err != nil {
 					return
 				}
