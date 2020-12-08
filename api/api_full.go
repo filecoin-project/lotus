@@ -594,6 +594,9 @@ type DealInfo struct {
 
 	CreationTime time.Time
 	Verified     bool
+
+	TransferChannelID *datatransfer.ChannelID
+	DataTransfer      *DataTransferChannel
 }
 
 type MsgLookup struct {
