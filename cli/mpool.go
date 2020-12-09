@@ -446,7 +446,7 @@ var mpoolReplaceCmd = &cli.Command{
 				return abi.TokenAmount(config.DefaultDefaultMaxFee), nil
 			}
 
-			messagepool.CapGasFee(mff, &msg, mss.Get().MaxFee)
+			messagepool.CapGasFee(mff, &msg, mss)
 		} else {
 			if cctx.IsSet("gas-limit") {
 				msg.GasLimit = cctx.Int64("gas-limit")
