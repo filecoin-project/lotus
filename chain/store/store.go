@@ -1325,10 +1325,13 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 }
 
 func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+	log.Infow("recuresLinks", "root", root.String(), "in", in)
 	if root.Prefix().Codec != cid.DagCBOR {
+		log.Infow("recurseLinks returning")
 		return in, nil
 	}
 
+	log.Infow("bs get", "cid", root.String())
 	data, err := bs.Get(root)
 	if err != nil {
 		return nil, xerrors.Errorf("recurse links get (%s) failed: %w", root, err)
@@ -1345,6 +1348,7 @@ func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.
 		if !walked.Visit(c) {
 			return
 		}
+		log.Infow("walked", "cid", c.String())
 
 		in = append(in, c)
 		var err error
@@ -1382,6 +1386,60 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 
 		return nil
 	})
+}
+
+func (cs *ChainStore) ExportActor(ctx context.Context, head cid.Cid, w io.Writer) error {
+	h := &car.CarHeader{
+		Roots:   []cid.Cid{head},
+		Version: 1,
+	}
+
+	if err := car.WriteHeader(h, w); err != nil {
+		return xerrors.Errorf("failed to write car header: %s", err)
+	}
+
+	return cs.WalkActor(ctx, head, func(c cid.Cid) error {
+		obj, err := cs.bs.Get(c)
+		if err != nil {
+			return err
+		}
+		log.Infow("WalkActor write","cid", obj.String())
+
+		if err := carutil.LdWrite(w, c.Bytes(), obj.RawData()); err != nil {
+			return xerrors.Errorf("failed to write block to car output: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (cs *ChainStore) WalkActor(ctx context.Context, head cid.Cid, cb func(cid.Cid) error) error {
+	log.Infow("Walk Actor", "head", head.String())
+	walked := cid.NewSet()
+
+	if err := cb(head); err != nil {
+		return err
+	}
+
+	out, err := recurseLinks(cs.bs, walked, head, []cid.Cid{})
+	if err != nil {
+		return err
+	}
+
+	log.Infow("got links", "links",out)
+
+	for _, c := range out {
+		if c.Prefix().Codec != cid.DagCBOR {
+			continue
+		}
+
+		if err := cb(c); err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
 
 func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, cb func(cid.Cid) error) error {

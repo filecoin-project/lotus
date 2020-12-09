@@ -544,6 +544,51 @@ func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.M
 	return cm.VMMessage(), nil
 }
 
+func (a *ChainAPI) ActorExport(ctx context.Context, head cid.Cid) (<-chan []byte, error) {
+	r, w := io.Pipe()
+	out := make(chan []byte)
+	go func() {
+		bw := bufio.NewWriterSize(w, 1<<20)
+
+		err := a.Chain.ExportActor(ctx, head, bw)
+		bw.Flush()            //nolint:errcheck // it is a write to a pipe
+		w.CloseWithError(err) //nolint:errcheck // it is a pipe
+	}()
+
+	go func() {
+		defer close(out)
+		for {
+			buf := make([]byte, 1<<20)
+			n, err := r.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Errorf("chain export pipe read failed: %s", err)
+				return
+			}
+			if n > 0 {
+				select {
+				case out <- buf[:n]:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+			}
+			if err == io.EOF {
+				// send empty slice to indicate correct eof
+				select {
+				case out <- []byte{}:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+
+				return
+			}
+		}
+	}()
+
+	return out, nil
+}
+
 func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {

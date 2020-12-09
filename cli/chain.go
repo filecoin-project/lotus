@@ -52,6 +52,7 @@ var chainCmd = &cli.Command{
 		chainGetCmd,
 		chainBisectCmd,
 		chainExportCmd,
+		chainActorExportCmd,
 		slashConsensusFault,
 		chainGasPriceCmd,
 		chainInspectUsage,
@@ -1019,6 +1020,67 @@ var chainBisectCmd = &cli.Command{
 
 			prev = abi.ChainEpoch(mid)
 		}
+	},
+}
+
+var chainActorExportCmd = &cli.Command{
+	Name:      "actor-export",
+	Usage:     "export an actors state to a car file",
+	ArgsUsage: "[outputPath]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "head",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify filename to export actor state to")
+		}
+
+		fi, err := os.Create(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
+
+		headStr := cctx.String("head")
+		headCid, err := cid.Decode(headStr)
+		if err != nil {
+			return fmt.Errorf("getting head: %w", err)
+		}
+
+		stream, err := api.ActorExport(ctx,headCid)
+		if err != nil {
+			return err
+		}
+
+		var last bool
+		for b := range stream {
+			last = len(b) == 0
+
+			_, err := fi.Write(b)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !last {
+			return xerrors.Errorf("incomplete export (remote connection lost?) see daemon logs for error message")
+		}
+
+		return nil
 	},
 }
 
