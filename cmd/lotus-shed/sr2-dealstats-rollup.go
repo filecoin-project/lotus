@@ -34,12 +34,14 @@ type competitionTotalOutput struct {
 	Payload  competitionTotal `json:"payload"`
 }
 type competitionTotal struct {
-	UniqueCids      int   `json:"total_unique_cids"`
-	UniqueProviders int   `json:"total_unique_providers"`
-	UniqueProjects  int   `json:"total_unique_projects"`
-	UniqueClients   int   `json:"total_unique_clients"`
-	TotalDeals      int   `json:"total_num_deals"`
-	TotalBytes      int64 `json:"total_stored_data_size"`
+	UniqueCids        int   `json:"total_unique_cids"`
+	UniqueProviders   int   `json:"total_unique_providers"`
+	UniqueProjects    int   `json:"total_unique_projects"`
+	UniqueClients     int   `json:"total_unique_clients"`
+	TotalDeals        int   `json:"total_num_deals"`
+	TotalBytes        int64 `json:"total_stored_data_size"`
+	FilplusTotalDeals int   `json:"filplus_total_num_deals"`
+	FilplusTotalBytes int64 `json:"filplus_total_stored_data_size"`
 
 	seenProject  map[string]bool
 	seenClient   map[address.Address]bool
@@ -245,11 +247,13 @@ var rollupDealStatsCmd = &cli.Command{
 
 		for dealID, dealInfo := range deals {
 
-			// Counting no-longer-active deals as per Pooja's request
-			// // https://github.com/filecoin-project/specs-actors/blob/v0.9.9/actors/builtin/market/deal.go#L81-L85
-			// if d.State.SectorStartEpoch < 0 {
-			// 	continue
-			// }
+			// Only count deals that have properly started, not past/future ones
+			// https://github.com/filecoin-project/specs-actors/blob/v0.9.9/actors/builtin/market/deal.go#L81-L85
+			// Bail on 0 as well in case SectorStartEpoch is uninitialized due to some bug
+			if dealInfo.State.SectorStartEpoch <= 0 ||
+				dealInfo.State.SectorStartEpoch > head.Height() {
+				continue
+			}
 
 			clientAddr, found := resolvedWallets[dealInfo.Proposal.Client]
 			if !found {
@@ -269,14 +273,23 @@ var rollupDealStatsCmd = &cli.Command{
 			unfilteredGrandTotals.seenPieceCid[dealInfo.Proposal.PieceCID] = true
 			unfilteredGrandTotals.TotalDeals++
 
+			if dealInfo.Proposal.VerifiedDeal {
+				unfilteredGrandTotals.FilplusTotalDeals++
+				unfilteredGrandTotals.FilplusTotalBytes += int64(dealInfo.Proposal.PieceSize)
+			}
+
+			// perl -E 'say scalar gmtime ( 166560 * 30 + 1598306400 )'
+			// Wed Oct 21 18:00:00 2020
+			if dealInfo.Proposal.StartEpoch <= 166560 {
+				continue
+			}
+
 			projID, projKnown := knownAddrMap[clientAddr]
 			if !projKnown {
 				continue
 			}
 
 			grandTotals.seenProject[projID] = true
-			grandTotals.seenClient[clientAddr] = true
-
 			projStatEntry, ok := projStats[projID]
 			if !ok {
 				projStatEntry = &projectAggregateStats{
@@ -288,6 +301,11 @@ var rollupDealStatsCmd = &cli.Command{
 				projStats[projID] = projStatEntry
 			}
 
+			if projStatEntry.cidDeals[dealInfo.Proposal.PieceCID] >= 10 {
+				continue
+			}
+
+			grandTotals.seenClient[clientAddr] = true
 			clientStatEntry, ok := projStatEntry.ClientStats[clientAddr.String()]
 			if !ok {
 				clientStatEntry = &clientAggregateStats{
@@ -313,6 +331,11 @@ var rollupDealStatsCmd = &cli.Command{
 			grandTotals.TotalDeals++
 			projStatEntry.NumDeals++
 			clientStatEntry.NumDeals++
+
+			if dealInfo.Proposal.VerifiedDeal {
+				grandTotals.FilplusTotalDeals++
+				grandTotals.FilplusTotalBytes += int64(dealInfo.Proposal.PieceSize)
+			}
 
 			payloadCid := "unknown"
 			if c, err := cid.Parse(dealInfo.Proposal.Label); err == nil {

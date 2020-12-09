@@ -246,6 +246,7 @@ type FullNodeStruct struct {
 
 		MarketReserveFunds func(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error) `perm:"sign"`
 		MarketReleaseFunds func(ctx context.Context, addr address.Address, amt types.BigInt) error                                    `perm:"sign"`
+		MarketWithdraw     func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                 `perm:"sign"`
 
 		PaychGet                    func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
 		PaychGetWaitReady           func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"`
@@ -277,8 +278,9 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ActorAddress    func(context.Context) (address.Address, error)                 `perm:"read"`
-		ActorSectorSize func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
+		ActorAddress       func(context.Context) (address.Address, error)                 `perm:"read"`
+		ActorSectorSize    func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
+		ActorAddressConfig func(ctx context.Context) (api.AddressConfig, error)           `perm:"read"`
 
 		MiningBase func(context.Context) (*types.TipSet, error) `perm:"read"`
 
@@ -1148,6 +1150,10 @@ func (c *FullNodeStruct) MarketReleaseFunds(ctx context.Context, addr address.Ad
 	return c.Internal.MarketReleaseFunds(ctx, addr, amt)
 }
 
+func (c *FullNodeStruct) MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error) {
+	return c.Internal.MarketWithdraw(ctx, wallet, addr, amt)
+}
+
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
 	return c.Internal.PaychGet(ctx, from, to, amt)
 }
@@ -1228,6 +1234,10 @@ func (c *StorageMinerStruct) MiningBase(ctx context.Context) (*types.TipSet, err
 
 func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
 	return c.Internal.ActorSectorSize(ctx, addr)
+}
+
+func (c *StorageMinerStruct) ActorAddressConfig(ctx context.Context) (api.AddressConfig, error) {
+	return c.Internal.ActorAddressConfig(ctx)
 }
 
 func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {

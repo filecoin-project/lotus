@@ -22,6 +22,11 @@ func main() {
 			Value:   "bls",
 			Usage:   "specify key type to generate (bls or secp256k1)",
 		},
+		&cli.StringFlag{
+			Name:    "out",
+			Aliases: []string{"o"},
+			Usage:   "specify key file name to generate",
+		},
 	}
 	app.Action = func(cctx *cli.Context) error {
 		memks := wallet.NewMemKeyStore()
@@ -50,7 +55,11 @@ func main() {
 			return err
 		}
 
-		fi, err := os.Create(fmt.Sprintf("%s.key", kaddr))
+		outFile := fmt.Sprintf("%s.key", kaddr)
+		if cctx.IsSet("out") {
+			outFile = fmt.Sprintf("%s.key", cctx.String("out"))
+		}
+		fi, err := os.Create(outFile)
 		if err != nil {
 			return err
 		}

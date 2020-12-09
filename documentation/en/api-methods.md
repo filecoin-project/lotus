@@ -70,6 +70,7 @@
 * [Market](#Market)
   * [MarketReleaseFunds](#MarketReleaseFunds)
   * [MarketReserveFunds](#MarketReserveFunds)
+  * [MarketWithdraw](#MarketWithdraw)
 * [Miner](#Miner)
   * [MinerCreateBlock](#MinerCreateBlock)
   * [MinerGetBaseInfo](#MinerGetBaseInfo)
@@ -1634,6 +1635,28 @@ Response: `{}`
 
 ### MarketReserveFunds
 MarketReserveFunds reserves funds for a deal
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MarketWithdraw
+MarketWithdraw withdraws unlocked funds from the market actor
 
 
 Perms: sign

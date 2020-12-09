@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/system"
 
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
@@ -111,8 +112,10 @@ const (
 	// the system starts, so that it's available for all other components.
 	InitJournalKey = invoke(iota)
 
-	// libp2p
+	// System processes.
+	InitMemoryWatchdog
 
+	// libp2p
 	PstoreAddSelfKeysKey
 	StartListeningKey
 	BootstrapKey
@@ -173,6 +176,9 @@ func defaults() []Option {
 		// global system journal.
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
+
+		Override(new(system.MemoryConstraints), modules.MemoryConstraints),
+		Override(InitMemoryWatchdog, modules.MemoryWatchdog),
 
 		Override(new(helpers.MetricsCtx), func() context.Context {
 			return metricsi.CtxScope(context.Background(), "lotus")
@@ -357,6 +363,7 @@ func Online() Option {
 
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(*storage.Miner), modules.StorageMiner(config.DefaultStorageMiner().Fees)),
+			Override(new(*storage.AddressSelector), modules.AddressSelector(nil)),
 			Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
 			Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
@@ -511,6 +518,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees)),
 
 		Override(new(sectorstorage.SealerConfig), cfg.Storage),
+		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 		Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
 	)
 }

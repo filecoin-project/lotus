@@ -26,6 +26,7 @@ var ledgerCmd = &cli.Command{
 		ledgerListAddressesCmd,
 		ledgerKeyInfoCmd,
 		ledgerSignTestCmd,
+		ledgerShowCmd,
 	},
 }
 
@@ -58,6 +59,7 @@ var ledgerListAddressesCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer fl.Close() // nolint
 
 		end := 20
 		for i := 0; i < end; i++ {
@@ -167,6 +169,7 @@ var ledgerKeyInfoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer fl.Close() // nolint
 
 		p, err := parseHDPath(cctx.Args().First())
 		if err != nil {
@@ -253,6 +256,36 @@ var ledgerSignTestCmd = &cli.Command{
 		sigBytes := append([]byte{byte(crypto.SigTypeSecp256k1)}, sig.SignatureBytes()...)
 
 		fmt.Printf("Signature: %x\n", sigBytes)
+
+		return nil
+	},
+}
+
+var ledgerShowCmd = &cli.Command{
+	Name:      "show",
+	ArgsUsage: "[hd path]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+
+		fl, err := ledgerfil.FindLedgerFilecoinApp()
+		if err != nil {
+			return err
+		}
+		defer fl.Close() // nolint
+
+		p, err := parseHDPath(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		_, _, a, err := fl.ShowAddressPubKeySECP256K1(p)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(a)
 
 		return nil
 	},
