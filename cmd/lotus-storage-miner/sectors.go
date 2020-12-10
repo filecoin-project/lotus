@@ -164,6 +164,10 @@ var sectorsListCmd = &cli.Command{
 			Name:  "seal-time",
 			Usage: "display how long it took for the sector to be sealed",
 		},
+		&cli.StringFlag{
+			Name:  "states",
+			Usage: "filter sectors by a comma-separated list of states",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
@@ -182,7 +186,22 @@ var sectorsListCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		list, err := nodeApi.SectorsList(ctx)
+		var list []abi.SectorNumber
+
+		showRemoved := cctx.Bool("show-removed")
+		states := cctx.String("states")
+		if len(states) == 0 {
+			list, err = nodeApi.SectorsList(ctx)
+		} else {
+			showRemoved = true
+			sList := strings.Split(states, ",")
+			ss := make([]api.SectorState, len(sList))
+			for i := range sList {
+				ss[i] = api.SectorState(sList[i])
+			}
+			list, err = nodeApi.SectorsListInStates(ctx, ss)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -244,7 +263,7 @@ var sectorsListCmd = &cli.Command{
 				continue
 			}
 
-			if cctx.Bool("show-removed") || st.State != api.SectorState(sealing.Removed) {
+			if showRemoved || st.State != api.SectorState(sealing.Removed) {
 				_, inSSet := commitedIDs[s]
 				_, inASet := activeIDs[s]
 

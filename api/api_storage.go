@@ -43,6 +43,12 @@ type StorageMiner interface {
 	// List all staged sectors
 	SectorsList(context.Context) ([]abi.SectorNumber, error)
 
+	// Get summary info of sectors
+	SectorsSummary(ctx context.Context) (map[SectorState]int, error)
+
+	// List sectors in particular states
+	SectorsListInStates(context.Context, []SectorState) ([]abi.SectorNumber, error)
+
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
 	// SectorStartSealing can be called on sectors in Empty or WaitDeals states

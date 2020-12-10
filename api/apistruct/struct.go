@@ -302,6 +302,8 @@ type StorageMinerStruct struct {
 
 		SectorsStatus                 func(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) `perm:"read"`
 		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)                                             `perm:"read"`
+		SectorsListInStates           func(context.Context, []api.SectorState) ([]abi.SectorNumber, error)                          `perm:"read"`
+		SectorsSummary                func(ctx context.Context) (map[api.SectorState]int, error)                                    `perm:"read"`
 		SectorsRefs                   func(context.Context) (map[string][]api.SealedRef, error)                                     `perm:"read"`
 		SectorStartSealing            func(context.Context, abi.SectorNumber) error                                                 `perm:"write"`
 		SectorSetSealDelay            func(context.Context, time.Duration) error                                                    `perm:"write"`
@@ -1252,6 +1254,14 @@ func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNu
 // List all staged sectors
 func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]abi.SectorNumber, error) {
 	return c.Internal.SectorsList(ctx)
+}
+
+func (c *StorageMinerStruct) SectorsListInStates(ctx context.Context, states []api.SectorState) ([]abi.SectorNumber, error) {
+	return c.Internal.SectorsListInStates(ctx, states)
+}
+
+func (c *StorageMinerStruct) SectorsSummary(ctx context.Context) (map[api.SectorState]int, error) {
+	return c.Internal.SectorsSummary(ctx)
 }
 
 func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]api.SealedRef, error) {

@@ -327,22 +327,18 @@ func init() {
 }
 
 func sectorsInfo(ctx context.Context, napi api.StorageMiner) error {
-	sectors, err := napi.SectorsList(ctx)
+	summary, err := napi.SectorsSummary(ctx)
 	if err != nil {
 		return err
 	}
 
-	buckets := map[sealing.SectorState]int{
-		"Total": len(sectors),
+	buckets := make(map[sealing.SectorState]int)
+	var total int
+	for s, c := range summary {
+		buckets[sealing.SectorState(s)] = c
+		total += c
 	}
-	for _, s := range sectors {
-		st, err := napi.SectorsStatus(ctx, s, false)
-		if err != nil {
-			return err
-		}
-
-		buckets[sealing.SectorState(st.State)]++
-	}
+	buckets["Total"] = total
 
 	var sorted []stateMeta
 	for state, i := range buckets {
