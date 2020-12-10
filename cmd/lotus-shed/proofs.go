@@ -4,11 +4,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"gopkg.in/urfave/cli.v2"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+
+	"github.com/urfave/cli/v2"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 )
 
@@ -82,13 +84,13 @@ var verifySealProofCmd = &cli.Command{
 
 		snum := abi.SectorNumber(cctx.Uint64("sector-id"))
 
-		ok, err := ffi.VerifySeal(abi.SealVerifyInfo{
+		ok, err := ffi.VerifySeal(proof2.SealVerifyInfo{
 			SectorID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: snum,
 			},
 			SealedCID:             commr,
-			RegisteredProof:       abi.RegisteredProof(cctx.Int64("proof-type")),
+			SealProof:             abi.RegisteredSealProof(cctx.Int64("proof-type")),
 			Proof:                 proof,
 			DealIDs:               nil,
 			Randomness:            abi.SealRandomness(ticket),

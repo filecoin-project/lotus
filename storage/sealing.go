@@ -5,9 +5,9 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
-	sealing "github.com/filecoin-project/storage-fsm"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 // TODO: refactor this to be direct somehow
@@ -16,12 +16,12 @@ func (m *Miner) Address() address.Address {
 	return m.sealing.Address()
 }
 
-func (m *Miner) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.SectorNumber, offset uint64, err error) {
-	return m.sealing.AllocatePiece(size)
+func (m *Miner) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
+	return m.sealing.AddPieceToAnySector(ctx, size, r, d)
 }
 
-func (m *Miner) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, d sealing.DealInfo) error {
-	return m.sealing.SealPiece(ctx, size, r, sectorID, d)
+func (m *Miner) StartPackingSector(sectorNum abi.SectorNumber) error {
+	return m.sealing.StartPacking(sectorNum)
 }
 
 func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {
@@ -38,4 +38,16 @@ func (m *Miner) PledgeSector() error {
 
 func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state sealing.SectorState) error {
 	return m.sealing.ForceSectorState(ctx, id, state)
+}
+
+func (m *Miner) RemoveSector(ctx context.Context, id abi.SectorNumber) error {
+	return m.sealing.Remove(ctx, id)
+}
+
+func (m *Miner) MarkForUpgrade(id abi.SectorNumber) error {
+	return m.sealing.MarkForUpgrade(id)
+}
+
+func (m *Miner) IsMarkedForUpgrade(id abi.SectorNumber) bool {
+	return m.sealing.IsMarkedForUpgrade(id)
 }

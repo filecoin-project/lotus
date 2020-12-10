@@ -106,7 +106,7 @@ class FullNode extends React.Component {
         )
       }
 
-      let storageMine = <a href="#" onClick={this.startStorageMiner} hidden={!this.props.spawnStorageNode}>[Spawn Storage Miner]</a>
+      let storageMine = <a href="#" onClick={this.startStorageMiner} hidden={!this.props.spawnStorageNode}>[Spawn Miner]</a>
 
       let addresses = this.state.addrs.map((addr) => {
         let line = <Address client={this.props.client} addN={this.props.giveN} add10k={true} nonce={true} addr={addr} mountWindow={this.props.mountWindow}/>

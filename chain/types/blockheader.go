@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"math/big"
 
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -23,8 +24,14 @@ type Ticket struct {
 	VRFProof []byte
 }
 
-type ElectionProof struct {
-	VRFProof []byte
+func (t *Ticket) Quality() float64 {
+	ticketHash := blake2b.Sum256(t.VRFProof)
+	ticketNum := BigFromBytes(ticketHash[:]).Int
+	ticketDenu := big.NewInt(1)
+	ticketDenu.Lsh(ticketDenu, 256)
+	tv, _ := new(big.Rat).SetFrac(ticketNum, ticketDenu).Float64()
+	tq := 1 - tv
+	return tq
 }
 
 type BeaconEntry struct {
@@ -48,7 +55,7 @@ type BlockHeader struct {
 
 	BeaconEntries []BeaconEntry // 3
 
-	WinPoStProof []abi.PoStProof // 4
+	WinPoStProof []proof2.PoStProof // 4
 
 	Parents []cid.Cid // 5
 
@@ -70,18 +77,20 @@ type BlockHeader struct {
 
 	ForkSignaling uint64 // 14
 
+	// ParentBaseFee is the base fee after executing parent tipset
+	ParentBaseFee abi.TokenAmount // 15
+
 	// internal
 	validated bool // true if the signature has been validated
 }
 
-func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
-	data, err := b.Serialize()
+func (blk *BlockHeader) ToStorageBlock() (block.Block, error) {
+	data, err := blk.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
-	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
+	c, err := abi.CidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +98,8 @@ func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
 	return block.NewBlockWithCid(data, c)
 }
 
-func (b *BlockHeader) Cid() cid.Cid {
-	sb, err := b.ToStorageBlock()
+func (blk *BlockHeader) Cid() cid.Cid {
+	sb, err := blk.ToStorageBlock()
 	if err != nil {
 		panic(err) // Not sure i'm entirely comfortable with this one, needs to be checked
 	}
@@ -149,13 +158,12 @@ func (mm *MsgMeta) Cid() cid.Cid {
 }
 
 func (mm *MsgMeta) ToStorageBlock() (block.Block, error) {
-	buf := new(bytes.Buffer)
-	if err := mm.MarshalCBOR(buf); err != nil {
+	var buf bytes.Buffer
+	if err := mm.MarshalCBOR(&buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal MsgMeta: %w", err)
 	}
 
-	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(buf.Bytes())
+	c, err := abi.CidBuilder.Sum(buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +183,21 @@ func CidArrsEqual(a, b []cid.Cid) bool {
 	}
 
 	for _, c := range b {
+		if !s[c] {
+			return false
+		}
+	}
+	return true
+}
+
+func CidArrsSubset(a, b []cid.Cid) bool {
+	// order ignoring compare...
+	s := make(map[cid.Cid]bool)
+	for _, c := range b {
+		s[c] = true
+	}
+
+	for _, c := range a {
 		if !s[c] {
 			return false
 		}

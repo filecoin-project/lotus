@@ -4,8 +4,8 @@ import (
 	"github.com/docker/go-units"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -25,7 +25,7 @@ var fetchParamCmd = &cli.Command{
 			return err
 		}
 		sectorSize := uint64(sectorSizeInt)
-		err = paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJson(), sectorSize)
+		err = paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), sectorSize)
 		if err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}

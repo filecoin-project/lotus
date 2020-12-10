@@ -1,21 +1,27 @@
 package sub
 
 import (
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"sync"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	address "github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
-	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/impl/client"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
+	blocks "github.com/ipfs/go-block-format"
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	dstore "github.com/ipfs/go-datastore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
@@ -24,22 +30,26 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
-	"github.com/filecoin-project/lotus/chain/messagepool"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
-	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/metrics"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("sub")
 
-func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager) {
+var ErrSoftFailure = errors.New("soft validation failure")
+var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
+
+var msgCidPrefix = cid.Prefix{
+	Version:  1,
+	Codec:    cid.DagCBOR,
+	MhType:   client.DefaultHashFunction,
+	MhLength: 32,
+}
+
+func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bs bserv.BlockService, cmgr connmgr.ConnManager) {
+	// Timeout after (block time + propagation delay). This is useless at
+	// this point.
+	timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
@@ -57,29 +67,36 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			return
 		}
 
-		//nolint:golint
-		src := peer.ID(msg.GetFrom())
+		src := msg.GetFrom()
 
 		go func() {
-			log.Infof("New block over pubsub: %s", blk.Cid())
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
 
-			start := time.Now()
+			// NOTE: we could also share a single session between
+			// all requests but that may have other consequences.
+			ses := bserv.NewSession(ctx, bs)
+
+			start := build.Clock.Now()
 			log.Debug("about to fetch messages for block from pubsub")
-			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
+			bmsgs, err := FetchMessagesByCids(ctx, ses, blk.BlsMessages)
 			if err != nil {
 				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, src)
 				return
 			}
 
-			smsgs, err := s.Bsync.FetchSignedMessagesByCids(context.TODO(), blk.SecpkMessages)
+			smsgs, err := FetchSignedMessagesByCids(ctx, ses, blk.SecpkMessages)
 			if err != nil {
 				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; source: %s", err, src)
 				return
 			}
 
-			took := time.Since(start)
-			log.Infow("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
-			if delay := time.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
+			took := build.Clock.Since(start)
+			log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			if took > 3*time.Second {
+				log.Warnw("Slow msg fetch", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			}
+			if delay := build.Clock.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
 				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
 			}
 
@@ -94,7 +111,107 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 	}
 }
 
+func FetchMessagesByCids(
+	ctx context.Context,
+	bserv bserv.BlockGetter,
+	cids []cid.Cid,
+) ([]*types.Message, error) {
+	out := make([]*types.Message, len(cids))
+
+	err := fetchCids(ctx, bserv, cids, func(i int, b blocks.Block) error {
+		msg, err := types.DecodeMessage(b.RawData())
+		if err != nil {
+			return err
+		}
+
+		out[i] = msg
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// FIXME: Duplicate of above.
+func FetchSignedMessagesByCids(
+	ctx context.Context,
+	bserv bserv.BlockGetter,
+	cids []cid.Cid,
+) ([]*types.SignedMessage, error) {
+	out := make([]*types.SignedMessage, len(cids))
+
+	err := fetchCids(ctx, bserv, cids, func(i int, b blocks.Block) error {
+		smsg, err := types.DecodeSignedMessage(b.RawData())
+		if err != nil {
+			return err
+		}
+
+		out[i] = smsg
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Fetch `cids` from the block service, apply `cb` on each of them. Used
+//  by the fetch message functions above.
+// We check that each block is received only once and we do not received
+//  blocks we did not request.
+func fetchCids(
+	ctx context.Context,
+	bserv bserv.BlockGetter,
+	cids []cid.Cid,
+	cb func(int, blocks.Block) error,
+) error {
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	cidIndex := make(map[cid.Cid]int)
+	for i, c := range cids {
+		if c.Prefix() != msgCidPrefix {
+			return fmt.Errorf("invalid msg CID: %s", c)
+		}
+		cidIndex[c] = i
+	}
+	if len(cids) != len(cidIndex) {
+		return fmt.Errorf("duplicate CIDs in fetchCids input")
+	}
+
+	for block := range bserv.GetBlocks(ctx, cids) {
+		ix, ok := cidIndex[block.Cid()]
+		if !ok {
+			// Ignore duplicate/unexpected blocks. This shouldn't
+			// happen, but we can be safe.
+			log.Errorw("received duplicate/unexpected block when syncing", "cid", block.Cid())
+			continue
+		}
+
+		// Record that we've received the block.
+		delete(cidIndex, block.Cid())
+
+		if err := cb(ix, block); err != nil {
+			return err
+		}
+	}
+
+	if len(cidIndex) > 0 {
+		err := ctx.Err()
+		if err == nil {
+			err = fmt.Errorf("failed to fetch %d messages for unknown reasons", len(cidIndex))
+		}
+		return err
+	}
+
+	return nil
+}
+
 type BlockValidator struct {
+	self peer.ID
+
 	peers *lru.TwoQueueCache
 
 	killThresh int
@@ -106,21 +223,18 @@ type BlockValidator struct {
 	// necessary for block validation
 	chain *store.ChainStore
 	stmgr *stmgr.StateManager
-
-	mx       sync.Mutex
-	keycache map[string]address.Address
 }
 
-func NewBlockValidator(chain *store.ChainStore, stmgr *stmgr.StateManager, blacklist func(peer.ID)) *BlockValidator {
+func NewBlockValidator(self peer.ID, chain *store.ChainStore, stmgr *stmgr.StateManager, blacklist func(peer.ID)) *BlockValidator {
 	p, _ := lru.New2Q(4096)
 	return &BlockValidator{
+		self:       self,
 		peers:      p,
 		killThresh: 10,
 		blacklist:  blacklist,
 		recvBlocks: newBlockReceiptCache(),
 		chain:      chain,
 		stmgr:      stmgr,
-		keycache:   make(map[string]address.Address),
 	}
 }
 
@@ -143,40 +257,27 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 }
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+	if pid == bv.self {
+		return bv.validateLocalBlock(ctx, msg)
+	}
+
 	// track validation time
-	begin := time.Now()
+	begin := build.Clock.Now()
 	defer func() {
-		end := time.Now()
-		log.Infof("block validation time: %s", end.Sub(begin))
+		log.Debugf("block validation time: %s", build.Clock.Since(begin))
 	}()
 
 	stats.Record(ctx, metrics.BlockReceived.M(1))
 
-	recordFailure := func(what string) {
-		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, what))
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
+	recordFailureFlagPeer := func(what string) {
+		recordFailure(ctx, metrics.BlockValidationFailure, what)
 		bv.flagPeer(pid)
 	}
 
-	// make sure the block can be decoded
-	blk, err := types.DecodeBlockMsg(msg.GetData())
+	blk, what, err := bv.decodeAndCheckBlock(msg)
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
-		recordFailure("invalid")
-		return pubsub.ValidationReject
-	}
-
-	// check the message limit constraints
-	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
-		log.Warnf("received block with too many messages over pubsub")
-		recordFailure("too_many_messages")
-		return pubsub.ValidationReject
-	}
-
-	// make sure we have a signature
-	if blk.Header.BlockSig == nil {
-		log.Warnf("received block without a signature over pubsub")
-		recordFailure("missing_signature")
+		recordFailureFlagPeer(what)
 		return pubsub.ValidationReject
 	}
 
@@ -184,7 +285,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	err = bv.validateMsgMeta(ctx, blk)
 	if err != nil {
 		log.Warnf("error validating message metadata: %s", err)
-		recordFailure("invalid_block_meta")
+		recordFailureFlagPeer("invalid_block_meta")
 		return pubsub.ValidationReject
 	}
 
@@ -195,22 +296,28 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	// if we can't find it, we check whether we are (near) synced in the chain.
 	// if we are not synced we cannot validate the block and we must ignore it.
 	// if we are synced and the miner is unknown, then the block is rejcected.
-	key, err := bv.getMinerWorkerKey(ctx, blk)
+	key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
 	if err != nil {
-		if bv.isChainNearSynced() {
-			log.Warnf("received block message from unknown miner over pubsub; rejecting message")
-			recordFailure("unknown_miner")
+		if err != ErrSoftFailure && bv.isChainNearSynced() {
+			log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
+			recordFailureFlagPeer("unknown_miner")
 			return pubsub.ValidationReject
-		} else {
-			log.Warnf("cannot validate block message; unknown miner in unsynced chain")
-			return pubsub.ValidationIgnore
 		}
+
+		log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
+		return pubsub.ValidationIgnore
 	}
 
-	err = sigs.CheckBlockSignature(blk.Header, ctx, key)
+	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
 	if err != nil {
 		log.Errorf("block signature verification failed: %s", err)
-		recordFailure("signature_verification_failed")
+		recordFailureFlagPeer("signature_verification_failed")
+		return pubsub.ValidationReject
+	}
+
+	if blk.Header.ElectionProof.WinCount < 1 {
+		log.Errorf("block is not claiming to be winning")
+		recordFailureFlagPeer("not_winning")
 		return pubsub.ValidationReject
 	}
 
@@ -227,40 +334,89 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	return pubsub.ValidationAccept
 }
 
+func (bv *BlockValidator) validateLocalBlock(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
+	stats.Record(ctx, metrics.BlockPublished.M(1))
+
+	if size := msg.Size(); size > 1<<20-1<<15 {
+		log.Errorf("ignoring oversize block (%dB)", size)
+		recordFailure(ctx, metrics.BlockValidationFailure, "oversize_block")
+		return pubsub.ValidationIgnore
+	}
+
+	blk, what, err := bv.decodeAndCheckBlock(msg)
+	if err != nil {
+		log.Errorf("got invalid local block: %s", err)
+		recordFailure(ctx, metrics.BlockValidationFailure, what)
+		return pubsub.ValidationIgnore
+	}
+
+	if count := bv.recvBlocks.add(blk.Header.Cid()); count > 0 {
+		log.Warnf("local block has been seen %d times; ignoring", count)
+		return pubsub.ValidationIgnore
+	}
+
+	msg.ValidatorData = blk
+	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
+	return pubsub.ValidationAccept
+}
+
+func (bv *BlockValidator) decodeAndCheckBlock(msg *pubsub.Message) (*types.BlockMsg, string, error) {
+	blk, err := types.DecodeBlockMsg(msg.GetData())
+	if err != nil {
+		return nil, "invalid", xerrors.Errorf("error decoding block: %w", err)
+	}
+
+	if count := len(blk.BlsMessages) + len(blk.SecpkMessages); count > build.BlockMessageLimit {
+		return nil, "too_many_messages", fmt.Errorf("block contains too many messages (%d)", count)
+	}
+
+	// make sure we have a signature
+	if blk.Header.BlockSig == nil {
+		return nil, "missing_signature", fmt.Errorf("block without a signature")
+	}
+
+	return blk, "", nil
+}
+
 func (bv *BlockValidator) isChainNearSynced() bool {
 	ts := bv.chain.GetHeaviestTipSet()
 	timestamp := ts.MinTimestamp()
-	now := time.Now().UnixNano()
-	cutoff := uint64(now) - uint64(6*time.Hour)
-	return timestamp > cutoff
+	timestampTime := time.Unix(int64(timestamp), 0)
+	return build.Clock.Since(timestampTime) < 6*time.Hour
 }
 
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
-	var bcids, scids []cbg.CBORMarshaler
-	for _, m := range msg.BlsMessages {
-		c := cbg.CborCid(m)
-		bcids = append(bcids, &c)
-	}
-
-	for _, m := range msg.SecpkMessages {
-		c := cbg.CborCid(m)
-		scids = append(scids, &c)
-	}
-
 	// TODO there has to be a simpler way to do this without the blockstore dance
-	bs := cbor.NewCborStore(bstore.NewBlockstore(dstore.NewMapDatastore()))
+	// block headers use adt0
+	store := blockadt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTemporary()))
+	bmArr := blockadt.MakeEmptyArray(store)
+	smArr := blockadt.MakeEmptyArray(store)
 
-	bmroot, err := amt.FromArray(ctx, bs, bcids)
+	for i, m := range msg.BlsMessages {
+		c := cbg.CborCid(m)
+		if err := bmArr.Set(uint64(i), &c); err != nil {
+			return err
+		}
+	}
+
+	for i, m := range msg.SecpkMessages {
+		c := cbg.CborCid(m)
+		if err := smArr.Set(uint64(i), &c); err != nil {
+			return err
+		}
+	}
+
+	bmroot, err := bmArr.Root()
 	if err != nil {
 		return err
 	}
 
-	smroot, err := amt.FromArray(ctx, bs, scids)
+	smroot, err := smArr.Root()
 	if err != nil {
 		return err
 	}
 
-	mrcid, err := bs.Put(ctx, &types.MsgMeta{
+	mrcid, err := store.Put(store.Context(), &types.MsgMeta{
 		BlsMessages:   bmroot,
 		SecpkMessages: smroot,
 	})
@@ -276,54 +432,36 @@ func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockM
 	return nil
 }
 
-func (bv *BlockValidator) getMinerWorkerKey(ctx context.Context, msg *types.BlockMsg) (address.Address, error) {
-	addr := msg.Header.Miner
+func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *types.BlockHeader) (address.Address, error) {
+	// we check that the miner met the minimum power at the lookback tipset
 
-	bv.mx.Lock()
-	key, ok := bv.keycache[addr.String()]
-	bv.mx.Unlock()
-	if ok {
-		return key, nil
-	}
-
-	// TODO I have a feeling all this can be simplified by cleverer DI to use the API
-	ts := bv.chain.GetHeaviestTipSet()
-	st, _, err := bv.stmgr.TipSetState(ctx, ts)
+	baseTs := bv.chain.GetHeaviestTipSet()
+	lbts, lbst, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
 	if err != nil {
-		return address.Undef, err
-	}
-	buf := bufbstore.NewBufferedBstore(bv.chain.Blockstore())
-	cst := cbor.NewCborStore(buf)
-	state, err := state.LoadStateTree(cst, st)
-	if err != nil {
-		return address.Undef, err
-	}
-	act, err := state.GetActor(addr)
-	if err != nil {
-		return address.Undef, err
+		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
+		return address.Undef, ErrSoftFailure
 	}
 
-	blk, err := bv.chain.Blockstore().Get(act.Head)
+	key, err := stmgr.GetMinerWorkerRaw(ctx, bv.stmgr, lbst, bh.Miner)
 	if err != nil {
-		return address.Undef, err
-	}
-	aso := blk.RawData()
-
-	var mst miner.State
-	err = mst.UnmarshalCBOR(bytes.NewReader(aso))
-	if err != nil {
-		return address.Undef, err
+		log.Warnf("failed to resolve worker key for miner %s: %s", bh.Miner, err)
+		return address.Undef, ErrSoftFailure
 	}
 
-	worker := mst.Info.Worker
-	key, err = bv.stmgr.ResolveToKeyAddress(ctx, worker, ts)
+	// NOTE: we check to see if the miner was eligible in the lookback
+	// tipset - 1 for historical reasons. DO NOT use the lookback state
+	// returned by GetLookbackTipSetForRound.
+
+	eligible, err := stmgr.MinerEligibleToMine(ctx, bv.stmgr, bh.Miner, baseTs, lbts)
 	if err != nil {
-		return address.Undef, err
+		log.Warnf("failed to determine if incoming block's miner has minimum power: %s", err)
+		return address.Undef, ErrSoftFailure
 	}
 
-	bv.mx.Lock()
-	bv.keycache[addr.String()] = key
-	bv.mx.Unlock()
+	if !eligible {
+		log.Warnf("incoming block's miner is ineligible")
+		return address.Undef, ErrInsufficientPower
+	}
 
 	return key, nil
 }
@@ -352,14 +490,19 @@ func (brc *blockReceiptCache) add(bcid cid.Cid) int {
 }
 
 type MessageValidator struct {
+	self  peer.ID
 	mpool *messagepool.MessagePool
 }
 
-func NewMessageValidator(mp *messagepool.MessagePool) *MessageValidator {
-	return &MessageValidator{mp}
+func NewMessageValidator(self peer.ID, mp *messagepool.MessagePool) *MessageValidator {
+	return &MessageValidator{self: self, mpool: mp}
 }
 
 func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+	if pid == mv.self {
+		return mv.validateLocalMessage(ctx, msg)
+	}
+
 	stats.Record(ctx, metrics.MessageReceived.M(1))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
@@ -373,16 +516,67 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		ctx, _ = tag.New(
 			ctx,
-			tag.Insert(metrics.FailureType, "add"),
+			tag.Upsert(metrics.Local, "false"),
 		)
-		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
+		recordFailure(ctx, metrics.MessageValidationFailure, "add")
 		switch {
-		case xerrors.Is(err, messagepool.ErrBroadcastAnyway):
+		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrNonceGap):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrNonceTooLow):
 			return pubsub.ValidationIgnore
 		default:
 			return pubsub.ValidationReject
 		}
 	}
+	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
+	return pubsub.ValidationAccept
+}
+
+func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.Local, "true"),
+	)
+	// do some lightweight validation
+	stats.Record(ctx, metrics.MessagePublished.M(1))
+
+	m, err := types.DecodeSignedMessage(msg.Message.GetData())
+	if err != nil {
+		log.Warnf("failed to decode local message: %s", err)
+		recordFailure(ctx, metrics.MessageValidationFailure, "decode")
+		return pubsub.ValidationIgnore
+	}
+
+	if m.Size() > 32*1024 {
+		log.Warnf("local message is too large! (%dB)", m.Size())
+		recordFailure(ctx, metrics.MessageValidationFailure, "oversize")
+		return pubsub.ValidationIgnore
+	}
+
+	if m.Message.To == address.Undef {
+		log.Warn("local message has invalid destination address")
+		recordFailure(ctx, metrics.MessageValidationFailure, "undef-addr")
+		return pubsub.ValidationIgnore
+	}
+
+	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
+		log.Warnf("local messages has too high value: %s", m.Message.Value)
+		recordFailure(ctx, metrics.MessageValidationFailure, "value-too-high")
+		return pubsub.ValidationIgnore
+	}
+
+	if err := mv.mpool.VerifyMsgSig(m); err != nil {
+		log.Warnf("signature verification failed for local message: %s", err)
+		recordFailure(ctx, metrics.MessageValidationFailure, "verify-sig")
+		return pubsub.ValidationIgnore
+	}
+
 	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return pubsub.ValidationAccept
 }
@@ -401,4 +595,12 @@ func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool,
 
 		// Do nothing... everything happens in validate
 	}
+}
+
+func recordFailure(ctx context.Context, metric *stats.Int64Measure, failureType string) {
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.FailureType, failureType),
+	)
+	stats.Record(ctx, metric.M(1))
 }

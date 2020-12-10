@@ -28,14 +28,19 @@ const minFds = 2048
 // default max file descriptor limit.
 const maxFds = 16 << 10
 
-// userMaxFDs returns the value of IPFS_FD_MAX
+// userMaxFDs returns the value of LOTUS_FD_MAX
 func userMaxFDs() uint64 {
-	// check if the IPFS_FD_MAX is set up and if it does
+	// check if the LOTUS_FD_MAX is set up and if it does
 	// not have a valid fds number notify the user
-	if val := os.Getenv("IPFS_FD_MAX"); val != "" {
+	val := os.Getenv("LOTUS_FD_MAX")
+	if val == "" {
+		val = os.Getenv("IPFS_FD_MAX")
+	}
+
+	if val != "" {
 		fds, err := strconv.ParseUint(val, 10, 64)
 		if err != nil {
-			log.Errorf("bad value for IPFS_FD_MAX: %s", err)
+			log.Errorf("bad value for LOTUS_FD_MAX: %s", err)
 			return 0
 		}
 		return fds
@@ -44,7 +49,7 @@ func userMaxFDs() uint64 {
 }
 
 // ManageFdLimit raise the current max file descriptor count
-// of the process based on the IPFS_FD_MAX value
+// of the process based on the LOTUS_FD_MAX value
 func ManageFdLimit() (changed bool, newLimit uint64, err error) {
 	if !supportsFDManagement {
 		return false, 0, nil
@@ -93,7 +98,7 @@ func ManageFdLimit() (changed bool, newLimit uint64, err error) {
 
 		if newLimit < userLimit {
 			err = fmt.Errorf(
-				"failed to raise ulimit to IPFS_FD_MAX (%d): set to %d",
+				"failed to raise ulimit to LOTUS_FD_MAX (%d): set to %d",
 				userLimit,
 				newLimit,
 			)

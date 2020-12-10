@@ -1,4 +1,4 @@
-package main
+package stats
 
 import (
 	"context"
@@ -6,15 +6,14 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	manet "github.com/multiformats/go-multiaddr-net"
+	"github.com/filecoin-project/go-state-types/abi"
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -52,7 +51,7 @@ sync_complete:
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(5 * time.Second):
+		case <-build.Clock.After(5 * time.Second):
 			state, err := napi.SyncState(ctx)
 			if err != nil {
 				return err
@@ -72,7 +71,7 @@ sync_complete:
 						"target_height", w.Target.Height(),
 						"height", w.Height,
 						"error", w.Message,
-						"stage", chain.SyncStageString(w.Stage),
+						"stage", w.Stage.String(),
 					)
 				} else {
 					log.Infow(
@@ -82,7 +81,7 @@ sync_complete:
 						"target", w.Target.Key(),
 						"target_height", w.Target.Height(),
 						"height", w.Height,
-						"stage", chain.SyncStageString(w.Stage),
+						"stage", w.Stage.String(),
 					)
 				}
 
@@ -97,13 +96,13 @@ sync_complete:
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(5 * time.Second):
+		case <-build.Clock.After(5 * time.Second):
 			head, err := napi.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
 
-			timestampDelta := time.Now().Unix() - int64(head.MinTimestamp())
+			timestampDelta := build.Clock.Now().Unix() - int64(head.MinTimestamp())
 
 			log.Infow(
 				"Waiting for reasonable head height",
@@ -114,7 +113,7 @@ sync_complete:
 			// If we get within 20 blocks of the current exected block height we
 			// consider sync complete. Block propagation is not always great but we still
 			// want to be recording stats as soon as we can
-			if timestampDelta < build.BlockDelay*20 {
+			if timestampDelta < int64(build.BlockDelaySecs)*20 {
 				return nil
 			}
 		}
@@ -124,7 +123,7 @@ sync_complete:
 func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, headlag int) (<-chan *types.TipSet, error) {
 	chmain := make(chan *types.TipSet)
 
-	hb := NewHeadBuffer(headlag)
+	hb := newHeadBuffer(headlag)
 
 	notif, err := api.ChainNotify(ctx)
 	if err != nil {
@@ -134,7 +133,8 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, h
 	go func() {
 		defer close(chmain)
 
-		ping := time.Tick(30 * time.Second)
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
 
 		for {
 			select {
@@ -154,14 +154,14 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, h
 							chmain <- tipset
 						}
 					case store.HCApply:
-						if out := hb.Push(change); out != nil {
+						if out := hb.push(change); out != nil {
 							chmain <- out.Val
 						}
 					case store.HCRevert:
-						hb.Pop()
+						hb.pop()
 					}
 				}
-			case <-ping:
+			case <-ticker.C:
 				log.Info("Running health check")
 
 				cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -214,11 +214,11 @@ func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowe
 	return tipsets, nil
 }
 
-func GetFullNodeAPI(repo string) (api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPI(ctx context.Context, repo string) (api.FullNode, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getAPI(repo)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(addr, headers)
+	return client.NewFullNodeRPC(ctx, addr, headers)
 }

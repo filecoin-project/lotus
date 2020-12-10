@@ -4,8 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -15,12 +16,12 @@ type heightEvents struct {
 	tsc          *tipSetCache
 	gcConfidence abi.ChainEpoch
 
-	ctr triggerId
+	ctr triggerID
 
-	heightTriggers map[triggerId]*heightHandler
+	heightTriggers map[triggerID]*heightHandler
 
-	htTriggerHeights map[triggerH][]triggerId
-	htHeights        map[msgH][]triggerId
+	htTriggerHeights map[triggerH][]triggerID
+	htHeights        map[msgH][]triggerID
 
 	ctx context.Context
 }
@@ -32,6 +33,8 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 	span.AddAttributes(trace.Int64Attribute("reverts", int64(len(rev))))
 	span.AddAttributes(trace.Int64Attribute("applies", int64(len(app))))
 
+	e.lk.Lock()
+	defer e.lk.Unlock()
 	for _, ts := range rev {
 		// TODO: log error if h below gcconfidence
 		// revert height-based triggers
@@ -40,7 +43,10 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 			for _, tid := range e.htHeights[h] {
 				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
 
-				err := e.heightTriggers[tid].revert(ctx, ts)
+				rev := e.heightTriggers[tid].revert
+				e.lk.Unlock()
+				err := rev(ctx, ts)
+				e.lk.Lock()
 				e.heightTriggers[tid].called = false
 
 				span.End()
@@ -87,7 +93,6 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				if hnd.called {
 					return nil
 				}
-				hnd.called = true
 
 				triggerH := h - abi.ChainEpoch(hnd.confidence)
 
@@ -98,8 +103,11 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 
 				ctx, span := trace.StartSpan(ctx, "events.HeightApply")
 				span.AddAttributes(trace.BoolAttribute("immediate", false))
-
-				err = hnd.handle(ctx, incTs, h)
+				handle := hnd.handle
+				e.lk.Unlock()
+				err = handle(ctx, incTs, h)
+				e.lk.Lock()
+				hnd.called = true
 				span.End()
 
 				if err != nil {
@@ -136,16 +144,20 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 }
 
 // ChainAt invokes the specified `HeightHandler` when the chain reaches the
-//  specified height+confidence threshold. If the chain is rolled-back under the
-//  specified height, `RevertHandler` will be called.
+// specified height+confidence threshold. If the chain is rolled-back under the
+// specified height, `RevertHandler` will be called.
 //
 // ts passed to handlers is the tipset at the specified, or above, if lower tipsets were null
 func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h abi.ChainEpoch) error {
-
 	e.lk.Lock() // Tricky locking, check your locks if you modify this function!
 
-	bestH := e.tsc.best().Height()
+	best, err := e.tsc.best()
+	if err != nil {
+		e.lk.Unlock()
+		return xerrors.Errorf("error getting best tipset: %w", err)
+	}
 
+	bestH := best.Height()
 	if bestH >= h+abi.ChainEpoch(confidence) {
 		ts, err := e.tsc.getNonNull(h)
 		if err != nil {
@@ -164,7 +176,12 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 		}
 
 		e.lk.Lock()
-		bestH = e.tsc.best().Height()
+		best, err = e.tsc.best()
+		if err != nil {
+			e.lk.Unlock()
+			return xerrors.Errorf("error getting best tipset: %w", err)
+		}
+		bestH = best.Height()
 	}
 
 	defer e.lk.Unlock()

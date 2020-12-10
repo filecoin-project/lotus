@@ -11,25 +11,28 @@ import (
 	"path/filepath"
 	"time"
 
+	saproof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+
 	"github.com/docker/go-units"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-state-types/abi"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -37,8 +40,10 @@ import (
 var log = logging.Logger("lotus-bench")
 
 type BenchResults struct {
-	SectorSize abi.SectorSize
+	SectorSize   abi.SectorSize
+	SectorNumber int
 
+	SealingSum     SealingResult
 	SealingResults []SealingResult
 
 	PostGenerateCandidates time.Duration
@@ -51,6 +56,26 @@ type BenchResults struct {
 	PostWindowProofHot   time.Duration
 	VerifyWindowPostCold time.Duration
 	VerifyWindowPostHot  time.Duration
+}
+
+func (bo *BenchResults) SumSealingTime() error {
+	if len(bo.SealingResults) <= 0 {
+		return xerrors.Errorf("BenchResults SealingResults len <= 0")
+	}
+	if len(bo.SealingResults) != bo.SectorNumber {
+		return xerrors.Errorf("BenchResults SealingResults len(%d) != bo.SectorNumber(%d)", len(bo.SealingResults), bo.SectorNumber)
+	}
+
+	for _, sealing := range bo.SealingResults {
+		bo.SealingSum.AddPiece += sealing.AddPiece
+		bo.SealingSum.PreCommit1 += sealing.PreCommit1
+		bo.SealingSum.PreCommit2 += sealing.PreCommit2
+		bo.SealingSum.Commit1 += sealing.Commit1
+		bo.SealingSum.Commit2 += sealing.Commit2
+		bo.SealingSum.Verify += sealing.Verify
+		bo.SealingSum.Unseal += sealing.Unseal
+	}
+	return nil
 }
 
 type SealingResult struct {
@@ -74,12 +99,10 @@ func main() {
 
 	log.Info("Starting lotus-bench")
 
-	miner.SupportedProofTypes[abi.RegisteredProof_StackedDRG2KiBSeal] = struct{}{}
-
 	app := &cli.App{
 		Name:    "lotus-bench",
 		Usage:   "Benchmark performance of lotus on your hardware",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Commands: []*cli.Command{
 			proveCmd,
 			sealBenchCmd,
@@ -94,12 +117,13 @@ func main() {
 }
 
 var sealBenchCmd = &cli.Command{
-	Name: "sealing",
+	Name:  "sealing",
+	Usage: "Benchmark seal and winning post and window post",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "storage-dir",
 			Value: "~/.lotus-bench",
-			Usage: "Path to the storage directory that will store sectors long term",
+			Usage: "path to the storage directory that will store sectors long term",
 		},
 		&cli.StringFlag{
 			Name:  "sector-size",
@@ -132,17 +156,32 @@ var sealBenchCmd = &cli.Command{
 			Usage: "skip the unseal portion of the benchmark",
 		},
 		&cli.StringFlag{
+			Name:  "ticket-preimage",
+			Usage: "ticket random",
+		},
+		&cli.StringFlag{
 			Name:  "save-commit2-input",
-			Usage: "Save commit2 input to a file",
+			Usage: "save commit2 input to a file",
 		},
 		&cli.IntFlag{
 			Name:  "num-sectors",
+			Usage: "select number of sectors to seal",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "parallel",
+			Usage: "num run in parallel",
 			Value: 1,
 		},
 	},
 	Action: func(c *cli.Context) error {
+		policy.AddSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+
 		if c.Bool("no-gpu") {
-			os.Setenv("BELLMAN_NO_GPU", "1")
+			err := os.Setenv("BELLMAN_NO_GPU", "1")
+			if err != nil {
+				return xerrors.Errorf("setting no-gpu flag: %w", err)
+			}
 		}
 
 		robench := c.String("benchmark-existing-sectorbuilder")
@@ -155,7 +194,10 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			os.MkdirAll(sdir, 0775)
+			err = os.MkdirAll(sdir, 0775) //nolint:gosec
+			if err != nil {
+				return xerrors.Errorf("creating sectorbuilder dir: %w", err)
+			}
 
 			tsdir, err := ioutil.TempDir(sdir, "bench")
 			if err != nil {
@@ -199,18 +241,10 @@ var sealBenchCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		spt, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
-		if err != nil {
-			return err
-		}
-
-		cfg := &ffiwrapper.Config{
-			SealProofType: spt,
-		}
-
 		// Only fetch parameters if actually needed
-		if !c.Bool("skip-commit2") {
-			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJson(), uint64(sectorSize)); err != nil {
+		skipc2 := c.Bool("skip-commit2")
+		if !skipc2 {
+			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 		}
@@ -219,28 +253,28 @@ var sealBenchCmd = &cli.Command{
 			Root: sbdir,
 		}
 
-		sb, err := ffiwrapper.New(sbfs, cfg)
+		sb, err := ffiwrapper.New(sbfs)
 		if err != nil {
 			return err
 		}
 
+		sectorNumber := c.Int("num-sectors")
+
 		var sealTimings []SealingResult
-		var sealedSectors []abi.SectorInfo
+		var sealedSectors []saproof2.SectorInfo
 
 		if robench == "" {
 			var err error
-			sealTimings, sealedSectors, err = runSeals(sb, sbfs, c.Int("num-sectors"), mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), c.Bool("skip-commit2"), c.Bool("skip-unseal"))
+			parCfg := ParCfg{
+				PreCommit1: c.Int("parallel"),
+				PreCommit2: 1,
+				Commit:     1,
+			}
+			sealTimings, sealedSectors, err = runSeals(sb, sbfs, sectorNumber, parCfg, mid, sectorSize, []byte(c.String("ticket-preimage")), c.String("save-commit2-input"), skipc2, c.Bool("skip-unseal"))
 			if err != nil {
 				return xerrors.Errorf("failed to run seals: %w", err)
 			}
-		}
-
-		beforePost := time.Now()
-
-		var challenge [32]byte
-		rand.Read(challenge[:])
-
-		if robench != "" {
+		} else {
 			// TODO: implement sbfs.List() and use that for all cases (preexisting sectorbuilder or not)
 
 			// TODO: this assumes we only ever benchmark a preseal
@@ -263,27 +297,41 @@ var sealBenchCmd = &cli.Command{
 			}
 
 			for _, s := range genm.Sectors {
-				sealedSectors = append(sealedSectors, abi.SectorInfo{
-					SealedCID:       s.CommR,
-					SectorNumber:    s.SectorID,
-					RegisteredProof: s.ProofType,
+				sealedSectors = append(sealedSectors, saproof2.SectorInfo{
+					SealedCID:    s.CommR,
+					SectorNumber: s.SectorID,
+					SealProof:    s.ProofType,
 				})
 			}
 		}
 
 		bo := BenchResults{
 			SectorSize:     sectorSize,
+			SectorNumber:   sectorNumber,
 			SealingResults: sealTimings,
 		}
+		if err := bo.SumSealingTime(); err != nil {
+			return err
+		}
 
-		if !c.Bool("skip-commit2") {
+		var challenge [32]byte
+		rand.Read(challenge[:])
+
+		beforePost := time.Now()
+
+		if !skipc2 {
 			log.Info("generating winning post candidates")
-			fcandidates, err := ffiwrapper.ProofVerifier.GenerateWinningPoStSectorChallenge(context.TODO(), spt, mid, challenge[:], uint64(len(sealedSectors)))
+			wipt, err := spt(sectorSize).RegisteredWinningPoStProof()
 			if err != nil {
 				return err
 			}
 
-			candidates := make([]abi.SectorInfo, len(fcandidates))
+			fcandidates, err := ffiwrapper.ProofVerifier.GenerateWinningPoStSectorChallenge(context.TODO(), wipt, mid, challenge[:], uint64(len(sealedSectors)))
+			if err != nil {
+				return err
+			}
+
+			candidates := make([]saproof2.SectorInfo, len(fcandidates))
 			for i, fcandidate := range fcandidates {
 				candidates[i] = sealedSectors[fcandidate]
 			}
@@ -296,7 +344,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			winnnigpost1 := time.Now()
+			winningpost1 := time.Now()
 
 			log.Info("computing winning post snark (hot)")
 			proof2, err := sb.GenerateWinningPoSt(context.TODO(), mid, candidates, challenge[:])
@@ -306,7 +354,7 @@ var sealBenchCmd = &cli.Command{
 
 			winnningpost2 := time.Now()
 
-			pvi1 := abi.WinningPoStVerifyInfo{
+			pvi1 := saproof2.WinningPoStVerifyInfo{
 				Randomness:        abi.PoStRandomness(challenge[:]),
 				Proofs:            proof1,
 				ChallengedSectors: candidates,
@@ -320,9 +368,9 @@ var sealBenchCmd = &cli.Command{
 				log.Error("post verification failed")
 			}
 
-			verifyWinnnigPost1 := time.Now()
+			verifyWinningPost1 := time.Now()
 
-			pvi2 := abi.WinningPoStVerifyInfo{
+			pvi2 := saproof2.WinningPoStVerifyInfo{
 				Randomness:        abi.PoStRandomness(challenge[:]),
 				Proofs:            proof2,
 				ChallengedSectors: candidates,
@@ -339,7 +387,7 @@ var sealBenchCmd = &cli.Command{
 			verifyWinningPost2 := time.Now()
 
 			log.Info("computing window post snark (cold)")
-			wproof1, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
+			wproof1, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
 			if err != nil {
 				return err
 			}
@@ -347,14 +395,14 @@ var sealBenchCmd = &cli.Command{
 			windowpost1 := time.Now()
 
 			log.Info("computing window post snark (hot)")
-			wproof2, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
+			wproof2, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
 			if err != nil {
 				return err
 			}
 
 			windowpost2 := time.Now()
 
-			wpvi1 := abi.WindowPoStVerifyInfo{
+			wpvi1 := saproof2.WindowPoStVerifyInfo{
 				Randomness:        challenge[:],
 				Proofs:            wproof1,
 				ChallengedSectors: sealedSectors,
@@ -365,12 +413,12 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 			if !ok {
-				log.Error("post verification failed")
+				log.Error("window post verification failed")
 			}
 
 			verifyWindowpost1 := time.Now()
 
-			wpvi2 := abi.WindowPoStVerifyInfo{
+			wpvi2 := saproof2.WindowPoStVerifyInfo{
 				Randomness:        challenge[:],
 				Proofs:            wproof2,
 				ChallengedSectors: sealedSectors,
@@ -381,16 +429,16 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 			if !ok {
-				log.Error("post verification failed")
+				log.Error("window post verification failed")
 			}
 
 			verifyWindowpost2 := time.Now()
 
 			bo.PostGenerateCandidates = gencandidates.Sub(beforePost)
-			bo.PostWinningProofCold = winnnigpost1.Sub(gencandidates)
-			bo.PostWinningProofHot = winnningpost2.Sub(winnnigpost1)
-			bo.VerifyWinningPostCold = verifyWinnnigPost1.Sub(winnningpost2)
-			bo.VerifyWinningPostHot = verifyWinningPost2.Sub(verifyWinnnigPost1)
+			bo.PostWinningProofCold = winningpost1.Sub(gencandidates)
+			bo.PostWinningProofHot = winnningpost2.Sub(winningpost1)
+			bo.VerifyWinningPostCold = verifyWinningPost1.Sub(winnningpost2)
+			bo.VerifyWinningPostHot = verifyWinningPost2.Sub(verifyWinningPost1)
 
 			bo.PostWindowProofCold = windowpost1.Sub(verifyWinningPost2)
 			bo.PostWindowProofHot = windowpost2.Sub(windowpost1)
@@ -406,25 +454,25 @@ var sealBenchCmd = &cli.Command{
 
 			fmt.Println(string(data))
 		} else {
-			fmt.Printf("----\nresults (v26) (%d)\n", sectorSize)
+			fmt.Printf("----\nresults (v28) SectorSize:(%d), SectorNumber:(%d)\n", sectorSize, sectorNumber)
 			if robench == "" {
-				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
-				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingResults[0].PreCommit1, bps(bo.SectorSize, bo.SealingResults[0].PreCommit1))
-				fmt.Printf("seal: preCommit phase 2: %s (%s)\n", bo.SealingResults[0].PreCommit2, bps(bo.SectorSize, bo.SealingResults[0].PreCommit2))
-				fmt.Printf("seal: commit phase 1: %s (%s)\n", bo.SealingResults[0].Commit1, bps(bo.SectorSize, bo.SealingResults[0].Commit1))
-				fmt.Printf("seal: commit phase 2: %s (%s)\n", bo.SealingResults[0].Commit2, bps(bo.SectorSize, bo.SealingResults[0].Commit2))
-				fmt.Printf("seal: verify: %s\n", bo.SealingResults[0].Verify)
+				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingSum.AddPiece, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.AddPiece))
+				fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingSum.PreCommit1, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.PreCommit1))
+				fmt.Printf("seal: preCommit phase 2: %s (%s)\n", bo.SealingSum.PreCommit2, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.PreCommit2))
+				fmt.Printf("seal: commit phase 1: %s (%s)\n", bo.SealingSum.Commit1, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Commit1))
+				fmt.Printf("seal: commit phase 2: %s (%s)\n", bo.SealingSum.Commit2, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Commit2))
+				fmt.Printf("seal: verify: %s\n", bo.SealingSum.Verify)
 				if !c.Bool("skip-unseal") {
-					fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
+					fmt.Printf("unseal: %s  (%s)\n", bo.SealingSum.Unseal, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.Unseal))
 				}
 				fmt.Println("")
 			}
-			if !c.Bool("skip-commit2") {
-				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*abi.SectorSize(len(bo.SealingResults)), bo.PostGenerateCandidates))
-				fmt.Printf("compute winnnig post proof (cold): %s\n", bo.PostWinningProofCold)
-				fmt.Printf("compute winnnig post proof (hot): %s\n", bo.PostWinningProofHot)
-				fmt.Printf("verify winnnig post proof (cold): %s\n", bo.VerifyWinningPostCold)
-				fmt.Printf("verify winnnig post proof (hot): %s\n\n", bo.VerifyWinningPostHot)
+			if !skipc2 {
+				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize, len(bo.SealingResults), bo.PostGenerateCandidates))
+				fmt.Printf("compute winning post proof (cold): %s\n", bo.PostWinningProofCold)
+				fmt.Printf("compute winning post proof (hot): %s\n", bo.PostWinningProofHot)
+				fmt.Printf("verify winning post proof (cold): %s\n", bo.VerifyWinningPostCold)
+				fmt.Printf("verify winning post proof (hot): %s\n\n", bo.VerifyWinningPostHot)
 
 				fmt.Printf("compute window post proof (cold): %s\n", bo.PostWindowProofCold)
 				fmt.Printf("compute window post proof (hot): %s\n", bo.PostWindowProofHot)
@@ -436,18 +484,34 @@ var sealBenchCmd = &cli.Command{
 	},
 }
 
-func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid abi.ActorID, sectorSize abi.SectorSize, ticketPreimage []byte, saveC2inp string, skipc2, skipunseal bool) ([]SealingResult, []abi.SectorInfo, error) {
-	var sealTimings []SealingResult
-	var sealedSectors []abi.SectorInfo
+type ParCfg struct {
+	PreCommit1 int
+	PreCommit2 int
+	Commit     int
+}
 
-	for i := abi.SectorNumber(1); i <= abi.SectorNumber(numSectors); i++ {
-		sid := abi.SectorID{
-			Miner:  mid,
-			Number: i,
+func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par ParCfg, mid abi.ActorID, sectorSize abi.SectorSize, ticketPreimage []byte, saveC2inp string, skipc2, skipunseal bool) ([]SealingResult, []saproof2.SectorInfo, error) {
+	var pieces []abi.PieceInfo
+	sealTimings := make([]SealingResult, numSectors)
+	sealedSectors := make([]saproof2.SectorInfo, numSectors)
+
+	preCommit2Sema := make(chan struct{}, par.PreCommit2)
+	commitSema := make(chan struct{}, par.Commit)
+
+	if numSectors%par.PreCommit1 != 0 {
+		return nil, nil, fmt.Errorf("parallelism factor must cleanly divide numSectors")
+	}
+	for i := abi.SectorNumber(0); i < abi.SectorNumber(numSectors); i++ {
+		sid := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  mid,
+				Number: i,
+			},
+			ProofType: spt(sectorSize),
 		}
 
 		start := time.Now()
-		log.Info("Writing piece into sector...")
+		log.Infof("[%d] Writing piece into sector...", i)
 
 		r := rand.New(rand.NewSource(100 + int64(i)))
 
@@ -456,151 +520,196 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, mid
 			return nil, nil, err
 		}
 
-		addpiece := time.Now()
+		pieces = append(pieces, pi)
 
-		trand := blake2b.Sum256(ticketPreimage)
-		ticket := abi.SealRandomness(trand[:])
+		sealTimings[i].AddPiece = time.Since(start)
+	}
 
-		log.Info("Running replication(1)...")
-		pieces := []abi.PieceInfo{pi}
-		pc1o, err := sb.SealPreCommit1(context.TODO(), sid, ticket, pieces)
-		if err != nil {
-			return nil, nil, xerrors.Errorf("commit: %w", err)
-		}
+	sectorsPerWorker := numSectors / par.PreCommit1
 
-		precommit1 := time.Now()
+	errs := make(chan error, par.PreCommit1)
+	for wid := 0; wid < par.PreCommit1; wid++ {
+		go func(worker int) {
+			sealerr := func() error {
+				start := worker * sectorsPerWorker
+				end := start + sectorsPerWorker
+				for i := abi.SectorNumber(start); i < abi.SectorNumber(end); i++ {
+					sid := storage.SectorRef{
+						ID: abi.SectorID{
+							Miner:  mid,
+							Number: i,
+						},
+						ProofType: spt(sectorSize),
+					}
 
-		log.Info("Running replication(2)...")
-		cids, err := sb.SealPreCommit2(context.TODO(), sid, pc1o)
-		if err != nil {
-			return nil, nil, xerrors.Errorf("commit: %w", err)
-		}
+					start := time.Now()
 
-		precommit2 := time.Now()
+					trand := blake2b.Sum256(ticketPreimage)
+					ticket := abi.SealRandomness(trand[:])
 
-		sealedSectors = append(sealedSectors, abi.SectorInfo{
-			RegisteredProof: sb.SealProofType(),
-			SectorNumber:    i,
-			SealedCID:       cids.Sealed,
-		})
+					log.Infof("[%d] Running replication(1)...", i)
+					piece := []abi.PieceInfo{pieces[i]}
+					pc1o, err := sb.SealPreCommit1(context.TODO(), sid, ticket, piece)
+					if err != nil {
+						return xerrors.Errorf("commit: %w", err)
+					}
 
-		seed := lapi.SealSeed{
-			Epoch: 101,
-			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 255},
-		}
+					precommit1 := time.Now()
 
-		log.Info("Generating PoRep for sector (1)")
-		c1o, err := sb.SealCommit1(context.TODO(), sid, ticket, seed.Value, pieces, cids)
+					preCommit2Sema <- struct{}{}
+					pc2Start := time.Now()
+					log.Infof("[%d] Running replication(2)...", i)
+					cids, err := sb.SealPreCommit2(context.TODO(), sid, pc1o)
+					if err != nil {
+						return xerrors.Errorf("commit: %w", err)
+					}
+
+					precommit2 := time.Now()
+					<-preCommit2Sema
+
+					sealedSectors[i] = saproof2.SectorInfo{
+						SealProof:    sid.ProofType,
+						SectorNumber: i,
+						SealedCID:    cids.Sealed,
+					}
+
+					seed := lapi.SealSeed{
+						Epoch: 101,
+						Value: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 255},
+					}
+
+					commitSema <- struct{}{}
+					commitStart := time.Now()
+					log.Infof("[%d] Generating PoRep for sector (1)", i)
+					c1o, err := sb.SealCommit1(context.TODO(), sid, ticket, seed.Value, piece, cids)
+					if err != nil {
+						return err
+					}
+
+					sealcommit1 := time.Now()
+
+					log.Infof("[%d] Generating PoRep for sector (2)", i)
+
+					if saveC2inp != "" {
+						c2in := Commit2In{
+							SectorNum:  int64(i),
+							Phase1Out:  c1o,
+							SectorSize: uint64(sectorSize),
+						}
+
+						b, err := json.Marshal(&c2in)
+						if err != nil {
+							return err
+						}
+
+						if err := ioutil.WriteFile(saveC2inp, b, 0664); err != nil {
+							log.Warnf("%+v", err)
+						}
+					}
+
+					var proof storage.Proof
+					if !skipc2 {
+						proof, err = sb.SealCommit2(context.TODO(), sid, c1o)
+						if err != nil {
+							return err
+						}
+					}
+
+					sealcommit2 := time.Now()
+					<-commitSema
+
+					if !skipc2 {
+						svi := saproof2.SealVerifyInfo{
+							SectorID:              abi.SectorID{Miner: mid, Number: i},
+							SealedCID:             cids.Sealed,
+							SealProof:             sid.ProofType,
+							Proof:                 proof,
+							DealIDs:               nil,
+							Randomness:            ticket,
+							InteractiveRandomness: seed.Value,
+							UnsealedCID:           cids.Unsealed,
+						}
+
+						ok, err := ffiwrapper.ProofVerifier.VerifySeal(svi)
+						if err != nil {
+							return err
+						}
+						if !ok {
+							return xerrors.Errorf("porep proof for sector %d was invalid", i)
+						}
+					}
+
+					verifySeal := time.Now()
+
+					if !skipunseal {
+						log.Infof("[%d] Unsealing sector", i)
+						{
+							p, done, err := sbfs.AcquireSector(context.TODO(), sid, storiface.FTUnsealed, storiface.FTNone, storiface.PathSealing)
+							if err != nil {
+								return xerrors.Errorf("acquire unsealed sector for removing: %w", err)
+							}
+							done()
+
+							if err := os.Remove(p.Unsealed); err != nil {
+								return xerrors.Errorf("removing unsealed sector: %w", err)
+							}
+						}
+
+						err := sb.UnsealPiece(context.TODO(), sid, 0, abi.PaddedPieceSize(sectorSize).Unpadded(), ticket, cids.Unsealed)
+						if err != nil {
+							return err
+						}
+					}
+					unseal := time.Now()
+
+					sealTimings[i].PreCommit1 = precommit1.Sub(start)
+					sealTimings[i].PreCommit2 = precommit2.Sub(pc2Start)
+					sealTimings[i].Commit1 = sealcommit1.Sub(commitStart)
+					sealTimings[i].Commit2 = sealcommit2.Sub(sealcommit1)
+					sealTimings[i].Verify = verifySeal.Sub(sealcommit2)
+					sealTimings[i].Unseal = unseal.Sub(verifySeal)
+				}
+				return nil
+			}()
+			if sealerr != nil {
+				errs <- sealerr
+				return
+			}
+			errs <- nil
+		}(wid)
+	}
+
+	for i := 0; i < par.PreCommit1; i++ {
+		err := <-errs
 		if err != nil {
 			return nil, nil, err
 		}
-
-		sealcommit1 := time.Now()
-
-		log.Info("Generating PoRep for sector (2)")
-
-		if saveC2inp != "" {
-			c2in := Commit2In{
-				SectorNum:  int64(i),
-				Phase1Out:  c1o,
-				SectorSize: uint64(sectorSize),
-			}
-
-			b, err := json.Marshal(&c2in)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			if err := ioutil.WriteFile(saveC2inp, b, 0664); err != nil {
-				log.Warnf("%+v", err)
-			}
-		}
-
-		var proof storage.Proof
-		if !skipc2 {
-			proof, err = sb.SealCommit2(context.TODO(), sid, c1o)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-
-		sealcommit2 := time.Now()
-
-		if !skipc2 {
-			svi := abi.SealVerifyInfo{
-				SectorID:              abi.SectorID{Miner: mid, Number: i},
-				SealedCID:             cids.Sealed,
-				RegisteredProof:       sb.SealProofType(),
-				Proof:                 proof,
-				DealIDs:               nil,
-				Randomness:            ticket,
-				InteractiveRandomness: seed.Value,
-				UnsealedCID:           cids.Unsealed,
-			}
-
-			ok, err := ffiwrapper.ProofVerifier.VerifySeal(svi)
-			if err != nil {
-				return nil, nil, err
-			}
-			if !ok {
-				return nil, nil, xerrors.Errorf("porep proof for sector %d was invalid", i)
-			}
-		}
-
-		verifySeal := time.Now()
-
-		if !skipunseal {
-			log.Info("Unsealing sector")
-			{
-				p, done, err := sbfs.AcquireSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, stores.FTUnsealed, stores.FTNone, true)
-				if err != nil {
-					return nil, nil, xerrors.Errorf("acquire unsealed sector for removing: %w", err)
-				}
-				done()
-
-				if err := os.Remove(p.Unsealed); err != nil {
-					return nil, nil, xerrors.Errorf("removing unsealed sector: %w", err)
-				}
-			}
-
-			// TODO: RM unsealed sector first
-			rc, err := sb.ReadPieceFromSealedSector(context.TODO(), abi.SectorID{Miner: mid, Number: 1}, 0, abi.UnpaddedPieceSize(sectorSize), ticket, cids.Unsealed)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			if err := rc.Close(); err != nil {
-				return nil, nil, err
-			}
-		}
-		unseal := time.Now()
-
-		sealTimings = append(sealTimings, SealingResult{
-			AddPiece:   addpiece.Sub(start),
-			PreCommit1: precommit1.Sub(addpiece),
-			PreCommit2: precommit2.Sub(precommit1),
-			Commit1:    sealcommit1.Sub(precommit2),
-			Commit2:    sealcommit2.Sub(sealcommit1),
-			Verify:     verifySeal.Sub(sealcommit2),
-			Unseal:     unseal.Sub(verifySeal),
-		})
 	}
 
 	return sealTimings, sealedSectors, nil
 }
 
 var proveCmd = &cli.Command{
-	Name:  "prove",
-	Usage: "Benchmark a proof computation",
+	Name:      "prove",
+	Usage:     "Benchmark a proof computation",
+	ArgsUsage: "[input.json]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "no-gpu",
 			Usage: "disable gpu usage for the benchmark run",
 		},
+		&cli.StringFlag{
+			Name:  "miner-addr",
+			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+			Value: "t01000",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		if c.Bool("no-gpu") {
-			os.Setenv("BELLMAN_NO_GPU", "1")
+			err := os.Setenv("BELLMAN_NO_GPU", "1")
+			if err != nil {
+				return xerrors.Errorf("setting no-gpu flag: %w", err)
+			}
 		}
 
 		if !c.Args().Present() {
@@ -617,7 +726,7 @@ var proveCmd = &cli.Command{
 			return xerrors.Errorf("unmarshalling input file: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJson(), c2in.SectorSize); err != nil {
+		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), c2in.SectorSize); err != nil {
 			return xerrors.Errorf("getting params: %w", err)
 		}
 
@@ -630,23 +739,23 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
-		spt, err := ffiwrapper.SealProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
+		sb, err := ffiwrapper.New(nil)
 		if err != nil {
 			return err
 		}
 
-		cfg := &ffiwrapper.Config{
-			SealProofType: spt,
+		ref := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(c2in.SectorNum),
+			},
+			ProofType: spt(abi.SectorSize(c2in.SectorSize)),
 		}
 
-		sb, err := ffiwrapper.New(nil, cfg)
-		if err != nil {
-			return err
-		}
-
+		fmt.Printf("----\nstart proof computation\n")
 		start := time.Now()
 
-		proof, err := sb.SealCommit2(context.TODO(), abi.SectorID{Miner: abi.ActorID(mid), Number: abi.SectorNumber(c2in.SectorNum)}, c2in.Phase1Out)
+		proof, err := sb.SealCommit2(context.TODO(), ref, c2in.Phase1Out)
 		if err != nil {
 			return err
 		}
@@ -655,17 +764,27 @@ var proveCmd = &cli.Command{
 
 		fmt.Printf("proof: %x\n", proof)
 
-		fmt.Printf("----\nresults (v23) (%d)\n", c2in.SectorSize)
+		fmt.Printf("----\nresults (v28) (%d)\n", c2in.SectorSize)
 		dur := sealCommit2.Sub(start)
 
-		fmt.Printf("seal: commit phase 2: %s (%s)\n", dur, bps(abi.SectorSize(c2in.SectorSize), dur))
+		fmt.Printf("seal: commit phase 2: %s (%s)\n", dur, bps(abi.SectorSize(c2in.SectorSize), 1, dur))
 		return nil
 	},
 }
 
-func bps(data abi.SectorSize, d time.Duration) string {
-	bdata := new(big.Int).SetUint64(uint64(data))
+func bps(sectorSize abi.SectorSize, sectorNum int, d time.Duration) string {
+	bdata := new(big.Int).SetUint64(uint64(sectorSize))
+	bdata = bdata.Mul(bdata, big.NewInt(int64(sectorNum)))
 	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
 	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
-	return types.SizeStr(types.BigInt{bps}) + "/s"
+	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
+}
+
+func spt(ssize abi.SectorSize) abi.RegisteredSealProof {
+	spt, err := miner.SealProofTypeFromSectorSize(ssize, build.NewestNetworkVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	return spt
 }

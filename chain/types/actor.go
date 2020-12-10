@@ -1,13 +1,12 @@
 package types
 
 import (
-	"github.com/ipfs/go-cid"
+	"errors"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/ipfs/go-cid"
 )
 
-var ErrActorNotFound = init_.ErrAddressNotFound
+var ErrActorNotFound = errors.New("actor not found")
 
 type Actor struct {
 	// Identifies the type of actor (string coded as a CID), see `chain/actors/actors.go`.
@@ -15,8 +14,4 @@ type Actor struct {
 	Head    cid.Cid
 	Nonce   uint64
 	Balance BigInt
-}
-
-func (a *Actor) IsAccountActor() bool {
-	return a.Code == builtin.AccountActorCodeID
 }

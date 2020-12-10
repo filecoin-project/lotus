@@ -3,12 +3,6 @@ import { Buffer } from 'buffer'
 import { Tagged } from 'borc'
 
 async function pushMessage(client, from, inmsg) {
-    if(!inmsg.GasLimit) {
-        inmsg.GasLimit = "10000"
-    }
-    if(!inmsg.GasPrice) {
-        inmsg.GasPrice = "0"
-    }
     if(!inmsg.Params) {
         inmsg.Params = "oA==" // 0b101_00000: empty cbor map: {}
     }
@@ -36,7 +30,7 @@ async function pushMessage(client, from, inmsg) {
 
     console.log(inmsg)
 
-    await client.call('Filecoin.MpoolPushMessage', [inmsg])
+    await client.call('Filecoin.MpoolPushMessage', [inmsg, null])
 }
 
 export default pushMessage

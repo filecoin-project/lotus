@@ -4,7 +4,10 @@ import (
 	"encoding"
 	"time"
 
-	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/types"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
 
 // Common is common config between full node and miner
@@ -19,15 +22,59 @@ type FullNode struct {
 	Common
 	Client  Client
 	Metrics Metrics
+	Wallet  Wallet
+	Fees    FeeConfig
 }
 
 // // Common
 
-// StorageMiner is a storage miner config
+// StorageMiner is a miner config
 type StorageMiner struct {
 	Common
 
-	Storage sectorstorage.SealerConfig
+	Dealmaking DealmakingConfig
+	Sealing    SealingConfig
+	Storage    sectorstorage.SealerConfig
+	Fees       MinerFeeConfig
+	Addresses  MinerAddressConfig
+}
+
+type DealmakingConfig struct {
+	ConsiderOnlineStorageDeals    bool
+	ConsiderOfflineStorageDeals   bool
+	ConsiderOnlineRetrievalDeals  bool
+	ConsiderOfflineRetrievalDeals bool
+	PieceCidBlocklist             []cid.Cid
+	ExpectedSealDuration          Duration
+
+	Filter          string
+	RetrievalFilter string
+}
+
+type SealingConfig struct {
+	// 0 = no limit
+	MaxWaitDealsSectors uint64
+
+	// includes failed, 0 = no limit
+	MaxSealingSectors uint64
+
+	// includes failed, 0 = no limit
+	MaxSealingSectorsForDeals uint64
+
+	WaitDealsDelay Duration
+}
+
+type MinerFeeConfig struct {
+	MaxPreCommitGasFee     types.FIL
+	MaxCommitGasFee        types.FIL
+	MaxWindowPoStGasFee    types.FIL
+	MaxPublishDealsFee     types.FIL
+	MaxMarketBalanceAddFee types.FIL
+}
+
+type MinerAddressConfig struct {
+	PreCommitControl []string
+	CommitControl    []string
 }
 
 // API contains configs for API endpoint
@@ -39,9 +86,11 @@ type API struct {
 
 // Libp2p contains configs for libp2p
 type Libp2p struct {
-	ListenAddresses []string
-	BootstrapPeers  []string
-	ProtectedPeers  []string
+	ListenAddresses     []string
+	AnnounceAddresses   []string
+	NoAnnounceAddresses []string
+	BootstrapPeers      []string
+	ProtectedPeers      []string
 
 	ConnMgrLow   uint
 	ConnMgrHigh  uint
@@ -62,9 +111,21 @@ type Metrics struct {
 }
 
 type Client struct {
-	UseIpfs             bool
-	IpfsMAddr           string
-	IpfsUseForRetrieval bool
+	UseIpfs               bool
+	IpfsOnlineMode        bool
+	IpfsMAddr             string
+	IpfsUseForRetrieval   bool
+	SimultaneousTransfers uint64
+}
+
+type Wallet struct {
+	RemoteBackend string
+	EnableLedger  bool
+	DisableLocal  bool
+}
+
+type FeeConfig struct {
+	DefaultMaxFee types.FIL
 }
 
 func defCommon() Common {
@@ -78,6 +139,8 @@ func defCommon() Common {
 				"/ip4/0.0.0.0/tcp/0",
 				"/ip6/::/tcp/0",
 			},
+			AnnounceAddresses:   []string{},
+			NoAnnounceAddresses: []string{},
 
 			ConnMgrLow:   150,
 			ConnMgrHigh:  180,
@@ -86,16 +149,25 @@ func defCommon() Common {
 		Pubsub: Pubsub{
 			Bootstrapper: false,
 			DirectPeers:  nil,
-			RemoteTracer: "/ip4/147.75.67.199/tcp/4001/p2p/QmTd6UvR47vUidRNZ1ZKXHrAFhqTJAD27rKL9XYghEKgKX",
+			RemoteTracer: "/dns4/pubsub-tracer.filecoin.io/tcp/4001/p2p/QmTd6UvR47vUidRNZ1ZKXHrAFhqTJAD27rKL9XYghEKgKX",
 		},
 	}
 
 }
 
+var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+var DefaultSimultaneousTransfers = uint64(20)
+
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
+		Fees: FeeConfig{
+			DefaultMaxFee: DefaultDefaultMaxFee,
+		},
+		Client: Client{
+			SimultaneousTransfers: DefaultSimultaneousTransfers,
+		},
 	}
 }
 
@@ -103,10 +175,46 @@ func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),
 
+		Sealing: SealingConfig{
+			MaxWaitDealsSectors:       2, // 64G with 32G sectors
+			MaxSealingSectors:         0,
+			MaxSealingSectorsForDeals: 0,
+			WaitDealsDelay:            Duration(time.Hour * 6),
+		},
+
 		Storage: sectorstorage.SealerConfig{
+			AllowAddPiece:   true,
 			AllowPreCommit1: true,
 			AllowPreCommit2: true,
 			AllowCommit:     true,
+			AllowUnseal:     true,
+
+			// Default to 10 - tcp should still be able to figure this out, and
+			// it's the ratio between 10gbit / 1gbit
+			ParallelFetchLimit: 10,
+		},
+
+		Dealmaking: DealmakingConfig{
+			ConsiderOnlineStorageDeals:    true,
+			ConsiderOfflineStorageDeals:   true,
+			ConsiderOnlineRetrievalDeals:  true,
+			ConsiderOfflineRetrievalDeals: true,
+			PieceCidBlocklist:             []cid.Cid{},
+			// TODO: It'd be nice to set this based on sector size
+			ExpectedSealDuration: Duration(time.Hour * 24),
+		},
+
+		Fees: MinerFeeConfig{
+			MaxPreCommitGasFee:     types.MustParseFIL("0.025"),
+			MaxCommitGasFee:        types.MustParseFIL("0.05"),
+			MaxWindowPoStGasFee:    types.MustParseFIL("5"),
+			MaxPublishDealsFee:     types.MustParseFIL("0.05"),
+			MaxMarketBalanceAddFee: types.MustParseFIL("0.007"),
+		},
+
+		Addresses: MinerAddressConfig{
+			PreCommitControl: []string{},
+			CommitControl:    []string{},
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

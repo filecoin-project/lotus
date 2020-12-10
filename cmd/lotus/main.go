@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"os"
 
+	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -17,10 +16,13 @@ import (
 var AdvanceBlockCmd *cli.Command
 
 func main() {
+	build.RunningNodeType = build.NodeFull
+
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
 		DaemonCmd,
+		backupCmd,
 	}
 	if AdvanceBlockCmd != nil {
 		local = append(local, AdvanceBlockCmd)
@@ -50,10 +52,10 @@ func main() {
 	defer span.End()
 
 	app := &cli.App{
-		Name:                  "lotus",
-		Usage:                 "Filecoin decentralized storage network client",
-		Version:               build.UserVersion,
-		EnableShellCompletion: true,
+		Name:                 "lotus",
+		Usage:                "Filecoin decentralized storage network client",
+		Version:              build.UserVersion(),
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -69,17 +71,5 @@ func main() {
 	app.Metadata["traceContext"] = ctx
 	app.Metadata["repoType"] = repo.FullNode
 
-	if err := app.Run(os.Args); err != nil {
-		span.SetStatus(trace.Status{
-			Code:    trace.StatusCodeFailedPrecondition,
-			Message: err.Error(),
-		})
-		_, ok := err.(*lcli.ErrCmdFailed)
-		if ok {
-			log.Debugf("%+v", err)
-		} else {
-			log.Warnf("%+v", err)
-		}
-		os.Exit(1)
-	}
+	lcli.RunApp(app)
 }

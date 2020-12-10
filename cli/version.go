@@ -3,10 +3,10 @@ package cli
 import (
 	"fmt"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 )
 
-var versionCmd = &cli.Command{
+var VersionCmd = &cli.Command{
 	Name:  "version",
 	Usage: "Print version",
 	Action: func(cctx *cli.Context) error {
@@ -23,7 +23,9 @@ var versionCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(v)
+		fmt.Println("Daemon: ", v)
+
+		fmt.Print("Local: ")
 		cli.VersionPrinter(cctx)
 		return nil
 	},

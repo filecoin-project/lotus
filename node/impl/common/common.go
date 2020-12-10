@@ -2,14 +2,20 @@ package common
 
 import (
 	"context"
-
-	logging "github.com/ipfs/go-log/v2"
+	"sort"
+	"strings"
 
 	"github.com/gbrlsnchs/jwt/v3"
+	"github.com/google/uuid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	swarm "github.com/libp2p/go-libp2p-swarm"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -22,12 +28,18 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
+var session = uuid.New()
+
 type CommonAPI struct {
 	fx.In
 
 	APISecret    *dtypes.APIAlg
+	RawHost      lp2p.RawHost
 	Host         host.Host
 	Router       lp2p.BaseIpfsRouting
+	ConnGater    *conngater.BasicConnectionGater
+	Reporter     metrics.Reporter
+	Sk           *dtypes.ScoreKeeper
 	ShutdownChan dtypes.ShutdownChan
 }
 
@@ -54,6 +66,21 @@ func (a *CommonAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byt
 
 func (a *CommonAPI) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
 	return a.Host.Network().Connectedness(pid), nil
+}
+func (a *CommonAPI) NetPubsubScores(context.Context) ([]api.PubsubScore, error) {
+	scores := a.Sk.Get()
+	out := make([]api.PubsubScore, len(scores))
+	i := 0
+	for k, v := range scores {
+		out[i] = api.PubsubScore{ID: k, Score: v}
+		i++
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return strings.Compare(string(out[i].ID), string(out[j].ID)) > 0
+	})
+
+	return out, nil
 }
 
 func (a *CommonAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
@@ -95,16 +122,74 @@ func (a *CommonAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, 
 	return a.Router.FindPeer(ctx, p)
 }
 
+func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
+	autonat := a.RawHost.(*basichost.BasicHost).AutoNat
+
+	if autonat == nil {
+		return api.NatInfo{
+			Reachability: network.ReachabilityUnknown,
+		}, nil
+	}
+
+	var maddr string
+	if autonat.Status() == network.ReachabilityPublic {
+		pa, err := autonat.PublicAddr()
+		if err != nil {
+			return api.NatInfo{}, err
+		}
+		maddr = pa.String()
+	}
+
+	return api.NatInfo{
+		Reachability: autonat.Status(),
+		PublicAddr:   maddr,
+	}, nil
+}
+
+func (a *CommonAPI) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
+	ag, err := a.Host.Peerstore().Get(p, "AgentVersion")
+	if err != nil {
+		return "", err
+	}
+
+	if ag == nil {
+		return "unknown", nil
+	}
+
+	return ag.(string), nil
+}
+
+func (a *CommonAPI) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
+	return a.Reporter.GetBandwidthTotals(), nil
+}
+
+func (a *CommonAPI) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {
+	out := make(map[string]metrics.Stats)
+	for p, s := range a.Reporter.GetBandwidthByPeer() {
+		out[p.String()] = s
+	}
+	return out, nil
+}
+
+func (a *CommonAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
+	return a.Reporter.GetBandwidthByProtocol(), nil
+}
+
 func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
 	return a.Host.ID(), nil
 }
 
 func (a *CommonAPI) Version(context.Context) (api.Version, error) {
-	return api.Version{
-		Version:    build.UserVersion,
-		APIVersion: build.APIVersion,
+	v, err := build.VersionForType(build.RunningNodeType)
+	if err != nil {
+		return api.Version{}, err
+	}
 
-		BlockDelay: build.BlockDelay,
+	return api.Version{
+		Version:    build.UserVersion(),
+		APIVersion: v,
+
+		BlockDelay: build.BlockDelaySecs,
 	}, nil
 }
 
@@ -119,6 +204,14 @@ func (a *CommonAPI) LogSetLevel(ctx context.Context, subsystem, level string) er
 func (a *CommonAPI) Shutdown(ctx context.Context) error {
 	a.ShutdownChan <- struct{}{}
 	return nil
+}
+
+func (a *CommonAPI) Session(ctx context.Context) (uuid.UUID, error) {
+	return session, nil
+}
+
+func (a *CommonAPI) Closing(ctx context.Context) (<-chan struct{}, error) {
+	return make(chan struct{}), nil // relies on jsonrpc closing
 }
 
 var _ api.Common = &CommonAPI{}

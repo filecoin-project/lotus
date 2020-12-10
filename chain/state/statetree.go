@@ -1,36 +1,43 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("statetree")
 
-// Stores actors state by their ID.
+// StateTree stores actors state by their ID.
 type StateTree struct {
-	root  *hamt.Node
-	Store cbor.IpldStore
+	root        adt.Map
+	version     types.StateTreeVersion
+	info        cid.Cid
+	Store       cbor.IpldStore
+	lookupIDFun func(address.Address) (address.Address, error)
 
 	snaps *stateSnaps
 }
 
 type stateSnaps struct {
-	layers []*stateSnapLayer
+	layers                        []*stateSnapLayer
+	lastMaybeNonEmptyResolveCache int
 }
 
 type stateSnapLayer struct {
@@ -62,7 +69,12 @@ func (ss *stateSnaps) addLayer() {
 
 func (ss *stateSnaps) dropLayer() {
 	ss.layers[len(ss.layers)-1] = nil // allow it to be GCed
+
 	ss.layers = ss.layers[:len(ss.layers)-1]
+
+	if ss.lastMaybeNonEmptyResolveCache == len(ss.layers) {
+		ss.lastMaybeNonEmptyResolveCache = len(ss.layers) - 1
+	}
 }
 
 func (ss *stateSnaps) mergeLastLayer() {
@@ -81,7 +93,13 @@ func (ss *stateSnaps) mergeLastLayer() {
 }
 
 func (ss *stateSnaps) resolveAddress(addr address.Address) (address.Address, bool) {
-	for i := len(ss.layers) - 1; i >= 0; i-- {
+	for i := ss.lastMaybeNonEmptyResolveCache; i >= 0; i-- {
+		if len(ss.layers[i].resolveCache) == 0 {
+			if ss.lastMaybeNonEmptyResolveCache == i {
+				ss.lastMaybeNonEmptyResolveCache = i - 1
+			}
+			continue
+		}
 		resa, ok := ss.layers[i].resolveCache[addr]
 		if ok {
 			return resa, true
@@ -92,6 +110,7 @@ func (ss *stateSnaps) resolveAddress(addr address.Address) (address.Address, boo
 
 func (ss *stateSnaps) cacheResolveAddress(addr, resa address.Address) {
 	ss.layers[len(ss.layers)-1].resolveCache[addr] = resa
+	ss.lastMaybeNonEmptyResolveCache = len(ss.layers) - 1
 }
 
 func (ss *stateSnaps) getActor(addr address.Address) (*types.Actor, error) {
@@ -116,26 +135,89 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 	ss.layers[len(ss.layers)-1].actors[addr] = streeOp{Delete: true}
 }
 
-func NewStateTree(cst cbor.IpldStore) (*StateTree, error) {
-	return &StateTree{
-		root:  hamt.NewNode(cst, hamt.UseTreeBitWidth(5)),
-		Store: cst,
-		snaps: newStateSnaps(),
-	}, nil
+// VersionForNetwork returns the state tree version for the given network
+// version.
+func VersionForNetwork(ver network.Version) types.StateTreeVersion {
+	if actors.VersionForNetwork(ver) == actors.Version0 {
+		return types.StateTreeVersion0
+	}
+	return types.StateTreeVersion1
 }
 
-func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
-	nd, err := hamt.LoadNode(context.Background(), cst, c, hamt.UseTreeBitWidth(5))
+func adtForSTVersion(ver types.StateTreeVersion) actors.Version {
+	switch ver {
+	case types.StateTreeVersion0:
+		return actors.Version0
+	case types.StateTreeVersion1:
+		return actors.Version2
+	default:
+		panic("unhandled state tree version")
+	}
+}
+
+func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, error) {
+	var info cid.Cid
+	switch ver {
+	case types.StateTreeVersion0:
+		// info is undefined
+	case types.StateTreeVersion1:
+		var err error
+		info, err = cst.Put(context.TODO(), new(types.StateInfo0))
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, xerrors.Errorf("unsupported state tree version: %d", ver)
+	}
+	root, err := adt.NewMap(adt.WrapStore(context.TODO(), cst), adtForSTVersion(ver))
 	if err != nil {
-		log.Errorf("loading hamt node %s failed: %s", c, err)
 		return nil, err
 	}
 
-	return &StateTree{
-		root:  nd,
-		Store: cst,
-		snaps: newStateSnaps(),
-	}, nil
+	s := &StateTree{
+		root:    root,
+		info:    info,
+		version: ver,
+		Store:   cst,
+		snaps:   newStateSnaps(),
+	}
+	s.lookupIDFun = s.lookupIDinternal
+	return s, nil
+}
+
+func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
+	var root types.StateRoot
+	// Try loading as a new-style state-tree (version/actors tuple).
+	if err := cst.Get(context.TODO(), c, &root); err != nil {
+		// We failed to decode as the new version, must be an old version.
+		root.Actors = c
+		root.Version = types.StateTreeVersion0
+	}
+
+	switch root.Version {
+	case types.StateTreeVersion0, types.StateTreeVersion1:
+		// Load the actual state-tree HAMT.
+		nd, err := adt.AsMap(
+			adt.WrapStore(context.TODO(), cst), root.Actors,
+			adtForSTVersion(root.Version),
+		)
+		if err != nil {
+			log.Errorf("loading hamt node %s failed: %s", c, err)
+			return nil, err
+		}
+
+		s := &StateTree{
+			root:    nd,
+			info:    root.Info,
+			version: root.Version,
+			Store:   cst,
+			snaps:   newStateSnaps(),
+		}
+		s.lookupIDFun = s.lookupIDinternal
+		return s, nil
+	default:
+		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
+	}
 }
 
 func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
@@ -149,7 +231,28 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 	return nil
 }
 
-// `LookupID` gets the ID address of this actor's `addr` stored in the `InitActor`.
+func (st *StateTree) lookupIDinternal(addr address.Address) (address.Address, error) {
+	act, err := st.GetActor(init_.Address)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
+	}
+
+	ias, err := init_.Load(&AdtStore{st.Store}, act)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
+	}
+
+	a, found, err := ias.ResolveAddress(addr)
+	if err == nil && !found {
+		err = types.ErrActorNotFound
+	}
+	if err != nil {
+		return address.Undef, xerrors.Errorf("resolve address %s: %w", addr, err)
+	}
+	return a, err
+}
+
+// LookupID gets the ID address of this actor's `addr` stored in the `InitActor`.
 func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 	if addr.Protocol() == address.ID {
 		return addr, nil
@@ -159,20 +262,9 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 	if ok {
 		return resa, nil
 	}
-
-	act, err := st.GetActor(builtin.InitActorAddr)
+	a, err := st.lookupIDFun(addr)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
-	}
-
-	var ias init_.State
-	if err := st.Store.Get(context.TODO(), act.Head, &ias); err != nil {
-		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
-	}
-
-	a, err := ias.ResolveAddress(&AdtStore{st.Store}, addr)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("resolve address %s: %w", addr, err)
+		return a, err
 	}
 
 	st.snaps.cacheResolveAddress(addr, a)
@@ -189,7 +281,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	// Transform `addr` to its ID format.
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, init_.ErrAddressNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return nil, xerrors.Errorf("address resolution: %w", err)
@@ -206,12 +298,10 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	}
 
 	var act types.Actor
-	err = st.root.Find(context.TODO(), string(addr.Bytes()), &act)
-	if err != nil {
-		if err == hamt.ErrNotFound {
-			return nil, types.ErrActorNotFound
-		}
+	if found, err := st.root.Get(abi.AddrKey(addr), &act); err != nil {
 		return nil, xerrors.Errorf("hamt find failed: %w", err)
+	} else if !found {
+		return nil, types.ErrActorNotFound
 	}
 
 	st.snaps.setActor(addr, &act)
@@ -226,7 +316,7 @@ func (st *StateTree) DeleteActor(addr address.Address) error {
 
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, init_.ErrAddressNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return xerrors.Errorf("address resolution: %w", err)
@@ -245,7 +335,7 @@ func (st *StateTree) DeleteActor(addr address.Address) error {
 }
 
 func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
-	ctx, span := trace.StartSpan(ctx, "stateTree.Flush")
+	ctx, span := trace.StartSpan(ctx, "stateTree.Flush") //nolint:staticcheck
 	defer span.End()
 	if len(st.snaps.layers) != 1 {
 		return cid.Undef, xerrors.Errorf("tried to flush state tree with snapshots on the stack")
@@ -253,25 +343,30 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 
 	for addr, sto := range st.snaps.layers[0].actors {
 		if sto.Delete {
-			if err := st.root.Delete(ctx, string(addr.Bytes())); err != nil {
+			if err := st.root.Delete(abi.AddrKey(addr)); err != nil {
 				return cid.Undef, err
 			}
 		} else {
-			if err := st.root.Set(ctx, string(addr.Bytes()), &sto.Act); err != nil {
+			if err := st.root.Put(abi.AddrKey(addr), &sto.Act); err != nil {
 				return cid.Undef, err
 			}
 		}
 	}
 
-	if err := st.root.Flush(ctx); err != nil {
-		return cid.Undef, err
+	root, err := st.root.Root()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to flush state-tree hamt: %w", err)
 	}
-
-	return st.Store.Put(ctx, st.root)
+	// If we're version 0, return a raw tree.
+	if st.version == types.StateTreeVersion0 {
+		return root, nil
+	}
+	// Otherwise, return a versioned tree.
+	return st.Store.Put(ctx, &types.StateRoot{Version: st.version, Actors: root, Info: st.info})
 }
 
 func (st *StateTree) Snapshot(ctx context.Context) error {
-	ctx, span := trace.StartSpan(ctx, "stateTree.SnapShot")
+	ctx, span := trace.StartSpan(ctx, "stateTree.SnapShot") //nolint:staticcheck
 	defer span.End()
 
 	st.snaps.addLayer()
@@ -285,19 +380,19 @@ func (st *StateTree) ClearSnapshot() {
 
 func (st *StateTree) RegisterNewAddress(addr address.Address) (address.Address, error) {
 	var out address.Address
-	err := st.MutateActor(builtin.InitActorAddr, func(initact *types.Actor) error {
-		var ias init_.State
-		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
+	err := st.MutateActor(init_.Address, func(initact *types.Actor) error {
+		ias, err := init_.Load(&AdtStore{st.Store}, initact)
+		if err != nil {
 			return err
 		}
 
-		oaddr, err := ias.MapAddressToNewID(&AdtStore{st.Store}, addr)
+		oaddr, err := ias.MapAddressToNewID(addr)
 		if err != nil {
 			return err
 		}
 		out = oaddr
 
-		ncid, err := st.Store.Put(context.TODO(), &ias)
+		ncid, err := st.Store.Put(context.TODO(), ias)
 		if err != nil {
 			return err
 		}
@@ -338,4 +433,63 @@ func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) erro
 	}
 
 	return st.SetActor(addr, act)
+}
+
+func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error {
+	var act types.Actor
+	return st.root.ForEach(&act, func(k string) error {
+		act := act // copy
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("invalid address (%x) found in state tree key: %w", []byte(k), err)
+		}
+
+		return f(addr, &act)
+	})
+}
+
+// Version returns the version of the StateTree data structure in use.
+func (st *StateTree) Version() types.StateTreeVersion {
+	return st.version
+}
+
+func Diff(oldTree, newTree *StateTree) (map[string]types.Actor, error) {
+	out := map[string]types.Actor{}
+
+	var (
+		ncval, ocval cbg.Deferred
+		buf          = bytes.NewReader(nil)
+	)
+	if err := newTree.root.ForEach(&ncval, func(k string) error {
+		var act types.Actor
+
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("address in state tree was not valid: %w", err)
+		}
+
+		found, err := oldTree.root.Get(abi.AddrKey(addr), &ocval)
+		if err != nil {
+			return err
+		}
+
+		if found && bytes.Equal(ocval.Raw, ncval.Raw) {
+			return nil // not changed
+		}
+
+		buf.Reset(ncval.Raw)
+		err = act.UnmarshalCBOR(buf)
+		buf.Reset(nil)
+
+		if err != nil {
+			return err
+		}
+
+		out[addr.String()] = act
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

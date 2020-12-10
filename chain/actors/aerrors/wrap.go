@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
@@ -50,6 +50,7 @@ func Newf(retCode exitcode.ExitCode, format string, args ...interface{}) ActorEr
 }
 
 // todo: bit hacky
+
 func NewfSkip(skip int, retCode exitcode.ExitCode, format string, args ...interface{}) ActorError {
 	if retCode == 0 {
 		return &actorError{

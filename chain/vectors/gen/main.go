@@ -1,29 +1,30 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 
 	"github.com/filecoin-project/go-address"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/vectors"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 func init() {
-	power.ConsensusMinerMinPower = big.NewInt(2048)
+	policy.SetMinVerifiedDealSize(abi.NewStoragePower(2048))
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 }
 
 func MakeHeaderVectors() []vectors.HeaderVector {
@@ -60,11 +61,11 @@ func MakeMessageSigningVectors() []vectors.MessageSigningVector {
 		panic(err)
 	}
 
-	blsk, err := w.GenerateKey(crypto.SigTypeBLS)
+	blsk, err := w.WalletNew(context.Background(), types.KTBLS)
 	if err != nil {
 		panic(err)
 	}
-	bki, err := w.Export(blsk)
+	bki, err := w.WalletExport(context.Background(), blsk)
 	if err != nil {
 		panic(err)
 	}
@@ -84,11 +85,11 @@ func MakeMessageSigningVectors() []vectors.MessageSigningVector {
 		Signature:   &bmsg.Signature,
 	}
 
-	secpk, err := w.GenerateKey(crypto.SigTypeBLS)
+	secpk, err := w.WalletNew(context.Background(), types.KTBLS)
 	if err != nil {
 		panic(err)
 	}
-	ski, err := w.Export(secpk)
+	ski, err := w.WalletExport(context.Background(), secpk)
 	if err != nil {
 		panic(err)
 	}
@@ -136,7 +137,8 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		if err != nil {
 			panic(err)
 		}
-		to, err := address.NewIDAddress(rand.Uint64())
+		uint63mask := uint64(1<<63 - 1)
+		to, err := address.NewIDAddress(rand.Uint64() & uint63mask)
 		if err != nil {
 			panic(err)
 		}
@@ -145,14 +147,15 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		rand.Read(params)
 
 		msg := &types.Message{
-			To:       to,
-			From:     from,
-			Value:    types.NewInt(rand.Uint64()),
-			Method:   abi.MethodNum(rand.Uint64()),
-			GasPrice: types.NewInt(rand.Uint64()),
-			GasLimit: rand.Int63(),
-			Nonce:    rand.Uint64(),
-			Params:   params,
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(rand.Uint64()),
+			Method:     abi.MethodNum(rand.Uint64()),
+			GasFeeCap:  types.NewInt(rand.Uint64()),
+			GasPremium: types.NewInt(rand.Uint64()),
+			GasLimit:   rand.Int63(),
+			Nonce:      rand.Uint64() & (1<<63 - 1),
+			Params:     params,
 		}
 
 		ser, err := msg.Serialize()
@@ -173,14 +176,18 @@ func WriteJsonToFile(fname string, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer fi.Close()
+	defer fi.Close() //nolint:errcheck
 
 	out, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fi.Write(out)
+	_, err = fi.Write(out)
+	if err != nil {
+		return xerrors.Errorf("writing json: %w", err)
+	}
+
 	return nil
 }
 

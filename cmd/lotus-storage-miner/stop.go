@@ -3,14 +3,14 @@ package main
 import (
 	_ "net/http/pprof"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var stopCmd = &cli.Command{
 	Name:  "stop",
-	Usage: "Stop a running lotus storage miner",
+	Usage: "Stop a running lotus miner",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetAPI(cctx)

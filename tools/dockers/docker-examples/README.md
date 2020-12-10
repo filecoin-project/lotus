@@ -5,13 +5,13 @@ In this `docker-examples/` directory are community-contributed Docker and Docker
 #### Example Use Cases
 
 - **For a miner**
-   - basic storage miner (`miner-basic-`)
-   - distributed storage miner
+   - basic miner (`miner-basic-`)
+   - distributed miner
 - **For API endpoints for building apps**
    - local node for a developer (`api-local-`)
    - hosted endpoint for apps / multiple developers (`api-hosted-`)
 - **For a local devnet or shared devnet**
-   - basic local devnet (also see [lotus docs on setting up a local devnet](https://lotu.sh/en+setup-local-dev-net))
+   - basic local devnet (also see [lotus docs on setting up a local devnet](https://docs.filecoin.io/build/local-devnet/))
    - shared devnet
   
 

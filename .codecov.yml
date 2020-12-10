@@ -1,3 +1,9 @@
 comment: off
 ignore:
-  - "cbor_gen.go"
+  - "**/cbor_gen.go"
+  - "api/test/**/*"
+  - "api/test/*"
+  - "gen/**/*"
+  - "gen/*"
+github_checks:
+  annotations: false

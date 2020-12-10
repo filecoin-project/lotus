@@ -3,27 +3,37 @@ package miner
 import (
 	"context"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/gen"
 	lru "github.com/hashicorp/golang-lru"
+	ds "github.com/ipfs/go-datastore"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/journal"
 )
 
-func NewTestMiner(nextCh <-chan func(bool), addr address.Address) func(api.FullNode, gen.WinningPoStProver, beacon.RandomBeacon) *Miner {
-	return func(api api.FullNode, epp gen.WinningPoStProver, b beacon.RandomBeacon) *Miner {
+type MineReq struct {
+	InjectNulls abi.ChainEpoch
+	Done        func(bool, abi.ChainEpoch, error)
+}
+
+func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(api.FullNode, gen.WinningPoStProver) *Miner {
+	return func(api api.FullNode, epp gen.WinningPoStProver) *Miner {
 		arc, err := lru.NewARC(10000)
 		if err != nil {
 			panic(err)
 		}
 
 		m := &Miner{
-			beacon:            b,
 			api:               api,
 			waitFunc:          chanWaiter(nextCh),
 			epp:               epp,
 			minedBlockHeights: arc,
 			address:           addr,
+			sf:                slashfilter.New(ds.NewMapDatastore()),
+			journal:           journal.NilJournal(),
 		}
 
 		if err := m.Start(context.TODO()); err != nil {
@@ -33,13 +43,13 @@ func NewTestMiner(nextCh <-chan func(bool), addr address.Address) func(api.FullN
 	}
 }
 
-func chanWaiter(next <-chan func(bool)) func(ctx context.Context, _ uint64) (func(bool), error) {
-	return func(ctx context.Context, _ uint64) (func(bool), error) {
+func chanWaiter(next <-chan MineReq) func(ctx context.Context, _ uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
+	return func(ctx context.Context, _ uint64) (func(bool, abi.ChainEpoch, error), abi.ChainEpoch, error) {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
-		case cb := <-next:
-			return cb, nil
+			return nil, 0, ctx.Err()
+		case req := <-next:
+			return req.Done, req.InjectNulls, nil
 		}
 	}
 }

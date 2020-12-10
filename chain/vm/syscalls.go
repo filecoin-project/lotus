@@ -4,23 +4,29 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	goruntime "runtime"
+	"sync"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 )
 
 func init() {
@@ -29,19 +35,39 @@ func init() {
 
 // Actual type is defined in chain/types/vmcontext.go because the VMContext interface is there
 
-func Syscalls(verifier ffiwrapper.Verifier) runtime.Syscalls {
-	return &syscallShim{verifier: verifier}
+type SyscallBuilder func(ctx context.Context, rt *Runtime) runtime2.Syscalls
+
+func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
+	return func(ctx context.Context, rt *Runtime) runtime2.Syscalls {
+
+		return &syscallShim{
+			ctx:            ctx,
+			epoch:          rt.CurrEpoch(),
+			networkVersion: rt.NetworkVersion(),
+
+			actor:   rt.Receiver(),
+			cstate:  rt.state,
+			cst:     rt.cst,
+			lbState: rt.vm.lbStateGet,
+
+			verifier: verifier,
+		}
+	}
 }
 
 type syscallShim struct {
 	ctx context.Context
 
-	cstate   *state.StateTree
-	cst      *cbor.BasicIpldStore
-	verifier ffiwrapper.Verifier
+	epoch          abi.ChainEpoch
+	networkVersion network.Version
+	lbState        LookbackStateGetter
+	actor          address.Address
+	cstate         *state.StateTree
+	cst            cbor.IpldStore
+	verifier       ffiwrapper.Verifier
 }
 
-func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	var sum abi.PaddedPieceSize
 	for _, p := range pieces {
 		sum += p.Size
@@ -63,18 +89,13 @@ func (ss *syscallShim) HashBlake2b(data []byte) [32]byte {
 // Checks validity of the submitted consensus fault with the two block headers needed to prove the fault
 // and an optional extra one to check common ancestry (as needed).
 // Note that the blocks are ordered: the method requires a.Epoch() <= b.Epoch().
-func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.ConsensusFault, error) {
+func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime2.ConsensusFault, error) {
 	// Note that block syntax is not validated. Any validly signed block will be accepted pursuant to the below conditions.
 	// Whether or not it could ever have been accepted in a chain is not checked/does not matter here.
 	// for that reason when checking block parent relationships, rather than instantiating a Tipset to do so
 	// (which runs a syntactic check), we do it directly on the CIDs.
 
 	// (0) cheap preliminary checks
-
-	// are blocks the same?
-	if bytes.Equal(a, b) {
-		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
-	}
 
 	// can blocks be decoded properly?
 	var blockA, blockB types.BlockHeader
@@ -84,6 +105,11 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
 		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
+	}
+
+	// are blocks the same?
+	if blockA.Cid().Equals(blockB.Cid()) {
+		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
 	}
 
 	// (1) check conditions necessary to any consensus fault
@@ -99,25 +125,25 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	}
 
 	// (2) check for the consensus faults themselves
-	var consensusFault *runtime.ConsensusFault
+	var consensusFault *runtime2.ConsensusFault
 
 	// (a) double-fork mining fault
 	if blockA.Height == blockB.Height {
-		consensusFault = &runtime.ConsensusFault{
+		consensusFault = &runtime2.ConsensusFault{
 			Target: blockA.Miner,
 			Epoch:  blockB.Height,
-			Type:   runtime.ConsensusFaultDoubleForkMining,
+			Type:   runtime2.ConsensusFaultDoubleForkMining,
 		}
 	}
 
 	// (b) time-offset mining fault
 	// strictly speaking no need to compare heights based on double fork mining check above,
 	// but at same height this would be a different fault.
-	if !types.CidArrsEqual(blockA.Parents, blockB.Parents) && blockA.Height != blockB.Height {
-		consensusFault = &runtime.ConsensusFault{
+	if types.CidArrsEqual(blockA.Parents, blockB.Parents) && blockA.Height != blockB.Height {
+		consensusFault = &runtime2.ConsensusFault{
 			Target: blockA.Miner,
 			Epoch:  blockB.Height,
-			Type:   runtime.ConsensusFaultTimeOffsetMining,
+			Type:   runtime2.ConsensusFaultTimeOffsetMining,
 		}
 	}
 
@@ -125,6 +151,10 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	// Here extra is the "witness", a third block that shows the connection between A and B as
 	// A's sibling and B's parent.
 	// Specifically, since A is of lower height, it must be that B was mined omitting A from its tipset
+	//
+	//      B
+	//      |
+	//  [A, C]
 	var blockC types.BlockHeader
 	if len(extra) > 0 {
 		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
@@ -133,17 +163,17 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 
 		if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
 			types.CidArrsContains(blockB.Parents, blockC.Cid()) && !types.CidArrsContains(blockB.Parents, blockA.Cid()) {
-			consensusFault = &runtime.ConsensusFault{
+			consensusFault = &runtime2.ConsensusFault{
 				Target: blockA.Miner,
 				Epoch:  blockB.Height,
-				Type:   runtime.ConsensusFaultParentGrinding,
+				Type:   runtime2.ConsensusFaultParentGrinding,
 			}
 		}
 	}
 
 	// (3) return if no consensus fault by now
 	if consensusFault == nil {
-		return consensusFault, nil
+		return nil, xerrors.Errorf("no consensus fault detected")
 	}
 
 	// else
@@ -157,40 +187,55 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.Consen
 	}
 
 	if sigErr := ss.VerifyBlockSig(&blockB); sigErr != nil {
-		return nil, xerrors.Errorf("cannot verify first block sig: %w", sigErr)
+		return nil, xerrors.Errorf("cannot verify second block sig: %w", sigErr)
 	}
 
 	return consensusFault, nil
 }
 
 func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
-
-	// get appropriate miner actor
-	act, err := ss.cstate.GetActor(blk.Miner)
+	waddr, err := ss.workerKeyAtLookback(blk.Height)
 	if err != nil {
 		return err
 	}
 
-	// use that to get the miner state
-	var mas miner.State
-	if err = ss.cst.Get(ss.ctx, act.Head, &mas); err != nil {
-		return err
-	}
-
-	// and use to get resolved workerKey
-	waddr, err := ResolveToKeyAddr(ss.cstate, ss.cst, mas.Info.Worker)
-	if err != nil {
-		return err
-	}
-
-	if err := sigs.CheckBlockSignature(blk, ss.ctx, waddr); err != nil {
+	if err := sigs.CheckBlockSignature(ss.ctx, blk, waddr); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (ss *syscallShim) VerifyPoSt(proof abi.WindowPoStVerifyInfo) error {
+func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch) (address.Address, error) {
+	if ss.networkVersion >= network.Version7 && height < ss.epoch-policy.ChainFinality {
+		return address.Undef, xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", ss.epoch, height)
+	}
+
+	lbState, err := ss.lbState(ss.ctx, height)
+	if err != nil {
+		return address.Undef, err
+	}
+	// get appropriate miner actor
+	act, err := lbState.GetActor(ss.actor)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	// use that to get the miner state
+	mas, err := miner.Load(adt.WrapStore(ss.ctx, ss.cst), act)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	info, err := mas.Info()
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return ResolveToKeyAddr(ss.cstate, ss.cst, info.Worker)
+}
+
+func (ss *syscallShim) VerifyPoSt(proof proof2.WindowPoStVerifyInfo) error {
 	ok, err := ss.verifier.VerifyWindowPoSt(context.TODO(), proof)
 	if err != nil {
 		return err
@@ -201,21 +246,7 @@ func (ss *syscallShim) VerifyPoSt(proof abi.WindowPoStVerifyInfo) error {
 	return nil
 }
 
-func cidToCommD(c cid.Cid) [32]byte {
-	b := c.Bytes()
-	var out [32]byte
-	copy(out[:], b[len(b)-32:])
-	return out
-}
-
-func cidToCommR(c cid.Cid) [32]byte {
-	b := c.Bytes()
-	var out [32]byte
-	copy(out[:], b[len(b)-32:])
-	return out
-}
-
-func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
+func (ss *syscallShim) VerifySeal(info proof2.SealVerifyInfo) error {
 	//_, span := trace.StartSpan(ctx, "ValidatePoRep")
 	//defer span.End()
 
@@ -225,7 +256,7 @@ func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 	}
 
 	ticket := []byte(info.Randomness)
-	proof := []byte(info.Proof)
+	proof := info.Proof
 	seed := []byte(info.InteractiveRandomness)
 
 	log.Debugf("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", info.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
@@ -251,4 +282,38 @@ func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Addres
 	}
 
 	return sigs.Verify(&sig, kaddr, input)
+}
+
+var BatchSealVerifyParallelism = goruntime.NumCPU()
+
+func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]proof2.SealVerifyInfo) (map[address.Address][]bool, error) {
+	out := make(map[address.Address][]bool)
+
+	sema := make(chan struct{}, BatchSealVerifyParallelism)
+
+	var wg sync.WaitGroup
+	for addr, seals := range inp {
+		results := make([]bool, len(seals))
+		out[addr] = results
+
+		for i, s := range seals {
+			wg.Add(1)
+			go func(ma address.Address, ix int, svi proof2.SealVerifyInfo, res []bool) {
+				defer wg.Done()
+				sema <- struct{}{}
+
+				if err := ss.VerifySeal(svi); err != nil {
+					log.Warnw("seal verify in batch failed", "miner", ma, "sectorNumber", svi.SectorID.Number, "err", err)
+					res[ix] = false
+				} else {
+					res[ix] = true
+				}
+
+				<-sema
+			}(addr, i, s, results)
+		}
+	}
+	wg.Wait()
+
+	return out, nil
 }

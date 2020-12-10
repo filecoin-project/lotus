@@ -1,34 +1,31 @@
 package retrievaladapter
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
+	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
-	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 type retrievalClientNode struct {
-	chainapi full.ChainAPI
-	pmgr     *paychmgr.Manager
-	payapi   payapi.PaychAPI
+	chainAPI full.ChainAPI
+	payAPI   payapi.PaychAPI
+	stateAPI full.StateAPI
 }
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(pmgr *paychmgr.Manager, payapi payapi.PaychAPI, chainapi full.ChainAPI) retrievalmarket.RetrievalClientNode {
-	return &retrievalClientNode{pmgr: pmgr, payapi: payapi, chainapi: chainapi}
+func NewRetrievalClientNode(payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stateAPI full.StateAPI) retrievalmarket.RetrievalClientNode {
+	return &retrievalClientNode{payAPI: payAPI, chainAPI: chainAPI, stateAPI: stateAPI}
 }
 
 // GetOrCreatePaymentChannel sets up a new payment channel if one does not exist
@@ -37,14 +34,18 @@ func NewRetrievalClientNode(pmgr *paychmgr.Manager, payapi payapi.PaychAPI, chai
 func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount, tok shared.TipSetToken) (address.Address, cid.Cid, error) {
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// querying the chain
-	return rcn.pmgr.GetPaych(ctx, clientAddress, minerAddress, clientFundsAvailable)
+	ci, err := rcn.payAPI.PaychGet(ctx, clientAddress, minerAddress, clientFundsAvailable)
+	if err != nil {
+		return address.Undef, cid.Undef, err
+	}
+	return ci.Channel, ci.WaitSentinel, nil
 }
 
 // Allocate late creates a lane within a payment channel so that calls to
 // CreatePaymentVoucher will automatically make vouchers only for the difference
 // in total
-func (rcn *retrievalClientNode) AllocateLane(paymentChannel address.Address) (uint64, error) {
-	return rcn.pmgr.AllocateLane(paymentChannel)
+func (rcn *retrievalClientNode) AllocateLane(ctx context.Context, paymentChannel address.Address) (uint64, error) {
+	return rcn.payAPI.PaychAllocateLane(ctx, paymentChannel)
 }
 
 // CreatePaymentVoucher creates a new payment voucher in the given lane for a
@@ -53,15 +54,18 @@ func (rcn *retrievalClientNode) AllocateLane(paymentChannel address.Address) (ui
 func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymentChannel address.Address, amount abi.TokenAmount, lane uint64, tok shared.TipSetToken) (*paych.SignedVoucher, error) {
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// querying the chain
-	voucher, err := rcn.payapi.PaychVoucherCreate(ctx, paymentChannel, amount, lane)
+	voucher, err := rcn.payAPI.PaychVoucherCreate(ctx, paymentChannel, amount, lane)
 	if err != nil {
 		return nil, err
 	}
-	return voucher, nil
+	if voucher.Voucher == nil {
+		return nil, retrievalmarket.NewShortfallError(voucher.Shortfall)
+	}
+	return voucher.Voucher, nil
 }
 
 func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	head, err := rcn.chainapi.ChainHead(ctx)
+	head, err := rcn.chainAPI.ChainHead(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -69,32 +73,42 @@ func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSet
 	return head.Key().Bytes(), head.Height(), nil
 }
 
-// WaitForPaymentChannelAddFunds waits messageCID to appear on chain. If it doesn't appear within
-// defaultMsgWaitTimeout it returns error
-func (rcn *retrievalClientNode) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
-	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID)
-
-	if err != nil {
-		return err
-	}
-	if mr.ExitCode != exitcode.Ok {
-		return xerrors.Errorf("wait for payment channel to add funds failed. exit code: %d", mr.ExitCode)
-	}
-	return nil
+func (rcn *retrievalClientNode) WaitForPaymentChannelReady(ctx context.Context, messageCID cid.Cid) (address.Address, error) {
+	return rcn.payAPI.PaychGetWaitReady(ctx, messageCID)
 }
 
-func (rcn *retrievalClientNode) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
-	_, mr, err := rcn.chainapi.StateManager.WaitForMessage(context.TODO(), messageCID)
+func (rcn *retrievalClientNode) CheckAvailableFunds(ctx context.Context, paymentChannel address.Address) (retrievalmarket.ChannelAvailableFunds, error) {
 
+	channelAvailableFunds, err := rcn.payAPI.PaychAvailableFunds(ctx, paymentChannel)
 	if err != nil {
-		return address.Undef, err
+		return retrievalmarket.ChannelAvailableFunds{}, err
 	}
-	if mr.ExitCode != exitcode.Ok {
-		return address.Undef, xerrors.Errorf("payment channel creation failed. exit code: %d", mr.ExitCode)
+	return retrievalmarket.ChannelAvailableFunds{
+		ConfirmedAmt:        channelAvailableFunds.ConfirmedAmt,
+		PendingAmt:          channelAvailableFunds.PendingAmt,
+		PendingWaitSentinel: channelAvailableFunds.PendingWaitSentinel,
+		QueuedAmt:           channelAvailableFunds.QueuedAmt,
+		VoucherReedeemedAmt: channelAvailableFunds.VoucherReedeemedAmt,
+	}, nil
+}
+
+func (rcn *retrievalClientNode) GetKnownAddresses(ctx context.Context, p retrievalmarket.RetrievalPeer, encodedTs shared.TipSetToken) ([]multiaddr.Multiaddr, error) {
+	tsk, err := types.TipSetKeyFromBytes(encodedTs)
+	if err != nil {
+		return nil, err
 	}
-	var retval initactor.ExecReturn
-	if err := retval.UnmarshalCBOR(bytes.NewReader(mr.Return)); err != nil {
-		return address.Undef, err
+	mi, err := rcn.stateAPI.StateMinerInfo(ctx, p.Address, tsk)
+	if err != nil {
+		return nil, err
 	}
-	return retval.RobustAddress, nil
+	multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
+	for _, a := range mi.Multiaddrs {
+		maddr, err := multiaddr.NewMultiaddrBytes(a)
+		if err != nil {
+			return nil, err
+		}
+		multiaddrs = append(multiaddrs, maddr)
+	}
+
+	return multiaddrs, nil
 }

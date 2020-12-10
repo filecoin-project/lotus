@@ -32,8 +32,11 @@ func (fts *FullTipSet) Cids() []cid.Cid {
 	return cids
 }
 
+// TipSet returns a narrower view of this FullTipSet elliding the block
+// messages.
 func (fts *FullTipSet) TipSet() *types.TipSet {
 	if fts.tipset != nil {
+		// FIXME: fts.tipset is actually never set. Should it memoize?
 		return fts.tipset
 	}
 

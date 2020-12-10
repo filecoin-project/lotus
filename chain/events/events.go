@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -19,9 +19,11 @@ import (
 
 var log = logging.Logger("events")
 
-// `curH`-`ts.Height` = `confidence`
-type HeightHandler func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error
-type RevertHandler func(ctx context.Context, ts *types.TipSet) error
+// HeightHandler `curH`-`ts.Height` = `confidence`
+type (
+	HeightHandler func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error
+	RevertHandler func(ctx context.Context, ts *types.TipSet) error
+)
 
 type heightHandler struct {
 	confidence int
@@ -31,10 +33,11 @@ type heightHandler struct {
 	revert RevertHandler
 }
 
-type eventApi interface {
+type eventAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainHead(context.Context) (*types.TipSet, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
@@ -42,22 +45,22 @@ type eventApi interface {
 }
 
 type Events struct {
-	api eventApi
+	api eventAPI
 
 	tsc *tipSetCache
 	lk  sync.Mutex
 
-	ready     sync.WaitGroup
+	ready     chan struct{}
 	readyOnce sync.Once
 
 	heightEvents
-	calledEvents
+	*hcEvents
 }
 
-func NewEvents(ctx context.Context, api eventApi) *Events {
+func NewEvents(ctx context.Context, api eventAPI) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 
-	tsc := newTSCache(gcConfidence, api.ChainGetTipSetByHeight)
+	tsc := newTSCache(gcConfidence, api)
 
 	e := &Events{
 		api: api,
@@ -67,34 +70,24 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 		heightEvents: heightEvents{
 			tsc:          tsc,
 			ctx:          ctx,
-			gcConfidence: abi.ChainEpoch(gcConfidence),
+			gcConfidence: gcConfidence,
 
 			heightTriggers:   map[uint64]*heightHandler{},
 			htTriggerHeights: map[abi.ChainEpoch][]uint64{},
 			htHeights:        map[abi.ChainEpoch][]uint64{},
 		},
 
-		calledEvents: calledEvents{
-			cs:           api,
-			tsc:          tsc,
-			ctx:          ctx,
-			gcConfidence: uint64(gcConfidence),
-
-			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
-			revertQueue: map[msgH][]triggerH{},
-			triggers:    map[triggerId]*callHandler{},
-			matchers:    map[triggerId][]MatchFunc{},
-			timeouts:    map[abi.ChainEpoch]map[triggerId]int{},
-		},
+		hcEvents: newHCEvents(ctx, api, tsc, uint64(gcConfidence)),
+		ready:    make(chan struct{}),
 	}
-
-	e.ready.Add(1)
 
 	go e.listenHeadChanges(ctx)
 
-	e.ready.Wait()
-
-	// TODO: cleanup/gc goroutine
+	// Wait for the first tipset to be seen or bail if shutting down
+	select {
+	case <-e.ready:
+	case <-ctx.Done():
+	}
 
 	return e
 }
@@ -110,7 +103,7 @@ func (e *Events) listenHeadChanges(ctx context.Context) {
 			log.Warnf("not restarting listenHeadChanges: context error: %s", ctx.Err())
 			return
 		}
-		time.Sleep(time.Second)
+		build.Clock.Sleep(time.Second)
 		log.Info("restarting listenHeadChanges")
 	}
 }
@@ -121,13 +114,21 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 
 	notifs, err := e.api.ChainNotify(ctx)
 	if err != nil {
-		// TODO: retry
+		// Retry is handled by caller
 		return xerrors.Errorf("listenHeadChanges ChainNotify call failed: %w", err)
 	}
 
-	cur, ok := <-notifs // TODO: timeout?
-	if !ok {
-		return xerrors.Errorf("notification channel closed")
+	var cur []*api.HeadChange
+	var ok bool
+
+	// Wait for first tipset or bail
+	select {
+	case cur, ok = <-notifs:
+		if !ok {
+			return xerrors.Errorf("notification channel closed")
+		}
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 
 	if len(cur) != 1 {
@@ -139,13 +140,13 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	if err := e.tsc.add(cur[0].Val); err != nil {
-		log.Warn("tsc.add: adding current tipset failed: %w", err)
+		log.Warnf("tsc.add: adding current tipset failed: %v", err)
 	}
 
 	e.readyOnce.Do(func() {
-		e.at = cur[0].Val.Height()
-
-		e.ready.Done()
+		e.lastTs = cur[0].Val
+		// Signal that we have seen first tipset
+		close(e.ready)
 	})
 
 	for notif := range notifs {
@@ -186,5 +187,5 @@ func (e *Events) headChange(rev, app []*types.TipSet) error {
 		return err
 	}
 
-	return e.headChangeCalled(rev, app)
+	return e.processHeadChangeEvent(rev, app)
 }

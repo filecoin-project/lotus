@@ -7,18 +7,19 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/docker/go-units"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/docker/go-units"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
@@ -39,7 +40,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-seed",
 		Usage:   "Seal sectors for genesis miner",
-		Version: build.UserVersion,
+		Version: build.UserVersion(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "sector-dir",
@@ -89,6 +90,10 @@ var preSealCmd = &cli.Command{
 			Value: "",
 			Usage: "(optional) Key to use for signing / owner/worker addresses",
 		},
+		&cli.BoolFlag{
+			Name:  "fake-sectors",
+			Value: false,
+		},
 	},
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sector-dir")
@@ -110,6 +115,9 @@ var preSealCmd = &cli.Command{
 				return err
 			}
 			kb, err := hex.DecodeString(string(kh))
+			if err != nil {
+				return err
+			}
 			if err := json.Unmarshal(kb, k); err != nil {
 				return err
 			}
@@ -121,12 +129,12 @@ var preSealCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		rp, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
+		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, network.Version0)
 		if err != nil {
 			return err
 		}
 
-		gm, key, err := seed.PreSeal(maddr, rp, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k)
+		gm, key, err := seed.PreSeal(maddr, spt, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k, c.Bool("fake-sectors"))
 		if err != nil {
 			return err
 		}
@@ -145,13 +153,15 @@ var aggregateManifestsCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			defer fi.Close()
 			var val map[string]genesis.Miner
 			if err := json.NewDecoder(fi).Decode(&val); err != nil {
 				return err
 			}
 
 			inputs = append(inputs, val)
+			if err := fi.Close(); err != nil {
+				return err
+			}
 		}
 
 		output := make(map[string]genesis.Miner)
