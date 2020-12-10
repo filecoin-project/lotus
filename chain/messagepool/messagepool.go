@@ -871,7 +871,7 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 	}()
 
 	mp.curTsLk.Lock()
-	publish, err := mp.addTs(m, mp.curTs, false, true)
+	publish, err := mp.addTs(m, mp.curTs, true, true)
 	if err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err
