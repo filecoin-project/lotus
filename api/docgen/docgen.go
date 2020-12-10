@@ -240,6 +240,7 @@ func init() {
 	addExample(map[api.SectorState]int{
 		api.SectorState(sealing.Proving): 120,
 	})
+	addExample([]abi.SectorNumber{123, 124})
 
 	// worker specific
 	addExample(storiface.AcquireMove)
