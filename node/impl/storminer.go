@@ -61,20 +61,24 @@ type StorageMinerAPI struct {
 
 	DS dtypes.MetadataDS
 
-	ConsiderOnlineStorageDealsConfigFunc       dtypes.ConsiderOnlineStorageDealsConfigFunc
-	SetConsiderOnlineStorageDealsConfigFunc    dtypes.SetConsiderOnlineStorageDealsConfigFunc
-	ConsiderOnlineRetrievalDealsConfigFunc     dtypes.ConsiderOnlineRetrievalDealsConfigFunc
-	SetConsiderOnlineRetrievalDealsConfigFunc  dtypes.SetConsiderOnlineRetrievalDealsConfigFunc
-	StorageDealPieceCidBlocklistConfigFunc     dtypes.StorageDealPieceCidBlocklistConfigFunc
-	SetStorageDealPieceCidBlocklistConfigFunc  dtypes.SetStorageDealPieceCidBlocklistConfigFunc
-	ConsiderOfflineStorageDealsConfigFunc      dtypes.ConsiderOfflineStorageDealsConfigFunc
-	SetConsiderOfflineStorageDealsConfigFunc   dtypes.SetConsiderOfflineStorageDealsConfigFunc
-	ConsiderOfflineRetrievalDealsConfigFunc    dtypes.ConsiderOfflineRetrievalDealsConfigFunc
-	SetConsiderOfflineRetrievalDealsConfigFunc dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
-	SetSealingConfigFunc                       dtypes.SetSealingConfigFunc
-	GetSealingConfigFunc                       dtypes.GetSealingConfigFunc
-	GetExpectedSealDurationFunc                dtypes.GetExpectedSealDurationFunc
-	SetExpectedSealDurationFunc                dtypes.SetExpectedSealDurationFunc
+	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc
+	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc
+	ConsiderOnlineRetrievalDealsConfigFunc      dtypes.ConsiderOnlineRetrievalDealsConfigFunc
+	SetConsiderOnlineRetrievalDealsConfigFunc   dtypes.SetConsiderOnlineRetrievalDealsConfigFunc
+	StorageDealPieceCidBlocklistConfigFunc      dtypes.StorageDealPieceCidBlocklistConfigFunc
+	SetStorageDealPieceCidBlocklistConfigFunc   dtypes.SetStorageDealPieceCidBlocklistConfigFunc
+	ConsiderOfflineStorageDealsConfigFunc       dtypes.ConsiderOfflineStorageDealsConfigFunc
+	SetConsiderOfflineStorageDealsConfigFunc    dtypes.SetConsiderOfflineStorageDealsConfigFunc
+	ConsiderOfflineRetrievalDealsConfigFunc     dtypes.ConsiderOfflineRetrievalDealsConfigFunc
+	SetConsiderOfflineRetrievalDealsConfigFunc  dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
+	ConsiderVerifiedStorageDealsConfigFunc      dtypes.ConsiderVerifiedStorageDealsConfigFunc
+	SetConsiderVerifiedStorageDealsConfigFunc   dtypes.SetConsiderVerifiedStorageDealsConfigFunc
+	ConsiderUnverifiedStorageDealsConfigFunc    dtypes.ConsiderUnverifiedStorageDealsConfigFunc
+	SetConsiderUnverifiedStorageDealsConfigFunc dtypes.SetConsiderUnverifiedStorageDealsConfigFunc
+	SetSealingConfigFunc                        dtypes.SetSealingConfigFunc
+	GetSealingConfigFunc                        dtypes.GetSealingConfigFunc
+	GetExpectedSealDurationFunc                 dtypes.GetExpectedSealDurationFunc
+	SetExpectedSealDurationFunc                 dtypes.SetExpectedSealDurationFunc
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -480,6 +484,22 @@ func (sm *StorageMinerAPI) DealsConsiderOfflineRetrievalDeals(ctx context.Contex
 
 func (sm *StorageMinerAPI) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
 	return sm.SetConsiderOfflineRetrievalDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderVerifiedStorageDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderVerifiedStorageDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderVerifiedStorageDealsConfigFunc(b)
+}
+
+func (sm *StorageMinerAPI) DealsConsiderUnverifiedStorageDeals(ctx context.Context) (bool, error) {
+	return sm.ConsiderUnverifiedStorageDealsConfigFunc()
+}
+
+func (sm *StorageMinerAPI) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, b bool) error {
+	return sm.SetConsiderUnverifiedStorageDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsGetExpectedSealDurationFunc(ctx context.Context) (time.Duration, error) {

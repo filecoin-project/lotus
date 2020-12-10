@@ -40,12 +40,14 @@ type StorageMiner struct {
 }
 
 type DealmakingConfig struct {
-	ConsiderOnlineStorageDeals    bool
-	ConsiderOfflineStorageDeals   bool
-	ConsiderOnlineRetrievalDeals  bool
-	ConsiderOfflineRetrievalDeals bool
-	PieceCidBlocklist             []cid.Cid
-	ExpectedSealDuration          Duration
+	ConsiderOnlineStorageDeals     bool
+	ConsiderOfflineStorageDeals    bool
+	ConsiderOnlineRetrievalDeals   bool
+	ConsiderOfflineRetrievalDeals  bool
+	ConsiderVerifiedStorageDeals   bool
+	ConsiderUnverifiedStorageDeals bool
+	PieceCidBlocklist              []cid.Cid
+	ExpectedSealDuration           Duration
 
 	Filter          string
 	RetrievalFilter string
@@ -195,11 +197,13 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Dealmaking: DealmakingConfig{
-			ConsiderOnlineStorageDeals:    true,
-			ConsiderOfflineStorageDeals:   true,
-			ConsiderOnlineRetrievalDeals:  true,
-			ConsiderOfflineRetrievalDeals: true,
-			PieceCidBlocklist:             []cid.Cid{},
+			ConsiderOnlineStorageDeals:     true,
+			ConsiderOfflineStorageDeals:    true,
+			ConsiderOnlineRetrievalDeals:   true,
+			ConsiderOfflineRetrievalDeals:  true,
+			ConsiderVerifiedStorageDeals:   true,
+			ConsiderUnverifiedStorageDeals: true,
+			PieceCidBlocklist:              []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
 			ExpectedSealDuration: Duration(time.Hour * 24),
 		},

@@ -106,6 +106,10 @@ type StorageMiner interface {
 	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error
 	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)
 	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error
+	DealsConsiderVerifiedStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error
+	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error
 
 	StorageAddLocal(ctx context.Context, path string) error
 

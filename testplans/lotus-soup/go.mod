@@ -8,8 +8,8 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drand/drand v1.2.1
 	github.com/filecoin-project/go-address v0.0.5-0.20201103152444-f2023ef3f5bb
-	github.com/filecoin-project/go-fil-markets v1.0.6
-	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20201008195726-68c6a2704e49
+	github.com/filecoin-project/go-fil-markets v1.0.9
+	github.com/filecoin-project/go-jsonrpc v0.1.2
 	github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/lotus v0.9.2-0.20201012041700-a2e0832a12f2
@@ -33,7 +33,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multiaddr-net v0.2.0
 	github.com/testground/sdk-go v0.2.6-0.20201016180515-1e40e1b0ec3a
-	go.opencensus.io v0.22.4
+	go.opencensus.io v0.22.5
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 )
 
