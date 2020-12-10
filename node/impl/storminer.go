@@ -255,7 +255,7 @@ func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorSt
 	out := make(map[api.SectorState]int)
 	for i := range sectors {
 		state := api.SectorState(sectors[i].State)
-		out[state] += 1
+		out[state]++
 	}
 
 	return out, nil
