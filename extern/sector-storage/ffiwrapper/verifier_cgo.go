@@ -17,6 +17,11 @@ import (
 )
 
 func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) ([]proof2.PoStProof, error) {
+	// TODO: this lock avoid running GenerateWinningPoSt and GenerateWindowPoSt at a same time.
+	//  otherwise it may cause a deadlock described in https://github.com/filecoin-project/lotus/issues/4936
+	sb.postLock.Lock()
+	defer sb.postLock.Unlock()
+
 	randomness[31] &= 0x3f
 	privsectors, skipped, done, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredSealProof.RegisteredWinningPoStProof) // TODO: FAULTS?
 	if err != nil {
@@ -31,6 +36,9 @@ func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 }
 
 func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) ([]proof2.PoStProof, []abi.SectorID, error) {
+	sb.postLock.Lock()
+	defer sb.postLock.Unlock()
+
 	randomness[31] &= 0x3f
 	privsectors, skipped, done, err := sb.pubSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredSealProof.RegisteredWindowPoStProof)
 	if err != nil {
