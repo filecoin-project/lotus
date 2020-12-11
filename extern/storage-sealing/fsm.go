@@ -196,7 +196,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 				Kind:      fmt.Sprintf("truncate"),
 			}
 
-			state.Log = append(state.Log[:2000], state.Log[:6000]...)
+			state.Log = append(state.Log[:2000], state.Log[6000:]...)
 		}
 
 		state.Log = append(state.Log, l)
