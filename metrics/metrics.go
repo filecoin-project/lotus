@@ -19,6 +19,7 @@ var (
 	Version, _      = tag.NewKey("version")
 	Commit, _       = tag.NewKey("commit")
 	PeerID, _       = tag.NewKey("peer_id")
+	MinerID, _      = tag.NewKey("miner_id")
 	FailureType, _  = tag.NewKey("failure_type")
 	Local, _        = tag.NewKey("local")
 	MessageFrom, _  = tag.NewKey("message_from")
@@ -44,6 +45,7 @@ var (
 	BlockValidationFailure              = stats.Int64("block/failure", "Counter for block validation failures", stats.UnitDimensionless)
 	BlockValidationSuccess              = stats.Int64("block/success", "Counter for block validation successes", stats.UnitDimensionless)
 	BlockValidationDurationMilliseconds = stats.Float64("block/validation_ms", "Duration for Block Validation in ms", stats.UnitMilliseconds)
+	BlockDelay                          = stats.Int64("block/delay", "Delay of accepted blocks, where delay is >5s", stats.UnitMilliseconds)
 	PeerCount                           = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
 	PubsubPublishMessage                = stats.Int64("pubsub/published", "Counter for total published messages", stats.UnitDimensionless)
 	PubsubDeliverMessage                = stats.Int64("pubsub/delivered", "Counter for total delivered messages", stats.UnitDimensionless)
@@ -93,6 +95,24 @@ var (
 	BlockValidationDurationView = &view.View{
 		Measure:     BlockValidationDurationMilliseconds,
 		Aggregation: defaultMillisecondsDistribution,
+	}
+	BlockDelayView = &view.View{
+		Measure: BlockDelay,
+		TagKeys: []tag.Key{MinerID},
+		Aggregation: func() *view.Aggregation {
+			var bounds []float64
+			for i := 5; i < 29; i++ { // 5-29s, step 1s
+				bounds = append(bounds, float64(i*1000))
+			}
+			for i := 30; i < 60; i += 2 { // 30-58s, step 2s
+				bounds = append(bounds, float64(i*1000))
+			}
+			for i := 60; i <= 300; i += 10 { // 60-300s, step 10s
+				bounds = append(bounds, float64(i*1000))
+			}
+			bounds = append(bounds, 600*1000) // final cutoff at 10m
+			return view.Distribution(bounds...)
+		}(),
 	}
 	MessagePublishedView = &view.View{
 		Measure:     MessagePublished,
@@ -168,6 +188,7 @@ var DefaultViews = append([]*view.View{
 	BlockValidationFailureView,
 	BlockValidationSuccessView,
 	BlockValidationDurationView,
+	BlockDelayView,
 	MessagePublishedView,
 	MessageReceivedView,
 	MessageValidationFailureView,

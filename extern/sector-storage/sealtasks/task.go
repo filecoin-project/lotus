@@ -29,18 +29,18 @@ var order = map[TaskType]int{
 }
 
 var shortNames = map[TaskType]string{
-	TTAddPiece: "AP ",
+	TTAddPiece: "AP",
 
 	TTPreCommit1: "PC1",
 	TTPreCommit2: "PC2",
-	TTCommit1:    "C1 ",
-	TTCommit2:    "C2 ",
+	TTCommit1:    "C1",
+	TTCommit2:    "C2",
 
 	TTFinalize: "FIN",
 
 	TTFetch:        "GET",
 	TTUnseal:       "UNS",
-	TTReadUnsealed: "RD ",
+	TTReadUnsealed: "RD",
 }
 
 func (a TaskType) MuchLess(b TaskType) (bool, bool) {

@@ -461,11 +461,15 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 
 func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
+	verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
+	unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
 	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
+		verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
+		unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
 		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
@@ -489,6 +493,26 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			if deal.Ref != nil && deal.Ref.TransferType == storagemarket.TTManual && !b {
 				log.Warnf("offline storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
 				return false, "miner is not accepting offline storage deals", nil
+			}
+
+			b, err = verifiedOk()
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if deal.Proposal.VerifiedDeal && !b {
+				log.Warnf("verified storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
+				return false, "miner is not accepting verified storage deals", nil
+			}
+
+			b, err = unverifiedOk()
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if !deal.Proposal.VerifiedDeal && !b {
+				log.Warnf("unverified storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
+				return false, "miner is not accepting unverified storage deals", nil
 			}
 
 			blocklist, err := blocklistFunc()
@@ -732,6 +756,42 @@ func NewSetConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Se
 	return func(b bool) (err error) {
 		err = mutateCfg(r, func(cfg *config.StorageMiner) {
 			cfg.Dealmaking.ConsiderOfflineRetrievalDeals = b
+		})
+		return
+	}, nil
+}
+
+func NewConsiderVerifiedStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderVerifiedStorageDealsConfigFunc, error) {
+	return func() (out bool, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.ConsiderVerifiedStorageDeals
+		})
+		return
+	}, nil
+}
+
+func NewSetConsideringVerifiedStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsiderVerifiedStorageDealsConfigFunc, error) {
+	return func(b bool) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.ConsiderVerifiedStorageDeals = b
+		})
+		return
+	}, nil
+}
+
+func NewConsiderUnverifiedStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderUnverifiedStorageDealsConfigFunc, error) {
+	return func() (out bool, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.ConsiderUnverifiedStorageDeals
+		})
+		return
+	}, nil
+}
+
+func NewSetConsideringUnverifiedStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsiderUnverifiedStorageDealsConfigFunc, error) {
+	return func(b bool) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.ConsiderUnverifiedStorageDeals = b
 		})
 		return
 	}, nil

@@ -6,7 +6,6 @@ import (
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/ipfs/go-cid"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -49,19 +48,6 @@ type PubsubScore struct {
 
 type MessageSendSpec struct {
 	MaxFee abi.TokenAmount
-}
-
-var DefaultMessageSendSpec = MessageSendSpec{
-	// MaxFee of 0.1FIL
-	MaxFee: abi.NewTokenAmount(int64(build.FilecoinPrecision) / 10),
-}
-
-func (ms *MessageSendSpec) Get() MessageSendSpec {
-	if ms == nil {
-		return DefaultMessageSendSpec
-	}
-
-	return *ms
 }
 
 type DataTransferChannel struct {

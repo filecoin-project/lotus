@@ -114,6 +114,16 @@ var storageDealSelectionResetCmd = &cli.Command{
 			return err
 		}
 
+		err = smapi.DealsSetConsiderVerifiedStorageDeals(lcli.DaemonContext(cctx), true)
+		if err != nil {
+			return err
+		}
+
+		err = smapi.DealsSetConsiderUnverifiedStorageDeals(lcli.DaemonContext(cctx), true)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	},
 }
@@ -127,6 +137,12 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name: "offline",
+		},
+		&cli.BoolFlag{
+			Name: "verified",
+		},
+		&cli.BoolFlag{
+			Name: "unverified",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -145,6 +161,20 @@ var storageDealSelectionRejectCmd = &cli.Command{
 
 		if cctx.Bool("offline") {
 			err = smapi.DealsSetConsiderOfflineStorageDeals(lcli.DaemonContext(cctx), false)
+			if err != nil {
+				return err
+			}
+		}
+
+		if cctx.Bool("verified") {
+			err = smapi.DealsSetConsiderVerifiedStorageDeals(lcli.DaemonContext(cctx), false)
+			if err != nil {
+				return err
+			}
+		}
+
+		if cctx.Bool("unverified") {
+			err = smapi.DealsSetConsiderUnverifiedStorageDeals(lcli.DaemonContext(cctx), false)
 			if err != nil {
 				return err
 			}
@@ -421,7 +451,7 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
 
 	if verbose {
-		_, _ = fmt.Fprintf(w, "Creation\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Creation\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tTransferChannelID\tMessage\n")
 	} else {
 		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
 	}
@@ -440,6 +470,11 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 
 		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
 		if verbose {
+			tchid := ""
+			if deal.TransferChannelId != nil {
+				tchid = deal.TransferChannelId.String()
+			}
+			_, _ = fmt.Fprintf(w, "\t%s", tchid)
 			_, _ = fmt.Fprintf(w, "\t%s", deal.Message)
 		}
 
