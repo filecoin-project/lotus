@@ -75,6 +75,11 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 			return false, err
 		}
 
+		// Ignore the pre-commit message if it was not executed successfully
+		if rec.ExitCode != 0 {
+			return true, nil
+		}
+
 		// Extract the message parameters
 		var params miner.SectorPreCommitInfo
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
@@ -173,6 +178,11 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		if msg == nil {
 			err := xerrors.Errorf("deal %d was not activated by proposed deal start epoch %d", dealID, proposal.StartEpoch)
 			return false, err
+		}
+
+		// Ignore the prove-commit message if it was not executed successfully
+		if rec.ExitCode != 0 {
+			return true, nil
 		}
 
 		// Get the deal info
