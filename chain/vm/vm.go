@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -561,7 +562,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	if gasUsed < 0 {
 		gasUsed = 0
 	}
-	gasOutputs := ComputeGasOutputs(gasUsed, msg.GasLimit, vm.baseFee, msg.GasFeeCap, msg.GasPremium)
+
+	burn, err := vm.shouldBurn(st, msg, errcode)
+	if err != nil {
+		return nil, xerrors.Errorf("deciding whether should burn failed: %w", err)
+	}
+
+	gasOutputs := ComputeGasOutputs(gasUsed, msg.GasLimit, vm.baseFee, msg.GasFeeCap, msg.GasPremium, burn)
 
 	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder,
 		gasOutputs.BaseFeeBurn); err != nil {
@@ -597,6 +604,29 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		GasCosts:       &gasOutputs,
 		Duration:       time.Since(start),
 	}, nil
+}
+
+func (vm *VM) shouldBurn(st *state.StateTree, msg *types.Message, errcode exitcode.ExitCode) (bool, error) {
+	// Check to see if we should burn funds. We avoid burning on successful
+	// window post. This won't catch _indirect_ window post calls, but this
+	// is the best we can get for now.
+	if vm.blockHeight > build.UpgradeClausHeight && errcode == exitcode.Ok && msg.Method == miner.Methods.SubmitWindowedPoSt {
+		// Ok, we've checked the _method_, but we still need to check
+		// the target actor. It would be nice if we could just look at
+		// the trace, but I'm not sure if that's safe?
+		if toActor, err := st.GetActor(msg.To); err != nil {
+			// If the actor wasn't found, we probably deleted it or something. Move on.
+			if !xerrors.Is(err, types.ErrActorNotFound) {
+				// Otherwise, this should never fail and something is very wrong.
+				return false, xerrors.Errorf("failed to lookup target actor: %w", err)
+			}
+		} else if builtin.IsStorageMinerActor(toActor.Code) {
+			// Ok, this is a storage miner and we've processed a window post. Remove the burn.
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorError) {
