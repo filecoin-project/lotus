@@ -102,7 +102,7 @@ func initialize(c *cli.Context) error {
 	// Make the API client.
 	var err error
 	if FullAPI, Closer, err = lcli.GetFullNodeAPI(c); err != nil {
-		err = fmt.Errorf("failed to locate Lotus node; ")
+		err = fmt.Errorf("failed to locate Lotus node; err: %w", err)
 	}
 	return err
 }
