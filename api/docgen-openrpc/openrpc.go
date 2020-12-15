@@ -32,10 +32,9 @@ type schemaDictEntry struct {
 }
 
 const integerD = `{
-          "title": "integer",
-          "type": "string",
-          "pattern": "^0x[a-fA-F0-9]+$",
-          "description": "Hex representation of the integer"
+          "title": "number",
+          "type": "number",
+          "description": "Number is a number"
         }`
 
 const cidCidD = `{"title": "Content Identifier", "type": "string", "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash."}`
