@@ -109,7 +109,13 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 	for i, ts := range vector.ApplyTipsets {
 		ts := ts // capture
 		execEpoch := baseEpoch + abi.ChainEpoch(ts.EpochOffset)
-		ret, err := driver.ExecuteTipset(bs, tmpds, root, prevEpoch, &ts, execEpoch)
+		ret, err := driver.ExecuteTipset(bs, tmpds, ExecuteTipsetParams{
+			Preroot:     root,
+			ParentEpoch: prevEpoch,
+			Tipset:      &ts,
+			ExecEpoch:   execEpoch,
+			Rand:        NewReplayingRand(r, vector.Randomness),
+		})
 		if err != nil {
 			r.Fatalf("failed to apply tipset %d message: %s", i, err)
 		}
