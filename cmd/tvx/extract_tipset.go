@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/conformance"
 )
@@ -133,10 +132,24 @@ func doExtractTipset(opts extractOpts) error {
 		return err
 	}
 
+	version, err := FullAPI.Version(ctx)
+	if err != nil {
+		return err
+	}
+
+	ntwkName, err := FullAPI.StateNetworkName(ctx)
+	if err != nil {
+		return err
+	}
+
 	vector := schema.TestVector{
 		Class: schema.ClassTipset,
 		Meta: &schema.Metadata{
 			ID: opts.id,
+			Gen: []schema.GenerationData{
+				{Source: fmt.Sprintf("network:%s", ntwkName)},
+				{Source: fmt.Sprintf("tipset:%s", ts.Key())},
+				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
 		},
 		Selector: schema.Selector{
 			schema.SelectorMinProtocolVersion: codename,
@@ -161,16 +174,12 @@ func doExtractTipset(opts extractOpts) error {
 		},
 	}
 
-	// do nothing with this for now.
-	var traces = make([]types.ExecutionTrace, 0, len(result.AppliedResults))
 	for _, res := range result.AppliedResults {
 		vector.Post.Receipts = append(vector.Post.Receipts, &schema.Receipt{
 			ExitCode:    int64(res.ExitCode),
 			ReturnValue: res.Return,
 			GasUsed:     res.GasUsed,
 		})
-
-		traces = append(traces, res.ExecutionTrace)
 	}
 
 	return writeVector(vector, opts.file)
