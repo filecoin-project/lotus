@@ -14,6 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -29,6 +30,14 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
+// FallbackBlockstoreGetter is a fallback blockstore to use for resolving CIDs
+// unknown to the test vector. This is rarely used, usually only needed
+// when transplanting vectors across versions. This is an interface tighter
+// than ChainModuleAPI. It can be backed by a FullAPI client.
+var FallbackBlockstoreGetter interface {
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+}
+
 // ExecuteMessageVector executes a message-class test vector.
 func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) {
 	var (
@@ -38,7 +47,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 	)
 
 	// Load the CAR into a new temporary Blockstore.
-	bs, err := LoadVectorCAR(vector.CAR)
+	bs, err := LoadBlockstore(vector.CAR)
 	if err != nil {
 		r.Fatalf("failed to load the vector CAR: %w", err)
 	}
@@ -95,7 +104,7 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 	)
 
 	// Load the vector CAR into a new temporary Blockstore.
-	bs, err := LoadVectorCAR(vector.CAR)
+	bs, err := LoadBlockstore(vector.CAR)
 	if err != nil {
 		r.Fatalf("failed to load the vector CAR: %w", err)
 	}
@@ -109,9 +118,15 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 	for i, ts := range vector.ApplyTipsets {
 		ts := ts // capture
 		execEpoch := baseEpoch + abi.ChainEpoch(ts.EpochOffset)
-		ret, err := driver.ExecuteTipset(bs, tmpds, root, prevEpoch, &ts, execEpoch)
+		ret, err := driver.ExecuteTipset(bs, tmpds, ExecuteTipsetParams{
+			Preroot:     root,
+			ParentEpoch: prevEpoch,
+			Tipset:      &ts,
+			ExecEpoch:   execEpoch,
+			Rand:        NewReplayingRand(r, vector.Randomness),
+		})
 		if err != nil {
-			r.Fatalf("failed to apply tipset %d message: %s", i, err)
+			r.Fatalf("failed to apply tipset %d: %s", i, err)
 		}
 
 		for j, v := range ret.AppliedResults {
@@ -248,8 +263,8 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 	return tmp.Name(), nil
 }
 
-func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore, error) {
-	bs := blockstore.NewTemporary()
+func LoadBlockstore(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore, error) {
+	bs := blockstore.Blockstore(blockstore.NewTemporary())
 
 	// Read the base64-encoded CAR from the vector, and inflate the gzip.
 	buf := bytes.NewReader(vectorCAR)
@@ -264,5 +279,18 @@ func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state tree car from test vector: %s", err)
 	}
+
+	if FallbackBlockstoreGetter != nil {
+		fbs := &blockstore.FallbackStore{Blockstore: bs}
+		fbs.SetFallback(func(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+			b, err := FallbackBlockstoreGetter.ChainReadObj(ctx, c)
+			if err != nil {
+				return nil, err
+			}
+			return blocks.NewBlockWithCid(b, c)
+		})
+		bs = fbs
+	}
+
 	return bs, nil
 }

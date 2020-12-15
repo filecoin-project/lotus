@@ -189,7 +189,7 @@ func runExtractMany(c *cli.Context) error {
 			precursor: PrecursorSelectSender,
 		}
 
-		if err := doExtract(opts); err != nil {
+		if err := doExtractMessage(opts); err != nil {
 			log.Println(color.RedString("failed to extract vector for message %s: %s; queuing for 'all' precursor selection", mcid, err))
 			retry = append(retry, opts)
 			continue
@@ -206,7 +206,7 @@ func runExtractMany(c *cli.Context) error {
 		log.Printf("retrying %s: %s", r.cid, r.id)
 
 		r.precursor = PrecursorSelectAll
-		if err := doExtract(r); err != nil {
+		if err := doExtractMessage(r); err != nil {
 			merr = multierror.Append(merr, fmt.Errorf("failed to extract vector for message %s: %w", r.cid, err))
 			continue
 		}
