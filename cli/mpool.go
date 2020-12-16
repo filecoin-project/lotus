@@ -392,8 +392,7 @@ var mpoolReplaceCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		var from address.Address
-		var nonce uint64
+		var msg *types.Message
 		switch cctx.Args().Len() {
 		case 1:
 			mcid, err := cid.Decode(cctx.Args().First())
@@ -401,53 +400,46 @@ var mpoolReplaceCmd = &cli.Command{
 				return err
 			}
 
-			msg, err := api.ChainGetMessage(ctx, mcid)
+			msg, err = api.ChainGetMessage(ctx, mcid)
 			if err != nil {
 				return fmt.Errorf("could not find referenced message: %w", err)
 			}
-
-			from = msg.From
-			nonce = msg.Nonce
 		case 2:
-			f, err := address.NewFromString(cctx.Args().Get(0))
+			from, err := address.NewFromString(cctx.Args().Get(0))
 			if err != nil {
 				return err
 			}
 
-			n, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+			nonce, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
 			if err != nil {
 				return err
 			}
 
-			from = f
-			nonce = n
+			ts, err := api.ChainHead(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting chain head: %w", err)
+			}
+
+			pending, err := api.MpoolPending(ctx, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			var found *types.SignedMessage
+			for _, p := range pending {
+				if p.Message.From == from && p.Message.Nonce == nonce {
+					found = p
+					break
+				}
+			}
+
+			if found == nil {
+				return fmt.Errorf("no pending message found from %s with nonce %d", from, nonce)
+			}
+			msg = &found.Message
 		default:
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
-
-		ts, err := api.ChainHead(ctx)
-		if err != nil {
-			return xerrors.Errorf("getting chain head: %w", err)
-		}
-
-		pending, err := api.MpoolPending(ctx, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		var found *types.SignedMessage
-		for _, p := range pending {
-			if p.Message.From == from && p.Message.Nonce == nonce {
-				found = p
-				break
-			}
-		}
-
-		if found == nil {
-			return fmt.Errorf("no pending message found from %s with nonce %d", from, nonce)
-		}
-
-		msg := found.Message
 
 		if cctx.Bool("auto") {
 			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
@@ -466,7 +458,7 @@ var mpoolReplaceCmd = &cli.Command{
 			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
-			retm, err := api.GasEstimateMessageGas(ctx, &msg, mss, types.EmptyTSK)
+			retm, err := api.GasEstimateMessageGas(ctx, msg, mss, types.EmptyTSK)
 			if err != nil {
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
@@ -478,7 +470,7 @@ var mpoolReplaceCmd = &cli.Command{
 				return abi.TokenAmount(config.DefaultDefaultMaxFee), nil
 			}
 
-			messagepool.CapGasFee(mff, &msg, mss)
+			messagepool.CapGasFee(mff, msg, mss)
 		} else {
 			if cctx.IsSet("gas-limit") {
 				msg.GasLimit = cctx.Int64("gas-limit")
@@ -494,7 +486,7 @@ var mpoolReplaceCmd = &cli.Command{
 			}
 		}
 
-		smsg, err := api.WalletSignMessage(ctx, msg.From, &msg)
+		smsg, err := api.WalletSignMessage(ctx, msg.From, msg)
 		if err != nil {
 			return fmt.Errorf("failed to sign message: %w", err)
 		}
