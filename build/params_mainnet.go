@@ -37,8 +37,8 @@ const UpgradeKumquatHeight = 90
 const UpgradeCalicoHeight = 92000
 const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 
-// 2020-12-22T02:00:00Z
-const UpgradeClausHeight = 343200
+// 2020-12-17T19:00:00Z
+const UpgradeClausHeight = 161386
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 30))
