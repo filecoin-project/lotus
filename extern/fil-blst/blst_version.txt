@@ -1,0 +1,11 @@
+commit 44244b0755b7131263051f5d1e9fbd72323c0836
+Author: Andy Polyakov <appro@cryptogams.org>
+Date:   Thu Aug 27 13:40:59 2020 +0200
+
+    bindings: add new exports and rearrange blst_aux.h.
+
+commit c3ee69d4da5b16ab88340111c614811659c4c237
+Author: Andy Polyakov <appro@cryptogams.org>
+Date:   Sat Aug 29 19:12:59 2020 +0200
+
+    Populate 256-bit inversion.

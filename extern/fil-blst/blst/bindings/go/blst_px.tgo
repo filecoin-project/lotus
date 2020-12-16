@@ -1,0 +1,207 @@
+
+//
+// Serialization/Deserialization.
+//
+
+// P1 Serdes
+func (p1 *P1Affine) Serialize() []byte {
+    var out [BLST_P1_SERIALIZE_BYTES]byte
+    C.blst_p1_affine_serialize((*C.byte)(&out[0]), p1)
+    return out[:]
+}
+
+func (p1 *P1Affine) Deserialize(in []byte) *P1Affine {
+    if len(in) != BLST_P1_SERIALIZE_BYTES {
+        return nil
+    }
+    if C.blst_p1_deserialize(p1,
+        (*C.byte)(&in[0])) != C.BLST_SUCCESS {
+        return nil
+    }
+    // CLEANUP!!
+    // Check for infinities (eth spec)
+    var zero P1Affine
+    if p1.Equals(&zero) {
+        return p1
+    }
+    // CLEANUP!!
+
+    if !bool(C.blst_p1_affine_in_g1(p1)) {
+        return nil
+    }
+    return p1
+}
+func (p1 *P1Affine) Compress() []byte {
+    var out [BLST_P1_COMPRESS_BYTES]byte
+    C.blst_p1_affine_compress((*C.byte)(&out[0]), p1)
+    return out[:]
+}
+
+func (p1 *P1Affine) Uncompress(in []byte) *P1Affine {
+    if len(in) != BLST_P1_COMPRESS_BYTES {
+        return nil
+    }
+    if C.blst_p1_uncompress(p1,
+        (*C.byte)(&in[0])) != C.BLST_SUCCESS {
+        return nil
+    }
+    // CLEANUP!!
+    // Check for infinities (eth spec)
+    var zero P1Affine
+    if p1.Equals(&zero) {
+        return p1
+    }
+    // CLEANUP!!
+
+    if !bool(C.blst_p1_affine_in_g1(p1)) {
+        return nil
+    }
+    return p1
+}
+
+func (p1 *P1Affine) InG1() bool {
+  return bool(C.blst_p1_affine_in_g1(p1))
+}
+
+func (dummy *P1Affine) BatchUncompress(in [][]byte) []*P1Affine {
+    // Allocate space for all of the resulting points. Later we'll save pointers
+    // and return those so that the result could be used in other functions,
+    // such as MultipleAggregateVerify.
+    n := len(in)
+    points := make([]P1Affine, n)
+    pointsPtrs := make([]*P1Affine, n)
+
+    numCores := runtime.GOMAXPROCS(0)
+    numThreads := maxProcs
+    if numThreads > numCores {
+        numThreads = numCores
+    }
+    if numThreads > n {
+        numThreads = n
+    }
+    // Each thread will determine next message to process by atomically
+    // incrementing curItem, process corresponding point, and
+    // repeat until n is exceeded. Each thread will send a result (true for
+    // success, false for failure) into the channel when complete.
+    resCh := make(chan bool, numThreads)
+    valid := int32(1)
+    curItem := uint32(0)
+    for tid := 0; tid < numThreads; tid++ {
+        go func() {
+            for atomic.LoadInt32(&valid) > 0 {
+                // Get a work item
+                work := atomic.AddUint32(&curItem, 1) - 1
+                if work >= uint32(n) {
+                    break
+                }
+                if points[work].Uncompress(in[work]) == nil {
+                    atomic.StoreInt32(&valid, 0)
+                    break
+                }
+                pointsPtrs[work] = &points[work]
+            }
+            if atomic.LoadInt32(&valid) > 0 {
+                resCh <- true
+            } else {
+                resCh <- false
+            }
+        }()
+    }
+
+    // Collect the threads
+    result := true
+    for i := 0; i < numThreads; i++ {
+        if ! <-resCh {
+            result = false
+        }
+    }
+    if atomic.LoadInt32(&valid) == 0 || result == false {
+        return nil
+    }
+    return pointsPtrs
+}
+
+func (p1 *P1) Serialize() []byte {
+    var out [BLST_P1_SERIALIZE_BYTES]byte
+    C.blst_p1_serialize((*C.byte)(&out[0]), p1)
+    return out[:]
+}
+func (p1 *P1) Compress() []byte {
+    var out [BLST_P1_COMPRESS_BYTES]byte
+    C.blst_p1_compress((*C.byte)(&out[0]), p1)
+    return out[:]
+}
+
+//
+// Affine
+//
+
+func (p *P1) ToAffine() *P1Affine {
+    var pa P1Affine
+    C.blst_p1_to_affine(&pa, p)
+    return &pa
+}
+
+//
+// Hash
+//
+func HashToG1(msg []byte, dst []byte,
+        optional ...[]byte) *P1 { // aug
+    var q P1
+
+    // Handle zero length message
+    var msgC *C.byte
+    if len(msg) > 0 {
+        msgC = (*C.byte)(&msg[0])
+    }
+
+    var dstC *C.byte
+    if len(dst) > 0 {
+        dstC = (*C.byte)(&dst[0])
+    }
+
+    var aug []byte
+    var uaug *C.byte
+    if len(optional) > 0 {
+        aug = optional[0]
+        if len(aug) > 0 {
+            uaug = (*C.byte)(&aug[0])
+        }
+    }
+
+    C.blst_hash_to_g1(&q, msgC, C.size_t(len(msg)),
+                          dstC, C.size_t(len(dst)),
+                          uaug, C.size_t(len(aug)))
+    return &q
+}
+
+func EncodeToG1(msg []byte, dst []byte,
+        optional ...[]byte) *P1 { // aug
+    var q P1
+
+    // Handle zero length message
+    var msgC *C.byte
+    if len(msg) > 0 {
+        msgC = (*C.byte)(&msg[0])
+    }
+
+    var dstC *C.byte
+    if len(dst) > 0 {
+        dstC = (*C.byte)(&dst[0])
+    }
+
+    var aug []byte
+    var uaug *C.byte
+    if len(optional) > 0 {
+        aug = optional[0]
+        if len(aug) > 0 {
+            uaug = (*C.byte)(&aug[0])
+        }
+    }
+
+    C.blst_encode_to_g1(&q, msgC, C.size_t(len(msg)),
+                            dstC, C.size_t(len(dst)),
+                            uaug, C.size_t(len(aug)))
+    return &q
+}
+

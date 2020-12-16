@@ -1,0 +1,205 @@
+/*
+ * Copyright Supranational LLC
+ * Licensed under the Apache License, Version 2.0, see LICENSE for details.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package blst
+
+// #cgo CFLAGS: -I${SRCDIR}/.. -I${SRCDIR}/../../build -I${SRCDIR}/../../src -D__BLST_CGO__
+// #cgo amd64 CFLAGS: -D__ADX__ -mno-avx
+// #include "blst.h"
+import "C"
+import "runtime"
+
+const BLST_SCALAR_BYTES = 256 / 8
+const BLST_FP_BYTES = 384 / 8
+const BLST_P1_COMPRESS_BYTES = BLST_FP_BYTES
+const BLST_P1_SERIALIZE_BYTES = BLST_FP_BYTES * 2
+const BLST_P2_COMPRESS_BYTES = BLST_FP_BYTES * 2
+const BLST_P2_SERIALIZE_BYTES = BLST_FP_BYTES * 4
+
+type Scalar = C.blst_scalar
+type Fp = C.blst_fp
+type Fp2 = C.blst_fp2
+type Fp6 = C.blst_fp6
+type Fp12 = C.blst_fp12
+type P1 = C.blst_p1
+type P2 = C.blst_p2
+type P1Affine = C.blst_p1_affine
+type P2Affine = C.blst_p2_affine
+type Message = []byte
+type Pairing = []uint64
+type SecretKey = Scalar
+
+//
+// Configuration
+//
+
+var maxProcs = initMaxProcs()
+
+func initMaxProcs() int {
+    maxProcs := runtime.GOMAXPROCS(0) - 1
+    if maxProcs <= 0 {
+        maxProcs = 1
+    }
+    return maxProcs
+}
+
+func SetMaxProcs(max int) {
+    if max <= 0 {
+        max = 1
+    }
+    maxProcs = max
+}
+
+//
+// Secret key
+//
+func KeyGen(ikm []byte, optional ...[]byte) *SecretKey {
+    var sk SecretKey
+    var info []byte
+    var infoP *C.byte
+    if len(optional) > 0 {
+        info = optional[0]
+        infoP = (*C.byte)(&info[0])
+    }
+    if len(ikm) < 32 {
+        return nil
+    }
+    C.blst_keygen(&sk, (*C.byte)(&ikm[0]), C.size_t(len(ikm)),
+                       infoP, C.size_t(len(info)))
+    return &sk
+}
+
+//
+// Pairing
+//
+func PairingCtx(hash_or_encode bool, DST []byte) Pairing {
+    ctx := make([]uint64, C.blst_pairing_sizeof()/8)
+    var uDST *C.byte
+    if DST != nil {
+        uDST = (*C.byte)(&DST[0])
+    }
+    C.blst_pairing_init((*C.blst_pairing)(&ctx[0]), C.bool(hash_or_encode),
+                                                    uDST, C.size_t(len(DST)))
+    return ctx
+}
+
+func PairingAggregatePkInG1(ctx Pairing, PK *P1Affine, sig *P2Affine,
+                            msg []byte,
+                            optional ...[]byte) int { // aug
+    var aug []byte
+    var uaug *C.byte
+    if len(optional) > 0 {
+        aug = optional[0]
+        if aug != nil {
+            uaug = (*C.byte)(&aug[0])
+        }
+    }
+    var umsg *C.byte
+    if msg != nil {
+        umsg = (*C.byte)(&msg[0])
+    }
+
+    r := C.blst_pairing_aggregate_pk_in_g1((*C.blst_pairing)(&ctx[0]), PK, sig,
+                                           umsg, C.size_t(len(msg)),
+                                           uaug, C.size_t(len(aug)))
+
+    return int(r)
+}
+
+func PairingAggregatePkInG2(ctx Pairing, PK *P2Affine, sig *P1Affine,
+                            msg []byte,
+                            optional ...[]byte) int { // aug
+    var aug []byte
+    var uaug *C.byte
+    if len(optional) > 0 {
+        aug = optional[0]
+        if aug != nil {
+            uaug = (*C.byte)(&aug[0])
+        }
+    }
+    var umsg *C.byte
+    if msg != nil {
+        umsg = (*C.byte)(&msg[0])
+    }
+
+    r := C.blst_pairing_aggregate_pk_in_g2((*C.blst_pairing)(&ctx[0]), PK, sig,
+                                           umsg, C.size_t(len(msg)),
+                                           uaug, C.size_t(len(aug)))
+
+    return int(r)
+}
+
+func PairingMulNAggregatePkInG1(ctx Pairing, PK *P1Affine, sig *P2Affine,
+                                rand *Scalar, randBits int, msg []byte,
+                                optional ...[]byte) int { // aug
+    var aug []byte
+    var uaug *C.byte
+    if len(optional) > 0 {
+        aug = optional[0]
+        if aug != nil {
+            uaug = (*C.byte)(&aug[0])
+        }
+    }
+    var umsg *C.byte
+    if msg != nil {
+        umsg = (*C.byte)(&msg[0])
+    }
+
+    r := C.blst_pairing_mul_n_aggregate_pk_in_g1((*C.blst_pairing)(&ctx[0]),
+                                                 PK, sig,
+                                                 &rand.l[0], C.size_t(randBits),
+                                                 umsg, C.size_t(len(msg)),
+                                                 uaug, C.size_t(len(aug)))
+
+    return int(r)
+}
+
+func PairingMulNAggregatePkInG2(ctx Pairing, PK *P2Affine, sig *P1Affine,
+                                rand *Scalar, randBits int, msg []byte,
+                                optional ...[]byte) int { // aug
+    var aug []byte
+    var uaug *C.byte
+    if len(optional) > 0 {
+        aug = optional[0]
+        if aug != nil {
+            uaug = (*C.byte)(&aug[0])
+        }
+    }
+    var umsg *C.byte
+    if msg != nil {
+        umsg = (*C.byte)(&msg[0])
+    }
+
+    r := C.blst_pairing_mul_n_aggregate_pk_in_g2((*C.blst_pairing)(&ctx[0]),
+                                                 PK, sig,
+                                                 &rand.l[0], C.size_t(randBits),
+                                                 umsg, C.size_t(len(msg)),
+                                                 uaug, C.size_t(len(aug)))
+
+    return int(r)
+}
+
+func PairingCommit(ctx Pairing) {
+    C.blst_pairing_commit((*C.blst_pairing)(&ctx[0]))
+}
+
+func PairingMerge(ctx Pairing, ctx1 Pairing) int {
+    r := C.blst_pairing_merge((*C.blst_pairing)(&ctx[0]),
+                              (*C.blst_pairing)(&ctx1[0]))
+    return int(r)
+}
+
+func PairingFinalVerify(ctx Pairing, optional ...*Fp12) bool {
+    var gtsig *Fp12 = nil
+    if len(optional) > 0 {
+        gtsig = optional[0]
+    }
+    return bool(C.blst_pairing_finalverify((*C.blst_pairing)(&ctx[0]), gtsig))
+}
+
+func Fp12One() Fp12 {
+    return *C.blst_fp12_one()
+}

@@ -1,0 +1,569 @@
+
+import (
+    "runtime"
+    "sync"
+    "sync/atomic"
+)
+
+//
+// PublicKey
+//
+
+func (pk *P1Affine) From(s *Scalar) *P1Affine {
+    C.blst_sk_to_pk2_in_g1(nil, pk, s) 
+    return pk
+}
+
+//
+// Sign
+//
+
+func (sig *P2Affine) Sign(sk *SecretKey, msg []byte, dst []byte,
+        optional ...interface{}) *P2Affine {
+    augSingle, aug, useHash, ok := parseOpts(optional...)
+    if !ok || len(aug) != 0 {
+        return nil
+    }
+
+    var q *P2
+    if useHash {
+        q = HashToG2(msg, dst, augSingle)
+    } else {
+        q = EncodeToG2(msg, dst, augSingle)
+    }
+    C.blst_sign_pk2_in_g1(nil, sig, q, sk)
+    return sig
+}
+
+//
+// Signature
+//
+
+// Functions to return a signature and public key+augmentation tuple.
+// This enables point decompression (if needed) to happen in parallel.
+type sigGetterP2 func() *P2Affine
+type pkGetterP1 func(i uint32, temp *P1Affine) (*P1Affine, []byte)
+
+// Single verify with decompressed pk
+func (sig *P2Affine) Verify(pk *P1Affine, msg Message, dst []byte,
+        optional ...interface{}) bool { // useHash bool, aug []byte
+
+    // CLEANUP!!
+    // Check for infinities (eth spec)
+    var zeroSig P2Affine
+    var zeroPk P1Affine
+    if pk.Equals(&zeroPk) && sig.Equals(&zeroSig) {
+        return true
+    }
+    // CLEANUP!!
+
+    aug, _, useHash, ok := parseOpts(optional...)
+    if !ok {
+        return false
+    }
+    return sig.AggregateVerify([]*P1Affine{pk}, []Message{msg}, dst,
+                               useHash, [][]byte{aug})
+}
+
+// Single verify with compressed pk
+// Uses a dummy signature to get the correct type
+func (dummy *P2Affine) VerifyCompressed(sig []byte, pk []byte,
+        msg Message, dst []byte,
+        optional ...bool) bool { // useHash bool, usePksAsAugs bool
+
+    // CLEANUP!!
+    // Check for infinities (eth spec)
+    // Need to support serialized points here?
+    if len(sig) == BLST_P2_COMPRESS_BYTES && sig[0] == 0xc0 &&
+            len(pk) == BLST_P1_COMPRESS_BYTES && pk[0] == 0xc0 &&
+            bytesAllZero(sig[1:]) && bytesAllZero(pk[1:]) {
+        return true
+    }
+    // CLEANUP!!
+
+    return dummy.AggregateVerifyCompressed(sig, [][]byte{pk},
+                                           []Message{msg}, dst, optional...)
+}
+
+// Aggregate verify with uncompressed signature and public keys
+func (sig *P2Affine) AggregateVerify(pks []*P1Affine, msgs []Message,
+        dst []byte,
+        optional ...interface{}) bool { // useHash bool, augs [][]byte
+
+    // sanity checks and argument parsing
+    if len(pks) != len(msgs) {
+        return false
+    }
+    _, augs, useHash, ok := parseOpts(optional...)
+    useAugs := len(augs) != 0
+    if !ok || (useAugs && len(augs) != len(msgs)) {
+        return false
+    }
+
+    sigFn := func() *P2Affine {
+        return sig
+    }
+
+    pkFn := func(i uint32, _ *P1Affine) (*P1Affine, []byte) {
+        if useAugs {
+            return pks[i], augs[i]
+        } else {
+            return pks[i], nil
+        }
+    }
+
+    return coreAggregateVerifyPkInG1(sigFn, pkFn, msgs, dst, useHash)
+}
+
+// Aggregate verify with compressed signature and public keys
+// Uses a dummy signature to get the correct type
+func (dummy *P2Affine) AggregateVerifyCompressed(sig []byte, pks [][]byte,
+        msgs []Message, dst []byte,
+        optional ...bool) bool { // useHash bool, usePksAsAugs bool
+
+    // sanity checks and argument parsing
+    if len(pks) != len(msgs) {
+        return false
+    }
+    useHash := true
+    if len(optional) > 0 {
+        useHash = optional[0]
+    }
+    usePksAsAugs := false
+    if len(optional) > 1 {
+        usePksAsAugs = optional[1]
+    }
+
+    sigFn := func() *P2Affine {
+        sigP := new(P2Affine)
+        if sig[0]&0x80 == 0 {
+            // Not compressed
+            if sigP.Deserialize(sig) == nil {
+                return nil
+            }
+        } else {
+            if sigP.Uncompress(sig) == nil {
+                return nil
+            }
+        }
+        return sigP
+    }
+    pkFn := func(i uint32, pk *P1Affine) (*P1Affine, []byte) {
+        bytes := pks[i]
+        if len(bytes) == 0 {
+            return nil, nil
+        }
+        if bytes[0]&0x80 == 0 {
+            // Not compressed
+            if pk.Deserialize(bytes) == nil {
+                return nil, nil
+            }
+        } else {
+            if pk.Uncompress(bytes) == nil {
+                return nil, nil
+            }
+        }
+        if usePksAsAugs {
+            return pk, bytes
+        }
+        return pk, nil
+    }
+    return coreAggregateVerifyPkInG1(sigFn, pkFn, msgs, dst, useHash)
+}
+
+// TODO: check message uniqueness
+func coreAggregateVerifyPkInG1(sigFn sigGetterP2, pkFn pkGetterP1,
+        msgs []Message, dst []byte,
+        optional ...bool) bool { // useHash
+
+    n := len(msgs)
+    if n == 0 {
+        return true
+    }
+
+    useHash := true
+    if len(optional) > 0 {
+        useHash = optional[0]
+    }
+
+    numCores := runtime.GOMAXPROCS(0)
+    numThreads := maxProcs
+    if numThreads > numCores {
+        numThreads = numCores
+    }
+    if numThreads > n {
+        numThreads = n
+    }
+    // Each thread will determine next message to process by atomically
+    // incrementing curItem, process corresponding pk,msg[,aug] tuple and
+    // repeat until n is exceeded.  The resulting accumulations will be
+    // fed into the msgsCh channel.
+    msgsCh := make(chan Pairing, numThreads)
+    valid := int32(1)
+    curItem := uint32(0)
+    mutex := sync.Mutex{}
+
+    mutex.Lock()
+    for tid := 0; tid < numThreads; tid++ {
+        go func() {
+            pairing := PairingCtx(useHash, dst)
+            var temp P1Affine
+            for atomic.LoadInt32(&valid) > 0 {
+                // Get a work item
+                work := atomic.AddUint32(&curItem, 1) - 1
+                if work >= uint32(n) {
+                    break
+                } else if work == 0 && maxProcs == numCores-1 &&
+                    numThreads == maxProcs {
+                    // Avoid consuming all cores by waiting until the
+                    // main thread has completed its miller loop before
+                    // proceeding.
+                    mutex.Lock()
+                    mutex.Unlock()
+                }
+
+                // Pull Public Key and augmentation blob
+                curPk, aug := pkFn(work, &temp)
+                if curPk == nil {
+                    atomic.StoreInt32(&valid, 0)
+                    break
+                }
+
+                // Pairing and accumulate
+                PairingAggregatePkInG1(pairing, curPk, nil, msgs[work], aug)
+
+                // application might have some async work to do
+                runtime.Gosched()
+            }
+            if atomic.LoadInt32(&valid) > 0 {
+                PairingCommit(pairing)
+                msgsCh <- pairing
+            } else {
+                msgsCh <- nil
+            }
+        }()
+    }
+
+    // Uncompress and check signature
+    var gtsig Fp12
+    sig := sigFn()
+    if sig == nil {
+        atomic.StoreInt32(&valid, 0)
+    } else {
+        C.blst_aggregated_in_g2(&gtsig, sig)
+    }
+    mutex.Unlock()
+
+    // Accumulate the thread results
+    var pairings Pairing
+    for i := 0; i < numThreads; i++ {
+        msg := <-msgsCh
+        if msg != nil {
+            if pairings == nil {
+                pairings = msg
+            } else {
+                PairingMerge(pairings, msg)
+            }
+        }
+    }
+    if atomic.LoadInt32(&valid) == 0 || pairings == nil {
+        return false
+    }
+
+    return PairingFinalVerify(pairings, &gtsig)
+}
+
+func (sig *P2Affine) FastAggregateVerify(pks []*P1Affine, msg Message,
+        dst []byte,
+        optional ...interface{}) bool { // pass-through to Verify
+    n := len(pks)
+
+    // TODO: return value for length zero?
+    if n == 0 {
+        return false
+    }
+
+    aggregator := new(P1Aggregate).Aggregate(pks)
+    if aggregator == nil {
+        return false
+    }
+    pkAff := aggregator.ToAffine()
+
+    // Verify
+    return sig.Verify(pkAff, msg, dst, optional...)
+}
+
+func (dummy *P2Affine) MultipleAggregateVerify(sigs []*P2Affine,
+        pks []*P1Affine, msgs []Message, dst []byte, randFn func(*Scalar),
+        randBits int,
+        optional ...interface{}) bool { // useHash
+
+    // Sanity checks and argument parsing
+    if len(pks) != len(msgs) || len(pks) != len(sigs) {
+        return false
+    }
+    _, augs, useHash, ok := parseOpts(optional...)
+    useAugs := len(augs) != 0
+    if !ok || (useAugs && len(augs) != len(msgs)) {
+        return false
+    }
+
+    paramsFn :=
+        func(work uint32, sig *P2Affine, pk *P1Affine, rand *Scalar) (
+            *P2Affine, *P1Affine, *Scalar, []byte) {
+            randFn(rand)
+            var aug []byte
+            if useAugs {
+                aug = augs[work]
+            }
+            return sigs[work], pks[work], rand, aug
+        }
+
+    return multipleAggregateVerifyPkInG1(paramsFn, msgs, dst,
+                                         randBits, useHash)
+}
+
+type mulAggGetterPkInG1 func(work uint32, sig *P2Affine, pk *P1Affine,
+    rand *Scalar) (*P2Affine, *P1Affine, *Scalar, []byte)
+
+func multipleAggregateVerifyPkInG1(paramsFn mulAggGetterPkInG1, msgs []Message,
+        dst []byte, randBits int,
+        optional ...bool) bool { // useHash
+    n := len(msgs)
+    if n == 0 {
+        return true
+    }
+
+    useHash := true
+    if len(optional) > 0 {
+        useHash = optional[0]
+    }
+
+    numCores := runtime.GOMAXPROCS(0)
+    numThreads := maxProcs
+    if numThreads > numCores {
+        numThreads = numCores
+    }
+    if numThreads > n {
+        numThreads = n
+    }
+    // Each thread will determine next message to process by atomically
+    // incrementing curItem, process corresponding pk,msg[,aug] tuple and
+    // repeat until n is exceeded.  The resulting accumulations will be
+    // fed into the msgsCh channel.
+    msgsCh := make(chan Pairing, numThreads)
+    valid := int32(1)
+    curItem := uint32(0)
+
+    for tid := 0; tid < numThreads; tid++ {
+        go func() {
+            pairing := PairingCtx(useHash, dst)
+            var tempRand Scalar
+            var tempPk P1Affine
+            var tempSig P2Affine
+            for atomic.LoadInt32(&valid) > 0 {
+                // Get a work item
+                work := atomic.AddUint32(&curItem, 1) - 1
+                if work >= uint32(n) {
+                    break
+                }
+
+                curSig, curPk, curRand, aug := paramsFn(work, &tempSig,
+                                                        &tempPk, &tempRand)
+
+                if PairingMulNAggregatePkInG1(pairing, curPk, curSig, curRand,
+                                              randBits, msgs[work], aug) !=
+                        C.BLST_SUCCESS {
+                    atomic.StoreInt32(&valid, 0)
+                    break
+                }
+
+                // application might have some async work to do
+                runtime.Gosched()
+            }
+            if atomic.LoadInt32(&valid) > 0 {
+                PairingCommit(pairing)
+                msgsCh <- pairing
+            } else {
+                msgsCh <- nil
+            }
+        }()
+    }
+
+    // Accumulate the thread results
+    var pairings Pairing
+    for i := 0; i < numThreads; i++ {
+        msg := <-msgsCh
+        if msg != nil {
+            if pairings == nil {
+                pairings = msg
+            } else {
+                PairingMerge(pairings, msg)
+            }
+        }
+    }
+    if atomic.LoadInt32(&valid) == 0 || pairings == nil {
+        return false
+    }
+
+    return PairingFinalVerify(pairings, nil)
+}
+
+//
+// Aggregate P2
+//
+
+type aggGetterP2 func(i uint32, temp *P2Affine) *P2Affine
+type P2Aggregate struct {
+    v *P2
+}
+
+// Aggregate uncompressed elements
+func (agg *P2Aggregate) Aggregate(elmts []*P2Affine) *P2Aggregate {
+    if len(elmts) == 0 {
+        return agg
+    }
+    getter := func(i uint32, _ *P2Affine) *P2Affine { return elmts[i] }
+    if !agg.aggregate(getter, len(elmts)) {
+        return nil
+    }
+    return agg
+}
+
+// Aggregate compressed elements
+func (agg *P2Aggregate) AggregateCompressed(elmts [][]byte) *P2Aggregate {
+    if len(elmts) == 0 {
+        return agg
+    }
+    getter := func(i uint32, p *P2Affine) *P2Affine {
+        bytes := elmts[i]
+        if len(bytes) == 0 {
+            return nil
+        }
+        if bytes[0]&0x80 == 0 {
+            // Not compressed
+            if p.Deserialize(bytes) == nil {
+                return nil
+            }
+        } else {
+            if p.Uncompress(bytes) == nil {
+                return nil
+            }
+        }
+        return p
+    }
+    if !agg.aggregate(getter, len(elmts)) {
+        return nil
+    }
+    return agg
+}
+
+func (agg *P2Aggregate) AddAggregate(other *P2Aggregate) *P2Aggregate {
+    if other.v == nil {
+        // do nothing
+    } else if agg.v == nil {
+        agg.v = other.v
+    } else {
+        C.blst_p2_add(agg.v, agg.v, other.v)
+    }
+    return agg
+}
+
+func (agg *P2Aggregate) Add(elmt *P2Affine) *P2Aggregate {
+    if agg.v == nil {
+        agg.v = new(P2)
+        C.blst_p2_from_affine(agg.v, elmt)
+    } else {
+        C.blst_p2_add_or_double_affine(agg.v, agg.v, elmt)
+    }
+    return agg
+}
+
+func (agg *P2Aggregate) ToAffine() *P2Affine {
+    if agg.v == nil {
+        return new(P2Affine)
+    }
+    return agg.v.ToAffine()
+}
+
+func (agg *P2Aggregate) aggregate(getter aggGetterP2, n int) bool {
+    if n == 0 {
+        return true
+    }
+    // operations are considered short enough for not to care about
+    // keeping one core free...
+    numThreads := runtime.GOMAXPROCS(0)
+    if numThreads > n {
+        numThreads = n
+    }
+
+    valid := int32(1)
+    type result struct {
+        agg   *P2
+        empty bool
+    }
+    msgs := make(chan result, numThreads)
+    curItem := uint32(0)
+    for tid := 0; tid < numThreads; tid++ {
+        go func() {
+            first := true
+            var agg P2
+            var temp P2Affine
+            for atomic.LoadInt32(&valid) > 0 {
+                // Get a work item
+                work := atomic.AddUint32(&curItem, 1) - 1
+                if work >= uint32(n) {
+                    break
+                }
+
+                // Signature validate
+                curElmt := getter(work, &temp)
+                if curElmt == nil {
+                    atomic.StoreInt32(&valid, 0)
+                    break
+                }
+                if first {
+                    C.blst_p2_from_affine(&agg, curElmt)
+                    first = false
+                } else {
+                    C.blst_p2_add_or_double_affine(&agg, &agg, curElmt)
+                }
+                // application might have some async work to do
+                runtime.Gosched()
+            }
+            if first {
+                msgs <- result{nil, true}
+            } else if atomic.LoadInt32(&valid) > 0 {
+                msgs <- result{&agg, false}
+            } else {
+                msgs <- result{nil, false}
+            }
+        }()
+    }
+
+    // Accumulate the thread results
+    first := agg.v == nil
+    validLocal := true
+    for i := 0; i < numThreads; i++ {
+        msg := <-msgs
+        if !validLocal || msg.empty {
+            // do nothing
+        } else if msg.agg == nil {
+            validLocal = false
+            // This should be unnecessary but seems safer
+            atomic.StoreInt32(&valid, 0)
+        } else {
+            if first {
+                agg.v = msg.agg
+                first = false
+            } else {
+                C.blst_p2_add(agg.v, agg.v, msg.agg)
+            }
+        }
+    }
+    if atomic.LoadInt32(&valid) == 0 {
+        agg.v = nil
+        return false
+    }
+    return true
+}

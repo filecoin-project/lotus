@@ -1,0 +1,22 @@
+[package]
+name = "fil-blst"
+version = "0.1.1"
+authors = ["sean-sn <sean@supranational.net>"]
+edition = "2018"
+license = "Apache-2.0"
+description = "A library to accelerate SNARK verification for the Filecoin network using the blst BLS12-381 performance library."
+repository = "https://github.com/filecoin-project/fil-blst"
+readme = "README.md"
+
+[build-dependencies]
+cc = "1.0"
+bindgen = "0.54.0"
+
+[target.'cfg(target_env = "msvc")'.build-dependencies]
+glob = "0.3.0"
+
+[dependencies]
+#paired = "0.19.1"
+paired = "0.20.0"
+groupy = "0.3.1"
+fff = { version = "0.2.2", features = ["derive"] }

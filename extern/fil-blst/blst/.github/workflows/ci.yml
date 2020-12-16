@@ -1,0 +1,74 @@
+name: ubuntu-latest
+
+on:
+  push:
+    branches:
+    - '**'
+  workflow_dispatch:
+    branches:
+    - '**'
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/cache@v2
+      with:
+        path: '**/Cargo.lock'
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          **/bindings/rust/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - uses: actions/setup-java@v1
+      with:
+        java-version: 11
+
+    - name: Environment
+      run: |
+        lscpu
+        env
+
+    - name: Rust
+      run: |
+        rustc --version
+        cd bindings/rust
+        if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            cargo update
+        fi
+        cargo test --release
+        cargo clean -p blst
+        cargo clean -p blst --release
+        rm -rf target/.rustc_info.json
+        rm -rf target/{debug,release}/*/blst-*
+        rm -rf target/{debug,release}/incremental
+        rm -rf target/{debug,release}/build/src
+        rm -rf target/{debug,release}/build/build
+        rm -rf ~/.cargo/registry/src
+        rm -rf ~/.cargo/registry/index/*/.cache
+
+    - name: Go
+      run: |
+        go version
+        if ! (grep -q -e '^flags.*\badx\b' /proc/cpuinfo) 2>/dev/null; then
+            export CGO_CFLAGS="-D__BLST_PORTABLE__"
+        fi
+        cd bindings/go
+        go test -test.v
+
+    - name: Python
+      run: if [ -x bindings/python/run.me ]; then bindings/python/run.me; fi
+
+    - name: Java
+      run: if [ -x bindings/java/run.me ]; then bindings/java/run.me; fi

@@ -1,0 +1,15 @@
+queries:
+  - include: "*"
+  - exclude: cpp/unused-static-function
+  - exclude: cpp/include-non-header
+
+extraction:
+  cpp:
+    index:
+      build_command:
+      - ./build.sh
+  go:
+    index:
+      build_command:
+      - (cd bindings/go; go build)
+
