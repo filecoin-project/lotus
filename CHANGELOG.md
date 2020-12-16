@@ -1,5 +1,14 @@
 # Lotus changelog
 
+# 1.3.0 / 2020-12-16
+
+This is a mandatory release of Lotus that introduces the third post-liftoff upgrade to the Filecoin network. The network upgrade occurs at height 343200, before which time all nodes must have updated to this release (or later). The change that breaks consensus is an implementation of FIP-0009(https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0009.md).
+
+## Changes
+
+- Disable gas burning for window post messages (https://github.com/filecoin-project/lotus/pull/5200)
+- fix lock propose (https://github.com/filecoin-project/lotus/pull/5197)
+
 # 1.2.3 / 2020-12-15
 
 This is an optional Lotus release that introduces many performance improvements, bugfixes, and UX improvements.
@@ -120,7 +129,7 @@ This is a very small release of Lotus that fixes an issue users are experiencing
 
 # 1.2.0 / 2020-11-18
 
-This is a mandatory release of Lotus that introduces the second post-liftoff upgrade to the Filecoin network. The network upgrade occurs at height 265200, before which time all nodes must have update to this release (or later). This release also bumps the required version of Go to 1.15.
+This is a mandatory release of Lotus that introduces the second post-liftoff upgrade to the Filecoin network. The network upgrade occurs at height 265200, before which time all nodes must have updated to this release (or later). This release also bumps the required version of Go to 1.15.
 
 The changes that break consensus are:
 
