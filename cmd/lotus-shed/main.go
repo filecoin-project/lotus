@@ -40,7 +40,7 @@ func main() {
 		mpoolStatsCmd,
 		exportChainCmd,
 		consensusCmd,
-		serveDealStatsCmd,
+		rollupDealStatsCmd,
 		syncCmd,
 		stateTreePruneCmd,
 		datastoreCmd,
@@ -50,6 +50,7 @@ func main() {
 		electionCmd,
 		rpcCmd,
 		cidCmd,
+		blockmsgidCmd,
 	}
 
 	app := &cli.App{

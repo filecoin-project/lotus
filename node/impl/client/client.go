@@ -33,9 +33,10 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	"github.com/filecoin-project/go-commp-utils/writer"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/discovery"
-	"github.com/filecoin-project/go-fil-markets/pieceio"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -49,7 +50,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/commp"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
@@ -184,27 +184,40 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		return nil, err
 	}
 
+	// Get a map of transfer ID => DataTransfer
+	dataTransfersByID, err := a.transfersByID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	out := make([]api.DealInfo, len(deals))
 	for k, v := range deals {
-		out[k] = api.DealInfo{
-			ProposalCid: v.ProposalCid,
-			DataRef:     v.DataRef,
-			State:       v.State,
-			Message:     v.Message,
-			Provider:    v.Proposal.Provider,
-
-			PieceCID: v.Proposal.PieceCID,
-			Size:     uint64(v.Proposal.PieceSize.Unpadded()),
-
-			PricePerEpoch: v.Proposal.StoragePricePerEpoch,
-			Duration:      uint64(v.Proposal.Duration()),
-			DealID:        v.DealID,
-			CreationTime:  v.CreationTime.Time(),
-			Verified:      v.Proposal.VerifiedDeal,
+		// Find the data transfer associated with this deal
+		var transferCh *api.DataTransferChannel
+		if v.TransferChannelID != nil {
+			if ch, ok := dataTransfersByID[*v.TransferChannelID]; ok {
+				transferCh = &ch
+			}
 		}
+
+		out[k] = a.newDealInfoWithTransfer(transferCh, v)
 	}
 
 	return out, nil
+}
+
+func (a *API) transfersByID(ctx context.Context) (map[datatransfer.ChannelID]api.DataTransferChannel, error) {
+	inProgressChannels, err := a.DataTransfer.InProgressChannels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	dataTransfersByID := make(map[datatransfer.ChannelID]api.DataTransferChannel, len(inProgressChannels))
+	for id, channelState := range inProgressChannels {
+		ch := api.NewDataTransferChannel(a.Host.ID(), channelState)
+		dataTransfersByID[id] = ch
+	}
+	return dataTransfersByID, nil
 }
 
 func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, error) {
@@ -213,26 +226,15 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 		return nil, err
 	}
 
-	return &api.DealInfo{
-		ProposalCid:   v.ProposalCid,
-		State:         v.State,
-		Message:       v.Message,
-		Provider:      v.Proposal.Provider,
-		PieceCID:      v.Proposal.PieceCID,
-		Size:          uint64(v.Proposal.PieceSize.Unpadded()),
-		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
-		Duration:      uint64(v.Proposal.Duration()),
-		DealID:        v.DealID,
-		CreationTime:  v.CreationTime.Time(),
-		Verified:      v.Proposal.VerifiedDeal,
-	}, nil
+	di := a.newDealInfo(ctx, v)
+	return &di, nil
 }
 
 func (a *API) ClientGetDealUpdates(ctx context.Context) (<-chan api.DealInfo, error) {
 	updates := make(chan api.DealInfo)
 
 	unsub := a.SMDealClient.SubscribeToEvents(func(_ storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
-		updates <- newDealInfo(deal)
+		updates <- a.newDealInfo(ctx, deal)
 	})
 
 	go func() {
@@ -241,6 +243,41 @@ func (a *API) ClientGetDealUpdates(ctx context.Context) (<-chan api.DealInfo, er
 	}()
 
 	return updates, nil
+}
+
+func (a *API) newDealInfo(ctx context.Context, v storagemarket.ClientDeal) api.DealInfo {
+	// Find the data transfer associated with this deal
+	var transferCh *api.DataTransferChannel
+	if v.TransferChannelID != nil {
+		state, err := a.DataTransfer.ChannelState(ctx, *v.TransferChannelID)
+
+		// Note: If there was an error just ignore it, as the data transfer may
+		// be not found if it's no longer active
+		if err == nil {
+			ch := api.NewDataTransferChannel(a.Host.ID(), state)
+			transferCh = &ch
+		}
+	}
+	return a.newDealInfoWithTransfer(transferCh, v)
+}
+
+func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v storagemarket.ClientDeal) api.DealInfo {
+	return api.DealInfo{
+		ProposalCid:       v.ProposalCid,
+		DataRef:           v.DataRef,
+		State:             v.State,
+		Message:           v.Message,
+		Provider:          v.Proposal.Provider,
+		PieceCID:          v.Proposal.PieceCID,
+		Size:              uint64(v.Proposal.PieceSize.Unpadded()),
+		PricePerEpoch:     v.Proposal.StoragePricePerEpoch,
+		Duration:          uint64(v.Proposal.Duration()),
+		DealID:            v.DealID,
+		CreationTime:      v.CreationTime.Time(),
+		Verified:          v.Proposal.VerifiedDeal,
+		TransferChannelID: v.TransferChannelID,
+		DataTransfer:      transferCh,
+	}
 }
 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
@@ -642,7 +679,7 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error) {
 
 	// Hard-code the sector type to 32GiBV1_1, because:
-	// - pieceio.GeneratePieceCommitment requires a RegisteredSealProof
+	// - ffiwrapper.GeneratePieceCIDFromFile requires a RegisteredSealProof
 	// - commP itself is sector-size independent, with rather low probability of that changing
 	//   ( note how the final rust call is identical for every RegSP type )
 	//   https://github.com/filecoin-project/rust-filecoin-proofs-api/blob/v5.0.0/src/seal.rs#L1040-L1050
@@ -662,7 +699,8 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 		return nil, err
 	}
 
-	commP, pieceSize, err := pieceio.GeneratePieceCommitment(arbitraryProofType, rdr, uint64(stat.Size()))
+	pieceReader, pieceSize := padreader.New(rdr, uint64(stat.Size()))
+	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
 
 	if err != nil {
 		return nil, xerrors.Errorf("computing commP failed: %w", err)
@@ -702,8 +740,8 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
 	dag := merkledag.NewDAGService(blockservice.New(a.CombinedBstore, offline.Exchange(a.CombinedBstore)))
 
-	w := &commp.Writer{}
-	bw := bufio.NewWriterSize(w, int(commp.CommPBuf))
+	w := &writer.Writer{}
+	bw := bufio.NewWriterSize(w, int(writer.CommPBuf))
 
 	err := car.WriteCar(ctx, dag, []cid.Cid{root}, w)
 	if err != nil {
@@ -714,7 +752,8 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 		return api.DataCIDSize{}, err
 	}
 
-	return w.Sum()
+	dataCIDSize, err := w.Sum()
+	return api.DataCIDSize(dataCIDSize), err
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
@@ -872,23 +911,6 @@ func (a *API) ClientCancelDataTransfer(ctx context.Context, transferID datatrans
 		return a.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: selfPeer, Responder: otherPeer, ID: transferID})
 	}
 	return a.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
-}
-
-func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
-	return api.DealInfo{
-		ProposalCid:   v.ProposalCid,
-		DataRef:       v.DataRef,
-		State:         v.State,
-		Message:       v.Message,
-		Provider:      v.Proposal.Provider,
-		PieceCID:      v.Proposal.PieceCID,
-		Size:          uint64(v.Proposal.PieceSize.Unpadded()),
-		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
-		Duration:      uint64(v.Proposal.Duration()),
-		DealID:        v.DealID,
-		CreationTime:  v.CreationTime.Time(),
-		Verified:      v.Proposal.VerifiedDeal,
-	}
 }
 
 func (a *API) ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error {

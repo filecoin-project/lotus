@@ -97,6 +97,10 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				log.Warnw("Slow msg fetch", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
 			}
 			if delay := build.Clock.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
+				_ = stats.RecordWithTags(ctx,
+					[]tag.Mutator{tag.Insert(metrics.MinerID, blk.Header.Miner.String())},
+					metrics.BlockDelay.M(delay),
+				)
 				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
 			}
 

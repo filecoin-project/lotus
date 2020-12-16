@@ -6,12 +6,15 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"os"
+	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	record "github.com/libp2p/go-libp2p-record"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -24,9 +27,26 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/system"
+	"github.com/raulk/go-watchdog"
 )
 
-var log = logging.Logger("modules")
+const (
+	// EnvWatchdogDisabled is an escape hatch to disable the watchdog explicitly
+	// in case an OS/kernel appears to report incorrect information. The
+	// watchdog will be disabled if the value of this env variable is 1.
+	EnvWatchdogDisabled = "LOTUS_DISABLE_WATCHDOG"
+)
+
+const (
+	JWTSecretName   = "auth-jwt-private" //nolint:gosec
+	KTJwtHmacSecret = "jwt-hmac-secret"  //nolint:gosec
+)
+
+var (
+	log         = logging.Logger("modules")
+	logWatchdog = logging.Logger("watchdog")
+)
 
 type Genesis func() (*types.BlockHeader, error)
 
@@ -37,8 +57,58 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	}
 }
 
-const JWTSecretName = "auth-jwt-private"  //nolint:gosec
-const KTJwtHmacSecret = "jwt-hmac-secret" //nolint:gosec
+// MemoryConstraints returns the memory constraints configured for this system.
+func MemoryConstraints() system.MemoryConstraints {
+	constraints := system.GetMemoryConstraints()
+	log.Infow("memory limits initialized",
+		"max_mem_heap", constraints.MaxHeapMem,
+		"total_system_mem", constraints.TotalSystemMem,
+		"effective_mem_limit", constraints.EffectiveMemLimit)
+	return constraints
+}
+
+// MemoryWatchdog starts the memory watchdog, applying the computed resource
+// constraints.
+func MemoryWatchdog(lc fx.Lifecycle, constraints system.MemoryConstraints) {
+	if os.Getenv(EnvWatchdogDisabled) == "1" {
+		log.Infof("memory watchdog is disabled via %s", EnvWatchdogDisabled)
+		return
+	}
+
+	cfg := watchdog.MemConfig{
+		Resolution: 5 * time.Second,
+		Policy: &watchdog.WatermarkPolicy{
+			Watermarks:         []float64{0.50, 0.60, 0.70, 0.85, 0.90, 0.925, 0.95},
+			EmergencyWatermark: 0.95,
+		},
+		Logger: logWatchdog,
+	}
+
+	// if user has set max heap limit, apply it. Otherwise, fall back to total
+	// system memory constraint.
+	if maxHeap := constraints.MaxHeapMem; maxHeap != 0 {
+		log.Infof("memory watchdog will apply max heap constraint: %d bytes", maxHeap)
+		cfg.Limit = maxHeap
+		cfg.Scope = watchdog.ScopeHeap
+	} else {
+		log.Infof("max heap size not provided; memory watchdog will apply total system memory constraint: %d bytes", constraints.TotalSystemMem)
+		cfg.Limit = constraints.TotalSystemMem
+		cfg.Scope = watchdog.ScopeSystem
+	}
+
+	err, stop := watchdog.Memory(cfg)
+	if err != nil {
+		log.Warnf("failed to instantiate memory watchdog: %s", err)
+		return
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			stop()
+			return nil
+		},
+	})
+}
 
 type JwtPayload struct {
 	Allow []auth.Permission

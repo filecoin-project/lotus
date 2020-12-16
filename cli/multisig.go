@@ -1178,7 +1178,7 @@ var msigLockProposeCmd = &cli.Command{
 		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
-			Amount:         abi.NewTokenAmount(amount.Int64()),
+			Amount:         big.Int(amount),
 		})
 
 		if actErr != nil {

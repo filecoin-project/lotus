@@ -326,9 +326,9 @@ var clientDealCmd = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
-			Name:  "verified-deal",
-			Usage: "indicate that the deal counts towards verified client total",
-			Value: false,
+			Name:        "verified-deal",
+			Usage:       "indicate that the deal counts towards verified client total",
+			DefaultText: "true if client is verified, false otherwise",
 		},
 		&cli.StringFlag{
 			Name:  "provider-collateral",
@@ -655,19 +655,19 @@ uiLoop:
 				state = "find"
 			}
 		case "find":
-			asks, err := getAsks(ctx, api)
+			asks, err := GetAsks(ctx, api)
 			if err != nil {
 				return err
 			}
 
 			for _, ask := range asks {
-				if ask.MinPieceSize > ds.PieceSize {
+				if ask.Ask.MinPieceSize > ds.PieceSize {
 					continue
 				}
-				if ask.MaxPieceSize < ds.PieceSize {
+				if ask.Ask.MaxPieceSize < ds.PieceSize {
 					continue
 				}
-				candidateAsks = append(candidateAsks, ask)
+				candidateAsks = append(candidateAsks, ask.Ask)
 			}
 
 			afmt.Printf("Found %d candidate asks\n", len(candidateAsks))
@@ -1191,6 +1191,11 @@ var clientDealStatsCmd = &cli.Command{
 var clientListAsksCmd = &cli.Command{
 	Name:  "list-asks",
 	Usage: "List asks for top miners",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "by-ping",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -1199,17 +1204,26 @@ var clientListAsksCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		asks, err := getAsks(ctx, api)
+		asks, err := GetAsks(ctx, api)
 		if err != nil {
 			return err
 		}
 
-		for _, ask := range asks {
-			fmt.Printf("%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch\n", ask.Miner,
+		if cctx.Bool("by-ping") {
+			sort.Slice(asks, func(i, j int) bool {
+				return asks[i].Ping < asks[j].Ping
+			})
+		}
+
+		for _, a := range asks {
+			ask := a.Ask
+
+			fmt.Printf("%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch ping:%s\n", ask.Miner,
 				types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))),
 				types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))),
 				types.FIL(ask.Price),
 				types.FIL(ask.VerifiedPrice),
+				a.Ping,
 			)
 		}
 
@@ -1217,7 +1231,12 @@ var clientListAsksCmd = &cli.Command{
 	},
 }
 
-func getAsks(ctx context.Context, api lapi.FullNode) ([]*storagemarket.StorageAsk, error) {
+type QueriedAsk struct {
+	Ask  *storagemarket.StorageAsk
+	Ping time.Duration
+}
+
+func GetAsks(ctx context.Context, api lapi.FullNode) ([]QueriedAsk, error) {
 	color.Blue(".. getting miner list")
 	miners, err := api.StateListMiners(ctx, types.EmptyTSK)
 	if err != nil {
@@ -1272,7 +1291,7 @@ loop:
 
 	color.Blue(".. querying asks")
 
-	var asks []*storagemarket.StorageAsk
+	var asks []QueriedAsk
 	var queried, got int64
 
 	done = make(chan struct{})
@@ -1308,9 +1327,19 @@ loop:
 					return
 				}
 
+				rt := time.Now()
+
+				_, err = api.ClientQueryAsk(ctx, *mi.PeerId, miner)
+				if err != nil {
+					return
+				}
+
 				atomic.AddInt64(&got, 1)
 				lk.Lock()
-				asks = append(asks, ask)
+				asks = append(asks, QueriedAsk{
+					Ask:  ask,
+					Ping: time.Now().Sub(rt),
+				})
 				lk.Unlock()
 			}(miner)
 		}
@@ -1328,7 +1357,7 @@ loop2:
 	fmt.Printf("\r* Queried %d asks, got %d responses\n", atomic.LoadInt64(&queried), atomic.LoadInt64(&got))
 
 	sort.Slice(asks, func(i, j int) bool {
-		return asks[i].Price.LessThan(asks[j].Price)
+		return asks[i].Ask.Price.LessThan(asks[j].Ask.Price)
 	})
 
 	return asks, nil
@@ -1400,6 +1429,7 @@ var clientQueryAskCmd = &cli.Command{
 		afmt.Printf("Price per GiB: %s\n", types.FIL(ask.Price))
 		afmt.Printf("Verified Price per GiB: %s\n", types.FIL(ask.VerifiedPrice))
 		afmt.Printf("Max Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))))
+		afmt.Printf("Min Piece size: %s\n", types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))))
 
 		size := cctx.Int64("size")
 		if size == 0 {
@@ -1495,7 +1525,7 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
-		return outputStorageDeals(ctx, cctx.App.Writer, api, localDeals, cctx.Bool("verbose"), cctx.Bool("color"), showFailed)
+		return outputStorageDeals(ctx, cctx.App.Writer, api, localDeals, verbose, color, showFailed)
 	},
 }
 
@@ -1537,7 +1567,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, 
 
 	if verbose {
 		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tVerified\tMessage\n")
+		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
 		for _, d := range deals {
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch != -1 {
@@ -1550,7 +1580,37 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, 
 			}
 
 			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%v\t%s\n", d.LocalDeal.CreationTime.Format(time.Stamp), d.LocalDeal.ProposalCid, d.LocalDeal.DealID, d.LocalDeal.Provider, dealStateString(color, d.LocalDeal.State), onChain, slashed, d.LocalDeal.PieceCID, types.SizeStr(types.NewInt(d.LocalDeal.Size)), price, d.LocalDeal.Duration, d.LocalDeal.Verified, d.LocalDeal.Message)
+			transferChannelID := ""
+			if d.LocalDeal.TransferChannelID != nil {
+				transferChannelID = d.LocalDeal.TransferChannelID.String()
+			}
+			transferStatus := ""
+			if d.LocalDeal.DataTransfer != nil {
+				transferStatus = datatransfer.Statuses[d.LocalDeal.DataTransfer.Status]
+				// TODO: Include the transferred percentage once this bug is fixed:
+				// https://github.com/ipfs/go-graphsync/issues/126
+				//fmt.Printf("transferred: %d / size: %d\n", d.LocalDeal.DataTransfer.Transferred, d.LocalDeal.Size)
+				//if d.LocalDeal.Size > 0 {
+				//	pct := (100 * d.LocalDeal.DataTransfer.Transferred) / d.LocalDeal.Size
+				//	transferPct = fmt.Sprintf("%d%%", pct)
+				//}
+			}
+			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
+				d.LocalDeal.CreationTime.Format(time.Stamp),
+				d.LocalDeal.ProposalCid,
+				d.LocalDeal.DealID,
+				d.LocalDeal.Provider,
+				dealStateString(color, d.LocalDeal.State),
+				onChain,
+				slashed,
+				d.LocalDeal.PieceCID,
+				types.SizeStr(types.NewInt(d.LocalDeal.Size)),
+				price,
+				d.LocalDeal.Duration,
+				transferChannelID,
+				transferStatus,
+				d.LocalDeal.Verified,
+				d.LocalDeal.Message)
 		}
 		return w.Flush()
 	}
@@ -1825,6 +1885,11 @@ var clientCancelTransfer = &cli.Command{
 			Usage: "specify only transfers where peer is/is not initiator",
 			Value: true,
 		},
+		&cli.DurationFlag{
+			Name:  "cancel-timeout",
+			Usage: "time to wait for cancel to be sent to storage provider",
+			Value: 5 * time.Second,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -1868,7 +1933,9 @@ var clientCancelTransfer = &cli.Command{
 			}
 		}
 
-		return api.ClientCancelDataTransfer(ctx, transferID, other, initiator)
+		timeoutCtx, cancel := context.WithTimeout(ctx, cctx.Duration("cancel-timeout"))
+		defer cancel()
+		return api.ClientCancelDataTransfer(timeoutCtx, transferID, other, initiator)
 	},
 }
 

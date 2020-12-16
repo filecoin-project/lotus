@@ -21,7 +21,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor) (int64, *types.Actor, map[address.Address]address.Address, error) {
+func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor, remainder genesis.Actor) (int64, *types.Actor, map[address.Address]address.Address, error) {
 	if len(initialActors) > MaxAccounts {
 		return 0, nil, nil, xerrors.New("too many initial actors")
 	}
@@ -90,6 +90,33 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		}
 	}
 
+	setupMsig := func(meta json.RawMessage) error {
+		var ainfo genesis.MultisigMeta
+		if err := json.Unmarshal(meta, &ainfo); err != nil {
+			return xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		for _, e := range ainfo.Signers {
+			if _, ok := keyToId[e]; ok {
+				continue
+			}
+			fmt.Printf("init set %s t0%d\n", e, counter)
+
+			value := cbg.CborInt(counter)
+			if err := amap.Put(abi.AddrKey(e), &value); err != nil {
+				return err
+			}
+			counter = counter + 1
+			var err error
+			keyToId[e], err = address.NewIDAddress(uint64(value))
+			if err != nil {
+				return err
+			}
+
+		}
+
+		return nil
+	}
+
 	if rootVerifier.Type == genesis.TAccount {
 		var ainfo genesis.AccountMeta
 		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
@@ -100,28 +127,15 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 			return 0, nil, nil, err
 		}
 	} else if rootVerifier.Type == genesis.TMultisig {
-		var ainfo genesis.MultisigMeta
-		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
-			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		err := setupMsig(rootVerifier.Meta)
+		if err != nil {
+			return 0, nil, nil, xerrors.Errorf("setting up root verifier msig: %w", err)
 		}
-		for _, e := range ainfo.Signers {
-			if _, ok := keyToId[e]; ok {
-				continue
-			}
-			fmt.Printf("init set %s t0%d\n", e, counter)
+	}
 
-			value := cbg.CborInt(counter)
-			if err := amap.Put(abi.AddrKey(e), &value); err != nil {
-				return 0, nil, nil, err
-			}
-			counter = counter + 1
-			var err error
-			keyToId[e], err = address.NewIDAddress(uint64(value))
-			if err != nil {
-				return 0, nil, nil, err
-			}
-
-		}
+	err := setupMsig(remainder.Meta)
+	if err != nil {
+		return 0, nil, nil, xerrors.Errorf("setting up remainder msig: %w", err)
 	}
 
 	amapaddr, err := amap.Root()

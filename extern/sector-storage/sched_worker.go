@@ -368,7 +368,7 @@ assignLoop:
 			err := sw.startProcessingTask(sw.taskDone, todo)
 
 			if err != nil {
-				log.Error("startProcessingTask error: %+v", err)
+				log.Errorf("startProcessingTask error: %+v", err)
 				go todo.respond(xerrors.Errorf("startProcessingTask error: %w", err))
 			}
 
@@ -486,6 +486,6 @@ func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {
 		}
 		sh.openWindows = newWindows
 
-		log.Debugf("worker %d dropped", wid)
+		log.Debugf("worker %s dropped", wid)
 	}
 }

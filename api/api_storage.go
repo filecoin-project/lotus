@@ -5,16 +5,18 @@ import (
 	"context"
 	"time"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-storage/storage"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -28,6 +30,7 @@ type StorageMiner interface {
 	ActorAddress(context.Context) (address.Address, error)
 
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error)
+	ActorAddressConfig(ctx context.Context) (AddressConfig, error)
 
 	MiningBase(context.Context) (*types.TipSet, error)
 
@@ -39,6 +42,12 @@ type StorageMiner interface {
 
 	// List all staged sectors
 	SectorsList(context.Context) ([]abi.SectorNumber, error)
+
+	// Get summary info of sectors
+	SectorsSummary(ctx context.Context) (map[SectorState]int, error)
+
+	// List sectors in particular states
+	SectorsListInStates(context.Context, []SectorState) ([]abi.SectorNumber, error)
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
@@ -103,6 +112,10 @@ type StorageMiner interface {
 	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error
 	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)
 	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error
+	DealsConsiderVerifiedStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error
+	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)
+	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error
 
 	StorageAddLocal(ctx context.Context, path string) error
 
@@ -116,6 +129,8 @@ type StorageMiner interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error
+
+	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error)
 }
 
 type SealRes struct {
@@ -195,3 +210,16 @@ func (st *SealSeed) Equals(ost *SealSeed) bool {
 }
 
 type SectorState string
+
+type AddrUse int
+
+const (
+	PreCommitAddr AddrUse = iota
+	CommitAddr
+	PoStAddr
+)
+
+type AddressConfig struct {
+	PreCommitControl []address.Address
+	CommitControl    []address.Address
+}

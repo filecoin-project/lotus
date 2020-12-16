@@ -736,8 +736,6 @@ func TestPriorityMessageSelection2(t *testing.T) {
 }
 
 func TestPriorityMessageSelection3(t *testing.T) {
-	t.Skip("reenable after removing allow negative")
-
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -1241,6 +1239,9 @@ func TestCompetitiveMessageSelectionExp(t *testing.T) {
 }
 
 func TestCompetitiveMessageSelectionZipf(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping in short mode")
+	}
 	var capacityBoost, rewardBoost, tqReward float64
 	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
 	for _, seed := range seeds {
@@ -1268,9 +1269,9 @@ func TestGasReward(t *testing.T) {
 		GasReward int64
 	}{
 		{Premium: 100, FeeCap: 200, BaseFee: 100, GasReward: 100},
-		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10},
+		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10 * 3},
 		{Premium: 200, FeeCap: 250, BaseFee: 210, GasReward: 40},
-		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750},
+		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750 * 3},
 	}
 
 	mp := new(MessagePool)

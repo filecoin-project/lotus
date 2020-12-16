@@ -128,6 +128,7 @@ var stateMinerInfo = &cli.Command{
 			}
 			fmt.Printf("%s ", a)
 		}
+		fmt.Println()
 		fmt.Printf("Consensus Fault End:\t%d\n", mi.ConsensusFaultElapsed)
 
 		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
@@ -1758,6 +1759,9 @@ var stateSectorCmd = &cli.Command{
 		si, err := api.StateSectorGetInfo(ctx, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {
 			return err
+		}
+		if si == nil {
+			return xerrors.Errorf("sector %d for miner %s not found", sid, maddr)
 		}
 
 		fmt.Println("SectorNumber: ", si.SectorNumber)

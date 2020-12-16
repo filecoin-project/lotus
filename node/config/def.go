@@ -36,15 +36,18 @@ type StorageMiner struct {
 	Sealing    SealingConfig
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
+	Addresses  MinerAddressConfig
 }
 
 type DealmakingConfig struct {
-	ConsiderOnlineStorageDeals    bool
-	ConsiderOfflineStorageDeals   bool
-	ConsiderOnlineRetrievalDeals  bool
-	ConsiderOfflineRetrievalDeals bool
-	PieceCidBlocklist             []cid.Cid
-	ExpectedSealDuration          Duration
+	ConsiderOnlineStorageDeals     bool
+	ConsiderOfflineStorageDeals    bool
+	ConsiderOnlineRetrievalDeals   bool
+	ConsiderOfflineRetrievalDeals  bool
+	ConsiderVerifiedStorageDeals   bool
+	ConsiderUnverifiedStorageDeals bool
+	PieceCidBlocklist              []cid.Cid
+	ExpectedSealDuration           Duration
 
 	Filter          string
 	RetrievalFilter string
@@ -69,6 +72,11 @@ type MinerFeeConfig struct {
 	MaxWindowPoStGasFee    types.FIL
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
+}
+
+type MinerAddressConfig struct {
+	PreCommitControl []string
+	CommitControl    []string
 }
 
 // API contains configs for API endpoint
@@ -105,10 +113,11 @@ type Metrics struct {
 }
 
 type Client struct {
-	UseIpfs             bool
-	IpfsOnlineMode      bool
-	IpfsMAddr           string
-	IpfsUseForRetrieval bool
+	UseIpfs               bool
+	IpfsOnlineMode        bool
+	IpfsMAddr             string
+	IpfsUseForRetrieval   bool
+	SimultaneousTransfers uint64
 }
 
 type Wallet struct {
@@ -149,6 +158,7 @@ func defCommon() Common {
 }
 
 var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+var DefaultSimultaneousTransfers = uint64(20)
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
@@ -156,6 +166,9 @@ func DefaultFullNode() *FullNode {
 		Common: defCommon(),
 		Fees: FeeConfig{
 			DefaultMaxFee: DefaultDefaultMaxFee,
+		},
+		Client: Client{
+			SimultaneousTransfers: DefaultSimultaneousTransfers,
 		},
 	}
 }
@@ -184,11 +197,13 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Dealmaking: DealmakingConfig{
-			ConsiderOnlineStorageDeals:    true,
-			ConsiderOfflineStorageDeals:   true,
-			ConsiderOnlineRetrievalDeals:  true,
-			ConsiderOfflineRetrievalDeals: true,
-			PieceCidBlocklist:             []cid.Cid{},
+			ConsiderOnlineStorageDeals:     true,
+			ConsiderOfflineStorageDeals:    true,
+			ConsiderOnlineRetrievalDeals:   true,
+			ConsiderOfflineRetrievalDeals:  true,
+			ConsiderVerifiedStorageDeals:   true,
+			ConsiderUnverifiedStorageDeals: true,
+			PieceCidBlocklist:              []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
 			ExpectedSealDuration: Duration(time.Hour * 24),
 		},
@@ -199,6 +214,11 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxWindowPoStGasFee:    types.MustParseFIL("5"),
 			MaxPublishDealsFee:     types.MustParseFIL("0.05"),
 			MaxMarketBalanceAddFee: types.MustParseFIL("0.007"),
+		},
+
+		Addresses: MinerAddressConfig{
+			PreCommitControl: []string{},
+			CommitControl:    []string{},
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

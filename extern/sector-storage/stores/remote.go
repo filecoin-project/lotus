@@ -3,6 +3,7 @@ package stores
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"math/bits"
 	"mime"
@@ -22,11 +23,12 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/hashicorp/go-multierror"
-	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 )
 
 var FetchTempSubdir = "fetching"
+
+var CopyBuf = 1 << 20
 
 type Remote struct {
 	local *Local
@@ -276,7 +278,16 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	case "application/x-tar":
 		return tarutil.ExtractTar(resp.Body, outname)
 	case "application/octet-stream":
-		return files.WriteTo(files.NewReaderFile(resp.Body), outname)
+		f, err := os.Create(outname)
+		if err != nil {
+			return err
+		}
+		_, err = io.CopyBuffer(f, resp.Body, make([]byte, CopyBuf))
+		if err != nil {
+			f.Close() // nolint
+			return err
+		}
+		return f.Close()
 	default:
 		return xerrors.Errorf("unknown content type: '%s'", mediatype)
 	}

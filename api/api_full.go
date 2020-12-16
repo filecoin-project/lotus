@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -518,6 +519,8 @@ type FullNode interface {
 	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error)
 	// MarketReleaseFunds releases funds reserved by MarketReserveFunds
 	MarketReleaseFunds(ctx context.Context, addr address.Address, amt types.BigInt) error
+	// MarketWithdraw withdraws unlocked funds from the market actor
+	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)
 
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels
@@ -591,6 +594,9 @@ type DealInfo struct {
 
 	CreationTime time.Time
 	Verified     bool
+
+	TransferChannelID *datatransfer.ChannelID
+	DataTransfer      *DataTransferChannel
 }
 
 type MsgLookup struct {
@@ -783,6 +789,22 @@ type StartDealParams struct {
 	DealStartEpoch     abi.ChainEpoch
 	FastRetrieval      bool
 	VerifiedDeal       bool
+}
+
+func (s *StartDealParams) UnmarshalJSON(raw []byte) (err error) {
+	type sdpAlias StartDealParams
+
+	sdp := sdpAlias{
+		FastRetrieval: true,
+	}
+
+	if err := json.Unmarshal(raw, &sdp); err != nil {
+		return err
+	}
+
+	*s = StartDealParams(sdp)
+
+	return nil
 }
 
 type IpldObject struct {

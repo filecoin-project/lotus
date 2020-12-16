@@ -181,7 +181,20 @@ func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 	return types.BigAdd(minPrice, types.NewInt(1))
 }
 
-func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, maxFee abi.TokenAmount) {
+func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSepc *api.MessageSendSpec) {
+	var maxFee abi.TokenAmount
+	if sendSepc != nil {
+		maxFee = sendSepc.MaxFee
+	}
+	if maxFee.Int == nil || maxFee.Equals(big.Zero()) {
+		mf, err := mff()
+		if err != nil {
+			log.Errorf("failed to get default max gas fee: %+v", err)
+			mf = big.Zero()
+		}
+		maxFee = mf
+	}
+
 	if maxFee.Equals(big.Zero()) {
 		mf, err := mff()
 		if err != nil {
@@ -240,10 +253,13 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 			// check if RBF passes
 			minPrice := ComputeMinRBF(exms.Message.GasPremium)
 			if types.BigCmp(m.Message.GasPremium, minPrice) >= 0 {
-				log.Infow("add with RBF", "oldpremium", exms.Message.GasPremium,
+				log.Debugw("add with RBF", "oldpremium", exms.Message.GasPremium,
 					"newpremium", m.Message.GasPremium, "addr", m.Message.From, "nonce", m.Message.Nonce)
 			} else {
-				log.Info("add with duplicate nonce")
+				log.Debugf("add with duplicate nonce. message from %s with nonce %d already in mpool,"+
+					" increase GasPremium to %s from %s to trigger replace by fee: %s",
+					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
+					ErrRBFTooLowPremium)
 				return false, xerrors.Errorf("message from %s with nonce %d already in mpool,"+
 					" increase GasPremium to %s from %s to trigger replace by fee: %w",
 					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
@@ -855,7 +871,7 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 	}()
 
 	mp.curTsLk.Lock()
-	publish, err := mp.addTs(m, mp.curTs, false, true)
+	publish, err := mp.addTs(m, mp.curTs, true, true)
 	if err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err

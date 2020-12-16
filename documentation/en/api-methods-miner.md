@@ -6,10 +6,13 @@
   * [Version](#Version)
 * [Actor](#Actor)
   * [ActorAddress](#ActorAddress)
+  * [ActorAddressConfig](#ActorAddressConfig)
   * [ActorSectorSize](#ActorSectorSize)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
+* [Check](#Check)
+  * [CheckProvable](#CheckProvable)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Deals](#Deals)
@@ -17,6 +20,8 @@
   * [DealsConsiderOfflineStorageDeals](#DealsConsiderOfflineStorageDeals)
   * [DealsConsiderOnlineRetrievalDeals](#DealsConsiderOnlineRetrievalDeals)
   * [DealsConsiderOnlineStorageDeals](#DealsConsiderOnlineStorageDeals)
+  * [DealsConsiderUnverifiedStorageDeals](#DealsConsiderUnverifiedStorageDeals)
+  * [DealsConsiderVerifiedStorageDeals](#DealsConsiderVerifiedStorageDeals)
   * [DealsImportData](#DealsImportData)
   * [DealsList](#DealsList)
   * [DealsPieceCidBlocklist](#DealsPieceCidBlocklist)
@@ -24,6 +29,8 @@
   * [DealsSetConsiderOfflineStorageDeals](#DealsSetConsiderOfflineStorageDeals)
   * [DealsSetConsiderOnlineRetrievalDeals](#DealsSetConsiderOnlineRetrievalDeals)
   * [DealsSetConsiderOnlineStorageDeals](#DealsSetConsiderOnlineStorageDeals)
+  * [DealsSetConsiderUnverifiedStorageDeals](#DealsSetConsiderUnverifiedStorageDeals)
+  * [DealsSetConsiderVerifiedStorageDeals](#DealsSetConsiderVerifiedStorageDeals)
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
 * [I](#I)
   * [ID](#ID)
@@ -94,8 +101,10 @@
   * [SectorStartSealing](#SectorStartSealing)
 * [Sectors](#Sectors)
   * [SectorsList](#SectorsList)
+  * [SectorsListInStates](#SectorsListInStates)
   * [SectorsRefs](#SectorsRefs)
   * [SectorsStatus](#SectorsStatus)
+  * [SectorsSummary](#SectorsSummary)
   * [SectorsUpdate](#SectorsUpdate)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
@@ -173,6 +182,21 @@ Inputs: `null`
 
 Response: `"f01234"`
 
+### ActorAddressConfig
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "PreCommitControl": null,
+  "CommitControl": null
+}
+```
+
 ### ActorSectorSize
 There are not yet any comments for this method.
 
@@ -217,6 +241,30 @@ Inputs:
 ```
 
 Response: `null`
+
+## Check
+
+
+### CheckProvable
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  8,
+  null,
+  true
+]
+```
+
+Response:
+```json
+{
+  "123": "can't acquire read lock"
+}
+```
 
 ## Create
 
@@ -270,6 +318,24 @@ Inputs: `null`
 Response: `true`
 
 ### DealsConsiderOnlineStorageDeals
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
+
+### DealsConsiderUnverifiedStorageDeals
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
+
+### DealsConsiderVerifiedStorageDeals
 There are not yet any comments for this method.
 
 Perms: read
@@ -356,6 +422,34 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineStorageDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true
+]
+```
+
+Response: `{}`
+
+### DealsSetConsiderUnverifiedStorageDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true
+]
+```
+
+Response: `{}`
+
+### DealsSetConsiderVerifiedStorageDeals
 There are not yet any comments for this method.
 
 Perms: admin
@@ -552,7 +646,8 @@ Response:
     "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "ID": 3
-  }
+  },
+  "SectorNumber": 9
 }
 ```
 
@@ -1451,7 +1546,34 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  123,
+  124
+]
+```
+
+### SectorsListInStates
+List sectors in particular states
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response:
+```json
+[
+  123,
+  124
+]
+```
 
 ### SectorsRefs
 There are not yet any comments for this method.
@@ -1518,6 +1640,21 @@ Response:
   "InitialPledge": "0",
   "OnTime": 10101,
   "Early": 10101
+}
+```
+
+### SectorsSummary
+Get summary info of sectors
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Proving": 120
 }
 ```
 

@@ -11,6 +11,7 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
+	ffiwrapper2 "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -76,7 +77,7 @@ func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storage.SectorRef, 
 	var b bytes.Buffer
 	tr := io.TeeReader(r, &b)
 
-	c, err := ffiwrapper.GeneratePieceCIDFromFile(sectorID.ProofType, tr, size)
+	c, err := ffiwrapper2.GeneratePieceCIDFromFile(sectorID.ProofType, tr, size)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("failed to generate piece cid: %w", err)
 	}
@@ -404,14 +405,14 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) erro
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef) ([]abi.SectorID, error) {
-	var bad []abi.SectorID
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+	bad := map[abi.SectorID]string{}
 
 	for _, sid := range ids {
 		_, found := mgr.sectors[sid.ID]
 
 		if !found || mgr.sectors[sid.ID].failed {
-			bad = append(bad, sid.ID)
+			bad[sid.ID] = "mock fail"
 		}
 	}
 

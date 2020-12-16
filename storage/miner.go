@@ -41,13 +41,14 @@ import (
 var log = logging.Logger("storageminer")
 
 type Miner struct {
-	api    storageMinerApi
-	feeCfg config.MinerFeeConfig
-	h      host.Host
-	sealer sectorstorage.SectorManager
-	ds     datastore.Batching
-	sc     sealing.SectorIDCounter
-	verif  ffiwrapper.Verifier
+	api     storageMinerApi
+	feeCfg  config.MinerFeeConfig
+	h       host.Host
+	sealer  sectorstorage.SectorManager
+	ds      datastore.Batching
+	sc      sealing.SectorIDCounter
+	verif   ffiwrapper.Verifier
+	addrSel *AddressSelector
 
 	maddr address.Address
 
@@ -91,6 +92,7 @@ type storageMinerApi interface {
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 
@@ -113,15 +115,16 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc, feeCfg config.MinerFeeConfig, journal journal.Journal) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc, feeCfg config.MinerFeeConfig, journal journal.Journal, as *AddressSelector) (*Miner, error) {
 	m := &Miner{
-		api:    api,
-		feeCfg: feeCfg,
-		h:      h,
-		sealer: sealer,
-		ds:     ds,
-		sc:     sc,
-		verif:  verif,
+		api:     api,
+		feeCfg:  feeCfg,
+		h:       h,
+		sealer:  sealer,
+		ds:      ds,
+		sc:      sc,
+		verif:   verif,
+		addrSel: as,
 
 		maddr:          maddr,
 		getSealConfig:  gsd,
@@ -151,7 +154,12 @@ func (m *Miner) Run(ctx context.Context) error {
 	adaptedAPI := NewSealingAPIAdapter(m.api)
 	// TODO: Maybe we update this policy after actor upgrades?
 	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, policy.GetMaxSectorExpirationExtension()-(md.WPoStProvingPeriod*2), md.PeriodStart%md.WPoStProvingPeriod)
-	m.sealing = sealing.New(adaptedAPI, fc, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications)
+
+	as := func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+		return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
+	}
+
+	m.sealing = sealing.New(adaptedAPI, fc, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications, as)
 
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 

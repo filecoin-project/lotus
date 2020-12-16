@@ -212,14 +212,13 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 				Number: info.SectorNumber,
 			},
 		})
-
 	}
 
-	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck)
+	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck, nil)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("checking provable sectors: %w", err)
 	}
-	for _, id := range bad {
+	for id := range bad {
 		delete(sectors, id.Number)
 	}
 
@@ -800,7 +799,7 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 	goodFunds := big.Add(msg.RequiredFunds(), msg.Value)
 	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
 
-	pa, avail, err := AddressFor(ctx, s.api, mi, PoStAddr, goodFunds, minFunds)
+	pa, avail, err := s.addrSel.AddressFor(ctx, s.api, mi, api.PoStAddr, goodFunds, minFunds)
 	if err != nil {
 		log.Errorw("error selecting address for window post", "error", err)
 		return nil
@@ -813,7 +812,7 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 			return msg.RequiredFunds(), nil
 		}
 
-		messagepool.CapGasFee(mff, msg, big.Min(big.Sub(avail, msg.Value), msg.RequiredFunds()))
+		messagepool.CapGasFee(mff, msg, &api.MessageSendSpec{MaxFee: big.Min(big.Sub(avail, msg.Value), msg.RequiredFunds())})
 	}
 	return nil
 }

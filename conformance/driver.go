@@ -73,23 +73,42 @@ type ExecuteTipsetResult struct {
 	AppliedResults []*vm.ApplyRet
 }
 
+type ExecuteTipsetParams struct {
+	Preroot cid.Cid
+	// ParentEpoch is the last epoch in which an actual tipset was processed. This
+	// is used by Lotus for null block counting and cron firing.
+	ParentEpoch abi.ChainEpoch
+	Tipset      *schema.Tipset
+	ExecEpoch   abi.ChainEpoch
+	// Rand is an optional vm.Rand implementation to use. If nil, the driver
+	// will use a vm.Rand that returns a fixed value for all calls.
+	Rand vm.Rand
+	// BaseFee if not nil or zero, will override the basefee of the tipset.
+	BaseFee abi.TokenAmount
+}
+
 // ExecuteTipset executes the supplied tipset on top of the state represented
 // by the preroot CID.
-//
-// parentEpoch is the last epoch in which an actual tipset was processed. This
-// is used by Lotus for null block counting and cron firing.
 //
 // This method returns the the receipts root, the poststate root, and the VM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
-func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
+func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params ExecuteTipsetParams) (*ExecuteTipsetResult, error) {
 	var (
+		tipset   = params.Tipset
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
-		vmRand   = NewFixedRand()
 
 		cs = store.NewChainStore(bs, bs, ds, syscalls, nil)
 		sm = stmgr.NewStateManager(cs)
 	)
+
+	if params.Rand == nil {
+		params.Rand = NewFixedRand()
+	}
+
+	if params.BaseFee.NilOrZero() {
+		params.BaseFee = abi.NewTokenAmount(tipset.BaseFee.Int64())
+	}
 
 	defer cs.Close() //nolint:errcheck
 
@@ -122,15 +141,23 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 	var (
 		messages []*types.Message
 		results  []*vm.ApplyRet
-
-		basefee = abi.NewTokenAmount(tipset.BaseFee.Int64())
 	)
 
-	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(), parentEpoch, preroot, blocks, execEpoch, vmRand, func(_ cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	recordOutputs := func(_ cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		messages = append(messages, msg)
 		results = append(results, ret)
 		return nil
-	}, basefee, nil)
+	}
+	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(),
+		params.ParentEpoch,
+		params.Preroot,
+		blocks,
+		params.ExecEpoch,
+		params.Rand,
+		recordOutputs,
+		params.BaseFee,
+		nil,
+	)
 
 	if err != nil {
 		return nil, err
