@@ -71,6 +71,9 @@ type ExecuteTipsetResult struct {
 	AppliedMessages []*types.Message
 	// AppliedResults stores the results of AppliedMessages, in the same order.
 	AppliedResults []*vm.ApplyRet
+
+	// PostBaseFee returns the basefee after applying this tipset.
+	PostBaseFee abi.TokenAmount
 }
 
 type ExecuteTipsetParams struct {
