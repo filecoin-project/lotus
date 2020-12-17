@@ -883,20 +883,41 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 }
 
 func (a *StateAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*api.ComputeStateOutput, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	ts1, _ := a.Chain.LoadTipSet(tsk)
+	ts, err := a.Chain.GetTipsetByHeight(ctx, height, ts1, false)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	st, t, err := stmgr.ComputeState(ctx, a.StateManager, height, msgs, ts)
+	//st, t, err := stmgr.ComputeState(ctx, a.StateManager, height, msgs, ts)
+	//if err != nil {
+	//	return nil, err
+	//}
+	base, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.ComputeStateOutput{
-		Root:  st,
-		Trace: t,
+		Root:  base,
+		Trace: trace,
 	}, nil
 }
+
+//func (a *StateAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*api.ComputeStateOutput, error) {
+//	ts, err := a.Chain.GetTipSetFromKey(tsk)
+//	if err != nil {
+//		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+//	}
+//	st, t, err := stmgr.ComputeState(ctx, a.StateManager, height, msgs, ts)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return &api.ComputeStateOutput{
+//		Root:  st,
+//		Trace: t,
+//	}, nil
+//}
 
 func (m *StateModule) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := m.Chain.GetTipSetFromKey(tsk)

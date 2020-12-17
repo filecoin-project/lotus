@@ -233,11 +233,11 @@ func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			syncer.Start()
+			//syncer.Start() 关闭自动同步，专心调试当前出错的块
 			return nil
 		},
 		OnStop: func(_ context.Context) error {
-			syncer.Stop()
+			//syncer.Stop()
 			return nil
 		},
 	})

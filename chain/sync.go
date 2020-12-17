@@ -1504,6 +1504,7 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 
 		stats.Record(ctx, metrics.ChainNodeWorkerHeight.M(int64(fts.TipSet().Height())))
 		ss.SetHeight(fts.TipSet().Height())
+		syncer.ChainStore().SetHead(fts.TipSet())
 
 		return nil
 	})

@@ -2,8 +2,10 @@ package stmgr
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -250,6 +252,9 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 
 		return sm.newVM(ctx, vmopt)
 	}
+	//aaaa, _ := state.LoadStateTree(cbor.NewCborStore(sm.cs.Blockstore()), pstate)
+	//aaaaaa, _ := address.NewFromString("f065742")
+	//fmt.Println(aaaa.GetActor(aaaaaa))
 
 	vmi, err := makeVmWithBaseState(pstate)
 	if err != nil {
@@ -257,6 +262,8 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	}
 
 	runCron := func(epoch abi.ChainEpoch) error {
+		root, _ := vmi.Flush(context.TODO())
+		fmt.Println("before cron root: %s", root)
 
 		cronMsg := &types.Message{
 			To:         cron.Address,
@@ -281,6 +288,9 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		if ret.ExitCode != 0 {
 			return xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
 		}
+
+		root, _ = vmi.Flush(context.TODO())
+		fmt.Println("after cron root: %s", root)
 
 		return nil
 	}
@@ -312,26 +322,46 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			}
 		}
 
+		fmt.Printf("after fork root: %s\n", newState)
 		vmi.SetBlockHeight(i + 1)
 		pstate = newState
 	}
 
+	/*	processedMsgs := map[cid.Cid]bool{}
+		for _, b := range bms {
+			for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
+				if _, found := processedMsgs[cm.Cid()]; found {
+					continue
+				}
+				fmt.Println(cm.Cid())
+				processedMsgs[cm.Cid()] = true
+			}
+		}*/
 	var receipts []cbg.CBORMarshaler
 	processedMsgs := make(map[cid.Cid]struct{})
-	for _, b := range bms {
+	for index, b := range bms {
+		fmt.Println("start to process block ", index)
+
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
 
 		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
+
 			m := cm.VMMessage()
 			if _, found := processedMsgs[m.Cid()]; found {
 				continue
+			}
+			fmt.Println("start to process bls message ", m.Cid()) //执行某条消息
+			if cm.Cid().String() == "bafy2bzacebpqvyf74e32ojbwc4jbtxntppkyjnymxydbi3dim7mflyjviqric" {
+				fmt.Println()
 			}
 			r, err := vmi.ApplyMessage(ctx, cm)
 			if err != nil {
 				return cid.Undef, cid.Undef, err
 			}
-
+			if r.ExitCode == 1 {
+				fmt.Println()
+			}
 			receipts = append(receipts, &r.MessageReceipt)
 			gasReward = big.Add(gasReward, r.GasCosts.MinerTip)
 			penalty = big.Add(penalty, r.GasCosts.MinerPenalty)
@@ -342,7 +372,24 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 				}
 			}
 			processedMsgs[m.Cid()] = struct{}{}
+			root, _ := vmi.Flush(ctx)
+			fmt.Println(fmt.Sprintf("message: %s  root: %s gasUsed: %v", cm.Cid(), root, r.GasUsed))
+			dddd, _ := json.MarshalIndent(r.GasCosts, "", "\t")
+			fmt.Println(string(dddd))
+			xxxx := []*types.GasTrace{}
+			for _, xxx := range r.ExecutionTrace.GasCharges {
+				xxx.Location = nil
+				if xxx.TotalGas > 0 {
+					xxxx = append(xxxx, xxx)
+				}
+			}
+			dddd, _ = json.MarshalIndent(xxxx, "", "\t")
+			fmt.Println(string(dddd))
+			fmt.Println("xxxx")
 		}
+		root, _ := vmi.Flush(ctx)
+		fmt.Println("before reward: %d  root: %s", index, root)
+		fmt.Println("xxxx")
 
 		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
 			Miner:     b.Miner,
@@ -378,6 +425,10 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		if ret.ExitCode != 0 {
 			return cid.Undef, cid.Undef, xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
 		}
+
+		root, _ = vmi.Flush(ctx)
+		fmt.Println("reward: %d  root: %s", index, root)
+		fmt.Println("xxxx")
 	}
 
 	if err := runCron(epoch); err != nil {
@@ -403,7 +454,9 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("vm flush failed: %w", err)
 	}
-
+	dddd, _ := json.MarshalIndent(receipts, "", "\t")
+	ioutil.WriteFile("receipt.json", dddd, 0777)
+	fmt.Println("height:%d root: %s receiptcid: %s", epoch, st, rectroot)
 	return st, rectroot, nil
 }
 

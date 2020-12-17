@@ -221,6 +221,12 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 }
 
 func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
+	if addr.String() == "t02676" &&
+		act.Head.String() == "bafy2bzacedreooimzbj66wjwgxzqxg5qdwzovmpt4naktcnlsrmcoufo4q7p2" {
+		fmt.Print()
+	}
+	fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.Nonce)
+
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		return xerrors.Errorf("ID lookup failed: %w", err)
