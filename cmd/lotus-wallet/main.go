@@ -77,11 +77,11 @@ var runCmd = &cli.Command{
 			Usage: "use a ledger device instead of an on-disk wallet",
 		},
 		&cli.BoolFlag{
-			Name: "interactive",
+			Name:  "interactive",
 			Usage: "prompt before performing actions (DO NOT USE FOR MINER WORKER ADDRESS)",
 		},
 		&cli.BoolFlag{
-			Name: "offline",
+			Name:  "offline",
 			Usage: "don't query chain state in interactive mode",
 		},
 	},
@@ -158,7 +158,7 @@ var runCmd = &cli.Command{
 			}
 
 			w = &InteractiveWallet{
-				under: w,
+				under:     w,
 				apiGetter: ag,
 			}
 		} else {

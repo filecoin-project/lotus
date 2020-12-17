@@ -31,7 +31,7 @@ type InteractiveWallet struct {
 	lk sync.Mutex
 
 	apiGetter func() (api.FullNode, jsonrpc.ClientCloser, error)
-	under api.WalletAPI
+	under     api.WalletAPI
 }
 
 func (c *InteractiveWallet) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {
@@ -189,7 +189,6 @@ func (c *InteractiveWallet) WalletDelete(ctx context.Context, addr address.Addre
 	if err != nil {
 		return err
 	}
-
 
 	return c.under.WalletDelete(ctx, addr)
 }
