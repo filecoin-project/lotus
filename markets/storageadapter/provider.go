@@ -344,7 +344,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	// and the chain has advanced to the confidence height
 	stateChanged := func(ts *types.TipSet, ts2 *types.TipSet, states events.StateChange, h abi.ChainEpoch) (more bool, err error) {
 		// Check if the deal has already expired
-		if sd.Proposal.EndEpoch <= ts2.Height() {
+		if ts2 == nil || sd.Proposal.EndEpoch <= ts2.Height() {
 			onDealExpired(nil)
 			return false, nil
 		}
