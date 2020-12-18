@@ -446,6 +446,17 @@ var sealBenchCmd = &cli.Command{
 			bo.VerifyWindowPostHot = verifyWindowpost2.Sub(verifyWindowpost1)
 		}
 
+		fmt.Println("environment variable list:")
+		for _, envKey := range []string{"BELLMAN_NO_GPU", "FIL_PROOFS_MAXIMIZE_CACHING", "FIL_PROOFS_USE_GPU_COLUMN_BUILDER",
+			"FIL_PROOFS_USE_GPU_TREE_BUILDER", "FIL_PROOFS_USE_MULTICORE_SDR", "BELLMAN_CUSTOM_GPU"} {
+			envValue, found := os.LookupEnv(envKey)
+			if found {
+				fmt.Printf("%s=%s\n", envKey, envValue)
+			} else {
+				fmt.Printf("%s not set\n", envKey)
+			}
+		}
+
 		if c.Bool("json-out") {
 			data, err := json.MarshalIndent(bo, "", "  ")
 			if err != nil {
