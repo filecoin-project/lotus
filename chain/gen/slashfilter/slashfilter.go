@@ -2,6 +2,7 @@ package slashfilter
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 
 	"golang.org/x/xerrors"
 
@@ -26,6 +27,10 @@ func New(dstore ds.Batching) *SlashFilter {
 }
 
 func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+	if bh.Height < build.UpgradeOrangeHeight+build.Finality {
+		return nil
+	}
+
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{
 		// double-fork mining (2 blocks at one epoch)
