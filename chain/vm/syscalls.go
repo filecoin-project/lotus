@@ -109,12 +109,10 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime2.Conse
 	}
 
 	// workaround chain halt
-	if blockA.Height > build.UpgradeOrangeHeight-build.Finality &&
-		blockA.Height < build.UpgradeOrangeHeight+build.Finality {
+	if build.IsNearUpgrade(blockA.Height, build.UpgradeOrangeHeight) {
 		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
-	if blockB.Height > build.UpgradeOrangeHeight-build.Finality &&
-		blockB.Height < build.UpgradeOrangeHeight+build.Finality {
+	if build.IsNearUpgrade(blockB.Height, build.UpgradeOrangeHeight) {
 		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
 
