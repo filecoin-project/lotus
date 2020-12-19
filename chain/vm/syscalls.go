@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -107,11 +108,18 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime2.Conse
 		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
 	}
 
+	// workaround chain halt
+	if build.IsNearUpgrade(blockA.Height, build.UpgradeOrangeHeight) {
+		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+	}
+	if build.IsNearUpgrade(blockB.Height, build.UpgradeOrangeHeight) {
+		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+	}
+
 	// are blocks the same?
 	if blockA.Cid().Equals(blockB.Cid()) {
 		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
 	}
-
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
