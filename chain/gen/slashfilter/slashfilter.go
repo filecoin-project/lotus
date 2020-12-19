@@ -25,7 +25,7 @@ func New(dstore ds.Batching) *SlashFilter {
 	}
 }
 
-func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch, baseParents []cid.Cid) error {
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{
 		// double-fork mining (2 blocks at one epoch)
@@ -53,26 +53,39 @@ func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpo
 		}
 
 		if have {
-			// If we had, make sure it's in our parent tipset
-			cidb, err := f.byEpoch.Get(parentEpochKey)
-			if err != nil {
-				return xerrors.Errorf("getting other block cid: %w", err)
-			}
-
-			_, parent, err := cid.CidFromBytes(cidb)
+			baseParentsKey := ds.NewKey(fmt.Sprintf("/%s/%x", bh.Miner, types.NewTipSetKey(baseParents...).Bytes()))
+			haveParents, err := f.byParents.Has(baseParentsKey)
 			if err != nil {
 				return err
 			}
-
-			var found bool
-			for _, c := range bh.Parents {
-				if c.Equals(parent) {
-					found = true
+			// If we didn't have, no need to continue checking
+			if haveParents {
+				cidByHeight, err := f.byEpoch.Get(parentEpochKey)
+				if err != nil {
+					return xerrors.Errorf("getting other block cid: %w", err)
 				}
-			}
 
-			if !found {
-				return xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				_, parentByHeight, err := cid.CidFromBytes(cidByHeight)
+				if err != nil {
+					return err
+				}
+
+				cidByParents, err := f.byParents.Get(baseParentsKey)
+				if err != nil {
+					return xerrors.Errorf("getting other block cid: %w", err)
+				}
+
+				_, parentByParents, err := cid.CidFromBytes(cidByParents)
+				if err != nil {
+					return err
+				}
+
+				if parentByHeight.Equals(parentByParents) {
+					// If we had, make sure it's in our parent tipset
+					if found := types.CidArrsContains(bh.Parents, parentByParents); !found {
+						return xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parentByParents)
+					}
+				}
 			}
 		}
 	}

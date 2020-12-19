@@ -268,7 +268,7 @@ minerLoop:
 					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}
 
-			if err := m.sf.MinedBlock(b.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+			if err := m.sf.MinedBlock(b.Header, base.TipSet.Height()+base.NullRounds, base.TipSet.Parents().Cids()); err != nil {
 				log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 				continue
 			}
