@@ -378,7 +378,12 @@ var mpoolReplaceCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "max-fee",
-			Usage: "Spend up to X attoFIL for this message (applicable for auto mode)",
+			Usage: fmt.Sprintf("Spend up to X attoFIL for this message, default to use " +
+				"config.DefaultDefaultMaxFee: %s attoFil", config.DefaultDefaultMaxFee.Text(10)),
+		},
+		&cli.BoolFlag{
+			Name: "really-do-it",
+			Usage: "If totalFee greater than max-fee, need to set this.",
 		},
 	},
 	ArgsUsage: "<from nonce> | <message-cid>",
@@ -491,6 +496,23 @@ var mpoolReplaceCmd = &cli.Command{
 			msg.GasFeeCap, err = types.BigFromString(cctx.String("gas-feecap"))
 			if err != nil {
 				return fmt.Errorf("parsing gas-feecap: %w", err)
+			}
+		}
+
+		maxFee := types.BigInt(config.DefaultDefaultMaxFee)
+		if cctx.IsSet("max-fee") {
+			maxFee, err = types.BigFromString(cctx.String("max-fee"))
+			if err != nil {
+				return fmt.Errorf("parsing max-spend: %w", err)
+			}
+		}
+		totalFee := types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit)))
+
+		if totalFee.GreaterThan(maxFee) {
+			fmt.Printf("totalFee %s attoFIL greater than maxFee %s attoFIL\n", totalFee, maxFee)
+			if !cctx.Bool("really-do-it") {
+				return xerrors.Errorf("--really-do-it must be specified for this action to have an effect; " +
+					"you have been warned")
 			}
 		}
 
