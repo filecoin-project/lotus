@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/xerrors"
 	"reflect"
 
 	"github.com/urfave/cli/v2"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -51,7 +53,7 @@ var sendCmd = &cli.Command{
 		&cli.Uint64Flag{
 			Name:  "method",
 			Usage: "specify method to invoke",
-			Value: 0,
+			Value: uint64(builtin.MethodSend),
 		},
 		&cli.StringFlag{
 			Name:  "params-json",
@@ -60,6 +62,10 @@ var sendCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "params-hex",
 			Usage: "specify invocation parameters in hex",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "must be specified for the action to take effect if maybe SysErrInsufficientFunds etc",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -141,6 +147,23 @@ var sendCmd = &cli.Command{
 			GasLimit:   cctx.Int64("gas-limit"),
 			Method:     method,
 			Params:     params,
+		}
+
+		// Funds insufficient check
+		fromBalance, err := api.WalletBalance(ctx, msg.From)
+		if err != nil {
+			return err
+		}
+		totalCost := types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit)))
+		if msg.Method == builtin.MethodSend {
+			totalCost = types.BigAdd(totalCost, msg.Value)
+		}
+		if fromBalance.LessThan(totalCost) {
+			fmt.Printf("From balance %s attoFIL less than total cost %s attoFIL\n", fromBalance, totalCost)
+			if !cctx.Bool("really-do-it") {
+				return xerrors.Errorf("--really-do-it must be specified for this action to have an effect; " +
+					"you have been warned")
+			}
 		}
 
 		if cctx.IsSet("nonce") {
