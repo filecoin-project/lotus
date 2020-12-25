@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/xerrors"
 	"reflect"
 
 	"github.com/urfave/cli/v2"
@@ -161,7 +160,7 @@ var sendCmd = &cli.Command{
 		if fromBalance.LessThan(totalCost) {
 			fmt.Printf("From balance %s attoFIL less than total cost %s attoFIL\n", fromBalance, totalCost)
 			if !cctx.Bool("really-do-it") {
-				return xerrors.Errorf("--really-do-it must be specified for this action to have an effect; " +
+				return fmt.Errorf("--really-do-it must be specified for this action to have an effect; " +
 					"you have been warned")
 			}
 		}
