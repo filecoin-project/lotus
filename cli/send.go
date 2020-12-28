@@ -153,10 +153,8 @@ var sendCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		totalCost := types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit)))
-		if msg.Method == builtin.MethodSend {
-			totalCost = types.BigAdd(totalCost, msg.Value)
-		}
+		totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
+
 		if fromBalance.LessThan(totalCost) {
 			fmt.Printf("From balance %s attoFIL less than total cost %s attoFIL\n", fromBalance, totalCost)
 			if !cctx.Bool("really-do-it") {
