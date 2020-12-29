@@ -330,7 +330,7 @@ type FullNodeStruct struct {
 
 		StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) `perm:"read"`
 
-		StateChangedActors func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) `perm:"read"`
+		StateChangedActors func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (*ChangedActors, error) `perm:"read"`
 
 		StateCirculatingSupply func(p0 context.Context, p1 types.TipSetKey) (abi.TokenAmount, error) `perm:"read"`
 
@@ -2260,15 +2260,15 @@ func (s *FullNodeStub) StateCall(p0 context.Context, p1 *types.Message, p2 types
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) {
+func (s *FullNodeStruct) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (*ChangedActors, error) {
 	if s.Internal.StateChangedActors == nil {
-		return *new(map[string]types.Actor), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.StateChangedActors(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) {
-	return *new(map[string]types.Actor), ErrNotSupported
+func (s *FullNodeStub) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (*ChangedActors, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateCirculatingSupply(p0 context.Context, p1 types.TipSetKey) (abi.TokenAmount, error) {

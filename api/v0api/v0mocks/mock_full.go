@@ -2066,10 +2066,10 @@ func (mr *MockFullNodeMockRecorder) StateCall(arg0, arg1, arg2 interface{}) *gom
 }
 
 // StateChangedActors mocks base method.
-func (m *MockFullNode) StateChangedActors(arg0 context.Context, arg1, arg2 cid.Cid) (map[string]types.Actor, error) {
+func (m *MockFullNode) StateChangedActors(arg0 context.Context, arg1, arg2 cid.Cid) (*api.ChangedActors, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateChangedActors", arg0, arg1, arg2)
-	ret0, _ := ret[0].(map[string]types.Actor)
+	ret0, _ := ret[0].(*api.ChangedActors)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

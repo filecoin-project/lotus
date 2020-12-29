@@ -524,7 +524,7 @@ type FullNode interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
 	// StateChangedActors returns all the actors whose states change between the two given state CIDs
 	// TODO: Should this take tipset keys instead?
-	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error) //perm:read
+	StateChangedActors(context.Context, cid.Cid, cid.Cid) (*ChangedActors, error) //perm:read
 	// StateMinerSectorCount returns the number of sectors in a miner's sector set and proving set
 	StateMinerSectorCount(context.Context, address.Address, types.TipSetKey) (MinerSectors, error) //perm:read
 	// StateCompute is a flexible command that applies the given messages on the given tipset.
@@ -1150,4 +1150,10 @@ type MsigTransaction struct {
 	Params []byte
 
 	Approved []address.Address
+}
+
+type ChangedActors struct {
+	Adds    map[string]types.Actor
+	Deletes map[string]types.Actor
+	Changes map[string]types.Actor
 }

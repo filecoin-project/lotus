@@ -692,7 +692,7 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
-func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
+func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (*api.ChangedActors, error) {
 	store := a.Chain.ActorStore(ctx)
 
 	oldTree, err := state.LoadStateTree(store, old)
