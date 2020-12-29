@@ -30,33 +30,33 @@ type CostKey struct {
 }
 
 var Costs = map[CostKey]int64{
-	{builtin0.InitActorCodeID, 2}:          8916753,
-	{builtin0.StorageMarketActorCodeID, 2}: 6955002,
-	{builtin0.StorageMarketActorCodeID, 4}: 245436108,
-	{builtin0.StorageMinerActorCodeID, 4}:  2315133,
-	{builtin0.StorageMinerActorCodeID, 5}:  1600271356,
-	{builtin0.StorageMinerActorCodeID, 6}:  22864493,
-	{builtin0.StorageMinerActorCodeID, 7}:  142002419,
-	{builtin0.StorageMinerActorCodeID, 10}: 23008274,
-	{builtin0.StorageMinerActorCodeID, 11}: 19303178,
-	{builtin0.StorageMinerActorCodeID, 14}: 566356835,
-	{builtin0.StorageMinerActorCodeID, 16}: 5325185,
-	{builtin0.StorageMinerActorCodeID, 18}: 2328637,
-	{builtin0.StoragePowerActorCodeID, 2}:  23600956,
+	{builtin0.InitActorCodeID, builtin0.MethodsInit.Exec}:                            15132024,
+	{builtin0.StorageMarketActorCodeID, builtin0.MethodsMarket.AddBalance}:           25889982,
+	{builtin0.StorageMarketActorCodeID, builtin0.MethodsMarket.PublishStorageDeals}:  73447170,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.ChangePeerID}:           2057027,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.SubmitWindowedPoSt}:     448890633,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.PreCommitSector}:        22785818,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.ProveCommitSector}:      63443589,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.DeclareFaults}:          23008274,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.DeclareFaultsRecovered}: 40692097,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.AddLockedFund}:          566356835,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.WithdrawBalance}:        19964889,
+	{builtin0.StorageMinerActorCodeID, builtin0.MethodsMiner.ChangeMultiaddrs}:       6403604,
+	{builtin0.StoragePowerActorCodeID, builtin0.MethodsPower.CreateMiner}:            41679759,
 	// TODO: Just reuse v0 values for now, this isn't actually used
-	{builtin2.InitActorCodeID, 2}:          8916753,
-	{builtin2.StorageMarketActorCodeID, 2}: 6955002,
-	{builtin2.StorageMarketActorCodeID, 4}: 245436108,
-	{builtin2.StorageMinerActorCodeID, 4}:  2315133,
-	{builtin2.StorageMinerActorCodeID, 5}:  1600271356,
-	{builtin2.StorageMinerActorCodeID, 6}:  22864493,
-	{builtin2.StorageMinerActorCodeID, 7}:  142002419,
-	{builtin2.StorageMinerActorCodeID, 10}: 23008274,
-	{builtin2.StorageMinerActorCodeID, 11}: 19303178,
-	{builtin2.StorageMinerActorCodeID, 14}: 566356835,
-	{builtin2.StorageMinerActorCodeID, 16}: 5325185,
-	{builtin2.StorageMinerActorCodeID, 18}: 2328637,
-	{builtin2.StoragePowerActorCodeID, 2}:  23600956,
+	{builtin2.InitActorCodeID, builtin2.MethodsInit.Exec}:                            15132024,
+	{builtin2.StorageMarketActorCodeID, builtin2.MethodsMarket.AddBalance}:           25889982,
+	{builtin2.StorageMarketActorCodeID, builtin2.MethodsMarket.PublishStorageDeals}:  73447170,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.ChangePeerID}:           2057027,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.SubmitWindowedPoSt}:     448890633,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.PreCommitSector}:        22785818,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.ProveCommitSector}:      63443589,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.DeclareFaults}:          23008274,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.DeclareFaultsRecovered}: 40692097,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.ApplyRewards}:           566356835,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.WithdrawBalance}:        19964889,
+	{builtin2.StorageMinerActorCodeID, builtin2.MethodsMiner.ChangeMultiaddrs}:       6403604,
+	{builtin2.StoragePowerActorCodeID, builtin2.MethodsPower.CreateMiner}:            41679759,
 }
 
 func failedGuess(msg *types.SignedMessage) int64 {
@@ -72,12 +72,12 @@ func GuessGasUsed(ctx context.Context, tsk types.TipSetKey, msg *types.SignedMes
 	if msg.Message.Method == builtin.MethodSend {
 		switch msg.Message.From.Protocol() {
 		case address.BLS:
-			return 1298450, nil
+			return 903526, nil
 		case address.SECP256K1:
-			return 1385999, nil
+			return 985999, nil
 		default:
 			// who knows?
-			return 1298450, nil
+			return 903526, nil
 		}
 	}
 

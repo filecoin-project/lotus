@@ -50,7 +50,7 @@ func TestRepubMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 

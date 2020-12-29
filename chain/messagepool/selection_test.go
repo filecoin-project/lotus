@@ -95,7 +95,7 @@ func TestMessageChains(t *testing.T) {
 	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 
@@ -333,7 +333,7 @@ func TestMessageChainSkipping(t *testing.T) {
 	block := tma.nextBlock()
 	ts := mock.TipSet(block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 	baseFee := types.NewInt(0)
 
 	tma.setBalance(a1, 1) // in FIL
@@ -410,7 +410,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -554,7 +554,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -617,7 +617,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -696,7 +696,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -763,7 +763,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -860,7 +860,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -927,7 +927,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
@@ -1005,7 +1005,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	for _, a := range actors {
 		tma.setBalance(a, 1) // in FIL
@@ -1085,7 +1085,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 	baseFee := types.NewInt(0)
 
 	for _, a := range actors {

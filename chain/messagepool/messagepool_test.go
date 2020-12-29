@@ -451,7 +451,7 @@ func TestLoadLocal(t *testing.T) {
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 	msgs := make(map[cid.Cid]struct{})
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
@@ -523,7 +523,7 @@ func TestClearAll(t *testing.T) {
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 		_, err := mp.Push(m)
@@ -578,7 +578,7 @@ func TestClearNonLocal(t *testing.T) {
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 		_, err := mp.Push(m)
@@ -644,7 +644,7 @@ func TestUpdates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: builtin2.MethodsMarket.AddBalance}]
 
 	tma.setBalance(a1, 1) // in FIL
 	tma.setBalance(a2, 1) // in FIL
