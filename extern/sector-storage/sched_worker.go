@@ -55,7 +55,7 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 	_, exist := sh.workers[wid]
 	if exist {
 		log.Warnw("duplicated worker added", "id", wid)
-
+               sh.workersLk.Unlock()  //Gavin adding this line and fixed the issue 5267
 		// this is ok, we're already handling this worker in a different goroutine
 		return nil
 	}
