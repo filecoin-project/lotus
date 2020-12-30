@@ -118,5 +118,5 @@ const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
 
 // Actor consts
-// TODO: Pull from actors when its made not private
-var MinDealDuration = abi.ChainEpoch(180 * builtin2.EpochsInDay)
+// TODO: pieceSize unused from actors
+var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)

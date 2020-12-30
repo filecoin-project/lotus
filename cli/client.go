@@ -387,6 +387,9 @@ var clientDealCmd = &cli.Command{
 		if abi.ChainEpoch(dur) < build.MinDealDuration {
 			return xerrors.Errorf("minimum deal duration is %d blocks", build.MinDealDuration)
 		}
+		if abi.ChainEpoch(dur) > build.MaxDealDuration {
+			return xerrors.Errorf("maximum deal duration is %d blocks", build.MaxDealDuration)
+		}
 
 		var a address.Address
 		if from := cctx.String("from"); from != "" {
