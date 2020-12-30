@@ -235,7 +235,7 @@ var DaemonCmd = &cli.Command{
 				issnapshot = true
 			}
 
-			if err := ImportChain(r, chainfile, issnapshot); err != nil {
+			if err := ImportChain(ctx, r, chainfile, issnapshot); err != nil {
 				return err
 			}
 			if cctx.Bool("halt-after-import") {
@@ -370,7 +370,7 @@ func importKey(ctx context.Context, api api.FullNode, f string) error {
 	return nil
 }
 
-func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
+func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) (err error) {
 	var rd io.Reader
 	var l int64
 	if strings.HasPrefix(fname, "http://") || strings.HasPrefix(fname, "https://") {
@@ -413,7 +413,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 	}
 	defer lr.Close() //nolint:errcheck
 
-	bs, err := lr.Blockstore(repo.BlockstoreChain)
+	bs, err := lr.Blockstore(ctx, repo.BlockstoreChain)
 	if err != nil {
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
@@ -454,7 +454,7 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
-	gb, err := cst.GetTipsetByHeight(context.TODO(), 0, ts, true)
+	gb, err := cst.GetTipsetByHeight(ctx, 0, ts, true)
 	if err != nil {
 		return err
 	}
@@ -468,13 +468,13 @@ func ImportChain(r repo.Repo, fname string, snapshot bool) (err error) {
 
 	if !snapshot {
 		log.Infof("validating imported chain...")
-		if err := stm.ValidateChain(context.TODO(), ts); err != nil {
+		if err := stm.ValidateChain(ctx, ts); err != nil {
 			return xerrors.Errorf("chain validation failed: %w", err)
 		}
 	}
 
 	log.Infof("accepting %s as new head", ts.Cids())
-	if err := cst.ForceHeadSilent(context.Background(), ts); err != nil {
+	if err := cst.ForceHeadSilent(ctx, ts); err != nil {
 		return err
 	}
 

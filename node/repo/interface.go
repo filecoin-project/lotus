@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"errors"
 
 	"github.com/filecoin-project/lotus/lib/blockstore"
@@ -54,7 +55,7 @@ type LockedRepo interface {
 	Datastore(namespace string) (datastore.Batching, error)
 
 	// Blockstore returns an IPLD blockstore for the requested domain.
-	Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error)
+	Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error)
 
 	// Returns config in this repo
 	Config() (interface{}, error)

@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -244,7 +245,7 @@ func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
 }
 
-func (lmem *lockedMemRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error) {
+func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
 	if domain != BlockstoreChain {
 		return nil, ErrInvalidBlockstoreDomain
 	}
