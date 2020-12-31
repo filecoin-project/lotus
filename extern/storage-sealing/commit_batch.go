@@ -43,7 +43,7 @@ type CommitBatcherApi interface {
 	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
-	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
+	StatePledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (*api.PledgeCollateral, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 }
@@ -588,15 +588,15 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok TipSetToken
 		return big.Zero(), xerrors.Errorf("precommit info not found on chain")
 	}
 
-	collateral, err := b.api.StateMinerInitialPledgeCollateral(b.mctx, b.maddr, pci.Info, tok)
+	collateral, err := b.api.StatePledgeCollateral(b.mctx, b.maddr, pci.Info, tok)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
-	collateral = big.Sub(collateral, pci.PreCommitDeposit)
-	if collateral.LessThan(big.Zero()) {
-		collateral = big.Zero()
+	initCollateral := big.Sub(collateral.InitialPledge, pci.PreCommitDeposit)
+	if initCollateral.LessThan(big.Zero()) {
+		initCollateral = big.Zero()
 	}
 
-	return collateral, nil
+	return initCollateral, nil
 }

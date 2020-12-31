@@ -177,10 +177,8 @@
   * [StateMinerDeadlines](#StateMinerDeadlines)
   * [StateMinerFaults](#StateMinerFaults)
   * [StateMinerInfo](#StateMinerInfo)
-  * [StateMinerInitialPledgeCollateral](#StateMinerInitialPledgeCollateral)
   * [StateMinerPartitions](#StateMinerPartitions)
   * [StateMinerPower](#StateMinerPower)
-  * [StateMinerPreCommitDepositForPower](#StateMinerPreCommitDepositForPower)
   * [StateMinerProvingDeadline](#StateMinerProvingDeadline)
   * [StateMinerRecoveries](#StateMinerRecoveries)
   * [StateMinerSectorAllocated](#StateMinerSectorAllocated)
@@ -188,6 +186,7 @@
   * [StateMinerSectors](#StateMinerSectors)
   * [StateNetworkName](#StateNetworkName)
   * [StateNetworkVersion](#StateNetworkVersion)
+  * [StatePledgeCollateral](#StatePledgeCollateral)
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)
   * [StateSearchMsg](#StateSearchMsg)
@@ -4570,43 +4569,6 @@ Response:
 }
 ```
 
-### StateMinerInitialPledgeCollateral
-StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "f01234",
-  {
-    "SealProof": 8,
-    "SectorNumber": 9,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SealRandEpoch": 10101,
-    "DealIDs": null,
-    "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response: `"0"`
-
 ### StateMinerPartitions
 StateMinerPartitions returns all partitions in the specified deadline
 
@@ -4666,43 +4628,6 @@ Response:
   "HasMinPower": true
 }
 ```
-
-### StateMinerPreCommitDepositForPower
-StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "f01234",
-  {
-    "SealProof": 8,
-    "SectorNumber": 9,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SealRandEpoch": 10101,
-    "DealIDs": null,
-    "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response: `"0"`
 
 ### StateMinerProvingDeadline
 StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
@@ -4884,6 +4809,49 @@ Inputs:
 ```
 
 Response: `1300`
+
+### StatePledgeCollateral
+StatePledgeCollateral returns the precommit deposit and initial pledge collateral for the specified miner's sector
+
+
+Perms: 
+
+Inputs:
+```json
+[
+  "f01234",
+  {
+    "SealProof": 8,
+    "SectorNumber": 9,
+    "SealedCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "SealRandEpoch": 10101,
+    "DealIDs": null,
+    "Expiration": 10101,
+    "ReplaceCapacity": true,
+    "ReplaceSectorDeadline": 42,
+    "ReplaceSectorPartition": 42,
+    "ReplaceSectorNumber": 9
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Deposit": "0",
+  "InitialPledge": "0"
+}
+```
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

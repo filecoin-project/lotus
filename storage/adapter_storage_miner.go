@@ -48,22 +48,13 @@ func (s SealingAPIAdapter) StateMinerSectorSize(ctx context.Context, maddr addre
 	return mi.SectorSize, nil
 }
 
-func (s SealingAPIAdapter) StateMinerPreCommitDepositForPower(ctx context.Context, a address.Address, pci miner.SectorPreCommitInfo, tok sealing.TipSetToken) (big.Int, error) {
+func (s SealingAPIAdapter) StatePledgeCollateral(ctx context.Context, a address.Address, pci miner.SectorPreCommitInfo, tok sealing.TipSetToken) (*api.PledgeCollateral, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+		return nil, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
 	}
 
-	return s.delegate.StateMinerPreCommitDepositForPower(ctx, a, pci, tsk)
-}
-
-func (s SealingAPIAdapter) StateMinerInitialPledgeCollateral(ctx context.Context, a address.Address, pci miner.SectorPreCommitInfo, tok sealing.TipSetToken) (big.Int, error) {
-	tsk, err := types.TipSetKeyFromBytes(tok)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
-	}
-
-	return s.delegate.StateMinerInitialPledgeCollateral(ctx, a, pci, tsk)
+	return s.delegate.StatePledgeCollateral(ctx, a, pci, tsk)
 }
 
 func (s SealingAPIAdapter) StateMinerInfo(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (miner.MinerInfo, error) {

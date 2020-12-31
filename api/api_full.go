@@ -452,10 +452,8 @@ type FullNode interface {
 	StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*Fault, error) //perm:read
 	// StateMinerRecoveries returns a bitfield indicating the recovering sectors of the given miner
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error) //perm:read
-	// StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
-	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
-	// StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
-	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
+	// StatePledgeCollateral returns the precommit deposit and initial pledge collateral for the specified miner's sector
+	StatePledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (*PledgeCollateral, error)
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerSectorAllocated checks if a sector is allocated
@@ -835,6 +833,11 @@ type ChannelAvailableFunds struct {
 	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
 	// and in the local datastore
 	VoucherReedeemedAmt types.BigInt
+}
+
+type PledgeCollateral struct {
+	Deposit       types.BigInt
+	InitialPledge types.BigInt
 }
 
 type PaymentInfo struct {

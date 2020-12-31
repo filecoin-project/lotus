@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
 type WrapperV1Full struct {
@@ -33,6 +34,22 @@ func (w *WrapperV1Full) StateWaitMsg(ctx context.Context, msg cid.Cid, confidenc
 
 func (w *WrapperV1Full) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch) (*api.MsgLookup, error) {
 	return w.FullNode.StateWaitMsg(ctx, msg, confidence, limit, true)
+}
+
+func (w *WrapperV1Full) StateMinerPreCommitDepositForPower(ctx context.Context, a address.Address, pci miner.SectorPreCommitInfo, tok types.TipSetKey) (types.BigInt, error) {
+	collateral, err := w.FullNode.StatePledgeCollateral(ctx, a, pci, tok)
+	if err != nil {
+		return types.BigInt{}, err
+	}
+	return collateral.Deposit, nil
+}
+
+func (w *WrapperV1Full) StateMinerInitialPledgeCollateral(ctx context.Context, a address.Address, pci miner.SectorPreCommitInfo, tok types.TipSetKey) (types.BigInt, error) {
+	collateral, err := w.FullNode.StatePledgeCollateral(ctx, a, pci, tok)
+	if err != nil {
+		return types.BigInt{}, err
+	}
+	return collateral.InitialPledge, nil
 }
 
 func (w *WrapperV1Full) StateGetReceipt(ctx context.Context, msg cid.Cid, from types.TipSetKey) (*types.MessageReceipt, error) {

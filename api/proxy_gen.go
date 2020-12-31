@@ -368,13 +368,9 @@ type FullNodeStruct struct {
 
 		StateMinerInfo func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) `perm:"read"`
 
-		StateMinerInitialPledgeCollateral func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
-
 		StateMinerPartitions func(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]Partition, error) `perm:"read"`
 
 		StateMinerPower func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) `perm:"read"`
-
-		StateMinerPreCommitDepositForPower func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		StateMinerProvingDeadline func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) `perm:"read"`
 
@@ -389,6 +385,8 @@ type FullNodeStruct struct {
 		StateNetworkName func(p0 context.Context) (dtypes.NetworkName, error) `perm:"read"`
 
 		StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) `perm:"read"`
+
+		StatePledgeCollateral func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (*PledgeCollateral, error) ``
 
 		StateReadState func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) `perm:"read"`
 
@@ -2469,17 +2467,6 @@ func (s *FullNodeStub) StateMinerInfo(p0 context.Context, p1 address.Address, p2
 	return *new(miner.MinerInfo), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	if s.Internal.StateMinerInitialPledgeCollateral == nil {
-		return *new(types.BigInt), ErrNotSupported
-	}
-	return s.Internal.StateMinerInitialPledgeCollateral(p0, p1, p2, p3)
-}
-
-func (s *FullNodeStub) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), ErrNotSupported
-}
-
 func (s *FullNodeStruct) StateMinerPartitions(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]Partition, error) {
 	if s.Internal.StateMinerPartitions == nil {
 		return *new([]Partition), ErrNotSupported
@@ -2500,17 +2487,6 @@ func (s *FullNodeStruct) StateMinerPower(p0 context.Context, p1 address.Address,
 
 func (s *FullNodeStub) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	if s.Internal.StateMinerPreCommitDepositForPower == nil {
-		return *new(types.BigInt), ErrNotSupported
-	}
-	return s.Internal.StateMinerPreCommitDepositForPower(p0, p1, p2, p3)
-}
-
-func (s *FullNodeStub) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
@@ -2588,6 +2564,17 @@ func (s *FullNodeStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSet
 
 func (s *FullNodeStub) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
 	return *new(apitypes.NetworkVersion), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StatePledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (*PledgeCollateral, error) {
+	if s.Internal.StatePledgeCollateral == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StatePledgeCollateral(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStub) StatePledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (*PledgeCollateral, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) {
