@@ -52,7 +52,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	bs, err := lr.Blockstore(repo.BlockstoreChain)
+	bs, err := lr.Blockstore(context.TODO(), repo.BlockstoreChain)
 	if err != nil {
 		b.Fatal(err)
 	}
