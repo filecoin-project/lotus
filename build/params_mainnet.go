@@ -5,7 +5,6 @@
 package build
 
 import (
-	"math"
 	"os"
 
 	"github.com/filecoin-project/go-address"
@@ -27,7 +26,7 @@ const UpgradeSmokeHeight = 51000
 const UpgradeIgnitionHeight = 94000
 const UpgradeRefuelHeight = 130800
 
-var UpgradeActorsV2Height = abi.ChainEpoch(138720)
+const UpgradeActorsV2Height = 138720
 
 const UpgradeTapeHeight = 140760
 
@@ -51,10 +50,6 @@ func init() {
 
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
-	}
-
-	if os.Getenv("LOTUS_DISABLE_V2_ACTOR_MIGRATION") == "1" {
-		UpgradeActorsV2Height = math.MaxInt64
 	}
 
 	Devnet = false
