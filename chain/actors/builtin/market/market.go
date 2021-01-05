@@ -1,6 +1,7 @@
 package market
 
 import (
+	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -152,4 +153,20 @@ func EmptyDealState() *DealState {
 		SlashEpoch:       -1,
 		LastUpdatedEpoch: -1,
 	}
+}
+
+// returns the earned fees and pending fees for a given deal
+func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
+	tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
+
+	ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
+	if ef.LessThan(big.Zero()) {
+		ef = big.Zero()
+	}
+
+	if ef.GreaterThan(tf) {
+		ef = tf
+	}
+
+	return ef, big.Sub(tf, ef)
 }
