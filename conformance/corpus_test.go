@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/test-vectors/schema"
 )
 
-var invokees = map[schema.Class]func(Reporter, *schema.TestVector, *schema.Variant){
+var invokees = map[schema.Class]func(Reporter, *schema.TestVector, *schema.Variant) ([]string, error){
 	schema.ClassMessage: ExecuteMessageVector,
 	schema.ClassTipset:  ExecuteTipsetVector,
 }
@@ -133,7 +133,7 @@ func TestConformance(t *testing.T) {
 			for _, variant := range vector.Pre.Variants {
 				variant := variant
 				t.Run(variant.ID, func(t *testing.T) {
-					invokee(t, &vector, &variant)
+					_, _ = invokee(t, &vector, &variant) //nolint:errcheck
 				})
 			}
 		})
