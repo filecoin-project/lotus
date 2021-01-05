@@ -2,6 +2,7 @@ package market
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -501,7 +502,13 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 		// request with an error
 		newWithdrawalAmt := types.BigAdd(withdrawalAmt, amt)
 		if newWithdrawalAmt.GreaterThan(netAvail) {
-			err := xerrors.Errorf("insufficient funds for withdrawal of %d", amt)
+			msg := fmt.Sprintf("insufficient funds for withdrawal of %d: ", amt)
+			msg += fmt.Sprintf("net available (%d) = available (%d) - reserved (%d)",
+				types.BigSub(netAvail, withdrawalAmt), avail, a.state.AmtReserved)
+			if !withdrawalAmt.IsZero() {
+				msg += fmt.Sprintf(" - queued withdrawals (%d)", withdrawalAmt)
+			}
+			err := xerrors.Errorf(msg)
 			a.debugf("%s", err)
 			req.Complete(cid.Undef, err)
 			continue
