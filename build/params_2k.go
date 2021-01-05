@@ -10,6 +10,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
+const BootstrappersFile = ""
+const GenesisFile = ""
+
 const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 0
 
