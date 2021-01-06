@@ -63,7 +63,7 @@ var sendCmd = &cli.Command{
 			Usage: "specify invocation parameters in hex",
 		},
 		&cli.BoolFlag{
-			Name:  "really-do-it",
+			Name:  "force",
 			Usage: "must be specified for the action to take effect if maybe SysErrInsufficientFunds etc",
 		},
 	},
@@ -157,8 +157,8 @@ var sendCmd = &cli.Command{
 
 		if fromBalance.LessThan(totalCost) {
 			fmt.Printf("From balance %s attoFIL less than total cost %s attoFIL\n", fromBalance, totalCost)
-			if !cctx.Bool("really-do-it") {
-				return fmt.Errorf("--really-do-it must be specified for this action to have an effect; " +
+			if !cctx.Bool("force") {
+				return fmt.Errorf("--force must be specified for this action to have an effect; " +
 					"you have been warned")
 			}
 		}
