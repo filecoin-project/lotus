@@ -502,11 +502,11 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 		// request with an error
 		newWithdrawalAmt := types.BigAdd(withdrawalAmt, amt)
 		if newWithdrawalAmt.GreaterThan(netAvail) {
-			msg := fmt.Sprintf("insufficient funds for withdrawal of %d: ", amt)
-			msg += fmt.Sprintf("net available (%d) = available (%d) - reserved (%d)",
-				types.BigSub(netAvail, withdrawalAmt), avail, a.state.AmtReserved)
+			msg := fmt.Sprintf("insufficient funds for withdrawal of %s: ", types.FIL(amt))
+			msg += fmt.Sprintf("net available (%s) = available (%s) - reserved (%s)",
+				types.FIL(types.BigSub(netAvail, withdrawalAmt)), types.FIL(avail), types.FIL(a.state.AmtReserved))
 			if !withdrawalAmt.IsZero() {
-				msg += fmt.Sprintf(" - queued withdrawals (%d)", withdrawalAmt)
+				msg += fmt.Sprintf(" - queued withdrawals (%s)", types.FIL(withdrawalAmt))
 			}
 			err := xerrors.Errorf(msg)
 			a.debugf("%s", err)
