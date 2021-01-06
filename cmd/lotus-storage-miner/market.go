@@ -745,6 +745,11 @@ var transfersListCmd = &cli.Command{
 	Usage: "List ongoing data transfers for this miner",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "print verbose transfer details",
+		},
+		&cli.BoolFlag{
 			Name:  "color",
 			Usage: "use color in display output",
 			Value: true,
@@ -775,6 +780,7 @@ var transfersListCmd = &cli.Command{
 			return err
 		}
 
+		verbose := cctx.Bool("verbose")
 		completed := cctx.Bool("completed")
 		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
@@ -790,7 +796,7 @@ var transfersListCmd = &cli.Command{
 
 				tm.MoveCursor(1, 1)
 
-				lcli.OutputDataTransferChannels(tm.Screen, channels, completed, color, showFailed)
+				lcli.OutputDataTransferChannels(tm.Screen, channels, verbose, completed, color, showFailed)
 
 				tm.Flush()
 
@@ -815,7 +821,7 @@ var transfersListCmd = &cli.Command{
 				}
 			}
 		}
-		lcli.OutputDataTransferChannels(os.Stdout, channels, completed, color, showFailed)
+		lcli.OutputDataTransferChannels(os.Stdout, channels, verbose, completed, color, showFailed)
 		return nil
 	},
 }
