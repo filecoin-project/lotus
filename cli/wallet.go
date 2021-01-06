@@ -509,6 +509,7 @@ var walletMarket = &cli.Command{
 	Usage: "Interact with market balances",
 	Subcommands: []*cli.Command{
 		walletMarketWithdraw,
+		walletMarketAdd,
 	},
 }
 
@@ -589,6 +590,77 @@ var walletMarketWithdraw = &cli.Command{
 		}
 
 		fmt.Printf("WithdrawBalance message cid: %s\n", smsg)
+
+		return nil
+	},
+}
+
+var walletMarketAdd = &cli.Command{
+	Name:      "add",
+	Usage:     "Add funds to the Storage Market Actor",
+	ArgsUsage: "<amount>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "from",
+			Usage:   "Specify address to move funds from, otherwise it will use the default wallet address",
+			Aliases: []string{"f"},
+		},
+		&cli.StringFlag{
+			Name:    "address",
+			Usage:   "Market address to move funds to (account or miner actor address, defaults to --from address)",
+			Aliases: []string{"a"},
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting node API: %w", err)
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		// Get amount param
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass amount to add")
+		}
+		f, err := types.ParseFIL(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("parsing 'amount' argument: %w", err)
+		}
+
+		amt := abi.TokenAmount(f)
+
+		// Get from param
+		var from address.Address
+		if cctx.String("from") != "" {
+			from, err = address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return xerrors.Errorf("parsing from address: %w", err)
+			}
+		} else {
+			from, err = api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting default wallet address: %w", err)
+			}
+		}
+
+		// Get address param
+		addr := from
+		if cctx.String("address") != "" {
+			addr, err = address.NewFromString(cctx.String("address"))
+			if err != nil {
+				return xerrors.Errorf("parsing market address: %w", err)
+			}
+		}
+
+		// Add balance to market actor
+		fmt.Printf("Submitting Add Balance message for amount %s for address %s\n", types.FIL(amt), addr)
+		smsg, err := api.MarketAddBalance(ctx, from, addr, amt)
+		if err != nil {
+			return xerrors.Errorf("add balance error: %w", err)
+		}
+
+		fmt.Printf("AddBalance message cid: %s\n", smsg)
 
 		return nil
 	},
