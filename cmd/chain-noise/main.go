@@ -28,14 +28,14 @@ func main() {
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.IntFlag{
-				Name:    "limit",
-				Usage:   "spam transaction count limit, <= 0 is no limit",
-				Value:   0,
+				Name:  "limit",
+				Usage: "spam transaction count limit, <= 0 is no limit",
+				Value: 0,
 			},
 			&cli.IntFlag{
-				Name:    "rate",
-				Usage:   "spam transaction rate, count per second",
-				Value:   5,
+				Name:  "rate",
+				Usage: "spam transaction rate, count per second",
+				Value: 5,
 			},
 		},
 		Commands: []*cli.Command{runCmd},
