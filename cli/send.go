@@ -156,7 +156,7 @@ var sendCmd = &cli.Command{
 		totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
 
 		if fromBalance.LessThan(totalCost) {
-			fmt.Printf("From balance %s attoFIL less than total cost %s attoFIL\n", fromBalance, totalCost)
+			fmt.Printf("From balance %s less than total cost %s\n", types.FIL(fromBalance), types.FIL(totalCost))
 			if !cctx.Bool("force") {
 				return fmt.Errorf("--force must be specified for this action to have an effect; " +
 					"you have been warned")
