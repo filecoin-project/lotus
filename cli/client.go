@@ -91,7 +91,7 @@ var clientCmd = &cli.Command{
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
-		WithCategory("util", clientInfoCmd),
+		WithCategory("util", clientBalancesCmd),
 		WithCategory("util", clientListTransfers),
 		WithCategory("util", clientRestartTransfer),
 		WithCategory("util", clientCancelTransfer),
@@ -1732,9 +1732,9 @@ var clientGetDealCmd = &cli.Command{
 	},
 }
 
-var clientInfoCmd = &cli.Command{
-	Name:  "info",
-	Usage: "Print storage market client information",
+var clientBalancesCmd = &cli.Command{
+	Name:  "balances",
+	Usage: "Print storage market client balances",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "client",
