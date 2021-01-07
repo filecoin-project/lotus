@@ -148,18 +148,17 @@ var sendCmd = &cli.Command{
 			Params:     params,
 		}
 
-		// Funds insufficient check
-		fromBalance, err := api.WalletBalance(ctx, msg.From)
-		if err != nil {
-			return err
-		}
-		totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
+		if !cctx.Bool("force") {
+			// Funds insufficient check
+			fromBalance, err := api.WalletBalance(ctx, msg.From)
+			if err != nil {
+				return err
+			}
+			totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
 
-		if fromBalance.LessThan(totalCost) {
-			fmt.Printf("From balance %s less than total cost %s\n", types.FIL(fromBalance), types.FIL(totalCost))
-			if !cctx.Bool("force") {
-				return fmt.Errorf("--force must be specified for this action to have an effect; " +
-					"you have been warned")
+			if fromBalance.LessThan(totalCost) {
+				fmt.Printf("WARNING: From balance %s less than total cost %s\n", types.FIL(fromBalance), types.FIL(totalCost))
+				return fmt.Errorf("--force must be specified for this action to have an effect; you have been warned")
 			}
 		}
 
