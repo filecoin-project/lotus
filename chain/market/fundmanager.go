@@ -129,6 +129,11 @@ func (fm *FundManager) Withdraw(ctx context.Context, wallet, addr address.Addres
 	return fm.getFundedAddress(addr).withdraw(ctx, wallet, amt)
 }
 
+// GetReserved returns the amount that is currently reserved for the address
+func (fm *FundManager) GetReserved(addr address.Address) abi.TokenAmount {
+	return fm.getFundedAddress(addr).getReserved()
+}
+
 // FundedAddressState keeps track of the state of an address with funds in the
 // datastore
 type FundedAddressState struct {
@@ -147,7 +152,7 @@ type fundedAddress struct {
 	env *fundManagerEnvironment
 	str *Store
 
-	lk    sync.Mutex
+	lk    sync.RWMutex
 	state *FundedAddressState
 
 	// Note: These request queues are ephemeral, they are not saved to store
@@ -181,6 +186,13 @@ func (a *fundedAddress) start() {
 		a.debugf("restart: wait for %s", a.state.MsgCid)
 		a.startWaitForResults(*a.state.MsgCid)
 	}
+}
+
+func (a *fundedAddress) getReserved() abi.TokenAmount {
+	a.lk.RLock()
+	defer a.lk.RUnlock()
+
+	return a.state.AmtReserved
 }
 
 func (a *fundedAddress) reserve(ctx context.Context, wallet address.Address, amt abi.TokenAmount) (cid.Cid, error) {

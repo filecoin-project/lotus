@@ -1770,10 +1770,22 @@ var clientInfoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Client Market Info:\n")
+		reserved, err := api.MarketGetReserved(ctx, addr)
+		if err != nil {
+			return err
+		}
 
-		fmt.Printf("Locked Funds:\t%s\n", types.FIL(balance.Locked))
-		fmt.Printf("Escrowed Funds:\t%s\n", types.FIL(balance.Escrow))
+		avail := big.Sub(big.Sub(balance.Escrow, balance.Locked), reserved)
+		if avail.LessThan(big.Zero()) {
+			avail = big.Zero()
+		}
+
+		fmt.Printf("Client Market Balance for address %s:\n", addr)
+
+		fmt.Printf("  Escrowed Funds:        %s\n", types.FIL(balance.Escrow))
+		fmt.Printf("  Locked Funds:          %s\n", types.FIL(balance.Locked))
+		fmt.Printf("  Reserved Funds:        %s\n", types.FIL(reserved))
+		fmt.Printf("  Available to Withdraw: %s\n", types.FIL(avail))
 
 		return nil
 	},

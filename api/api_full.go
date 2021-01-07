@@ -517,6 +517,8 @@ type FullNode interface {
 
 	// MarketAddBalance adds funds to the market actor
 	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)
+	// MarketGetReserved gets the amount of funds that are currently reserved for the address
+	MarketGetReserved(ctx context.Context, addr address.Address) (types.BigInt, error)
 	// MarketReserveFunds reserves funds for a deal
 	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error)
 	// MarketReleaseFunds releases funds reserved by MarketReserveFunds
