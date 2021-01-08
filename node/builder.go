@@ -377,6 +377,7 @@ func Online() Option {
 			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
+			Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, nil)),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(nil)),
 			Override(HandleMigrateProviderFundsKey, modules.HandleMigrateProviderFunds),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
@@ -519,6 +520,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 		),
 
+		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(&cfg.Fees, &cfg.PublishMsg)),
 		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees)),
 
 		Override(new(sectorstorage.SealerConfig), cfg.Storage),
@@ -646,5 +648,6 @@ func Test() Option {
 		Unset(RunPeerMgrKey),
 		Unset(new(*peermgr.PeerMgr)),
 		Override(new(beacon.Schedule), testing.RandomBeacon),
+		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, nil)),
 	)
 }

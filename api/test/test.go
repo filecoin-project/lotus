@@ -57,6 +57,7 @@ const GenesisPreseals = 2
 // Options for setting up a mock storage miner
 type StorageMiner struct {
 	Full    int
+	Opts    node.Option
 	Preseal int
 }
 
