@@ -42,6 +42,10 @@ func (a *MarketAPI) MarketAddBalance(ctx context.Context, wallet, addr address.A
 	return smsg.Cid(), nil
 }
 
+func (a *MarketAPI) MarketGetReserved(ctx context.Context, addr address.Address) (types.BigInt, error) {
+	return a.FMgr.GetReserved(addr), nil
+}
+
 func (a *MarketAPI) MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error) {
 	return a.FMgr.Reserve(ctx, wallet, addr, amt)
 }
