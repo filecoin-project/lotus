@@ -670,7 +670,7 @@ var actorSetOwnerCmd = &cli.Command{
 			return err
 		}
 
-		fromAddrId, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		fromAddrId, err := api.StateLookupID(ctx, fa, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -717,6 +717,8 @@ var actorSetOwnerCmd = &cli.Command{
 		if wait.Receipt.ExitCode != 0 {
 			fmt.Println("owner change failed!")
 			return err
+		} else {
+			fmt.Println("message succeeded!")
 		}
 
 		return nil
