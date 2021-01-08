@@ -622,8 +622,8 @@ var actorControlSet = &cli.Command{
 
 var actorSetOwnerCmd = &cli.Command{
 	Name:      "set-owner",
-	Usage:     "Set owner address",
-	ArgsUsage: "[address]",
+	Usage:     "Set owner address (this command should be invoked twice, first with the old owner as the senderAddress, and then with the new owner)",
+	ArgsUsage: "[newOwnerAddress senderAddress]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "really-do-it",
@@ -637,8 +637,8 @@ var actorSetOwnerCmd = &cli.Command{
 			return nil
 		}
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address of new owner address")
+		if cctx.NArg() != 2 {
+			return fmt.Errorf("must pass new owner address and sender address")
 		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -660,7 +660,17 @@ var actorSetOwnerCmd = &cli.Command{
 			return err
 		}
 
-		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		newAddrId, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fa, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		fromAddrId, err := api.StateLookupID(ctx, na, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -675,13 +685,17 @@ var actorSetOwnerCmd = &cli.Command{
 			return err
 		}
 
-		sp, err := actors.SerializeParams(&newAddr)
+		if fromAddrId != mi.Owner && fromAddrId != newAddrId {
+			return xerrors.New("from address must either be the old owner or the new owner")
+		}
+
+		sp, err := actors.SerializeParams(&newAddrId)
 		if err != nil {
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			From:   mi.Owner,
+			From:   fromAddrId,
 			To:     maddr,
 			Method: miner.Methods.ChangeOwnerAddress,
 			Value:  big.Zero(),
@@ -691,7 +705,7 @@ var actorSetOwnerCmd = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Println("Propose Message CID:", smsg.Cid())
+		fmt.Println("Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
@@ -701,32 +715,7 @@ var actorSetOwnerCmd = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode != 0 {
-			fmt.Println("Propose owner change failed!")
-			return err
-		}
-
-		smsg, err = api.MpoolPushMessage(ctx, &types.Message{
-			From:   newAddr,
-			To:     maddr,
-			Method: miner.Methods.ChangeOwnerAddress,
-			Value:  big.Zero(),
-			Params: sp,
-		}, nil)
-		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
-		}
-
-		fmt.Println("Approve Message CID:", smsg.Cid())
-
-		// wait for it to get mined into a block
-		wait, err = api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
-		if err != nil {
-			return err
-		}
-
-		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
-			fmt.Println("Approve owner change failed!")
+			fmt.Println("owner change failed!")
 			return err
 		}
 
