@@ -17,10 +17,14 @@ func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 
 	b := rice.MustFindBox("bootstrap")
 
-	spi := b.MustString(BootstrappersFile)
-	if spi == "" {
-		return nil, nil
+	if BootstrappersFile != "" {
+		spi := b.MustString(BootstrappersFile)
+		if spi == "" {
+			return nil, nil
+		}
+
+		return addrutil.ParseAddresses(context.TODO(), strings.Split(strings.TrimSpace(spi), "\n"))
 	}
 
-	return addrutil.ParseAddresses(context.TODO(), strings.Split(strings.TrimSpace(spi), "\n"))
+	return nil, nil
 }
