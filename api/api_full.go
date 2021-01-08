@@ -515,6 +515,8 @@ type FullNode interface {
 	// along with the address removal.
 	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)
 
+	// MarketAddBalance adds funds to the market actor
+	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)
 	// MarketReserveFunds reserves funds for a deal
 	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error)
 	// MarketReleaseFunds releases funds reserved by MarketReserveFunds

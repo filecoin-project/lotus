@@ -68,6 +68,7 @@
   * [LogList](#LogList)
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
+  * [MarketAddBalance](#MarketAddBalance)
   * [MarketReleaseFunds](#MarketReleaseFunds)
   * [MarketReserveFunds](#MarketReserveFunds)
   * [MarketWithdraw](#MarketWithdraw)
@@ -1652,6 +1653,28 @@ Response: `{}`
 
 ## Market
 
+
+### MarketAddBalance
+MarketAddBalance adds funds to the market actor
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ### MarketReleaseFunds
 MarketReleaseFunds releases funds reserved by MarketReserveFunds
