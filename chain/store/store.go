@@ -716,6 +716,7 @@ func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
 	return cs.heaviest
 }
 
+// FIXME: What is the tracker? There is no reference in this function. Define it.
 func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 	cs.tstLk.Lock()
 	defer cs.tstLk.Unlock()

@@ -66,6 +66,7 @@ func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, [
 	return r, genb, blks
 }
 
+// FIXME: Document and rename.
 type syncTestUtil struct {
 	t testing.TB
 
@@ -79,12 +80,17 @@ type syncTestUtil struct {
 	genesis []byte
 	blocks  []*store.FullTipSet
 
+	// The original source node in the setup is guaranteed to be always index 0.
+	// FIXME: Is it guaranteed that the rest of the nodes are clients from
+	//  `addClientNode`?
 	nds []api.FullNode
 }
 
 func prepSyncTest(t testing.TB, h int) *syncTestUtil {
+	// FIXME: Move to init.
 	logging.SetLogLevel("*", "INFO")
 
+	// FIXME: When exactly is the generator used besides with the original source node?
 	g, err := gen.NewGenerator()
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -101,6 +107,8 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 		g:  g,
 	}
 
+	// We always have by default a "source" node generator.
+	// Only called here in the initial setup.
 	tu.addSourceNode(h)
 	//tu.checkHeight("source", source, h)
 
@@ -129,6 +137,12 @@ func (tu *syncTestUtil) pushFtsAndWait(to int, fts *store.FullTipSet, wait bool)
 	// TODO: would be great if we could pass a whole tipset here...
 	tu.pushTsExpectErr(to, fts, false)
 
+	// FIXME: This is the perfect evidence that demonstrates the need of redefining
+	//  a "fail" in the sync API. Even if it doesn't return an error doesn't mean
+	//  it actually synced to it, we need to redefine (or extend) the API to
+	//  accommodate for this and absorve the logic here.
+	//  Also, this is repeating the logic of `waitUntilSyncTarget` (although
+	//  here we at least use a timer).
 	if wait {
 		start := time.Now()
 		h, err := tu.nds[to].ChainHead(tu.ctx)
@@ -145,11 +159,18 @@ func (tu *syncTestUtil) pushFtsAndWait(to int, fts *store.FullTipSet, wait bool)
 	}
 }
 
+// Call `SyncSubmitBlock` on the target node with the expected tipset to sync
+// and check if it fails.
+// FIXME: "push"? "put" maybe?
 func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bool) {
+	// We use the normal communications channels that only support block subscriptions,
+	// not the entire tipset.
 	for _, fb := range fts.Blocks {
 		var b types.BlockMsg
 
+		// Store block messages directly in the target node's chain.
 		// -1 to match block.Height
+		// FIXME: Where is that specified?
 		b.Header = fb.Header
 		for _, msg := range fb.SecpkMessages {
 			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(msg)
@@ -165,7 +186,9 @@ func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bo
 			b.BlsMessages = append(b.BlsMessages, c)
 		}
 
+		// FIXME: We need to redefine what is a "fail" in the `SyncSubmitBlock` API.
 		err := tu.nds[to].SyncSubmitBlock(tu.ctx, &b)
+		// FIXME: Add an `ErrorIf` function.
 		if experr {
 			require.Error(tu.t, err, "expected submit block to fail")
 		} else {
@@ -174,18 +197,24 @@ func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bo
 	}
 }
 
+// FIXME: Document.
+// Arguments:
+// * Miner addresses.
+// * Messages to include.
+// * `blk` (actually a tipset), rename to `head` on which we mine.
+// * Whether it should fail or succeed. What does "fail" mean in this context?
+// * Wait?
 func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int, wait, fail bool, msgs [][]*types.SignedMessage) *store.FullTipSet {
+	// Get miner addresses to use either from `miners` or the generator in the test.
 	if miners == nil {
 		for i := range tu.g.Miners {
 			miners = append(miners, i)
 		}
 	}
-
 	var maddrs []address.Address
 	for _, i := range miners {
 		maddrs = append(maddrs, tu.g.Miners[i])
 	}
-
 	fmt.Println("Miner mining block: ", maddrs)
 
 	var nts *store.FullTipSet
@@ -202,6 +231,8 @@ func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int,
 	if fail {
 		tu.pushTsExpectErr(to, nts, true)
 	} else {
+		// FIXME: This is a wrapper on the previous. The relation is not clear
+		//  and we may want to join them.
 		tu.pushFtsAndWait(to, nts, wait)
 	}
 
@@ -209,10 +240,14 @@ func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int,
 }
 
 func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
+	// FIXME: Confusing. `mineOnBlock` `src` argument here is actually a `to`
+	//  (meaning we want the source/miner to sync to its own created block).
 	mts := tu.mineOnBlock(tu.g.CurTipset, src, miners, true, false, nil)
 	tu.g.CurTipset = mts
 }
 
+// FIXME: Redefine "source". This is a miner (that defines the chain/genesis used).
+//  Is the only miner in the test?
 func (tu *syncTestUtil) addSourceNode(gen int) {
 	if tu.genesis != nil {
 		tu.t.Fatal("source node already exists")
@@ -220,7 +255,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 
 	sourceRepo, genesis, blocks := tu.repoWithChain(tu.t, gen)
 	var out api.FullNode
-
+	// FIXME: Extract: many tests create mock nodes like this one.
 	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
 		node.Online(),
@@ -233,7 +268,13 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	require.NoError(tu.t, err)
 	tu.t.Cleanup(func() { _ = stop(context.Background()) })
 
+	// By means of the head of the generated chain we add the entire chain
+	// to the created node/repo.
+	// FIXME: We should have a basic chain abstraction to encapsulate and handle
+	//  this basic requests.
 	lastTs := blocks[len(blocks)-1].Blocks
+	// FIXME: `blocks` is actually tipsets, the call to `blocks[].Blocks` is
+	//  confusing. Another reason to work on the chain abstraction.
 	for _, lastB := range lastTs {
 		cs := out.(*impl.FullNodeAPI).ChainAPI.Chain
 		require.NoError(tu.t, cs.AddToTipSetTracker(lastB.Header))
@@ -241,18 +282,21 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 		require.NoError(tu.t, err)
 	}
 
+	// FIXME: Many nodes, single chain (blocks/genesis). Document.
 	tu.genesis = genesis
 	tu.blocks = blocks
 	tu.nds = append(tu.nds, out) // always at 0
 }
 
+// Called by the tests after the source node is setup.
 func (tu *syncTestUtil) addClientNode() int {
 	if tu.genesis == nil {
+		// FIXME: Actually check the source node rather than this indirect verification.
 		tu.t.Fatal("source doesn't exists")
 	}
 
 	var out api.FullNode
-
+	// FIXME: Extract.
 	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
 		node.Online(),
@@ -276,6 +320,7 @@ func (tu *syncTestUtil) pid(n int) peer.ID {
 	return nal.ID
 }
 
+// FIXME: Does is matter which is from and which to?
 func (tu *syncTestUtil) connect(from, to int) {
 	toPI, err := tu.nds[to].NetAddrsListen(tu.ctx)
 	require.NoError(tu.t, err)
@@ -312,6 +357,8 @@ func (tu *syncTestUtil) compareSourceState(with int) {
 		tu.t.Fatalf("nodes were not synced correctly: %s != %s", sourceHead.Cids(), targetHead.Cids())
 	}
 
+	// FIXME: Why do we specifically check wallet balances in addition to the
+	//  chain heads?
 	sourceAccounts, err := tu.nds[source].WalletList(tu.ctx)
 	require.NoError(tu.t, err)
 
@@ -358,6 +405,9 @@ func (tu *syncTestUtil) waitUntilNodeHasTs(node int, tsk types.TipSetKey) {
 	time.Sleep(2 * time.Second)
 }
 
+// FIXME: Imprinting directionality in the sync process is confusing. We should
+//  have a target head which we want everyone to converge to (independently of
+//  who generated it).
 func (tu *syncTestUtil) waitUntilSync(from, to int) {
 	target, err := tu.nds[from].ChainHead(tu.ctx)
 	if err != nil {
@@ -367,18 +417,32 @@ func (tu *syncTestUtil) waitUntilSync(from, to int) {
 	tu.waitUntilSyncTarget(to, target)
 }
 
+// We are checking here that *at some point* the `to` node shared the `target`'s
+// head.
 func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// FIXME: We subscribed to changes *after* we connected the nodes, is there
+	//  a chance the sync might be done *before* this is called and then we
+	//  won't get notified and incorrectly think the sync failed? We should
+	//  at least request the chain head directly to verify that first, and only
+	//  then subscribe and wait. (Still may be a race and the subscription should
+	//  happen first.)
 	hc, err := tu.nds[to].ChainNotify(ctx)
 	if err != nil {
 		tu.t.Fatal(err)
 	}
 
 	// TODO: some sort of timeout?
+	// Yes. Many times the tests just failed due to the general timeout (10s
+	//  in our CI) and we lose information of exactly what failed. This should
+	//  (in a mock network) fail pretty fast and notify with useful information.
 	for n := range hc {
 		for _, c := range n {
+			// `Val` here can be not only a change but also the `HCCurrent`, so
+			//  maybe we don't need to explicitly check the head.
+			// FIXME: Properly document.
 			if c.Val.Equals(target) {
 				return
 			}
@@ -386,14 +450,23 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 	}
 }
 
+// -------------------------------------------------
+// FIXME: Decouple actual tests from helper function.
+// -------------------------------------------------
+
 func TestSyncSimple(t *testing.T) {
-	H := 50
+	H := 50 // chain height
 	tu := prepSyncTest(t, H)
 
+	// FIXME: This is just the index to the internal source/client bookkeeping,
+	//  it probably shouldn't be handled directly. What exactly do we want
+	//  from it?
 	client := tu.addClientNode()
 	//tu.checkHeight("client", client, 0)
 
 	require.NoError(t, tu.mn.LinkAll())
+	// FIXME: Why don't we connect by default during setup? Is it to control exactly
+	//  when are we syncing? There should be an API to start/stop that service maybe.
 	tu.connect(1, 0)
 	tu.waitUntilSync(0, client)
 
@@ -412,12 +485,15 @@ func TestSyncMining(t *testing.T) {
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(client, 0)
 	tu.waitUntilSync(0, client)
-
 	//tu.checkHeight("client", client, H)
 
 	tu.compareSourceState(client)
 
+	// FIXME: Compare with `TestSyncSimple` and abstract repetitions.
+
 	for i := 0; i < 5; i++ {
+		// src and from are the same, the miner that creates the block and
+		// propagates it to the client.
 		tu.mineNewBlock(0, nil)
 		tu.waitUntilSync(0, client)
 		tu.compareSourceState(client)
