@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -621,4 +622,90 @@ func TestGenerateUnsealedCID(t *testing.T) {
 		[][]byte{barr(1, 16), barr(2, 8), barr(3, 16), barr(4, 4), barr(5, 16)},
 		[][]byte{barr(1, 16), barr(0, 16), barr(2, 8), barr(3, 16), barr(0, 16), barr(0, 8), barr(4, 4), barr(5, 16), barr(0, 16), barr(0, 8)},
 	)
+}
+
+func TestAddPiece512M(t *testing.T) {
+	sz := abi.PaddedPieceSize(512 << 20).Unpadded()
+
+	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	miner := abi.ActorID(123)
+
+	sp := &basicfs.Provider{
+		Root: cdir,
+	}
+	sb, err := New(sp)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	cleanup := func() {
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", cdir)
+			return
+		}
+		if err := os.RemoveAll(cdir); err != nil {
+			t.Error(err)
+		}
+	}
+	t.Cleanup(cleanup)
+
+	r := rand.New(rand.NewSource(0x7e5))
+
+	c, err := sb.AddPiece(context.TODO(), storage.SectorRef{
+		ID:        abi.SectorID{
+			Miner:  miner,
+			Number: 0,
+		},
+		ProofType: abi.RegisteredSealProof_StackedDrg512MiBV1_1,
+	}, nil, sz, io.LimitReader(r, int64(sz)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.Equal(t, "baga6ea4seaqhyticusemlcrjhvulpfng4nint6bu3wpe5s3x4bnuj2rs47hfacy", c.PieceCID.String())
+}
+
+func BenchmarkAddPiece512M(b *testing.B) {
+	sz := abi.PaddedPieceSize(512 << 20).Unpadded()
+	b.SetBytes(int64(sz))
+
+	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	if err != nil {
+		b.Fatal(err)
+	}
+	miner := abi.ActorID(123)
+
+	sp := &basicfs.Provider{
+		Root: cdir,
+	}
+	sb, err := New(sp)
+	if err != nil {
+		b.Fatalf("%+v", err)
+	}
+	cleanup := func() {
+		if b.Failed() {
+			fmt.Printf("not removing %s\n", cdir)
+			return
+		}
+		if err := os.RemoveAll(cdir); err != nil {
+			b.Error(err)
+		}
+	}
+	b.Cleanup(cleanup)
+
+	for i := 0; i < b.N; i++ {
+		c, err := sb.AddPiece(context.TODO(), storage.SectorRef{
+			ID:        abi.SectorID{
+				Miner:  miner,
+				Number: abi.SectorNumber(i),
+			},
+			ProofType: abi.RegisteredSealProof_StackedDrg512MiBV1_1,
+		}, nil, sz, io.LimitReader(&nullreader.Reader{}, int64(sz)))
+		if err != nil {
+			b.Fatal(err)
+		}
+		fmt.Println(c)
+	}
 }
