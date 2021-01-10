@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -34,6 +33,7 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 )
 
 func init() {
@@ -654,7 +654,7 @@ func TestAddPiece512M(t *testing.T) {
 	r := rand.New(rand.NewSource(0x7e5))
 
 	c, err := sb.AddPiece(context.TODO(), storage.SectorRef{
-		ID:        abi.SectorID{
+		ID: abi.SectorID{
 			Miner:  miner,
 			Number: 0,
 		},
@@ -697,7 +697,7 @@ func BenchmarkAddPiece512M(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		c, err := sb.AddPiece(context.TODO(), storage.SectorRef{
-			ID:        abi.SectorID{
+			ID: abi.SectorID{
 				Miner:  miner,
 				Number: abi.SectorNumber(i),
 			},

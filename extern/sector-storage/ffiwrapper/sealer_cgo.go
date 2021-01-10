@@ -142,7 +142,10 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 			break
 		}
 
-		done := make(chan struct{cid.Cid; error}, 1)
+		done := make(chan struct {
+			cid.Cid
+			error
+		}, 1)
 		pbuf := <-throttle
 		copy(pbuf, buf[:read])
 
@@ -152,7 +155,10 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 			}()
 
 			c, err := sb.pieceCid(sector.ProofType, pbuf[:read])
-			done <- struct {cid.Cid; error }{c, err}
+			done <- struct {
+				cid.Cid
+				error
+			}{c, err}
 		}(read)
 
 		piecePromises = append(piecePromises, func() (abi.PieceInfo, error) {
