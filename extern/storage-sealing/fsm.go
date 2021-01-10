@@ -409,8 +409,9 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		return err
 	}
 
-	m.unsealedInfoMap.lk.Lock()
+	// m.unsealedInfoMap.lk.Lock() taken early in .New to prevent races
 	defer m.unsealedInfoMap.lk.Unlock()
+
 	for _, sector := range trackedSectors {
 		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)
