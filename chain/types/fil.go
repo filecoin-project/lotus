@@ -26,7 +26,7 @@ func (f FIL) Unitless() string {
 var unitPrefixes = []string{"a", "f", "p", "n", "μ", "m"}
 
 func (f FIL) Short() string {
-	n := BigInt(f)
+	n := BigInt(f).Abs()
 
 	dn := uint64(1)
 	var prefix string
@@ -70,7 +70,7 @@ func (f FIL) UnmarshalText(text []byte) error {
 }
 
 func ParseFIL(s string) (FIL, error) {
-	suffix := strings.TrimLeft(s, ".1234567890")
+	suffix := strings.TrimLeft(s, "-.1234567890")
 	s = s[:len(s)-len(suffix)]
 	var attofil bool
 	if suffix != "" {
