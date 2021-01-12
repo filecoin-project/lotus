@@ -55,6 +55,9 @@ type LockedRepo interface {
 	Datastore(namespace string) (datastore.Batching, error)
 
 	// Blockstore returns an IPLD blockstore for the requested domain.
+	// The supplied context must only be used to initialize the blockstore.
+	// The implementation should not retain the context for usage throughout
+	// the lifecycle.
 	Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error)
 
 	// Returns config in this repo
