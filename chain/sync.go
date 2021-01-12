@@ -551,8 +551,24 @@ func (syncer *Syncer) tryLoadFullTipSet(tsk types.TipSetKey) (*store.FullTipSet,
 // if our current head is heavier than the requested tipset, or if we're already
 // at the requested head, or if the head is the genesis.
 //
-// Most of the heavy-lifting logic happens in syncer#collectChain. Refer to the
-// godocs on that method for a more detailed view.
+// It goes through various stages:
+//
+//  1. StageHeaders: we proceed in the sync process by requesting block headers
+//     from our peers, moving back from their heads, until we reach a tipset
+//     that we have in common (such a common tipset must exist, thought it may
+//     simply be the genesis block).
+//
+//     If the common tipset is our head, we treat the sync as a "fast-forward",
+//     else we must drop part of our chain to connect to the peer's head
+//     (referred to as "forking").
+//
+//	   Now that we've collected the missing headers,
+//     augmented by those on the other side of a fork, we persist them to the
+//     BlockStore.
+//
+//  2. StageMessages: having acquired the headers and found a common tipset,
+//     we then move forward, requesting the full blocks, including the messages
+//     and validate those.
 func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "chain.Sync")
 	defer span.End()
@@ -1702,25 +1718,6 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 	return nil
 }
 
-// collectChain tries to advance our view of the chain to the purported head.
-//
-// It goes through various stages:
-//
-//  1. StageHeaders: we proceed in the sync process by requesting block headers
-//     from our peers, moving back from their heads, until we reach a tipset
-//     that we have in common (such a common tipset must exist, thought it may
-//     simply be the genesis block).
-//
-//     If the common tipset is our head, we treat the sync as a "fast-forward",
-//     else we must drop part of our chain to connect to the peer's head
-//     (referred to as "forking").
-//
-//     Now that we've collected the missing headers,
-//     augmented by those on the other side of a fork, we persist them to the
-//     BlockStore.
-//
-//  3. StageMessages: having acquired the headers and found a common tipset,
-//     we then move forward, requesting the full blocks, including the messages.
 func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *types.TipSet) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "collectChain")
 	defer span.End()
