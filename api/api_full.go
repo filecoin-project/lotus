@@ -840,7 +840,6 @@ type SyncStateStage int
 const (
 	StageIdle = SyncStateStage(iota)
 	StageHeaders
-	StagePersistHeaders
 	StageMessages
 	StageSyncComplete
 	StageSyncErrored
@@ -851,8 +850,6 @@ func (v SyncStateStage) String() string {
 	switch v {
 	case StageHeaders:
 		return "header sync"
-	case StagePersistHeaders:
-		return "persisting headers"
 	case StageMessages:
 		return "message sync"
 	case StageSyncComplete:

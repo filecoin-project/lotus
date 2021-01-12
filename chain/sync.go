@@ -1693,7 +1693,7 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 //     else we must drop part of our chain to connect to the peer's head
 //     (referred to as "forking").
 //
-//	2. StagePersistHeaders: now that we've collected the missing headers,
+//     Now that we've collected the missing headers,
 //     augmented by those on the other side of a fork, we persist them to the
 //     BlockStore.
 //
@@ -1718,8 +1718,6 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())
 	}
 
-	ss.SetStage(api.StagePersistHeaders)
-
 	toPersist := make([]*types.BlockHeader, 0, len(headers)*int(build.BlocksPerEpoch))
 	for _, ts := range headers {
 		toPersist = append(toPersist, ts.Blocks()...)
@@ -1733,6 +1731,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 
 	ss.SetStage(api.StageMessages)
 
+	// FIXME: Take out to parent function, this is more than just collecting.
 	if err := syncer.syncMessagesAndCheckState(ctx, headers); err != nil {
 		err = xerrors.Errorf("collectChain syncMessages: %w", err)
 		ss.Error(err)
