@@ -605,6 +605,11 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 
 	ss.SetStage(api.StageMessages)
 
+	// FIXME: `StageFetchingMessages` is buried inside this function (in
+	//  `iterFullTipsets`). We should extract it out and probably request
+	//  *both* block headers and messages together through the corresponding
+	//  chain exchange interface. We can do very little validation without the
+	//  messages so it shouldn't have much impact.
 	if err := syncer.syncMessagesAndCheckState(ctx, subChain); err != nil {
 		span.AddAttributes(trace.StringAttribute("col_error", err.Error()))
 		span.SetStatus(trace.Status{
