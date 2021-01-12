@@ -41,7 +41,8 @@ const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 // 2020-12-17T19:00:00Z
 const UpgradeClausHeight = 161386
 
-const UpgradeOrangeHeight = 9999999
+// 2021-01-17T19:00:00Z
+const UpgradeOrangeHeight = 250666
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 30))
