@@ -69,6 +69,11 @@ const (
 	FaultReported SectorState = "FaultReported" // sector has been declared as a fault on chain
 	FaultedFinal  SectorState = "FaultedFinal"  // fault declared on chain
 
+	Terminating       SectorState = "Terminating"
+	TerminateWait     SectorState = "TerminateWait"
+	TerminateFinality SectorState = "TerminateFinality"
+	TerminateFailed   SectorState = "TerminateFailed"
+
 	Removing     SectorState = "Removing"
 	RemoveFailed SectorState = "RemoveFailed"
 	Removed      SectorState = "Removed"

@@ -94,12 +94,15 @@ type Sealing struct {
 
 	stats SectorStats
 
+	terminator *TerminateBatcher
+
 	getConfig GetSealingConfigFunc
 }
 
 type FeeConfig struct {
 	MaxPreCommitGasFee abi.TokenAmount
 	MaxCommitGasFee    abi.TokenAmount
+	MaxTerminateGasFee abi.TokenAmount
 }
 
 type UnsealedSectorMap struct {
@@ -136,6 +139,8 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		notifee: notifee,
 		addrSel: as,
 
+		terminator: NewTerminationBatcher(context.TODO(), maddr, api, as, fc),
+
 		getConfig: gc,
 
 		stats: SectorStats{
@@ -160,7 +165,14 @@ func (m *Sealing) Run(ctx context.Context) error {
 }
 
 func (m *Sealing) Stop(ctx context.Context) error {
-	return m.sectors.Stop(ctx)
+	if err := m.terminator.Stop(ctx); err != nil {
+		return err
+	}
+
+	if err := m.sectors.Stop(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
@@ -263,6 +275,10 @@ func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size 
 
 func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sid), SectorRemove{})
+}
+
+func (m *Sealing) Terminate(ctx context.Context, sid abi.SectorNumber) error {
+	return m.sectors.Send(uint64(sid), SectorTerminate{})
 }
 
 // Caller should NOT hold m.unsealedInfoMap.lk

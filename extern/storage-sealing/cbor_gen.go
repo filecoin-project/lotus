@@ -475,7 +475,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{183}); err != nil {
+	if _, err := w.Write([]byte{184, 25}); err != nil {
 		return err
 	}
 
@@ -926,6 +926,50 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 	if _, err := io.WriteString(w, string(t.Return)); err != nil {
 		return err
+	}
+
+	// t.TerminateMessage (cid.Cid) (struct)
+	if len("TerminateMessage") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"TerminateMessage\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("TerminateMessage"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("TerminateMessage")); err != nil {
+		return err
+	}
+
+	if t.TerminateMessage == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCidBuf(scratch, w, *t.TerminateMessage); err != nil {
+			return xerrors.Errorf("failed to write cid field t.TerminateMessage: %w", err)
+		}
+	}
+
+	// t.TerminatedAt (abi.ChainEpoch) (int64)
+	if len("TerminatedAt") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"TerminatedAt\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("TerminatedAt"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("TerminatedAt")); err != nil {
+		return err
+	}
+
+	if t.TerminatedAt >= 0 {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.TerminatedAt)); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.TerminatedAt-1)); err != nil {
+			return err
+		}
 	}
 
 	// t.LastErr (string) (string)
@@ -1440,6 +1484,55 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				}
 
 				t.Return = ReturnState(sval)
+			}
+			// t.TerminateMessage (cid.Cid) (struct)
+		case "TerminateMessage":
+
+			{
+
+				b, err := br.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := br.UnreadByte(); err != nil {
+						return err
+					}
+
+					c, err := cbg.ReadCid(br)
+					if err != nil {
+						return xerrors.Errorf("failed to read cid field t.TerminateMessage: %w", err)
+					}
+
+					t.TerminateMessage = &c
+				}
+
+			}
+			// t.TerminatedAt (abi.ChainEpoch) (int64)
+		case "TerminatedAt":
+			{
+				maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.TerminatedAt = abi.ChainEpoch(extraI)
 			}
 			// t.LastErr (string) (string)
 		case "LastErr":
