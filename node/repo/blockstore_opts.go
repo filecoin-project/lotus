@@ -21,9 +21,8 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	opts.DetectConflicts = false
 
 	// This is to optimize the database on close so it can be opened
-	// read-only and efficiently queried. We don't do that and hanging on
-	// stop isn't nice.
-	opts.CompactL0OnClose = false
+	// read-only and efficiently queried.
+	opts.CompactL0OnClose = true
 
 	// The alternative is "crash on start and tell the user to fix it". This
 	// will truncate corrupt and unsynced data, which we don't guarantee to

@@ -159,8 +159,12 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorFaultReported{}, FaultReported),
 	),
 
+	FaultReported: final, // not really supported right now
+
 	FaultedFinal: final,
 	Removed:      final,
+
+	FailedUnrecoverable: final,
 }
 
 func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, uint64, error) {
@@ -192,7 +196,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 				Kind:      fmt.Sprintf("truncate"),
 			}
 
-			state.Log = append(state.Log[:2000], state.Log[:6000]...)
+			state.Log = append(state.Log[:2000], state.Log[6000:]...)
 		}
 
 		state.Log = append(state.Log, l)
@@ -405,8 +409,9 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		return err
 	}
 
-	m.unsealedInfoMap.lk.Lock()
+	// m.unsealedInfoMap.lk.Lock() taken early in .New to prevent races
 	defer m.unsealedInfoMap.lk.Unlock()
+
 	for _, sector := range trackedSectors {
 		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)

@@ -347,14 +347,8 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("get miner base info: %w", err)
 	}
 
-	prev := mbi.PrevBeaconEntry
-
-	entries, err := beacon.BeaconEntriesForBlock(ctx, cg.beacon, round, pts.Height(), prev)
-	if err != nil {
-		return nil, nil, nil, xerrors.Errorf("get beacon entries for block: %w", err)
-	}
-
-	rbase := prev
+	entries := mbi.BeaconEntries
+	rbase := mbi.PrevBeaconEntry
 	if len(entries) > 0 {
 		rbase = entries[len(entries)-1]
 	}

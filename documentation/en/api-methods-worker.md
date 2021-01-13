@@ -29,6 +29,8 @@
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
 * [Task](#Task)
+  * [TaskDisable](#TaskDisable)
+  * [TaskEnable](#TaskEnable)
   * [TaskTypes](#TaskTypes)
 * [Unseal](#Unseal)
   * [UnsealPiece](#UnsealPiece)
@@ -501,6 +503,34 @@ Response: `{}`
 
 ## Task
 
+
+### TaskDisable
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "seal/v0/commit/2"
+]
+```
+
+Response: `{}`
+
+### TaskEnable
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "seal/v0/commit/2"
+]
+```
+
+Response: `{}`
 
 ### TaskTypes
 TaskType -> Weight

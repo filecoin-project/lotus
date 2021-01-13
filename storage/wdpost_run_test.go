@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/journal"
 )
 
@@ -125,9 +126,9 @@ func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, si
 type mockFaultTracker struct {
 }
 
-func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef) ([]abi.SectorID, error) {
-	// Returns "bad" sectors so just return nil meaning all sectors are good
-	return nil, nil
+func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+	// Returns "bad" sectors so just return empty map meaning all sectors are good
+	return map[abi.SectorID]string{}, nil
 }
 
 // TestWDPostDoPost verifies that doPost will send the correct number of window
@@ -179,6 +180,7 @@ func TestWDPostDoPost(t *testing.T) {
 		proofType:    proofType,
 		actor:        postAct,
 		journal:      journal.NilJournal(),
+		addrSel:      &AddressSelector{},
 	}
 
 	di := &dline.Info{

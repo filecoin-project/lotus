@@ -136,6 +136,14 @@ var DaemonCmd = &cli.Command{
 			Name:  "config",
 			Usage: "specify path of config file to use",
 		},
+		// FIXME: This is not the correct place to put this configuration
+		//  option. Ideally it would be part of `config.toml` but at the
+		//  moment that only applies to the node configuration and not outside
+		//  components like the RPC server.
+		&cli.IntFlag{
+			Name:  "api-max-req-size",
+			Usage: "maximum API request size accepted by the JSON RPC server",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		isLite := cctx.Bool("lite")
@@ -321,7 +329,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, endpoint, shutdownChan)
+		return serveRPC(api, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
 	},
 	Subcommands: []*cli.Command{
 		daemonStopCmd,
@@ -358,7 +366,7 @@ func importKey(ctx context.Context, api api.FullNode, f string) error {
 		return err
 	}
 
-	log.Info("successfully imported key for %s", addr)
+	log.Infof("successfully imported key for %s", addr)
 	return nil
 }
 

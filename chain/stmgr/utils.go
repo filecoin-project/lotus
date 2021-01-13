@@ -300,7 +300,11 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 	if err != nil {
 		return nil, err
 	} else if !found {
-		return nil, xerrors.Errorf("deal %d not found", dealID)
+		return nil, xerrors.Errorf(
+			"deal %d not found "+
+				"- deal may not have completed sealing before deal proposal "+
+				"start epoch, or deal may have been slashed",
+			dealID)
 	}
 
 	states, err := state.States()

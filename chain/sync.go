@@ -250,18 +250,6 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 
 	syncer.incoming.Pub(fts.TipSet().Blocks(), LocalIncoming)
 
-	if from == syncer.self {
-		// TODO: this is kindof a hack...
-		log.Debug("got block from ourselves")
-
-		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
-			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
-			return false
-		}
-
-		return true
-	}
-
 	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
 	// the blockstore
 	if err := syncer.store.PersistBlockHeaders(fts.TipSet().Blocks()...); err != nil {
@@ -1331,7 +1319,7 @@ loop:
 			continue
 		}
 		if !xerrors.Is(err, bstore.ErrNotFound) {
-			log.Warn("loading local tipset: %s", err)
+			log.Warnf("loading local tipset: %s", err)
 		}
 
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
@@ -1449,7 +1437,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		return nil, ErrForkCheckpoint
 	}
 
-	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2?
+	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2? Yes.
 	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
 	tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
 	if err != nil {
@@ -1460,6 +1448,10 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
+	// Track the fork length on our side of the synced chain to enforce
+	// `ForkLengthThreshold`. Initialized to 1 because we already walked back
+	// one tipset from `known` (our synced head).
+	forkLengthInHead := 1
 
 	for cur := 0; cur < len(tips); {
 		if nts.Height() == 0 {
@@ -1476,6 +1468,13 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		if nts.Height() < tips[cur].Height() {
 			cur++
 		} else {
+			// Walk back one block in our synced chain to try to meet the fork's
+			// height.
+			forkLengthInHead++
+			if forkLengthInHead > int(build.ForkLengthThreshold) {
+				return nil, ErrForkTooLong
+			}
+
 			// We will be forking away from nts, check that it isn't checkpointed
 			if nts.Key() == chkpt {
 				return nil, ErrForkCheckpoint

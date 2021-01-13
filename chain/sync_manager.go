@@ -203,6 +203,7 @@ func (sm *syncManager) handlePeerHead(head peerHead) {
 
 		// not yet; do we have enough peers?
 		if len(sm.heads) < BootstrapPeerThreshold {
+			log.Debugw("not tracking enough peers to start sync worker", "have", len(sm.heads), "need", BootstrapPeerThreshold)
 			// not enough peers; track it and wait
 			return
 		}

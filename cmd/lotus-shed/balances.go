@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/gen/genesis"
 
@@ -62,6 +66,7 @@ var auditsCmd = &cli.Command{
 		chainBalanceCmd,
 		chainBalanceStateCmd,
 		chainPledgeCmd,
+		fillBalancesCmd,
 	},
 }
 
@@ -484,6 +489,122 @@ var chainPledgeCmd = &cli.Command{
 			fmt.Println("IP ", units.HumanSize(float64(sectorWeight.Uint64())), types.FIL(initialPledge))
 		}
 
+		return nil
+	},
+}
+
+const dateFmt = "1/02/06"
+
+func parseCsv(inp string) ([]time.Time, []address.Address, error) {
+	fi, err := os.Open(inp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r := csv.NewReader(fi)
+	recs, err := r.ReadAll()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var addrs []address.Address
+	for _, rec := range recs[1:] {
+		a, err := address.NewFromString(rec[0])
+		if err != nil {
+			return nil, nil, err
+		}
+		addrs = append(addrs, a)
+	}
+
+	var dates []time.Time
+	for _, d := range recs[0][1:] {
+		if len(d) == 0 {
+			continue
+		}
+		p := strings.Split(d, " ")
+		t, err := time.Parse(dateFmt, p[len(p)-1])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		dates = append(dates, t)
+	}
+
+	return dates, addrs, nil
+}
+
+func heightForDate(d time.Time, ts *types.TipSet) abi.ChainEpoch {
+	secs := d.Unix()
+	gents := ts.Blocks()[0].Timestamp
+	gents -= uint64(30 * ts.Height())
+	return abi.ChainEpoch((secs - int64(gents)) / 30)
+}
+
+var fillBalancesCmd = &cli.Command{
+	Name:        "fill-balances",
+	Description: "fill out balances for addresses on dates in given spreadsheet",
+	Flags:       []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		dates, addrs, err := parseCsv(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		var tipsets []*types.TipSet
+		for _, d := range dates {
+			h := heightForDate(d, ts)
+			hts, err := api.ChainGetTipSetByHeight(ctx, h, ts.Key())
+			if err != nil {
+				return err
+			}
+			tipsets = append(tipsets, hts)
+		}
+
+		var balances [][]abi.TokenAmount
+		for _, a := range addrs {
+			var b []abi.TokenAmount
+			for _, hts := range tipsets {
+				act, err := api.StateGetActor(ctx, a, hts.Key())
+				if err != nil {
+					if !strings.Contains(err.Error(), "actor not found") {
+						return fmt.Errorf("error for %s at %s: %w", a, hts.Key(), err)
+					}
+					b = append(b, types.NewInt(0))
+					continue
+				}
+				b = append(b, act.Balance)
+			}
+			balances = append(balances, b)
+		}
+
+		var datestrs []string
+		for _, d := range dates {
+			datestrs = append(datestrs, "Balance at "+d.Format(dateFmt))
+		}
+
+		w := csv.NewWriter(os.Stdout)
+		w.Write(append([]string{"Wallet Address"}, datestrs...)) // nolint:errcheck
+		for i := 0; i < len(addrs); i++ {
+			row := []string{addrs[i].String()}
+			for _, b := range balances[i] {
+				row = append(row, types.FIL(b).String())
+			}
+			w.Write(row) // nolint:errcheck
+		}
+		w.Flush()
 		return nil
 	},
 }

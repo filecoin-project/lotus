@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 )
 
 var infoCmd = &cli.Command{
@@ -49,10 +51,22 @@ var infoCmd = &cli.Command{
 			return xerrors.Errorf("getting info: %w", err)
 		}
 
+		tt, err := api.TaskTypes(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting task types: %w", err)
+		}
+
 		fmt.Printf("Hostname: %s\n", info.Hostname)
 		fmt.Printf("CPUs: %d; GPUs: %v\n", info.Resources.CPUs, info.Resources.GPUs)
 		fmt.Printf("RAM: %s; Swap: %s\n", types.SizeStr(types.NewInt(info.Resources.MemPhysical)), types.SizeStr(types.NewInt(info.Resources.MemSwap)))
 		fmt.Printf("Reserved memory: %s\n", types.SizeStr(types.NewInt(info.Resources.MemReserved)))
+
+		fmt.Printf("Task types: ")
+		for _, t := range ttList(tt) {
+			fmt.Printf("%s ", t.Short())
+		}
+		fmt.Println()
+
 		fmt.Println()
 
 		paths, err := api.Paths(ctx)
@@ -79,4 +93,15 @@ var infoCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func ttList(tt map[sealtasks.TaskType]struct{}) []sealtasks.TaskType {
+	tasks := make([]sealtasks.TaskType, 0, len(tt))
+	for taskType := range tt {
+		tasks = append(tasks, taskType)
+	}
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].Less(tasks[j])
+	})
+	return tasks
 }

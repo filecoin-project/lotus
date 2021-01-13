@@ -348,24 +348,25 @@ func (sh *scheduler) trySched() {
 	sh.workersLk.RLock()
 	defer sh.workersLk.RUnlock()
 
-	windows := make([]schedWindow, len(sh.openWindows))
-	acceptableWindows := make([][]int, sh.schedQueue.Len())
+	windowsLen := len(sh.openWindows)
+	queuneLen := sh.schedQueue.Len()
 
-	log.Debugf("SCHED %d queued; %d open windows", sh.schedQueue.Len(), len(windows))
+	log.Debugf("SCHED %d queued; %d open windows", queuneLen, windowsLen)
 
-	if len(sh.openWindows) == 0 {
+	if windowsLen == 0 || queuneLen == 0 {
 		// nothing to schedule on
 		return
 	}
 
+	windows := make([]schedWindow, windowsLen)
+	acceptableWindows := make([][]int, queuneLen)
+
 	// Step 1
-	concurrency := len(sh.openWindows)
-	throttle := make(chan struct{}, concurrency)
+	throttle := make(chan struct{}, windowsLen)
 
 	var wg sync.WaitGroup
-	wg.Add(sh.schedQueue.Len())
-
-	for i := 0; i < sh.schedQueue.Len(); i++ {
+	wg.Add(queuneLen)
+	for i := 0; i < queuneLen; i++ {
 		throttle <- struct{}{}
 
 		go func(sqi int) {
@@ -436,7 +437,7 @@ func (sh *scheduler) trySched() {
 
 				r, err := task.sel.Cmp(rpcCtx, task.taskType, wi, wj)
 				if err != nil {
-					log.Error("selecting best worker: %s", err)
+					log.Errorf("selecting best worker: %s", err)
 				}
 				return r
 			})
@@ -450,8 +451,9 @@ func (sh *scheduler) trySched() {
 
 	// Step 2
 	scheduled := 0
+	rmQueue := make([]int, 0, queuneLen)
 
-	for sqi := 0; sqi < sh.schedQueue.Len(); sqi++ {
+	for sqi := 0; sqi < queuneLen; sqi++ {
 		task := (*sh.schedQueue)[sqi]
 		needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
@@ -486,9 +488,14 @@ func (sh *scheduler) trySched() {
 
 		windows[selectedWindow].todo = append(windows[selectedWindow].todo, task)
 
-		sh.schedQueue.Remove(sqi)
-		sqi--
+		rmQueue = append(rmQueue, sqi)
 		scheduled++
+	}
+
+	if len(rmQueue) > 0 {
+		for i := len(rmQueue) - 1; i >= 0; i-- {
+			sh.schedQueue.Remove(rmQueue[i])
+		}
 	}
 
 	// Step 3
@@ -515,7 +522,7 @@ func (sh *scheduler) trySched() {
 	}
 
 	// Rewrite sh.openWindows array, removing scheduled windows
-	newOpenWindows := make([]*schedWindowRequest, 0, len(sh.openWindows)-len(scheduledWindows))
+	newOpenWindows := make([]*schedWindowRequest, 0, windowsLen-len(scheduledWindows))
 	for wnd, window := range sh.openWindows {
 		if _, scheduled := scheduledWindows[wnd]; scheduled {
 			// keep unscheduled windows open

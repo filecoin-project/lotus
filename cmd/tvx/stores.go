@@ -149,3 +149,14 @@ func (pb *proxyingBlockstore) Put(block blocks.Block) error {
 	pb.lk.Unlock()
 	return pb.Blockstore.Put(block)
 }
+
+func (pb *proxyingBlockstore) PutMany(blocks []blocks.Block) error {
+	pb.lk.Lock()
+	if pb.tracing {
+		for _, b := range blocks {
+			pb.traced[b.Cid()] = struct{}{}
+		}
+	}
+	pb.lk.Unlock()
+	return pb.Blockstore.PutMany(blocks)
+}

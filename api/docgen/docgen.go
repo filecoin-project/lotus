@@ -234,6 +234,13 @@ func init() {
 		},
 	})
 	addExample(storiface.ErrorCode(0))
+	addExample(map[abi.SectorNumber]string{
+		123: "can't acquire read lock",
+	})
+	addExample(map[api.SectorState]int{
+		api.SectorState(sealing.Proving): 120,
+	})
+	addExample([]abi.SectorNumber{123, 124})
 
 	// worker specific
 	addExample(storiface.AcquireMove)
@@ -241,6 +248,7 @@ func init() {
 	addExample(map[sealtasks.TaskType]struct{}{
 		sealtasks.TTPreCommit2: {},
 	})
+	addExample(sealtasks.TTCommit2)
 }
 
 func exampleValue(method string, t, parent reflect.Type) interface{} {

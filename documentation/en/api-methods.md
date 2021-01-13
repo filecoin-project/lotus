@@ -68,8 +68,11 @@
   * [LogList](#LogList)
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
+  * [MarketAddBalance](#MarketAddBalance)
+  * [MarketGetReserved](#MarketGetReserved)
   * [MarketReleaseFunds](#MarketReleaseFunds)
   * [MarketReserveFunds](#MarketReserveFunds)
+  * [MarketWithdraw](#MarketWithdraw)
 * [Miner](#Miner)
   * [MinerCreateBlock](#MinerCreateBlock)
   * [MinerGetBaseInfo](#MinerGetBaseInfo)
@@ -1033,7 +1036,25 @@ Response:
   "Duration": 42,
   "DealID": 5432,
   "CreationTime": "0001-01-01T00:00:00Z",
-  "Verified": true
+  "Verified": true,
+  "TransferChannelID": {
+    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": 3
+  },
+  "DataTransfer": {
+    "TransferID": 3,
+    "Status": 1,
+    "BaseCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "IsInitiator": true,
+    "IsSender": true,
+    "Voucher": "string value",
+    "Message": "string value",
+    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Transferred": 42
+  }
 }
 ```
 
@@ -1085,7 +1106,25 @@ Response:
   "Duration": 42,
   "DealID": 5432,
   "CreationTime": "0001-01-01T00:00:00Z",
-  "Verified": true
+  "Verified": true,
+  "TransferChannelID": {
+    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": 3
+  },
+  "DataTransfer": {
+    "TransferID": 3,
+    "Status": 1,
+    "BaseCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "IsInitiator": true,
+    "IsSender": true,
+    "Voucher": "string value",
+    "Message": "string value",
+    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Transferred": 42
+  }
 }
 ```
 
@@ -1616,6 +1655,43 @@ Response: `{}`
 ## Market
 
 
+### MarketAddBalance
+MarketAddBalance adds funds to the market actor
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MarketGetReserved
+MarketGetReserved gets the amount of funds that are currently reserved for the address
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"0"`
+
 ### MarketReleaseFunds
 MarketReleaseFunds releases funds reserved by MarketReserveFunds
 
@@ -1634,6 +1710,28 @@ Response: `{}`
 
 ### MarketReserveFunds
 MarketReserveFunds reserves funds for a deal
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MarketWithdraw
+MarketWithdraw withdraws unlocked funds from the market actor
 
 
 Perms: sign
@@ -4249,7 +4347,7 @@ Inputs:
 ]
 ```
 
-Response: `8`
+Response: `9`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
