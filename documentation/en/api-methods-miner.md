@@ -99,6 +99,7 @@
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
   * [SectorSetSealDelay](#SectorSetSealDelay)
   * [SectorStartSealing](#SectorStartSealing)
+  * [SectorTerminate](#SectorTerminate)
 * [Sectors](#Sectors)
   * [SectorsList](#SectorsList)
   * [SectorsListInStates](#SectorsListInStates)
@@ -1475,7 +1476,9 @@ Inputs:
 Response: `{}`
 
 ### SectorRemove
-There are not yet any comments for this method.
+SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
+be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
+
 
 Perms: admin
 
@@ -1525,6 +1528,21 @@ to trigger sealing early
 
 
 Perms: write
+
+Inputs:
+```json
+[
+  9
+]
+```
+
+Response: `{}`
+
+### SectorTerminate
+SectorTerminate terminates the sector on-chain, then automatically removes it from storage
+
+
+Perms: admin
 
 Inputs:
 ```json
