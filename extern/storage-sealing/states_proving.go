@@ -54,7 +54,7 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 	if si == nil {
 		// either already terminated or not committed yet
 		// todo / edge case - may be in process of being committed, but let's call that really unlikely
-		return ctx.Send(SectorRemoved{})
+		return ctx.Send(SectorRemove{})
 	}
 
 	termCid, err := m.terminator.AddTermination(ctx.Context(), m.minerSectorID(sector.SectorNumber))

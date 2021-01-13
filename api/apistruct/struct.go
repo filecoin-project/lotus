@@ -315,7 +315,7 @@ type StorageMinerStruct struct {
 		SectorsUpdate                 func(context.Context, abi.SectorNumber, api.SectorState) error                                `perm:"admin"`
 		SectorRemove                  func(context.Context, abi.SectorNumber) error                                                 `perm:"admin"`
 		SectorTerminate               func(context.Context, abi.SectorNumber) error                                                 `perm:"admin"`
-		SectorTerminateFlush func(ctx context.Context) (*cid.Cid, error) `perm:"admin"`
+		SectorTerminateFlush          func(ctx context.Context) (*cid.Cid, error)                                                   `perm:"admin"`
 		SectorMarkForUpgrade          func(ctx context.Context, id abi.SectorNumber) error                                          `perm:"admin"`
 
 		WorkerConnect func(context.Context, string) error                                `perm:"admin" retry:"true"` // TODO: worker perm
