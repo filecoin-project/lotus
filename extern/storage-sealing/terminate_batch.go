@@ -9,12 +9,13 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/big"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/dline"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
@@ -31,6 +32,7 @@ type TerminateBatcherApi interface {
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
+	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
 }
 
 type TerminateBatcher struct {
@@ -84,25 +86,33 @@ func (b *TerminateBatcher) run() {
 		case <-b.force: // user triggered
 		}
 
+		dl, err := b.api.StateMinerProvingDeadline(b.mctx, b.maddr, nil)
+		if err != nil {
+			log.Errorw("TerminateBatcher: getting proving deadline info failed", "error", err)
+			continue
+		}
+
 		b.lk.Lock()
 		params := miner2.TerminateSectorsParams{}
 
+		var total uint64
 		for loc, sectors := range b.todo {
 			n, err := sectors.Count()
 			if err != nil {
 				log.Errorw("TerminateBatcher: failed to count sectors to terminate", "deadline", loc.Deadline, "partition", loc.Partition, "error", err)
 			}
 
-			if notif && n < TerminateBatchMax {
+			// don't send terminations for currently challenged sectors
+			if loc.Deadline == dl.Index || (loc.Deadline+1)%miner.WPoStPeriodDeadlines == dl.Index {
 				continue
 			}
-			if after && n < TerminateBatchMin {
-				continue
-			}
+
 			if n < 1 {
 				log.Warnw("TerminateBatcher: zero sectors in bucket", "deadline", loc.Deadline, "partition", loc.Partition)
 				continue
 			}
+
+			total += n
 
 			params.Terminations = append(params.Terminations, miner2.TerminationDeclaration{
 				Deadline:  loc.Deadline,
@@ -114,6 +124,16 @@ func (b *TerminateBatcher) run() {
 		if len(params.Terminations) == 0 {
 			b.lk.Unlock()
 			continue // nothing to do
+		}
+
+		if notif && total < TerminateBatchMax {
+			b.lk.Unlock()
+			continue
+		}
+
+		if after && total < TerminateBatchMin {
+			b.lk.Unlock()
+			continue
 		}
 
 		enc := new(bytes.Buffer)

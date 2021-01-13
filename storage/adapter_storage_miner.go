@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -14,6 +12,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
@@ -264,6 +264,15 @@ func (s SealingAPIAdapter) StateNetworkVersion(ctx context.Context, tok sealing.
 	}
 
 	return s.delegate.StateNetworkVersion(ctx, tsk)
+}
+
+func (s SealingAPIAdapter) StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (*dline.Info, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.delegate.StateMinerProvingDeadline(ctx, maddr, tsk)
 }
 
 func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {

@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	statemachine "github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -60,6 +61,7 @@ type SealingAPI interface {
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, TipSetToken) (bool, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
