@@ -473,12 +473,12 @@ var msigApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
 		}
 
-		if cctx.Args().Len() > 5 && cctx.Args().Len() != 7 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
+		if cctx.Args().Len() > 2 && cctx.Args().Len() < 5 {
+			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value>"))
 		}
 
-		if cctx.Args().Len() > 2 && cctx.Args().Len() != 5 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value>"))
+		if cctx.Args().Len() > 5 && cctx.Args().Len() != 7 {
+			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)

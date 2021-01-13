@@ -717,9 +717,9 @@ var actorSetOwnerCmd = &cli.Command{
 		if wait.Receipt.ExitCode != 0 {
 			fmt.Println("owner change failed!")
 			return err
-		} else {
-			fmt.Println("message succeeded!")
 		}
+
+		fmt.Println("message succeeded!")
 
 		return nil
 	},
