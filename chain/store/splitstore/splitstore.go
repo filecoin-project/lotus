@@ -30,6 +30,11 @@ var baseEpochKey = dstore.NewKey("baseEpoch")
 
 var log = logging.Logger("splitstore")
 
+func init() {
+	// TODO temporary for debugging purposes; to be removed for merge.
+	logging.SetLogLevel("splitstore", "DEBUG")
+}
+
 type SplitStore struct {
 	compacting int32
 
