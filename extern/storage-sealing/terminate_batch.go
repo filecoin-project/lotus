@@ -46,8 +46,9 @@ type TerminateBatcher struct {
 
 	waiting map[SectorLocation][]chan cid.Cid
 
-	notify, force, stop, stopped chan struct{}
-	lk                           sync.Mutex
+	notify, stop, stopped chan struct{}
+	force                 chan chan *cid.Cid
+	lk                    sync.Mutex
 }
 
 func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddrSel, feeCfg FeeConfig) *TerminateBatcher {
@@ -62,7 +63,7 @@ func NewTerminationBatcher(mctx context.Context, maddr address.Address, api Term
 		waiting: map[SectorLocation][]chan cid.Cid{},
 
 		notify:  make(chan struct{}, 1),
-		force:   make(chan struct{}),
+		force:   make(chan chan *cid.Cid),
 		stop:    make(chan struct{}),
 		stopped: make(chan struct{}),
 	}
@@ -73,7 +74,16 @@ func NewTerminationBatcher(mctx context.Context, maddr address.Address, api Term
 }
 
 func (b *TerminateBatcher) run() {
+	var forceRes chan *cid.Cid
+	var lastMsg *cid.Cid
+
 	for {
+		if forceRes != nil {
+			forceRes <- lastMsg
+			forceRes = nil
+		}
+		lastMsg = nil
+
 		var notif, after bool
 		select {
 		case <-b.stop:
@@ -83,7 +93,8 @@ func (b *TerminateBatcher) run() {
 			notif = true // send above max
 		case <-time.After(TerminateBatchWait):
 			after = true // send above min
-		case <-b.force: // user triggered
+		case fr := <-b.force: // user triggered
+			forceRes = fr
 		}
 
 		dl, err := b.api.StateMinerProvingDeadline(b.mctx, b.maddr, nil)
@@ -163,6 +174,7 @@ func (b *TerminateBatcher) run() {
 			b.lk.Unlock()
 			continue
 		}
+		lastMsg = &mcid
 		log.Infow("Sent TerminateSectors message", "cid", mcid, "from", from, "terminations", len(params.Terminations))
 
 		for _, t := range params.Terminations {
@@ -177,6 +189,7 @@ func (b *TerminateBatcher) run() {
 				ch <- mcid // buffered
 			}
 		}
+
 		b.waiting = map[SectorLocation][]chan cid.Cid{}
 
 		b.lk.Unlock()
@@ -221,6 +234,21 @@ func (b *TerminateBatcher) AddTermination(ctx context.Context, s abi.SectorID) (
 		return c, nil
 	case <-ctx.Done():
 		return cid.Undef, ctx.Err()
+	}
+}
+
+func (b *TerminateBatcher) Flush(ctx context.Context) (*cid.Cid, error) {
+	resCh := make(chan *cid.Cid, 1)
+	select {
+	case b.force <- resCh:
+		select {
+		case res := <-resCh:
+			return res, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 

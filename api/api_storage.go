@@ -68,8 +68,12 @@ type StorageMiner interface {
 	// SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
 	// be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
 	SectorRemove(context.Context, abi.SectorNumber) error
-	// SectorTerminate terminates the sector on-chain, then automatically removes it from storage
+	// SectorTerminate terminates the sector on-chain (adding it to a termination batch first), then
+	// automatically removes it from storage
 	SectorTerminate(context.Context, abi.SectorNumber) error
+	// SectorTerminateFlush immediately sends a terminate message with sectors batched for termination.
+	// Returns null if message wasn't sent
+	SectorTerminateFlush(ctx context.Context) (*cid.Cid, error)
 	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)

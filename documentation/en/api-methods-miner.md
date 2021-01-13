@@ -100,6 +100,7 @@
   * [SectorSetSealDelay](#SectorSetSealDelay)
   * [SectorStartSealing](#SectorStartSealing)
   * [SectorTerminate](#SectorTerminate)
+  * [SectorTerminateFlush](#SectorTerminateFlush)
 * [Sectors](#Sectors)
   * [SectorsList](#SectorsList)
   * [SectorsListInStates](#SectorsListInStates)
@@ -1539,7 +1540,8 @@ Inputs:
 Response: `{}`
 
 ### SectorTerminate
-SectorTerminate terminates the sector on-chain, then automatically removes it from storage
+SectorTerminate terminates the sector on-chain (adding it to a termination batch first), then
+automatically removes it from storage
 
 
 Perms: admin
@@ -1552,6 +1554,17 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SectorTerminateFlush
+SectorTerminateFlush immediately sends a terminate message with sectors batched for termination.
+Returns null if message wasn't sent
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
 
 ## Sectors
 

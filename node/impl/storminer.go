@@ -332,6 +332,10 @@ func (sm *StorageMinerAPI) SectorTerminate(ctx context.Context, id abi.SectorNum
 	return sm.Miner.TerminateSector(ctx, id)
 }
 
+func (sm *StorageMinerAPI) SectorTerminateFlush(ctx context.Context) (*cid.Cid, error) {
+	return sm.Miner.TerminateFlush(ctx)
+}
+
 func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {
 	return sm.Miner.MarkForUpgrade(id)
 }
