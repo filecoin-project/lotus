@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -250,6 +251,40 @@ func (b *TerminateBatcher) Flush(ctx context.Context) (*cid.Cid, error) {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+func (b *TerminateBatcher) Pending(ctx context.Context) ([]abi.SectorID, error) {
+	b.lk.Lock()
+	defer b.lk.Unlock()
+
+	mid, err := address.IDFromAddress(b.maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]abi.SectorID, 0)
+	for _, bf := range b.todo {
+		err := bf.ForEach(func(id uint64) error {
+			res = append(res, abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(id),
+			})
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	sort.Slice(res, func(i, j int) bool {
+		if res[i].Miner != res[j].Miner {
+			return res[i].Miner < res[j].Miner
+		}
+
+		return res[i].Number < res[j].Number
+	})
+
+	return res, nil
 }
 
 func (b *TerminateBatcher) Stop(ctx context.Context) error {

@@ -54,6 +54,10 @@ func (m *Miner) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
 	return m.sealing.TerminateFlush(ctx)
 }
 
+func (m *Miner) TerminatePending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.sealing.TerminatePending(ctx)
+}
+
 func (m *Miner) MarkForUpgrade(id abi.SectorNumber) error {
 	return m.sealing.MarkForUpgrade(id)
 }

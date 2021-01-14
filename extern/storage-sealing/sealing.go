@@ -287,6 +287,10 @@ func (m *Sealing) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
 	return m.terminator.Flush(ctx)
 }
 
+func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.terminator.Pending(ctx)
+}
+
 // Caller should NOT hold m.unsealedInfoMap.lk
 func (m *Sealing) StartPacking(sectorID abi.SectorNumber) error {
 	// locking here ensures that when the SectorStartPacking event is sent, the sector won't be picked up anywhere else

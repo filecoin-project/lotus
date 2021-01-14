@@ -74,6 +74,8 @@ type StorageMiner interface {
 	// SectorTerminateFlush immediately sends a terminate message with sectors batched for termination.
 	// Returns null if message wasn't sent
 	SectorTerminateFlush(ctx context.Context) (*cid.Cid, error)
+	// SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
+	SectorTerminatePending(ctx context.Context) ([]abi.SectorID, error)
 	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
 
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)
@@ -232,4 +234,5 @@ const (
 type AddressConfig struct {
 	PreCommitControl []address.Address
 	CommitControl    []address.Address
+	TerminateControl []address.Address
 }

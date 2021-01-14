@@ -30,6 +30,8 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 		addrs = append(addrs, as.PreCommitControl...)
 	case api.CommitAddr:
 		addrs = append(addrs, as.CommitControl...)
+	case api.TerminateSectorsAddr:
+		addrs = append(addrs, as.TerminateControl...)
 	default:
 		defaultCtl := map[address.Address]struct{}{}
 		for _, a := range mi.ControlAddresses {
