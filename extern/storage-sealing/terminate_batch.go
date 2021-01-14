@@ -34,6 +34,7 @@ type TerminateBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok TipSetToken) ([]api.Partition, error)
 }
 
 type TerminateBatcher struct {
@@ -45,7 +46,7 @@ type TerminateBatcher struct {
 
 	todo map[SectorLocation]*bitfield.BitField // MinerSectorLocation -> BitField
 
-	waiting map[SectorLocation][]chan cid.Cid
+	waiting map[abi.SectorNumber][]chan cid.Cid
 
 	notify, stop, stopped chan struct{}
 	force                 chan chan *cid.Cid
@@ -61,7 +62,7 @@ func NewTerminationBatcher(mctx context.Context, maddr address.Address, api Term
 		feeCfg:  feeCfg,
 
 		todo:    map[SectorLocation]*bitfield.BitField{},
-		waiting: map[SectorLocation][]chan cid.Cid{},
+		waiting: map[abi.SectorNumber][]chan cid.Cid{},
 
 		notify:  make(chan struct{}, 1),
 		force:   make(chan chan *cid.Cid),
@@ -209,32 +210,53 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 			Deadline:  t.Deadline,
 			Partition: t.Partition,
 		})
-	}
 
-	for _, w := range b.waiting {
-		for _, ch := range w {
-			ch <- mcid // buffered
+		err := t.Sectors.ForEach(func(sn uint64) error {
+			for _, ch := range b.waiting[abi.SectorNumber(sn)] {
+				ch <- mcid // buffered
+			}
+			delete(b.waiting, abi.SectorNumber(sn))
+
+			return nil
+		})
+		if err != nil {
+			return nil, xerrors.Errorf("sectors foreach: %w", err)
 		}
 	}
-
-	b.waiting = map[SectorLocation][]chan cid.Cid{}
 
 	return &mcid, nil
 }
 
 // register termination, wait for batch message, return message CID
-func (b *TerminateBatcher) AddTermination(ctx context.Context, s abi.SectorID) (cid.Cid, error) {
+// can return cid.Undef,true if the sector is already terminated on-chain
+func (b *TerminateBatcher) AddTermination(ctx context.Context, s abi.SectorID) (mcid cid.Cid, terminated bool, err error) {
 	maddr, err := address.NewIDAddress(uint64(s.Miner))
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, false, err
 	}
 
 	loc, err := b.api.StateSectorPartition(ctx, maddr, s.Number, nil)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("getting sector location: %w", err)
+		return cid.Undef, false, xerrors.Errorf("getting sector location: %w", err)
 	}
 	if loc == nil {
-		return cid.Undef, xerrors.New("sector location not found")
+		return cid.Undef, false, xerrors.New("sector location not found")
+	}
+
+	{
+		// check if maybe already terminated
+		parts, err := b.api.StateMinerPartitions(ctx, maddr, loc.Deadline, nil)
+		if err != nil {
+			return cid.Cid{}, false, xerrors.Errorf("getting partitions: %w", err)
+		}
+		live, err := parts[loc.Partition].LiveSectors.IsSet(uint64(s.Number))
+		if err != nil {
+			return cid.Cid{}, false, xerrors.Errorf("checking if sector is in live set: %w", err)
+		}
+		if !live {
+			// already terminated
+			return cid.Undef, true, nil
+		}
 	}
 
 	b.lk.Lock()
@@ -247,7 +269,7 @@ func (b *TerminateBatcher) AddTermination(ctx context.Context, s abi.SectorID) (
 	bf.Set(uint64(s.Number))
 
 	sent := make(chan cid.Cid, 1)
-	b.waiting[*loc] = append(b.waiting[*loc], sent)
+	b.waiting[s.Number] = append(b.waiting[s.Number], sent)
 
 	select {
 	case b.notify <- struct{}{}:
@@ -257,9 +279,9 @@ func (b *TerminateBatcher) AddTermination(ctx context.Context, s abi.SectorID) (
 
 	select {
 	case c := <-sent:
-		return c, nil
+		return c, false, nil
 	case <-ctx.Done():
-		return cid.Undef, ctx.Err()
+		return cid.Undef, false, ctx.Err()
 	}
 }
 

@@ -243,6 +243,15 @@ func (s SealingAPIAdapter) StateSectorPartition(ctx context.Context, maddr addre
 	return nil, nil // not found
 }
 
+func (s SealingAPIAdapter) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tok sealing.TipSetToken) ([]api.Partition, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	return s.delegate.StateMinerPartitions(ctx, maddr, dlIdx, tsk)
+}
+
 func (s SealingAPIAdapter) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tok sealing.TipSetToken) (market.DealProposal, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {

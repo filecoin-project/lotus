@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -65,12 +64,16 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 		return ctx.Send(SectorRemove{})
 	}
 
-	termCid, err := m.terminator.AddTermination(ctx.Context(), m.minerSectorID(sector.SectorNumber))
+	termCid, terminated, err := m.terminator.AddTermination(ctx.Context(), m.minerSectorID(sector.SectorNumber))
 	if err != nil {
 		return ctx.Send(SectorTerminateFailed{xerrors.Errorf("queueing termination: %w", err)})
 	}
 
-	return ctx.Send(SectorTerminating{Message: termCid})
+	if terminated {
+		return ctx.Send(SectorTerminating{Message: nil})
+	}
+
+	return ctx.Send(SectorTerminating{Message: &termCid})
 }
 
 func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInfo) error {

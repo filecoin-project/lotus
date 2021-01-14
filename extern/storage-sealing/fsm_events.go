@@ -323,10 +323,10 @@ func (evt SectorTerminate) applyGlobal(state *SectorInfo) bool {
 	return true
 }
 
-type SectorTerminating struct{ Message cid.Cid }
+type SectorTerminating struct{ Message *cid.Cid }
 
 func (evt SectorTerminating) apply(state *SectorInfo) {
-	state.TerminateMessage = &evt.Message
+	state.TerminateMessage = evt.Message
 }
 
 type SectorTerminated struct{ TerminatedAt abi.ChainEpoch }

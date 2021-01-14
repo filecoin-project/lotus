@@ -62,6 +62,7 @@ type SealingAPI interface {
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok TipSetToken) ([]api.Partition, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
