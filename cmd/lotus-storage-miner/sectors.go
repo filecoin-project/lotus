@@ -469,6 +469,11 @@ var sectorsTerminatePendingCmd = &cli.Command{
 			return err
 		}
 		defer closer()
+		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
 		ctx := lcli.ReqContext(cctx)
 
 		pending, err := nodeApi.SectorTerminatePending(ctx)
@@ -476,8 +481,30 @@ var sectorsTerminatePendingCmd = &cli.Command{
 			return err
 		}
 
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		dl, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting proving deadline info failed: %w", err)
+		}
+
 		for _, id := range pending {
-			fmt.Println(id.Number)
+			loc, err := api.StateSectorPartition(ctx, maddr, id.Number, types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("finding sector partition: %w", err)
+			}
+
+			fmt.Print(id.Number)
+
+			if loc.Deadline == (dl.Index+1)%miner.WPoStPeriodDeadlines || // not in next (in case the terminate message takes a while to get on chain)
+				loc.Deadline == dl.Index || // not in current
+				(loc.Deadline+1)%miner.WPoStPeriodDeadlines == dl.Index { // not in previous
+				fmt.Print(" (in proving window)")
+			}
+			fmt.Println()
 		}
 
 		return nil
