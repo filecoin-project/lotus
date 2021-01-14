@@ -454,6 +454,8 @@ var sectorsTerminateFlushCmd = &cli.Command{
 			return xerrors.New("no sectors were queued for termination")
 		}
 
+		fmt.Println(mcid)
+
 		return nil
 	},
 }
@@ -475,7 +477,7 @@ var sectorsTerminatePendingCmd = &cli.Command{
 		}
 
 		for _, id := range pending {
-			fmt.Println(id)
+			fmt.Println(id.Number)
 		}
 
 		return nil
