@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	statemachine "github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -60,6 +61,8 @@ type SealingAPI interface {
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, TipSetToken) (bool, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok TipSetToken) ([]api.Partition, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
@@ -94,12 +97,15 @@ type Sealing struct {
 
 	stats SectorStats
 
+	terminator *TerminateBatcher
+
 	getConfig GetSealingConfigFunc
 }
 
 type FeeConfig struct {
 	MaxPreCommitGasFee abi.TokenAmount
 	MaxCommitGasFee    abi.TokenAmount
+	MaxTerminateGasFee abi.TokenAmount
 }
 
 type UnsealedSectorMap struct {
@@ -136,6 +142,8 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		notifee: notifee,
 		addrSel: as,
 
+		terminator: NewTerminationBatcher(context.TODO(), maddr, api, as, fc),
+
 		getConfig: gc,
 
 		stats: SectorStats{
@@ -160,7 +168,14 @@ func (m *Sealing) Run(ctx context.Context) error {
 }
 
 func (m *Sealing) Stop(ctx context.Context) error {
-	return m.sectors.Stop(ctx)
+	if err := m.terminator.Stop(ctx); err != nil {
+		return err
+	}
+
+	if err := m.sectors.Stop(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
@@ -263,6 +278,18 @@ func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size 
 
 func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sid), SectorRemove{})
+}
+
+func (m *Sealing) Terminate(ctx context.Context, sid abi.SectorNumber) error {
+	return m.sectors.Send(uint64(sid), SectorTerminate{})
+}
+
+func (m *Sealing) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
+	return m.terminator.Flush(ctx)
+}
+
+func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.terminator.Pending(ctx)
 }
 
 // Caller should NOT hold m.unsealedInfoMap.lk

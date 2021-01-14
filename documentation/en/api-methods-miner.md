@@ -99,6 +99,9 @@
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
   * [SectorSetSealDelay](#SectorSetSealDelay)
   * [SectorStartSealing](#SectorStartSealing)
+  * [SectorTerminate](#SectorTerminate)
+  * [SectorTerminateFlush](#SectorTerminateFlush)
+  * [SectorTerminatePending](#SectorTerminatePending)
 * [Sectors](#Sectors)
   * [SectorsList](#SectorsList)
   * [SectorsListInStates](#SectorsListInStates)
@@ -193,7 +196,8 @@ Response:
 ```json
 {
   "PreCommitControl": null,
-  "CommitControl": null
+  "CommitControl": null,
+  "TerminateControl": null
 }
 ```
 
@@ -1475,7 +1479,9 @@ Inputs:
 Response: `{}`
 
 ### SectorRemove
-There are not yet any comments for this method.
+SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
+be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
+
 
 Perms: admin
 
@@ -1534,6 +1540,43 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SectorTerminate
+SectorTerminate terminates the sector on-chain (adding it to a termination batch first), then
+automatically removes it from storage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  9
+]
+```
+
+Response: `{}`
+
+### SectorTerminateFlush
+SectorTerminateFlush immediately sends a terminate message with sectors batched for termination.
+Returns null if message wasn't sent
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
+### SectorTerminatePending
+SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
 
 ## Sectors
 

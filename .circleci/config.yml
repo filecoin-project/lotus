@@ -200,6 +200,8 @@ jobs:
     <<: *test
   test-window-post:
     <<: *test
+  test-terminate:
+    <<: *test
   test-conformance:
     description: |
       Run tests using a corpus of interoperable test vectors for Filecoin 
@@ -476,9 +478,15 @@ workflows:
           test-suite-name: cli
           packages: "./cli/... ./cmd/... ./api/..."
       - test-window-post:
+          codecov-upload: true
           go-test-flags: "-run=TestWindowedPost"
           winpost-test: "1"
           test-suite-name: window-post
+      - test-terminate:
+          codecov-upload: true
+          go-test-flags: "-run=TestTerminate"
+          winpost-test: "1"
+          test-suite-name: terminate
       - test-short:
           go-test-flags: "--timeout 10m --short"
           test-suite-name: short

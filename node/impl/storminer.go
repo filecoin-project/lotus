@@ -328,6 +328,18 @@ func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber
 	return sm.Miner.RemoveSector(ctx, id)
 }
 
+func (sm *StorageMinerAPI) SectorTerminate(ctx context.Context, id abi.SectorNumber) error {
+	return sm.Miner.TerminateSector(ctx, id)
+}
+
+func (sm *StorageMinerAPI) SectorTerminateFlush(ctx context.Context) (*cid.Cid, error) {
+	return sm.Miner.TerminateFlush(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorTerminatePending(ctx context.Context) ([]abi.SectorID, error) {
+	return sm.Miner.TerminatePending(ctx)
+}
+
 func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {
 	return sm.Miner.MarkForUpgrade(id)
 }
