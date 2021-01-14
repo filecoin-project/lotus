@@ -518,7 +518,7 @@ func TestTerminate(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 	toTerminate := abi.SectorNumber(3)
 
-	err = miner.SectorTerminate(ctx, 3)
+	err = miner.SectorTerminate(ctx, toTerminate)
 	require.NoError(t, err)
 
 	msgTriggerred := false
@@ -532,13 +532,24 @@ loop:
 		switch sealing.SectorState(si.State) {
 		case sealing.Terminating:
 			if !msgTriggerred {
-				c, err := miner.SectorTerminateFlush(ctx)
-				if err != nil {
-					return
+				{
+					p, err := miner.SectorTerminatePending(ctx)
+					require.NoError(t, err)
+					require.Len(t, p, 1)
+					require.Equal(t, abi.SectorNumber(3), p[0].Number)
 				}
+
+				c, err := miner.SectorTerminateFlush(ctx)
+				require.NoError(t, err)
 				if c != nil {
 					msgTriggerred = true
 					fmt.Println("terminate message:", c)
+
+					{
+						p, err := miner.SectorTerminatePending(ctx)
+						require.NoError(t, err)
+						require.Len(t, p, 0)
+					}
 				}
 			}
 		case sealing.TerminateWait, sealing.TerminateFinality, sealing.Removed:
