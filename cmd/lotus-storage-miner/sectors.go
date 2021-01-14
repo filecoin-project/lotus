@@ -407,6 +407,10 @@ var sectorsTerminateCmd = &cli.Command{
 			Usage: "pass this flag if you know what you are doing",
 		},
 	},
+	Subcommands: []*cli.Command{
+		sectorsTerminateFlushCmd,
+		sectorsTerminatePendingCmd,
+	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("really-do-it") {
 			return xerrors.Errorf("pass --really-do-it to confirm this action")
@@ -427,6 +431,60 @@ var sectorsTerminateCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorTerminate(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsTerminateFlushCmd = &cli.Command{
+	Name:  "flush",
+	Usage: "Send a terminate message if there are sectors queued for termination",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector number")
+		}
+
+		mcid, err := nodeApi.SectorTerminateFlush(ctx)
+		if err != nil {
+			return err
+		}
+
+		if mcid == nil {
+			return xerrors.New("no sectors were queued for termination")
+		}
+
+		return nil
+	},
+}
+
+var sectorsTerminatePendingCmd = &cli.Command{
+	Name:  "pending",
+	Usage: "List sector numbers of sectors pending termination",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector number")
+		}
+
+		pending, err := nodeApi.SectorTerminatePending(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, id := range pending {
+			fmt.Println(id)
+		}
+
+		return nil
 	},
 }
 
