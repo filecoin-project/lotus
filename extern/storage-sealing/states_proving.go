@@ -53,7 +53,15 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 
 	if si == nil {
 		// either already terminated or not committed yet
-		// todo / edge case - may be in process of being committed, but let's call that really unlikely
+
+		pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, si.SectorNumber, nil)
+		if err != nil {
+			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("checking precommit presence: %w", err)})
+		}
+		if pci != nil {
+			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("sector was precommitted but not proven, remove instead of terminating")})
+		}
+
 		return ctx.Send(SectorRemove{})
 	}
 
