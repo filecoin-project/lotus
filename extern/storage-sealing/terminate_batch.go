@@ -86,21 +86,21 @@ func (b *TerminateBatcher) run() {
 		}
 		lastMsg = nil
 
-		var notif, after bool
+		var sendAboveMax, sendAboveMin bool
 		select {
 		case <-b.stop:
 			close(b.stopped)
 			return
 		case <-b.notify:
-			notif = true // send above max
+			sendAboveMax = true
 		case <-time.After(TerminateBatchWait):
-			after = true // send above min
+			sendAboveMin = true
 		case fr := <-b.force: // user triggered
 			forceRes = fr
 		}
 
 		var err error
-		lastMsg, err = b.processBatch(notif, after)
+		lastMsg, err = b.processBatch(sendAboveMax, sendAboveMin)
 		if err != nil {
 			log.Warnw("TerminateBatcher processBatch error", "error", err)
 		}
@@ -143,8 +143,8 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 			continue
 		}
 
-		if total+n > uint64(miner.DeclarationsMax) {
-			n = uint64(miner.DeclarationsMax) - total
+		if total+n > uint64(miner.AddressedSectorsMax) {
+			n = uint64(miner.AddressedSectorsMax) - total
 
 			toTerminate, err = toTerminate.Slice(0, n)
 			if err != nil {
@@ -152,11 +152,12 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 				continue
 			}
 
-			*sectors, err = bitfield.SubtractBitField(*sectors, toTerminate)
+			s, err := bitfield.SubtractBitField(*sectors, toTerminate)
 			if err != nil {
 				log.Warnw("TerminateBatcher: sectors-toTerminate", "deadline", loc.Deadline, "partition", loc.Partition, "error", err)
 				continue
 			}
+			*sectors = s
 		}
 
 		total += n
@@ -167,7 +168,11 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 			Sectors:   toTerminate,
 		})
 
-		if total >= uint64(miner.DeclarationsMax) {
+		if total >= uint64(miner.AddressedSectorsMax) {
+			break
+		}
+
+		if len(params.Terminations) >= miner.DeclarationsMax {
 			break
 		}
 	}
