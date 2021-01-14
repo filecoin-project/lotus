@@ -309,16 +309,16 @@ func (m *Sealing) handleRemoveFailed(ctx statemachine.Context, sector SectorInfo
 	return ctx.Send(SectorRemove{})
 }
 
-func (m *Sealing) handleTerminateFailed(ctx statemachine.Context, si SectorInfo) error {
+func (m *Sealing) handleTerminateFailed(ctx statemachine.Context, sector SectorInfo) error {
 	// ignoring error as it's most likely an API error - `pci` will be nil, and we'll go back to
 	// the Terminating state after cooldown. If the API is still failing, well get back to here
 	// with the error in SectorInfo log.
-	pci, _ := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, si.SectorNumber, nil)
+	pci, _ := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
 	if pci != nil {
 		return nil // pause the fsm, needs manual user action
 	}
 
-	if err := failedCooldown(ctx, si); err != nil {
+	if err := failedCooldown(ctx, sector); err != nil {
 		return err
 	}
 
