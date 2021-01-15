@@ -218,10 +218,10 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 	spendable = big.Add(spendable, availBalance)
 
-	colorTokenAmount("Miner Balance:    %s\n", mact.Balance)
-	colorTokenAmount("      PreCommit:  %s\n", lockedFunds.PreCommitDeposits)
-	colorTokenAmount("      Pledge:     %s\n", lockedFunds.InitialPledgeRequirement)
-	colorTokenAmount("      Vesting:    %s\n", lockedFunds.VestingFunds)
+	fmt.Printf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
+	fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
+	fmt.Printf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
+	fmt.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
 	colorTokenAmount("      Available:  %s\n", availBalance)
 
 	mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
@@ -230,8 +230,8 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 	spendable = big.Add(spendable, big.Sub(mb.Escrow, mb.Locked))
 
-	colorTokenAmount("Market Balance:   %s\n", mb.Escrow)
-	colorTokenAmount("       Locked:    %s\n", mb.Locked)
+	fmt.Printf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short())
+	fmt.Printf("       Locked:    %s\n", types.FIL(mb.Locked).Short())
 	colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
 
 	wb, err := api.WalletBalance(ctx, mi.Worker)
@@ -239,7 +239,7 @@ func infoCmdAct(cctx *cli.Context) error {
 		return xerrors.Errorf("getting worker balance: %w", err)
 	}
 	spendable = big.Add(spendable, wb)
-	colorTokenAmount("Worker Balance:   %s\n", wb)
+	color.Cyan("Worker Balance:   %s", types.FIL(wb).Short())
 	if len(mi.ControlAddresses) > 0 {
 		cbsum := big.Zero()
 		for _, ca := range mi.ControlAddresses {
@@ -251,7 +251,7 @@ func infoCmdAct(cctx *cli.Context) error {
 		}
 		spendable = big.Add(spendable, cbsum)
 
-		colorTokenAmount("       Control:   %s\n", cbsum)
+		fmt.Printf("       Control:   %s\n", types.FIL(cbsum).Short())
 	}
 	colorTokenAmount("Total Spendable:  %s\n", spendable)
 
@@ -358,10 +358,10 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) error {
 
 func colorTokenAmount(format string, amount abi.TokenAmount) {
 	if amount.GreaterThan(big.Zero()) {
-		fmt.Printf(format, color.GreenString("%s", types.FIL(amount).Short()))
+		color.Green(format, types.FIL(amount).Short())
 	} else if amount.Equals(big.Zero()) {
-		fmt.Printf(format, color.YellowString("%s", types.FIL(amount).Short()))
+		color.Yellow(format, types.FIL(amount).Short())
 	} else {
-		fmt.Printf(format, color.RedString("%s", types.FIL(amount).Short()))
+		color.Red(format, types.FIL(amount).Short())
 	}
 }
