@@ -3,6 +3,16 @@ package chain_test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/exchange"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/messagesigner"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"go.uber.org/fx"
 	"os"
 	"testing"
 	"time"
@@ -453,6 +463,148 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 // -------------------------------------------------
 // FIXME: Decouple actual tests from helper function.
 // -------------------------------------------------
+
+// `go test -count=1 ./chain --failfast -v --run TestSyncDecoupled`
+func TestSyncDecoupled(t *testing.T) {
+	//var out api.FullNode
+
+	g, err := gen.NewGenerator()
+	require.NoError(t, err)
+	genesis, err := g.GenesisCar()
+	require.NoError(t, err)
+	fmt.Printf("ChainGen Genesis %v\n", g.Genesis().Cid().String())
+
+	ctx := context.Background()
+	_, err = node.New(ctx,
+		// First set the `repo.FullNode` configuration in the `node.Settings`.
+		node.Full(),
+
+		// From Online():
+		//   "the Online option must be set before Config option"
+		// set in `ConfigCommon` called in this case by `ConfigFullNode` in `Repo`.
+		// These functions read the configuration file in the repo and apply some
+		// extra logic based on it. I'm assuming Online needs to run first because
+		// many of the options in the config file affect subsystems that need to
+		// first be set up.
+		// FIXME: so we first set it online even before setting the repo
+		//  which seems the core of any node (offline or online), this is confusing
+		//  The repo configuration should be independent of Repo()/Online(), running
+		//  at the end where the restriction should be there (there needs to be
+		//  a repo to read the config from and the systems need to be already set up).
+
+		node.If(false,
+			// We can comment this entire online section out, turning it into offline
+			// I guess, and works. But basically nothing runs, all of the logic
+			// (including Sync) is here.
+			node.Online(),
+			// Adapts Online options to a mock host (that will be connected to the
+			// mock network provided.
+			node.MockHost(mocknet.New(ctx)),
+			// node.Online() leaves the `modules.Genesis` empty: `modules.ErrorGenesis`
+			// so we need to manually set it here.
+			node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
+		),
+
+		node.Override(new(*chain.Syncer), modules.NewSyncer),
+		// How do we call the syncer after adding the dependency?
+		// Used by HandleIncomingBlocks, that is indeed explicitly called as an invoke.
+		// `node.Override(node.HandleIncomingBlocksKey, modules.HandleIncomingBlocks),`
+		// Calling that alone fails as expected with:
+		//  missing dependencies for function "github.com/filecoin-project/lotus/node/modules".HandleIncomingBlocks
+
+		// First create an invoke manually without needing to add it to the list of `node.invoke`.
+		// It sound it will need to be registered in the settings anyway..
+		node.If(false,
+			node.Override(node.RunSync, func (_lc fx.Lifecycle, s *chain.Syncer) {
+				// go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
+				// Do nothing, just use the sync somehow.
+				s.Start()
+			}),
+		),
+		// As expected without online there are still many dependencies missing.
+		// Could try to extract them here but seems too much work, maybe unsetting
+		// all the invokes first.
+
+		// Extracted from online:
+		node.Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
+		node.Override(new(vm.SyscallBuilder), vm.Syscalls),
+		node.Override(new(*store.ChainStore), modules.ChainStore),
+		node.Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule()),
+		node.Override(new(*stmgr.StateManager), stmgr.NewStateManagerWithUpgradeSchedule),
+		node.Override(new(*wallet.LocalWallet), wallet.NewWallet),
+		node.Override(new(wallet.Default), node.From(new(*wallet.LocalWallet))),
+		node.Override(new(api.WalletAPI), node.From(new(wallet.MultiWallet))),
+		node.Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
+		node.Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
+		node.Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
+		node.Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
+		node.Override(new(*chain.Syncer), modules.NewSyncer),
+		node.Override(new(exchange.Client), exchange.NewClient),
+
+		// Trying to instantiate a chain store that does not depend on libp2p
+		// or any networking related.
+		node.If(true,
+			node.Override(node.RunSync, func (_lc fx.Lifecycle, s *store.ChainStore) {
+				require.NotNil(t, s, "NO CHAINSTORE PROVIDED")
+				heaviest := s.GetHeaviestTipSet()
+				if heaviest == nil {
+					fmt.Printf("No heaviest set\n")
+				} else {
+					fmt.Printf("Heaviest %v\n", heaviest.String())
+				}
+			}),
+		),
+
+		// Depends on the node type (full in this case) being configured before,
+		// will call ConfigFullNode.
+		node.Repo(repo.NewMemory(nil)),
+
+		node.Test(),
+	)
+	require.NoError(t, err)
+//	t.Cleanup(func() { _ = stop(context.Background()) })
+
+	// Run a normal `New` command but without the `FullAPI` which triggers
+	// an `fx.Invoke` type of Option through `fx.Populate` for the entire
+	// FullNodeAPI
+	syncAPI := &full.SyncAPI{}
+	_, err = node.New(ctx,
+		// FIXME: This shouldn't be necessary, or the definition of node type
+		//  should be extended to allow us to run independent subsystems, which
+		//  actually are not a node (depending on the definition of node), in that
+		//  case we would need a different `node.New` function.
+		node.Full(),
+
+		// FIXME: Different fx.Populate seem to be interfering with each other,
+		//  I can
+		//  only call one of the 3 SyncAPI/ChainAPI/FullAPI, the following calls
+		//  leave the structures with nil fields (not populated).
+		//  THEY ARE SHARING THE SAME INVOKE KEY! (ExtractApiKey)
+		node.BuildAPI(syncAPI),
+		//node.FullAPI(&out),
+		//node.BuildAPI(&chainAPI),
+
+		// Same as before.
+		node.Online(),
+		node.Repo(repo.NewMemory(nil)),
+		node.MockHost(mocknet.New(ctx)),
+		node.Test(),
+
+		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
+	)
+	require.NoError(t, err)
+
+	{
+		require.NotNil(t, syncAPI.Syncer)
+		require.NotNil(t, syncAPI.Syncer.ChainStore())
+		genesis, err := syncAPI.Syncer.ChainStore().GetGenesis()
+		require.NoError(t, err)
+		fmt.Printf("Genesis %v\n", genesis.Cid().String())
+
+		fmt.Printf("Syncer local peer %v\n", syncAPI.Syncer.LocalPeer())
+		syncAPI.Syncer.Stop()
+	}
+}
 
 func TestSyncSimple(t *testing.T) {
 	H := 50 // chain height

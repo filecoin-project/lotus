@@ -149,6 +149,11 @@ const (
 
 	SetApiEndpointKey
 
+	// FIXME: Testing a way to manually start a subsystem, probably should
+	//  happen outside of the Settings configuration that seems too coupled
+	//  with an entires node.
+	RunSync
+
 	_nInvokes // keep this last
 )
 
@@ -576,6 +581,25 @@ func Lite(enable bool) FullOption {
 		s.Lite = enable
 		return nil
 	}
+}
+
+func Full() FullOption {
+	return func(s *Settings) error {
+		s.nodeType = repo.FullNode
+		return nil
+	}
+}
+
+func BuildAPI(api interface{}) Option {
+	// FIXME: Actually check that this is one of the sub-structures in
+	//  `impl.FullNodeAPI{}`. This was the closest (suboptimal) solution
+	//  to avoid needing a separate functions for each of the APIs.
+	return Options(
+		func(s *Settings) error {
+			s.invokes[ExtractApiKey] = fx.Populate(api)
+			return nil
+		},
+	)
 }
 
 func FullAPI(out *api.FullNode, fopts ...FullOption) Option {
