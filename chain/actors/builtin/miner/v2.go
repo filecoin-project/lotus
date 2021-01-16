@@ -381,7 +381,7 @@ func (d *deadline2) PartitionsChanged(other Deadline) (bool, error) {
 	return !d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
 }
 
-func (d *deadline2) PostSubmissions() (bitfield.BitField, error) {
+func (d *deadline2) PartitionsPoSted() (bitfield.BitField, error) {
 	return d.Deadline.PostSubmissions, nil
 }
 
