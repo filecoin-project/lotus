@@ -296,6 +296,11 @@ func (s *state2) Info() (MinerInfo, error) {
 		pid = &peerID
 	}
 
+	wpp, err := info.SealProofType.RegisteredWindowPoStProof()
+	if err != nil {
+		return MinerInfo{}, err
+	}
+
 	mi := MinerInfo{
 		Owner:            info.Owner,
 		Worker:           info.Worker,
@@ -306,7 +311,7 @@ func (s *state2) Info() (MinerInfo, error) {
 
 		PeerId:                     pid,
 		Multiaddrs:                 info.Multiaddrs,
-		SealProofType:              info.SealProofType,
+		WindowPoStProofType:        wpp,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,

@@ -47,18 +47,13 @@ func NewWindowedPoStScheduler(api storageMinerApi, fc config.MinerFeeConfig, as 
 		return nil, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	rt, err := mi.SealProofType.RegisteredWindowPoStProof()
-	if err != nil {
-		return nil, err
-	}
-
 	return &WindowPoStScheduler{
 		api:              api,
 		feeCfg:           fc,
 		addrSel:          as,
 		prover:           sb,
 		faultTracker:     ft,
-		proofType:        rt,
+		proofType:        mi.WindowPoStProofType,
 		partitionSectors: mi.WindowPoStPartitionSectors,
 
 		actor: actor,
