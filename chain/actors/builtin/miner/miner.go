@@ -96,7 +96,7 @@ type State interface {
 type Deadline interface {
 	LoadPartition(idx uint64) (Partition, error)
 	ForEachPartition(cb func(idx uint64, part Partition) error) error
-	PostSubmissions() (bitfield.BitField, error)
+	PartitionsPoSted() (bitfield.BitField, error)
 
 	PartitionsChanged(Deadline) (bool, error)
 }

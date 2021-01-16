@@ -169,7 +169,7 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 
 	out := make([]api.Deadline, deadlines)
 	if err := mas.ForEachDeadline(func(i uint64, dl miner.Deadline) error {
-		ps, err := dl.PostSubmissions()
+		ps, err := dl.PartitionsPoSted()
 		if err != nil {
 			return err
 		}
