@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
+	miner2 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
@@ -128,7 +130,7 @@ func SealProofType(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (abi.Register
 		return 0, err
 	}
 
-	return mi.SealProofType, nil
+	return miner2.PreferredSealProofTypeFromWindowPoStType(mi.WindowPoStProofType)
 }
 
 type sidsc struct {

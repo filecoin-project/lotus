@@ -7,6 +7,8 @@ import (
 	"io"
 	"time"
 
+	miner2 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -179,7 +181,7 @@ func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, miner address.Ad
 	if err != nil {
 		return 0, err
 	}
-	return mi.SealProofType, nil
+	return miner2.PreferredSealProofTypeFromWindowPoStType(mi.WindowPoStProofType)
 }
 
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {

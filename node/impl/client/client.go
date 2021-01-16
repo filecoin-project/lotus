@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-padreader"
@@ -157,6 +159,11 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		dealStart = ts.Height() + abi.ChainEpoch(dealStartBufferHours*blocksPerHour) // TODO: Get this from storage ask
 	}
 
+	st, err := miner.PreferredSealProofTypeFromWindowPoStType(mi.WindowPoStProofType)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get seal proof type: %w", err)
+	}
+
 	result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
 		Addr:          params.Wallet,
 		Info:          &providerInfo,
@@ -165,7 +172,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
 		Price:         params.EpochPrice,
 		Collateral:    params.ProviderCollateral,
-		Rt:            mi.SealProofType,
+		Rt:            st,
 		FastRetrieval: params.FastRetrieval,
 		VerifiedDeal:  params.VerifiedDeal,
 		StoreID:       storeID,

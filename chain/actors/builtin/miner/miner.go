@@ -143,6 +143,24 @@ type DeclareFaultsRecoveredParams = miner0.DeclareFaultsRecoveredParams
 type SubmitWindowedPoStParams = miner0.SubmitWindowedPoStParams
 type ProveCommitSectorParams = miner0.ProveCommitSectorParams
 
+// TODO: This may need to be epoch-sensitive
+func PreferredSealProofTypeFromWindowPoStType(proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
+	switch proof {
+	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
+		return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1:
+		return abi.RegisteredSealProof_StackedDrg8MiBV1_1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1:
+		return abi.RegisteredSealProof_StackedDrg512MiBV1_1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1:
+		return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
+		return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
+	default:
+		return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
+	}
+}
+
 type MinerInfo struct {
 	Owner                      address.Address   // Must be an ID-address.
 	Worker                     address.Address   // Must be an ID-address.
@@ -151,7 +169,7 @@ type MinerInfo struct {
 	WorkerChangeEpoch          abi.ChainEpoch
 	PeerId                     *peer.ID
 	Multiaddrs                 []abi.Multiaddrs
-	SealProofType              abi.RegisteredSealProof
+	WindowPoStProofType        abi.RegisteredPoStProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 	ConsensusFaultElapsed      abi.ChainEpoch
