@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -21,6 +22,9 @@ func init() {
 	})
 	builtin.RegisterActorState(builtin2.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
+	})
+	builtin.RegisterActorState(builtin3.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load3(store, root)
 	})
 }
 
