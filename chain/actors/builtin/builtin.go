@@ -18,6 +18,7 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
+	smoothing3 "github.com/filecoin-project/specs-actors/v3/actors/util/smoothing"
 )
 
 var SystemActorAddr = builtin0.SystemActorAddr
@@ -56,8 +57,12 @@ func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, 
 	return miner0.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }
 
-func FromV2FilterEstimate(v1 smoothing2.FilterEstimate) FilterEstimate {
-	return (FilterEstimate)(v1)
+func FromV2FilterEstimate(v2 smoothing2.FilterEstimate) FilterEstimate {
+	return (FilterEstimate)(v2)
+}
+
+func FromV3FilterEstimate(v3 smoothing3.FilterEstimate) FilterEstimate {
+	return (FilterEstimate)(v3)
 }
 
 type ActorStateLoader func(store adt.Store, root cid.Cid) (cbor.Marshaler, error)
