@@ -39,6 +39,8 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		return load0(store, act.Head)
 	case builtin2.VerifiedRegistryActorCodeID:
 		return load2(store, act.Head)
+	case builtin3.VerifiedRegistryActorCodeID:
+		return load3(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
