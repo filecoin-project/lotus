@@ -2,7 +2,6 @@ package builtin
 
 import (
 	"github.com/filecoin-project/go-address"
-	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -16,10 +15,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 
+	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
+	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
+	smoothing3 "github.com/filecoin-project/specs-actors/v3/actors/util/smoothing"
+
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
-	smoothing3 "github.com/filecoin-project/specs-actors/v3/actors/util/smoothing"
 )
 
 var SystemActorAddr = builtin0.SystemActorAddr
@@ -44,7 +45,8 @@ const (
 	MethodConstructor = builtin3.MethodConstructor
 )
 
-// TODO: Why does actors have 2 different versions of this?
+// These are all just type aliases across actor versions 0, 2, & 3. In the future, that might change
+// and we might need to do something fancier.
 type SectorInfo = proof0.SectorInfo
 type PoStProof = proof0.PoStProof
 type FilterEstimate = smoothing0.FilterEstimate
@@ -53,7 +55,7 @@ func FromV0FilterEstimate(v0 smoothing0.FilterEstimate) FilterEstimate {
 	return (FilterEstimate)(v0)
 }
 
-// Doesn't change between actors v0 and v1
+// Doesn't change between actors v0, v2, and v3.
 func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
 	return miner0.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }
@@ -88,30 +90,42 @@ func ActorNameByCode(c cid.Cid) string {
 		return builtin0.ActorNameByCode(c)
 	case builtin2.IsBuiltinActor(c):
 		return builtin2.ActorNameByCode(c)
+	case builtin3.IsBuiltinActor(c):
+		return builtin3.ActorNameByCode(c)
 	default:
 		return "<unknown>"
 	}
 }
 
 func IsBuiltinActor(c cid.Cid) bool {
-	return builtin0.IsBuiltinActor(c) || builtin2.IsBuiltinActor(c)
+	return builtin0.IsBuiltinActor(c) ||
+		builtin2.IsBuiltinActor(c) ||
+		builtin3.IsBuiltinActor(c)
 }
 
 func IsAccountActor(c cid.Cid) bool {
-	return c == builtin0.AccountActorCodeID || c == builtin2.AccountActorCodeID
+	return c == builtin0.AccountActorCodeID ||
+		c == builtin2.AccountActorCodeID ||
+		c == builtin3.AccountActorCodeID
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {
-	return c == builtin0.StorageMinerActorCodeID || c == builtin2.StorageMinerActorCodeID
+	return c == builtin0.StorageMinerActorCodeID ||
+		c == builtin2.StorageMinerActorCodeID ||
+		c == builtin3.StorageMinerActorCodeID
 }
 
 func IsMultisigActor(c cid.Cid) bool {
-	return c == builtin0.MultisigActorCodeID || c == builtin2.MultisigActorCodeID
+	return c == builtin0.MultisigActorCodeID ||
+		c == builtin2.MultisigActorCodeID ||
+		c == builtin3.MultisigActorCodeID
 
 }
 
 func IsPaymentChannelActor(c cid.Cid) bool {
-	return c == builtin0.PaymentChannelActorCodeID || c == builtin2.PaymentChannelActorCodeID
+	return c == builtin0.PaymentChannelActorCodeID ||
+		c == builtin2.PaymentChannelActorCodeID ||
+		c == builtin3.PaymentChannelActorCodeID
 }
 
 func makeAddress(addr string) address.Address {
