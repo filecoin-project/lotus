@@ -50,6 +50,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	AddPiece: planOne(
 		on(SectorPieceAdded{}, WaitDeals),
+		apply(SectorStartPacking{}),
 	),
 	Packing: planOne(on(SectorPacked{}, GetTicket)),
 	GetTicket: planOne(
@@ -447,56 +448,72 @@ func final(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	return 0, xerrors.Errorf("didn't expect any events in state %s, got %+v", state.State, events)
 }
 
-func on(mut mutator, next SectorState) func() (mutator, func(*SectorInfo) error) {
-	return func() (mutator, func(*SectorInfo) error) {
-		return mut, func(state *SectorInfo) error {
+func on(mut mutator, next SectorState) func() (mutator, func(*SectorInfo) (bool, error)) {
+	return func() (mutator, func(*SectorInfo) (bool, error)) {
+		return mut, func(state *SectorInfo) (bool, error) {
 			state.State = next
-			return nil
+			return false, nil
 		}
 	}
 }
 
-func onReturning(mut mutator) func() (mutator, func(*SectorInfo) error) {
-	return func() (mutator, func(*SectorInfo) error) {
-		return mut, func(state *SectorInfo) error {
+// like `on`, but doesn't change state
+func apply(mut mutator) func() (mutator, func(*SectorInfo) (bool, error)) {
+	return func() (mutator, func(*SectorInfo) (bool, error)) {
+		return mut, func(state *SectorInfo) (bool, error) {
+			return true, nil
+		}
+	}
+}
+
+func onReturning(mut mutator) func() (mutator, func(*SectorInfo) (bool, error)) {
+	return func() (mutator, func(*SectorInfo) (bool, error)) {
+		return mut, func(state *SectorInfo) (bool, error) {
 			if state.Return == "" {
-				return xerrors.Errorf("return state not set")
+				return false, xerrors.Errorf("return state not set")
 			}
 
 			state.State = SectorState(state.Return)
 			state.Return = ""
-			return nil
+			return false, nil
 		}
 	}
 }
 
-func planOne(ts ...func() (mut mutator, next func(*SectorInfo) error)) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+func planOne(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err error))) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	return func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
-		if gm, ok := events[0].User.(globalMutator); ok {
-			gm.applyGlobal(state)
-			return 1, nil
-		}
+		for i, event := range events {
+			if gm, ok := event.User.(globalMutator); ok {
+				gm.applyGlobal(state)
+				return uint64(i + 1), nil
+			}
 
-		for _, t := range ts {
-			mut, next := t()
+			for _, t := range ts {
+				mut, next := t()
 
-			if reflect.TypeOf(events[0].User) != reflect.TypeOf(mut) {
+				if reflect.TypeOf(event.User) != reflect.TypeOf(mut) {
+					continue
+				}
+
+				if err, iserr := event.User.(error); iserr {
+					log.Warnf("sector %d got error event %T: %+v", state.SectorNumber, event.User, err)
+				}
+
+				event.User.(mutator).apply(state)
+				more, err := next(state)
+				if err != nil || !more {
+					return uint64(i + 1), err
+				}
+			}
+
+			_, ok := event.User.(Ignorable)
+			if ok {
 				continue
 			}
 
-			if err, iserr := events[0].User.(error); iserr {
-				log.Warnf("sector %d got error event %T: %+v", state.SectorNumber, events[0].User, err)
-			}
-
-			events[0].User.(mutator).apply(state)
-			return 1, next(state)
+			return uint64(i + 1), xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", state.State, event.User, event)
 		}
 
-		_, ok := events[0].User.(Ignorable)
-		if ok {
-			return 1, nil
-		}
-
-		return 0, xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", state.State, events[0].User, events[0])
+		return uint64(len(events)), nil
 	}
 }

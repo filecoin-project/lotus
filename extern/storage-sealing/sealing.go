@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -85,6 +86,7 @@ type Sealing struct {
 
 	inputLk       sync.Mutex
 	openSectors   map[abi.SectorID]*openSector
+	sectorTimers  map[abi.SectorID]*time.Timer
 	pendingPieces map[cid.Cid]*pendingPiece
 
 	upgradeLk sync.Mutex

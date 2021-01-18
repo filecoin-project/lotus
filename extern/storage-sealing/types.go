@@ -3,8 +3,8 @@ package sealing
 import (
 	"bytes"
 	"context"
-
 	"github.com/ipfs/go-cid"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -70,6 +70,7 @@ type SectorInfo struct {
 	SectorType abi.RegisteredSealProof
 
 	// Packing
+	CreationTime  time.Time
 	Pieces        []Piece
 	PendingPieces []cid.Cid
 

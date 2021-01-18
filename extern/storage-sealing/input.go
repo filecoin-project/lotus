@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 	"sort"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -21,9 +22,35 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	// if full / oldish / has oldish deals goto seal
 	// ^ also per sector deal limit
 
-	// send SectorStartPacking
-
 	m.inputLk.Lock()
+
+	now := time.Now()
+	st := m.sectorTimers[m.minerSectorID(sector.SectorNumber)]
+	if st != nil {
+		if !st.Stop() { // timer expired, SectorStartPacking was/is being sent
+			// we send another SectorStartPacking in case one was sent in the handleAddPiece state
+			return ctx.Send(SectorStartPacking{})
+		}
+	}
+
+	if !sector.CreationTime.IsZero() {
+		cfg, err := m.getConfig()
+		if err != nil {
+			return xerrors.Errorf("getting storage config: %w", err)
+		}
+
+		sealTime := sector.CreationTime.Add(cfg.WaitDealsDelay)
+		if now.After(sealTime) {
+			return ctx.Send(SectorStartPacking{})
+		} else {
+			m.sectorTimers[m.minerSectorID(sector.SectorNumber)] = time.AfterFunc(sealTime.Sub(now), func() {
+				if err := ctx.Send(SectorStartPacking{}); err != nil {
+					log.Errorw("sending SectorStartPacking event failed", "sector", sector.SectorNumber, "error", err)
+				}
+			})
+		}
+	}
+
 	var used abi.UnpaddedPieceSize
 	for _, piece := range sector.Pieces {
 		used += piece.Piece.Size.Unpadded()
@@ -32,7 +59,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	m.openSectors[m.minerSectorID(sector.SectorNumber)] = &openSector{
 		used: used,
 		maybeAccept: func(cid cid.Cid) error {
-			// todo check space
+			// todo double check space
 
 			// todo check deal expiration
 
@@ -62,6 +89,13 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 
 	res := SectorPieceAdded{}
 
+	var offset abi.UnpaddedPieceSize
+	pieceSizes := make([]abi.UnpaddedPieceSize, len(sector.Pieces))
+	for i, p := range sector.Pieces {
+		pieceSizes[i] = p.Piece.Size.Unpadded()
+		offset += p.Piece.Size.Unpadded()
+	}
+
 	for _, piece := range sector.PendingPieces {
 		m.inputLk.Lock()
 		deal, ok := m.pendingPieces[piece]
@@ -72,23 +106,13 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			return xerrors.Errorf("piece %s assigned to sector %d not found", piece, sector.SectorNumber)
 		}
 
-		var stored abi.PaddedPieceSize
-		for _, piece := range sector.Pieces {
-			stored += piece.Piece.Size
-		}
+		pads, padLength := ffiwrapper.GetRequiredPadding(offset.Padded(), deal.size.Padded())
 
-		pads, padLength := ffiwrapper.GetRequiredPadding(stored, deal.size.Padded())
-
-		if stored+padLength+deal.size.Padded() > abi.PaddedPieceSize(ssize) {
+		if offset.Padded()+padLength+deal.size.Padded() > abi.PaddedPieceSize(ssize) {
 			return xerrors.Errorf("piece assigned to a sector with not enough space")
 		}
 
-		offset := padLength
-		pieceSizes := make([]abi.UnpaddedPieceSize, len(sector.Pieces))
-		for i, p := range sector.Pieces {
-			pieceSizes[i] = p.Piece.Size.Unpadded()
-			offset += p.Piece.Size
-		}
+		offset += padLength.Unpadded()
 
 		for _, p := range pads {
 			ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx.Context(), DealSectorPriority),
@@ -115,9 +139,13 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			return xerrors.Errorf("writing padding piece: %w", err) // todo failed state
 		}
 
+		deal.accepted(sector.SectorNumber, offset, nil)
+
+		offset += deal.size
 		pieceSizes = append(pieceSizes, deal.size)
+
 		res.NewPieces = append(res.NewPieces, Piece{
-			Piece: ppi,
+			Piece:    ppi,
 			DealInfo: &deal.deal,
 		})
 	}
@@ -155,7 +183,11 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 		return 0, 0, xerrors.Errorf("piece for deal %s already pending", *deal.PublishCid)
 	}
 
-	resCh := make(chan struct{sn abi.SectorNumber; offset abi.UnpaddedPieceSize; err error}, 1)
+	resCh := make(chan struct {
+		sn     abi.SectorNumber
+		offset abi.UnpaddedPieceSize
+		err    error
+	}, 1)
 
 	m.pendingPieces[*deal.PublishCid] = &pendingPiece{
 		size:     size,
@@ -164,9 +196,9 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 		assigned: false,
 		accepted: func(sn abi.SectorNumber, offset abi.UnpaddedPieceSize, err error) {
 			resCh <- struct {
-				sn   abi.SectorNumber
+				sn     abi.SectorNumber
 				offset abi.UnpaddedPieceSize
-				err  error
+				err    error
 			}{sn: sn, offset: offset, err: err}
 		},
 	}
@@ -203,15 +235,15 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 
 	// todo: this is distinctly O(n^2), may need to be optimized for tiny deals and large scale miners
 	//  (unlikely to be a problem now)
-	for id, sector := range m.openSectors {
-		avail := abi.PaddedPieceSize(ssize).Unpadded() - sector.used
+	for pieceCid, piece := range m.pendingPieces {
+		if piece.assigned {
+			continue // already assigned to a sector, skip
+		}
 
-		for pieceCid, piece := range m.pendingPieces {
-			if piece.assigned {
-				continue // already assigned to a sector, skip
-			}
+		toAssign[pieceCid] = struct{}{}
 
-			toAssign[pieceCid] = struct{}{}
+		for id, sector := range m.openSectors {
+			avail := abi.PaddedPieceSize(ssize).Unpadded() - sector.used
 
 			if piece.size <= avail { // (note: if we have enough space for the piece, we also have enough space for inter-piece padding)
 				matches = append(matches, match{
@@ -222,10 +254,8 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 					padding: avail % piece.size,
 				})
 			}
-
 		}
 	}
-
 	sort.Slice(matches, func(i, j int) bool {
 		if matches[i].padding != matches[j].padding { // less padding is better
 			return matches[i].padding < matches[j].padding
@@ -266,8 +296,9 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	}
 
 	if len(toAssign) > 0 {
-		m.tryCreateDealSector(ctx, sp)
-
+		if err := m.tryCreateDealSector(ctx, sp); err != nil {
+			log.Errorw("Failed to create a new sector for deals", "error", err)
+		}
 	}
 
 	return nil
@@ -279,13 +310,12 @@ func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSeal
 		return xerrors.Errorf("getting storage config: %w", err)
 	}
 
-	if cfg.MaxSealingSectorsForDeals > 0 {
-		if m.stats.curSealing() > cfg.MaxSealingSectorsForDeals {
-			return nil
-		}
-		if m.stats.curStaging() > cfg.MaxWaitDealsSectors {
-			return nil
-		}
+	if cfg.MaxSealingSectorsForDeals > 0 && m.stats.curSealing() > cfg.MaxSealingSectorsForDeals {
+		return nil
+	}
+
+	if cfg.MaxWaitDealsSectors > 0 && m.stats.curStaging() > cfg.MaxWaitDealsSectors {
+		return nil
 	}
 
 	// Now actually create a new sector
@@ -305,4 +335,8 @@ func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSeal
 		ID:         sid,
 		SectorType: sp,
 	})
+}
+
+func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
+	return m.sectors.Send(uint64(sid), SectorStartPacking{})
 }

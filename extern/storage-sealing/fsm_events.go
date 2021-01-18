@@ -1,13 +1,16 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"time"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
 type mutator interface {
@@ -81,6 +84,9 @@ type SectorAddPiece struct {
 }
 
 func (evt SectorAddPiece) apply(state *SectorInfo) {
+	if state.CreationTime.IsZero() {
+		state.CreationTime = time.Now()
+	}
 	state.PendingPieces = append(state.PendingPieces, evt.NewPiece)
 }
 
