@@ -107,6 +107,7 @@ type Deadline interface {
 	PartitionsPoSted() (bitfield.BitField, error)
 
 	PartitionsChanged(Deadline) (bool, error)
+	DisputableProofCount() (uint64, error)
 }
 
 type Partition interface {

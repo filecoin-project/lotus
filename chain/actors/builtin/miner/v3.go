@@ -386,6 +386,15 @@ func (d *deadline3) PartitionsPoSted() (bitfield.BitField, error) {
 	return d.Deadline.PartitionsPoSted, nil
 }
 
+func (d *deadline3) DisputableProofCount() (uint64, error) {
+	ops, err := d.OptimisticProofsSnapshotArray(d.store)
+	if err != nil {
+		return 0, err
+	}
+
+	return ops.Length(), nil
+}
+
 func (p *partition3) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }

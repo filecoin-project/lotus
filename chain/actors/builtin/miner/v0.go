@@ -391,6 +391,11 @@ func (d *deadline0) PartitionsPoSted() (bitfield.BitField, error) {
 	return d.Deadline.PostSubmissions, nil
 }
 
+func (d *deadline0) DisputableProofCount() (uint64, error) {
+	// field doesn't exist until v3
+	return 0, nil
+}
+
 func (p *partition0) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }

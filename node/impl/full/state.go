@@ -170,8 +170,14 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 			return err
 		}
 
+		l, err := dl.DisputableProofCount()
+		if err != nil {
+			return err
+		}
+
 		out[i] = api.Deadline{
-			PostSubmissions: ps,
+			PostSubmissions:      ps,
+			DisputableProofCount: l,
 		}
 		return nil
 	}); err != nil {
