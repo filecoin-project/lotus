@@ -32,8 +32,8 @@ func init() {
 }
 
 var (
-	Address = builtin2.StorageMarketActorAddr
-	Methods = builtin2.MethodsMarket
+	Address = builtin3.StorageMarketActorAddr
+	Methods = builtin3.MethodsMarket
 )
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {

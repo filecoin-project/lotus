@@ -9,14 +9,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	multisig3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var Methods = builtin2.MethodsMultisig
+var Methods = builtin3.MethodsMultisig
 
 func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
@@ -49,11 +49,11 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = multisig2.ProposalHashData
-type ProposeReturn = multisig2.ProposeReturn
+type ProposalHashData = multisig3.ProposalHashData
+type ProposeReturn = multisig3.ProposeReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := multisig2.TxnIDParams{ID: multisig2.TxnID(id)}
+	params := multisig3.TxnIDParams{ID: multisig3.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)

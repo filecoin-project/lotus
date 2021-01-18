@@ -29,8 +29,8 @@ func init() {
 }
 
 var (
-	Address = builtin2.RewardActorAddr
-	Methods = builtin2.MethodsReward
+	Address = builtin3.RewardActorAddr
+	Methods = builtin3.MethodsReward
 )
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {

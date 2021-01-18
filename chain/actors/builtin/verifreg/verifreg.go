@@ -29,8 +29,8 @@ func init() {
 }
 
 var (
-	Address = builtin2.VerifiedRegistryActorAddr
-	Methods = builtin2.MethodsVerifiedRegistry
+	Address = builtin3.VerifiedRegistryActorAddr
+	Methods = builtin3.MethodsVerifiedRegistry
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
