@@ -334,10 +334,15 @@ func Online() Option {
 		// Full node
 		ApplyIf(isFullNode,
 			Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
+			// Who provides the ChainModule? Is `fx` populating it
+			//  with `ChainStore`, and if so where/when? The From will change
+			//  it to a function taking the struct as an argument which will
+			//  populate as part of the dependency injection.
 			Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 			Override(new(full.GasModuleAPI), From(new(full.GasModule))),
 			Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
 			Override(new(full.StateModuleAPI), From(new(full.StateModule))),
+			// FIXME: This one doesn't need the From, it's not an `fx.In` struct.
 			Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 
 			Override(RunHelloKey, modules.RunHello),
