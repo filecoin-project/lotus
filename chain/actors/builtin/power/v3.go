@@ -52,7 +52,7 @@ func (s *state3) TotalCommitted() (Claim, error) {
 }
 
 func (s *state3) MinerPower(addr address.Address) (Claim, bool, error) {
-	claims, err := adt3.AsMap(s.store, s.Claims, builtin3.DefaultHamtBitwidth)
+	claims, err := s.claims()
 	if err != nil {
 		return Claim{}, false, err
 	}
