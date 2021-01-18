@@ -8,6 +8,7 @@ import (
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -475,7 +476,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{184, 25}); err != nil {
+	if _, err := w.Write([]byte{184, 27}); err != nil {
 		return err
 	}
 
@@ -542,6 +543,22 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
+	// t.CreationTime (time.Time) (struct)
+	if len("CreationTime") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"CreationTime\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("CreationTime"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("CreationTime")); err != nil {
+		return err
+	}
+
+	if err := t.CreationTime.MarshalCBOR(w); err != nil {
+		return err
+	}
+
 	// t.Pieces ([]sealing.Piece) (slice)
 	if len("Pieces") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Pieces\" was too long")
@@ -564,6 +581,31 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	for _, v := range t.Pieces {
 		if err := v.MarshalCBOR(w); err != nil {
 			return err
+		}
+	}
+
+	// t.PendingPieces ([]cid.Cid) (slice)
+	if len("PendingPieces") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PendingPieces\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("PendingPieces"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("PendingPieces")); err != nil {
+		return err
+	}
+
+	if len(t.PendingPieces) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.PendingPieces was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(t.PendingPieces))); err != nil {
+		return err
+	}
+	for _, v := range t.PendingPieces {
+		if err := cbg.WriteCidBuf(scratch, w, v); err != nil {
+			return xerrors.Errorf("failed writing cid field t.PendingPieces: %w", err)
 		}
 	}
 
@@ -1107,6 +1149,16 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 
 				t.SectorType = abi.RegisteredSealProof(extraI)
 			}
+			// t.CreationTime (time.Time) (struct)
+		case "CreationTime":
+
+			{
+
+				if err := t.CreationTime.UnmarshalCBOR(br); err != nil {
+					return xerrors.Errorf("unmarshaling t.CreationTime: %w", err)
+				}
+
+			}
 			// t.Pieces ([]sealing.Piece) (slice)
 		case "Pieces":
 
@@ -1135,6 +1187,35 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				}
 
 				t.Pieces[i] = v
+			}
+
+			// t.PendingPieces ([]cid.Cid) (slice)
+		case "PendingPieces":
+
+			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.MaxLength {
+				return fmt.Errorf("t.PendingPieces: array too large (%d)", extra)
+			}
+
+			if maj != cbg.MajArray {
+				return fmt.Errorf("expected cbor array")
+			}
+
+			if extra > 0 {
+				t.PendingPieces = make([]cid.Cid, extra)
+			}
+
+			for i := 0; i < int(extra); i++ {
+
+				c, err := cbg.ReadCid(br)
+				if err != nil {
+					return xerrors.Errorf("reading cid field t.PendingPieces failed: %w", err)
+				}
+				t.PendingPieces[i] = c
 			}
 
 			// t.TicketValue (abi.SealRandomness) (slice)
