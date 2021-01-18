@@ -594,9 +594,13 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 // FlushValidationCache removes all results of block validation from the
 // chain metadata store. Usually the first step after a new chain import.
 func (cs *ChainStore) FlushValidationCache() error {
+	return FlushValidationCache(cs.ds)
+}
+
+func FlushValidationCache(ds datastore.Batching) error {
 	log.Infof("clearing block validation cache...")
 
-	dsWalk, err := cs.ds.Query(query.Query{
+	dsWalk, err := ds.Query(query.Query{
 		// Potential TODO: the validation cache is not a namespace on its own
 		// but is rather constructed as prefixed-key `foo:bar` via .Instance(), which
 		// in turn does not work with the filter, which can match only on `foo/bar`
@@ -616,7 +620,7 @@ func (cs *ChainStore) FlushValidationCache() error {
 		return xerrors.Errorf("failed to run key listing query: %w", err)
 	}
 
-	batch, err := cs.ds.Batch()
+	batch, err := ds.Batch()
 	if err != nil {
 		return xerrors.Errorf("failed to open a DS batch: %w", err)
 	}
