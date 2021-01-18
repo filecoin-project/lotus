@@ -25,6 +25,9 @@ func init() {
 	builtin.RegisterActorState(builtin2.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
+	builtin.RegisterActorState(builtin3.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load3(store, root)
+	})
 }
 
 var (
