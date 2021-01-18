@@ -31,8 +31,8 @@ func init() {
 }
 
 var (
-	Address = builtin2.InitActorAddr
-	Methods = builtin2.MethodsInit
+	Address = builtin3.InitActorAddr
+	Methods = builtin3.MethodsInit
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {

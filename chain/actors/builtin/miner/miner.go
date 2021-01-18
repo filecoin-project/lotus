@@ -36,7 +36,7 @@ func init() {
 	})
 }
 
-var Methods = builtin2.MethodsMiner
+var Methods = builtin3.MethodsMiner
 
 // Unchanged between v0, v2, and v3 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod

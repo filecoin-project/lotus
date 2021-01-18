@@ -2,12 +2,13 @@ package builtin
 
 import (
 	"github.com/filecoin-project/go-address"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -39,8 +40,8 @@ const (
 )
 
 const (
-	MethodSend        = builtin2.MethodSend
-	MethodConstructor = builtin2.MethodConstructor
+	MethodSend        = builtin3.MethodSend
+	MethodConstructor = builtin3.MethodConstructor
 )
 
 // TODO: Why does actors have 2 different versions of this?
