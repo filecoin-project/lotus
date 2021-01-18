@@ -77,11 +77,20 @@ func (evt SectorStartCC) apply(state *SectorInfo) {
 }
 
 type SectorAddPiece struct {
-	NewPiece Piece
+	NewPiece cid.Cid
 }
 
 func (evt SectorAddPiece) apply(state *SectorInfo) {
-	state.Pieces = append(state.Pieces, evt.NewPiece)
+	state.PendingPieces = append(state.PendingPieces, evt.NewPiece)
+}
+
+type SectorPieceAdded struct {
+	NewPieces []Piece
+}
+
+func (evt SectorPieceAdded) apply(state *SectorInfo) {
+	state.Pieces = append(state.Pieces, evt.NewPieces...)
+	state.PendingPieces = nil
 }
 
 type SectorStartPacking struct{}

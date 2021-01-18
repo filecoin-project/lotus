@@ -284,6 +284,7 @@ var stateList = []stateMeta{
 
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
+	{col: color.FgBlue, state: sealing.AddPiece},
 
 	{col: color.FgRed, state: sealing.UndefinedSectorState},
 	{col: color.FgYellow, state: sealing.Packing},

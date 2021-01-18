@@ -15,4 +15,6 @@ type Config struct {
 	MaxSealingSectorsForDeals uint64
 
 	WaitDealsDelay time.Duration
+
+	TargetWaitDealsSectors uint64
 }

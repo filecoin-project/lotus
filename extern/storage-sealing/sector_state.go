@@ -6,6 +6,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	Empty:                {},
 	WaitDeals:            {},
 	Packing:              {},
+	AddPiece:             {},
 	GetTicket:            {},
 	PreCommit1:           {},
 	PreCommit2:           {},
@@ -43,8 +44,9 @@ const (
 	UndefinedSectorState SectorState = ""
 
 	// happy path
-	Empty          SectorState = "Empty"
+	Empty          SectorState = "Empty"         // deprecated
 	WaitDeals      SectorState = "WaitDeals"     // waiting for more pieces (deals) to be added to the sector
+	AddPiece       SectorState = "AddPiece"      // put deal data (and padding if required) into the sector
 	Packing        SectorState = "Packing"       // sector not in sealStore, and not on chain
 	GetTicket      SectorState = "GetTicket"     // generate ticket
 	PreCommit1     SectorState = "PreCommit1"    // do PreCommit1
@@ -85,7 +87,9 @@ const (
 
 func toStatState(st SectorState) statSectorState {
 	switch st {
-	case Empty, WaitDeals, Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector:
+	case Empty, WaitDeals, AddPiece:
+		return sstStaging
+	case Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector:
 		return sstSealing
 	case Proving, Removed, Removing, Terminating, TerminateWait, TerminateFinality, TerminateFailed:
 		return sstProving

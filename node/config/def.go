@@ -64,6 +64,14 @@ type SealingConfig struct {
 	MaxSealingSectorsForDeals uint64
 
 	WaitDealsDelay Duration
+
+	// Keep this many sectors in sealing pipeline, start CC if needed
+	// todo TargetSealingSectors uint64
+
+	// Try to keep this many sectors waiting for deals
+	TargetWaitDealsSectors uint64
+
+	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
 }
 
 type MinerFeeConfig struct {
@@ -183,6 +191,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
 			WaitDealsDelay:            Duration(time.Hour * 6),
+			TargetWaitDealsSectors:    2,
 		},
 
 		Storage: sectorstorage.SealerConfig{

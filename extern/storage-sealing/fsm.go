@@ -37,13 +37,19 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	// Sealing
 
 	UndefinedSectorState: planOne(
-		on(SectorStart{}, Empty),
+		on(SectorStart{}, WaitDeals),
 		on(SectorStartCC{}, Packing),
 	),
-	Empty: planOne(on(SectorAddPiece{}, WaitDeals)),
-	WaitDeals: planOne(
-		on(SectorAddPiece{}, WaitDeals),
+	Empty: planOne( // deprecated
+		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
+	),
+	WaitDeals: planOne(
+		on(SectorAddPiece{}, AddPiece),
+		on(SectorStartPacking{}, Packing),
+	),
+	AddPiece: planOne(
+		on(SectorPieceAdded{}, WaitDeals),
 	),
 	Packing: planOne(on(SectorPacked{}, GetTicket)),
 	GetTicket: planOne(
@@ -238,12 +244,11 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	/*
 
-				*   Empty <- incoming deals
-				|   |
-				|   v
-			    *<- WaitDeals <- incoming deals
-				|   |
-				|   v
+				      UndefinedSectorState (start)
+				       v                     |
+				*<- WaitDeals <-> AddPiece   |
+				|   |   /--------------------/
+				|   v   v
 				*<- Packing <- incoming committed capacity
 				|   |
 				|   v
@@ -282,10 +287,6 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 				v
 				FailedUnrecoverable
 
-				UndefinedSectorState <- ¯\_(ツ)_/¯
-					|                     ^
-					*---------------------/
-
 	*/
 
 	m.stats.updateSector(m.minerSectorID(state.SectorNumber), state.State)
@@ -295,7 +296,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case Empty:
 		fallthrough
 	case WaitDeals:
-		log.Infof("Waiting for deals %d", state.SectorNumber)
+		return m.handleWaitDeals, processed, nil
+	case AddPiece:
+		return m.handleAddPiece, processed, nil
 	case Packing:
 		return m.handlePacking, processed, nil
 	case GetTicket:
@@ -418,59 +421,9 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		log.Errorf("loading sector list: %+v", err)
 	}
 
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting the sealing delay: %w", err)
-	}
-
-	spt, err := m.currentSealProof(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting current seal proof: %w", err)
-	}
-	ssize, err := spt.SectorSize()
-	if err != nil {
-		return err
-	}
-
-	// m.unsealedInfoMap.lk.Lock() taken early in .New to prevent races
-	defer m.unsealedInfoMap.lk.Unlock()
-
 	for _, sector := range trackedSectors {
 		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)
-		}
-
-		if sector.State == WaitDeals {
-
-			// put the sector in the unsealedInfoMap
-			if _, ok := m.unsealedInfoMap.infos[sector.SectorNumber]; ok {
-				// something's funky here, but probably safe to move on
-				log.Warnf("sector %v was already in the unsealedInfoMap when restarting", sector.SectorNumber)
-			} else {
-				ui := UnsealedSectorInfo{
-					ssize: ssize,
-				}
-				for _, p := range sector.Pieces {
-					if p.DealInfo != nil {
-						ui.numDeals++
-					}
-					ui.stored += p.Piece.Size
-					ui.pieceSizes = append(ui.pieceSizes, p.Piece.Size.Unpadded())
-				}
-
-				m.unsealedInfoMap.infos[sector.SectorNumber] = ui
-			}
-
-			// start a fresh timer for the sector
-			if cfg.WaitDealsDelay > 0 {
-				timer := time.NewTimer(cfg.WaitDealsDelay)
-				go func() {
-					<-timer.C
-					if err := m.StartPacking(sector.SectorNumber); err != nil {
-						log.Errorf("starting sector %d: %+v", sector.SectorNumber, err)
-					}
-				}()
-			}
 		}
 	}
 
