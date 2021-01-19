@@ -30,7 +30,7 @@ import (
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
-	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv9"
+	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
@@ -722,10 +722,10 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cb ExecCallback, roo
 	// Perform the migration
 
 	// TODO: store this somewhere and pre-migrate
-	cache := nv9.NewMemMigrationCache()
+	cache := nv10.NewMemMigrationCache()
 	// TODO: tune this.
-	config := nv9.Config{MaxWorkers: 1}
-	newHamtRoot, err := nv9.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
+	config := nv10.Config{MaxWorkers: 1}
+	newHamtRoot, err := nv10.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %w", err)
 	}
