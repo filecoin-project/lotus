@@ -13,6 +13,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs/bls"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 )
 
 func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletAPI, bt *api.BlockTemplate) (*types.FullBlock, error) {
@@ -140,13 +142,13 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletA
 }
 
 func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
-	sigsS := make([][]byte, len(sigs))
+	sigsS := make([]ffi.Signature, len(sigs))
 	for i := 0; i < len(sigs); i++ {
-		sigsS[i] = sigs[i].Data
+		copy(sigsS[i][:], sigs[i].Data[:ffi.SignatureBytes])
 	}
 
-	aggregator := new(bls.AggregateSignature).AggregateCompressed(sigsS)
-	if aggregator == nil {
+	aggSig := ffi.Aggregate(sigsS)
+	if aggSig == nil {
 		if len(sigs) > 0 {
 			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}
@@ -155,20 +157,12 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 		// be returned
 		return &crypto.Signature{
 			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature).Compress(),
+			Data: ([]byte)(new(bls.Signature)[:]), // TODO: verify this is okay
 		}, nil
 	}
-	aggSigAff := aggregator.ToAffine()
-	if aggSigAff == nil {
-		return &crypto.Signature{
-			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature).Compress(),
-		}, nil
-	}
-	aggSig := aggSigAff.Compress()
 	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: aggSig,
+		Data: ([]byte)(aggSig[:]),
 	}, nil
 }
 
