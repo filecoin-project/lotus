@@ -1600,7 +1600,6 @@ func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.Registere
 	return c.Internal.CheckProvable(ctx, pp, sectors, expensive)
 }
 
-
 func (c *StorageMinerStruct) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
 	return c.Internal.Discover(ctx)
 }

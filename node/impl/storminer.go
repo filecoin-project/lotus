@@ -658,5 +658,4 @@ func (sm *StorageMinerAPI) Discover(ctx context.Context) (build.OpenRPCDocument,
 	return build.OpenRPCDiscoverJSON_Miner(), nil
 }
 
-
 var _ api.StorageMiner = &StorageMinerAPI{}
