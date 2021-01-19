@@ -21,11 +21,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
-	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
-	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
-
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	states0 "github.com/filecoin-project/specs-actors/actors/states"
+	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
+	states3 "github.com/filecoin-project/specs-actors/v3/actors/states"
 )
 
 var log = logging.Logger("statetree")
@@ -165,15 +163,27 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 		return nil, xerrors.Errorf("unsupported state tree version: %d", ver)
 	}
 
-	var hamt adt.Map
 	store := adt.WrapStore(context.TODO(), cst)
+	var hamt adt.Map
 	switch ver {
 	case types.StateTreeVersion0:
-		hamt = adt0.MakeEmptyMap(store)
+		tree, err := states0.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
 	case types.StateTreeVersion1:
-		hamt = adt2.MakeEmptyMap(store)
+		tree, err := states2.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
 	case types.StateTreeVersion2:
-		hamt = adt3.MakeEmptyMap(store, builtin3.DefaultHamtBitwidth)
+		tree, err := states3.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", ver)
 	}
@@ -200,25 +210,28 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 
 	store := adt.WrapStore(context.TODO(), cst)
 
-	var (
-		hamt adt.Map
-		err  error
-	)
-
+	var hamt adt.Map
 	switch root.Version {
 	case types.StateTreeVersion0:
-		hamt, err = adt0.AsMap(store, root.Actors)
+		tree, err := states0.LoadTree(store, root.Actors)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load state tree: %w", err)
+		}
+		hamt = tree.Map
 	case types.StateTreeVersion1:
-		hamt, err = adt2.AsMap(store, root.Actors)
+		tree, err := states2.LoadTree(store, root.Actors)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load state tree: %w", err)
+		}
+		hamt = tree.Map
 	case types.StateTreeVersion2:
-		hamt, err = adt3.AsMap(store, root.Actors, builtin3.DefaultHamtBitwidth)
+		tree, err := states3.LoadTree(store, root.Actors)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load state tree: %w", err)
+		}
+		hamt = tree.Map
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
-	}
-
-	if err != nil {
-		log.Errorf("loading hamt node %s failed: %s", c, err)
-		return nil, err
 	}
 
 	s := &StateTree{
