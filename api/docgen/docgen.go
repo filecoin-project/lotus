@@ -339,19 +339,22 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 
 const NoComment = "There are not yet any comments for this method."
 
-func ParseApiASTInfo(apiFile, iface string) (map[string]string, map[string]string) { //nolint:golint
+func ParseApiASTInfo(apiFile, iface string) (comments map[string]string, groupDocs map[string]string) { //nolint:golint
 	fset := token.NewFileSet()
 	apiDir, err := filepath.Abs("./api")
 	if err != nil {
 		fmt.Println("./api filepath absolute error: ", err)
+		return
 	}
 	apiFile, err = filepath.Abs(apiFile)
 	if err != nil {
 		fmt.Println("filepath absolute error: ", err, "file:", apiFile)
+		return
 	}
 	pkgs, err := parser.ParseDir(fset, apiDir, nil, parser.AllErrors|parser.ParseComments)
 	if err != nil {
 		fmt.Println("parse error: ", err)
+		return
 	}
 
 	ap := pkgs["api"]
@@ -363,14 +366,14 @@ func ParseApiASTInfo(apiFile, iface string) (map[string]string, map[string]strin
 	v := &Visitor{iface, make(map[string]ast.Node)}
 	ast.Walk(v, pkgs["api"])
 
-	groupDocs := make(map[string]string)
-	out := make(map[string]string)
+	comments = make(map[string]string)
+	groupDocs = make(map[string]string)
 	for mn, node := range v.Methods {
-		comments := cmap.Filter(node).Comments()
-		if len(comments) == 0 {
-			out[mn] = NoComment
+		filteredComments := cmap.Filter(node).Comments()
+		if len(filteredComments) == 0 {
+			comments[mn] = NoComment
 		} else {
-			for _, c := range comments {
+			for _, c := range filteredComments {
 				if strings.HasPrefix(c.Text(), "MethodGroup:") {
 					parts := strings.Split(c.Text(), "\n")
 					groupName := strings.TrimSpace(parts[0][12:])
@@ -381,15 +384,15 @@ func ParseApiASTInfo(apiFile, iface string) (map[string]string, map[string]strin
 				}
 			}
 
-			last := comments[len(comments)-1].Text()
+			last := filteredComments[len(filteredComments)-1].Text()
 			if !strings.HasPrefix(last, "MethodGroup:") {
-				out[mn] = last
+				comments[mn] = last
 			} else {
-				out[mn] = NoComment
+				comments[mn] = NoComment
 			}
 		}
 	}
-	return out, groupDocs
+	return comments, groupDocs
 }
 
 type MethodGroup struct {
