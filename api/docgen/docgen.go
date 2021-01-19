@@ -343,7 +343,11 @@ func ParseApiASTInfo(apiFile, iface string) (map[string]string, map[string]strin
 	fset := token.NewFileSet()
 	apiDir, err := filepath.Abs("./api")
 	if err != nil {
-		fmt.Println("filepath absolute error: ", err)
+		fmt.Println("./api filepath absolute error: ", err)
+	}
+	apiFile, err = filepath.Abs(apiFile)
+	if err != nil {
+		fmt.Println("filepath absolute error: ", err, "file:", apiFile)
 	}
 	pkgs, err := parser.ParseDir(fset, apiDir, nil, parser.AllErrors|parser.ParseComments)
 	if err != nil {
