@@ -120,7 +120,7 @@ var datastoreGetCmd = &cli.Command{
 	},
 	ArgsUsage: "[namespace key]",
 	Action: func(cctx *cli.Context) error {
-		logging.SetLogLevel("badger", "ERROR") // nolint:errchec
+		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
 
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
