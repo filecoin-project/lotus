@@ -222,7 +222,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
 	fmt.Printf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
 	fmt.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
-	color.Green("      Available:  %s", types.FIL(availBalance).Short())
+	colorTokenAmount("      Available:  %s\n", availBalance)
 
 	mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
 	if err != nil {
@@ -232,7 +232,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Printf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short())
 	fmt.Printf("       Locked:    %s\n", types.FIL(mb.Locked).Short())
-	color.Green("       Available: %s\n", types.FIL(big.Sub(mb.Escrow, mb.Locked)).Short())
+	colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
 
 	wb, err := api.WalletBalance(ctx, mi.Worker)
 	if err != nil {
@@ -253,7 +253,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 		fmt.Printf("       Control:   %s\n", types.FIL(cbsum).Short())
 	}
-	fmt.Printf("Total Spendable:  %s\n", color.YellowString(types.FIL(spendable).Short()))
+	colorTokenAmount("Total Spendable:  %s\n", spendable)
 
 	fmt.Println()
 
@@ -358,4 +358,14 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) error {
 	}
 
 	return nil
+}
+
+func colorTokenAmount(format string, amount abi.TokenAmount) {
+	if amount.GreaterThan(big.Zero()) {
+		color.Green(format, types.FIL(amount).Short())
+	} else if amount.Equals(big.Zero()) {
+		color.Yellow(format, types.FIL(amount).Short())
+	} else {
+		color.Red(format, types.FIL(amount).Short())
+	}
 }
