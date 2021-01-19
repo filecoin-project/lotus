@@ -21,7 +21,10 @@ func FileSize(path string) (SizeInfo, error) {
 			return err
 		}
 		if !info.IsDir() {
-			stat := info.Sys().(*syscall.Stat_t)
+			stat, ok := info.Sys().(*syscall.Stat_t)
+			if !ok {
+				return xerrors.New("FileInfo.Sys of wrong type")
+			}
 
 			// NOTE: stat.Blocks is in 512B blocks, NOT in stat.Blksize		return SizeInfo{size}, nil
 			//  See https://www.gnu.org/software/libc/manual/html_node/Attribute-Meanings.html
