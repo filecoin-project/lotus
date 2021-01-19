@@ -347,7 +347,7 @@ func generateFakePoSt(sectorInfo []proof2.SectorInfo, rpt func(abi.RegisteredSea
 }
 
 func (mgr *SectorMgr) ReadPiece(ctx context.Context, w io.Writer, sectorID storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {
-	if len(mgr.sectors[sectorID.ID].pieces) > 1 || offset != 0 {
+	if offset != 0 {
 		panic("implme")
 	}
 
@@ -405,14 +405,14 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) erro
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef) ([]abi.SectorID, error) {
-	var bad []abi.SectorID
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+	bad := map[abi.SectorID]string{}
 
 	for _, sid := range ids {
 		_, found := mgr.sectors[sid.ID]
 
 		if !found || mgr.sectors[sid.ID].failed {
-			bad = append(bad, sid.ID)
+			bad[sid.ID] = "mock fail"
 		}
 	}
 

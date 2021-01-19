@@ -128,6 +128,7 @@ var stateMinerInfo = &cli.Command{
 			}
 			fmt.Printf("%s ", a)
 		}
+		fmt.Println()
 		fmt.Printf("Consensus Fault End:\t%d\n", mi.ConsensusFaultElapsed)
 
 		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
@@ -1616,7 +1617,7 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		return nil, fmt.Errorf("unknown method %d for actor %s", method, act)
 	}
 
-	paramObj := methodMeta.Params
+	paramObj := methodMeta.Params.Elem()
 	if paramObj.NumField() != len(args) {
 		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
 	}

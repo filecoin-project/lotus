@@ -136,6 +136,22 @@ var DaemonCmd = &cli.Command{
 			Name:  "config",
 			Usage: "specify path of config file to use",
 		},
+		// FIXME: This is not the correct place to put this configuration
+		//  option. Ideally it would be part of `config.toml` but at the
+		//  moment that only applies to the node configuration and not outside
+		//  components like the RPC server.
+		&cli.IntFlag{
+			Name:  "api-max-req-size",
+			Usage: "maximum API request size accepted by the JSON RPC server",
+		},
+		&cli.PathFlag{
+			Name:  "restore",
+			Usage: "restore from backup file",
+		},
+		&cli.PathFlag{
+			Name:  "restore-config",
+			Usage: "config file to use when restoring from backup",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		isLite := cctx.Bool("lite")
@@ -195,9 +211,11 @@ var DaemonCmd = &cli.Command{
 			r.SetConfigPath(cctx.String("config"))
 		}
 
-		if err := r.Init(repo.FullNode); err != nil && err != repo.ErrRepoExists {
+		err = r.Init(repo.FullNode)
+		if err != nil && err != repo.ErrRepoExists {
 			return xerrors.Errorf("repo init error: %w", err)
 		}
+		freshRepo := err != repo.ErrRepoExists
 
 		if !isLite {
 			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
@@ -213,6 +231,15 @@ var DaemonCmd = &cli.Command{
 			}
 		} else {
 			genBytes = build.MaybeGenesis()
+		}
+
+		if cctx.IsSet("restore") {
+			if !freshRepo {
+				return xerrors.Errorf("restoring from backup is only possible with a fresh repo!")
+			}
+			if err := restore(cctx, r); err != nil {
+				return xerrors.Errorf("restoring from backup: %w", err)
+			}
 		}
 
 		chainfile := cctx.String("import-chain")
@@ -321,7 +348,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, endpoint, shutdownChan)
+		return serveRPC(api, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
 	},
 	Subcommands: []*cli.Command{
 		daemonStopCmd,
@@ -358,7 +385,7 @@ func importKey(ctx context.Context, api api.FullNode, f string) error {
 		return err
 	}
 
-	log.Info("successfully imported key for %s", addr)
+	log.Infof("successfully imported key for %s", addr)
 	return nil
 }
 

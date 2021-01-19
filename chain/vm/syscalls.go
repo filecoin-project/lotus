@@ -7,29 +7,27 @@ import (
 	goruntime "runtime"
 	"sync"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/sigs"
 
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
 
 func init() {
@@ -110,11 +108,18 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime2.Conse
 		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
 	}
 
+	// workaround chain halt
+	if build.IsNearUpgrade(blockA.Height, build.UpgradeOrangeHeight) {
+		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+	}
+	if build.IsNearUpgrade(blockB.Height, build.UpgradeOrangeHeight) {
+		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+	}
+
 	// are blocks the same?
 	if blockA.Cid().Equals(blockB.Cid()) {
 		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
 	}
-
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
@@ -306,7 +311,7 @@ func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]proof2.SealVer
 				sema <- struct{}{}
 
 				if err := ss.VerifySeal(svi); err != nil {
-					log.Warnw("seal verify in batch failed", "miner", ma, "index", ix, "err", err)
+					log.Warnw("seal verify in batch failed", "miner", ma, "sectorNumber", svi.SectorID.Number, "err", err)
 					res[ix] = false
 				} else {
 					res[ix] = true

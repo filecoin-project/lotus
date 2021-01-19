@@ -38,7 +38,7 @@ func (m *Sealing) PledgeSector() error {
 	}
 
 	if cfg.MaxSealingSectors > 0 {
-		if m.stats.curSealing() > cfg.MaxSealingSectors {
+		if m.stats.curSealing() >= cfg.MaxSealingSectors {
 			return xerrors.Errorf("too many sectors sealing (curSealing: %d, max: %d)", m.stats.curSealing(), cfg.MaxSealingSectors)
 		}
 	}

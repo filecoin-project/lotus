@@ -7,10 +7,13 @@
   * [Version](#Version)
 * [Actor](#Actor)
   * [ActorAddress](#ActorAddress)
+  * [ActorAddressConfig](#ActorAddressConfig)
   * [ActorSectorSize](#ActorSectorSize)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
+* [Check](#Check)
+  * [CheckProvable](#CheckProvable)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Deals](#Deals)
@@ -18,6 +21,8 @@
   * [DealsConsiderOfflineStorageDeals](#DealsConsiderOfflineStorageDeals)
   * [DealsConsiderOnlineRetrievalDeals](#DealsConsiderOnlineRetrievalDeals)
   * [DealsConsiderOnlineStorageDeals](#DealsConsiderOnlineStorageDeals)
+  * [DealsConsiderUnverifiedStorageDeals](#DealsConsiderUnverifiedStorageDeals)
+  * [DealsConsiderVerifiedStorageDeals](#DealsConsiderVerifiedStorageDeals)
   * [DealsImportData](#DealsImportData)
   * [DealsList](#DealsList)
   * [DealsPieceCidBlocklist](#DealsPieceCidBlocklist)
@@ -25,6 +30,8 @@
   * [DealsSetConsiderOfflineStorageDeals](#DealsSetConsiderOfflineStorageDeals)
   * [DealsSetConsiderOnlineRetrievalDeals](#DealsSetConsiderOnlineRetrievalDeals)
   * [DealsSetConsiderOnlineStorageDeals](#DealsSetConsiderOnlineStorageDeals)
+  * [DealsSetConsiderUnverifiedStorageDeals](#DealsSetConsiderUnverifiedStorageDeals)
+  * [DealsSetConsiderVerifiedStorageDeals](#DealsSetConsiderVerifiedStorageDeals)
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
 * [I](#I)
   * [ID](#ID)
@@ -93,10 +100,15 @@
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
   * [SectorSetSealDelay](#SectorSetSealDelay)
   * [SectorStartSealing](#SectorStartSealing)
+  * [SectorTerminate](#SectorTerminate)
+  * [SectorTerminateFlush](#SectorTerminateFlush)
+  * [SectorTerminatePending](#SectorTerminatePending)
 * [Sectors](#Sectors)
   * [SectorsList](#SectorsList)
+  * [SectorsListInStates](#SectorsListInStates)
   * [SectorsRefs](#SectorsRefs)
   * [SectorsStatus](#SectorsStatus)
+  * [SectorsSummary](#SectorsSummary)
   * [SectorsUpdate](#SectorsUpdate)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
@@ -193,6 +205,22 @@ Inputs: `null`
 
 Response: `"f01234"`
 
+### ActorAddressConfig
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "PreCommitControl": null,
+  "CommitControl": null,
+  "TerminateControl": null
+}
+```
+
 ### ActorSectorSize
 There are not yet any comments for this method.
 
@@ -237,6 +265,30 @@ Inputs:
 ```
 
 Response: `null`
+
+## Check
+
+
+### CheckProvable
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  8,
+  null,
+  true
+]
+```
+
+Response:
+```json
+{
+  "123": "can't acquire read lock"
+}
+```
 
 ## Create
 
@@ -290,6 +342,24 @@ Inputs: `null`
 Response: `true`
 
 ### DealsConsiderOnlineStorageDeals
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
+
+### DealsConsiderUnverifiedStorageDeals
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
+
+### DealsConsiderVerifiedStorageDeals
 There are not yet any comments for this method.
 
 Perms: read
@@ -376,6 +446,34 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineStorageDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true
+]
+```
+
+Response: `{}`
+
+### DealsSetConsiderUnverifiedStorageDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true
+]
+```
+
+Response: `{}`
+
+### DealsSetConsiderVerifiedStorageDeals
 There are not yet any comments for this method.
 
 Perms: admin
@@ -572,7 +670,8 @@ Response:
     "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "ID": 3
-  }
+  },
+  "SectorNumber": 9
 }
 ```
 
@@ -1400,7 +1499,9 @@ Inputs:
 Response: `{}`
 
 ### SectorRemove
-There are not yet any comments for this method.
+SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
+be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
+
 
 Perms: admin
 
@@ -1460,6 +1561,43 @@ Inputs:
 
 Response: `{}`
 
+### SectorTerminate
+SectorTerminate terminates the sector on-chain (adding it to a termination batch first), then
+automatically removes it from storage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  9
+]
+```
+
+Response: `{}`
+
+### SectorTerminateFlush
+SectorTerminateFlush immediately sends a terminate message with sectors batched for termination.
+Returns null if message wasn't sent
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
+### SectorTerminatePending
+SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
 ## Sectors
 
 
@@ -1471,7 +1609,34 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  123,
+  124
+]
+```
+
+### SectorsListInStates
+List sectors in particular states
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response:
+```json
+[
+  123,
+  124
+]
+```
 
 ### SectorsRefs
 There are not yet any comments for this method.
@@ -1538,6 +1703,21 @@ Response:
   "InitialPledge": "0",
   "OnTime": 10101,
   "Early": 10101
+}
+```
+
+### SectorsSummary
+Get summary info of sectors
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Proving": 120
 }
 ```
 

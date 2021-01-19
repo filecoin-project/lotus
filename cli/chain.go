@@ -466,6 +466,9 @@ var chainInspectUsage = &cli.Command{
 
 			code, err := lookupActorCode(m.Message.To)
 			if err != nil {
+				if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
+					continue
+				}
 				return err
 			}
 
@@ -1103,8 +1106,8 @@ var slashConsensusFault = &cli.Command{
 	ArgsUsage: "[blockCid1 blockCid2]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "miner",
-			Usage: "Miner address",
+			Name:  "from",
+			Usage: "optionally specify the account to report consensus from",
 		},
 		&cli.StringFlag{
 			Name:  "extra",
@@ -1139,9 +1142,25 @@ var slashConsensusFault = &cli.Command{
 			return xerrors.Errorf("getting block 2: %w", err)
 		}
 
-		def, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
+		if b1.Miner != b2.Miner {
+			return xerrors.Errorf("block1.miner:%s block2.miner:%s", b1.Miner, b2.Miner)
+		}
+
+		var fromAddr address.Address
+		if from := cctx.String("from"); from == "" {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
 		}
 
 		bh1, err := cborutil.Dump(b1)
@@ -1183,18 +1202,9 @@ var slashConsensusFault = &cli.Command{
 			return err
 		}
 
-		if cctx.String("miner") == "" {
-			return xerrors.Errorf("--miner flag is required")
-		}
-
-		maddr, err := address.NewFromString(cctx.String("miner"))
-		if err != nil {
-			return err
-		}
-
 		msg := &types.Message{
-			To:     maddr,
-			From:   def,
+			To:     b2.Miner,
+			From:   fromAddr,
 			Value:  types.NewInt(0),
 			Method: builtin.MethodsMiner.ReportConsensusFault,
 			Params: enc,

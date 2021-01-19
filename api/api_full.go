@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -390,6 +391,8 @@ type FullNode interface {
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
 	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
+	// StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
+	StateSearchMsgLimited(ctx context.Context, msg cid.Cid, limit abi.ChainEpoch) (*MsgLookup, error)
 	// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 	// message arrives on chain, and gets to the indicated confidence depth.
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*MsgLookup, error)
@@ -514,10 +517,16 @@ type FullNode interface {
 	// along with the address removal.
 	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)
 
+	// MarketAddBalance adds funds to the market actor
+	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)
+	// MarketGetReserved gets the amount of funds that are currently reserved for the address
+	MarketGetReserved(ctx context.Context, addr address.Address) (types.BigInt, error)
 	// MarketReserveFunds reserves funds for a deal
 	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error)
 	// MarketReleaseFunds releases funds reserved by MarketReserveFunds
 	MarketReleaseFunds(ctx context.Context, addr address.Address, amt types.BigInt) error
+	// MarketWithdraw withdraws unlocked funds from the market actor
+	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)
 
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels
@@ -591,6 +600,9 @@ type DealInfo struct {
 
 	CreationTime time.Time
 	Verified     bool
+
+	TransferChannelID *datatransfer.ChannelID
+	DataTransfer      *DataTransferChannel
 }
 
 type MsgLookup struct {
@@ -783,6 +795,22 @@ type StartDealParams struct {
 	DealStartEpoch     abi.ChainEpoch
 	FastRetrieval      bool
 	VerifiedDeal       bool
+}
+
+func (s *StartDealParams) UnmarshalJSON(raw []byte) (err error) {
+	type sdpAlias StartDealParams
+
+	sdp := sdpAlias{
+		FastRetrieval: true,
+	}
+
+	if err := json.Unmarshal(raw, &sdp); err != nil {
+		return err
+	}
+
+	*s = StartDealParams(sdp)
+
+	return nil
 }
 
 type IpldObject struct {

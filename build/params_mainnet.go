@@ -1,11 +1,11 @@
 // +build !debug
 // +build !2k
 // +build !testground
+// +build !calibnet
 
 package build
 
 import (
-	"math"
 	"os"
 
 	"github.com/filecoin-project/go-address"
@@ -19,7 +19,11 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	UpgradeSmokeHeight: DrandMainnet,
 }
 
+const BootstrappersFile = "mainnet.pi"
+const GenesisFile = "mainnet.car"
+
 const UpgradeBreezeHeight = 41280
+
 const BreezeGasTampingDuration = 120
 
 const UpgradeSmokeHeight = 51000
@@ -27,7 +31,7 @@ const UpgradeSmokeHeight = 51000
 const UpgradeIgnitionHeight = 94000
 const UpgradeRefuelHeight = 130800
 
-var UpgradeActorsV2Height = abi.ChainEpoch(138720)
+const UpgradeActorsV2Height = 138720
 
 const UpgradeTapeHeight = 140760
 
@@ -41,15 +45,16 @@ const UpgradeKumquatHeight = 170000
 const UpgradeCalicoHeight = 265200
 const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 
+const UpgradeOrangeHeight = 336458
+
+// 2020-12-22T02:00:00Z
+const UpgradeClausHeight = 343200
+
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
-	}
-
-	if os.Getenv("LOTUS_DISABLE_V2_ACTOR_MIGRATION") == "1" {
-		UpgradeActorsV2Height = math.MaxInt64
 	}
 
 	Devnet = false
@@ -59,4 +64,5 @@ const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)
 
+// BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4

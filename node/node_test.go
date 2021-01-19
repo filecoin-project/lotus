@@ -38,17 +38,24 @@ func TestAPIDealFlow(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
+	blockTime := 10 * time.Millisecond
+
+	// For these tests where the block time is artificially short, just use
+	// a deal start epoch that is guaranteed to be far enough in the future
+	// so that the deal starts sealing in time
+	dealStartEpoch := abi.ChainEpoch(2 << 12)
+
 	t.Run("TestDealFlow", func(t *testing.T) {
-		test.TestDealFlow(t, builder.MockSbBuilder, 10*time.Millisecond, false, false)
+		test.TestDealFlow(t, builder.MockSbBuilder, blockTime, false, false, dealStartEpoch)
 	})
 	t.Run("WithExportedCAR", func(t *testing.T) {
-		test.TestDealFlow(t, builder.MockSbBuilder, 10*time.Millisecond, true, false)
+		test.TestDealFlow(t, builder.MockSbBuilder, blockTime, true, false, dealStartEpoch)
 	})
 	t.Run("TestDoubleDealFlow", func(t *testing.T) {
-		test.TestDoubleDealFlow(t, builder.MockSbBuilder, 10*time.Millisecond)
+		test.TestDoubleDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
 	})
 	t.Run("TestFastRetrievalDealFlow", func(t *testing.T) {
-		test.TestFastRetrievalDealFlow(t, builder.MockSbBuilder, 10*time.Millisecond)
+		test.TestFastRetrievalDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
 	})
 }
 
@@ -71,15 +78,15 @@ func TestAPIDealFlowReal(t *testing.T) {
 	})
 
 	t.Run("basic", func(t *testing.T) {
-		test.TestDealFlow(t, builder.Builder, time.Second, false, false)
+		test.TestDealFlow(t, builder.Builder, time.Second, false, false, 0)
 	})
 
 	t.Run("fast-retrieval", func(t *testing.T) {
-		test.TestDealFlow(t, builder.Builder, time.Second, false, true)
+		test.TestDealFlow(t, builder.Builder, time.Second, false, true, 0)
 	})
 
 	t.Run("retrieval-second", func(t *testing.T) {
-		test.TestSenondDealRetrieval(t, builder.Builder, time.Second)
+		test.TestSecondDealRetrieval(t, builder.Builder, time.Second)
 	})
 }
 
@@ -155,6 +162,20 @@ func TestWindowedPost(t *testing.T) {
 	logging.SetLogLevel("storageminer", "ERROR")
 
 	test.TestWindowPost(t, builder.MockSbBuilder, 2*time.Millisecond, 10)
+}
+
+func TestTerminate(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestTerminate(t, builder.MockSbBuilder, 2*time.Millisecond)
 }
 
 func TestCCUpgrade(t *testing.T) {

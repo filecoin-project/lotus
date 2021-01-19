@@ -409,7 +409,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
 	}
 
-	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, base.TipSet.Height()+base.NullRounds+1, buf.Bytes())
+	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
@@ -422,6 +422,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute winning post proof: %w", err)
 	}
+
+	tProof := build.Clock.Now()
 
 	// get pending messages early,
 	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
@@ -451,7 +453,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 			"tPowercheck ", tPowercheck.Sub(tDrand),
 			"tTicket ", tTicket.Sub(tPowercheck),
 			"tSeed ", tSeed.Sub(tTicket),
-			"tPending ", tPending.Sub(tSeed),
+			"tProof ", tProof.Sub(tSeed),
+			"tPending ", tPending.Sub(tProof),
 			"tCreateBlock ", tCreateBlock.Sub(tPending))
 	}
 

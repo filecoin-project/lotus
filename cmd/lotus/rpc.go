@@ -34,11 +34,13 @@ import (
 var log = logging.Logger("main")
 
 func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownCh <-chan struct{}) error {
-	rpcServer := jsonrpc.NewServer()
-	fullAPI := apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a))
-	rpcServer.Register("Filecoin", fullAPI)
+	serverOptions := make([]jsonrpc.ServerOption, 0)
+	if maxRequestSize != 0 { // config set
+		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
+	}
+	rpcServer := jsonrpc.NewServer(serverOptions...)
+	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a)))
 	rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
-
 	ah := &auth.Handler{
 		Verify: a.AuthVerify,
 		Next:   rpcServer.ServeHTTP,

@@ -61,6 +61,10 @@ var runCmd = &cli.Command{
 			Usage: "host address and port the api server will listen on",
 			Value: "0.0.0.0:2346",
 		},
+		&cli.IntFlag{
+			Name:  "api-max-req-size",
+			Usage: "maximum API request size accepted by the JSON RPC server",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
@@ -87,7 +91,11 @@ var runCmd = &cli.Command{
 
 		log.Info("Setting up API endpoint at " + address)
 
-		rpcServer := jsonrpc.NewServer()
+		serverOptions := make([]jsonrpc.ServerOption, 0)
+		if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
+			serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
+		}
+		rpcServer := jsonrpc.NewServer(serverOptions...)
 		rpcServer.Register("Filecoin", metrics.MetricedGatewayAPI(NewGatewayAPI(api)))
 
 		mux.Handle("/rpc/v0", rpcServer)
