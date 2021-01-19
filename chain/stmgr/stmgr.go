@@ -21,6 +21,9 @@ import (
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
+	// we use the same adt for all receipts
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -385,11 +388,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
-	// XXX: Is the height correct? Or should it be epoch-1?
-	rectarr, err := adt.NewArray(sm.cs.Store(ctx), actors.VersionForNetwork(sm.GetNtwkVersion(ctx, epoch)), ReceiptAmtBitwidth)
-	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("failed to create receipts amt: %w", err)
-	}
+	rectarr := blockadt.MakeEmptyArray(sm.cs.Store(ctx))
 	for i, receipt := range receipts {
 		if err := rectarr.Set(uint64(i), receipt); err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
