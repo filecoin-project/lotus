@@ -210,28 +210,35 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 
 	store := adt.WrapStore(context.TODO(), cst)
 
-	var hamt adt.Map
+	var (
+		hamt adt.Map
+		err  error
+	)
 	switch root.Version {
 	case types.StateTreeVersion0:
-		tree, err := states0.LoadTree(store, root.Actors)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load state tree: %w", err)
+		var tree *states0.Tree
+		tree, err = states0.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
 		}
-		hamt = tree.Map
 	case types.StateTreeVersion1:
-		tree, err := states2.LoadTree(store, root.Actors)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load state tree: %w", err)
+		var tree *states2.Tree
+		tree, err = states2.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
 		}
-		hamt = tree.Map
 	case types.StateTreeVersion2:
-		tree, err := states3.LoadTree(store, root.Actors)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load state tree: %w", err)
+		var tree *states3.Tree
+		tree, err = states3.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
 		}
-		hamt = tree.Map
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
+	}
+	if err != nil {
+		log.Errorf("failed to load state tree: %s", err)
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
 	}
 
 	s := &StateTree{
