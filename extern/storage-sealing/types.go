@@ -3,8 +3,9 @@ package sealing
 import (
 	"bytes"
 	"context"
-	"github.com/ipfs/go-cid"
 	"time"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"

@@ -28,6 +28,8 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	st := m.sectorTimers[m.minerSectorID(sector.SectorNumber)]
 	if st != nil {
 		if !st.Stop() { // timer expired, SectorStartPacking was/is being sent
+			m.inputLk.Unlock()
+
 			// we send another SectorStartPacking in case one was sent in the handleAddPiece state
 			return ctx.Send(SectorStartPacking{})
 		}
@@ -36,19 +38,21 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	if !sector.CreationTime.IsZero() {
 		cfg, err := m.getConfig()
 		if err != nil {
+			m.inputLk.Unlock()
 			return xerrors.Errorf("getting storage config: %w", err)
 		}
 
 		sealTime := sector.CreationTime.Add(cfg.WaitDealsDelay)
 		if now.After(sealTime) {
+			m.inputLk.Unlock()
 			return ctx.Send(SectorStartPacking{})
-		} else {
-			m.sectorTimers[m.minerSectorID(sector.SectorNumber)] = time.AfterFunc(sealTime.Sub(now), func() {
-				if err := ctx.Send(SectorStartPacking{}); err != nil {
-					log.Errorw("sending SectorStartPacking event failed", "sector", sector.SectorNumber, "error", err)
-				}
-			})
 		}
+
+		m.sectorTimers[m.minerSectorID(sector.SectorNumber)] = time.AfterFunc(sealTime.Sub(now), func() {
+			if err := ctx.Send(SectorStartPacking{}); err != nil {
+				log.Errorw("sending SectorStartPacking event failed", "sector", sector.SectorNumber, "error", err)
+			}
+		})
 	}
 
 	var used abi.UnpaddedPieceSize
