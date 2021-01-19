@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/binary"
 
+	"github.com/filecoin-project/go-state-types/rt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -51,6 +53,21 @@ type Upgrade struct {
 }
 
 type UpgradeSchedule []Upgrade
+
+type migrationLogger struct{}
+
+func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}) {
+	switch level {
+	case rt.DEBUG:
+		log.Debugf(msg, args...)
+	case rt.INFO:
+		log.Infof(msg, args...)
+	case rt.WARN:
+		log.Warnf(msg, args...)
+	case rt.ERROR:
+		log.Errorf(msg, args...)
+	}
+}
 
 func DefaultUpgradeSchedule() UpgradeSchedule {
 	var us UpgradeSchedule
