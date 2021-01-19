@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -340,7 +341,11 @@ const NoComment = "There are not yet any comments for this method."
 
 func ParseApiASTInfo(apiFile, iface string) (map[string]string, map[string]string) { //nolint:golint
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, "./api", nil, parser.AllErrors|parser.ParseComments)
+	apiDir, err := filepath.Abs("./api")
+	if err != nil {
+		fmt.Println("filepath absolute error: ", err)
+	}
+	pkgs, err := parser.ParseDir(fset, apiDir, nil, parser.AllErrors|parser.ParseComments)
 	if err != nil {
 		fmt.Println("parse error: ", err)
 	}
