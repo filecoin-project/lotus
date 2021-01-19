@@ -131,6 +131,6 @@ func maybeUseAddress(ctx context.Context, a addrSelectApi, addr address.Address,
 		*bestAvail = b
 	}
 
-	log.Warnw("address didn't have enough funds for window post message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
+	log.Warnw("address didn't have enough funds to send message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
 	return false
 }
