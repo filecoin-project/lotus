@@ -241,9 +241,14 @@ func (m *Sealing) Address() address.Address {
 	return m.maddr
 }
 
-func getDealPerSectorLimit(size abi.SectorSize) uint64 {
-	if size < 64<<30 {
-		return 256
+func getDealPerSectorLimit(spt abi.RegisteredSealProof) (int, error) {
+	size, err := spt.SectorSize()
+	if err != nil {
+		return 0, err
 	}
-	return 512
+
+	if size < 64<<30 {
+		return 256, nil
+	}
+	return 512, nil
 }

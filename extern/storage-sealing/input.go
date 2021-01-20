@@ -35,6 +35,15 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 		}
 	}
 
+	maxDeals, err := getDealPerSectorLimit(sector.SectorType)
+	if err != nil {
+		return xerrors.Errorf("getting per-sector deal limit: %w", err)
+	}
+
+	if len(sector.dealIDs()) >= maxDeals {
+		return ctx.Send(SectorStartPacking{})
+	}
+
 	if sector.CreationTime != 0 {
 		cfg, err := m.getConfig()
 		if err != nil {
@@ -100,7 +109,12 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		offset += p.Piece.Size.Unpadded()
 	}
 
-	for _, piece := range sector.PendingPieces {
+	maxDeals, err := getDealPerSectorLimit(sector.SectorType)
+	if err != nil {
+		return xerrors.Errorf("getting per-sector deal limit: %w", err)
+	}
+
+	for i, piece := range sector.PendingPieces {
 		m.inputLk.Lock()
 		deal, ok := m.pendingPieces[piece]
 		m.inputLk.Unlock()
@@ -108,6 +122,12 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			// todo: this probably means that the miner process was restarted in the middle of adding pieces.
 			//  Truncate whatever was in process of being added to the sector (keep sector.Pieces as those are cleanly added, then go to WaitDeals)
 			return xerrors.Errorf("piece %s assigned to sector %d not found", piece, sector.SectorNumber)
+		}
+
+		if len(sector.dealIDs())+(i+1) > maxDeals {
+			// shouldn't happen, but just in case
+			deal.accepted(sector.SectorNumber, offset, xerrors.Errorf("too many deals assigned to sector %d, dropping deal", sector.SectorNumber))
+			continue
 		}
 
 		pads, padLength := ffiwrapper.GetRequiredPadding(offset.Padded(), deal.size.Padded())
