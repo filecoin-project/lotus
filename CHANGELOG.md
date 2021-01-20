@@ -1,5 +1,80 @@
 # Lotus changelog
 
+# 1.4.1 / 2021-01-20
+
+This is an optional Lotus release that introduces various improvements to the sealing, mining, and deal-making processes. In particular, [#5341](https://github.com/filecoin-project/lotus/pull/5341) introduces the ability for Lotus miners to terminate sectors.
+
+## Changes
+
+#### Core Lotus
+
+- fix(sync): enforce ForkLengthThreshold for synced chain (https://github.com/filecoin-project/lotus/pull/5182)
+- introduce memory watchdog; LOTUS_MAX_HEAP (https://github.com/filecoin-project/lotus/pull/5101)
+- Skip bootstrapping if no peers specified (https://github.com/filecoin-project/lotus/pull/5301)
+- Chainxchg write response timeout (https://github.com/filecoin-project/lotus/pull/5254)
+- update NewestNetworkVersion (https://github.com/filecoin-project/lotus/pull/5277)
+- fix(sync): remove checks bypass when we submit the block (https://github.com/filecoin-project/lotus/pull/4192)
+- chore: export vm.ShouldBurn (https://github.com/filecoin-project/lotus/pull/5355)
+- fix(sync): enforce fork len when changing head (https://github.com/filecoin-project/lotus/pull/5244)
+- Use 55th percentile instead of median for gas-price (https://github.com/filecoin-project/lotus/pull/5369)
+- update go-libp2p-pubsub to v0.4.1 (https://github.com/filecoin-project/lotus/pull/5329)
+
+#### Sealing
+
+- Sector termination support (https://github.com/filecoin-project/lotus/pull/5341)
+- update weight canSeal and canStore when attach (https://github.com/filecoin-project/lotus/pull/5242/files)
+- sector-storage/mock: improve mocked readpiece (https://github.com/filecoin-project/lotus/pull/5208)
+- Fix deadlock in runWorker in sched_worker.go (https://github.com/filecoin-project/lotus/pull/5251)
+- Skip checking terminated sectors provable (https://github.com/filecoin-project/lotus/pull/5217)
+- storagefsm: Fix unsealedInfoMap.lk init race (https://github.com/filecoin-project/lotus/pull/5319)
+- Multicore AddPiece CommP (https://github.com/filecoin-project/lotus/pull/5320)
+- storagefsm: Send correct event on ErrExpiredTicket in CommitFailed (https://github.com/filecoin-project/lotus/pull/5366)
+- expose StateSearchMessage on gateway (https://github.com/filecoin-project/lotus/pull/5382)
+- fix FileSize to return correct disk usage recursively (https://github.com/filecoin-project/lotus/pull/5384)
+
+#### Dealmaking
+
+- Better error message when withdrawing funds (https://github.com/filecoin-project/lotus/pull/5293)
+- add verbose for list transfers (https://github.com/filecoin-project/lotus/pull/5259)
+- cli - rename `client info` to `client balances` (https://github.com/filecoin-project/lotus/pull/5304)
+- Better CLI for wallet market withdraw and client info (https://github.com/filecoin-project/lotus/pull/5303)
+
+#### UX
+
+- correct flag usages for replace cmd (https://github.com/filecoin-project/lotus/pull/5255)
+- lotus state call will panic (https://github.com/filecoin-project/lotus/pull/5275)
+- fix get sector bug (https://github.com/filecoin-project/lotus/pull/4976)
+- feat: lotus wallet market add (adds funds to storage market actor) (https://github.com/filecoin-project/lotus/pull/5300)
+- Fix client flag parsing in client balances cli (https://github.com/filecoin-project/lotus/pull/5312)
+- delete slash-consensus miner (https://github.com/filecoin-project/lotus/pull/4577)
+- add fund sufficient check in send (https://github.com/filecoin-project/lotus/pull/5252)
+- enable parse and shorten negative FIL values (https://github.com/filecoin-project/lotus/pull/5315)
+- add limit and rate for chain noise (https://github.com/filecoin-project/lotus/pull/5223)
+- add bench env print (https://github.com/filecoin-project/lotus/pull/5222)
+- Implement full-node restore option (https://github.com/filecoin-project/lotus/pull/5362)
+- add color for token amount (https://github.com/filecoin-project/lotus/pull/5352)
+- correct log in maybeUseAddress (https://github.com/filecoin-project/lotus/pull/5359)
+- add slash-consensus from flag (https://github.com/filecoin-project/lotus/pull/5378)
+
+#### Testing
+
+- tvx extract: more tipset extraction goodness (https://github.com/filecoin-project/lotus/pull/5258)
+- Fix race in blockstore test suite (https://github.com/filecoin-project/lotus/pull/5297)
+
+
+#### Build & Networks
+
+- Remove LOTUS_DISABLE_V2_ACTOR_MIGRATION envvar (https://github.com/filecoin-project/lotus/pull/5289)
+- Create a calibnet build option (https://github.com/filecoin-project/lotus/pull/5288)
+- Calibnet: Set Orange epoch (https://github.com/filecoin-project/lotus/pull/5325)
+
+#### Management
+
+- Update SECURITY.md (https://github.com/filecoin-project/lotus/pull/5246)
+- README: Contribute section (https://github.com/filecoin-project/lotus/pull/5330)
+- README: refine Contribute section (https://github.com/filecoin-project/lotus/pull/5331)
+- Add misc tooling to codecov ignore list (https://github.com/filecoin-project/lotus/pull/5347)
+
 # 1.4.0 / 2020-12-19
 
 This is a MANDATORY hotfix release of Lotus that resolves a chain halt at height 336,459 caused by nondeterminism in specs-actors. The fix is to update actors to 2.3.3 in order to incorporate this fix https://github.com/filecoin-project/specs-actors/pull/1334.
