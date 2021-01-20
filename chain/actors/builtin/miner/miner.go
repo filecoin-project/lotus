@@ -186,6 +186,23 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 	}
 }
 
+func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredPoStProof, error) {
+	switch proof {
+	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
+		return abi.RegisteredPoStProof_StackedDrgWinning2KiBV1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1:
+		return abi.RegisteredPoStProof_StackedDrgWinning8MiBV1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1:
+		return abi.RegisteredPoStProof_StackedDrgWinning512MiBV1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1:
+		return abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
+		return abi.RegisteredPoStProof_StackedDrgWinning64GiBV1, nil
+	default:
+		return -1, xerrors.Errorf("unknown proof type %d", proof)
+	}
+}
+
 type MinerInfo struct {
 	Owner                      address.Address   // Must be an ID-address.
 	Worker                     address.Address   // Must be an ID-address.

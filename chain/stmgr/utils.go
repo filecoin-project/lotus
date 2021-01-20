@@ -212,21 +212,9 @@ func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwra
 		return nil, xerrors.Errorf("getting miner ID: %w", err)
 	}
 
-	// TODO: move this to somewhere in specs-actors or the state types.
-	var proofType abi.RegisteredPoStProof
-	switch info.WindowPoStProofType {
-	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
-		proofType = abi.RegisteredPoStProof_StackedDrgWinning2KiBV1
-	case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1:
-		proofType = abi.RegisteredPoStProof_StackedDrgWinning8MiBV1
-	case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1:
-		proofType = abi.RegisteredPoStProof_StackedDrgWinning512MiBV1
-	case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1:
-		proofType = abi.RegisteredPoStProof_StackedDrgWinning32GiBV1
-	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
-		proofType = abi.RegisteredPoStProof_StackedDrgWinning64GiBV1
-	default:
-		return nil, xerrors.Errorf("unknown proof type %d", info.WindowPoStProofType)
+	proofType, err := miner.WinningPoStProofTypeFromWindowPoStProofType(nv, info.WindowPoStProofType)
+	if err != nil {
+		return nil, xerrors.Errorf("determining winning post proof type: %w", err)
 	}
 
 	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, proofType, abi.ActorID(mid), rand, numProvSect)
