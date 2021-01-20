@@ -686,25 +686,17 @@ type Builder struct {
 func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api.FullNode, StopFunc, error) {
 	var api api.FullNode
 
-	opts := []Option{
-		FullAPI(&api, Lite(b.IsLite)),
+	stop, err := New(ctx, FullAPI(&api,
+		Lite(b.IsLite)),
 
 		// FIXME: Do we need to set these before Repo()/Online()?
 		Override(new(dtypes.Bootstrapper), b.IsBootstrapper),
 		Override(new(dtypes.ShutdownChan), b.ShutdownChan),
 
 		Online(),
-		Repo(b.Repo), // FIXME: If repo is nil (not set) use memory by default.
+		If(b.Repo != nil, Repo(b.Repo)),
 
-		// Override(new(modules.Genesis), b.Genesis),
-
-		// FIXME: For now process lite mode as user option. Should be derived from
-		//  the profile builder configuration.
-		// liteModeDeps,
-	}
-
-	if b.ApiAddress != "" {
-		opts = append(opts, Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
+		If(b.ApiAddress != "", Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
 			// FIXME: The string to multiaddr conversion should be done by
 			//  the user who will be better equipped to handle the error.
 			apima, err := multiaddr.NewMultiaddr(b.ApiAddress)
@@ -712,20 +704,21 @@ func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api
 				return err
 			}
 			return lr.SetAPIEndpoint(apima)
-		}))
-	}
+		})),
 
-	if b.IsBootstrap {
-		opts = append(opts,
+		If(b.IsBootstrap,
 			Unset(RunPeerMgrKey),
 			Unset(new(*peermgr.PeerMgr)),
-		)
-	}
+		),
 
-	// FIXME: Apply user-supplied overrides at the end. Do we need to modify node.new?
-	opts = append(opts, userOptions...)
+		// Override(new(modules.Genesis), b.Genesis),
 
-	stop, err := New(ctx, opts...)
+		// FIXME: For now process lite mode as user option. Should be derived from
+		//  the profile builder configuration.
+		// liteModeDeps,
+
+		Options(userOptions...),
+	)
 
 	return api, stop, err
 }
