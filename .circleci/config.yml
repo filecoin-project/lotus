@@ -524,7 +524,7 @@ jobs:
       - run:
           name: Log into Amazon ECR
           command: |
-            aws ecr get-login-password --region $<<parameters.region>> --profile <<parameters.profile-name>> | docker login --username AWS --password-stdin $<<parameters.account-url>>
+            aws ecr-public get-login-password --region $<<parameters.region>> --profile <<parameters.profile-name>> | docker login --username AWS --password-stdin $<<parameters.account-url>>
 
       - checkout
 
