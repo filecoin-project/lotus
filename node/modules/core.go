@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
@@ -14,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	record "github.com/libp2p/go-libp2p-record"
+	"github.com/raulk/go-watchdog"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -28,7 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/system"
-	"github.com/raulk/go-watchdog"
 )
 
 const (
@@ -69,45 +70,71 @@ func MemoryConstraints() system.MemoryConstraints {
 
 // MemoryWatchdog starts the memory watchdog, applying the computed resource
 // constraints.
-func MemoryWatchdog(lc fx.Lifecycle, constraints system.MemoryConstraints) {
+func MemoryWatchdog(lr repo.LockedRepo, lc fx.Lifecycle, constraints system.MemoryConstraints) {
 	if os.Getenv(EnvWatchdogDisabled) == "1" {
 		log.Infof("memory watchdog is disabled via %s", EnvWatchdogDisabled)
 		return
 	}
 
-	cfg := watchdog.MemConfig{
-		Resolution: 5 * time.Second,
-		Policy: &watchdog.WatermarkPolicy{
-			Watermarks:         []float64{0.50, 0.60, 0.70, 0.85, 0.90, 0.925, 0.95},
-			EmergencyWatermark: 0.95,
-		},
-		Logger: logWatchdog,
+	// configure heap profile capture so that one is captured per episode where
+	// utilization climbs over 90% of the limit. A maximum of 10 heapdumps
+	// will be captured during life of this process.
+	watchdog.HeapProfileDir = filepath.Join(lr.Path(), "heapprof")
+	watchdog.HeapProfileMaxCaptures = 10
+	watchdog.HeapProfileThreshold = 0.1
+	watchdog.Logger = logWatchdog
+
+	policy := watchdog.NewWatermarkPolicy(0.50, 0.60, 0.70, 0.85, 0.90, 0.925, 0.95)
+
+	// Try to initialize a watchdog in the following order of precedence:
+	// 1. If a max heap limit has been provided, initialize a heap-driven watchdog.
+	// 2. Else, try to initialize a cgroup-driven watchdog.
+	// 3. Else, try to initialize a system-driven watchdog.
+	// 4. Else, log a warning that the system is flying solo, and return.
+
+	addStopHook := func(stopFn func()) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				stopFn()
+				return nil
+			},
+		})
 	}
 
-	// if user has set max heap limit, apply it. Otherwise, fall back to total
-	// system memory constraint.
+	// 1. If user has set max heap limit, apply it.
 	if maxHeap := constraints.MaxHeapMem; maxHeap != 0 {
-		log.Infof("memory watchdog will apply max heap constraint: %d bytes", maxHeap)
-		cfg.Limit = maxHeap
-		cfg.Scope = watchdog.ScopeHeap
-	} else {
-		log.Infof("max heap size not provided; memory watchdog will apply total system memory constraint: %d bytes", constraints.TotalSystemMem)
-		cfg.Limit = constraints.TotalSystemMem
-		cfg.Scope = watchdog.ScopeSystem
+		const minGOGC = 10
+		err, stopFn := watchdog.HeapDriven(maxHeap, minGOGC, policy)
+		if err == nil {
+			log.Infof("initialized heap-driven watchdog; max heap: %d bytes", maxHeap)
+			addStopHook(stopFn)
+			return
+		}
+		log.Warnf("failed to initialize heap-driven watchdog; err: %s", err)
+		log.Warnf("trying a cgroup-driven watchdog")
 	}
 
-	err, stop := watchdog.Memory(cfg)
-	if err != nil {
-		log.Warnf("failed to instantiate memory watchdog: %s", err)
+	// 2. cgroup-driven watchdog.
+	err, stopFn := watchdog.CgroupDriven(5*time.Second, policy)
+	if err == nil {
+		log.Infof("initialized cgroup-driven watchdog")
+		addStopHook(stopFn)
+		return
+	}
+	log.Warnf("failed to initialize cgroup-driven watchdog; err: %s", err)
+	log.Warnf("trying a system-driven watchdog")
+
+	// 3. system-driven watchdog.
+	err, stopFn = watchdog.SystemDriven(0, 5*time.Second, policy) // 0 calculates the limit automatically.
+	if err == nil {
+		log.Infof("initialized system-driven watchdog")
+		addStopHook(stopFn)
 		return
 	}
 
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			stop()
-			return nil
-		},
-	})
+	// 4. log the failure
+	log.Warnf("failed to initialize system-driven watchdog; err: %s", err)
+	log.Warnf("system running without a memory watchdog")
 }
 
 type JwtPayload struct {
@@ -166,7 +193,7 @@ func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
 
 func DrandBootstrap(ds dtypes.DrandSchedule) (dtypes.DrandBootstrap, error) {
 	// TODO: retry resolving, don't fail if at least one resolve succeeds
-	res := []peer.AddrInfo{}
+	var res []peer.AddrInfo
 	for _, d := range ds {
 		addrs, err := addrutil.ParseAddresses(context.TODO(), d.Config.Relays)
 		if err != nil {
