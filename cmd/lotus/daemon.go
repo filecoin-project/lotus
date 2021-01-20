@@ -98,9 +98,24 @@ var DaemonCmd = &cli.Command{
 			Name:  "genesis",
 			Usage: "genesis file to use for first node run",
 		},
+		// FIXME: Consider removing this flag in future releases (deprecated
+		//  in favor of "isolated" below). `bootstrap` is ambiguous: first it
+		//  is already the (only) possible value of `--profile` which signals
+		//  if this is a bootstrap node, and second, `bootstrap` here means
+		//  "connect to bootstrap nodes" which even if technically correct
+		//  the more descriptive conclusion is that, if false, the node won't
+		//  connect to *any* nodes at all (since you need the bootstrap nodes
+		//  to find the others).
 		&cli.BoolFlag{
 			Name:  "bootstrap",
 			Value: true,
+			Usage: "DEPRECATED: use 'isolated' flag instead",
+			Hidden: true,
+		},
+		&cli.BoolFlag{
+			Name:  "isolated",
+			Value: false,
+			Usage: "do not connect to any peers in the network",
 		},
 		&cli.StringFlag{
 			Name:  "import-chain",
@@ -270,6 +285,10 @@ var DaemonCmd = &cli.Command{
 			liteModeDeps = node.Override(new(api.GatewayAPI), gapi)
 		}
 
+		if !cctx.Bool("bootstrap") {
+			log.Info("the --bootstrap option has been deprecated in favor of the more descriptive (but equivalent) --isolated option")
+		}
+
 		// some libraries like ipfs/go-ds-measure and ipfs/go-ipfs-blockstore
 		// use ipfs/go-metrics-interface. This injects a Prometheus exporter
 		// for those. Metrics are exported to the default registry.
@@ -298,7 +317,7 @@ var DaemonCmd = &cli.Command{
 					}
 					return lr.SetAPIEndpoint(apima)
 				})),
-			node.ApplyIf(func(s *node.Settings) bool { return !cctx.Bool("bootstrap") },
+			node.ApplyIf(func(s *node.Settings) bool { return !cctx.Bool("bootstrap") || cctx.Bool("isolated") },
 				node.Unset(node.RunPeerMgrKey),
 				node.Unset(new(*peermgr.PeerMgr)),
 			),
