@@ -121,6 +121,7 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeActorsV3Height,
 		Network:   network.Version10,
 		Migration: UpgradeActorsV3,
+		Expensive: true,
 	}}
 
 	for _, u := range updates {
