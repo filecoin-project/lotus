@@ -1,7 +1,7 @@
 version: 2.1
 orbs:
   go: gotest/tools@0.0.13
-  aws-ecr: circleci/aws-ecr@6.15.2
+  aws-cli: circleci/aws-cli@1.2
 
 executors:
   golang:
@@ -448,6 +448,81 @@ jobs:
           name: Publish release
           command: ./scripts/publish-release.sh
 
+  build_and_push:
+    description: build and push docker images
+    executor: ubuntu
+    parameters:
+      profile-name:
+        type: string
+        default: "default"
+        description: AWS profile name to be configured.
+
+      aws-access-key-id:
+        type: env_var_name
+        default: AWS_ACCESS_KEY_ID
+        description: >
+          AWS access key id for IAM role. Set this to the name of
+          the environment variable you will set to hold this
+          value, i.e. AWS_ACCESS_KEY.
+
+      aws-secret-access-key:
+        type: env_var_name
+        default: AWS_SECRET_ACCESS_KEY
+        description: >
+          AWS secret key for IAM role. Set this to the name of
+          the environment variable you will set to hold this
+          value, i.e. AWS_SECRET_ACCESS_KEY.
+
+      region:
+        type: env_var_name
+        default: AWS_REGION
+        description: >
+          Name of env var storing your AWS region information,
+          defaults to AWS_REGION
+
+      account-url:
+        type: env_var_name
+        default: AWS_ECR_ACCOUNT_URL
+        description: >
+          Env var storing Amazon ECR account URL that maps to an AWS account,
+          e.g. {awsAccountNum}.dkr.ecr.us-west-2.amazonaws.com
+          defaults to AWS_ECR_ACCOUNT_URL
+    steps:
+      - aws-cli/setup:
+          profile-name: <<parameters.profile-name>>
+          aws-access-key-id: <<parameters.aws-access-key-id>>
+          aws-secret-access-key: <<parameters.aws-secret-access-key>>
+          aws-region: <<parameters.region>>
+
+      - run:
+          name: Log into Amazon ECR
+          command: |
+            aws ecr-public get-login-password --region $<<parameters.region>> --profile <<parameters.profile-name>> | docker login --username AWS --password-stdin $<<parameters.account-url>>
+
+      - run:
+          name: Build docker image
+          command: |
+            registry_id=$(echo $<<parameters.account-url>> | sed "s;\..*;;g")
+
+            docker_tag_args=""
+            IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
+            for tag in "${DOCKER_TAGS[@]}"; do
+              docker_tag_args="$docker_tag_args -t $<<parameters.account-url>>/<<parameters.repo>>:$tag"
+            done
+
+            docker build \
+              <<#parameters.extra-build-args>><<parameters.extra-build-args>><</parameters.extra-build-args>> \
+              -f <<parameters.path>>/<<parameters.dockerfile>> \
+              $docker_tag_args \
+              <<parameters.path>>
+
+      - run:
+          name: Push image to Amazon ECR
+          command: |
+            IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
+            for tag in "${DOCKER_TAGS[@]}"; do
+              docker push $<<parameters.account-url>>/<<parameters.repo>>:${tag}
+            done
 
 workflows:
   version: 2.1
