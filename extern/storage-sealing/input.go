@@ -35,14 +35,14 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 		}
 	}
 
-	if !sector.CreationTime.IsZero() {
+	if sector.CreationTime != 0 {
 		cfg, err := m.getConfig()
 		if err != nil {
 			m.inputLk.Unlock()
 			return xerrors.Errorf("getting storage config: %w", err)
 		}
 
-		sealTime := sector.CreationTime.Add(cfg.WaitDealsDelay)
+		sealTime := time.Unix(sector.CreationTime, 0).Add(cfg.WaitDealsDelay)
 		if now.After(sealTime) {
 			m.inputLk.Unlock()
 			return ctx.Send(SectorStartPacking{})

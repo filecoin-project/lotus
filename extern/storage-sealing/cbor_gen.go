@@ -543,7 +543,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.CreationTime (time.Time) (struct)
+	// t.CreationTime (int64) (int64)
 	if len("CreationTime") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CreationTime\" was too long")
 	}
@@ -555,8 +555,14 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if err := t.CreationTime.MarshalCBOR(w); err != nil {
-		return err
+	if t.CreationTime >= 0 {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.CreationTime)); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.CreationTime-1)); err != nil {
+			return err
+		}
 	}
 
 	// t.Pieces ([]sealing.Piece) (slice)
@@ -1149,15 +1155,31 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 
 				t.SectorType = abi.RegisteredSealProof(extraI)
 			}
-			// t.CreationTime (time.Time) (struct)
+			// t.CreationTime (int64) (int64)
 		case "CreationTime":
-
 			{
-
-				if err := t.CreationTime.UnmarshalCBOR(br); err != nil {
-					return xerrors.Errorf("unmarshaling t.CreationTime: %w", err)
+				maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
 				}
 
+				t.CreationTime = int64(extraI)
 			}
 			// t.Pieces ([]sealing.Piece) (slice)
 		case "Pieces":

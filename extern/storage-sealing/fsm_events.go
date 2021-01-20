@@ -84,8 +84,8 @@ type SectorAddPiece struct {
 }
 
 func (evt SectorAddPiece) apply(state *SectorInfo) {
-	if state.CreationTime.IsZero() {
-		state.CreationTime = time.Now()
+	if state.CreationTime == 0 {
+		state.CreationTime = time.Now().Unix()
 	}
 	state.PendingPieces = append(state.PendingPieces, evt.NewPiece)
 }

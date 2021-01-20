@@ -137,6 +137,7 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		pcp:    pcp,
 
 		openSectors:   map[abi.SectorID]*openSector{},
+		sectorTimers:  map[abi.SectorID]*time.Timer{},
 		pendingPieces: map[cid.Cid]*pendingPiece{},
 		toUpgrade:     map[abi.SectorNumber]struct{}{},
 
