@@ -84,10 +84,11 @@ type Sealing struct {
 	verif   ffiwrapper.Verifier
 	pcp     PreCommitPolicy
 
-	inputLk       sync.Mutex
-	openSectors   map[abi.SectorID]*openSector
-	sectorTimers  map[abi.SectorID]*time.Timer
-	pendingPieces map[cid.Cid]*pendingPiece
+	inputLk        sync.Mutex
+	openSectors    map[abi.SectorID]*openSector
+	sectorTimers   map[abi.SectorID]*time.Timer
+	pendingPieces  map[cid.Cid]*pendingPiece
+	assignedPieces map[abi.SectorID][]cid.Cid
 
 	upgradeLk sync.Mutex
 	toUpgrade map[abi.SectorNumber]struct{}
@@ -111,7 +112,7 @@ type FeeConfig struct {
 type openSector struct {
 	used abi.UnpaddedPieceSize // change to bitfield/rle when AddPiece gains offset support to better fill sectors
 
-	maybeAccept func(cid.Cid) error
+	maybeAccept func(cid.Cid) error // called with inputLk
 }
 
 type pendingPiece struct {
@@ -136,10 +137,11 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		verif:  verif,
 		pcp:    pcp,
 
-		openSectors:   map[abi.SectorID]*openSector{},
-		sectorTimers:  map[abi.SectorID]*time.Timer{},
-		pendingPieces: map[cid.Cid]*pendingPiece{},
-		toUpgrade:     map[abi.SectorNumber]struct{}{},
+		openSectors:    map[abi.SectorID]*openSector{},
+		sectorTimers:   map[abi.SectorID]*time.Timer{},
+		pendingPieces:  map[cid.Cid]*pendingPiece{},
+		assignedPieces: map[abi.SectorID][]cid.Cid{},
+		toUpgrade:      map[abi.SectorNumber]struct{}{},
 
 		notifee: notifee,
 		addrSel: as,

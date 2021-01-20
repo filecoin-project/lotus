@@ -79,15 +79,12 @@ func (evt SectorStartCC) apply(state *SectorInfo) {
 	state.SectorType = evt.SectorType
 }
 
-type SectorAddPiece struct {
-	NewPiece cid.Cid
-}
+type SectorAddPiece struct{}
 
 func (evt SectorAddPiece) apply(state *SectorInfo) {
 	if state.CreationTime == 0 {
 		state.CreationTime = time.Now().Unix()
 	}
-	state.PendingPieces = append(state.PendingPieces, evt.NewPiece)
 }
 
 type SectorPieceAdded struct {
@@ -96,7 +93,6 @@ type SectorPieceAdded struct {
 
 func (evt SectorPieceAdded) apply(state *SectorInfo) {
 	state.Pieces = append(state.Pieces, evt.NewPieces...)
-	state.PendingPieces = nil
 }
 
 type SectorStartPacking struct{}

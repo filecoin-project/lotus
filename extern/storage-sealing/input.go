@@ -76,7 +76,10 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 
 			// todo check deal expiration
 
-			return ctx.Send(SectorAddPiece{cid})
+			sid := m.minerSectorID(sector.SectorNumber)
+			m.assignedPieces[sid] = append(m.assignedPieces[sid], cid)
+
+			return ctx.Send(SectorAddPiece{})
 		},
 	}
 
@@ -96,11 +99,19 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		return err
 	}
 
-	m.inputLk.Lock()
-	delete(m.openSectors, m.minerSectorID(sector.SectorNumber)) // todo: do this when handling the event
-	m.inputLk.Unlock()
-
 	res := SectorPieceAdded{}
+
+	m.inputLk.Lock()
+
+	pending, ok := m.assignedPieces[m.minerSectorID(sector.SectorNumber)]
+	if ok {
+		delete(m.assignedPieces, m.minerSectorID(sector.SectorNumber))
+	}
+	m.inputLk.Unlock()
+	if !ok {
+		// nothing to do here
+		return ctx.Send(res)
+	}
 
 	var offset abi.UnpaddedPieceSize
 	pieceSizes := make([]abi.UnpaddedPieceSize, len(sector.Pieces))
@@ -114,13 +125,11 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		return xerrors.Errorf("getting per-sector deal limit: %w", err)
 	}
 
-	for i, piece := range sector.PendingPieces {
+	for i, piece := range pending {
 		m.inputLk.Lock()
 		deal, ok := m.pendingPieces[piece]
 		m.inputLk.Unlock()
 		if !ok {
-			// todo: this probably means that the miner process was restarted in the middle of adding pieces.
-			//  Truncate whatever was in process of being added to the sector (keep sector.Pieces as those are cleanly added, then go to WaitDeals)
 			return xerrors.Errorf("piece %s assigned to sector %d not found", piece, sector.SectorNumber)
 		}
 
@@ -145,7 +154,9 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 				p.Unpadded(),
 				NewNullReader(p.Unpadded()))
 			if err != nil {
-				return xerrors.Errorf("writing padding piece: %w", err) // todo failed state
+				err = xerrors.Errorf("writing padding piece: %w", err)
+				deal.accepted(sector.SectorNumber, offset, err)
+				return err // todo failed state
 			}
 
 			pieceSizes = append(pieceSizes, p.Unpadded())
@@ -160,7 +171,9 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			deal.size,
 			deal.data)
 		if err != nil {
-			return xerrors.Errorf("writing padding piece: %w", err) // todo failed state
+			err = xerrors.Errorf("writing piece: %w", err)
+			deal.accepted(sector.SectorNumber, offset, err)
+			return err // todo failed state
 		}
 
 		deal.accepted(sector.SectorNumber, offset, nil)
