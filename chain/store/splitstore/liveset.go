@@ -35,9 +35,9 @@ func NewLiveSetEnv(path string) (*lmdb.Env, error) {
 	if err = env.SetMaxDBs(2); err != nil {
 		return nil, fmt.Errorf("failed to set LMDB max dbs: %w", err)
 	}
-	if err = env.SetMaxReaders(1); err != nil {
-		return nil, fmt.Errorf("failed to set LMDB max readers: %w", err)
-	}
+	// if err = env.SetMaxReaders(1); err != nil {
+	// 	return nil, fmt.Errorf("failed to set LMDB max readers: %w", err)
+	// }
 
 	if st, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0777); err != nil {
