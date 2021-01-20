@@ -243,12 +243,7 @@ func (m *Sealing) Address() address.Address {
 	return m.maddr
 }
 
-func getDealPerSectorLimit(spt abi.RegisteredSealProof) (int, error) {
-	size, err := spt.SectorSize()
-	if err != nil {
-		return 0, err
-	}
-
+func getDealPerSectorLimit(size abi.SectorSize) (int, error) {
 	if size < 64<<30 {
 		return 256, nil
 	}
