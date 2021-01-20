@@ -95,6 +95,11 @@ func (evt SectorPieceAdded) apply(state *SectorInfo) {
 	state.Pieces = append(state.Pieces, evt.NewPieces...)
 }
 
+type SectorAddPieceFailed struct{ error }
+
+func (evt SectorAddPieceFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorAddPieceFailed) apply(si *SectorInfo)                     {}
+
 type SectorStartPacking struct{}
 
 func (evt SectorStartPacking) apply(*SectorInfo) {}

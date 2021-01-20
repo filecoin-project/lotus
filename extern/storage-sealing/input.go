@@ -117,7 +117,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 	}
 	m.inputLk.Unlock()
 	if !ok {
-		// nothing to do here
+		// nothing to do here (might happen after a restart in AddPiece)
 		return ctx.Send(res)
 	}
 
@@ -166,7 +166,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			if err != nil {
 				err = xerrors.Errorf("writing padding piece: %w", err)
 				deal.accepted(sector.SectorNumber, offset, err)
-				return err // todo failed state
+				return ctx.Send(SectorAddPieceFailed{err})
 			}
 
 			pieceSizes = append(pieceSizes, p.Unpadded())
@@ -183,7 +183,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		if err != nil {
 			err = xerrors.Errorf("writing piece: %w", err)
 			deal.accepted(sector.SectorNumber, offset, err)
-			return err // todo failed state
+			return ctx.Send(SectorAddPieceFailed{err})
 		}
 
 		deal.accepted(sector.SectorNumber, offset, nil)
@@ -198,6 +198,12 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 	}
 
 	return ctx.Send(res)
+}
+
+func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorInfo) error {
+	log.Errorf("No recovery plan for AddPiece failing")
+	// todo: cleanup sector / just go retry (requires adding offset param to AddPiece in sector-storage for this to be safe)
+	return nil
 }
 
 func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {

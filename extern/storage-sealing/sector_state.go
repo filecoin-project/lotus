@@ -7,6 +7,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	WaitDeals:            {},
 	Packing:              {},
 	AddPiece:             {},
+	AddPieceFailed:       {},
 	GetTicket:            {},
 	PreCommit1:           {},
 	PreCommit2:           {},
@@ -61,6 +62,7 @@ const (
 	Proving        SectorState = "Proving"
 	// error modes
 	FailedUnrecoverable  SectorState = "FailedUnrecoverable"
+	AddPieceFailed       SectorState = "AddPieceFailed"
 	SealPreCommit1Failed SectorState = "SealPreCommit1Failed"
 	SealPreCommit2Failed SectorState = "SealPreCommit2Failed"
 	PreCommitFailed      SectorState = "PreCommitFailed"

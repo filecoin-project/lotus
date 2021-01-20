@@ -307,6 +307,7 @@ var stateList = []stateMeta{
 	{col: color.FgCyan, state: sealing.Removed},
 
 	{col: color.FgRed, state: sealing.FailedUnrecoverable},
+	{col: color.FgRed, state: sealing.AddPieceFailed},
 	{col: color.FgRed, state: sealing.SealPreCommit1Failed},
 	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
 	{col: color.FgRed, state: sealing.PreCommitFailed},
