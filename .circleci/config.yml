@@ -1,6 +1,7 @@
 version: 2.1
 orbs:
   go: gotest/tools@0.0.13
+  aws-ecr: circleci/aws-ecr@6.15.2
 
 executors:
   golang:
@@ -537,3 +538,10 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
+      - aws-ecr/build-and-push-image:
+          dockerfile: Dockerfile.lotus
+          no-output-timeout: 30m
+          path: .
+          repo: lotus-dev
+          skip-when-tags-exist: false
+          tag: '${CIRCLE_SHA1:0:8}'
