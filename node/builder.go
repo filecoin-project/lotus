@@ -648,3 +648,84 @@ func Test() Option {
 		Override(new(beacon.Schedule), testing.RandomBeacon),
 	)
 }
+
+// --------------------------------------------
+// FIXME: Move to a separate `builder` package.
+// --------------------------------------------
+
+type Builder struct {
+	// FIXME: General profile, maybe following node type for now, should
+	//  be decoupled later.
+	// Full, lite, miner.
+
+	// Configuration options that will affect the DI graph, applied at the end.
+	// FIXME: Consider making configuration options private and exposing functions
+	//  to set them. For now it doesn't seem worth it as they are mostly constants
+	//  that we don't process (maybe the ShutdownChan/Repo are the exception).
+	IsLite bool
+	IsBootstrapper dtypes.Bootstrapper // FIXME: Check why this isn't just a bool.
+	IsBootstrap bool
+	ApiAddress string
+	ShutdownChan chan struct{}
+	Repo repo.Repo
+
+	// FIXME: Add Mock network and Test().
+
+	//Genesis modules.Genesis // FIXME: Needs to be set *always*.
+}
+
+/// BuildFullNode uses the configurations set in Builder to return a newly
+/// instantiated `api.FullNode` through DI. The user-provided options
+/// (`userOptions`) allow injection of custom dependencies but their use is
+/// discouraged (instead the `Builder` logic should be extended to accommodate
+/// them).
+// FIXME: Do we want this function to be reusable?
+// FIXME: Extend to allow to build smaller sub-systems than the "Full node".
+// FIXME: Some of the Builder configurations can be arguments to `BuildFullNode` as
+//  they will always be necessary and specific for that use case. (Like `ApiAddress`.)
+func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api.FullNode, StopFunc, error) {
+	var api api.FullNode
+
+	opts := []Option {
+		FullAPI(&api, Lite(b.IsLite)),
+
+		// FIXME: Do we need to set these before Repo()/Online()?
+		Override(new(dtypes.Bootstrapper), b.IsBootstrapper),
+		Override(new(dtypes.ShutdownChan), b.ShutdownChan),
+
+		Online(),
+		Repo(b.Repo), // FIXME: If repo is nil (not set) use memory by default.
+
+		// Override(new(modules.Genesis), b.Genesis),
+
+		// FIXME: For now process lite mode as user option. Should be derived from
+		//  the profile builder configuration.
+		// liteModeDeps,
+	}
+
+	if b.ApiAddress != "" {
+		opts = append(opts, Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
+			// FIXME: The string to multiaddr conversion should be done by
+			//  the user who will be better equipped to handle the error.
+			apima, err := multiaddr.NewMultiaddr(b.ApiAddress)
+			if err != nil {
+				return err
+			}
+			return lr.SetAPIEndpoint(apima)
+		}))
+	}
+
+	if b.IsBootstrap {
+		opts = append(opts,
+			Unset(RunPeerMgrKey),
+			Unset(new(*peermgr.PeerMgr)),
+		)
+	}
+
+	// FIXME: Apply user-supplied overrides at the end. Do we need to modify node.new?
+	opts = append(opts, userOptions...)
+
+	stop, err := New(ctx, opts...)
+
+	return api, stop, err
+}

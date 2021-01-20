@@ -18,7 +18,6 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/plugin/runmetrics"
 	"go.opencensus.io/stats"
@@ -36,7 +35,6 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
@@ -174,6 +172,8 @@ var DaemonCmd = &cli.Command{
 			defer pprof.StopCPUProfile()
 		}
 
+		// FIXME: What is the difference between this profile option and
+		//  `cctx.Bool("bootstrap")`?
 		var isBootstrapper dtypes.Bootstrapper
 		switch profile := cctx.String("profile"); profile {
 		case "bootstrapper":
@@ -277,32 +277,19 @@ var DaemonCmd = &cli.Command{
 			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
 		}
 
-		var api api.FullNode
-		stop, err := node.New(ctx,
-			node.FullAPI(&api, node.Lite(isLite)),
-
-			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
-			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Online(),
-			node.Repo(r),
-
-			genesis,
-			liteModeDeps,
-
-			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
-				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
-						cctx.String("api"))
-					if err != nil {
-						return err
-					}
-					return lr.SetAPIEndpoint(apima)
-				})),
-			node.ApplyIf(func(s *node.Settings) bool { return !cctx.Bool("bootstrap") },
-				node.Unset(node.RunPeerMgrKey),
-				node.Unset(new(*peermgr.PeerMgr)),
-			),
-		)
+		builder := node.Builder{
+			IsLite: isLite,
+			IsBootstrapper: isBootstrapper,
+			IsBootstrap: cctx.Bool("bootstrap"),
+			ShutdownChan: shutdownChan,
+			Repo: r,
+		}
+		if cctx.IsSet("api") {
+			builder.ApiAddress = "/ip4/127.0.0.1/tcp/" + cctx.String("api")
+		}
+		// FIXME: Try to process the more complex `Override()` calls like `genesis` and
+		//  `liteModeDeps` also as `Builder` options.
+		api, stop, err := builder.BuildFullNode(ctx, genesis, liteModeDeps)
 		if err != nil {
 			return xerrors.Errorf("initializing node: %w", err)
 		}
