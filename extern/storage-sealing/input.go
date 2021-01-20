@@ -28,6 +28,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 			m.inputLk.Unlock()
 
 			// we send another SectorStartPacking in case one was sent in the handleAddPiece state
+			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timeout")
 			return ctx.Send(SectorStartPacking{})
 		}
 	}
@@ -44,6 +45,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 
 	if len(sector.dealIDs()) >= maxDeals {
 		// can't accept more deals
+		log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "maxdeals")
 		return ctx.Send(SectorStartPacking{})
 	}
 
@@ -54,6 +56,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 
 	if used.Padded() == abi.PaddedPieceSize(ssize) {
 		// sector full
+		log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "filled")
 		return ctx.Send(SectorStartPacking{})
 	}
 
@@ -69,10 +72,13 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 
 		if now.After(sealTime) {
 			m.inputLk.Unlock()
+			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timeout")
 			return ctx.Send(SectorStartPacking{})
 		}
 
 		m.sectorTimers[m.minerSectorID(sector.SectorNumber)] = time.AfterFunc(sealTime.Sub(now), func() {
+			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timer")
+
 			if err := ctx.Send(SectorStartPacking{}); err != nil {
 				log.Errorw("sending SectorStartPacking event failed", "sector", sector.SectorNumber, "error", err)
 			}
@@ -175,6 +181,8 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			})
 		}
 
+		time.Sleep(1 * time.Second) // TODO: deal tests are unhappy without this
+
 		ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx.Context(), DealSectorPriority),
 			m.minerSector(sector.SectorType, sector.SectorNumber),
 			pieceSizes,
@@ -185,6 +193,8 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			deal.accepted(sector.SectorNumber, offset, err)
 			return ctx.Send(SectorAddPieceFailed{err})
 		}
+
+		log.Infow("deal added to a sector", "deal", deal.deal.DealID, "sector", sector.SectorNumber, "piece", ppi.PieceCID)
 
 		deal.accepted(sector.SectorNumber, offset, nil)
 
