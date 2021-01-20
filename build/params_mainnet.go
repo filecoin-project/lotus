@@ -58,6 +58,8 @@ func init() {
 	}
 
 	Devnet = false
+
+	BuildType = BuildMainnet
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
