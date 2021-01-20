@@ -107,9 +107,9 @@ var DaemonCmd = &cli.Command{
 		//  connect to *any* nodes at all (since you need the bootstrap nodes
 		//  to find the others).
 		&cli.BoolFlag{
-			Name:  "bootstrap",
-			Value: true,
-			Usage: "DEPRECATED: use 'isolated' flag instead",
+			Name:   "bootstrap",
+			Value:  true,
+			Usage:  "DEPRECATED: use 'isolated' flag instead",
 			Hidden: true,
 		},
 		&cli.BoolFlag{
