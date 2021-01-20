@@ -2,6 +2,7 @@ package miner
 
 import (
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -149,8 +150,26 @@ type DeclareFaultsRecoveredParams = miner0.DeclareFaultsRecoveredParams
 type SubmitWindowedPoStParams = miner0.SubmitWindowedPoStParams
 type ProveCommitSectorParams = miner0.ProveCommitSectorParams
 
-// TODO: This may need to be epoch-sensitive
-func PreferredSealProofTypeFromWindowPoStType(proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
+func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
+	// We added support for the new proofs in network version 7, and removed support for the old
+	// ones in network version 8.
+	if nver < network.Version7 {
+		switch proof {
+		case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
+			return abi.RegisteredSealProof_StackedDrg2KiBV1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1:
+			return abi.RegisteredSealProof_StackedDrg8MiBV1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1:
+			return abi.RegisteredSealProof_StackedDrg512MiBV1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1:
+			return abi.RegisteredSealProof_StackedDrg32GiBV1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
+			return abi.RegisteredSealProof_StackedDrg64GiBV1, nil
+		default:
+			return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
+		}
+	}
+
 	switch proof {
 	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
 		return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
