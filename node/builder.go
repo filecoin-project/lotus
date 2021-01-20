@@ -662,12 +662,12 @@ type Builder struct {
 	// FIXME: Consider making configuration options private and exposing functions
 	//  to set them. For now it doesn't seem worth it as they are mostly constants
 	//  that we don't process (maybe the ShutdownChan/Repo are the exception).
-	IsLite bool
+	IsLite         bool
 	IsBootstrapper dtypes.Bootstrapper // FIXME: Check why this isn't just a bool.
-	IsBootstrap bool
-	ApiAddress string
-	ShutdownChan chan struct{}
-	Repo repo.Repo
+	IsBootstrap    bool
+	ApiAddress     string
+	ShutdownChan   chan struct{}
+	Repo           repo.Repo
 
 	// FIXME: Add Mock network and Test().
 
@@ -686,7 +686,7 @@ type Builder struct {
 func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api.FullNode, StopFunc, error) {
 	var api api.FullNode
 
-	opts := []Option {
+	opts := []Option{
 		FullAPI(&api, Lite(b.IsLite)),
 
 		// FIXME: Do we need to set these before Repo()/Online()?

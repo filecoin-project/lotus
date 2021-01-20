@@ -278,11 +278,11 @@ var DaemonCmd = &cli.Command{
 		}
 
 		builder := node.Builder{
-			IsLite: isLite,
+			IsLite:         isLite,
 			IsBootstrapper: isBootstrapper,
-			IsBootstrap: cctx.Bool("bootstrap"),
-			ShutdownChan: shutdownChan,
-			Repo: r,
+			IsBootstrap:    cctx.Bool("bootstrap"),
+			ShutdownChan:   shutdownChan,
+			Repo:           r,
 		}
 		if cctx.IsSet("api") {
 			builder.ApiAddress = "/ip4/127.0.0.1/tcp/" + cctx.String("api")
