@@ -649,5 +649,5 @@ workflows:
       - build-and-push-image:
           dockerfile: Dockerfile.lotus
           path: .
-          repo: lotus-test-dev
+          repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
