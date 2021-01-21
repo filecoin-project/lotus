@@ -48,6 +48,12 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 			return true, false, nil
 		}
 
+		// Check that precommits which landed between when the deal was published
+		// and now don't already contain the deal we care about.
+		// (this can happen when the precommit lands vary quickly (in tests), or
+		// when the client node was down after the deal was published, and when
+		// the precommit containing it landed on chain)
+
 		if publishTs == types.EmptyTSK {
 			lookup, err := api.StateSearchMsg(ctx, *publishCid)
 			if err != nil {

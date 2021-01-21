@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -23,11 +22,8 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -39,6 +35,7 @@ import (
 
 type ClientNodeAdapter struct {
 	*clientApi
+	*apiWrapper
 
 	fundmgr   *market.FundManager
 	ev        *events.Events
@@ -51,39 +48,11 @@ type clientApi struct {
 	full.MpoolAPI
 }
 
-func (ca *clientApi) diffPreCommits(ctx context.Context, actor address.Address, pre, cur types.TipSetKey) (*miner.PreCommitChanges, error) {
-	store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(ca)))
-
-	preAct, err := ca.StateGetActor(ctx, actor, pre)
-	if err != nil {
-		return nil, xerrors.Errorf("getting pre actor: %w", err)
-	}
-	curAct, err := ca.StateGetActor(ctx, actor, cur)
-	if err != nil {
-		return nil, xerrors.Errorf("getting cur actor: %w", err)
-	}
-
-	preSt, err := miner.Load(store, preAct)
-	if err != nil {
-		return nil, xerrors.Errorf("loading miner actor: %w", err)
-	}
-	curSt, err := miner.Load(store, curAct)
-	if err != nil {
-		return nil, xerrors.Errorf("loading miner actor: %w", err)
-	}
-
-	diff, err := miner.DiffPreCommits(preSt, curSt)
-	if err != nil {
-		return nil, xerrors.Errorf("diff precommits: %w", err)
-	}
-
-	return diff, err
-}
-
 func NewClientNodeAdapter(stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *market.FundManager) storagemarket.StorageClientNode {
 	capi := &clientApi{chain, stateapi, mpool}
 	return &ClientNodeAdapter{
-		clientApi: capi,
+		clientApi:  capi,
+		apiWrapper: &apiWrapper{api: capi},
 
 		fundmgr:   fundmgr,
 		ev:        events.NewEvents(context.TODO(), capi),
