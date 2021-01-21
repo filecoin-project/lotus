@@ -117,6 +117,13 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 
 		// get the next sync target; it should be c1 as the heaviest tipset but added last (same weight as c2)
 		bop = <-stc
+		if bop.ts.Equals(c2) {
+			// there's a small race and we might get c2 first.
+			// But we should still end on c1.
+			bop.done()
+			bop = <-stc
+		}
+
 		if !bop.ts.Equals(c1) {
 			t.Fatalf("Expected tipset %s to sync, but got %s", c1, bop.ts)
 		}
