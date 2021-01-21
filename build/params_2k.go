@@ -36,7 +36,7 @@ func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 
-	BuildType = Build2k
+	BuildType |= Build2k
 }
 
 const BlockDelaySecs = uint64(4)
