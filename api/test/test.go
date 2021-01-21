@@ -109,14 +109,19 @@ var OneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
 var OneFull = DefaultFullOpts(1)
 var TwoFull = DefaultFullOpts(2)
 
-var FullNodeWithActorsV2At = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
+var FullNodeWithActorsV3At = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 	return FullNodeOpts{
 		Opts: func(nodes []TestNode) node.Option {
 			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
-				// Skip directly to tape height so precommits work.
-				Network:   network.Version5,
-				Height:    upgradeHeight,
+				// prepare for upgrade.
+				Network:   network.Version9,
+				Height:    1,
 				Migration: stmgr.UpgradeActorsV2,
+			}, {
+				// Skip directly to tape height so precommits work.
+				Network:   network.Version10,
+				Height:    upgradeHeight,
+				Migration: stmgr.UpgradeActorsV3,
 			}})
 		},
 	}

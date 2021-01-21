@@ -218,7 +218,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithActorsV2At(upgradeHeight)}, OneMiner)
+	n, sn := b(t, []FullNodeOpts{FullNodeWithActorsV3At(upgradeHeight)}, OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
@@ -437,7 +437,7 @@ func TestTerminate(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 	nSectors := uint64(2)
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithActorsV2At(1)}, []StorageMiner{{Full: 0, Preseal: int(nSectors)}})
+	n, sn := b(t, []FullNodeOpts{FullNodeWithActorsV3At(1)}, []StorageMiner{{Full: 0, Preseal: int(nSectors)}})
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
