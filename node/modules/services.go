@@ -188,14 +188,16 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	waitForSync(stmgr, pubsubMsgsSyncEpochs, subscribe)
 }
 
-func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
+func NewLocalDiscovery(mctx helpers.MetricsCtx, lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
 	local, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
 	if err != nil {
 		return nil, err
 	}
+
+	ctx := helpers.LifecycleCtx(mctx, lc)
 	local.OnReady(marketevents.ReadyLogger("discovery"))
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+		OnStart: func(context.Context) error {
 			return local.Start(ctx)
 		},
 	})
