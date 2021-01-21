@@ -113,8 +113,13 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	// start node
 	var minerapi api.StorageMiner
 
+	// This is the startup context. Cancel it so we can catch bugs where we use the wrong
+	// context internally.
+	startCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	mineBlock := make(chan lotusminer.MineReq)
-	stop, err := node.New(ctx,
+	stop, err := node.New(startCtx,
 		node.StorageMiner(&minerapi),
 		node.Online(),
 		node.Repo(r),
@@ -238,6 +243,11 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 
 	// END PRESEAL SECTION
 
+	// This is the startup context. Cancel it so we can catch bugs where we use the wrong
+	// context internally.
+	startCtx, cancelStart := context.WithCancel(ctx)
+	defer cancelStart()
+
 	for i := 0; i < len(fullOpts); i++ {
 		var genesis node.Option
 		if i == 0 {
@@ -246,7 +256,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
 
-		stop, err := node.New(ctx,
+		stop, err := node.New(startCtx,
 			node.FullAPI(&fulls[i].FullNode, node.Lite(fullOpts[i].Lite)),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
@@ -395,6 +405,10 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 
 	// END PRESEAL SECTION
 
+	// explicitly cancel this context when done so we catch bugs where we use the wrong context.
+	startCtx, cancelStart := context.WithCancel(ctx)
+	defer cancelStart()
+
 	for i := 0; i < len(fullOpts); i++ {
 		var genesis node.Option
 		if i == 0 {
@@ -403,7 +417,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
 
-		stop, err := node.New(ctx,
+		stop, err := node.New(startCtx,
 			node.FullAPI(&fulls[i].FullNode, node.Lite(fullOpts[i].Lite)),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
