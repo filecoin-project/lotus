@@ -161,8 +161,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 					deals: map[abi.DealID]*api.MarketDeal{},
 				},
 			},
-			expectedCBCallCount: 1,
-			expectedCBError:     errors.New("handling applied event: something went wrong"),
+			expectedCBCallCount: 0,
 			expectedError:       errors.New("failed to set up called handler: something went wrong"),
 		},
 		"proposed deal epoch timeout": {
