@@ -81,7 +81,7 @@ func MemoryWatchdog(lr repo.LockedRepo, lc fx.Lifecycle, constraints system.Memo
 	// will be captured during life of this process.
 	watchdog.HeapProfileDir = filepath.Join(lr.Path(), "heapprof")
 	watchdog.HeapProfileMaxCaptures = 10
-	watchdog.HeapProfileThreshold = 0.1
+	watchdog.HeapProfileThreshold = 0.9
 	watchdog.Logger = logWatchdog
 
 	policy := watchdog.NewWatermarkPolicy(0.50, 0.60, 0.70, 0.85, 0.90, 0.925, 0.95)
