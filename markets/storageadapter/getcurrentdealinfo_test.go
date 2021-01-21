@@ -209,7 +209,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 				MarketDeals:         marketDeals,
 			}
 
-			dealID, marketDeal, err := GetCurrentDealInfo(ctx, ts, api, startDealID, proposal, data.publishCid)
+			dealID, marketDeal, _, err := GetCurrentDealInfo(ctx, ts, api, startDealID, proposal, data.publishCid)
 			require.Equal(t, data.expectedDealID, dealID)
 			require.Equal(t, data.expectedMarketDeal, marketDeal)
 			if data.expectedError == nil {
@@ -234,6 +234,18 @@ type mockGetCurrentDealInfoAPI struct {
 	SearchMessageErr    error
 
 	MarketDeals map[marketDealKey]*api.MarketDeal
+}
+
+func (mapi *mockGetCurrentDealInfoAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+	panic("implement me")
+}
+
+func (mapi *mockGetCurrentDealInfoAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
+	panic("implement me")
+}
+
+func (mapi *mockGetCurrentDealInfoAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
+	panic("implement me")
 }
 
 func (mapi *mockGetCurrentDealInfoAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, ts types.TipSetKey) (*api.MarketDeal, error) {

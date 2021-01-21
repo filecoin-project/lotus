@@ -5,16 +5,21 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 type sectorCommittedEventsAPI interface {
@@ -32,7 +37,7 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 
 	// First check if the deal is already active, and if so, bail out
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		isActive, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
+		di, isActive, publishTs, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
 		if err != nil {
 			// Note: the error returned from here will end up being returned
 			// from OnDealSectorPreCommitted so no need to call the callback
@@ -44,6 +49,52 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 			// Deal is already active, bail out
 			cb(0, true, nil)
 			return true, false, nil
+		}
+
+		if publishTs == types.EmptyTSK {
+			lookup, err := api.StateSearchMsg(ctx, *publishCid)
+			if err != nil {
+				return false, false, err
+			}
+			if lookup != nil { // can be nil in tests
+				publishTs = lookup.TipSet
+			}
+		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api)))
+
+		publishAct, err := api.StateGetActor(ctx, provider, publishTs)
+		if err != nil {
+			return false, false, xerrors.Errorf("getting provider actor: %w", err)
+		}
+
+		curAct, err := api.StateGetActor(ctx, provider, ts.Key())
+		if err != nil {
+			return false, false, xerrors.Errorf("getting provider actor: %w", err)
+		}
+
+		curSt, err := miner.Load(store, curAct)
+		if err != nil {
+			return false, false, xerrors.Errorf("leading miner actor: %w", err)
+		}
+
+		pubSt, err := miner.Load(store, publishAct)
+		if err != nil {
+			return false, false, xerrors.Errorf("leading miner actor: %w", err)
+		}
+
+		diff, err := miner.DiffPreCommits(pubSt, curSt)
+		if err != nil {
+			return false, false, xerrors.Errorf("diff precommits: %w", err)
+		}
+
+		for _, info := range diff.Added {
+			for _, d := range info.Info.DealIDs {
+				if d == di {
+					cb(info.Info.SectorNumber, false, nil)
+					return true, false, nil
+				}
+			}
 		}
 
 		// Not yet active, start matching against incoming messages
@@ -88,7 +139,7 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 
 		// When the deal is published, the deal ID may change, so get the
 		// current deal ID from the publish message CID
-		dealID, _, err = GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
+		dealID, _, _, err = GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
 		if err != nil {
 			return false, err
 		}
@@ -130,7 +181,7 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 
 	// First check if the deal is already active, and if so, bail out
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		isActive, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
+		_, isActive, _, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
 		if err != nil {
 			// Note: the error returned from here will end up being returned
 			// from OnDealSectorCommitted so no need to call the callback
@@ -186,7 +237,7 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		}
 
 		// Get the deal info
-		_, sd, err := GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
+		_, sd, _, err := GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
@@ -216,22 +267,22 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 	return nil
 }
 
-func checkIfDealAlreadyActive(ctx context.Context, api getCurrentDealInfoAPI, ts *types.TipSet, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid) (bool, error) {
-	_, sd, err := GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
+func checkIfDealAlreadyActive(ctx context.Context, api getCurrentDealInfoAPI, ts *types.TipSet, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid) (abi.DealID, bool, types.TipSetKey, error) {
+	di, sd, publishTs, err := GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
 	if err != nil {
 		// TODO: This may be fine for some errors
-		return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
+		return 0, false, types.EmptyTSK, xerrors.Errorf("failed to look up deal on chain: %w", err)
 	}
 
 	// Sector with deal is already active
 	if sd.State.SectorStartEpoch > 0 {
-		return true, nil
+		return 0, true, publishTs, nil
 	}
 
 	// Sector was slashed
 	if sd.State.SlashEpoch > 0 {
-		return false, xerrors.Errorf("deal %d was slashed at epoch %d", dealID, sd.State.SlashEpoch)
+		return 0, false, types.EmptyTSK, xerrors.Errorf("deal %d was slashed at epoch %d", dealID, sd.State.SlashEpoch)
 	}
 
-	return false, nil
+	return di, false, publishTs, nil
 }
