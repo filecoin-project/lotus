@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	test "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
@@ -236,16 +237,8 @@ type mockGetCurrentDealInfoAPI struct {
 	MarketDeals map[marketDealKey]*api.MarketDeal
 }
 
-func (mapi *mockGetCurrentDealInfoAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	panic("implement me")
-}
-
-func (mapi *mockGetCurrentDealInfoAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
-	panic("implement me")
-}
-
-func (mapi *mockGetCurrentDealInfoAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
-	panic("implement me")
+func (mapi *mockGetCurrentDealInfoAPI) diffPreCommits(ctx context.Context, actor address.Address, pre, cur types.TipSetKey) (*miner.PreCommitChanges, error) {
+	return &miner.PreCommitChanges{}, nil
 }
 
 func (mapi *mockGetCurrentDealInfoAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, ts types.TipSetKey) (*api.MarketDeal, error) {

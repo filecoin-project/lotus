@@ -6,16 +6,13 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -61,31 +58,9 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 			}
 		}
 
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api)))
-
-		publishAct, err := api.StateGetActor(ctx, provider, publishTs)
+		diff, err := api.diffPreCommits(ctx, provider, publishTs, ts.Key())
 		if err != nil {
-			return false, false, xerrors.Errorf("getting provider actor: %w", err)
-		}
-
-		curAct, err := api.StateGetActor(ctx, provider, ts.Key())
-		if err != nil {
-			return false, false, xerrors.Errorf("getting provider actor: %w", err)
-		}
-
-		curSt, err := miner.Load(store, curAct)
-		if err != nil {
-			return false, false, xerrors.Errorf("leading miner actor: %w", err)
-		}
-
-		pubSt, err := miner.Load(store, publishAct)
-		if err != nil {
-			return false, false, xerrors.Errorf("leading miner actor: %w", err)
-		}
-
-		diff, err := miner.DiffPreCommits(pubSt, curSt)
-		if err != nil {
-			return false, false, xerrors.Errorf("diff precommits: %w", err)
+			return false, false, err
 		}
 
 		for _, info := range diff.Added {
