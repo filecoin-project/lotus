@@ -17,7 +17,7 @@ import (
 
 func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	for _, height := range []abi.ChainEpoch{
-		1,    // before
+		2,    // before
 		162,  // while sealing
 		520,  // after upgrade deal
 		5000, // after
