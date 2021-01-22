@@ -760,7 +760,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 			Method: miner.Methods.DisputeWindowedPoSt,
 			Params: enc,
 			Value:  types.NewInt(0),
-			From:   defaultFrom, // TODO: new miner...
+			From:   defaultFrom,
 		}
 		sm, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(t, err)
@@ -803,7 +803,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 			Method: miner.Methods.DeclareFaultsRecovered,
 			Params: enc,
 			Value:  types.FromFil(30), // repay debt.
-			From:   minerInfo.Owner,   // TODO: new miner...
+			From:   minerInfo.Owner,
 		}
 		sm, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(t, err)
