@@ -198,3 +198,13 @@ func TestPaymentChannels(t *testing.T) {
 
 	test.TestPaymentChannels(t, builder.MockSbBuilder, 5*time.Millisecond)
 }
+
+func TestWindowPostDispute(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestWindowPostDispute(t, builder.MockSbBuilder, 2*time.Millisecond)
+}

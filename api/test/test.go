@@ -48,6 +48,7 @@ type TestStorageNode struct {
 	ListenAddr multiaddr.Multiaddr
 
 	MineOne func(context.Context, miner.MineReq) error
+	Stop    func(context.Context) error
 }
 
 var PresealGenesis = -1

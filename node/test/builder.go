@@ -148,7 +148,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 		}
 	}
 
-	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne}
+	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne, Stop: stop}
 }
 
 func Builder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
