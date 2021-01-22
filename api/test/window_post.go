@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -641,6 +642,9 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 		}
 	}
 
+	defaultFrom, err := client.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
 	build.Clock.Sleep(time.Second)
 
 	// Mine with the _second_ node (the good one).
@@ -673,9 +677,6 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 	require.NoError(t, err)
 
 	di, err := client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
-	require.NoError(t, err)
-
-	minerInfo, err := client.StateMinerInfo(ctx, evilMinerAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
 	fmt.Printf("Running one proving period\n")
@@ -724,47 +725,8 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 		build.Clock.Sleep(blocktime)
 	}
 
-	// submit a bad proof
-	{
-		fmt.Println("submitting evil proof")
-		head, err := client.ChainHead(ctx)
-		require.NoError(t, err)
-
-		commEpoch := di.Open
-		commRand, err := client.ChainGetRandomnessFromTickets(
-			ctx, head.Key(), crypto.DomainSeparationTag_PoStChainCommit,
-			commEpoch, nil,
-		)
-		require.NoError(t, err)
-		params := &miner.SubmitWindowedPoStParams{
-			ChainCommitEpoch: commEpoch,
-			ChainCommitRand:  commRand,
-			Deadline:         evilSectorLoc.Deadline,
-			Partitions:       []miner.PoStPartition{{Index: evilSectorLoc.Partition}},
-			Proofs: []proof3.PoStProof{{
-				PoStProof:  minerInfo.WindowPoStProofType,
-				ProofBytes: []byte("I'm soooo very evil."),
-			}},
-		}
-
-		enc, aerr := actors.SerializeParams(params)
-		require.NoError(t, aerr)
-
-		msg := &types.Message{
-			To:     evilMinerAddr,
-			Method: miner.Methods.SubmitWindowedPoSt,
-			Params: enc,
-			Value:  types.NewInt(0),
-			From:   minerInfo.Owner,
-		}
-		sm, err := client.MpoolPushMessage(ctx, msg, nil)
-		require.NoError(t, err)
-
-		fmt.Println("waiting for evil proof")
-		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
-		require.NoError(t, err)
-		require.Zero(t, rec.Receipt.ExitCode, "evil proof not accepted: %s", rec.Receipt.ExitCode.Error())
-	}
+	err = submitBadProof(ctx, client, evilMinerAddr, di, evilSectorLoc.Deadline, evilSectorLoc.Partition)
+	require.NoError(t, err, "evil proof not accepted")
 
 	// Wait until after the proving period.
 	for {
@@ -798,7 +760,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 			Method: miner.Methods.DisputeWindowedPoSt,
 			Params: enc,
 			Value:  types.NewInt(0),
-			From:   minerInfo.Owner, // TODO: new miner...
+			From:   defaultFrom, // TODO: new miner...
 		}
 		sm, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(t, err)
@@ -807,6 +769,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "dispute not accepted: %s", rec.Receipt.ExitCode.Error())
+		fmt.Println("GASS!!!: ", rec.Receipt.GasUsed)
 	}
 
 	// Objection SUSTAINED!
@@ -821,6 +784,9 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 	// First, recover the sector.
 
 	{
+		minerInfo, err := client.StateMinerInfo(ctx, evilMinerAddr, types.EmptyTSK)
+		require.NoError(t, err)
+
 		params := &miner.DeclareFaultsRecoveredParams{
 			Recoveries: []miner.RecoveryDeclaration{{
 				Deadline:  evilSectorLoc.Deadline,
@@ -836,8 +802,8 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 			To:     evilMinerAddr,
 			Method: miner.Methods.DeclareFaultsRecovered,
 			Params: enc,
-			Value:  types.NewInt(0),
-			From:   minerInfo.Owner, // TODO: new miner...
+			Value:  types.FromFil(30), // repay debt.
+			From:   minerInfo.Owner,   // TODO: new miner...
 		}
 		sm, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(t, err)
@@ -857,50 +823,76 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 		build.Clock.Sleep(blocktime)
 	}
 
-	// And prove it.
-	{
-		fmt.Println("submitting good proof")
-		head, err := client.ChainHead(ctx)
-		require.NoError(t, err)
+	// Now try to be evil again
+	err = submitBadProof(ctx, client, evilMinerAddr, di, evilSectorLoc.Deadline, evilSectorLoc.Partition)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "message execution failed: exit 16, reason: window post failed: invalid PoSt")
 
-		commEpoch := di.Open
-		commRand, err := client.ChainGetRandomnessFromTickets(
-			ctx, head.Key(), crypto.DomainSeparationTag_PoStChainCommit,
-			commEpoch, nil,
-		)
-		require.NoError(t, err)
-		params := &miner.SubmitWindowedPoStParams{
-			ChainCommitEpoch: commEpoch,
-			ChainCommitRand:  commRand,
-			Deadline:         evilSectorLoc.Deadline,
-			Partitions:       []miner.PoStPartition{{Index: evilSectorLoc.Partition}},
-			Proofs: []proof3.PoStProof{{
-				PoStProof:  minerInfo.WindowPoStProofType,
-				ProofBytes: []byte("I'm soooo very evil."),
-			}},
-		}
+	// It didn't work because we're recovering.
+}
 
-		enc, aerr := actors.SerializeParams(params)
-		require.NoError(t, aerr)
-
-		msg := &types.Message{
-			To:     evilMinerAddr,
-			Method: miner.Methods.SubmitWindowedPoSt,
-			Params: enc,
-			Value:  types.NewInt(0),
-			From:   minerInfo.Owner,
-		}
-		sm, err := client.MpoolPushMessage(ctx, msg, nil)
-		require.NoError(t, err)
-
-		fmt.Println("waiting for evil proof")
-		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
-		require.NoError(t, err)
-		require.Zero(t, rec.Receipt.ExitCode, "evil proof not accepted: %s", rec.Receipt.ExitCode.Error())
+func submitBadProof(
+	ctx context.Context,
+	client api.FullNode, maddr address.Address,
+	di *dline.Info, dlIdx, partIdx uint64,
+) error {
+	head, err := client.ChainHead(ctx)
+	if err != nil {
+		return err
 	}
 
-	// The power should be restored.
-	p, err = client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
-	require.NoError(t, err)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)))
+	from, err := client.WalletDefaultAddress(ctx)
+	if err != nil {
+		return err
+	}
+
+	minerInfo, err := client.StateMinerInfo(ctx, maddr, head.Key())
+	if err != nil {
+		return err
+	}
+
+	commEpoch := di.Open
+	commRand, err := client.ChainGetRandomnessFromTickets(
+		ctx, head.Key(), crypto.DomainSeparationTag_PoStChainCommit,
+		commEpoch, nil,
+	)
+	if err != nil {
+		return err
+	}
+	params := &miner.SubmitWindowedPoStParams{
+		ChainCommitEpoch: commEpoch,
+		ChainCommitRand:  commRand,
+		Deadline:         dlIdx,
+		Partitions:       []miner.PoStPartition{{Index: partIdx}},
+		Proofs: []proof3.PoStProof{{
+			PoStProof:  minerInfo.WindowPoStProofType,
+			ProofBytes: []byte("I'm soooo very evil."),
+		}},
+	}
+
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return aerr
+	}
+
+	msg := &types.Message{
+		To:     maddr,
+		Method: miner.Methods.SubmitWindowedPoSt,
+		Params: enc,
+		Value:  types.NewInt(0),
+		From:   from,
+	}
+	sm, err := client.MpoolPushMessage(ctx, msg, nil)
+	if err != nil {
+		return err
+	}
+
+	rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
+	if err != nil {
+		return err
+	}
+	if rec.Receipt.ExitCode.IsError() {
+		return rec.Receipt.ExitCode
+	}
+	return nil
 }
