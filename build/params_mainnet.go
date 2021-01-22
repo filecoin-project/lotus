@@ -2,6 +2,7 @@
 // +build !2k
 // +build !testground
 // +build !calibnet
+// +build !interopnet
 
 package build
 
