@@ -277,13 +277,13 @@ var DaemonCmd = &cli.Command{
 			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
 		}
 
-		builder := node.Builder{
+		builder := (&node.Builder{
 			IsLite:         isLite,
 			IsBootstrapper: isBootstrapper,
 			IsBootstrap:    cctx.Bool("bootstrap"),
 			ShutdownChan:   shutdownChan,
-			Repo:           r,
-		}
+		}).WithRepo(r)
+
 		if cctx.IsSet("api") {
 			builder.ApiAddress = "/ip4/127.0.0.1/tcp/" + cctx.String("api")
 		}

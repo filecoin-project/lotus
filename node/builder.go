@@ -662,16 +662,30 @@ type Builder struct {
 	// FIXME: Consider making configuration options private and exposing functions
 	//  to set them. For now it doesn't seem worth it as they are mostly constants
 	//  that we don't process (maybe the ShutdownChan/Repo are the exception).
+	// Configuration options as constants with sane default values.
 	IsLite         bool
 	IsBootstrapper dtypes.Bootstrapper // FIXME: Check why this isn't just a bool.
 	IsBootstrap    bool
 	ApiAddress     string
 	ShutdownChan   chan struct{}
-	Repo           repo.Repo
+
+	// Repository used for a *single* build call. The default `nil` signals
+	// use of a memory repo.
+	repo           repo.Repo
 
 	// FIXME: Add Mock network and Test().
 
 	//Genesis modules.Genesis // FIXME: Needs to be set *always*.
+}
+
+func (b *Builder) WithRepo(repo repo.Repo) *Builder {
+	b.repo = repo
+	return b
+}
+
+func (b *Builder) WithMemRepo() *Builder {
+	b.repo = nil
+	return b
 }
 
 /// BuildFullNode uses the configurations set in Builder to return a newly
@@ -684,6 +698,10 @@ type Builder struct {
 // FIXME: Some of the Builder configurations can be arguments to `BuildFullNode` as
 //  they will always be necessary and specific for that use case. (Like `ApiAddress`.)
 func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api.FullNode, StopFunc, error) {
+	if b.repo == nil {
+		b.repo = repo.NewMemory(nil)
+	}
+
 	var api api.FullNode
 
 	stop, err := New(ctx, FullAPI(&api,
@@ -694,7 +712,7 @@ func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api
 		Override(new(dtypes.ShutdownChan), b.ShutdownChan),
 
 		Online(),
-		If(b.Repo != nil, Repo(b.Repo)),
+		Repo(b.repo),
 
 		If(b.ApiAddress != "", Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
 			// FIXME: The string to multiaddr conversion should be done by
@@ -719,6 +737,9 @@ func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api
 
 		Options(userOptions...),
 	)
+
+	// Avoid reusing same repo.
+	b.repo = nil
 
 	return api, stop, err
 }
