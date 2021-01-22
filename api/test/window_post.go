@@ -768,7 +768,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 
 	// Wait until after the proving period.
 	for {
-		di, err := client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
+		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
 		if di.Index != evilSectorLoc.Deadline {
 			break
@@ -808,4 +808,99 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "dispute not accepted: %s", rec.Receipt.ExitCode.Error())
 	}
+
+	// Objection SUSTAINED!
+	// Make sure the evil node lost power.
+	p, err = client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.True(t, p.MinerPower.RawBytePower.IsZero())
+
+	// Now we begin the redemption arc.
+	require.True(t, p.MinerPower.RawBytePower.IsZero())
+
+	// First, recover the sector.
+
+	{
+		params := &miner.DeclareFaultsRecoveredParams{
+			Recoveries: []miner.RecoveryDeclaration{{
+				Deadline:  evilSectorLoc.Deadline,
+				Partition: evilSectorLoc.Partition,
+				Sectors:   bitfield.NewFromSet([]uint64{uint64(evilSectorNo)}),
+			}},
+		}
+
+		enc, aerr := actors.SerializeParams(params)
+		require.NoError(t, aerr)
+
+		msg := &types.Message{
+			To:     evilMinerAddr,
+			Method: miner.Methods.DeclareFaultsRecovered,
+			Params: enc,
+			Value:  types.NewInt(0),
+			From:   minerInfo.Owner, // TODO: new miner...
+		}
+		sm, err := client.MpoolPushMessage(ctx, msg, nil)
+		require.NoError(t, err)
+
+		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
+		require.NoError(t, err)
+		require.Zero(t, rec.Receipt.ExitCode, "recovery not accepted: %s", rec.Receipt.ExitCode.Error())
+	}
+
+	// Then wait for the deadline.
+	for {
+		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
+		require.NoError(t, err)
+		if di.Index == evilSectorLoc.Deadline {
+			break
+		}
+		build.Clock.Sleep(blocktime)
+	}
+
+	// And prove it.
+	{
+		fmt.Println("submitting good proof")
+		head, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+
+		commEpoch := di.Open
+		commRand, err := client.ChainGetRandomnessFromTickets(
+			ctx, head.Key(), crypto.DomainSeparationTag_PoStChainCommit,
+			commEpoch, nil,
+		)
+		require.NoError(t, err)
+		params := &miner.SubmitWindowedPoStParams{
+			ChainCommitEpoch: commEpoch,
+			ChainCommitRand:  commRand,
+			Deadline:         evilSectorLoc.Deadline,
+			Partitions:       []miner.PoStPartition{{Index: evilSectorLoc.Partition}},
+			Proofs: []proof3.PoStProof{{
+				PoStProof:  minerInfo.WindowPoStProofType,
+				ProofBytes: []byte("I'm soooo very evil."),
+			}},
+		}
+
+		enc, aerr := actors.SerializeParams(params)
+		require.NoError(t, aerr)
+
+		msg := &types.Message{
+			To:     evilMinerAddr,
+			Method: miner.Methods.SubmitWindowedPoSt,
+			Params: enc,
+			Value:  types.NewInt(0),
+			From:   minerInfo.Owner,
+		}
+		sm, err := client.MpoolPushMessage(ctx, msg, nil)
+		require.NoError(t, err)
+
+		fmt.Println("waiting for evil proof")
+		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
+		require.NoError(t, err)
+		require.Zero(t, rec.Receipt.ExitCode, "evil proof not accepted: %s", rec.Receipt.ExitCode.Error())
+	}
+
+	// The power should be restored.
+	p, err = client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)))
 }
