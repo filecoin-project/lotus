@@ -591,6 +591,11 @@ workflows:
           go-test-flags: "-run=TestWindowedPost"
           winpost-test: "1"
           test-suite-name: window-post
+      - test-window-post:
+          codecov-upload: true
+          go-test-flags: "-run=TestWindowedDispute"
+          winpost-test: "1"
+          test-suite-name: window-post-dispute
       - test-terminate:
           codecov-upload: true
           go-test-flags: "-run=TestTerminate"
