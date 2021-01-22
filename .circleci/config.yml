@@ -595,7 +595,7 @@ workflows:
           test-suite-name: window-post
       - test-window-post-dispute:
           codecov-upload: true
-          go-test-flags: "-run=TestWindowedDispute"
+          go-test-flags: "-run=TestWindowPostDispute"
           winpost-test: "1"
           test-suite-name: window-post-dispute
       - test-terminate:
