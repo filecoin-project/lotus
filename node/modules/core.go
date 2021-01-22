@@ -71,7 +71,7 @@ func MemoryConstraints() system.MemoryConstraints {
 // MemoryWatchdog starts the memory watchdog, applying the computed resource
 // constraints.
 func MemoryWatchdog(lr repo.LockedRepo, lc fx.Lifecycle, constraints system.MemoryConstraints) {
-	if true || os.Getenv(EnvWatchdogDisabled) == "1" {
+	if os.Getenv(EnvWatchdogDisabled) == "1" {
 		log.Infof("memory watchdog is disabled via %s", EnvWatchdogDisabled)
 		return
 	}
