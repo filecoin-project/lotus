@@ -201,6 +201,8 @@ jobs:
     <<: *test
   test-window-post:
     <<: *test
+  test-window-post-dispute:
+    <<: *test
   test-terminate:
     <<: *test
   test-conformance:
@@ -591,6 +593,11 @@ workflows:
           go-test-flags: "-run=TestWindowedPost"
           winpost-test: "1"
           test-suite-name: window-post
+      - test-window-post-dispute:
+          codecov-upload: true
+          go-test-flags: "-run=TestWindowPostDispute"
+          winpost-test: "1"
+          test-suite-name: window-post-dispute
       - test-terminate:
           codecov-upload: true
           go-test-flags: "-run=TestTerminate"

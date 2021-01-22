@@ -150,8 +150,11 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 			t.Fatalf("Expected tipset %s to sync, but got %s", e1, last)
 		}
 
-		if len(sm.state) != 0 {
-			t.Errorf("active syncs expected empty but got: %d", len(sm.state))
+		sm.mx.Lock()
+		activeSyncs := len(sm.state)
+		sm.mx.Unlock()
+		if activeSyncs != 0 {
+			t.Errorf("active syncs expected empty but got: %d", activeSyncs)
 		}
 	})
 }
