@@ -653,7 +653,7 @@ func Test() Option {
 // FIXME: Move to a separate `builder` package.
 // --------------------------------------------
 
-type Builder struct {
+type Config struct {
 	// FIXME: General profile, maybe following node type for now, should
 	//  be decoupled later.
 	// Full, lite, miner.
@@ -671,21 +671,21 @@ type Builder struct {
 
 	// Repository used for a *single* build call. The default `nil` signals
 	// use of a memory repo.
-	repo           repo.Repo
+	repo repo.Repo
 
 	// FIXME: Add Mock network and Test().
 
 	//Genesis modules.Genesis // FIXME: Needs to be set *always*.
 }
 
-func (b *Builder) WithRepo(repo repo.Repo) *Builder {
-	b.repo = repo
-	return b
+func (c *Config) WithRepo(repo repo.Repo) *Config {
+	c.repo = repo
+	return c
 }
 
-func (b *Builder) WithMemRepo() *Builder {
-	b.repo = nil
-	return b
+func (c *Config) WithMemRepo() *Config {
+	c.repo = nil
+	return c
 }
 
 /// BuildFullNode uses the configurations set in Builder to return a newly
@@ -697,39 +697,39 @@ func (b *Builder) WithMemRepo() *Builder {
 // FIXME: Extend to allow to build smaller sub-systems than the "Full node".
 // FIXME: Some of the Builder configurations can be arguments to `BuildFullNode` as
 //  they will always be necessary and specific for that use case. (Like `ApiAddress`.)
-func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api.FullNode, StopFunc, error) {
-	if b.repo == nil {
-		b.repo = repo.NewMemory(nil)
+func BuildFullNode(ctx context.Context, c *Config, userOptions ...Option) (api.FullNode, StopFunc, error) {
+	if c.repo == nil {
+		c.repo = repo.NewMemory(nil)
 	}
 
 	var api api.FullNode
 
 	stop, err := New(ctx, FullAPI(&api,
-		Lite(b.IsLite)),
+		Lite(c.IsLite)),
 
 		// FIXME: Do we need to set these before Repo()/Online()?
-		Override(new(dtypes.Bootstrapper), b.IsBootstrapper),
-		Override(new(dtypes.ShutdownChan), b.ShutdownChan),
+		Override(new(dtypes.Bootstrapper), c.IsBootstrapper),
+		Override(new(dtypes.ShutdownChan), c.ShutdownChan),
 
 		Online(),
-		Repo(b.repo),
+		Repo(c.repo),
 
-		If(b.ApiAddress != "", Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
+		If(c.ApiAddress != "", Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
 			// FIXME: The string to multiaddr conversion should be done by
 			//  the user who will be better equipped to handle the error.
-			apima, err := multiaddr.NewMultiaddr(b.ApiAddress)
+			apima, err := multiaddr.NewMultiaddr(c.ApiAddress)
 			if err != nil {
 				return err
 			}
 			return lr.SetAPIEndpoint(apima)
 		})),
 
-		If(b.IsBootstrap,
+		If(c.IsBootstrap,
 			Unset(RunPeerMgrKey),
 			Unset(new(*peermgr.PeerMgr)),
 		),
 
-		// Override(new(modules.Genesis), b.Genesis),
+		// Override(new(modules.Genesis), c.Genesis),
 
 		// FIXME: For now process lite mode as user option. Should be derived from
 		//  the profile builder configuration.
@@ -737,9 +737,6 @@ func (b *Builder) BuildFullNode(ctx context.Context, userOptions ...Option) (api
 
 		Options(userOptions...),
 	)
-
-	// Avoid reusing same repo.
-	b.repo = nil
 
 	return api, stop, err
 }

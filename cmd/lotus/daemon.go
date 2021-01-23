@@ -277,7 +277,7 @@ var DaemonCmd = &cli.Command{
 			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
 		}
 
-		builder := (&node.Builder{
+		buildConfig := (&node.Config{
 			IsLite:         isLite,
 			IsBootstrapper: isBootstrapper,
 			IsBootstrap:    cctx.Bool("bootstrap"),
@@ -285,11 +285,11 @@ var DaemonCmd = &cli.Command{
 		}).WithRepo(r)
 
 		if cctx.IsSet("api") {
-			builder.ApiAddress = "/ip4/127.0.0.1/tcp/" + cctx.String("api")
+			buildConfig.ApiAddress = "/ip4/127.0.0.1/tcp/" + cctx.String("api")
 		}
 		// FIXME: Try to process the more complex `Override()` calls like `genesis` and
 		//  `liteModeDeps` also as `Builder` options.
-		api, stop, err := builder.BuildFullNode(ctx, genesis, liteModeDeps)
+		api, stop, err := node.BuildFullNode(ctx, buildConfig, genesis, liteModeDeps)
 		if err != nil {
 			return xerrors.Errorf("initializing node: %w", err)
 		}
