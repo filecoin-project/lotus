@@ -676,6 +676,10 @@ func blockSanityChecks(h *types.BlockHeader) error {
 		return xerrors.Errorf("block had nil bls aggregate signature")
 	}
 
+	if h.Miner.Protocol() != address.ID {
+		return xerrors.Errorf("block had non-ID miner address")
+	}
+
 	return nil
 }
 
