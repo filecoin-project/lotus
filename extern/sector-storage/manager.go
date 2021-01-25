@@ -285,9 +285,19 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector storage.
 	if unsealed == cid.Undef {
 		return xerrors.Errorf("cannot unseal piece (sector: %d, offset: %d size: %d) - unsealed cid is undefined", sector, offset, size)
 	}
+
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return xerrors.Errorf("getting sector size: %w", err)
+	}
+
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
 		// TODO: make restartable
-		_, err := m.waitSimpleCall(ctx)(w.UnsealPiece(ctx, sector, offset, size, ticket, unsealed))
+
+		// NOTE: we're unsealing the whole sector here as with SDR we can't really
+		//  unseal the sector partially. Requesting the whole sector here can
+		//  save us some work in case another piece is requested from here
+		_, err := m.waitSimpleCall(ctx)(w.UnsealPiece(ctx, sector, 0, abi.PaddedPieceSize(ssize).Unpadded(), ticket, unsealed))
 		return err
 	})
 	if err != nil {
