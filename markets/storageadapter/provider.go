@@ -250,14 +250,12 @@ func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, 
 	return bounds.Min, bounds.Max, nil
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
-	return n.scMgr.OnDealSectorPreCommitted(ctx, provider, market.DealProposal(proposal), *publishCid, cb)
+func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, proposal market2.DealProposal, publishCid cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+	return n.scMgr.OnDealSectorPreCommitted(ctx, provider, market.DealProposal(proposal), publishCid, cb)
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, cb)
+func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), publishCid, cb)
 }
 
 func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
