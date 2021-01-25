@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bmatsuo/lmdb-go/lmdb"
+	"github.com/ledgerwatch/lmdb-go/lmdb"
 
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -59,7 +59,14 @@ var _ bstore.Blockstore = (*SplitStore)(nil)
 // compaction.
 func NewSplitStore(path string, ds dstore.Datastore, cold bstore.Blockstore) (*SplitStore, error) {
 	// the hot store
-	hot, err := lmdbbs.Open(filepath.Join(path, "hot.db"))
+	path = filepath.Join(path, "hot.db")
+	hot, err := lmdbbs.Open(&lmdbbs.Options{
+		Path:                 path,
+		InitialMmapSize:      256 << 20, // 256MiB.
+		MmapGrowthStepFactor: 1.25,      // scale slower than the default of 1.5
+		MmapGrowthStepMax:    512 << 20, // 512MiB.
+		MaxReaders:           32,
+	})
 	if err != nil {
 		return nil, err
 	}

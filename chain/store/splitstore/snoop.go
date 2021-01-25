@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bmatsuo/lmdb-go/lmdb"
+	"github.com/ledgerwatch/lmdb-go/lmdb"
 
 	cid "github.com/ipfs/go-cid"
 
