@@ -35,6 +35,7 @@ var sectorsCmd = &cli.Command{
 		sectorsRefsCmd,
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
+		sectorsTerminateCmd,
 		sectorsRemoveCmd,
 		sectorsMarkForUpgradeCmd,
 		sectorsStartSealCmd,
@@ -396,9 +397,123 @@ var sectorsRefsCmd = &cli.Command{
 	},
 }
 
+var sectorsTerminateCmd = &cli.Command{
+	Name:      "terminate",
+	Usage:     "Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)",
+	ArgsUsage: "<sectorNum>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag if you know what you are doing",
+		},
+	},
+	Subcommands: []*cli.Command{
+		sectorsTerminateFlushCmd,
+		sectorsTerminatePendingCmd,
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("pass --really-do-it to confirm this action")
+		}
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass sector number")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return nodeApi.SectorTerminate(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsTerminateFlushCmd = &cli.Command{
+	Name:  "flush",
+	Usage: "Send a terminate message if there are sectors queued for termination",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		mcid, err := nodeApi.SectorTerminateFlush(ctx)
+		if err != nil {
+			return err
+		}
+
+		if mcid == nil {
+			return xerrors.New("no sectors were queued for termination")
+		}
+
+		fmt.Println(mcid)
+
+		return nil
+	},
+}
+
+var sectorsTerminatePendingCmd = &cli.Command{
+	Name:  "pending",
+	Usage: "List sector numbers of sectors pending termination",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
+		ctx := lcli.ReqContext(cctx)
+
+		pending, err := nodeApi.SectorTerminatePending(ctx)
+		if err != nil {
+			return err
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		dl, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting proving deadline info failed: %w", err)
+		}
+
+		for _, id := range pending {
+			loc, err := api.StateSectorPartition(ctx, maddr, id.Number, types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("finding sector partition: %w", err)
+			}
+
+			fmt.Print(id.Number)
+
+			if loc.Deadline == (dl.Index+1)%miner.WPoStPeriodDeadlines || // not in next (in case the terminate message takes a while to get on chain)
+				loc.Deadline == dl.Index || // not in current
+				(loc.Deadline+1)%miner.WPoStPeriodDeadlines == dl.Index { // not in previous
+				fmt.Print(" (in proving window)")
+			}
+			fmt.Println()
+		}
+
+		return nil
+	},
+}
+
 var sectorsRemoveCmd = &cli.Command{
 	Name:      "remove",
-	Usage:     "Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector)",
+	Usage:     "Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))",
 	ArgsUsage: "<sectorNum>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{

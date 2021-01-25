@@ -41,6 +41,7 @@ var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
 	api.FullNode
+	*apiWrapper
 
 	// this goes away with the data transfer module
 	dag dtypes.StagingDAG
@@ -55,7 +56,8 @@ type ProviderNodeAdapter struct {
 func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
 	return func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
 		na := &ProviderNodeAdapter{
-			FullNode: full,
+			FullNode:   full,
+			apiWrapper: &apiWrapper{api: full},
 
 			dag:       dag,
 			secb:      secb,

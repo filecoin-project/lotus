@@ -34,9 +34,8 @@ import (
 )
 
 type ClientNodeAdapter struct {
-	full.StateAPI
-	full.ChainAPI
-	full.MpoolAPI
+	*clientApi
+	*apiWrapper
 
 	fundmgr   *market.FundManager
 	ev        *events.Events
@@ -46,14 +45,14 @@ type ClientNodeAdapter struct {
 type clientApi struct {
 	full.ChainAPI
 	full.StateAPI
+	full.MpoolAPI
 }
 
 func NewClientNodeAdapter(stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *market.FundManager) storagemarket.StorageClientNode {
-	capi := &clientApi{chain, stateapi}
+	capi := &clientApi{chain, stateapi, mpool}
 	return &ClientNodeAdapter{
-		StateAPI: stateapi,
-		ChainAPI: chain,
-		MpoolAPI: mpool,
+		clientApi:  capi,
+		apiWrapper: &apiWrapper{api: capi},
 
 		fundmgr:   fundmgr,
 		ev:        events.NewEvents(context.TODO(), capi),

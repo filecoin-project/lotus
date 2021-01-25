@@ -639,7 +639,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 	}
 }
 
-func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid, lookbackLimit abi.ChainEpoch) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 	msg, err := sm.cs.GetCMessage(mcid)
 	if err != nil {
 		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
@@ -656,7 +656,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*ty
 		return head, r, foundMsg, nil
 	}
 
-	fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head, msg, LookbackNoLimit)
+	fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head, msg, lookbackLimit)
 
 	if err != nil {
 		log.Warnf("failed to look back through chain for message %s", mcid)

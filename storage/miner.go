@@ -148,6 +148,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	fc := sealing.FeeConfig{
 		MaxPreCommitGasFee: abi.TokenAmount(m.feeCfg.MaxPreCommitGasFee),
 		MaxCommitGasFee:    abi.TokenAmount(m.feeCfg.MaxCommitGasFee),
+		MaxTerminateGasFee: abi.TokenAmount(m.feeCfg.MaxTerminateGasFee),
 	}
 
 	evts := events.NewEvents(ctx, m.api)

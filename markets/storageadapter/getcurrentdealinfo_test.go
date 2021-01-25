@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	test "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
@@ -209,7 +210,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 				MarketDeals:         marketDeals,
 			}
 
-			dealID, marketDeal, err := GetCurrentDealInfo(ctx, ts, api, startDealID, proposal, data.publishCid)
+			dealID, marketDeal, _, err := GetCurrentDealInfo(ctx, ts, api, startDealID, proposal, data.publishCid)
 			require.Equal(t, data.expectedDealID, dealID)
 			require.Equal(t, data.expectedMarketDeal, marketDeal)
 			if data.expectedError == nil {
@@ -234,6 +235,10 @@ type mockGetCurrentDealInfoAPI struct {
 	SearchMessageErr    error
 
 	MarketDeals map[marketDealKey]*api.MarketDeal
+}
+
+func (mapi *mockGetCurrentDealInfoAPI) diffPreCommits(ctx context.Context, actor address.Address, pre, cur types.TipSetKey) (*miner.PreCommitChanges, error) {
+	return &miner.PreCommitChanges{}, nil
 }
 
 func (mapi *mockGetCurrentDealInfoAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, ts types.TipSetKey) (*api.MarketDeal, error) {

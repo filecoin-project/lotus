@@ -202,7 +202,7 @@ func runSimulateCmd(_ *cli.Context) error {
 		},
 	}
 
-	if err := writeVector(vector, simulateFlags.out); err != nil {
+	if err := writeVector(&vector, simulateFlags.out); err != nil {
 		return fmt.Errorf("failed to write vector: %w", err)
 	}
 

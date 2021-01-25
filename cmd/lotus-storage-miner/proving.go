@@ -446,7 +446,7 @@ var provingCheckProvableCmd = &cli.Command{
 		for parIdx, par := range partitions {
 			sectors := make(map[abi.SectorNumber]struct{})
 
-			sectorInfos, err := api.StateMinerSectors(ctx, addr, &par.AllSectors, types.EmptyTSK)
+			sectorInfos, err := api.StateMinerSectors(ctx, addr, &par.LiveSectors, types.EmptyTSK)
 			if err != nil {
 				return err
 			}

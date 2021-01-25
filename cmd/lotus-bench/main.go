@@ -40,6 +40,8 @@ import (
 var log = logging.Logger("lotus-bench")
 
 type BenchResults struct {
+	EnvVar map[string]string
+
 	SectorSize   abi.SectorSize
 	SectorNumber int
 
@@ -446,6 +448,15 @@ var sealBenchCmd = &cli.Command{
 			bo.VerifyWindowPostHot = verifyWindowpost2.Sub(verifyWindowpost1)
 		}
 
+		bo.EnvVar = make(map[string]string)
+		for _, envKey := range []string{"BELLMAN_NO_GPU", "FIL_PROOFS_MAXIMIZE_CACHING", "FIL_PROOFS_USE_GPU_COLUMN_BUILDER",
+			"FIL_PROOFS_USE_GPU_TREE_BUILDER", "FIL_PROOFS_USE_MULTICORE_SDR", "BELLMAN_CUSTOM_GPU"} {
+			envValue, found := os.LookupEnv(envKey)
+			if found {
+				bo.EnvVar[envKey] = envValue
+			}
+		}
+
 		if c.Bool("json-out") {
 			data, err := json.MarshalIndent(bo, "", "  ")
 			if err != nil {
@@ -454,6 +465,10 @@ var sealBenchCmd = &cli.Command{
 
 			fmt.Println(string(data))
 		} else {
+			fmt.Println("environment variable list:")
+			for envKey, envValue := range bo.EnvVar {
+				fmt.Printf("%s=%s\n", envKey, envValue)
+			}
 			fmt.Printf("----\nresults (v28) SectorSize:(%d), SectorNumber:(%d)\n", sectorSize, sectorNumber)
 			if robench == "" {
 				fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingSum.AddPiece, bps(bo.SectorSize, bo.SectorNumber, bo.SealingSum.AddPiece))
