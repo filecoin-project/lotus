@@ -229,6 +229,9 @@ func gasEstimateGasLimit(
 	pending, ts := mpool.PendingFor(fromA)
 	priorMsgs := make([]types.ChainMsg, 0, len(pending))
 	for _, m := range pending {
+		if m.Message.Nonce == msg.Nonce {
+			break
+		}
 		priorMsgs = append(priorMsgs, m)
 	}
 

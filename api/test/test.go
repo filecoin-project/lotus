@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -163,7 +164,11 @@ func (ts *testSuite) testVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(t, v.Version, build.BuildVersion)
+	versions := strings.Split(v.Version, "+")
+	if len(versions) <= 0 {
+		t.Fatal("empty version")
+	}
+	require.Equal(t, versions[0], build.BuildVersion)
 }
 
 func (ts *testSuite) testSearchMsg(t *testing.T) {
