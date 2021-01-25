@@ -45,7 +45,7 @@ const UpgradeClausHeight = 161386
 const UpgradeOrangeHeight = 250666
 
 // TODO
-var UpgradeActorsV3Height = 99999999
+const UpgradeActorsV3Height = 99999999
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 30))
