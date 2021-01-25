@@ -11,7 +11,7 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
-func TestSectorInfoSelialization(t *testing.T) {
+func TestSectorInfoSerialization(t *testing.T) {
 	d := abi.DealID(1234)
 
 	dealInfo := DealInfo{
@@ -53,18 +53,16 @@ func TestSectorInfoSelialization(t *testing.T) {
 	}
 
 	var si2 SectorInfo
-	if err := cborutil.ReadCborRPC(bytes.NewReader(b), &si); err != nil {
+	if err := cborutil.ReadCborRPC(bytes.NewReader(b), &si2); err != nil {
+		t.Fatal(err)
 		return
 	}
 
 	assert.Equal(t, si.State, si2.State)
 	assert.Equal(t, si.SectorNumber, si2.SectorNumber)
 
-	assert.Equal(t, si.Pieces, si2.Pieces)
-	assert.Equal(t, si.CommD, si2.CommD)
-	assert.Equal(t, si.TicketValue, si2.TicketValue)
+	assert.Equal(t, si.Pieces[0].DealInfo.DealID, si2.Pieces[0].DealInfo.DealID)
+	assert.Equal(t, *si.CommD, *si2.CommD)
+	assert.DeepEqual(t, si.TicketValue, si2.TicketValue)
 	assert.Equal(t, si.TicketEpoch, si2.TicketEpoch)
-
-	assert.Equal(t, si, si2)
-
 }
