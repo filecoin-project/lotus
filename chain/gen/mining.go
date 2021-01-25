@@ -157,12 +157,12 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 		// be returned
 		return &crypto.Signature{
 			Type: crypto.SigTypeBLS,
-			Data: ([]byte)(new(bls.Signature)[:]), // TODO: verify this is okay
+			Data: new(bls.Signature)[:], // TODO: verify this is okay
 		}, nil
 	}
 	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: ([]byte)(aggSig[:]),
+		Data: aggSig[:],
 	}, nil
 }
 
