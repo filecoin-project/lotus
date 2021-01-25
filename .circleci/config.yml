@@ -267,6 +267,16 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
+  build-ntwk-calibration:
+    description: |
+      Compile lotus binaries for the calibration network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make calibnet
   build-lotus-soup:
     description: |
       Compile `lotus-soup` Testground test plan
@@ -618,6 +628,7 @@ workflows:
           test-suite-name: conformance-bleeding-edge
           packages: "./conformance"
           vectors-branch: master
+      - build-ntwk-calibration
       - build-lotus-soup
       - trigger-testplans:
           filters:
