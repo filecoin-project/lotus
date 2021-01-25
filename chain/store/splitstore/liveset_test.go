@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bmatsuo/lmdb-go/lmdb"
+	"github.com/ledgerwatch/lmdb-go/lmdb"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
