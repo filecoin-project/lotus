@@ -9,12 +9,10 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs/bls"
-
-	ffi "github.com/filecoin-project/filecoin-ffi"
 )
 
 func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletAPI, bt *api.BlockTemplate) (*types.FullBlock, error) {
@@ -153,11 +151,13 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}
 
+		zeroSig := ffi.CreateZeroSignature()
+
 		// Note: for blst this condition should not happen - nil should not
 		// be returned
 		return &crypto.Signature{
 			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature)[:], // TODO: verify this is okay
+			Data: zeroSig[:],
 		}, nil
 	}
 	return &crypto.Signature{
