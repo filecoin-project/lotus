@@ -37,7 +37,7 @@ var chainDisputeSetCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "max-fee",
-			Usage: "Spend up to X attoFIL per DisputeWindowedPoSt message",
+			Usage: "Spend up to X FIL per DisputeWindowedPoSt message",
 		},
 		&cli.StringFlag{
 			Name:  "from",
