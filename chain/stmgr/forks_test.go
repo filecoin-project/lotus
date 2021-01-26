@@ -122,7 +122,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		cg.ChainStore(), UpgradeSchedule{{
 			Network: 1,
 			Height:  testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
+			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				cst := ipldcbor.NewCborStore(sm.ChainStore().Blockstore())
 
@@ -252,7 +252,7 @@ func TestForkRefuseCall(t *testing.T) {
 			Network:   1,
 			Expensive: true,
 			Height:    testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cb ExecCallback,
+			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				return root, nil
 			}}})

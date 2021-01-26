@@ -20,6 +20,7 @@ import (
 
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
 
 	// we use the same adt for all receipts
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -62,15 +63,24 @@ type versionSpec struct {
 	atOrBelow      abi.ChainEpoch
 }
 
+type migration struct {
+	upgrade       UpgradeFunc
+	preMigrations []PreUpgrade
+	cache         MigrationCache
+}
+
 type StateManager struct {
 	cs *store.ChainStore
+
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// Determines the network version at any given epoch.
 	networkVersions []versionSpec
 	latestVersion   network.Version
 
-	// Maps chain epochs to upgrade functions.
-	stateMigrations map[abi.ChainEpoch]UpgradeFunc
+	// Maps chain epochs to migrations.
+	stateMigrations map[abi.ChainEpoch]*migration
 	// A set of potentially expensive/time consuming upgrades. Explicit
 	// calls for, e.g., gas estimation fail against this epoch with
 	// ErrExpensiveFork.
@@ -103,7 +113,7 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 		return nil, err
 	}
 
-	stateMigrations := make(map[abi.ChainEpoch]UpgradeFunc, len(us))
+	stateMigrations := make(map[abi.ChainEpoch]*migration, len(us))
 	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))
 	var networkVersions []versionSpec
 	lastVersion := network.Version0
@@ -111,8 +121,13 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 		// If we have any upgrades, process them and create a version
 		// schedule.
 		for _, upgrade := range us {
-			if upgrade.Migration != nil {
-				stateMigrations[upgrade.Height] = upgrade.Migration
+			if upgrade.Migration != nil || upgrade.PreUpgrades != nil {
+				migration := &migration{
+					upgrade:       upgrade.Migration,
+					preMigrations: upgrade.PreUpgrades,
+					cache:         nv10.NewMemMigrationCache(),
+				}
+				stateMigrations[upgrade.Height] = migration
 			}
 			if upgrade.Expensive {
 				expensiveUpgrades[upgrade.Height] = struct{}{}
@@ -146,6 +161,26 @@ func cidsToKey(cids []cid.Cid) string {
 		out += c.KeyString()
 	}
 	return out
+}
+
+// Start starts the state manager's optional background processes. At the moment, this schedules
+// pre-migration functions to run ahead of network upgrades.
+//
+// This is method is not safe to invoke from multiple threads or concurrently with Stop.
+func (sm *StateManager) Start(context.Context) error {
+	sm.ctx, sm.cancel = context.WithCancel(context.Background())
+	go sm.preMigrationWorker(sm.ctx)
+	return nil
+}
+
+// Stop starts the state manager's background processes.
+//
+// This is method is not safe to invoke from multiple threads or concurrently with Start.
+func (sm *StateManager) Stop(context.Context) error {
+	if sm.cancel != nil {
+		sm.cancel()
+	}
+	return nil
 }
 
 func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st cid.Cid, rec cid.Cid, err error) {
