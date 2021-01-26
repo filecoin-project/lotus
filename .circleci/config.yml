@@ -201,6 +201,8 @@ jobs:
     <<: *test
   test-window-post:
     <<: *test
+  test-window-post-dispute:
+    <<: *test
   test-terminate:
     <<: *test
   test-conformance:
@@ -265,6 +267,16 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
+  build-ntwk-calibration:
+    description: |
+      Compile lotus binaries for the calibration network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make calibnet
   build-lotus-soup:
     description: |
       Compile `lotus-soup` Testground test plan
@@ -591,6 +603,11 @@ workflows:
           go-test-flags: "-run=TestWindowedPost"
           winpost-test: "1"
           test-suite-name: window-post
+      - test-window-post-dispute:
+          codecov-upload: true
+          go-test-flags: "-run=TestWindowPostDispute"
+          winpost-test: "1"
+          test-suite-name: window-post-dispute
       - test-terminate:
           codecov-upload: true
           go-test-flags: "-run=TestTerminate"
@@ -611,6 +628,7 @@ workflows:
           test-suite-name: conformance-bleeding-edge
           packages: "./conformance"
           vectors-branch: master
+      - build-ntwk-calibration
       - build-lotus-soup
       - trigger-testplans:
           filters:
