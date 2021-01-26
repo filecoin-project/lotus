@@ -230,14 +230,14 @@ func send(ctx context.Context, api sendAPIs, params sendParams) (cid.Cid, error)
 		}
 
 		return sm.Cid(), nil
-	} else {
-		sm, err := api.MpoolPushMessage(ctx, msg, nil)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		return sm.Cid(), nil
 	}
+
+	sm, err := api.MpoolPushMessage(ctx, msg, nil)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return sm.Cid(), nil
 }
 
 func decodeTypedParams(ctx context.Context, fapi api.FullNode, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error) {
