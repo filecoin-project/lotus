@@ -73,7 +73,7 @@ type PreUpgradeFunc func(
 // are optimizations, are not guaranteed to run, and may be canceled and/or run multiple times.
 type PreUpgrade struct {
 	// PreUpgrade is the pre-migration function to run at the specified time. This function is
-	// expected to run asynchronously and must abort promptly when canceled.
+	// run asynchronously and must abort promptly when canceled.
 	PreUpgrade PreUpgradeFunc
 
 	// When specifies that this pre-migration should be started at most When epochs before the upgrade.
@@ -249,7 +249,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 	type op struct {
 		after    abi.ChainEpoch
 		notAfter abi.ChainEpoch
-		run      func(ts *types.TipSet) error
+		run      func(ts *types.TipSet)
 	}
 
 	// Turn each pre-migration into an operation in a schedule.
@@ -269,8 +269,14 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 				notAfter: notAfterEpoch,
 
 				// TODO: are these values correct?
-				run: func(ts *types.TipSet) error {
-					return migrationFunc(preCtx, sm, cache, ts.ParentState(), ts.Height(), ts)
+				run: func(ts *types.TipSet) {
+					go func() {
+						err := migrationFunc(preCtx, sm, cache, ts.ParentState(), ts.Height(), ts)
+						if err != nil {
+							log.Errorw("failed to run pre-migration",
+								"error", err)
+						}
+					}()
 				},
 			})
 
@@ -278,10 +284,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 			schedule = append(schedule, op{
 				after:    notAfterEpoch,
 				notAfter: -1,
-				run: func(ts *types.TipSet) error {
-					preCancel()
-					return nil
-				},
+				run:      func(ts *types.TipSet) { preCancel() },
 			})
 		}
 	}
@@ -302,10 +305,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 
 				// If we haven't passed the pre-migration height...
 				if op.notAfter < 0 || head.Val.Height() <= op.notAfter {
-					err := op.run(head.Val)
-					if err != nil {
-						log.Errorw("failed to run pre-migration", "error", err)
-					}
+					op.run(head.Val)
 				}
 				schedule = schedule[1:]
 			}
