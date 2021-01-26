@@ -254,6 +254,8 @@ github.com/filecoin-project/go-bs-lmdb v0.0.3 h1:tSgG5S9+5zojhmnRSQxiabWFyHPxdDP
 github.com/filecoin-project/go-bs-lmdb v0.0.3/go.mod h1:Oq9zP5FMx7IomcY79neGD76YsfeMY3N7BKGDkofn/Ao=
 github.com/filecoin-project/go-bs-lmdb v1.0.1 h1:kAoPGgZqUQ0IowIzjdDo251X6smWuy286E6h3m03zqY=
 github.com/filecoin-project/go-bs-lmdb v1.0.1/go.mod h1:peFIZ9XEE9OLFkCzi7FMlr84UexqVKj6+AyxZD5SiGs=
+github.com/filecoin-project/go-bs-lmdb v1.0.2 h1:cj+M3DzlcWYtNJpea8AqeU2SKz2+eTr+1N1GIUU0iBQ=
+github.com/filecoin-project/go-bs-lmdb v1.0.2/go.mod h1:peFIZ9XEE9OLFkCzi7FMlr84UexqVKj6+AyxZD5SiGs=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2 h1:av5fw6wmm58FYMgJeoB/lK9XXrgdugYiTqkdxjTy9k8=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2/go.mod h1:pqTiPHobNkOVM5thSRsHYjyQfq7O5QSCMhvuu9JoDlg=
 github.com/filecoin-project/go-commp-utils v0.0.0-20201119054358-b88f7a96a434 h1:0kHszkYP3hgApcjl5x4rpwONhN9+j7XDobf6at5XfHs=
