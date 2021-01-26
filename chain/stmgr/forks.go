@@ -191,14 +191,20 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 }
 
 func (us UpgradeSchedule) Validate() error {
-	// Make sure we're not trying to upgrade to version 0.
+	// Make sure each upgrade is valid.
 	for _, u := range us {
 		if u.Network <= 0 {
 			return xerrors.Errorf("cannot upgrade to version <= 0: %d", u.Network)
 		}
+
+		for _, m := range u.PreUpgrades {
+			if m.When <= m.NotAfter {
+				return xerrors.Errorf("pre-migration cannot end before it starts: %d <= %d", m.When, m.NotAfter)
+			}
+		}
 	}
 
-	// Make sure all the upgrades make sense.
+	// Make sure the upgrade order makes sense.
 	for i := 1; i < len(us); i++ {
 		prev := &us[i-1]
 		curr := &us[i]
