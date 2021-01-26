@@ -848,7 +848,7 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache
 	config := nv10.Config{MaxWorkers: 1}
 	newRoot, err := upgradeActorsV3Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+		return cid.Undef, xerrors.Errorf("migrating actors v3 state: %w", err)
 	}
 
 	// perform some basic sanity checks to make sure everything still works.
