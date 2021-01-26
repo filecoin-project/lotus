@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"sort"
+	"sync"
 
 	"github.com/filecoin-project/go-state-types/rt"
 
@@ -243,6 +244,8 @@ func (sm *StateManager) hasExpensiveFork(ctx context.Context, height abi.ChainEp
 }
 
 func (sm *StateManager) preMigrationWorker(ctx context.Context) {
+	defer close(sm.shutdown)
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -251,6 +254,9 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 		notAfter abi.ChainEpoch
 		run      func(ts *types.TipSet)
 	}
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
 
 	// Turn each pre-migration into an operation in a schedule.
 	var schedule []op
@@ -270,7 +276,9 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 
 				// TODO: are these values correct?
 				run: func(ts *types.TipSet) {
+					wg.Add(1)
 					go func() {
+						defer wg.Done()
 						err := migrationFunc(preCtx, sm, cache, ts.ParentState(), ts.Height(), ts)
 						if err != nil {
 							log.Errorw("failed to run pre-migration",
