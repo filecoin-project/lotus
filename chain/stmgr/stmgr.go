@@ -64,8 +64,8 @@ type versionSpec struct {
 }
 
 type migration struct {
-	upgrade       UpgradeFunc
-	preMigrations []PreUpgrade
+	upgrade       MigrationFunc
+	preMigrations []PreMigration
 	cache         MigrationCache
 }
 
@@ -121,10 +121,10 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 		// If we have any upgrades, process them and create a version
 		// schedule.
 		for _, upgrade := range us {
-			if upgrade.Migration != nil || upgrade.PreUpgrades != nil {
+			if upgrade.Migration != nil || upgrade.PreMigrations != nil {
 				migration := &migration{
 					upgrade:       upgrade.Migration,
-					preMigrations: upgrade.PreUpgrades,
+					preMigrations: upgrade.PreMigrations,
 					cache:         nv10.NewMemMigrationCache(),
 				}
 				stateMigrations[upgrade.Height] = migration

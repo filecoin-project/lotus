@@ -46,7 +46,7 @@ type MigrationCache interface {
 	Load(key string, loadFunc func() (cid.Cid, error)) (cid.Cid, error)
 }
 
-// UpgradeFunc is a migration function run at every upgrade.
+// MigrationFunc is a migration function run at every upgrade.
 //
 // - The cache is a per-upgrade cache, pre-populated by pre-migrations.
 // - The oldState is the state produced by the upgrade epoch.
@@ -54,28 +54,28 @@ type MigrationCache interface {
 // - The height is the upgrade epoch height (already executed).
 // - The tipset is the tipset for the last non-null block before the upgrade. Do
 //   not assume that ts.Height() is the upgrade height.
-type UpgradeFunc func(
+type MigrationFunc func(
 	ctx context.Context,
 	sm *StateManager, cache MigrationCache,
 	cb ExecCallback, oldState cid.Cid,
 	height abi.ChainEpoch, ts *types.TipSet,
 ) (newState cid.Cid, err error)
 
-// PreUpgradeFunc is a function run _before_ a network upgrade to pre-compute part of the network
+// PreMigrationFunc is a function run _before_ a network upgrade to pre-compute part of the network
 // upgrade and speed it up.
-type PreUpgradeFunc func(
+type PreMigrationFunc func(
 	ctx context.Context,
 	sm *StateManager, cache MigrationCache,
 	oldState cid.Cid,
 	height abi.ChainEpoch, ts *types.TipSet,
 ) error
 
-// PreUpgrade describes a pre-migration step to prepare for a network state upgrade. Pre-migrations
+// PreMigration describes a pre-migration step to prepare for a network state upgrade. Pre-migrations
 // are optimizations, are not guaranteed to run, and may be canceled and/or run multiple times.
-type PreUpgrade struct {
-	// PreUpgrade is the pre-migration function to run at the specified time. This function is
+type PreMigration struct {
+	// PreMigration is the pre-migration function to run at the specified time. This function is
 	// run asynchronously and must abort promptly when canceled.
-	PreUpgrade PreUpgradeFunc
+	PreMigration PreMigrationFunc
 
 	// When specifies that this pre-migration should be started at most When epochs before the upgrade.
 	When abi.ChainEpoch
@@ -92,12 +92,12 @@ type Upgrade struct {
 	Height    abi.ChainEpoch
 	Network   network.Version
 	Expensive bool
-	Migration UpgradeFunc
+	Migration MigrationFunc
 
-	// PreUpgrades specifies a set of pre-migration functions to run at the indicated epochs.
+	// PreMigrations specifies a set of pre-migration functions to run at the indicated epochs.
 	// These functions should fill the given cache with information that can speed up the
 	// eventual full migration at the upgrade epoch.
-	PreUpgrades []PreUpgrade
+	PreMigrations []PreMigration
 }
 
 type UpgradeSchedule []Upgrade
@@ -169,14 +169,14 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeActorsV3Height,
 		Network:   network.Version10,
 		Migration: UpgradeActorsV3,
-		PreUpgrades: []PreUpgrade{{
-			PreUpgrade: PreUpgradeActorsV3,
-			When:       120,
-			NotAfter:   60,
+		PreMigrations: []PreMigration{{
+			PreMigration: PreUpgradeActorsV3,
+			When:         120,
+			NotAfter:     60,
 		}, {
-			PreUpgrade: PreUpgradeActorsV3,
-			When:       30,
-			NotAfter:   20,
+			PreMigration: PreUpgradeActorsV3,
+			When:         30,
+			NotAfter:     20,
 		}},
 		Expensive: true,
 	}}
@@ -198,7 +198,7 @@ func (us UpgradeSchedule) Validate() error {
 			return xerrors.Errorf("cannot upgrade to version <= 0: %d", u.Network)
 		}
 
-		for _, m := range u.PreUpgrades {
+		for _, m := range u.PreMigrations {
 			if m.When <= m.NotAfter {
 				return xerrors.Errorf("pre-migration cannot end before it starts: %d <= %d", m.When, m.NotAfter)
 			}
@@ -264,7 +264,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 		cache := migration.cache
 		for _, prem := range migration.preMigrations {
 			preCtx, preCancel := context.WithCancel(ctx)
-			migrationFunc := prem.PreUpgrade
+			migrationFunc := prem.PreMigration
 
 			afterEpoch := upgradeEpoch - prem.When
 			notAfterEpoch := upgradeEpoch - prem.NotAfter
