@@ -11,14 +11,13 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -282,6 +281,31 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 		return cb(0, nil, cid.Undef, err)
 	}
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
+}
+
+func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
+	// Wait for deal to be published (plus additional time for confidence)
+	receipt, err := n.StateWaitMsg(ctx, publishCid, 2*build.MessageConfidence)
+	if err != nil {
+		return nil, xerrors.Errorf("WaitForPublishDeals errored: %w", err)
+	}
+	if receipt.Receipt.ExitCode != exitcode.Ok {
+		return nil, xerrors.Errorf("WaitForPublishDeals exit code: %s", receipt.Receipt.ExitCode)
+	}
+
+	// The deal ID may have changed since publish if there was a reorg, so
+	// get the current deal ID
+	head, err := n.ChainHead(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
+	}
+
+	res, err := n.scMgr.dealInfo.GetCurrentDealInfo(ctx, head.Key().Bytes(), (*market.DealProposal)(&proposal), publishCid)
+	if err != nil {
+		return nil, xerrors.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
+	}
+
+	return &storagemarket.PublishDealsWaitResult{DealID: res.DealID, FinalCid: receipt.Message}, nil
 }
 
 func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*abi.StoragePower, error) {
