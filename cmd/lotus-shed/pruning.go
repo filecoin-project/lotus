@@ -151,7 +151,7 @@ var stateTreePruneCmd = &cli.Command{
 			return fmt.Errorf("only badger blockstores are supported")
 		}
 
-		mds, err := lkrepo.Datastore("/metadata")
+		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}

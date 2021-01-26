@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -190,7 +191,7 @@ var initRestoreCmd = &cli.Command{
 
 		log.Info("Restoring metadata backup")
 
-		mds, err := lr.Datastore("/metadata")
+		mds, err := lr.Datastore(context.TODO(), "/metadata")
 		if err != nil {
 			return err
 		}

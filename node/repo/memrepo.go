@@ -237,7 +237,7 @@ func (lmem *lockedMemRepo) Close() error {
 
 }
 
-func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
+func (lmem *lockedMemRepo) Datastore(_ context.Context, ns string) (datastore.Batching, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}

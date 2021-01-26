@@ -77,7 +77,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	})
 	require.NoError(t, err)
 
-	ds, err := lr.Datastore("/metadata")
+	ds, err := lr.Datastore(context.TODO(), "/metadata")
 	require.NoError(t, err)
 	err = ds.Put(datastore.NewKey("miner-address"), act.Bytes())
 	require.NoError(t, err)

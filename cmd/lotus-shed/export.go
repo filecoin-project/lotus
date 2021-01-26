@@ -85,7 +85,7 @@ var exportChainCmd = &cli.Command{
 			}
 		}()
 
-		mds, err := lr.Datastore("/metadata")
+		mds, err := lr.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}

@@ -65,7 +65,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		}
 	}()
 
-	mds, err := lr.Datastore("/metadata")
+	mds, err := lr.Datastore(context.Background(), "/metadata")
 	if err != nil {
 		b.Fatal(err)
 	}

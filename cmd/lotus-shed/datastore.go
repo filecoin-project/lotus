@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -75,7 +76,7 @@ var datastoreListCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore(datastore.NewKey(cctx.Args().First()).String())
+		ds, err := lr.Datastore(context.Background(), datastore.NewKey(cctx.Args().First()).String())
 		if err != nil {
 			return err
 		}
@@ -141,7 +142,7 @@ var datastoreGetCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore(datastore.NewKey(cctx.Args().First()).String())
+		ds, err := lr.Datastore(context.Background(), datastore.NewKey(cctx.Args().First()).String())
 		if err != nil {
 			return err
 		}

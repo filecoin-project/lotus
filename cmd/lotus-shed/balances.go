@@ -188,7 +188,7 @@ var chainBalanceStateCmd = &cli.Command{
 			}
 		}()
 
-		mds, err := lkrepo.Datastore("/metadata")
+		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}
@@ -409,7 +409,7 @@ var chainPledgeCmd = &cli.Command{
 			}
 		}()
 
-		mds, err := lkrepo.Datastore("/metadata")
+		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}
