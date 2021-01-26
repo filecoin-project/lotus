@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"reflect"
 
+	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -79,8 +81,9 @@ var sendCmd = &cli.Command{
 		defer closer()
 
 		ctx := ReqContext(cctx)
+		var params sendParams
 
-		toAddr, err := address.NewFromString(cctx.Args().Get(0))
+		params.To, err = address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
 			return ShowHelp(cctx, fmt.Errorf("failed to parse target address: %w", err))
 		}
@@ -89,101 +92,152 @@ var sendCmd = &cli.Command{
 		if err != nil {
 			return ShowHelp(cctx, fmt.Errorf("failed to parse amount: %w", err))
 		}
+		params.Val = abi.TokenAmount(val)
 
-		var fromAddr address.Address
-		if from := cctx.String("from"); from == "" {
-			defaddr, err := api.WalletDefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-
-			fromAddr = defaddr
-		} else {
+		if from := cctx.String("from"); from != "" {
 			addr, err := address.NewFromString(from)
 			if err != nil {
 				return err
 			}
 
-			fromAddr = addr
+			params.From = addr
 		}
 
 		gp, err := types.BigFromString(cctx.String("gas-premium"))
 		if err != nil {
 			return err
 		}
+		params.GasPremium = gp
+
 		gfc, err := types.BigFromString(cctx.String("gas-feecap"))
 		if err != nil {
 			return err
 		}
+		params.GasFeeCap = gfc
+		params.GasLimit = cctx.Int64("gas-limit")
 
-		method := abi.MethodNum(cctx.Uint64("method"))
+		params.Method = abi.MethodNum(cctx.Uint64("method"))
 
-		var params []byte
 		if cctx.IsSet("params-json") {
-			decparams, err := decodeTypedParams(ctx, api, toAddr, method, cctx.String("params-json"))
+			decparams, err := decodeTypedParams(ctx, api, params.To, params.Method, cctx.String("params-json"))
 			if err != nil {
 				return fmt.Errorf("failed to decode json params: %w", err)
 			}
-			params = decparams
+			params.Params = decparams
 		}
 		if cctx.IsSet("params-hex") {
-			if params != nil {
+			if params.Params != nil {
 				return fmt.Errorf("can only specify one of 'params-json' and 'params-hex'")
 			}
 			decparams, err := hex.DecodeString(cctx.String("params-hex"))
 			if err != nil {
 				return fmt.Errorf("failed to decode hex params: %w", err)
 			}
-			params = decparams
+			params.Params = decparams
 		}
-
-		msg := &types.Message{
-			From:       fromAddr,
-			To:         toAddr,
-			Value:      types.BigInt(val),
-			GasPremium: gp,
-			GasFeeCap:  gfc,
-			GasLimit:   cctx.Int64("gas-limit"),
-			Method:     method,
-			Params:     params,
-		}
-
-		if !cctx.Bool("force") {
-			// Funds insufficient check
-			fromBalance, err := api.WalletBalance(ctx, msg.From)
-			if err != nil {
-				return err
-			}
-			totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
-
-			if fromBalance.LessThan(totalCost) {
-				fmt.Printf("WARNING: From balance %s less than total cost %s\n", types.FIL(fromBalance), types.FIL(totalCost))
-				return fmt.Errorf("--force must be specified for this action to have an effect; you have been warned")
-			}
-		}
+		params.Force = cctx.Bool("force")
 
 		if cctx.IsSet("nonce") {
-			msg.Nonce = cctx.Uint64("nonce")
-			sm, err := api.WalletSignMessage(ctx, fromAddr, msg)
-			if err != nil {
-				return err
-			}
-
-			_, err = api.MpoolPush(ctx, sm)
-			if err != nil {
-				return err
-			}
-			fmt.Println(sm.Cid())
-		} else {
-			sm, err := api.MpoolPushMessage(ctx, msg, nil)
-			if err != nil {
-				return err
-			}
-			fmt.Println(sm.Cid())
+			params.Nonce.Set = true
+			params.Nonce.N = cctx.Uint64("nonce")
 		}
 
+		msgCid, err := send(ctx, api, params)
+
+		if err != nil {
+			return xerrors.Errorf("executing send: %w", err)
+		}
+
+		fmt.Printf("%s\n", msgCid)
 		return nil
 	},
+}
+
+type sendAPIs interface {
+	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
+
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletDefaultAddress(context.Context) (address.Address, error)
+	WalletSignMessage(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)
+}
+
+type sendParams struct {
+	To   address.Address
+	From address.Address
+	Val  abi.TokenAmount
+
+	GasPremium abi.TokenAmount
+	GasFeeCap  abi.TokenAmount
+	GasLimit   int64
+
+	Nonce struct {
+		N   uint64
+		Set bool
+	}
+	Method abi.MethodNum
+	Params []byte
+
+	Force bool
+}
+
+func send(ctx context.Context, api sendAPIs, params sendParams) (cid.Cid, error) {
+	if params.From == address.Undef {
+		defaddr, err := api.WalletDefaultAddress(ctx)
+		if err != nil {
+			return cid.Undef, err
+		}
+		params.From = defaddr
+	}
+
+	msg := &types.Message{
+		From:  params.From,
+		To:    params.To,
+		Value: params.Val,
+
+		GasPremium: params.GasPremium,
+		GasFeeCap:  params.GasFeeCap,
+		GasLimit:   params.GasLimit,
+
+		Method: params.Method,
+		Params: params.Params,
+	}
+
+	if !params.Force {
+		// Funds insufficient check
+		fromBalance, err := api.WalletBalance(ctx, msg.From)
+		if err != nil {
+			return cid.Undef, err
+		}
+		totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
+
+		if fromBalance.LessThan(totalCost) {
+			fmt.Printf("WARNING: From balance %s less than total cost %s\n", types.FIL(fromBalance), types.FIL(totalCost))
+			return cid.Undef, fmt.Errorf("--force must be specified for this action to have an effect; you have been warned")
+		}
+	}
+
+	if params.Nonce.Set {
+		msg.Nonce = params.Nonce.N
+		sm, err := api.WalletSignMessage(ctx, params.From, msg)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		_, err = api.MpoolPush(ctx, sm)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		return sm.Cid(), nil
+	} else {
+		sm, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		return sm.Cid(), nil
+	}
 }
 
 func decodeTypedParams(ctx context.Context, fapi api.FullNode, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error) {
