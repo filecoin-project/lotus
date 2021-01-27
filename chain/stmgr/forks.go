@@ -229,10 +229,17 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 	var err error
 	u := sm.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
-		retCid, err = u.upgrade(ctx, sm, u.cache, cb, root, height, ts)
+		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
+		// have to migrate multiple times.
+		tmpCache := u.cache.Clone()
+		retCid, err = u.upgrade(ctx, sm, tmpCache, cb, root, height, ts)
 		if err != nil {
 			return cid.Undef, err
 		}
+		// Yes, we update the cache, even for the final upgrade epoch. Why? Reverts. This
+		// can save us a _lot_ of time because very few actors will have changed if we
+		// do a small revert then need to re-run the migration.
+		u.cache.Update(tmpCache)
 	}
 
 	return retCid, nil
@@ -279,11 +286,20 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 					wg.Add(1)
 					go func() {
 						defer wg.Done()
+
+						// Clone the cache so we don't actually _update_ it
+						// till we're done. Otherwise, if we fail, the next
+						// migration to use the cache may assume that
+						// certain blocks exist, even if they don't.
+						tmpCache := cache.Clone()
 						err := migrationFunc(preCtx, sm, cache, ts.ParentState(), ts.Height(), ts)
 						if err != nil {
 							log.Errorw("failed to run pre-migration",
 								"error", err)
+							return
 						}
+						// Finally, if everything worked, update the cache.
+						cache.Update(tmpCache)
 					}()
 				},
 			})

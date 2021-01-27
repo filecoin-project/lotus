@@ -66,7 +66,7 @@ type versionSpec struct {
 type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
-	cache         MigrationCache
+	cache         *nv10.MemMigrationCache
 }
 
 type StateManager struct {
