@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/rt"
 
@@ -176,7 +177,7 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		}, {
 			PreMigration: PreUpgradeActorsV3,
 			When:         30,
-			NotAfter:     20,
+			NotAfter:     10,
 		}},
 		Expensive: true,
 	}}
@@ -237,17 +238,24 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 	var err error
 	u := sm.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
+		startTime := time.Now()
+		log.Warnw("STARTING migration", "height", height)
 		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
 		// have to migrate multiple times.
 		tmpCache := u.cache.Clone()
 		retCid, err = u.upgrade(ctx, sm, tmpCache, cb, root, height, ts)
 		if err != nil {
+			log.Errorw("FAILED migration", "height", height, "error", err)
 			return cid.Undef, err
 		}
 		// Yes, we update the cache, even for the final upgrade epoch. Why? Reverts. This
 		// can save us a _lot_ of time because very few actors will have changed if we
 		// do a small revert then need to re-run the migration.
 		u.cache.Update(tmpCache)
+		log.Warnw("COMPLETED migration",
+			"height", height,
+			"duration", time.Since(startTime),
+		)
 	}
 
 	return retCid, nil
@@ -259,19 +267,25 @@ func (sm *StateManager) hasExpensiveFork(ctx context.Context, height abi.ChainEp
 }
 
 func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv10.MemMigrationCache, ts *types.TipSet) {
+	height := ts.Height()
+	parent := ts.ParentState()
+
+	startTime := time.Now()
+
+	log.Warn("STARTING pre-migration")
 	// Clone the cache so we don't actually _update_ it
 	// till we're done. Otherwise, if we fail, the next
 	// migration to use the cache may assume that
 	// certain blocks exist, even if they don't.
 	tmpCache := cache.Clone()
-	err := fn(ctx, sm, tmpCache, ts.ParentState(), ts.Height(), ts)
+	err := fn(ctx, sm, tmpCache, parent, height, ts)
 	if err != nil {
-		log.Errorw("failed to run pre-migration",
-			"error", err)
+		log.Errorw("FAILED pre-migration", "error", err)
 		return
 	}
 	// Finally, if everything worked, update the cache.
 	cache.Update(tmpCache)
+	log.Warnw("COMPLETED pre-migration", "duration", time.Since(startTime))
 }
 
 func (sm *StateManager) preMigrationWorker(ctx context.Context) {
