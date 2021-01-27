@@ -414,15 +414,6 @@ func TestForkPreMigration(t *testing.T) {
 					return fmt.Errorf("failed")
 				},
 			}, {
-				When: 10,
-				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
-
-					checkCache(t, cache)
-
-					return nil
-				},
-			}, {
 				When:     15,
 				NotAfter: 5,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
@@ -430,6 +421,15 @@ func TestForkPreMigration(t *testing.T) {
 
 					<-ctx.Done()
 					close(wasCanceled)
+
+					return nil
+				},
+			}, {
+				When: 10,
+				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
+					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
+
+					checkCache(t, cache)
 
 					return nil
 				},
