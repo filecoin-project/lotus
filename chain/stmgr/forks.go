@@ -199,9 +199,17 @@ func (us UpgradeSchedule) Validate() error {
 		}
 
 		for _, m := range u.PreMigrations {
+			if m.When < 0 || m.NotAfter < 0 {
+				return xerrors.Errorf("pre-migration must specify non-negative epochs")
+			}
 			if m.When <= m.NotAfter {
 				return xerrors.Errorf("pre-migration cannot end before it starts: %d <= %d", m.When, m.NotAfter)
 			}
+		}
+		if !sort.SliceIsSorted(u.PreMigrations, func(i, j int) bool {
+			return u.PreMigrations[i].When < u.PreMigrations[j].When
+		}) {
+			return xerrors.Errorf("pre-migrations must be sorted by start epoch")
 		}
 	}
 
