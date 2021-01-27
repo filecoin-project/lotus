@@ -79,15 +79,19 @@ type PreMigration struct {
 	// run asynchronously and must abort promptly when canceled.
 	PreMigration PreMigrationFunc
 
-	// When specifies that this pre-migration should be started at most When epochs before the upgrade.
-	When abi.ChainEpoch
+	// StartWithin specifies that this pre-migration should be started at most StartWithin
+	// epochs before the upgrade.
+	StartWithin abi.ChainEpoch
 
-	// NotAfter specifies that this pre-migration should not be started NotAfter epochs before
-	// the final upgrade epoch.
+	// DontStartWithin specifies that this pre-migration should not be started DontStartWithin
+	// epochs before the final upgrade epoch.
 	//
-	// This should be set such that the pre-migration is likely to complete at least 5 epochs
-	// before the next pre-migration and/or upgrade epoch hits.
-	NotAfter abi.ChainEpoch
+	// This should be set such that the pre-migration is likely to complete before StopWithin.
+	DontStartWithin abi.ChainEpoch
+
+	// StopWithin specifies that this pre-migration should be stopped StopWithin epochs of the
+	// final upgrade epoch.
+	StopWithin abi.ChainEpoch
 }
 
 type Upgrade struct {
@@ -172,13 +176,15 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Network:   network.Version10,
 		Migration: UpgradeActorsV3,
 		PreMigrations: []PreMigration{{
-			PreMigration: PreUpgradeActorsV3,
-			When:         120,
-			NotAfter:     60,
+			PreMigration:    PreUpgradeActorsV3,
+			StartWithin:     120,
+			DontStartWithin: 60,
+			StopWithin:      35,
 		}, {
-			PreMigration: PreUpgradeActorsV3,
-			When:         30,
-			NotAfter:     10,
+			PreMigration:    PreUpgradeActorsV3,
+			StartWithin:     30,
+			DontStartWithin: 15,
+			StopWithin:      5,
 		}},
 		Expensive: true,
 	}}
@@ -201,15 +207,30 @@ func (us UpgradeSchedule) Validate() error {
 		}
 
 		for _, m := range u.PreMigrations {
-			if m.When < 0 || m.NotAfter < 0 {
+			if m.StartWithin <= 0 {
+				return xerrors.Errorf("pre-migration must specify a positive start-within epoch")
+			}
+
+			if m.DontStartWithin < 0 || m.StopWithin < 0 {
 				return xerrors.Errorf("pre-migration must specify non-negative epochs")
 			}
-			if m.When <= m.NotAfter {
-				return xerrors.Errorf("pre-migration cannot end before it starts: %d <= %d", m.When, m.NotAfter)
+
+			if m.StartWithin <= m.StopWithin {
+				return xerrors.Errorf("pre-migration start-within must come before stop-within")
+			}
+
+			// If we have a dont-start-within.
+			if m.DontStartWithin != 0 {
+				if m.DontStartWithin < m.StopWithin {
+					return xerrors.Errorf("pre-migration dont-start-within must come before stop-within")
+				}
+				if m.StartWithin <= m.DontStartWithin {
+					return xerrors.Errorf("pre-migration start-within must come after dont-start-within")
+				}
 			}
 		}
 		if !sort.SliceIsSorted(u.PreMigrations, func(i, j int) bool {
-			return u.PreMigrations[i].When > u.PreMigrations[j].When //nolint:scopelint,gosec
+			return u.PreMigrations[i].StartWithin > u.PreMigrations[j].StartWithin //nolint:scopelint,gosec
 		}) {
 			return xerrors.Errorf("pre-migrations must be sorted by start epoch")
 		}
@@ -312,8 +333,13 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 			preCtx, preCancel := context.WithCancel(ctx)
 			migrationFunc := prem.PreMigration
 
-			afterEpoch := upgradeEpoch - prem.When
-			notAfterEpoch := upgradeEpoch - prem.NotAfter
+			afterEpoch := upgradeEpoch - prem.StartWithin
+			notAfterEpoch := upgradeEpoch - prem.DontStartWithin
+			stopEpoch := upgradeEpoch - prem.StopWithin
+			// We can't start after we stop.
+			if notAfterEpoch > stopEpoch {
+				notAfterEpoch = stopEpoch - 1
+			}
 
 			// Add an op to start a pre-migration.
 			schedule = append(schedule, op{
@@ -332,7 +358,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 
 			// Add an op to cancel the pre-migration if it's still running.
 			schedule = append(schedule, op{
-				after:    notAfterEpoch,
+				after:    stopEpoch,
 				notAfter: -1,
 				run:      func(ts *types.TipSet) { preCancel() },
 			})
@@ -345,6 +371,8 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 	})
 
 	// Finally, when the head changes, see if there's anything we need to do.
+	//
+	// We're intentionally ignoring reorgs as they don't matter for our purposes.
 	for change := range sm.cs.SubHeadChanges(ctx) {
 		for _, head := range change {
 			for len(schedule) > 0 {
@@ -354,7 +382,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 				}
 
 				// If we haven't passed the pre-migration height...
-				if op.notAfter < 0 || head.Val.Height() <= op.notAfter {
+				if op.notAfter < 0 || head.Val.Height() < op.notAfter {
 					op.run(head.Val)
 				}
 				schedule = schedule[1:]

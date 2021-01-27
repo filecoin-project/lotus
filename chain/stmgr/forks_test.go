@@ -377,7 +377,7 @@ func TestForkPreMigration(t *testing.T) {
 				return root, nil
 			},
 			PreMigrations: []PreMigration{{
-				When: 20,
+				StartWithin: 20,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
 					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 					wait20.Done()
@@ -389,7 +389,7 @@ func TestForkPreMigration(t *testing.T) {
 					return nil
 				},
 			}, {
-				When: 20,
+				StartWithin: 20,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
 					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 					wait20.Done()
@@ -401,7 +401,7 @@ func TestForkPreMigration(t *testing.T) {
 					return nil
 				},
 			}, {
-				When: 20,
+				StartWithin: 20,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
 					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 					wait20.Done()
@@ -414,8 +414,8 @@ func TestForkPreMigration(t *testing.T) {
 					return fmt.Errorf("failed")
 				},
 			}, {
-				When:     15,
-				NotAfter: 5,
+				StartWithin: 15,
+				StopWithin:  5,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
 					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 
@@ -425,7 +425,7 @@ func TestForkPreMigration(t *testing.T) {
 					return nil
 				},
 			}, {
-				When: 10,
+				StartWithin: 10,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
 					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 
