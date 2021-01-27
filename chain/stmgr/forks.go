@@ -292,7 +292,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 						// migration to use the cache may assume that
 						// certain blocks exist, even if they don't.
 						tmpCache := cache.Clone()
-						err := migrationFunc(preCtx, sm, cache, ts.ParentState(), ts.Height(), ts)
+						err := migrationFunc(preCtx, sm, tmpCache, ts.ParentState(), ts.Height(), ts)
 						if err != nil {
 							log.Errorw("failed to run pre-migration",
 								"error", err)
