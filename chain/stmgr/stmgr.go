@@ -166,7 +166,7 @@ func cidsToKey(cids []cid.Cid) string {
 // Start starts the state manager's optional background processes. At the moment, this schedules
 // pre-migration functions to run ahead of network upgrades.
 //
-// This is method is not safe to invoke from multiple threads or concurrently with Stop.
+// This method is not safe to invoke from multiple threads or concurrently with Stop.
 func (sm *StateManager) Start(context.Context) error {
 	var ctx context.Context
 	ctx, sm.cancel = context.WithCancel(context.Background())
@@ -177,7 +177,7 @@ func (sm *StateManager) Start(context.Context) error {
 
 // Stop starts the state manager's background processes.
 //
-// This is method is not safe to invoke concurrently with Start.
+// This method is not safe to invoke concurrently with Start.
 func (sm *StateManager) Stop(ctx context.Context) error {
 	if sm.cancel != nil {
 		sm.cancel()
