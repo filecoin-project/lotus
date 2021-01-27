@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -885,8 +886,13 @@ func UpgradeCalico(ctx context.Context, sm *StateManager, _ MigrationCache, cb E
 }
 
 func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	// TODO: tune this.
-	config := nv10.Config{MaxWorkers: 1}
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv10.Config{MaxWorkers: uint(workerCount)}
 	newRoot, err := upgradeActorsV3Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v3 state: %w", err)
@@ -908,8 +914,14 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache
 }
 
 func PreUpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
-	// TODO: tune this.
-	config := nv10.Config{MaxWorkers: 1}
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+	config := nv10.Config{MaxWorkers: uint(workerCount)}
 	_, err := upgradeActorsV3Common(ctx, sm, cache, root, epoch, ts, config)
 	return err
 }
