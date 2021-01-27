@@ -465,7 +465,12 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessages(base *types.TipSet, miners 
 		}
 	}
 
-	return store.NewFullTipSet(blks), nil
+	fts := store.NewFullTipSet(blks)
+	if err := cg.cs.PutTipSet(context.TODO(), fts.TipSet()); err != nil {
+		return nil, err
+	}
+
+	return fts, nil
 }
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
