@@ -207,7 +207,7 @@ func (us UpgradeSchedule) Validate() error {
 			}
 		}
 		if !sort.SliceIsSorted(u.PreMigrations, func(i, j int) bool {
-			return u.PreMigrations[i].When < u.PreMigrations[j].When
+			return u.PreMigrations[i].When > u.PreMigrations[j].When //nolint:scopelint,gosec
 		}) {
 			return xerrors.Errorf("pre-migrations must be sorted by start epoch")
 		}
