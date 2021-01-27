@@ -250,6 +250,22 @@ func (sm *StateManager) hasExpensiveFork(ctx context.Context, height abi.ChainEp
 	return ok
 }
 
+func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv10.MemMigrationCache, ts *types.TipSet) {
+	// Clone the cache so we don't actually _update_ it
+	// till we're done. Otherwise, if we fail, the next
+	// migration to use the cache may assume that
+	// certain blocks exist, even if they don't.
+	tmpCache := cache.Clone()
+	err := fn(ctx, sm, tmpCache, ts.ParentState(), ts.Height(), ts)
+	if err != nil {
+		log.Errorw("failed to run pre-migration",
+			"error", err)
+		return
+	}
+	// Finally, if everything worked, update the cache.
+	cache.Update(tmpCache)
+}
+
 func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 	defer close(sm.shutdown)
 
@@ -286,20 +302,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 					wg.Add(1)
 					go func() {
 						defer wg.Done()
-
-						// Clone the cache so we don't actually _update_ it
-						// till we're done. Otherwise, if we fail, the next
-						// migration to use the cache may assume that
-						// certain blocks exist, even if they don't.
-						tmpCache := cache.Clone()
-						err := migrationFunc(preCtx, sm, tmpCache, ts.ParentState(), ts.Height(), ts)
-						if err != nil {
-							log.Errorw("failed to run pre-migration",
-								"error", err)
-							return
-						}
-						// Finally, if everything worked, update the cache.
-						cache.Update(tmpCache)
+						runPreMigration(preCtx, sm, migrationFunc, cache, ts)
 					}()
 				},
 			})
