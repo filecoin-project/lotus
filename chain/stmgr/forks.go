@@ -261,13 +261,13 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 	u := sm.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
 		startTime := time.Now()
-		log.Warnw("STARTING migration", "height", height)
+		log.Warnw("STARTING migration", "height", height, "from", root)
 		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
 		// have to migrate multiple times.
 		tmpCache := u.cache.Clone()
 		retCid, err = u.upgrade(ctx, sm, tmpCache, cb, root, height, ts)
 		if err != nil {
-			log.Errorw("FAILED migration", "height", height, "error", err)
+			log.Errorw("FAILED migration", "height", height, "from", root, "error", err)
 			return cid.Undef, err
 		}
 		// Yes, we update the cache, even for the final upgrade epoch. Why? Reverts. This
@@ -276,6 +276,8 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 		u.cache.Update(tmpCache)
 		log.Warnw("COMPLETED migration",
 			"height", height,
+			"from", root,
+			"to", retCid,
 			"duration", time.Since(startTime),
 		)
 	}
