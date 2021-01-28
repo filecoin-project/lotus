@@ -44,8 +44,8 @@ const UpgradeClausHeight = 161386
 // 2021-01-17T19:00:00Z
 const UpgradeOrangeHeight = 250666
 
-// 2021-01-28T03:00:00Z
-const UpgradeActorsV3Height = 280426
+// N/A
+const UpgradeActorsV3Height = 9999999999
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 30))
