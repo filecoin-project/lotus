@@ -3,6 +3,7 @@
 // +build !testground
 // +build !calibnet
 // +build !nerpanet
+// +build !butterflynet
 
 package build
 

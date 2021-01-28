@@ -75,6 +75,9 @@ calibnet: lotus lotus-miner lotus-worker lotus-seed
 nerpanet: GOFLAGS+=-tags=nerpanet
 nerpanet: lotus lotus-miner lotus-worker lotus-seed
 
+butterflynet: GOFLAGS+=-tags=butterflynet
+butterflynet: lotus lotus-miner lotus-worker lotus-seed
+
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	go build $(GOFLAGS) -o lotus ./cmd/lotus
