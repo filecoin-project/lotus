@@ -1,16 +1,12 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"reflect"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -18,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -74,14 +69,14 @@ var sendCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("'send' expects two arguments, target and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close()
 
 		ctx := ReqContext(cctx)
-		var params sendParams
+		var params SendParams
 
 		params.To, err = address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -119,7 +114,7 @@ var sendCmd = &cli.Command{
 		params.Method = abi.MethodNum(cctx.Uint64("method"))
 
 		if cctx.IsSet("params-json") {
-			decparams, err := decodeTypedParams(ctx, api, params.To, params.Method, cctx.String("params-json"))
+			decparams, err := srv.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, cctx.String("params-json"))
 			if err != nil {
 				return fmt.Errorf("failed to decode json params: %w", err)
 			}
@@ -135,6 +130,7 @@ var sendCmd = &cli.Command{
 			}
 			params.Params = decparams
 		}
+
 		params.Force = cctx.Bool("force")
 
 		if cctx.IsSet("nonce") {
@@ -142,7 +138,7 @@ var sendCmd = &cli.Command{
 			params.Nonce.N = cctx.Uint64("nonce")
 		}
 
-		msgCid, err := send(ctx, api, params)
+		msgCid, err := srv.Send(ctx, params)
 
 		if err != nil {
 			return xerrors.Errorf("executing send: %w", err)
@@ -160,106 +156,4 @@ type sendAPIs interface {
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletDefaultAddress(context.Context) (address.Address, error)
 	WalletSignMessage(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)
-}
-
-type sendParams struct {
-	To   address.Address
-	From address.Address
-	Val  abi.TokenAmount
-
-	GasPremium abi.TokenAmount
-	GasFeeCap  abi.TokenAmount
-	GasLimit   int64
-
-	Nonce struct {
-		N   uint64
-		Set bool
-	}
-	Method abi.MethodNum
-	Params []byte
-
-	Force bool
-}
-
-func send(ctx context.Context, api sendAPIs, params sendParams) (cid.Cid, error) {
-	if params.From == address.Undef {
-		defaddr, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return cid.Undef, err
-		}
-		params.From = defaddr
-	}
-
-	msg := &types.Message{
-		From:  params.From,
-		To:    params.To,
-		Value: params.Val,
-
-		GasPremium: params.GasPremium,
-		GasFeeCap:  params.GasFeeCap,
-		GasLimit:   params.GasLimit,
-
-		Method: params.Method,
-		Params: params.Params,
-	}
-
-	if !params.Force {
-		// Funds insufficient check
-		fromBalance, err := api.WalletBalance(ctx, msg.From)
-		if err != nil {
-			return cid.Undef, err
-		}
-		totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
-
-		if fromBalance.LessThan(totalCost) {
-			fmt.Printf("WARNING: From balance %s less than total cost %s\n", types.FIL(fromBalance), types.FIL(totalCost))
-			return cid.Undef, fmt.Errorf("--force must be specified for this action to have an effect; you have been warned")
-		}
-	}
-
-	if params.Nonce.Set {
-		msg.Nonce = params.Nonce.N
-		sm, err := api.WalletSignMessage(ctx, params.From, msg)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		_, err = api.MpoolPush(ctx, sm)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		return sm.Cid(), nil
-	}
-
-	sm, err := api.MpoolPushMessage(ctx, msg, nil)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return sm.Cid(), nil
-}
-
-func decodeTypedParams(ctx context.Context, fapi api.FullNode, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error) {
-	act, err := fapi.StateGetActor(ctx, to, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	methodMeta, found := stmgr.MethodsMap[act.Code][method]
-	if !found {
-		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
-	}
-
-	p := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORMarshaler)
-
-	if err := json.Unmarshal([]byte(paramstr), p); err != nil {
-		return nil, fmt.Errorf("unmarshaling input into params type: %w", err)
-	}
-
-	buf := new(bytes.Buffer)
-	if err := p.MarshalCBOR(buf); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
