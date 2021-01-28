@@ -922,7 +922,12 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache
 		workerCount = 1
 	}
 
-	config := nv10.Config{MaxWorkers: uint(workerCount)}
+	config := nv10.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
 	newRoot, err := upgradeActorsV3Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v3 state: %w", err)
