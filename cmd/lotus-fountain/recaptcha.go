@@ -46,13 +46,15 @@ func VerifyToken(token, remoteIP string) (Response, error) {
 		resp.ErrorCodes = []string{"no-token"}
 		return resp, nil
 	}
-	q := VerifyURL.Query()
+
+	q := url.Values{}
 	q.Add("secret", os.Getenv("RECAPTCHA_SECRET_KEY"))
 	q.Add("response", token)
 	q.Add("remoteip", remoteIP)
-	VerifyURL.RawQuery = q.Encode()
 
-	r, err := http.Post(VerifyURL.String(), contentType, nil)
+	u := &(*VerifyURL)
+	u.RawQuery = q.Encode()
+	r, err := http.Post(u.String(), contentType, nil)
 	if err != nil {
 		return resp, err
 	}
