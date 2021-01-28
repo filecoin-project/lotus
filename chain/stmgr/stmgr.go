@@ -515,13 +515,26 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+
+	// First try to resolve the actor in the parent state, so we don't have to compute anything.
+	tree, err := state.LoadStateTree(cst, ts.ParentState())
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to load parent state tree: %w", err)
+	}
+
+	resolved, err := vm.ResolveToKeyAddr(tree, cst, addr)
+	if err == nil {
+		return resolved, nil
+	}
+
+	// If that fails, compute the tip-set and try again.
 	st, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("resolve address failed to get tipset state: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	tree, err := state.LoadStateTree(cst, st)
+	tree, err = state.LoadStateTree(cst, st)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to load state tree")
 	}
