@@ -52,7 +52,11 @@ func VerifyToken(token, remoteIP string) (Response, error) {
 	q.Add("response", token)
 	q.Add("remoteip", remoteIP)
 
-	u := &(*VerifyURL)
+	var u *url.URL
+	{
+		verifyCopy := *VerifyURL
+		u = &verifyCopy
+	}
 	u.RawQuery = q.Encode()
 	r, err := http.Post(u.String(), contentType, nil)
 	if err != nil {
