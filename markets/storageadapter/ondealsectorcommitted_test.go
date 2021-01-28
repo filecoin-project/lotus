@@ -114,6 +114,25 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBIsActive:     false,
 			expectedCBSectorNumber: sectorNumber,
 		},
+		"ignores unsuccessful pre-commit message": {
+			checkTsDeals: map[abi.DealID]*api.MarketDeal{
+				startDealID: unfinishedDeal,
+			},
+			matchStates: []matchState{
+				{
+					msg: makeMessage(t, provider, miner.Methods.PreCommitSector, &miner.SectorPreCommitInfo{
+						SectorNumber: sectorNumber,
+						SealedCID:    sealedCid,
+						DealIDs:      []abi.DealID{startDealID},
+					}),
+					deals: map[abi.DealID]*api.MarketDeal{
+						startDealID: unfinishedDeal,
+					},
+					receipt: &types.MessageReceipt{ExitCode: 1},
+				},
+			},
+			expectedCBCallCount: 0,
+		},
 		"error on deal in check": {
 			checkTsDeals:        map[abi.DealID]*api.MarketDeal{},
 			searchMessageErr:    errors.New("something went wrong"),
@@ -142,8 +161,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 					deals: map[abi.DealID]*api.MarketDeal{},
 				},
 			},
-			expectedCBCallCount: 1,
-			expectedCBError:     errors.New("handling applied event: something went wrong"),
+			expectedCBCallCount: 0,
 			expectedError:       errors.New("failed to set up called handler: something went wrong"),
 		},
 		"proposed deal epoch timeout": {
@@ -179,7 +197,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 				matchMessages[i] = matchMessage{
 					curH:       5,
 					msg:        ms.msg,
-					msgReceipt: nil,
+					msgReceipt: ms.receipt,
 					ts:         matchTs,
 				}
 			}
@@ -297,6 +315,23 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			},
 			expectedCBCallCount: 1,
 		},
+		"ignores unsuccessful prove-commit message": {
+			checkTsDeals: map[abi.DealID]*api.MarketDeal{
+				startDealID: unfinishedDeal,
+			},
+			matchStates: []matchState{
+				{
+					msg: makeMessage(t, provider, miner.Methods.ProveCommitSector, &miner.ProveCommitSectorParams{
+						SectorNumber: sectorNumber,
+					}),
+					deals: map[abi.DealID]*api.MarketDeal{
+						startDealID: successDeal,
+					},
+					receipt: &types.MessageReceipt{ExitCode: 1},
+				},
+			},
+			expectedCBCallCount: 0,
+		},
 		"error on deal in check": {
 			checkTsDeals:        map[abi.DealID]*api.MarketDeal{},
 			searchMessageErr:    errors.New("something went wrong"),
@@ -361,7 +396,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 				matchMessages[i] = matchMessage{
 					curH:       5,
 					msg:        ms.msg,
-					msgReceipt: nil,
+					msgReceipt: ms.receipt,
 					ts:         matchTs,
 				}
 			}
@@ -397,8 +432,9 @@ func TestOnDealSectorCommitted(t *testing.T) {
 }
 
 type matchState struct {
-	msg   *types.Message
-	deals map[abi.DealID]*api.MarketDeal
+	msg     *types.Message
+	receipt *types.MessageReceipt
+	deals   map[abi.DealID]*api.MarketDeal
 }
 
 type matchMessage struct {
@@ -434,7 +470,11 @@ func (fe *fakeEvents) Called(check events.CheckFunc, msgHnd events.MsgHandler, r
 			return err
 		}
 		if matched {
-			more, err := msgHnd(matchMessage.msg, matchMessage.msgReceipt, matchMessage.ts, matchMessage.curH)
+			receipt := matchMessage.msgReceipt
+			if receipt == nil {
+				receipt = &types.MessageReceipt{ExitCode: 0}
+			}
+			more, err := msgHnd(matchMessage.msg, receipt, matchMessage.ts, matchMessage.curH)
 			if err != nil {
 				return err
 			}

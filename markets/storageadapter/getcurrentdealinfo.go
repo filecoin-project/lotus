@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -18,47 +19,49 @@ type getCurrentDealInfoAPI interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
 	StateSearchMsg(context.Context, cid.Cid) (*api.MsgLookup, error)
+
+	diffPreCommits(ctx context.Context, actor address.Address, pre, cur types.TipSetKey) (*miner.PreCommitChanges, error)
 }
 
 // GetCurrentDealInfo gets current information on a deal, and corrects the deal ID as needed
-func GetCurrentDealInfo(ctx context.Context, ts *types.TipSet, api getCurrentDealInfoAPI, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid) (abi.DealID, *api.MarketDeal, error) {
+func GetCurrentDealInfo(ctx context.Context, ts *types.TipSet, api getCurrentDealInfoAPI, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid) (abi.DealID, *api.MarketDeal, types.TipSetKey, error) {
 	marketDeal, dealErr := api.StateMarketStorageDeal(ctx, dealID, ts.Key())
 	if dealErr == nil {
 		equal, err := checkDealEquality(ctx, ts, api, proposal, marketDeal.Proposal)
 		if err != nil {
-			return dealID, nil, err
+			return dealID, nil, types.EmptyTSK, err
 		}
 		if equal {
-			return dealID, marketDeal, nil
+			return dealID, marketDeal, types.EmptyTSK, nil
 		}
 		dealErr = xerrors.Errorf("Deal proposals did not match")
 	}
 	if publishCid == nil {
-		return dealID, nil, dealErr
+		return dealID, nil, types.EmptyTSK, dealErr
 	}
 	// attempt deal id correction
 	lookup, err := api.StateSearchMsg(ctx, *publishCid)
 	if err != nil {
-		return dealID, nil, err
+		return dealID, nil, types.EmptyTSK, err
 	}
 
 	if lookup.Receipt.ExitCode != exitcode.Ok {
-		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: non-ok exit code: %s", *publishCid, lookup.Receipt.ExitCode)
+		return dealID, nil, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: non-ok exit code: %s", *publishCid, lookup.Receipt.ExitCode)
 	}
 
 	var retval market.PublishStorageDealsReturn
 	if err := retval.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
-		return dealID, nil, xerrors.Errorf("looking for publish deal message: unmarshaling message return: %w", err)
+		return dealID, nil, types.EmptyTSK, xerrors.Errorf("looking for publish deal message: unmarshaling message return: %w", err)
 	}
 
 	if len(retval.IDs) != 1 {
 		// market currently only ever sends messages with 1 deal
-		return dealID, nil, xerrors.Errorf("can't recover dealIDs from publish deal message with more than 1 deal")
+		return dealID, nil, types.EmptyTSK, xerrors.Errorf("can't recover dealIDs from publish deal message with more than 1 deal")
 	}
 
 	if retval.IDs[0] == dealID {
 		// DealID did not change, so we are stuck with the original lookup error
-		return dealID, nil, dealErr
+		return dealID, nil, lookup.TipSet, dealErr
 	}
 
 	dealID = retval.IDs[0]
@@ -67,13 +70,13 @@ func GetCurrentDealInfo(ctx context.Context, ts *types.TipSet, api getCurrentDea
 	if err == nil {
 		equal, err := checkDealEquality(ctx, ts, api, proposal, marketDeal.Proposal)
 		if err != nil {
-			return dealID, nil, err
+			return dealID, nil, types.EmptyTSK, err
 		}
 		if !equal {
-			return dealID, nil, xerrors.Errorf("Deal proposals did not match")
+			return dealID, nil, types.EmptyTSK, xerrors.Errorf("Deal proposals did not match")
 		}
 	}
-	return dealID, marketDeal, err
+	return dealID, marketDeal, lookup.TipSet, err
 }
 
 func checkDealEquality(ctx context.Context, ts *types.TipSet, api getCurrentDealInfoAPI, p1, p2 market.DealProposal) (bool, error) {

@@ -68,6 +68,8 @@
   * [LogList](#LogList)
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
+  * [MarketAddBalance](#MarketAddBalance)
+  * [MarketGetReserved](#MarketGetReserved)
   * [MarketReleaseFunds](#MarketReleaseFunds)
   * [MarketReserveFunds](#MarketReserveFunds)
   * [MarketWithdraw](#MarketWithdraw)
@@ -175,6 +177,7 @@
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)
   * [StateSearchMsg](#StateSearchMsg)
+  * [StateSearchMsgLimited](#StateSearchMsgLimited)
   * [StateSectorExpiration](#StateSectorExpiration)
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
@@ -1652,6 +1655,43 @@ Response: `{}`
 
 ## Market
 
+
+### MarketAddBalance
+MarketAddBalance adds funds to the market actor
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### MarketGetReserved
+MarketGetReserved gets the amount of funds that are currently reserved for the address
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"0"`
 
 ### MarketReleaseFunds
 MarketReleaseFunds releases funds reserved by MarketReserveFunds
@@ -3988,7 +4028,7 @@ Response:
   "WorkerChangeEpoch": 10101,
   "PeerId": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Multiaddrs": null,
-  "SealProofType": 8,
+  "WindowPoStProofType": 8,
   "SectorSize": 34359738368,
   "WindowPoStPartitionSectors": 42,
   "ConsensusFaultElapsed": 10101
@@ -4308,7 +4348,7 @@ Inputs:
 ]
 ```
 
-Response: `8`
+Response: `9`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4444,6 +4484,46 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
+]
+```
+
+Response:
+```json
+{
+  "Message": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Receipt": {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  },
+  "ReturnDec": {},
+  "TipSet": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  "Height": 10101
+}
+```
+
+### StateSearchMsgLimited
+StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  10101
 ]
 ```
 

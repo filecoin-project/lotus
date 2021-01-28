@@ -73,6 +73,11 @@ func (pcs *paymentChannelSettler) check(ts *types.TipSet) (done bool, more bool,
 }
 
 func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
+	// Ignore unsuccessful settle messages
+	if rec.ExitCode != 0 {
+		return true, nil
+	}
+
 	bestByLane, err := paychmgr.BestSpendableByLane(pcs.ctx, pcs.api, msg.To)
 	if err != nil {
 		return true, err

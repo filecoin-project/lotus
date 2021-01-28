@@ -430,11 +430,6 @@ var provingCheckProvableCmd = &cli.Command{
 			return err
 		}
 
-		pf, err := info.SealProofType.RegisteredWindowPoStProof()
-		if err != nil {
-			return err
-		}
-
 		partitions, err := api.StateMinerPartitions(ctx, addr, dlIdx, types.EmptyTSK)
 		if err != nil {
 			return err
@@ -446,7 +441,7 @@ var provingCheckProvableCmd = &cli.Command{
 		for parIdx, par := range partitions {
 			sectors := make(map[abi.SectorNumber]struct{})
 
-			sectorInfos, err := api.StateMinerSectors(ctx, addr, &par.AllSectors, types.EmptyTSK)
+			sectorInfos, err := api.StateMinerSectors(ctx, addr, &par.LiveSectors, types.EmptyTSK)
 			if err != nil {
 				return err
 			}
@@ -463,7 +458,7 @@ var provingCheckProvableCmd = &cli.Command{
 				})
 			}
 
-			bad, err := sapi.CheckProvable(ctx, pf, tocheck, cctx.Bool("slow"))
+			bad, err := sapi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, cctx.Bool("slow"))
 			if err != nil {
 				return err
 			}

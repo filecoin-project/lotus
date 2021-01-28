@@ -314,6 +314,32 @@ func (evt SectorFaultReported) apply(state *SectorInfo) {
 
 type SectorFaultedFinal struct{}
 
+// Terminating
+
+type SectorTerminate struct{}
+
+func (evt SectorTerminate) applyGlobal(state *SectorInfo) bool {
+	state.State = Terminating
+	return true
+}
+
+type SectorTerminating struct{ Message *cid.Cid }
+
+func (evt SectorTerminating) apply(state *SectorInfo) {
+	state.TerminateMessage = evt.Message
+}
+
+type SectorTerminated struct{ TerminatedAt abi.ChainEpoch }
+
+func (evt SectorTerminated) apply(state *SectorInfo) {
+	state.TerminatedAt = evt.TerminatedAt
+}
+
+type SectorTerminateFailed struct{ error }
+
+func (evt SectorTerminateFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorTerminateFailed) apply(*SectorInfo)                        {}
+
 // External events
 
 type SectorRemove struct{}

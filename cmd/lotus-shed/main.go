@@ -50,6 +50,7 @@ func main() {
 		electionCmd,
 		rpcCmd,
 		cidCmd,
+		blockmsgidCmd,
 	}
 
 	app := &cli.App{

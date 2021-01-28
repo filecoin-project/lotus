@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -41,6 +42,7 @@ var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
 	api.FullNode
+	*apiWrapper
 
 	// this goes away with the data transfer module
 	dag dtypes.StagingDAG
@@ -55,7 +57,8 @@ type ProviderNodeAdapter struct {
 func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
 	return func(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
 		na := &ProviderNodeAdapter{
-			FullNode: full,
+			FullNode:   full,
+			apiWrapper: &apiWrapper{api: full},
 
 			dag:       dag,
 			secb:      secb,
@@ -154,30 +157,36 @@ func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Si
 	return err == nil, err
 }
 
-func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
+func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, maddr address.Address, tok shared.TipSetToken) (address.Address, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	mi, err := n.StateMinerInfo(ctx, miner, tsk)
+	mi, err := n.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
 		return address.Address{}, err
 	}
 	return mi.Worker, nil
 }
 
-func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, miner address.Address, tok shared.TipSetToken) (abi.RegisteredSealProof, error) {
+func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, maddr address.Address, tok shared.TipSetToken) (abi.RegisteredSealProof, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return 0, err
 	}
 
-	mi, err := n.StateMinerInfo(ctx, miner, tsk)
+	mi, err := n.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
 		return 0, err
 	}
-	return mi.SealProofType, nil
+
+	nver, err := n.StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return 0, err
+	}
+
+	return miner.PreferredSealProofTypeFromWindowPoStType(nver, mi.WindowPoStProofType)
 }
 
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
@@ -344,7 +353,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	// and the chain has advanced to the confidence height
 	stateChanged := func(ts *types.TipSet, ts2 *types.TipSet, states events.StateChange, h abi.ChainEpoch) (more bool, err error) {
 		// Check if the deal has already expired
-		if sd.Proposal.EndEpoch <= ts2.Height() {
+		if ts2 == nil || sd.Proposal.EndEpoch <= ts2.Height() {
 			onDealExpired(nil)
 			return false, nil
 		}

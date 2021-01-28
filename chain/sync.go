@@ -34,7 +34,8 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	blst "github.com/supranational/blst/bindings/go"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	// named msgarray here to make it clear that these are the types used by
 	// messages, regardless of specs-actors version.
@@ -55,7 +56,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/lib/sigs/bls"
 	"github.com/filecoin-project/lotus/metrics"
 )
 
@@ -249,18 +249,6 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	}
 
 	syncer.incoming.Pub(fts.TipSet().Blocks(), LocalIncoming)
-
-	if from == syncer.self {
-		// TODO: this is kindof a hack...
-		log.Debug("got block from ourselves")
-
-		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
-			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
-			return false
-		}
-
-		return true
-	}
 
 	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
 	// the blockstore
@@ -686,6 +674,10 @@ func blockSanityChecks(h *types.BlockHeader) error {
 
 	if h.BLSAggregate == nil {
 		return xerrors.Errorf("block had nil bls aggregate signature")
+	}
+
+	if h.Miner.Protocol() != address.ID {
+		return xerrors.Errorf("block had non-ID miner address")
 	}
 
 	return nil
@@ -1190,17 +1182,21 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signat
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
-	msgsS := make([]blst.Message, len(msgs))
+	msgsS := make([]ffi.Message, len(msgs))
+	pubksS := make([]ffi.PublicKey, len(msgs))
 	for i := 0; i < len(msgs); i++ {
 		msgsS[i] = msgs[i].Bytes()
+		copy(pubksS[i][:], pubks[i][:ffi.PublicKeyBytes])
 	}
+
+	sigS := new(ffi.Signature)
+	copy(sigS[:], sig.Data[:ffi.SignatureBytes])
 
 	if len(msgs) == 0 {
 		return nil
 	}
 
-	valid := new(bls.Signature).AggregateVerifyCompressed(sig.Data, pubks,
-		msgsS, []byte(bls.DST))
+	valid := ffi.HashVerify(sigS, msgsS, pubksS)
 	if !valid {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
@@ -1449,7 +1445,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		return nil, ErrForkCheckpoint
 	}
 
-	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2?
+	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2? Yes.
 	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
 	tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
 	if err != nil {
@@ -1460,6 +1456,10 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
+	// Track the fork length on our side of the synced chain to enforce
+	// `ForkLengthThreshold`. Initialized to 1 because we already walked back
+	// one tipset from `known` (our synced head).
+	forkLengthInHead := 1
 
 	for cur := 0; cur < len(tips); {
 		if nts.Height() == 0 {
@@ -1476,6 +1476,13 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		if nts.Height() < tips[cur].Height() {
 			cur++
 		} else {
+			// Walk back one block in our synced chain to try to meet the fork's
+			// height.
+			forkLengthInHead++
+			if forkLengthInHead > int(build.ForkLengthThreshold) {
+				return nil, ErrForkTooLong
+			}
+
 			// We will be forking away from nts, check that it isn't checkpointed
 			if nts.Key() == chkpt {
 				return nil, ErrForkCheckpoint

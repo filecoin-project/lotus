@@ -224,9 +224,9 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		case *ErrBadCommD:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
-			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
+			return ctx.Send(SectorTicketExpired{xerrors.Errorf("ticket expired error, removing sector: %w", err)})
 		case *ErrBadTicket:
-			return ctx.Send(SectorTicketExpired{xerrors.Errorf("expired ticket: %w", err)})
+			return ctx.Send(SectorTicketExpired{xerrors.Errorf("expired ticket, removing sector: %w", err)})
 		case *ErrInvalidDeals:
 			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
 			return ctx.Send(SectorInvalidDealIDs{Return: RetCommitFailed})
@@ -307,6 +307,22 @@ func (m *Sealing) handleRemoveFailed(ctx statemachine.Context, sector SectorInfo
 	}
 
 	return ctx.Send(SectorRemove{})
+}
+
+func (m *Sealing) handleTerminateFailed(ctx statemachine.Context, sector SectorInfo) error {
+	// ignoring error as it's most likely an API error - `pci` will be nil, and we'll go back to
+	// the Terminating state after cooldown. If the API is still failing, well get back to here
+	// with the error in SectorInfo log.
+	pci, _ := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	if pci != nil {
+		return nil // pause the fsm, needs manual user action
+	}
+
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	return ctx.Send(SectorTerminate{})
 }
 
 func (m *Sealing) handleDealsExpired(ctx statemachine.Context, sector SectorInfo) error {

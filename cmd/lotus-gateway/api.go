@@ -57,6 +57,7 @@ type gatewayDepsAPI interface {
 	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
 	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
+	StateSearchMsgLimited(ctx context.Context, msg cid.Cid, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error)
 	StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error)
 	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
@@ -297,6 +298,10 @@ func (a *GatewayAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKe
 	}
 
 	return a.api.StateNetworkVersion(ctx, tsk)
+}
+
+func (a *GatewayAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
+	return a.api.StateSearchMsgLimited(ctx, msg, a.stateWaitLookbackLimit)
 }
 
 func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {

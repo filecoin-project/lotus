@@ -117,6 +117,13 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 
 		// get the next sync target; it should be c1 as the heaviest tipset but added last (same weight as c2)
 		bop = <-stc
+		if bop.ts.Equals(c2) {
+			// there's a small race and we might get c2 first.
+			// But we should still end on c1.
+			bop.done()
+			bop = <-stc
+		}
+
 		if !bop.ts.Equals(c1) {
 			t.Fatalf("Expected tipset %s to sync, but got %s", c1, bop.ts)
 		}
@@ -143,8 +150,11 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 			t.Fatalf("Expected tipset %s to sync, but got %s", e1, last)
 		}
 
-		if len(sm.state) != 0 {
-			t.Errorf("active syncs expected empty but got: %d", len(sm.state))
+		sm.mx.Lock()
+		activeSyncs := len(sm.state)
+		sm.mx.Unlock()
+		if activeSyncs != 0 {
+			t.Errorf("active syncs expected empty but got: %d", activeSyncs)
 		}
 	})
 }

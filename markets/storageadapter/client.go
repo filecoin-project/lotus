@@ -34,9 +34,8 @@ import (
 )
 
 type ClientNodeAdapter struct {
-	full.StateAPI
-	full.ChainAPI
-	full.MpoolAPI
+	*clientApi
+	*apiWrapper
 
 	fundmgr   *market.FundManager
 	ev        *events.Events
@@ -46,14 +45,14 @@ type ClientNodeAdapter struct {
 type clientApi struct {
 	full.ChainAPI
 	full.StateAPI
+	full.MpoolAPI
 }
 
 func NewClientNodeAdapter(stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *market.FundManager) storagemarket.StorageClientNode {
-	capi := &clientApi{chain, stateapi}
+	capi := &clientApi{chain, stateapi, mpool}
 	return &ClientNodeAdapter{
-		StateAPI: stateapi,
-		ChainAPI: chain,
-		MpoolAPI: mpool,
+		clientApi:  capi,
+		apiWrapper: &apiWrapper{api: capi},
 
 		fundmgr:   fundmgr,
 		ev:        events.NewEvents(context.TODO(), capi),
@@ -264,7 +263,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	// and the chain has advanced to the confidence height
 	stateChanged := func(ts *types.TipSet, ts2 *types.TipSet, states events.StateChange, h abi.ChainEpoch) (more bool, err error) {
 		// Check if the deal has already expired
-		if sd.Proposal.EndEpoch <= ts2.Height() {
+		if ts2 == nil || sd.Proposal.EndEpoch <= ts2.Height() {
 			onDealExpired(nil)
 			return false, nil
 		}
