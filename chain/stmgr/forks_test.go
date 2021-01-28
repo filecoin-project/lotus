@@ -357,6 +357,8 @@ func TestForkPreMigration(t *testing.T) {
 		require.False(t, found)
 	}
 
+	counter := make(chan struct{}, 10)
+
 	sm, err := NewStateManagerWithUpgradeSchedule(
 		cg.ChainStore(), UpgradeSchedule{{
 			Network: 1,
@@ -374,6 +376,8 @@ func TestForkPreMigration(t *testing.T) {
 				// the cache should be setup correctly.
 				checkCache(t, cache)
 
+				counter <- struct{}{}
+
 				return root, nil
 			},
 			PreMigrations: []PreMigration{{
@@ -385,6 +389,8 @@ func TestForkPreMigration(t *testing.T) {
 
 					err := cache.Write("foo", fooCid)
 					require.NoError(t, err)
+
+					counter <- struct{}{}
 
 					return nil
 				},
@@ -398,6 +404,8 @@ func TestForkPreMigration(t *testing.T) {
 					err := cache.Write("bar", barCid)
 					require.NoError(t, err)
 
+					counter <- struct{}{}
+
 					return nil
 				},
 			}, {
@@ -409,6 +417,8 @@ func TestForkPreMigration(t *testing.T) {
 
 					err := cache.Write("fail", failCid)
 					require.NoError(t, err)
+
+					counter <- struct{}{}
 
 					// Fail this migration. The cached entry should not be persisted.
 					return fmt.Errorf("failed")
@@ -422,6 +432,8 @@ func TestForkPreMigration(t *testing.T) {
 					<-ctx.Done()
 					close(wasCanceled)
 
+					counter <- struct{}{}
+
 					return nil
 				},
 			}, {
@@ -430,6 +442,8 @@ func TestForkPreMigration(t *testing.T) {
 					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 
 					checkCache(t, cache)
+
+					counter <- struct{}{}
 
 					return nil
 				},
@@ -463,4 +477,7 @@ func TestForkPreMigration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// We have 5 pre-migration steps, and the migration. They should all have written something
+	// to this channel.
+	require.Equal(t, 6, len(counter))
 }
