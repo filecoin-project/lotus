@@ -311,7 +311,8 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 						PieceCID: commD,
 					},
 					DealInfo: &sealing.DealInfo{
-						DealID: dealID,
+						DealID:       dealID,
+						DealProposal: &sector.Deal,
 						DealSchedule: sealing.DealSchedule{
 							StartEpoch: sector.Deal.StartEpoch,
 							EndEpoch:   sector.Deal.EndEpoch,

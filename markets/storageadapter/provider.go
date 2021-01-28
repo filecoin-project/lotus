@@ -109,8 +109,9 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 
 	sdInfo := sealing.DealInfo{
-		DealID:     deal.DealID,
-		PublishCid: deal.PublishCid,
+		DealID:       deal.DealID,
+		DealProposal: &deal.Proposal,
+		PublishCid:   deal.PublishCid,
 		DealSchedule: sealing.DealSchedule{
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
