@@ -12,14 +12,16 @@ import (
 	"go.uber.org/multierr"
 )
 
-// TimedCacheBS is a blockstore that keeps blocks for at least the specified
-// caching interval before discarding them. Garbage collection must be started
-// and stopped by calling Start/Stop.
+// TimedCacheBlockstore is a blockstore that keeps blocks for at least the
+// specified caching interval before discarding them. Garbage collection must
+// be started and stopped by calling Start/Stop.
 //
 // Under the covers, it's implemented with an active and an inactive blockstore
 // that are rotated every cache time interval. This means all blocks will be
 // stored at most 2x the cache interval.
-type TimedCacheBS struct {
+//
+// Create a new instance by calling the NewTimedCacheBlockstore constructor.
+type TimedCacheBlockstore struct {
 	mu               sync.RWMutex
 	active, inactive MemBlockstore
 	clock            clock.Clock
@@ -28,18 +30,17 @@ type TimedCacheBS struct {
 	doneRotatingCh   chan struct{}
 }
 
-var _ Blockstore = (*TimedCacheBS)(nil)
-
-func NewTimedCacheBS(cacheTime time.Duration) *TimedCacheBS {
-	return &TimedCacheBS{
+func NewTimedCacheBlockstore(interval time.Duration) *TimedCacheBlockstore {
+	b := &TimedCacheBlockstore{
 		active:   NewMemory(),
 		inactive: NewMemory(),
-		interval: cacheTime,
+		interval: interval,
 		clock:    clock.New(),
 	}
+	return b
 }
 
-func (t *TimedCacheBS) Start(ctx context.Context) error {
+func (t *TimedCacheBlockstore) Start(_ context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closeCh != nil {
@@ -64,11 +65,11 @@ func (t *TimedCacheBS) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t *TimedCacheBS) Stop(ctx context.Context) error {
+func (t *TimedCacheBlockstore) Stop(_ context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closeCh == nil {
-		return fmt.Errorf("not started started")
+		return fmt.Errorf("not started")
 	}
 	select {
 	case <-t.closeCh:
@@ -79,7 +80,7 @@ func (t *TimedCacheBS) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t *TimedCacheBS) rotate() {
+func (t *TimedCacheBlockstore) rotate() {
 	newBs := NewMemory()
 
 	t.mu.Lock()
@@ -87,7 +88,7 @@ func (t *TimedCacheBS) rotate() {
 	t.mu.Unlock()
 }
 
-func (t *TimedCacheBS) Put(b blocks.Block) error {
+func (t *TimedCacheBlockstore) Put(b blocks.Block) error {
 	// Don't check the inactive set here. We want to keep this block for at
 	// least one interval.
 	t.mu.Lock()
@@ -95,13 +96,13 @@ func (t *TimedCacheBS) Put(b blocks.Block) error {
 	return t.active.Put(b)
 }
 
-func (t *TimedCacheBS) PutMany(bs []blocks.Block) error {
+func (t *TimedCacheBlockstore) PutMany(bs []blocks.Block) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.active.PutMany(bs)
 }
 
-func (t *TimedCacheBS) View(c cid.Cid, callback func([]byte) error) error {
+func (t *TimedCacheBlockstore) View(c cid.Cid, callback func([]byte) error) error {
 	blk, err := t.Get(c)
 	if err != nil {
 		return err
@@ -109,7 +110,7 @@ func (t *TimedCacheBS) View(c cid.Cid, callback func([]byte) error) error {
 	return callback(blk.RawData())
 }
 
-func (t *TimedCacheBS) Get(k cid.Cid) (blocks.Block, error) {
+func (t *TimedCacheBlockstore) Get(k cid.Cid) (blocks.Block, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	b, err := t.active.Get(k)
@@ -119,7 +120,7 @@ func (t *TimedCacheBS) Get(k cid.Cid) (blocks.Block, error) {
 	return b, err
 }
 
-func (t *TimedCacheBS) GetSize(k cid.Cid) (int, error) {
+func (t *TimedCacheBlockstore) GetSize(k cid.Cid) (int, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	size, err := t.active.GetSize(k)
@@ -129,7 +130,7 @@ func (t *TimedCacheBS) GetSize(k cid.Cid) (int, error) {
 	return size, err
 }
 
-func (t *TimedCacheBS) Has(k cid.Cid) (bool, error) {
+func (t *TimedCacheBlockstore) Has(k cid.Cid) (bool, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	if has, err := t.active.Has(k); err != nil {
@@ -140,17 +141,17 @@ func (t *TimedCacheBS) Has(k cid.Cid) (bool, error) {
 	return t.inactive.Has(k)
 }
 
-func (t *TimedCacheBS) HashOnRead(_ bool) {
+func (t *TimedCacheBlockstore) HashOnRead(_ bool) {
 	// no-op
 }
 
-func (t *TimedCacheBS) DeleteBlock(k cid.Cid) error {
+func (t *TimedCacheBlockstore) DeleteBlock(k cid.Cid) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return multierr.Combine(t.active.DeleteBlock(k), t.inactive.DeleteBlock(k))
 }
 
-func (t *TimedCacheBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+func (t *TimedCacheBlockstore) AllKeysChan(_ context.Context) (<-chan cid.Cid, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 

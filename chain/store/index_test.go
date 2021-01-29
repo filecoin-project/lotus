@@ -30,7 +30,7 @@ func TestIndexSeeks(t *testing.T) {
 
 	ctx := context.TODO()
 
-	nbs := blockstore.NewTemporarySync()
+	nbs := blockstore.NewMemorySync()
 	cs := store.NewChainStore(nbs, nbs, syncds.MutexWrap(datastore.NewMapDatastore()), nil, nil)
 	defer cs.Close() //nolint:errcheck
 

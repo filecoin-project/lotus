@@ -13,27 +13,27 @@ type ChainIO interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 }
 
-type apiBStore struct {
+type apiBlockstore struct {
 	api ChainIO
 }
 
 // This blockstore is adapted in the constructor.
-var _ BasicBlockstore = &apiBStore{}
+var _ BasicBlockstore = (*apiBlockstore)(nil)
 
 func NewAPIBlockstore(cio ChainIO) Blockstore {
-	bs := &apiBStore{api: cio}
+	bs := &apiBlockstore{api: cio}
 	return Adapt(bs) // return an adapted blockstore.
 }
 
-func (a *apiBStore) DeleteBlock(cid.Cid) error {
+func (a *apiBlockstore) DeleteBlock(cid.Cid) error {
 	return xerrors.New("not supported")
 }
 
-func (a *apiBStore) Has(c cid.Cid) (bool, error) {
+func (a *apiBlockstore) Has(c cid.Cid) (bool, error) {
 	return a.api.ChainHasObj(context.TODO(), c)
 }
 
-func (a *apiBStore) Get(c cid.Cid) (blocks.Block, error) {
+func (a *apiBlockstore) Get(c cid.Cid) (blocks.Block, error) {
 	bb, err := a.api.ChainReadObj(context.TODO(), c)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (a *apiBStore) Get(c cid.Cid) (blocks.Block, error) {
 	return blocks.NewBlockWithCid(bb, c)
 }
 
-func (a *apiBStore) GetSize(c cid.Cid) (int, error) {
+func (a *apiBlockstore) GetSize(c cid.Cid) (int, error) {
 	bb, err := a.api.ChainReadObj(context.TODO(), c)
 	if err != nil {
 		return 0, err
@@ -49,18 +49,18 @@ func (a *apiBStore) GetSize(c cid.Cid) (int, error) {
 	return len(bb), nil
 }
 
-func (a *apiBStore) Put(blocks.Block) error {
+func (a *apiBlockstore) Put(blocks.Block) error {
 	return xerrors.New("not supported")
 }
 
-func (a *apiBStore) PutMany([]blocks.Block) error {
+func (a *apiBlockstore) PutMany([]blocks.Block) error {
 	return xerrors.New("not supported")
 }
 
-func (a *apiBStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+func (a *apiBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return nil, xerrors.New("not supported")
 }
 
-func (a *apiBStore) HashOnRead(enabled bool) {
+func (a *apiBlockstore) HashOnRead(enabled bool) {
 	return
 }

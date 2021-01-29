@@ -295,7 +295,7 @@ func (t *TestDiffArray) Remove(key uint64, val *typegen.Deferred) error {
 
 func newContextStore() Store {
 	ctx := context.Background()
-	bs := bstore.NewTemporarySync()
+	bs := bstore.NewMemorySync()
 	store := cbornode.NewCborStore(bs)
 	return WrapStore(ctx, store)
 }

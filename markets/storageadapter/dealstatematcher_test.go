@@ -28,7 +28,7 @@ import (
 
 func TestDealStateMatcher(t *testing.T) {
 	ctx := context.Background()
-	bs := bstore.NewTemporarySync()
+	bs := bstore.NewMemorySync()
 	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))
 
 	deal1 := &market2.DealState{

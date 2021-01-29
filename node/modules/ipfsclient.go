@@ -25,9 +25,9 @@ func IpfsClientBlockstore(ipfsMaddr string, onlineMode bool) func(helpers.Metric
 			if err != nil {
 				return nil, xerrors.Errorf("parsing ipfs multiaddr: %w", err)
 			}
-			ipfsbs, err = blockstore.NewRemoteIpfsBstore(helpers.LifecycleCtx(mctx, lc), ma, onlineMode)
+			ipfsbs, err = blockstore.NewRemoteIPFSBlockstore(helpers.LifecycleCtx(mctx, lc), ma, onlineMode)
 		} else {
-			ipfsbs, err = blockstore.NewIpfsBstore(helpers.LifecycleCtx(mctx, lc), onlineMode)
+			ipfsbs, err = blockstore.NewLocalIPFSBlockstore(helpers.LifecycleCtx(mctx, lc), onlineMode)
 		}
 		if err != nil {
 			return nil, xerrors.Errorf("constructing ipfs blockstore: %w", err)

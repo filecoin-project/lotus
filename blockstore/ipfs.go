@@ -18,14 +18,14 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 )
 
-type IpfsBstore struct {
+type IPFSBlockstore struct {
 	ctx context.Context
 	api iface.CoreAPI
 }
 
-var _ Blockstore = (*IpfsBstore)(nil)
+var _ BasicBlockstore = (*IPFSBlockstore)(nil)
 
-func NewIpfsBstore(ctx context.Context, onlineMode bool) (*IpfsBstore, error) {
+func NewLocalIPFSBlockstore(ctx context.Context, onlineMode bool) (Blockstore, error) {
 	localApi, err := httpapi.NewLocalApi()
 	if err != nil {
 		return nil, xerrors.Errorf("getting local ipfs api: %w", err)
@@ -34,14 +34,14 @@ func NewIpfsBstore(ctx context.Context, onlineMode bool) (*IpfsBstore, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("setting offline mode: %s", err)
 	}
-
-	return &IpfsBstore{
+	b := &IPFSBlockstore{
 		ctx: ctx,
 		api: api,
-	}, nil
+	}
+	return Adapt(b), nil
 }
 
-func NewRemoteIpfsBstore(ctx context.Context, maddr multiaddr.Multiaddr, onlineMode bool) (*IpfsBstore, error) {
+func NewRemoteIPFSBlockstore(ctx context.Context, maddr multiaddr.Multiaddr, onlineMode bool) (Blockstore, error) {
 	httpApi, err := httpapi.NewApi(maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("setting remote ipfs api: %w", err)
@@ -50,18 +50,18 @@ func NewRemoteIpfsBstore(ctx context.Context, maddr multiaddr.Multiaddr, onlineM
 	if err != nil {
 		return nil, xerrors.Errorf("applying offline mode: %s", err)
 	}
-
-	return &IpfsBstore{
+	b := &IPFSBlockstore{
 		ctx: ctx,
 		api: api,
-	}, nil
+	}
+	return Adapt(b), nil
 }
 
-func (i *IpfsBstore) DeleteBlock(cid cid.Cid) error {
+func (i *IPFSBlockstore) DeleteBlock(cid cid.Cid) error {
 	return xerrors.Errorf("not supported")
 }
 
-func (i *IpfsBstore) Has(cid cid.Cid) (bool, error) {
+func (i *IPFSBlockstore) Has(cid cid.Cid) (bool, error) {
 	_, err := i.api.Block().Stat(i.ctx, path.IpldPath(cid))
 	if err != nil {
 		// The underlying client is running in Offline mode.
@@ -77,7 +77,7 @@ func (i *IpfsBstore) Has(cid cid.Cid) (bool, error) {
 	return true, nil
 }
 
-func (i *IpfsBstore) Get(cid cid.Cid) (blocks.Block, error) {
+func (i *IPFSBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	rd, err := i.api.Block().Get(i.ctx, path.IpldPath(cid))
 	if err != nil {
 		return nil, xerrors.Errorf("getting ipfs block: %w", err)
@@ -91,7 +91,7 @@ func (i *IpfsBstore) Get(cid cid.Cid) (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, cid)
 }
 
-func (i *IpfsBstore) GetSize(cid cid.Cid) (int, error) {
+func (i *IPFSBlockstore) GetSize(cid cid.Cid) (int, error) {
 	st, err := i.api.Block().Stat(i.ctx, path.IpldPath(cid))
 	if err != nil {
 		return 0, xerrors.Errorf("getting ipfs block: %w", err)
@@ -100,7 +100,7 @@ func (i *IpfsBstore) GetSize(cid cid.Cid) (int, error) {
 	return st.Size(), nil
 }
 
-func (i *IpfsBstore) Put(block blocks.Block) error {
+func (i *IPFSBlockstore) Put(block blocks.Block) error {
 	mhd, err := multihash.Decode(block.Cid().Hash())
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (i *IpfsBstore) Put(block blocks.Block) error {
 	return err
 }
 
-func (i *IpfsBstore) PutMany(blocks []blocks.Block) error {
+func (i *IPFSBlockstore) PutMany(blocks []blocks.Block) error {
 	// TODO: could be done in parallel
 
 	for _, block := range blocks {
@@ -124,18 +124,10 @@ func (i *IpfsBstore) PutMany(blocks []blocks.Block) error {
 	return nil
 }
 
-func (i *IpfsBstore) View(c cid.Cid, callback func([]byte) error) error {
-	blk, err := i.Get(c)
-	if err != nil {
-		return err
-	}
-	return callback(blk.RawData())
-}
-
-func (i *IpfsBstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+func (i *IPFSBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return nil, xerrors.Errorf("not supported")
 }
 
-func (i *IpfsBstore) HashOnRead(enabled bool) {
+func (i *IPFSBlockstore) HashOnRead(enabled bool) {
 	return // TODO: We could technically support this, but..
 }

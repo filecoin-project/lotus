@@ -8,8 +8,8 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-// NewTemporarySync returns a thread-safe temporary blockstore.
-func NewTemporarySync() *SyncBlockstore {
+// NewMemorySync returns a thread-safe in-memory blockstore.
+func NewMemorySync() *SyncBlockstore {
 	return &SyncBlockstore{bs: make(MemBlockstore)}
 }
 
@@ -45,31 +45,24 @@ func (m *SyncBlockstore) Get(k cid.Cid) (blocks.Block, error) {
 	return m.bs.Get(k)
 }
 
-// GetSize returns the CIDs mapped BlockSize
 func (m *SyncBlockstore) GetSize(k cid.Cid) (int, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.bs.GetSize(k)
 }
 
-// Put puts a given block to the underlying datastore
 func (m *SyncBlockstore) Put(b blocks.Block) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.bs.Put(b)
 }
 
-// PutMany puts a slice of blocks at the same time using batching
-// capabilities of the underlying datastore whenever possible.
 func (m *SyncBlockstore) PutMany(bs []blocks.Block) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.bs.PutMany(bs)
 }
 
-// AllKeysChan returns a channel from which
-// the CIDs in the Blockstore can be read. It should respect
-// the given context, closing the channel if it becomes Done.
 func (m *SyncBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -77,8 +70,6 @@ func (m *SyncBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error
 	return m.bs.AllKeysChan(ctx)
 }
 
-// HashOnRead specifies if every read block should be
-// rehashed to make sure it matches its CID.
 func (m *SyncBlockstore) HashOnRead(enabled bool) {
 	// noop
 }

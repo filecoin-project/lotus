@@ -12,8 +12,8 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-func TestTimedBSSimple(t *testing.T) {
-	tc := NewTimedCacheBS(10 * time.Millisecond)
+func TestTimedCacheBlockstoreSimple(t *testing.T) {
+	tc := NewTimedCacheBlockstore(10 * time.Millisecond)
 	mClock := clock.NewMock()
 	mClock.Set(time.Now())
 	tc.clock = mClock
