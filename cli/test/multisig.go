@@ -36,12 +36,14 @@ func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNod
 	// msig create --required=2 --duration=50 --value=1000attofil <addr1> <addr2> <addr3>
 	amtAtto := types.NewInt(1000)
 	threshold := 2
-	paramDuration := "--duration=50"
+	paramStart := "--vesting-start=0"
+	paramDuration := "--vesting-duration=50"
 	paramRequired := fmt.Sprintf("--required=%d", threshold)
 	paramValue := fmt.Sprintf("--value=%dattofil", amtAtto)
 	out := clientCLI.RunCmd(
 		"msig", "create",
 		paramRequired,
+		paramStart,
 		paramDuration,
 		paramValue,
 		walletAddrs[0].String(),
