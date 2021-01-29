@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/oni/lotus-soup/testkit"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 )
 
 func dealsStress(t *testkit.TestEnvironment) error {

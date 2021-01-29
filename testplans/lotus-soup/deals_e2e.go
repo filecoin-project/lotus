@@ -17,7 +17,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 
-	"github.com/filecoin-project/oni/lotus-soup/testkit"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 )
 
 // This is the baseline test; Filecoin 101.
