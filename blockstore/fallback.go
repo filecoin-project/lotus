@@ -9,18 +9,16 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
 )
 
-var log = logging.Logger("blockstore")
-
 type FallbackStore struct {
-	blockstore.Blockstore
+	Blockstore
 
 	fallbackGetBlock func(context.Context, cid.Cid) (blocks.Block, error)
 	lk               sync.RWMutex
 }
+
+var _ Blockstore = (*FallbackStore)(nil)
 
 func (fbs *FallbackStore) SetFallback(fg func(context.Context, cid.Cid) (blocks.Block, error)) {
 	fbs.lk.Lock()
@@ -43,7 +41,7 @@ func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
 
 		if fbs.fallbackGetBlock == nil {
 			log.Errorw("fallbackstore: fallbackGetBlock not configured yet")
-			return nil, blockstore.ErrNotFound
+			return nil, ErrNotFound
 		}
 	}
 
@@ -69,7 +67,7 @@ func (fbs *FallbackStore) Get(c cid.Cid) (blocks.Block, error) {
 	switch err {
 	case nil:
 		return b, nil
-	case blockstore.ErrNotFound:
+	case ErrNotFound:
 		return fbs.getFallback(c)
 	default:
 		return b, err
@@ -81,7 +79,7 @@ func (fbs *FallbackStore) GetSize(c cid.Cid) (int, error) {
 	switch err {
 	case nil:
 		return sz, nil
-	case blockstore.ErrNotFound:
+	case ErrNotFound:
 		b, err := fbs.getFallback(c)
 		if err != nil {
 			return 0, err
@@ -91,5 +89,3 @@ func (fbs *FallbackStore) GetSize(c cid.Cid) (int, error) {
 		return sz, err
 	}
 }
-
-var _ blockstore.Blockstore = &FallbackStore{}

@@ -18,7 +18,7 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -188,7 +188,7 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: %+v", sectorNumber, err)
 	}
 
-	stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(s.delegate))
+	stor := store.ActorStore(ctx, blockstore.NewAPIBlockstore(s.delegate))
 
 	state, err := miner.Load(stor, act)
 	if err != nil {

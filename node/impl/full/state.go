@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -35,7 +36,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -435,7 +435,7 @@ func stateForTs(ctx context.Context, ts *types.TipSet, cstore *store.ChainStore,
 		return nil, err
 	}
 
-	buf := bufbstore.NewBufferedBstore(cstore.Blockstore())
+	buf := blockstore.NewBuffered(cstore.Blockstore())
 	cst := cbor.NewCborStore(buf)
 	return state.LoadStateTree(cst, st)
 }

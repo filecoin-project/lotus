@@ -6,8 +6,7 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/ipfsbstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
@@ -26,9 +25,9 @@ func IpfsClientBlockstore(ipfsMaddr string, onlineMode bool) func(helpers.Metric
 			if err != nil {
 				return nil, xerrors.Errorf("parsing ipfs multiaddr: %w", err)
 			}
-			ipfsbs, err = ipfsbstore.NewRemoteIpfsBstore(helpers.LifecycleCtx(mctx, lc), ma, onlineMode)
+			ipfsbs, err = blockstore.NewRemoteIpfsBstore(helpers.LifecycleCtx(mctx, lc), ma, onlineMode)
 		} else {
-			ipfsbs, err = ipfsbstore.NewIpfsBstore(helpers.LifecycleCtx(mctx, lc), onlineMode)
+			ipfsbs, err = blockstore.NewIpfsBstore(helpers.LifecycleCtx(mctx, lc), onlineMode)
 		}
 		if err != nil {
 			return nil, xerrors.Errorf("constructing ipfs blockstore: %w", err)

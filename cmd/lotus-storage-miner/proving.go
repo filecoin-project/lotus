@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -52,7 +52,7 @@ var provingFaultsCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(api))
+		stor := store.ActorStore(ctx, blockstore.NewAPIBlockstore(api))
 
 		maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
 		if err != nil {
@@ -127,7 +127,7 @@ var provingInfoCmd = &cli.Command{
 			return err
 		}
 
-		stor := store.ActorStore(ctx, apibstore.NewAPIBlockstore(api))
+		stor := store.ActorStore(ctx, blockstore.NewAPIBlockstore(api))
 
 		mas, err := miner.Load(stor, mact)
 		if err != nil {

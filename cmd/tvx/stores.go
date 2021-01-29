@@ -9,7 +9,7 @@ import (
 	dssync "github.com/ipfs/go-datastore/sync"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/blockstore"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
@@ -45,7 +45,7 @@ func NewProxyingStores(ctx context.Context, api api.FullNode) *Stores {
 	bs := &proxyingBlockstore{
 		ctx:        ctx,
 		api:        api,
-		Blockstore: blockstore.NewBlockstore(ds),
+		Blockstore: blockstore.FromDatastore(ds),
 	}
 	return NewStores(ctx, ds, bs)
 }

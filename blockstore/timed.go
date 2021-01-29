@@ -1,4 +1,4 @@
-package timedbs
+package blockstore
 
 import (
 	"context"
@@ -10,9 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/raulk/clock"
 	"go.uber.org/multierr"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 // TimedCacheBS is a blockstore that keeps blocks for at least the specified
@@ -24,19 +21,21 @@ import (
 // stored at most 2x the cache interval.
 type TimedCacheBS struct {
 	mu               sync.RWMutex
-	active, inactive blockstore.MemStore
+	active, inactive MemBlockstore
 	clock            clock.Clock
 	interval         time.Duration
 	closeCh          chan struct{}
 	doneRotatingCh   chan struct{}
 }
 
+var _ Blockstore = (*TimedCacheBS)(nil)
+
 func NewTimedCacheBS(cacheTime time.Duration) *TimedCacheBS {
 	return &TimedCacheBS{
-		active:   blockstore.NewTemporary(),
-		inactive: blockstore.NewTemporary(),
+		active:   NewMemory(),
+		inactive: NewMemory(),
 		interval: cacheTime,
-		clock:    build.Clock,
+		clock:    clock.New(),
 	}
 }
 
@@ -81,7 +80,7 @@ func (t *TimedCacheBS) Stop(ctx context.Context) error {
 }
 
 func (t *TimedCacheBS) rotate() {
-	newBs := blockstore.NewTemporary()
+	newBs := NewMemory()
 
 	t.mu.Lock()
 	t.inactive, t.active = t.active, newBs
@@ -102,11 +101,19 @@ func (t *TimedCacheBS) PutMany(bs []blocks.Block) error {
 	return t.active.PutMany(bs)
 }
 
+func (t *TimedCacheBS) View(c cid.Cid, callback func([]byte) error) error {
+	blk, err := t.Get(c)
+	if err != nil {
+		return err
+	}
+	return callback(blk.RawData())
+}
+
 func (t *TimedCacheBS) Get(k cid.Cid) (blocks.Block, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	b, err := t.active.Get(k)
-	if err == blockstore.ErrNotFound {
+	if err == ErrNotFound {
 		b, err = t.inactive.Get(k)
 	}
 	return b, err
@@ -116,7 +123,7 @@ func (t *TimedCacheBS) GetSize(k cid.Cid) (int, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	size, err := t.active.GetSize(k)
-	if err == blockstore.ErrNotFound {
+	if err == ErrNotFound {
 		size, err = t.inactive.GetSize(k)
 	}
 	return size, err

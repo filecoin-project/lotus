@@ -1,4 +1,4 @@
-package ipfsbstore
+package blockstore
 
 import (
 	"bytes"
@@ -16,14 +16,14 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-
-	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 type IpfsBstore struct {
 	ctx context.Context
 	api iface.CoreAPI
 }
+
+var _ Blockstore = (*IpfsBstore)(nil)
 
 func NewIpfsBstore(ctx context.Context, onlineMode bool) (*IpfsBstore, error) {
 	localApi, err := httpapi.NewLocalApi()
@@ -124,6 +124,14 @@ func (i *IpfsBstore) PutMany(blocks []blocks.Block) error {
 	return nil
 }
 
+func (i *IpfsBstore) View(c cid.Cid, callback func([]byte) error) error {
+	blk, err := i.Get(c)
+	if err != nil {
+		return err
+	}
+	return callback(blk.RawData())
+}
+
 func (i *IpfsBstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return nil, xerrors.Errorf("not supported")
 }
@@ -131,5 +139,3 @@ func (i *IpfsBstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 func (i *IpfsBstore) HashOnRead(enabled bool) {
 	return // TODO: We could technically support this, but..
 }
-
-var _ blockstore.Blockstore = &IpfsBstore{}

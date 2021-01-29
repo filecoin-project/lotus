@@ -1,4 +1,4 @@
-package apibstore
+package blockstore
 
 import (
 	"context"
@@ -6,8 +6,6 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 type ChainIO interface {
@@ -19,10 +17,12 @@ type apiBStore struct {
 	api ChainIO
 }
 
-func NewAPIBlockstore(cio ChainIO) blockstore.Blockstore {
-	return &apiBStore{
-		api: cio,
-	}
+// This blockstore is adapted in the constructor.
+var _ BasicBlockstore = &apiBStore{}
+
+func NewAPIBlockstore(cio ChainIO) Blockstore {
+	bs := &apiBStore{api: cio}
+	return Adapt(bs) // return an adapted blockstore.
 }
 
 func (a *apiBStore) DeleteBlock(cid.Cid) error {
@@ -64,5 +64,3 @@ func (a *apiBStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 func (a *apiBStore) HashOnRead(enabled bool) {
 	return
 }
-
-var _ blockstore.Blockstore = &apiBStore{}

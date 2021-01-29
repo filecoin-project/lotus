@@ -1,4 +1,4 @@
-package bufbstore
+package blockstore
 
 import (
 	"context"
@@ -6,57 +6,56 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-var log = logging.Logger("bufbs")
+// buflog is a logger for the buffered blockstore. It is subscoped from the
+// blockstore logger.
+var buflog = log.Named("buf")
 
-type BufferedBS struct {
-	read  bstore.Blockstore
-	write bstore.Blockstore
+type BufferedBlockstore struct {
+	read  Blockstore
+	write Blockstore
 
-	readviewer  bstore.Viewer
-	writeviewer bstore.Viewer
+	readviewer  Viewer
+	writeviewer Viewer
 }
 
-func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
-	var buf bstore.Blockstore
+func NewBuffered(base Blockstore) *BufferedBlockstore {
+	var buf Blockstore
 	if os.Getenv("LOTUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
-		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
+		buflog.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
 		buf = base
 	} else {
-		buf = bstore.NewTemporary()
+		buf = NewMemory()
 	}
 
-	bs := &BufferedBS{
+	bs := &BufferedBlockstore{
 		read:  base,
 		write: buf,
 	}
-	if v, ok := base.(bstore.Viewer); ok {
+	if v, ok := base.(Viewer); ok {
 		bs.readviewer = v
 	}
-	if v, ok := buf.(bstore.Viewer); ok {
+	if v, ok := buf.(Viewer); ok {
 		bs.writeviewer = v
 	}
 	if (bs.writeviewer == nil) != (bs.readviewer == nil) {
-		log.Warnf("one of the stores is not viewable; running less efficiently")
+		buflog.Warnf("one of the stores is not viewable; running less efficiently")
 	}
 	return bs
 }
 
-func NewTieredBstore(r bstore.Blockstore, w bstore.Blockstore) *BufferedBS {
-	return &BufferedBS{
+func NewTieredBstore(r Blockstore, w Blockstore) *BufferedBlockstore {
+	return &BufferedBlockstore{
 		read:  r,
 		write: w,
 	}
 }
 
-var _ bstore.Blockstore = (*BufferedBS)(nil)
-var _ bstore.Viewer = (*BufferedBS)(nil)
+var _ Blockstore = (*BufferedBlockstore)(nil)
+var _ Viewer = (*BufferedBlockstore)(nil)
 
-func (bs *BufferedBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+func (bs *BufferedBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)
 	if err != nil {
 		return nil, err
@@ -99,7 +98,7 @@ func (bs *BufferedBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return out, nil
 }
 
-func (bs *BufferedBS) DeleteBlock(c cid.Cid) error {
+func (bs *BufferedBlockstore) DeleteBlock(c cid.Cid) error {
 	if err := bs.read.DeleteBlock(c); err != nil {
 		return err
 	}
@@ -107,7 +106,7 @@ func (bs *BufferedBS) DeleteBlock(c cid.Cid) error {
 	return bs.write.DeleteBlock(c)
 }
 
-func (bs *BufferedBS) View(c cid.Cid, callback func([]byte) error) error {
+func (bs *BufferedBlockstore) View(c cid.Cid, callback func([]byte) error) error {
 	if bs.writeviewer == nil || bs.readviewer == nil {
 		// one of the stores isn't Viewer; fall back to pure Get behaviour.
 		blk, err := bs.Get(c)
@@ -118,7 +117,7 @@ func (bs *BufferedBS) View(c cid.Cid, callback func([]byte) error) error {
 	}
 
 	// both stores are viewable.
-	if err := bs.writeviewer.View(c, callback); err == bstore.ErrNotFound {
+	if err := bs.writeviewer.View(c, callback); err == ErrNotFound {
 		// not found in write blockstore; fall through.
 	} else {
 		return err // propagate errors, or nil, i.e. found.
@@ -126,9 +125,9 @@ func (bs *BufferedBS) View(c cid.Cid, callback func([]byte) error) error {
 	return bs.readviewer.View(c, callback)
 }
 
-func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
+func (bs *BufferedBlockstore) Get(c cid.Cid) (block.Block, error) {
 	if out, err := bs.write.Get(c); err != nil {
-		if err != bstore.ErrNotFound {
+		if err != ErrNotFound {
 			return nil, err
 		}
 	} else {
@@ -138,16 +137,16 @@ func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
 	return bs.read.Get(c)
 }
 
-func (bs *BufferedBS) GetSize(c cid.Cid) (int, error) {
+func (bs *BufferedBlockstore) GetSize(c cid.Cid) (int, error) {
 	s, err := bs.read.GetSize(c)
-	if err == bstore.ErrNotFound || s == 0 {
+	if err == ErrNotFound || s == 0 {
 		return bs.write.GetSize(c)
 	}
 
 	return s, err
 }
 
-func (bs *BufferedBS) Put(blk block.Block) error {
+func (bs *BufferedBlockstore) Put(blk block.Block) error {
 	has, err := bs.read.Has(blk.Cid()) // TODO: consider dropping this check
 	if err != nil {
 		return err
@@ -160,7 +159,7 @@ func (bs *BufferedBS) Put(blk block.Block) error {
 	return bs.write.Put(blk)
 }
 
-func (bs *BufferedBS) Has(c cid.Cid) (bool, error) {
+func (bs *BufferedBlockstore) Has(c cid.Cid) (bool, error) {
 	has, err := bs.write.Has(c)
 	if err != nil {
 		return false, err
@@ -172,15 +171,15 @@ func (bs *BufferedBS) Has(c cid.Cid) (bool, error) {
 	return bs.read.Has(c)
 }
 
-func (bs *BufferedBS) HashOnRead(hor bool) {
+func (bs *BufferedBlockstore) HashOnRead(hor bool) {
 	bs.read.HashOnRead(hor)
 	bs.write.HashOnRead(hor)
 }
 
-func (bs *BufferedBS) PutMany(blks []block.Block) error {
+func (bs *BufferedBlockstore) PutMany(blks []block.Block) error {
 	return bs.write.PutMany(blks)
 }
 
-func (bs *BufferedBS) Read() bstore.Blockstore {
+func (bs *BufferedBlockstore) Read() Blockstore {
 	return bs.read
 }
