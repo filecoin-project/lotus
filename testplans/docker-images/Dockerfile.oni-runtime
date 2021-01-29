@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.15.5
+ARG GO_VERSION=1.15.6
 
 FROM golang:${GO_VERSION}-buster as downloader
 
