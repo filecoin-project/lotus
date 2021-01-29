@@ -1,6 +1,6 @@
 module github.com/filecoin-project/lotus/testplans/lotus-soup
 
-go 1.14
+go 1.15
 
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
@@ -32,7 +32,6 @@ require (
 	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626141350-e730b32bf1e6
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multiaddr-net v0.2.0
-	github.com/supranational/blst v0.1.1 // indirect
 	github.com/testground/sdk-go v0.2.6-0.20201016180515-1e40e1b0ec3a
 	go.opencensus.io v0.22.5
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
