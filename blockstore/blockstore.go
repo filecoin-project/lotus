@@ -1,17 +1,3 @@
-// blockstore contains all the basic blockstore constructors used by lotus. Any
-// blockstores not ultimately constructed out of the building blocks in this
-// package may not work properly.
-//
-//  * This package correctly wraps blockstores with the IdBlockstore. This blockstore:
-//    * Filters out all puts for blocks with CIDs using the "identity" hash function.
-//    * Extracts inlined blocks from CIDs using the identity hash function and
-//      returns them on get/has, ignoring the contents of the blockstore.
-//  * In the future, this package may enforce additional restrictions on block
-//    sizes, CID validity, etc.
-//
-// To make auditing for misuse of blockstores tractable, this package re-exports
-// parts of the go-ipfs-blockstore package such that no other package needs to
-// import it directly.
 package blockstore
 
 import (
@@ -40,6 +26,10 @@ type BasicBlockstore = blockstore.Blockstore
 type Viewer = blockstore.Viewer
 
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
+// The ID store filters out all puts for blocks with CIDs using the "identity"
+// hash function. It also extracts inlined blocks from CIDs using the identity
+// hash function and returns them on get/has, ignoring the contents of the
+// blockstore.
 func WrapIDStore(bstore blockstore.Blockstore) Blockstore {
 	return blockstore.NewIdStore(bstore).(Blockstore)
 }

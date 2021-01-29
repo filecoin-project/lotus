@@ -14,17 +14,19 @@ import (
 type FallbackStore struct {
 	Blockstore
 
-	fallbackGetBlock func(context.Context, cid.Cid) (blocks.Block, error)
-	lk               sync.RWMutex
+	lk sync.RWMutex
+	// missFn is the function that will be invoked on a local miss to pull the
+	// block from elsewhere.
+	missFn func(context.Context, cid.Cid) (blocks.Block, error)
 }
 
 var _ Blockstore = (*FallbackStore)(nil)
 
-func (fbs *FallbackStore) SetFallback(fg func(context.Context, cid.Cid) (blocks.Block, error)) {
+func (fbs *FallbackStore) SetFallback(missFn func(context.Context, cid.Cid) (blocks.Block, error)) {
 	fbs.lk.Lock()
 	defer fbs.lk.Unlock()
 
-	fbs.fallbackGetBlock = fg
+	fbs.missFn = missFn
 }
 
 func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
@@ -32,15 +34,15 @@ func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
 	fbs.lk.RLock()
 	defer fbs.lk.RUnlock()
 
-	if fbs.fallbackGetBlock == nil {
+	if fbs.missFn == nil {
 		// FallbackStore wasn't configured yet (chainstore/bitswap aren't up yet)
 		// Wait for a bit and retry
 		fbs.lk.RUnlock()
 		time.Sleep(5 * time.Second)
 		fbs.lk.RLock()
 
-		if fbs.fallbackGetBlock == nil {
-			log.Errorw("fallbackstore: fallbackGetBlock not configured yet")
+		if fbs.missFn == nil {
+			log.Errorw("fallbackstore: missFn not configured yet")
 			return nil, ErrNotFound
 		}
 	}
@@ -48,7 +50,7 @@ func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 120*time.Second)
 	defer cancel()
 
-	b, err := fbs.fallbackGetBlock(ctx, c)
+	b, err := fbs.missFn(ctx, c)
 	if err != nil {
 		return nil, err
 	}
