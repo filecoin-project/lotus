@@ -52,8 +52,8 @@ func (a *MpoolNonceAPI) GetNonce(addr address.Address) (uint64, error) {
 		if vmmsg.From != keyAddr {
 			continue
 		}
-		if vmmsg.Nonce > highestNonce {
-			highestNonce = vmmsg.Nonce
+		if vmmsg.Nonce >= highestNonce {
+			highestNonce = vmmsg.Nonce + 1
 		}
 	}
 	return highestNonce, nil
