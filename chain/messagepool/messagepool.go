@@ -133,7 +133,7 @@ type MessagePool struct {
 	curTsLk sync.Mutex // DO NOT LOCK INSIDE lk
 	curTs   *types.TipSet
 
-	cfgLk sync.Mutex
+	cfgLk sync.RWMutex
 	cfg   *types.MpoolConfig
 
 	api Provider
@@ -781,7 +781,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 
 	if incr {
 		mp.currentSize++
-		if mp.currentSize > mp.cfg.SizeLimitHigh {
+		if mp.currentSize > mp.getConfig().SizeLimitHigh {
 			// send signal to prune messages if it hasnt already been sent
 			select {
 			case mp.pruneTrigger <- struct{}{}:
