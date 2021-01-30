@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/testground/sdk-go/sync"
 
-	"github.com/filecoin-project/oni/lotus-soup/testkit"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 )
 
 var SendersDoneState = sync.State("senders-done")

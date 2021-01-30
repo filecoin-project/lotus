@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/oni/lotus-soup/testkit"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
