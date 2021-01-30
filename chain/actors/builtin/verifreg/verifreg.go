@@ -3,6 +3,7 @@ package verifreg
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -22,11 +23,14 @@ func init() {
 	builtin.RegisterActorState(builtin2.VerifiedRegistryActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
+	builtin.RegisterActorState(builtin3.VerifiedRegistryActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load3(store, root)
+	})
 }
 
 var (
-	Address = builtin2.VerifiedRegistryActorAddr
-	Methods = builtin2.MethodsVerifiedRegistry
+	Address = builtin3.VerifiedRegistryActorAddr
+	Methods = builtin3.MethodsVerifiedRegistry
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -35,6 +39,8 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		return load0(store, act.Head)
 	case builtin2.VerifiedRegistryActorCodeID:
 		return load2(store, act.Head)
+	case builtin3.VerifiedRegistryActorCodeID:
+		return load3(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }

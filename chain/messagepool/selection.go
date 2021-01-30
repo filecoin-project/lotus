@@ -532,14 +532,14 @@ func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[ui
 			log.Infow("select priority messages done", "took", dt)
 		}
 	}()
-
-	result := make([]*types.SignedMessage, 0, mp.cfg.SizeLimitLow)
+	mpCfg := mp.getConfig()
+	result := make([]*types.SignedMessage, 0, mpCfg.SizeLimitLow)
 	gasLimit := int64(build.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
 
 	// 1. Get priority actor chains
 	var chains []*msgChain
-	priority := mp.cfg.PriorityAddrs
+	priority := mpCfg.PriorityAddrs
 	for _, actor := range priority {
 		mset, ok := pending[actor]
 		if ok {

@@ -63,6 +63,9 @@ debug: lotus lotus-miner lotus-worker lotus-seed
 2k: GOFLAGS+=-tags=2k
 2k: lotus lotus-miner lotus-worker lotus-seed
 
+calibnet: GOFLAGS+=-tags=calibnet
+calibnet: lotus lotus-miner lotus-worker lotus-seed
+
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	go build $(GOFLAGS) -o lotus ./cmd/lotus

@@ -30,6 +30,8 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 		addrs = append(addrs, as.PreCommitControl...)
 	case api.CommitAddr:
 		addrs = append(addrs, as.CommitControl...)
+	case api.TerminateSectorsAddr:
+		addrs = append(addrs, as.TerminateControl...)
 	default:
 		defaultCtl := map[address.Address]struct{}{}
 		for _, a := range mi.ControlAddresses {
@@ -129,6 +131,6 @@ func maybeUseAddress(ctx context.Context, a addrSelectApi, addr address.Address,
 		*bestAvail = b
 	}
 
-	log.Warnw("address didn't have enough funds for window post message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
+	log.Warnw("address didn't have enough funds to send message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
 	return false
 }

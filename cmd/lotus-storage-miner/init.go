@@ -311,7 +311,8 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 						PieceCID: commD,
 					},
 					DealInfo: &sealing.DealInfo{
-						DealID: dealID,
+						DealID:       dealID,
+						DealProposal: &sector.Deal,
 						DealSchedule: sealing.DealSchedule{
 							StartEpoch: sector.Deal.StartEpoch,
 							EndEpoch:   sector.Deal.EndEpoch,
@@ -416,7 +417,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 		return xerrors.Errorf("peer ID from private key: %w", err)
 	}
 
-	mds, err := lr.Datastore("/metadata")
+	mds, err := lr.Datastore(context.TODO(), "/metadata")
 	if err != nil {
 		return err
 	}

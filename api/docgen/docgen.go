@@ -237,6 +237,10 @@ func init() {
 	addExample(map[abi.SectorNumber]string{
 		123: "can't acquire read lock",
 	})
+	addExample(map[api.SectorState]int{
+		api.SectorState(sealing.Proving): 120,
+	})
+	addExample([]abi.SectorNumber{123, 124})
 
 	// worker specific
 	addExample(storiface.AcquireMove)

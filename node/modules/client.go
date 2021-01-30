@@ -39,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
@@ -78,8 +79,9 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 	})
 }
 
-func ClientMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
-	ds, err := r.Datastore("/client")
+func ClientMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	ds, err := r.Datastore(ctx, "/client")
 	if err != nil {
 		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
 	}
@@ -120,7 +122,11 @@ func RegisterClientValidator(crv dtypes.ClientRequestValidator, dtm dtypes.Clien
 // uses the clients's Client DAG service for transfers
 func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Graphsync, ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ClientDataTransfer, error) {
 	sc := storedcounter.New(ds, datastore.NewKey("/datatransfer/client/counter"))
-	net := dtnet.NewFromLibp2pHost(h)
+
+	// go-data-transfer protocol retries:
+	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
+	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
+	net := dtnet.NewFromLibp2pHost(h, dtRetryParams)
 
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/client/transfers"))
 	transport := dtgstransport.NewTransport(h.ID(), gs)
@@ -129,7 +135,9 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 		return nil, err
 	}
 
-	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, sc)
+	// data-transfer push channel restart configuration
+	dtRestartConfig := dtimpl.PushChannelRestartConfig(time.Minute, 10, 1024, 10*time.Minute, 3)
+	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, sc, dtRestartConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +161,11 @@ func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
 }
 
 func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, j journal.Journal) (storagemarket.StorageClient, error) {
-	net := smnet.NewFromLibp2pHost(h)
+	// go-fil-markets protocol retries:
+	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
+	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
+	net := smnet.NewFromLibp2pHost(h, marketsRetryParams)
+
 	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(time.Second))
 	if err != nil {
 		return nil, err

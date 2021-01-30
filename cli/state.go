@@ -935,6 +935,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "compute-state-output",
 			Usage: "a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes",
 		},
+		&cli.BoolFlag{
+			Name:  "no-timing",
+			Usage: "don't show timing information in html traces",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1026,7 +1030,9 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return ComputeStateHTMLTempl(os.Stdout, ts, stout, getCode)
+			_, _ = fmt.Fprintln(os.Stderr, "computed state cid: ", stout.Root)
+
+			return ComputeStateHTMLTempl(os.Stdout, ts, stout, !cctx.Bool("no-timing"), getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -1147,8 +1153,11 @@ var compStateMsg = `
  {{if gt (len .Msg.Params) 0}}
   <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
  {{end}}
- <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
-
+ {{if PrintTiming}}
+  <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ {{else}}
+  <div><span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ {{end}}
  {{if gt (len .MsgRct.Return) 0}}
   <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
  {{end}}
@@ -1174,7 +1183,7 @@ var compStateMsg = `
  {{range .GasCharges}}
  <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
  {{template "gasC" .}}
- <td>{{.TimeTaken}}</td>
+ <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
   <td>
    {{ $fImp := FirstImportant .Location }}
    {{ if $fImp }}
@@ -1213,7 +1222,7 @@ var compStateMsg = `
   {{with SumGas .GasCharges}}
   <tr class="sum"><td><b>Sum</b></td>
   {{template "gasC" .}}
-  <td>{{.TimeTaken}}</td>
+  <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
   <td></td></tr>
   {{end}}
 </table>
@@ -1234,19 +1243,20 @@ type compStateHTMLIn struct {
 	Comp   *api.ComputeStateOutput
 }
 
-func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, printTiming bool, getCode func(addr address.Address) (cid.Cid, error)) error {
 	t, err := template.New("compute_state").Funcs(map[string]interface{}{
-		"GetCode":    getCode,
-		"GetMethod":  getMethod,
-		"ToFil":      toFil,
-		"JsonParams": JsonParams,
-		"JsonReturn": jsonReturn,
-		"IsSlow":     isSlow,
-		"IsVerySlow": isVerySlow,
-		"IntExit":    func(i exitcode.ExitCode) int64 { return int64(i) },
-		"SumGas":     sumGas,
-		"CodeStr":    codeStr,
-		"Call":       call,
+		"GetCode":     getCode,
+		"GetMethod":   getMethod,
+		"ToFil":       toFil,
+		"JsonParams":  JsonParams,
+		"JsonReturn":  jsonReturn,
+		"IsSlow":      isSlow,
+		"IsVerySlow":  isVerySlow,
+		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
+		"SumGas":      sumGas,
+		"CodeStr":     codeStr,
+		"Call":        call,
+		"PrintTiming": func() bool { return printTiming },
 		"FirstImportant": func(locs []types.Loc) *types.Loc {
 			if len(locs) != 0 {
 				for _, l := range locs {
@@ -1617,7 +1627,7 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		return nil, fmt.Errorf("unknown method %d for actor %s", method, act)
 	}
 
-	paramObj := methodMeta.Params
+	paramObj := methodMeta.Params.Elem()
 	if paramObj.NumField() != len(args) {
 		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
 	}

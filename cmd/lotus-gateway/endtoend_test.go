@@ -245,7 +245,7 @@ func startNodes(
 
 				// Create a gateway server in front of the full node
 				gapiImpl := newGatewayAPI(fullNode, lookbackCap, stateWaitLookbackLimit)
-				_, addr, err := builder.CreateRPCServer(gapiImpl)
+				_, addr, err := builder.CreateRPCServer(t, gapiImpl)
 				require.NoError(t, err)
 
 				// Create a gateway client API that connects to the gateway server

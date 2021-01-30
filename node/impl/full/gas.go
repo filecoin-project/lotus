@@ -93,13 +93,15 @@ type gasMeta struct {
 	limit int64
 }
 
+// finds 55th percntile instead of median to put negative pressure on gas price
 func medianGasPremium(prices []gasMeta, blocks int) abi.TokenAmount {
 	sort.Slice(prices, func(i, j int) bool {
 		// sort desc by price
 		return prices[i].price.GreaterThan(prices[j].price)
 	})
 
-	at := build.BlockGasTarget * int64(blocks) / 2
+	at := build.BlockGasTarget * int64(blocks) / 2        // 50th
+	at += build.BlockGasTarget * int64(blocks) / (2 * 20) // move 5% further
 	prev1, prev2 := big.Zero(), big.Zero()
 	for _, price := range prices {
 		prev1, prev2 = price.price, prev1
@@ -227,6 +229,9 @@ func gasEstimateGasLimit(
 	pending, ts := mpool.PendingFor(fromA)
 	priorMsgs := make([]types.ChainMsg, 0, len(pending))
 	for _, m := range pending {
+		if m.Message.Nonce == msg.Nonce {
+			break
+		}
 		priorMsgs = append(priorMsgs, m)
 	}
 

@@ -58,6 +58,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -66,7 +67,7 @@ import (
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
-	"github.com/filecoin-project/lotus/miner"
+	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -127,8 +128,12 @@ func SealProofType(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (abi.Register
 	if err != nil {
 		return 0, err
 	}
+	networkVersion, err := fnapi.StateNetworkVersion(context.TODO(), types.EmptyTSK)
+	if err != nil {
+		return 0, err
+	}
 
-	return mi.SealProofType, nil
+	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
 }
 
 type sidsc struct {
@@ -357,8 +362,9 @@ func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.Provid
 	return ps, nil
 }
 
-func StagingMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
-	ds, err := r.Datastore("/staging")
+func StagingMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	ds, err := r.Datastore(ctx, "/staging")
 	if err != nil {
 		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
 	}
@@ -379,8 +385,9 @@ func StagingMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.StagingMu
 
 // StagingBlockstore creates a blockstore for staging blocks for a miner
 // in a storage deal, prior to sealing
-func StagingBlockstore(r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
-	stagingds, err := r.Datastore("/staging")
+func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	stagingds, err := r.Datastore(ctx, "/staging")
 	if err != nil {
 		return nil, err
 	}
@@ -419,13 +426,13 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*lotusminer.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, minerAddr, sf, j)
+	m := lotusminer.NewMiner(api, epp, minerAddr, sf, j)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -461,11 +468,15 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.Metadat
 
 func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
+	verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
+	unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
 	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
+		verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
+		unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
 		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
@@ -489,6 +500,26 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			if deal.Ref != nil && deal.Ref.TransferType == storagemarket.TTManual && !b {
 				log.Warnf("offline storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
 				return false, "miner is not accepting offline storage deals", nil
+			}
+
+			b, err = verifiedOk()
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if deal.Proposal.VerifiedDeal && !b {
+				log.Warnf("verified storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
+				return false, "miner is not accepting verified storage deals", nil
+			}
+
+			b, err = unverifiedOk()
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if !deal.Proposal.VerifiedDeal && !b {
+				log.Warnf("unverified storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
+				return false, "miner is not accepting unverified storage deals", nil
 			}
 
 			blocklist, err := blocklistFunc()
@@ -732,6 +763,42 @@ func NewSetConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Se
 	return func(b bool) (err error) {
 		err = mutateCfg(r, func(cfg *config.StorageMiner) {
 			cfg.Dealmaking.ConsiderOfflineRetrievalDeals = b
+		})
+		return
+	}, nil
+}
+
+func NewConsiderVerifiedStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderVerifiedStorageDealsConfigFunc, error) {
+	return func() (out bool, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.ConsiderVerifiedStorageDeals
+		})
+		return
+	}, nil
+}
+
+func NewSetConsideringVerifiedStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsiderVerifiedStorageDealsConfigFunc, error) {
+	return func(b bool) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.ConsiderVerifiedStorageDeals = b
+		})
+		return
+	}, nil
+}
+
+func NewConsiderUnverifiedStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderUnverifiedStorageDealsConfigFunc, error) {
+	return func() (out bool, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = cfg.Dealmaking.ConsiderUnverifiedStorageDeals
+		})
+		return
+	}, nil
+}
+
+func NewSetConsideringUnverifiedStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsiderUnverifiedStorageDealsConfigFunc, error) {
+	return func(b bool) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.ConsiderUnverifiedStorageDeals = b
 		})
 		return
 	}, nil

@@ -40,12 +40,14 @@ type StorageMiner struct {
 }
 
 type DealmakingConfig struct {
-	ConsiderOnlineStorageDeals    bool
-	ConsiderOfflineStorageDeals   bool
-	ConsiderOnlineRetrievalDeals  bool
-	ConsiderOfflineRetrievalDeals bool
-	PieceCidBlocklist             []cid.Cid
-	ExpectedSealDuration          Duration
+	ConsiderOnlineStorageDeals     bool
+	ConsiderOfflineStorageDeals    bool
+	ConsiderOnlineRetrievalDeals   bool
+	ConsiderOfflineRetrievalDeals  bool
+	ConsiderVerifiedStorageDeals   bool
+	ConsiderUnverifiedStorageDeals bool
+	PieceCidBlocklist              []cid.Cid
+	ExpectedSealDuration           Duration
 
 	Filter          string
 	RetrievalFilter string
@@ -67,6 +69,7 @@ type SealingConfig struct {
 type MinerFeeConfig struct {
 	MaxPreCommitGasFee     types.FIL
 	MaxCommitGasFee        types.FIL
+	MaxTerminateGasFee     types.FIL
 	MaxWindowPoStGasFee    types.FIL
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
@@ -195,11 +198,13 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Dealmaking: DealmakingConfig{
-			ConsiderOnlineStorageDeals:    true,
-			ConsiderOfflineStorageDeals:   true,
-			ConsiderOnlineRetrievalDeals:  true,
-			ConsiderOfflineRetrievalDeals: true,
-			PieceCidBlocklist:             []cid.Cid{},
+			ConsiderOnlineStorageDeals:     true,
+			ConsiderOfflineStorageDeals:    true,
+			ConsiderOnlineRetrievalDeals:   true,
+			ConsiderOfflineRetrievalDeals:  true,
+			ConsiderVerifiedStorageDeals:   true,
+			ConsiderUnverifiedStorageDeals: true,
+			PieceCidBlocklist:              []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
 			ExpectedSealDuration: Duration(time.Hour * 24),
 		},
@@ -207,6 +212,7 @@ func DefaultStorageMiner() *StorageMiner {
 		Fees: MinerFeeConfig{
 			MaxPreCommitGasFee:     types.MustParseFIL("0.025"),
 			MaxCommitGasFee:        types.MustParseFIL("0.05"),
+			MaxTerminateGasFee:     types.MustParseFIL("0.5"),
 			MaxWindowPoStGasFee:    types.MustParseFIL("5"),
 			MaxPublishDealsFee:     types.MustParseFIL("0.05"),
 			MaxMarketBalanceAddFee: types.MustParseFIL("0.007"),

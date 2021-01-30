@@ -30,6 +30,10 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	Faulty:               {},
 	FaultReported:        {},
 	FaultedFinal:         {},
+	Terminating:          {},
+	TerminateWait:        {},
+	TerminateFinality:    {},
+	TerminateFailed:      {},
 	Removing:             {},
 	RemoveFailed:         {},
 	Removed:              {},
@@ -69,6 +73,11 @@ const (
 	FaultReported SectorState = "FaultReported" // sector has been declared as a fault on chain
 	FaultedFinal  SectorState = "FaultedFinal"  // fault declared on chain
 
+	Terminating       SectorState = "Terminating"
+	TerminateWait     SectorState = "TerminateWait"
+	TerminateFinality SectorState = "TerminateFinality"
+	TerminateFailed   SectorState = "TerminateFailed"
+
 	Removing     SectorState = "Removing"
 	RemoveFailed SectorState = "RemoveFailed"
 	Removed      SectorState = "Removed"
@@ -78,7 +87,7 @@ func toStatState(st SectorState) statSectorState {
 	switch st {
 	case Empty, WaitDeals, Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector:
 		return sstSealing
-	case Proving, Removed, Removing:
+	case Proving, Removed, Removing, Terminating, TerminateWait, TerminateFinality, TerminateFailed:
 		return sstProving
 	}
 

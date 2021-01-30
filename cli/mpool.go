@@ -49,6 +49,14 @@ var mpoolPending = &cli.Command{
 			Name:  "cids",
 			Usage: "only print cids of messages in output",
 		},
+		&cli.StringFlag{
+			Name:  "to",
+			Usage: "return messages to a given address",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "return messages from a given address",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -58,6 +66,23 @@ var mpoolPending = &cli.Command{
 		defer closer()
 
 		ctx := ReqContext(cctx)
+
+		var toa, froma address.Address
+		if tos := cctx.String("to"); tos != "" {
+			a, err := address.NewFromString(tos)
+			if err != nil {
+				return fmt.Errorf("given 'to' address %q was invalid: %w", tos, err)
+			}
+			toa = a
+		}
+
+		if froms := cctx.String("from"); froms != "" {
+			a, err := address.NewFromString(froms)
+			if err != nil {
+				return fmt.Errorf("given 'from' address %q was invalid: %w", froms, err)
+			}
+			froma = a
+		}
 
 		var filter map[address.Address]struct{}
 		if cctx.Bool("local") {
@@ -83,6 +108,13 @@ var mpoolPending = &cli.Command{
 				if _, has := filter[msg.Message.From]; !has {
 					continue
 				}
+			}
+
+			if toa != address.Undef && msg.Message.To != toa {
+				continue
+			}
+			if froma != address.Undef && msg.Message.From != froma {
+				continue
 			}
 
 			if cctx.Bool("cids") {
@@ -330,15 +362,15 @@ var mpoolReplaceCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "gas-feecap",
-			Usage: "gas feecap for new message",
+			Usage: "gas feecap for new message (burn and pay to miner, attoFIL/GasUnit)",
 		},
 		&cli.StringFlag{
 			Name:  "gas-premium",
-			Usage: "gas price for new message",
+			Usage: "gas price for new message (pay to miner, attoFIL/GasUnit)",
 		},
 		&cli.Int64Flag{
 			Name:  "gas-limit",
-			Usage: "gas price for new message",
+			Usage: "gas limit for new message (GasUnit)",
 		},
 		&cli.BoolFlag{
 			Name:  "auto",
@@ -346,7 +378,7 @@ var mpoolReplaceCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "max-fee",
-			Usage: "Spend up to X FIL for this message (applicable for auto mode)",
+			Usage: "Spend up to X attoFIL for this message (applicable for auto mode)",
 		},
 	},
 	ArgsUsage: "<from nonce> | <message-cid>",

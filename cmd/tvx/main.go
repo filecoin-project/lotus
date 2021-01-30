@@ -102,7 +102,7 @@ func initialize(c *cli.Context) error {
 	// Make the API client.
 	var err error
 	if FullAPI, Closer, err = lcli.GetFullNodeAPI(c); err != nil {
-		err = fmt.Errorf("failed to locate Lotus node; ")
+		err = fmt.Errorf("failed to locate Lotus node; err: %w", err)
 	}
 	return err
 }
@@ -110,6 +110,22 @@ func initialize(c *cli.Context) error {
 func destroy(_ *cli.Context) error {
 	if Closer != nil {
 		Closer()
+	}
+	return nil
+}
+
+func ensureDir(path string) error {
+	switch fi, err := os.Stat(path); {
+	case os.IsNotExist(err):
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", path, err)
+		}
+	case err == nil:
+		if !fi.IsDir() {
+			return fmt.Errorf("path %s is not a directory: %w", path, err)
+		}
+	default:
+		return fmt.Errorf("failed to stat directory %s: %w", path, err)
 	}
 	return nil
 }

@@ -106,6 +106,7 @@ type storageMinerApi interface {
 	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
+	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)
@@ -148,6 +149,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	fc := sealing.FeeConfig{
 		MaxPreCommitGasFee: abi.TokenAmount(m.feeCfg.MaxPreCommitGasFee),
 		MaxCommitGasFee:    abi.TokenAmount(m.feeCfg.MaxCommitGasFee),
+		MaxTerminateGasFee: abi.TokenAmount(m.feeCfg.MaxTerminateGasFee),
 	}
 
 	evts := events.NewEvents(ctx, m.api)
@@ -224,18 +226,13 @@ func NewWinningPoStProver(api api.FullNode, prover storage.Prover, verifier ffiw
 		return nil, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	wpt, err := mi.SealProofType.RegisteredWinningPoStProof()
-	if err != nil {
-		return nil, err
-	}
-
 	if build.InsecurePoStValidation {
 		log.Warn("*****************************************************************************")
 		log.Warn(" Generating fake PoSt proof! You should only see this while running tests! ")
 		log.Warn("*****************************************************************************")
 	}
 
-	return &StorageWpp{prover, verifier, abi.ActorID(miner), wpt}, nil
+	return &StorageWpp{prover, verifier, abi.ActorID(miner), mi.WindowPoStProofType}, nil
 }
 
 var _ gen.WinningPoStProver = (*StorageWpp)(nil)

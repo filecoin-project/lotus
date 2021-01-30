@@ -53,6 +53,7 @@ type StateModuleAPI interface {
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error)
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 }
@@ -138,14 +139,9 @@ func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address,
 		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	// TODO: You know, this is terrible.
-	// I mean, we _really_ shouldn't do this. Maybe we should convert somewhere else?
 	info, err := mas.Info()
 	if err != nil {
 		return miner.MinerInfo{}, err
-	}
-	if m.StateManager.GetNtwkVersion(ctx, ts.Height()) >= network.Version7 && info.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
-		info.SealProofType += abi.RegisteredSealProof_StackedDrg2KiBV1_1
 	}
 	return info, nil
 }
@@ -168,13 +164,19 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 
 	out := make([]api.Deadline, deadlines)
 	if err := mas.ForEachDeadline(func(i uint64, dl miner.Deadline) error {
-		ps, err := dl.PostSubmissions()
+		ps, err := dl.PartitionsPoSted()
+		if err != nil {
+			return err
+		}
+
+		l, err := dl.DisputableProofCount()
 		if err != nil {
 			return err
 		}
 
 		out[i] = api.Deadline{
-			PostSubmissions: ps,
+			PostSubmissions:      ps,
+			DisputableProofCount: l,
 		}
 		return nil
 	}); err != nil {
@@ -558,8 +560,14 @@ func stateWaitMsgLimited(ctx context.Context, smgr *stmgr.StateManager, cstore *
 	}, nil
 }
 
-func (a *StateAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
-	ts, recpt, found, err := a.StateManager.SearchForMessage(ctx, msg)
+func (m *StateModule) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
+	return stateSearchMsgLimited(ctx, m.StateManager, msg, stmgr.LookbackNoLimit)
+}
+func (a *StateAPI) StateSearchMsgLimited(ctx context.Context, msg cid.Cid, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
+	return stateSearchMsgLimited(ctx, a.StateManager, msg, lookbackLimit)
+}
+func stateSearchMsgLimited(ctx context.Context, smgr *stmgr.StateManager, msg cid.Cid, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
+	ts, recpt, found, err := smgr.SearchForMessage(ctx, msg, lookbackLimit)
 	if err != nil {
 		return nil, err
 	}

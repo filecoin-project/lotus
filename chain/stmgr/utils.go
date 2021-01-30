@@ -25,6 +25,7 @@ import (
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
+	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -193,17 +194,17 @@ func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwra
 		return nil, xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	wpt, err := info.SealProofType.RegisteredWinningPoStProof()
-	if err != nil {
-		return nil, xerrors.Errorf("getting window proof type: %w", err)
-	}
-
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("getting miner ID: %w", err)
 	}
 
-	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
+	proofType, err := miner.WinningPoStProofTypeFromWindowPoStProofType(nv, info.WindowPoStProofType)
+	if err != nil {
+		return nil, xerrors.Errorf("determining winning post proof type: %w", err)
+	}
+
+	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, proofType, abi.ActorID(mid), rand, numProvSect)
 	if err != nil {
 		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
 	}
@@ -546,6 +547,7 @@ func init() {
 	var actors []rt.VMActor
 	actors = append(actors, exported0.BuiltinActors()...)
 	actors = append(actors, exported2.BuiltinActors()...)
+	actors = append(actors, exported3.BuiltinActors()...)
 
 	for _, actor := range actors {
 		exports := actor.Exports()

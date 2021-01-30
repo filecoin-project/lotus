@@ -155,6 +155,10 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st fsutil.FsS
 			i.stores[si.ID].info.URLs = append(i.stores[si.ID].info.URLs, u)
 		}
 
+		i.stores[si.ID].info.Weight = si.Weight
+		i.stores[si.ID].info.CanSeal = si.CanSeal
+		i.stores[si.ID].info.CanStore = si.CanStore
+
 		return nil
 	}
 	i.stores[si.ID] = &storageEntry{

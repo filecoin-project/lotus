@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
-	multisig0 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 )
 
 var _ State = (*state0)(nil)

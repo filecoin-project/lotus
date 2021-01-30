@@ -10,26 +10,32 @@ var CurrentCommit string
 var BuildType int
 
 const (
-	BuildDefault = 0
-	Build2k      = 0x1
-	BuildDebug   = 0x3
+	BuildDefault  = 0
+	BuildMainnet  = 0x1
+	Build2k       = 0x2
+	BuildDebug    = 0x3
+	BuildCalibnet = 0x4
 )
 
 func buildType() string {
 	switch BuildType {
 	case BuildDefault:
 		return ""
-	case BuildDebug:
-		return "+debug"
+	case BuildMainnet:
+		return "+mainnet"
 	case Build2k:
 		return "+2k"
+	case BuildDebug:
+		return "+debug"
+	case BuildCalibnet:
+		return "+calibnet"
 	default:
 		return "+huh?"
 	}
 }
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "1.2.2"
+const BuildVersion = "1.4.1"
 
 func UserVersion() string {
 	return BuildVersion + buildType() + CurrentCommit
@@ -84,7 +90,7 @@ func VersionForType(nodeType NodeType) (Version, error) {
 // semver versions of the rpc api exposed
 var (
 	FullAPIVersion   = newVer(1, 0, 0)
-	MinerAPIVersion  = newVer(1, 0, 0)
+	MinerAPIVersion  = newVer(1, 0, 1)
 	WorkerAPIVersion = newVer(1, 0, 0)
 )
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -24,6 +25,8 @@ var importCarCmd = &cli.Command{
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
+		ctx := context.TODO()
+
 		exists, err := r.Exists()
 		if err != nil {
 			return err
@@ -44,7 +47,7 @@ var importCarCmd = &cli.Command{
 			return xerrors.Errorf("opening the car file: %w", err)
 		}
 
-		bs, err := lr.Blockstore(repo.BlockstoreChain)
+		bs, err := lr.Blockstore(ctx, repo.BlockstoreChain)
 		if err != nil {
 			return err
 		}
@@ -99,6 +102,8 @@ var importObjectCmd = &cli.Command{
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
+		ctx := context.TODO()
+
 		exists, err := r.Exists()
 		if err != nil {
 			return err
@@ -113,7 +118,7 @@ var importObjectCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		bs, err := lr.Blockstore(repo.BlockstoreChain)
+		bs, err := lr.Blockstore(ctx, repo.BlockstoreChain)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}

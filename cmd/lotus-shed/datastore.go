@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -75,7 +76,7 @@ var datastoreListCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore(datastore.NewKey(cctx.Args().First()).String())
+		ds, err := lr.Datastore(context.Background(), datastore.NewKey(cctx.Args().First()).String())
 		if err != nil {
 			return err
 		}
@@ -120,7 +121,7 @@ var datastoreGetCmd = &cli.Command{
 	},
 	ArgsUsage: "[namespace key]",
 	Action: func(cctx *cli.Context) error {
-		logging.SetLogLevel("badger", "ERROR") // nolint:errchec
+		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
 
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
@@ -141,7 +142,7 @@ var datastoreGetCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore(datastore.NewKey(cctx.Args().First()).String())
+		ds, err := lr.Datastore(context.Background(), datastore.NewKey(cctx.Args().First()).String())
 		if err != nil {
 			return err
 		}

@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	statemachine "github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -26,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
@@ -52,16 +54,21 @@ type SealingAPI interface {
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
+	StateLookupID(context.Context, address.Address, TipSetToken) (address.Address, error)
 	StateMinerSectorSize(context.Context, address.Address, TipSetToken) (abi.SectorSize, error)
 	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok TipSetToken) (address.Address, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, TipSetToken) (bool, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (*api.MarketDeal, error)
+	StateMarketStorageDealProposal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok TipSetToken) ([]api.Partition, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
+	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
@@ -94,12 +101,16 @@ type Sealing struct {
 
 	stats SectorStats
 
+	terminator *TerminateBatcher
+
 	getConfig GetSealingConfigFunc
+	dealInfo  *CurrentDealInfoManager
 }
 
 type FeeConfig struct {
 	MaxPreCommitGasFee abi.TokenAmount
 	MaxCommitGasFee    abi.TokenAmount
+	MaxTerminateGasFee abi.TokenAmount
 }
 
 type UnsealedSectorMap struct {
@@ -136,7 +147,10 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		notifee: notifee,
 		addrSel: as,
 
+		terminator: NewTerminationBatcher(context.TODO(), maddr, api, as, fc),
+
 		getConfig: gc,
+		dealInfo:  &CurrentDealInfoManager{api},
 
 		stats: SectorStats{
 			bySector: map[abi.SectorID]statSectorState{},
@@ -144,6 +158,8 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
+
+	s.unsealedInfoMap.lk.Lock() // released after initialized in .Run()
 
 	return s
 }
@@ -158,7 +174,14 @@ func (m *Sealing) Run(ctx context.Context) error {
 }
 
 func (m *Sealing) Stop(ctx context.Context) error {
-	return m.sectors.Stop(ctx)
+	if err := m.terminator.Stop(ctx); err != nil {
+		return err
+	}
+
+	if err := m.sectors.Stop(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
@@ -261,6 +284,18 @@ func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size 
 
 func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sid), SectorRemove{})
+}
+
+func (m *Sealing) Terminate(ctx context.Context, sid abi.SectorNumber) error {
+	return m.sectors.Send(uint64(sid), SectorTerminate{})
+}
+
+func (m *Sealing) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
+	return m.terminator.Flush(ctx)
+}
+
+func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.terminator.Pending(ctx)
 }
 
 // Caller should NOT hold m.unsealedInfoMap.lk
@@ -446,7 +481,12 @@ func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof
 		return 0, err
 	}
 
-	return mi.SealProofType, nil
+	ver, err := m.api.StateNetworkVersion(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	return miner.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
 }
 
 func (m *Sealing) minerSector(spt abi.RegisteredSealProof, num abi.SectorNumber) storage.SectorRef {
