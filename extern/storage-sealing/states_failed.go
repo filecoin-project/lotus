@@ -1,7 +1,6 @@
 package sealing
 
 import (
-	"bytes"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -365,7 +364,7 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 			continue
 		}
 
-		proposal, err := m.api.StateMarketStorageDeal(ctx.Context(), p.DealInfo.DealID, tok)
+		proposal, err := m.api.StateMarketStorageDealProposal(ctx.Context(), p.DealInfo.DealID, tok)
 		if err != nil {
 			log.Warnf("getting deal %d for piece %d: %+v", p.DealInfo.DealID, i, err)
 			toFix = append(toFix, i)
@@ -408,26 +407,17 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 			return ctx.Send(SectorRemove{})
 		}
 
-		ml, err := m.api.StateSearchMsg(ctx.Context(), *p.DealInfo.PublishCid)
+		var dp *market.DealProposal
+		if p.DealInfo.DealProposal != nil {
+			mdp := market.DealProposal(*p.DealInfo.DealProposal)
+			dp = &mdp
+		}
+		res, err := m.dealInfo.GetCurrentDealInfo(ctx.Context(), tok, dp, *p.DealInfo.PublishCid)
 		if err != nil {
-			return xerrors.Errorf("looking for publish deal message %s (sector %d, piece %d): %w", *p.DealInfo.PublishCid, sector.SectorNumber, i, err)
+			return xerrors.Errorf("recovering deal ID for publish deal message %s (sector %d, piece %d): %w", *p.DealInfo.PublishCid, sector.SectorNumber, i, err)
 		}
 
-		if ml.Receipt.ExitCode != exitcode.Ok {
-			return xerrors.Errorf("looking for publish deal message %s (sector %d, piece %d): non-ok exit code: %s", *p.DealInfo.PublishCid, sector.SectorNumber, i, ml.Receipt.ExitCode)
-		}
-
-		var retval market.PublishStorageDealsReturn
-		if err := retval.UnmarshalCBOR(bytes.NewReader(ml.Receipt.Return)); err != nil {
-			return xerrors.Errorf("looking for publish deal message: unmarshaling message return: %w", err)
-		}
-
-		if len(retval.IDs) != 1 {
-			// market currently only ever sends messages with 1 deal
-			return xerrors.Errorf("can't recover dealIDs from publish deal message with more than 1 deal")
-		}
-
-		updates[i] = retval.IDs[0]
+		updates[i] = res.DealID
 	}
 
 	// Not much to do here, we can't go back in time to commit this sector
