@@ -638,7 +638,6 @@ workflows:
             branches:
               only:
                 - master
-                - lock-lotus-version-in-testplan
       - build-debug
       - build-all:
           requires:
