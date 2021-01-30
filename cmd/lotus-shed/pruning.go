@@ -131,7 +131,7 @@ var stateTreePruneCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		bs, err := lkrepo.Blockstore(repo.BlockstoreChain)
+		bs, err := lkrepo.Blockstore(ctx, repo.BlockstoreChain)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
@@ -151,7 +151,7 @@ var stateTreePruneCmd = &cli.Command{
 			return fmt.Errorf("only badger blockstores are supported")
 		}
 
-		mds, err := lkrepo.Datastore("/metadata")
+		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}

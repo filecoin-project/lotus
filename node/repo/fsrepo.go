@@ -2,6 +2,7 @@ package repo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -299,7 +300,7 @@ func (fsr *fsLockedRepo) Close() error {
 }
 
 // Blockstore returns a blockstore for the provided data domain.
-func (fsr *fsLockedRepo) Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error) {
+func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
 	if domain != BlockstoreChain {
 		return nil, ErrInvalidBlockstoreDomain
 	}

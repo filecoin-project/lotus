@@ -46,7 +46,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 		}
 		defer lr.Close() // nolint:errcheck
 
-		mds, err := lr.Datastore("/metadata")
+		mds, err := lr.Datastore(context.TODO(), "/metadata")
 		if err != nil {
 			return xerrors.Errorf("getting metadata datastore: %w", err)
 		}
