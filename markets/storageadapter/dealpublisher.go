@@ -2,6 +2,7 @@ package storageadapter
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -52,9 +53,39 @@ type DealPublisher struct {
 	publishPeriodStart     time.Time
 }
 
+// A deal that is queued to be published
+type pendingDeal struct {
+	ctx    context.Context
+	deal   market2.ClientDealProposal
+	Result chan publishResult
+}
+
+// The result of publishing a deal
+type publishResult struct {
+	msgCid cid.Cid
+	err    error
+}
+
+func newPendingDeal(ctx context.Context, deal market2.ClientDealProposal) *pendingDeal {
+	return &pendingDeal{
+		ctx:    ctx,
+		deal:   deal,
+		Result: make(chan publishResult),
+	}
+}
+
+type PublishMsgConfig struct {
+	// The amount of time to wait for more deals to arrive before
+	// publishing
+	Period time.Duration
+	// The maximum number of deals to include in a single PublishStorageDeals
+	// message
+	MaxDealsPerMsg uint64
+}
+
 func NewDealPublisher(
 	feeConfig *config.MinerFeeConfig,
-	publishMsgCfg *config.PublishMsgConfig,
+	publishMsgCfg PublishMsgConfig,
 ) func(lc fx.Lifecycle, full api.FullNode) *DealPublisher {
 	return func(lc fx.Lifecycle, full api.FullNode) *DealPublisher {
 		maxFee := abi.NewTokenAmount(0)
@@ -75,22 +106,16 @@ func NewDealPublisher(
 
 func newDealPublisher(
 	dpapi dealPublisherAPI,
-	publishMsgCfg *config.PublishMsgConfig,
+	publishMsgCfg PublishMsgConfig,
 	publishSpec *api.MessageSendSpec,
 ) *DealPublisher {
-	publishPeriod := time.Duration(0)
-	maxDealsPerMsg := uint64(1)
-	if publishMsgCfg != nil {
-		publishPeriod = time.Duration(publishMsgCfg.PublishPeriod)
-		maxDealsPerMsg = publishMsgCfg.MaxDealsPerMsg
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &DealPublisher{
 		api:                   dpapi,
 		ctx:                   ctx,
 		Shutdown:              cancel,
-		maxDealsPerPublishMsg: maxDealsPerMsg,
-		publishPeriod:         publishPeriod,
+		maxDealsPerPublishMsg: publishMsgCfg.MaxDealsPerMsg,
+		publishPeriod:         publishMsgCfg.Period,
 		publishSpec:           publishSpec,
 	}
 }
@@ -227,6 +252,16 @@ func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal)
 	log.Infof("publishing %d deals in publish deals queue with piece CIDs: %s", len(deals), pieceCids(deals))
 
 	provider := deals[0].Proposal.Provider
+	for _, dl := range deals {
+		if dl.Proposal.Provider != provider {
+			msg := fmt.Sprintf("publishing %d deals failed: ", len(deals)) +
+				"not all deals are for same provider: " +
+				fmt.Sprintf("deal with piece CID %s is for provider %s ", deals[0].Proposal.PieceCID, deals[0].Proposal.Provider) +
+				fmt.Sprintf("but deal with piece CID %s is for provider %s", dl.Proposal.PieceCID, dl.Proposal.Provider)
+			return cid.Undef, xerrors.Errorf(msg)
+		}
+	}
+
 	mi, err := p.api.StateMinerInfo(p.ctx, provider, types.EmptyTSK)
 	if err != nil {
 		return cid.Undef, err
@@ -272,23 +307,4 @@ func (p *DealPublisher) filterCancelledDeals() {
 		}
 	}
 	p.pending = p.pending[:i]
-}
-
-type publishResult struct {
-	msgCid cid.Cid
-	err    error
-}
-
-type pendingDeal struct {
-	ctx    context.Context
-	deal   market2.ClientDealProposal
-	Result chan publishResult
-}
-
-func newPendingDeal(ctx context.Context, deal market2.ClientDealProposal) *pendingDeal {
-	return &pendingDeal{
-		ctx:    ctx,
-		deal:   deal,
-		Result: make(chan publishResult),
-	}
 }

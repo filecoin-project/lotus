@@ -22,7 +22,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 func TestDealPublisher(t *testing.T) {
@@ -70,6 +69,14 @@ func TestDealPublisher(t *testing.T) {
 		expiredWithinPublishPeriod:   2,
 		dealCountAfterPublishPeriod:  1,
 		expectedDealsPerMsg:          []int{2, 1},
+	}, {
+		name:                         "zero config",
+		publishPeriod:                0,
+		maxDealsPerMsg:               0,
+		dealCountWithinPublishPeriod: 2,
+		expiredWithinPublishPeriod:   0,
+		dealCountAfterPublishPeriod:  2,
+		expectedDealsPerMsg:          []int{1, 1, 1, 1},
 	}}
 
 	for _, tc := range testCases {
@@ -82,8 +89,8 @@ func TestDealPublisher(t *testing.T) {
 			dpapi := newDPAPI(t, worker)
 
 			// Create a deal publisher
-			dp := newDealPublisher(dpapi, &config.PublishMsgConfig{
-				PublishPeriod:  config.Duration(tc.publishPeriod),
+			dp := newDealPublisher(dpapi, PublishMsgConfig{
+				Period:         tc.publishPeriod,
 				MaxDealsPerMsg: tc.maxDealsPerMsg,
 			}, &api.MessageSendSpec{MaxFee: abi.NewTokenAmount(1)})
 

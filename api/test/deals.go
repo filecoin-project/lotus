@@ -25,7 +25,6 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -102,8 +101,8 @@ func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duratio
 		Full: 0,
 		Opts: node.Override(
 			new(*storageadapter.DealPublisher),
-			storageadapter.NewDealPublisher(nil, &config.PublishMsgConfig{
-				PublishPeriod:  config.Duration(publishPeriod),
+			storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
+				Period:         publishPeriod,
 				MaxDealsPerMsg: maxDealsPerMsg,
 			})),
 		Preseal: PresealGenesis,
