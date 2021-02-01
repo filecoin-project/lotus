@@ -131,10 +131,11 @@ func (s *trackingStore) Delete(cid cid.Cid) error {
 func (s *trackingStore) Keys(ctx context.Context) (<-chan cid.Cid, error) {
 	ch := make(chan cid.Cid)
 	go func() {
+		defer close(ch)
+
 		err := withMaxReadersRetry(
 			func() error {
 				return s.env.View(func(txn *lmdb.Txn) error {
-					defer close(ch)
 
 					txn.RawRead = true
 					cur, err := txn.OpenCursor(s.db)
