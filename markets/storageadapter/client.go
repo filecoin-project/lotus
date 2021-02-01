@@ -219,14 +219,12 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 	return big.Mul(bounds.Min, big.NewInt(clientOverestimation)), bounds.Max, nil
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
-	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, marketactor.DealProposal(proposal), *publishCid, cb)
+func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, proposal market2.DealProposal, publishCid cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, marketactor.DealProposal(proposal), publishCid, cb)
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, marketactor.DealProposal(proposal), *publishCid, cb)
+func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, marketactor.DealProposal(proposal), publishCid, cb)
 }
 
 // TODO: Replace dealID parameter with DealProposal
