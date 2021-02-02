@@ -25,6 +25,7 @@ import (
 )
 
 type dealPublisherAPI interface {
+	ChainHead(context.Context) (*types.TipSet, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 }
@@ -223,8 +224,33 @@ func (p *DealPublisher) publishReady(ready []*pendingDeal) {
 		return
 	}
 
+	// onComplete is called when the publish message has been sent or there
+	// was an error
+	onComplete := func(pd *pendingDeal, msgCid cid.Cid, err error) {
+		// Send the publish result on the pending deal's Result channel
+		res := publishResult{
+			msgCid: msgCid,
+			err:    err,
+		}
+		select {
+		case <-p.ctx.Done():
+		case <-pd.ctx.Done():
+		case pd.Result <- res:
+		}
+	}
+
+	// Validate each deal to make sure it can be published
+	validated := make([]*pendingDeal, 0, len(ready))
 	deals := make([]market2.ClientDealProposal, 0, len(ready))
 	for _, pd := range ready {
+		// Validate the deal
+		if err := p.validateDeal(pd.deal); err != nil {
+			// Validation failed, complete immediately with an error
+			go onComplete(pd, cid.Undef, err)
+			continue
+		}
+
+		validated = append(validated, pd)
 		deals = append(deals, pd.deal)
 	}
 
@@ -232,23 +258,32 @@ func (p *DealPublisher) publishReady(ready []*pendingDeal) {
 	msgCid, err := p.publishDealProposals(deals)
 
 	// Signal that each deal has been published
-	for _, pd := range ready {
-		pd := pd
-		go func() {
-			res := publishResult{
-				msgCid: msgCid,
-				err:    err,
-			}
-			select {
-			case <-p.ctx.Done():
-			case pd.Result <- res:
-			}
-		}()
+	for _, pd := range validated {
+		go onComplete(pd, msgCid, err)
 	}
+}
+
+// validateDeal checks that the deal proposal start epoch hasn't already
+// elapsed
+func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
+	head, err := p.api.ChainHead(p.ctx)
+	if err != nil {
+		return err
+	}
+	if head.Height() > deal.Proposal.StartEpoch {
+		return xerrors.Errorf(
+			"cannot publish deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
+			deal.Proposal.PieceCID, head.Height(), deal.Proposal.StartEpoch)
+	}
+	return nil
 }
 
 // Sends the publish message
 func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal) (cid.Cid, error) {
+	if len(deals) == 0 {
+		return cid.Undef, nil
+	}
+
 	log.Infof("publishing %d deals in publish deals queue with piece CIDs: %s", len(deals), pieceCids(deals))
 
 	provider := deals[0].Proposal.Provider
