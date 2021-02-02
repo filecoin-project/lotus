@@ -99,11 +99,13 @@ func (e *Events) listenHeadChanges(ctx context.Context) {
 		} else {
 			log.Warn("listenHeadChanges quit")
 		}
-		if ctx.Err() != nil {
+		select {
+		case <-build.Clock.After(time.Second):
+		case <-ctx.Done():
 			log.Warnf("not restarting listenHeadChanges: context error: %s", ctx.Err())
 			return
 		}
-		build.Clock.Sleep(time.Second)
+
 		log.Info("restarting listenHeadChanges")
 	}
 }
