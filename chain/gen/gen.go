@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/google/uuid"
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -85,19 +84,6 @@ type ChainGen struct {
 	lr repo.LockedRepo
 }
 
-type mybs struct {
-	blockstore.Blockstore
-}
-
-func (m mybs) Get(c cid.Cid) (block.Block, error) {
-	b, err := m.Blockstore.Get(c)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
 var rootkeyMultisig = genesis.MultisigMeta{
 	Signers:         []address.Address{remAccTestKey},
 	Threshold:       1,
@@ -134,12 +120,12 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		return nil, xerrors.Errorf("taking mem-repo lock failed: %w", err)
 	}
 
-	ds, err := lr.Datastore("/metadata")
+	ds, err := lr.Datastore(context.TODO(), "/metadata")
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get metadata datastore: %w", err)
 	}
 
-	bs, err := lr.Blockstore(repo.BlockstoreChain)
+	bs, err := lr.Blockstore(context.TODO(), repo.BlockstoreChain)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +137,6 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 			}
 		}
 	}()
-
-	bs = mybs{bs}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
@@ -465,7 +449,12 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessages(base *types.TipSet, miners 
 		}
 	}
 
-	return store.NewFullTipSet(blks), nil
+	fts := store.NewFullTipSet(blks)
+	if err := cg.cs.PutTipSet(context.TODO(), fts.TipSet()); err != nil {
+		return nil, err
+	}
+
+	return fts, nil
 }
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,

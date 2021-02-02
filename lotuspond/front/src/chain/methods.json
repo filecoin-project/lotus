@@ -202,5 +202,109 @@
     "AddVerifiedClient",
     "UseBytes",
     "RestoreBytes"
+  ],
+  "fil/3/account": [
+    "Send",
+    "Constructor",
+    "PubkeyAddress"
+  ],
+  "fil/3/cron": [
+    "Send",
+    "Constructor",
+    "EpochTick"
+  ],
+  "fil/3/init": [
+    "Send",
+    "Constructor",
+    "Exec"
+  ],
+  "fil/3/multisig": [
+    "Send",
+    "Constructor",
+    "Propose",
+    "Approve",
+    "Cancel",
+    "AddSigner",
+    "RemoveSigner",
+    "SwapSigner",
+    "ChangeNumApprovalsThreshold",
+    "LockBalance"
+  ],
+  "fil/3/paymentchannel": [
+    "Send",
+    "Constructor",
+    "UpdateChannelState",
+    "Settle",
+    "Collect"
+  ],
+  "fil/3/reward": [
+    "Send",
+    "Constructor",
+    "AwardBlockReward",
+    "ThisEpochReward",
+    "UpdateNetworkKPI"
+  ],
+  "fil/3/storagemarket": [
+    "Send",
+    "Constructor",
+    "AddBalance",
+    "WithdrawBalance",
+    "PublishStorageDeals",
+    "VerifyDealsForActivation",
+    "ActivateDeals",
+    "OnMinerSectorsTerminate",
+    "ComputeDataCommitment",
+    "CronTick"
+  ],
+  "fil/3/storageminer": [
+    "Send",
+    "Constructor",
+    "ControlAddresses",
+    "ChangeWorkerAddress",
+    "ChangePeerID",
+    "SubmitWindowedPoSt",
+    "PreCommitSector",
+    "ProveCommitSector",
+    "ExtendSectorExpiration",
+    "TerminateSectors",
+    "DeclareFaults",
+    "DeclareFaultsRecovered",
+    "OnDeferredCronEvent",
+    "CheckSectorProven",
+    "ApplyRewards",
+    "ReportConsensusFault",
+    "WithdrawBalance",
+    "ConfirmSectorProofsValid",
+    "ChangeMultiaddrs",
+    "CompactPartitions",
+    "CompactSectorNumbers",
+    "ConfirmUpdateWorkerKey",
+    "RepayDebt",
+    "ChangeOwnerAddress",
+    "DisputeWindowedPoSt"
+  ],
+  "fil/3/storagepower": [
+    "Send",
+    "Constructor",
+    "CreateMiner",
+    "UpdateClaimedPower",
+    "EnrollCronEvent",
+    "OnEpochTickEnd",
+    "UpdatePledgeTotal",
+    "SubmitPoRepForBulkVerify",
+    "CurrentTotalPower"
+  ],
+  "fil/3/system": [
+    "Send",
+    "Constructor"
+  ],
+  "fil/3/verifiedregistry": [
+    "Send",
+    "Constructor",
+    "AddVerifier",
+    "RemoveVerifier",
+    "AddVerifiedClient",
+    "UseBytes",
+    "RestoreBytes"
   ]
 }

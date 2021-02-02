@@ -949,7 +949,8 @@ const (
 )
 
 type Deadline struct {
-	PostSubmissions bitfield.BitField
+	PostSubmissions      bitfield.BitField
+	DisputableProofCount uint64
 }
 
 type Partition struct {
