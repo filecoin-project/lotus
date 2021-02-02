@@ -57,6 +57,9 @@ func TestAPIDealFlow(t *testing.T) {
 	t.Run("TestFastRetrievalDealFlow", func(t *testing.T) {
 		test.TestFastRetrievalDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
 	})
+	t.Run("TestZeroPricePerByteRetrievalDealFlow", func(t *testing.T) {
+		test.TestZeroPricePerByteRetrievalDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
+	})
 }
 
 func TestAPIDealFlowReal(t *testing.T) {

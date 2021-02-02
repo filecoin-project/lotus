@@ -159,6 +159,21 @@ func TestSecondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration
 	}
 }
 
+func TestZeroPricePerByteRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
+	s := setupOneClientOneMiner(t, b, blocktime)
+	defer s.blockMiner.Stop()
+
+	// Set price-per-byte to zero
+	ask, err := s.miner.MarketGetRetrievalAsk(s.ctx)
+	require.NoError(t, err)
+
+	ask.PricePerByte = abi.NewTokenAmount(0)
+	err = s.miner.MarketSetRetrievalAsk(s.ctx, ask)
+	require.NoError(t, err)
+
+	MakeDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
+}
+
 func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
