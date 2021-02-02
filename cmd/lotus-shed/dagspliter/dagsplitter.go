@@ -52,8 +52,7 @@ type Box struct {
 
 	// References to external subgraphs
 	// if no Nodes nor Internal above, root is 0-th; can be empty
-	// FIXME: Replace by array of boxes CID. Now it is a WIP until committed
-	//  at the end of the command trhough boxTemplate.
+	// FIXME: Maybe replace by array of boxes CID.
 	External []*Edge
 }
 
@@ -79,7 +78,6 @@ type builder struct {
 
 	chunk uint64
 
-	// FIXME: Abstract alongside Box ID (`bid`) to avoid direct access to array.
 	boxes []*boxTemplate // box 0 = root
 }
 
@@ -125,14 +123,14 @@ func (b *builder) getTotalSize(nd ipld.Node) (uint64, error) {
 // FIXME: Isn't this in go-units?
 const mib = 1 << 20
 
-// Get current box we are packing into.
-// FIXME: Make sure from the construction of the builder that there is always
+// Get current box we are packing into. By definition now this is always the
+// last created box.
 func (b *builder) boxID() BoxID {
 	return BoxID(len(b.boxes) - 1)
 }
 
 // Get current box we are packing into.
-// FIXME: Make sure from the construction of the builder that there is always
+// FIXME: Make sure from the construction of the builder that there is always one.
 func (b *builder) box() *boxTemplate {
 	return b.boxes[b.boxID()]
 }
@@ -142,20 +140,19 @@ func (b *builder) newBox()  {
 }
 
 // Remaining size in the current box.
-// a box available.
 func (b *builder) boxRemainingSize() uint64 {
 	// FIXME: Assert this is always `0 <= ret <= max_size`.
 	return b.chunk - b.box().used
 }
 
-// Check this size fits in the current box..
+// Check this size fits in the current box.
 func (b *builder) fits(size uint64) bool {
 	return size <= b.boxRemainingSize()
 }
 
-// Pack the entire DAG in this box.
+// Pack the entire the root node CID in this box.
 // FIXME: What is a link exactly in this context? A generic node, a child?
-func (b *builder) packLink(root cid.Cid, size uint64) {
+func (b *builder) packNodeCid(root cid.Cid, size uint64) {
 	// FIXME: Maybe assert size (`fits`).
 	b.box().nodes = append(b.box().nodes, root)
 	b.box().used += size
@@ -192,7 +189,7 @@ func (b *builder) add(ctx context.Context, head cid.Cid, headNd ipld.Node, level
 
 	if b.fits(headSize) {
 		_, _ = fmt.Fprintf(os.Stderr, level+"^ make internal, %dmib\n", (headSize+b.box().used)/mib)
-		b.packLink(head, headSize)
+		b.packNodeCid(head, headSize)
 		return nil
 	}
 
@@ -221,7 +218,7 @@ func (b *builder) add(ctx context.Context, head cid.Cid, headNd ipld.Node, level
 	if err != nil {
 		return xerrors.Errorf("getting raw node size: %w", err)
 	}
-	b.packLink(rawNode.Cid(), rawNodeSize)
+	b.packNodeCid(rawNode.Cid(), rawNodeSize)
 
 	_, _ = fmt.Fprintf(os.Stderr, level+"^ make %s boxed\n", head)
 
