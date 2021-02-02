@@ -181,11 +181,6 @@ func (b *builder) extractIntoRawNode(ctx context.Context, root cid.Cid, rootNode
 	return rn, nil
 }
 
-func (b *builder) packNode() uint64 {
-	// FIXME: Assert this is always `0 <= ret <= max_size`.
-	return b.chunk - b.box().used
-}
-
 func (b *builder) add(ctx context.Context, head cid.Cid, headNd ipld.Node, level string) error { // returns box id with head
 	// FIXME: Rename to cumulative/total size. Head should track just the top node size.
 	headSize, err := b.getTotalSize(headNd)
