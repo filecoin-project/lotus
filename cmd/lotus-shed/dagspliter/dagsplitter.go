@@ -135,7 +135,7 @@ func (b *builder) box() *boxTemplate {
 	return b.boxes[b.boxID()]
 }
 
-func (b *builder) newBox()  {
+func (b *builder) newBox() {
 	b.boxes = append(b.boxes, new(boxTemplate))
 }
 
