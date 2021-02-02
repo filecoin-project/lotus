@@ -26,13 +26,14 @@ import (
 
 func TestDealPublisher(t *testing.T) {
 	testCases := []struct {
-		name                         string
-		publishPeriod                time.Duration
-		maxDealsPerMsg               uint64
-		dealCountWithinPublishPeriod int
-		expiredWithinPublishPeriod   int
-		dealCountAfterPublishPeriod  int
-		expectedDealsPerMsg          []int
+		name                            string
+		publishPeriod                   time.Duration
+		maxDealsPerMsg                  uint64
+		dealCountWithinPublishPeriod    int
+		ctxCancelledWithinPublishPeriod int
+		expiredDeals                    int
+		dealCountAfterPublishPeriod     int
+		expectedDealsPerMsg             []int
 	}{{
 		name:                         "publish one deal within publish period",
 		publishPeriod:                10 * time.Millisecond,
@@ -62,21 +63,29 @@ func TestDealPublisher(t *testing.T) {
 		dealCountAfterPublishPeriod:  1,
 		expectedDealsPerMsg:          []int{2, 1, 1},
 	}, {
+		name:                            "ignore deals with cancelled context",
+		publishPeriod:                   10 * time.Millisecond,
+		maxDealsPerMsg:                  5,
+		dealCountWithinPublishPeriod:    2,
+		ctxCancelledWithinPublishPeriod: 2,
+		dealCountAfterPublishPeriod:     1,
+		expectedDealsPerMsg:             []int{2, 1},
+	}, {
 		name:                         "ignore expired deals",
 		publishPeriod:                10 * time.Millisecond,
 		maxDealsPerMsg:               5,
 		dealCountWithinPublishPeriod: 2,
-		expiredWithinPublishPeriod:   2,
+		expiredDeals:                 2,
 		dealCountAfterPublishPeriod:  1,
 		expectedDealsPerMsg:          []int{2, 1},
 	}, {
-		name:                         "zero config",
-		publishPeriod:                0,
-		maxDealsPerMsg:               0,
-		dealCountWithinPublishPeriod: 2,
-		expiredWithinPublishPeriod:   0,
-		dealCountAfterPublishPeriod:  2,
-		expectedDealsPerMsg:          []int{1, 1, 1, 1},
+		name:                            "zero config",
+		publishPeriod:                   0,
+		maxDealsPerMsg:                  0,
+		dealCountWithinPublishPeriod:    2,
+		ctxCancelledWithinPublishPeriod: 0,
+		dealCountAfterPublishPeriod:     2,
+		expectedDealsPerMsg:             []int{1, 1, 1, 1},
 	}}
 
 	for _, tc := range testCases {
@@ -96,31 +105,37 @@ func TestDealPublisher(t *testing.T) {
 
 			// Keep a record of the deals that were submitted to be published
 			var dealsToPublish []market.ClientDealProposal
-			publishDeal := func(expired bool) {
+			publishDeal := func(ctxCancelled bool, expired bool) {
 				pctx := ctx
 				var cancel context.CancelFunc
-				if expired {
+				if ctxCancelled {
 					pctx, cancel = context.WithCancel(ctx)
 					cancel()
 				}
 
+				startEpoch := abi.ChainEpoch(20)
+				if expired {
+					startEpoch = abi.ChainEpoch(5)
+				}
 				deal := market.ClientDealProposal{
 					Proposal: market0.DealProposal{
-						PieceCID: generateCids(1)[0],
-						Client:   client,
-						Provider: provider,
+						PieceCID:   generateCids(1)[0],
+						Client:     client,
+						Provider:   provider,
+						StartEpoch: startEpoch,
+						EndEpoch:   abi.ChainEpoch(120),
 					},
 					ClientSignature: crypto.Signature{
 						Type: crypto.SigTypeSecp256k1,
 						Data: []byte("signature data"),
 					},
 				}
-				if !expired {
+				if !ctxCancelled && !expired {
 					dealsToPublish = append(dealsToPublish, deal)
 				}
 				go func() {
 					_, err := dp.Publish(pctx, deal)
-					if expired {
+					if ctxCancelled || expired {
 						require.Error(t, err)
 					} else {
 						require.NoError(t, err)
@@ -130,10 +145,13 @@ func TestDealPublisher(t *testing.T) {
 
 			// Publish deals within publish period
 			for i := 0; i < tc.dealCountWithinPublishPeriod; i++ {
-				publishDeal(false)
+				publishDeal(false, false)
 			}
-			for i := 0; i < tc.expiredWithinPublishPeriod; i++ {
-				publishDeal(true)
+			for i := 0; i < tc.ctxCancelledWithinPublishPeriod; i++ {
+				publishDeal(true, false)
+			}
+			for i := 0; i < tc.expiredDeals; i++ {
+				publishDeal(false, true)
 			}
 
 			// Wait until publish period has elapsed
@@ -141,7 +159,7 @@ func TestDealPublisher(t *testing.T) {
 
 			// Publish deals after publish period
 			for i := 0; i < tc.dealCountAfterPublishPeriod; i++ {
-				publishDeal(false)
+				publishDeal(false, false)
 			}
 
 			// For each message that was expected to be sent
@@ -221,6 +239,20 @@ func newDPAPI(t *testing.T, worker address.Address) *dpAPI {
 		stateMinerInfoCalls: make(chan address.Address, 128),
 		pushedMsgs:          make(chan *types.Message, 128),
 	}
+}
+
+func (d *dpAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	dummyCid, err := cid.Parse("bafkqaaa")
+	require.NoError(d.t, err)
+	return types.NewTipSet([]*types.BlockHeader{{
+		Miner:                 tutils.NewActorAddr(d.t, "miner"),
+		Height:                abi.ChainEpoch(10),
+		ParentStateRoot:       dummyCid,
+		Messages:              dummyCid,
+		ParentMessageReceipts: dummyCid,
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
+	}})
 }
 
 func (d *dpAPI) StateMinerInfo(ctx context.Context, address address.Address, key types.TipSetKey) (miner.MinerInfo, error) {
