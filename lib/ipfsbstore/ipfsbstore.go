@@ -21,7 +21,7 @@ import (
 )
 
 type IpfsBstore struct {
-	ctx context.Context
+	ctx             context.Context
 	api, offlineAPI iface.CoreAPI
 }
 
@@ -43,8 +43,8 @@ func NewIpfsBstore(ctx context.Context, onlineMode bool) (*IpfsBstore, error) {
 	}
 
 	return &IpfsBstore{
-		ctx: ctx,
-		api: api,
+		ctx:        ctx,
+		api:        api,
 		offlineAPI: offlineAPI,
 	}, nil
 }
@@ -67,8 +67,8 @@ func NewRemoteIpfsBstore(ctx context.Context, maddr multiaddr.Multiaddr, onlineM
 	}
 
 	return &IpfsBstore{
-		ctx: ctx,
-		api: api,
+		ctx:        ctx,
+		api:        api,
 		offlineAPI: offlineAPI,
 	}, nil
 }
