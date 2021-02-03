@@ -3,9 +3,13 @@
 package dagspliter
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/ipld/go-car"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/docker/go-units"
 	"github.com/filecoin-project/lotus/lib/ipfsbstore"
@@ -30,8 +34,12 @@ type Prefix struct {
 	MhLength int64
 }
 
+// FIXME: Rethink the name. What is the difference between an edge and a link
+//  besides belonging to different abstraction layers. I'd rather have a
+//  BoxLink than an Edge.
 type Edge struct {
-	Box   WeakCID
+	Box WeakCID
+	// FIXME: Rename to singular.
 	Links WeakCID // always links to Box-es
 }
 
@@ -39,9 +47,8 @@ type Edge struct {
 // Wrapper around nodes to group into a fixed size. Alternative to actual
 // re-chunking.
 type Box struct {
-	// Nodes with external links
-	// root always 0-th; nodes don't have to depend on root; can be empty
-	// FIXME: What are the >1th nodes? Children? Maybe we could decouple that.
+	// FIXME: Rename to ROOTS. We only care about top of (sub-)graphs, which
+	//  is what we need to generate CAR files.
 	Nodes []cid.Cid
 
 	// References to external subgraphs
@@ -52,13 +59,28 @@ type Box struct {
 	External []*Edge
 }
 
+// FIXME: This needs to be revised to see the most appropriate
+//  way to inspect external links without impacting performance.
+func (box *Box) isExternal(link *ipld.Link) bool {
+	for _, edge := range box.External {
+		if bytes.Compare(edge.Links, link.Cid.Bytes()) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 type edgeTemplate struct {
-	box   BoxID
+	// FIXME: Not used at the moment but may be useful when unpacking many CAR
+	//  files together (we will now in which box/CAR file we can find this node).
+	//  Retaining it in the meanwhile.
+	box BoxID
+
 	links WeakCID
 }
 
 type boxTemplate struct {
-	nodes    []cid.Cid
+	roots    []cid.Cid
 	external []edgeTemplate
 
 	// FIXME: We likely want to keep this in the final Box.
@@ -77,7 +99,18 @@ type builder struct {
 	boxes []*boxTemplate // box 0 = root
 }
 
-func (b *builder) getTotalSize(nd ipld.Node) (uint64, error) {
+func getSingleNodeSize(node ipld.Node) uint64 {
+	// FIXME: How to check the size of the parent node without taking into
+	//  account the children? The Node interface doesn't seem to account for
+	//  that so we are going directly to the Block interface for now.
+	//  We can probably get away with not accounting non-file data well, and
+	//  just have some % overhead when accounting space (obviously that will
+	//  break horribly with small files, but it should be good enough in the
+	//  average case).
+	return uint64(len(node.RawData()))
+}
+
+func (b *builder) getTreeSize(nd ipld.Node) (uint64, error) {
 	switch n := nd.(type) {
 	case *mdag.RawNode:
 		return uint64(len(n.RawData())), nil
@@ -117,7 +150,7 @@ func (b *builder) getTotalSize(nd ipld.Node) (uint64, error) {
 }
 
 // FIXME: Isn't this in go-units?
-const mib = 1 << 20
+const kib = 1 << 10
 
 // Get current box we are packing into. By definition now this is always the
 // last created box.
@@ -138,7 +171,16 @@ func (b *builder) newBox() {
 // Remaining size in the current box.
 func (b *builder) boxRemainingSize() uint64 {
 	// FIXME: Assert this is always `0 <= ret <= max_size`.
-	return b.chunk - b.box().used
+	return b.chunk - b.used()
+}
+
+func (b *builder) used() uint64 {
+	return b.box().used
+}
+
+func (b *builder) emptyBox() bool {
+	// FIXME: Assert this is always `0 <= ret <= max_size`.
+	return b.used() == 0
 }
 
 // Check this size fits in the current box.
@@ -146,12 +188,20 @@ func (b *builder) fits(size uint64) bool {
 	return size <= b.boxRemainingSize()
 }
 
-// Pack the entire the root node CID in this box.
-// FIXME: What is a link exactly in this context? A generic node, a child?
-func (b *builder) packNodeCid(root cid.Cid, size uint64) {
+func (b *builder) addSize(size uint64) {
 	// FIXME: Maybe assert size (`fits`).
-	b.box().nodes = append(b.box().nodes, root)
 	b.box().used += size
+}
+
+func (b *builder) packRoot(c cid.Cid) {
+	b.box().roots = append(b.box().roots, c)
+}
+
+func (b *builder) addExternalLink(node ipld.Node) {
+	b.box().external = append(b.box().external, edgeTemplate{
+		box:   b.boxID(),
+		links: node.Cid().Bytes(),
+	})
 }
 
 func (b *builder) extractIntoRawNode(ctx context.Context, root cid.Cid, rootNode ipld.Node) (ipld.Node, error) {
@@ -174,77 +224,92 @@ func (b *builder) extractIntoRawNode(ctx context.Context, root cid.Cid, rootNode
 	return rn, nil
 }
 
-func (b *builder) add(ctx context.Context, head cid.Cid, headNd ipld.Node, level string) error { // returns box id with head
-	// FIXME: Rename to cumulative/total size. Head should track just the top node size.
-	headSize, err := b.getTotalSize(headNd)
-	if err != nil {
-		return xerrors.Errorf("getting node total size: %w", err)
-	}
+func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
+	rootsToPack := []ipld.Node{initialRoot}
 
-	_, _ = fmt.Fprintf(os.Stderr, level+"put %s into box %d\n", head, b.boxID())
+	for len(rootsToPack) > 0 {
+		// Pick one root node from the queue.
+		// FIXME: Is there a difference between a LIFO/FIFO for the CAR generation?
+		root := rootsToPack[len(rootsToPack)-1]
+		rootsToPack = rootsToPack[:len(rootsToPack)-1]
+		b.packRoot(root.Cid())
 
-	if b.fits(headSize) {
-		_, _ = fmt.Fprintf(os.Stderr, level+"^ make internal, %dmib\n", (headSize+b.box().used)/mib)
-		b.packNodeCid(head, headSize)
-		return nil
-	}
+		prevNumberOfRoots := len(rootsToPack)
+		err := mdag.Walk(ctx,
+			// FIXME: Check if this is the standard way of fetching links.
+			func(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
+				return ipld.GetLinks(ctx, b.serv, c)
+			},
+			root.Cid(),
+			// FIXME: The `Visit` function can't return errors, which seems odd
+			//  given it should be the function that does the core of the walking
+			//  logic (besides signaling if we want to continue with the walk or
+			//  not). For now everything is a panic here.
+			// FIXME: Check for repeated nodes? How do they count in the CAR file?
+			func(nodeCid cid.Cid) bool {
+				node, err := b.serv.Get(ctx, nodeCid)
+				if err != nil {
+					panic(fmt.Sprintf("getting head node: %w", err))
+				}
 
-	// Too big for the current box. We need to examine its links to see
-	// how to partition it.
+				treeSize, err := b.getTreeSize(node)
+				if err != nil {
+					panic(fmt.Sprintf("getting tree size: %w", err))
+				}
 
-	// First the parent node.
-	// FIXME: How to check the size of the parent node without taking into
-	//  account the children? The Node interface doesn't seem to account for
-	//  that so we are going directly to the Block interface for now.
-	//  (If this is indeed the correct way reuse the raw data for the extract
-	//   call next.)
-	//  From magik:
-	//  That's a bit annoying, and something that could be better about dag-pb, but it's
-	//  likely not changing any time soon.. maybe with unixfs v2 we can get node count /
-	//  total raw byte size entries.
-	//  For now we can probably get away with not accounting non-file data well, and
-	//  just have some % overhead when accounting space (obviously that will break
-	//  horribly with small files, but it should be good enough in the average case)
-	if !b.fits(uint64(len(headNd.RawData()))) {
-		b.newBox()
-	}
-	// It may be the case that the parent node taken individually is still
-	// larger than the box size but this is still the best effort possible:
-	// packing a very big node in its own box separate from the rest.
-	rawNode, err := b.extractIntoRawNode(ctx, head, headNd)
-	// FIXME: Check if we really need to repackage the root into a raw node.
-	if err != nil {
-		return xerrors.Errorf("extracting raw node: %w", err)
-	}
-	rawNodeSize, err := rawNode.Size()
-	// FIXME: This call can probably be avoided.
-	if err != nil {
-		return xerrors.Errorf("getting raw node size: %w", err)
-	}
-	b.packNodeCid(rawNode.Cid(), rawNodeSize)
+				_, _ = fmt.Fprintf(os.Stderr, "checking node %s (tree size %d) (box %d)\n",
+					node.String(), treeSize, b.boxID())
 
-	_, _ = fmt.Fprintf(os.Stderr, level+"^ make %s boxed\n", head)
+				if b.fits(treeSize) {
+					b.addSize(treeSize)
 
-	// Now check child nodes.
-	currentBox := b.box()
-	// Track the current box we stored the root node before as the child nodes
-	// will start to create new boxes.
-	// FIXME: This will be cleaned up once we do a proper tracking of box IDs.
-	for _, subnd := range headNd.Links() { // todo maybe iterate in reverse (why?)
-		subNd, err := b.serv.Get(ctx, subnd.Cid)
+					_, _ = fmt.Fprintf(os.Stderr, "entire tree fits in box (cumulative %dkib)\n", b.used()/kib)
+
+					// The entire (sub-)graph fits so no need to keep walking it.
+					return false
+				}
+
+				// Too big for the current box. We need to split parent
+				// and sub-graphs (from the child nodes) and inspect their
+				// sizes separately.
+
+				// First check the size of the parent node alone.
+				parentSize := getSingleNodeSize(node)
+				fmt.Fprintf(os.Stderr, "tree too big, single node size: %d\n",
+					parentSize)
+
+				if b.fits(parentSize) || b.emptyBox() {
+					b.addSize(parentSize)
+					// Even if the node doesn't fit but this is an empty box we
+					// should add it nonetheless. It means it doesn't fit in *any*
+					// box so at least make sure it has its own dedicated one.
+					fmt.Fprintf(os.Stderr, "added node to box (cumulative %dkib)\n",
+						b.used()/kib)
+					// Added the parent to the box, now process its children in the
+					// next `Walk()` calls.
+					return true
+				}
+
+				// Doesn't fit: process this node in the next box as a root.
+				rootsToPack = append(rootsToPack, node)
+				b.addExternalLink(node)
+				fmt.Fprintf(os.Stderr, "node too big, adding as root for another box\n")
+				// No need to visit children as not even the parent fits.
+				return false
+			},
+			// FIXME: We're probably not ready for any type of concurrency at this point.
+			mdag.Concurrency(0),
+		)
 		if err != nil {
-			return xerrors.Errorf("getting subnode: %w", err)
+			return xerrors.Errorf("error walking dag: %w", err)
 		}
-		err = b.add(ctx, subnd.Cid, subNd, level+" ")
-		if err != nil {
-			return xerrors.Errorf("processing subnode: %w", err)
-		}
-		if b.box() != currentBox {
-			// The child nodes have been stored in new boxes.
-			currentBox.external = append(currentBox.external, edgeTemplate{
-				box:   b.boxID(),
-				links: subnd.Cid.Bytes(),
-			})
+
+		if len(rootsToPack) > prevNumberOfRoots {
+			// We have added internal nodes as "new" roots which means we'll
+			// need a new box to put them in.
+			fmt.Fprintf(os.Stderr, "***CREATING NEW BOX %d*** (previous one used %d kib)\n",
+				b.boxID()+1, b.used()/kib)
+			b.newBox()
 		}
 	}
 
@@ -295,7 +360,7 @@ var Cmd = &cli.Command{
 			return xerrors.Errorf("getting head node: %w", err)
 		}
 
-		err = bb.add(ctx, root, rootNd, "")
+		err = bb.add(ctx, rootNd)
 		if err != nil {
 			return err
 		}
@@ -313,7 +378,7 @@ var Cmd = &cli.Command{
 			}
 
 			box := &Box{
-				Nodes:    bb.boxes[i].nodes,
+				Nodes:    bb.boxes[i].roots,
 				External: edges,
 			}
 
@@ -325,13 +390,63 @@ var Cmd = &cli.Command{
 			fmt.Printf("%s\n", boxCids[i])
 		}
 
+		CAR_OUT_DIR := "dagsplitter-car-files"
+		if _, err := os.Stat(CAR_OUT_DIR); os.IsNotExist(err) {
+			os.Mkdir(CAR_OUT_DIR, os.ModePerm)
+		}
+
+		for _, boxCid := range boxCids {
+			box := Box{}
+			if err := cst.Get(ctx, boxCid, &box); err != nil {
+				// FIXME: We could just retain the created boxes but trying
+				//  to make it more decoupled (we might not have them available
+				//  by the time this is called).
+				return xerrors.Errorf("failed retrieving box: %w", err)
+			}
+
+			//_, _ = fmt.Fprintf(os.Stderr, "Creating car with roots: %v\n", box.Nodes)
+
+			out := new(bytes.Buffer)
+			if err := car.WriteCarWithWalker(context.TODO(), dag, box.Nodes, out, BoxCarWalkFunc(&box)); err != nil {
+				return xerrors.Errorf("write car failed: %w", err)
+			}
+
+			if err := ioutil.WriteFile(filepath.Join(CAR_OUT_DIR, boxCid.String()+".car"),
+				out.Bytes(), 0644); err != nil {
+				return xerrors.Errorf("write file failed: %w", err)
+			}
+		}
+
 		return nil
 	},
+}
+
+func BoxCarWalkFunc(box *Box) func(nd ipld.Node) (out []*ipld.Link, err error) {
+	return func(nd ipld.Node) (out []*ipld.Link, err error) {
+		for _, link := range nd.Links() {
+
+			// Do not walk into nodes external to the current `box`.
+			if box.isExternal(link) {
+				//_, _ = fmt.Fprintf(os.Stderr, "Found external link, skipping from CAR generation: %s\n", link.Cid.String())
+				continue
+			}
+
+			// FIXME: Taken from the original `gen.CarWalkFunc`, what are these?
+			pref := link.Cid.Prefix()
+			if pref.Codec == cid.FilCommitmentSealed || pref.Codec == cid.FilCommitmentUnsealed {
+				continue
+			}
+
+			out = append(out, link)
+		}
+
+		return out, nil
+	}
 }
 
 // FIXME: Add real test. For now check that the output matches across refactors.
 // ```bash
 // ./lotus-shed dagsplit QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB 1M`
-// # bafy2bzacebucjp2d22m5mrdfkv2udcz3iabb4vtzodzr3jptihemcxkz2cfau
-// # bafy2bzaceaisuwk563a3zcbtn2kyi7klpq3q3secedrxnxax7l54c3rksnqpm
+// # bafy2bzacedqfsq3jggpowtmjhsseflp6tu56gnkoyrgnobb64oxtmzf2uzrei
+// # bafy2bzacecuyghj5wmna3xhkhkpon4lioaj5utcva7xqljz6vqaslze3wv7wo
 // ```
