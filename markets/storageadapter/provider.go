@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -108,8 +109,9 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 
 	sdInfo := sealing.DealInfo{
-		DealID:     deal.DealID,
-		PublishCid: deal.PublishCid,
+		DealID:       deal.DealID,
+		DealProposal: &deal.Proposal,
+		PublishCid:   deal.PublishCid,
 		DealSchedule: sealing.DealSchedule{
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
@@ -156,30 +158,36 @@ func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Si
 	return err == nil, err
 }
 
-func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
+func (n *ProviderNodeAdapter) GetMinerWorkerAddress(ctx context.Context, maddr address.Address, tok shared.TipSetToken) (address.Address, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	mi, err := n.StateMinerInfo(ctx, miner, tsk)
+	mi, err := n.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
 		return address.Address{}, err
 	}
 	return mi.Worker, nil
 }
 
-func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, miner address.Address, tok shared.TipSetToken) (abi.RegisteredSealProof, error) {
+func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, maddr address.Address, tok shared.TipSetToken) (abi.RegisteredSealProof, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return 0, err
 	}
 
-	mi, err := n.StateMinerInfo(ctx, miner, tsk)
+	mi, err := n.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
 		return 0, err
 	}
-	return mi.SealProofType, nil
+
+	nver, err := n.StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return 0, err
+	}
+
+	return miner.PreferredSealProofTypeFromWindowPoStType(nver, mi.WindowPoStProofType)
 }
 
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {

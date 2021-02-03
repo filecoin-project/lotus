@@ -249,6 +249,7 @@ var sectorsListCmd = &cli.Command{
 			tablewriter.Col("Events"),
 			tablewriter.Col("Deals"),
 			tablewriter.Col("DealWeight"),
+			tablewriter.Col("VerifiedPower"),
 			tablewriter.NewLineCol("Error"),
 			tablewriter.NewLineCol("RecoveryTimeout"))
 
@@ -268,9 +269,11 @@ var sectorsListCmd = &cli.Command{
 				_, inSSet := commitedIDs[s]
 				_, inASet := activeIDs[s]
 
-				dw := .0
+				dw, vp := .0, .0
 				if st.Expiration-st.Activation > 0 {
-					dw = float64(big.Div(st.DealWeight, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+					rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
+					dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(9)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 				}
 
 				var deals int
@@ -309,6 +312,9 @@ var sectorsListCmd = &cli.Command{
 
 						if !fast && deals > 0 {
 							m["DealWeight"] = units.BytesSize(dw)
+							if vp > 0 {
+								m["VerifiedPower"] = color.GreenString(units.BytesSize(vp))
+							}
 						}
 
 						if st.Early > 0 {

@@ -58,6 +58,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -66,7 +67,7 @@ import (
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
-	"github.com/filecoin-project/lotus/miner"
+	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -127,8 +128,12 @@ func SealProofType(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (abi.Register
 	if err != nil {
 		return 0, err
 	}
+	networkVersion, err := fnapi.StateNetworkVersion(context.TODO(), types.EmptyTSK)
+	if err != nil {
+		return 0, err
+	}
 
-	return mi.SealProofType, nil
+	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
 }
 
 type sidsc struct {
@@ -213,7 +218,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, sealer, j, maddr)
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, verif, sealer, j, maddr)
 		if err != nil {
 			return nil, err
 		}
@@ -357,8 +362,9 @@ func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.Provid
 	return ps, nil
 }
 
-func StagingMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
-	ds, err := r.Datastore("/staging")
+func StagingMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	ds, err := r.Datastore(ctx, "/staging")
 	if err != nil {
 		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
 	}
@@ -379,8 +385,9 @@ func StagingMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.StagingMu
 
 // StagingBlockstore creates a blockstore for staging blocks for a miner
 // in a storage deal, prior to sealing
-func StagingBlockstore(r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
-	stagingds, err := r.Datastore("/staging")
+func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	stagingds, err := r.Datastore(ctx, "/staging")
 	if err != nil {
 		return nil, err
 	}
@@ -419,13 +426,13 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*miner.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*lotusminer.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	m := miner.NewMiner(api, epp, minerAddr, sf, j)
+	m := lotusminer.NewMiner(api, epp, minerAddr, sf, j)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -805,6 +812,7 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxSealingSectors:         cfg.MaxSealingSectors,
 				MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            config.Duration(cfg.WaitDealsDelay),
+				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
 			}
 		})
 		return
@@ -819,6 +827,7 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 				MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
 				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
+				AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
 			}
 		})
 		return

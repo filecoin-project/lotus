@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/filecoin-project/oni/lotus-soup/paych"
-	"github.com/filecoin-project/oni/lotus-soup/rfwp"
-	"github.com/filecoin-project/oni/lotus-soup/testkit"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/paych"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/rfwp"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 
 	"github.com/testground/sdk-go/run"
 )

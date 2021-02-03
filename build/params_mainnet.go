@@ -2,6 +2,7 @@
 // +build !2k
 // +build !testground
 // +build !calibnet
+// +build !nerpanet
 
 package build
 
@@ -50,6 +51,9 @@ const UpgradeOrangeHeight = 336458
 // 2020-12-22T02:00:00Z
 const UpgradeClausHeight = 343200
 
+// TODO
+const UpgradeActorsV3Height = 999999999
+
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 
@@ -58,6 +62,8 @@ func init() {
 	}
 
 	Devnet = false
+
+	BuildType = BuildMainnet
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)

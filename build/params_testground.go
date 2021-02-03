@@ -90,8 +90,9 @@ var (
 	UpgradeKumquatHeight  abi.ChainEpoch = -6
 	UpgradeCalicoHeight   abi.ChainEpoch = -7
 	UpgradePersianHeight  abi.ChainEpoch = -8
-	UpgradeClausHeight    abi.ChainEpoch = -9
-	UpgradeOrangeHeight   abi.ChainEpoch = -10
+	UpgradeOrangeHeight   abi.ChainEpoch = -9
+	UpgradeClausHeight    abi.ChainEpoch = -10
+	UpgradeActorsV3Height abi.ChainEpoch = -11
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,

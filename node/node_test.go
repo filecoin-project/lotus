@@ -57,6 +57,9 @@ func TestAPIDealFlow(t *testing.T) {
 	t.Run("TestFastRetrievalDealFlow", func(t *testing.T) {
 		test.TestFastRetrievalDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
 	})
+	t.Run("TestZeroPricePerByteRetrievalDealFlow", func(t *testing.T) {
+		test.TestZeroPricePerByteRetrievalDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
+	})
 }
 
 func TestAPIDealFlowReal(t *testing.T) {
@@ -197,4 +200,30 @@ func TestPaymentChannels(t *testing.T) {
 	logging.SetLogLevel("storageminer", "ERROR")
 
 	test.TestPaymentChannels(t, builder.MockSbBuilder, 5*time.Millisecond)
+}
+
+func TestWindowPostDispute(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestWindowPostDispute(t, builder.MockSbBuilder, 2*time.Millisecond)
+}
+
+func TestWindowPostDisputeFails(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestWindowPostDisputeFails(t, builder.MockSbBuilder, 2*time.Millisecond)
 }

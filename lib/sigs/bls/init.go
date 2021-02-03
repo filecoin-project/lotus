@@ -7,17 +7,17 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	blst "github.com/supranational/blst/bindings/go"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 const DST = string("BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
 
-type SecretKey = blst.SecretKey
-type PublicKey = blst.P1Affine
-type Signature = blst.P2Affine
-type AggregateSignature = blst.P2Aggregate
+type SecretKey = ffi.PrivateKey
+type PublicKey = ffi.PublicKey
+type Signature = ffi.Signature
+type AggregateSignature = ffi.Signature
 
 type blsSigner struct{}
 
@@ -29,30 +29,55 @@ func (blsSigner) GenPrivate() ([]byte, error) {
 		return nil, fmt.Errorf("bls signature error generating random data")
 	}
 	// Note private keys seem to be serialized little-endian!
-	pk := blst.KeyGen(ikm[:]).ToLEndian()
-	return pk, nil
+	sk := ffi.PrivateKeyGenerateWithSeed(ikm)
+	return sk[:], nil
 }
 
 func (blsSigner) ToPublic(priv []byte) ([]byte, error) {
-	pk := new(SecretKey).FromLEndian(priv)
-	if pk == nil || !pk.Valid() {
+	if priv == nil || len(priv) != ffi.PrivateKeyBytes {
 		return nil, fmt.Errorf("bls signature invalid private key")
 	}
-	return new(PublicKey).From(pk).Compress(), nil
+
+	sk := new(SecretKey)
+	copy(sk[:], priv[:ffi.PrivateKeyBytes])
+
+	pubkey := ffi.PrivateKeyPublicKey(*sk)
+
+	return pubkey[:], nil
 }
 
 func (blsSigner) Sign(p []byte, msg []byte) ([]byte, error) {
-	pk := new(SecretKey).FromLEndian(p)
-	if pk == nil || !pk.Valid() {
+	if p == nil || len(p) != ffi.PrivateKeyBytes {
 		return nil, fmt.Errorf("bls signature invalid private key")
 	}
-	return new(Signature).Sign(pk, msg, []byte(DST)).Compress(), nil
+
+	sk := new(SecretKey)
+	copy(sk[:], p[:ffi.PrivateKeyBytes])
+
+	sig := ffi.PrivateKeySign(*sk, msg)
+
+	return sig[:], nil
 }
 
 func (blsSigner) Verify(sig []byte, a address.Address, msg []byte) error {
-	if !new(Signature).VerifyCompressed(sig, a.Payload()[:], msg, []byte(DST)) {
+	payload := a.Payload()
+	if sig == nil || len(sig) != ffi.SignatureBytes || len(payload) != ffi.PublicKeyBytes {
 		return fmt.Errorf("bls signature failed to verify")
 	}
+
+	pk := new(PublicKey)
+	copy(pk[:], payload[:ffi.PublicKeyBytes])
+
+	sigS := new(Signature)
+	copy(sigS[:], sig[:ffi.SignatureBytes])
+
+	msgs := [1]ffi.Message{msg}
+	pks := [1]PublicKey{*pk}
+
+	if !ffi.HashVerify(sigS, msgs[:], pks[:]) {
+		return fmt.Errorf("bls signature failed to verify")
+	}
+
 	return nil
 }
 

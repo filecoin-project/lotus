@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
@@ -67,7 +68,7 @@ func (fsr *fsLockedRepo) openDatastores(readonly bool) (map[string]datastore.Bat
 	return out, nil
 }
 
-func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
+func (fsr *fsLockedRepo) Datastore(_ context.Context, ns string) (datastore.Batching, error) {
 	fsr.dsOnce.Do(func() {
 		fsr.ds, fsr.dsErr = fsr.openDatastores(fsr.readonly)
 	})

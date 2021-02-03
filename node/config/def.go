@@ -65,6 +65,8 @@ type SealingConfig struct {
 
 	WaitDealsDelay Duration
 
+	AlwaysKeepUnsealedCopy bool
+
 	// Keep this many sectors in sealing pipeline, start CC if needed
 	// todo TargetSealingSectors uint64
 

@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 
+	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-jsonrpc"
+	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/lotus/build"
@@ -99,6 +101,17 @@ var runCmd = &cli.Command{
 		rpcServer.Register("Filecoin", metrics.MetricedGatewayAPI(NewGatewayAPI(api)))
 
 		mux.Handle("/rpc/v0", rpcServer)
+
+		registry := promclient.DefaultRegisterer.(*promclient.Registry)
+		exporter, err := prometheus.NewExporter(prometheus.Options{
+			Registry:  registry,
+			Namespace: "lotus_gw",
+		})
+		if err != nil {
+			return err
+		}
+		mux.Handle("/debug/metrics", exporter)
+
 		mux.PathPrefix("/").Handler(http.DefaultServeMux)
 
 		/*ah := &auth.Handler{

@@ -53,7 +53,7 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 			continue
 		}
 
-		proposal, err := api.StateMarketStorageDeal(ctx, p.DealInfo.DealID, tok)
+		proposal, err := api.StateMarketStorageDealProposal(ctx, p.DealInfo.DealID, tok)
 		if err != nil {
 			return &ErrInvalidDeals{xerrors.Errorf("getting deal %d for piece %d: %w", p.DealInfo.DealID, i, err)}
 		}

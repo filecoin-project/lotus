@@ -7,6 +7,7 @@ import (
 	"io"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
+	market "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -135,7 +136,7 @@ func (t *DealInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{164}); err != nil {
+	if _, err := w.Write([]byte{165}); err != nil {
 		return err
 	}
 
@@ -176,6 +177,22 @@ func (t *DealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.DealID)); err != nil {
+		return err
+	}
+
+	// t.DealProposal (market.DealProposal) (struct)
+	if len("DealProposal") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"DealProposal\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("DealProposal"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("DealProposal")); err != nil {
+		return err
+	}
+
+	if err := t.DealProposal.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -282,6 +299,26 @@ func (t *DealInfo) UnmarshalCBOR(r io.Reader) error {
 					return fmt.Errorf("wrong type for uint64 field")
 				}
 				t.DealID = abi.DealID(extra)
+
+			}
+			// t.DealProposal (market.DealProposal) (struct)
+		case "DealProposal":
+
+			{
+
+				b, err := br.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := br.UnreadByte(); err != nil {
+						return err
+					}
+					t.DealProposal = new(market.DealProposal)
+					if err := t.DealProposal.UnmarshalCBOR(br); err != nil {
+						return xerrors.Errorf("unmarshaling t.DealProposal pointer: %w", err)
+					}
+				}
 
 			}
 			// t.DealSchedule (sealing.DealSchedule) (struct)

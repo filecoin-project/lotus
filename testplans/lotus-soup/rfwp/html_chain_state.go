@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/oni/lotus-soup/testkit"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -55,7 +55,7 @@ func FetchChainState(t *testkit.TestEnvironment, m *testkit.LotusMiner) error {
 				return c.Code, nil
 			}
 
-			return cli.ComputeStateHTMLTempl(file, tipset, stout, getCode)
+			return cli.ComputeStateHTMLTempl(file, tipset, stout, true, getCode)
 		}()
 		if err != nil {
 			return err

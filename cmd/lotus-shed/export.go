@@ -72,7 +72,7 @@ var exportChainCmd = &cli.Command{
 
 		defer fi.Close() //nolint:errcheck
 
-		bs, err := lr.Blockstore(repo.BlockstoreChain)
+		bs, err := lr.Blockstore(ctx, repo.BlockstoreChain)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
@@ -85,7 +85,7 @@ var exportChainCmd = &cli.Command{
 			}
 		}()
 
-		mds, err := lr.Datastore("/metadata")
+		mds, err := lr.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}
