@@ -608,6 +608,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 					Prover:            abi.ActorID(mid),
 				}); err != nil {
 					log.Errorw("window post verification failed", "post", postOut, "error", err)
+					time.Sleep(5 * time.Second)
 					continue
 				} else if !correct {
 					log.Errorw("generated incorrect window post proof", "post", postOut, "error", err)
