@@ -198,6 +198,13 @@ func (b *builder) add(ctx context.Context, head cid.Cid, headNd ipld.Node, level
 	//  that so we are going directly to the Block interface for now.
 	//  (If this is indeed the correct way reuse the raw data for the extract
 	//   call next.)
+	//  From magik:
+	//  That's a bit annoying, and something that could be better about dag-pb, but it's
+	//  likely not changing any time soon.. maybe with unixfs v2 we can get node count /
+	//  total raw byte size entries.
+	//  For now we can probably get away with not accounting non-file data well, and
+	//  just have some % overhead when accounting space (obviously that will break
+	//  horribly with small files, but it should be good enough in the average case)
 	if !b.fits(uint64(len(headNd.RawData()))) {
 		b.newBox()
 	}
