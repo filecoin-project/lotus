@@ -30,12 +30,6 @@ type Prefix struct {
 	MhLength int64
 }
 
-// FIXME: Replace by RawNode (or a thin wrapper of it).
-type BoxedNode struct {
-	Prefix Prefix  // original CID prefix
-	Raw    cid.Cid // link to the node with raw multicodec
-}
-
 type Edge struct {
 	Box   WeakCID
 	Links WeakCID // always links to Box-es
