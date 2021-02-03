@@ -47,6 +47,8 @@ type Box struct {
 	// References to external subgraphs
 	// if no Nodes nor Internal above, root is 0-th; can be empty
 	// FIXME: Maybe replace by array of boxes CID.
+	//  From magik: "Or we may not need that at all if we write the boxed/raw
+	//  nodes back into the CAR files with the correct codec"
 	External []*Edge
 }
 
