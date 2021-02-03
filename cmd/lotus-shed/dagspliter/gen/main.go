@@ -12,7 +12,6 @@ import (
 func main() {
 	err := gen.WriteMapEncodersToFile("./cbor_gen.go", "dagspliter",
 		dagspliter.Prefix{},
-		dagspliter.BoxedNode{},
 		dagspliter.Edge{},
 		dagspliter.Box{},
 	)

@@ -208,116 +208,6 @@ func (t *Prefix) UnmarshalCBOR(r io.Reader) error {
 
 	return nil
 }
-func (t *BoxedNode) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{162}); err != nil {
-		return err
-	}
-
-	scratch := make([]byte, 9)
-
-	// t.Prefix (dagspliter.Prefix) (struct)
-	if len("Prefix") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Prefix\" was too long")
-	}
-
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Prefix"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("Prefix")); err != nil {
-		return err
-	}
-
-	if err := t.Prefix.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.Raw (cid.Cid) (struct)
-	if len("Raw") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Raw\" was too long")
-	}
-
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Raw"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("Raw")); err != nil {
-		return err
-	}
-
-	if err := cbg.WriteCidBuf(scratch, w, t.Raw); err != nil {
-		return xerrors.Errorf("failed to write cid field t.Raw: %w", err)
-	}
-
-	return nil
-}
-
-func (t *BoxedNode) UnmarshalCBOR(r io.Reader) error {
-	*t = BoxedNode{}
-
-	br := cbg.GetPeeker(r)
-	scratch := make([]byte, 8)
-
-	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
-	}
-
-	if extra > cbg.MaxLength {
-		return fmt.Errorf("BoxedNode: map struct too large (%d)", extra)
-	}
-
-	var name string
-	n := extra
-
-	for i := uint64(0); i < n; i++ {
-
-		{
-			sval, err := cbg.ReadStringBuf(br, scratch)
-			if err != nil {
-				return err
-			}
-
-			name = string(sval)
-		}
-
-		switch name {
-		// t.Prefix (dagspliter.Prefix) (struct)
-		case "Prefix":
-
-			{
-
-				if err := t.Prefix.UnmarshalCBOR(br); err != nil {
-					return xerrors.Errorf("unmarshaling t.Prefix: %w", err)
-				}
-
-			}
-			// t.Raw (cid.Cid) (struct)
-		case "Raw":
-
-			{
-
-				c, err := cbg.ReadCid(br)
-				if err != nil {
-					return xerrors.Errorf("failed to read cid field t.Raw: %w", err)
-				}
-
-				t.Raw = c
-
-			}
-
-		default:
-			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
-		}
-	}
-
-	return nil
-}
 func (t *Edge) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -469,13 +359,13 @@ func (t *Box) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{163}); err != nil {
+	if _, err := w.Write([]byte{162}); err != nil {
 		return err
 	}
 
 	scratch := make([]byte, 9)
 
-	// t.Nodes ([]*dagspliter.BoxedNode) (slice)
+	// t.Nodes ([]cid.Cid) (slice)
 	if len("Nodes") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Nodes\" was too long")
 	}
@@ -495,33 +385,8 @@ func (t *Box) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Nodes {
-		if err := v.MarshalCBOR(w); err != nil {
-			return err
-		}
-	}
-
-	// t.Internal ([]cid.Cid) (slice)
-	if len("Internal") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Internal\" was too long")
-	}
-
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Internal"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("Internal")); err != nil {
-		return err
-	}
-
-	if len(t.Internal) > cbg.MaxLength {
-		return xerrors.Errorf("Slice value in field t.Internal was too long")
-	}
-
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(t.Internal))); err != nil {
-		return err
-	}
-	for _, v := range t.Internal {
 		if err := cbg.WriteCidBuf(scratch, w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.Internal: %w", err)
+			return xerrors.Errorf("failed writing cid field t.Nodes: %w", err)
 		}
 	}
 
@@ -585,7 +450,7 @@ func (t *Box) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.Nodes ([]*dagspliter.BoxedNode) (slice)
+		// t.Nodes ([]cid.Cid) (slice)
 		case "Nodes":
 
 			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
@@ -602,46 +467,16 @@ func (t *Box) UnmarshalCBOR(r io.Reader) error {
 			}
 
 			if extra > 0 {
-				t.Nodes = make([]*BoxedNode, extra)
-			}
-
-			for i := 0; i < int(extra); i++ {
-
-				var v BoxedNode
-				if err := v.UnmarshalCBOR(br); err != nil {
-					return err
-				}
-
-				t.Nodes[i] = &v
-			}
-
-			// t.Internal ([]cid.Cid) (slice)
-		case "Internal":
-
-			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
-			if err != nil {
-				return err
-			}
-
-			if extra > cbg.MaxLength {
-				return fmt.Errorf("t.Internal: array too large (%d)", extra)
-			}
-
-			if maj != cbg.MajArray {
-				return fmt.Errorf("expected cbor array")
-			}
-
-			if extra > 0 {
-				t.Internal = make([]cid.Cid, extra)
+				t.Nodes = make([]cid.Cid, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
 
 				c, err := cbg.ReadCid(br)
 				if err != nil {
-					return xerrors.Errorf("reading cid field t.Internal failed: %w", err)
+					return xerrors.Errorf("reading cid field t.Nodes failed: %w", err)
 				}
-				t.Internal[i] = c
+				t.Nodes[i] = c
 			}
 
 			// t.External ([]*dagspliter.Edge) (slice)

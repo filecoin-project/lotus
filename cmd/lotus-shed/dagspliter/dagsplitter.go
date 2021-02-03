@@ -30,44 +30,44 @@ type Prefix struct {
 	MhLength int64
 }
 
-type BoxedNode struct {
-	Prefix Prefix  // original CID prefix
-	Raw    cid.Cid // link to the node with raw multicodec
-}
-
 type Edge struct {
 	Box   WeakCID
 	Links WeakCID // always links to Box-es
 }
 
 // Box contains part of a DAG, boxing of some edges
+// Wrapper around nodes to group into a fixed size. Alternative to actual
+// re-chunking.
 type Box struct {
 	// Nodes with external links
 	// root always 0-th; nodes don't have to depend on root; can be empty
-	Nodes []*BoxedNode
-
-	// Subgraphs of boxed nodes which fit here
-	// if no Nodes above, root is 0-th; can be empty
-	Internal []cid.Cid
+	// FIXME: What are the >1th nodes? Children? Maybe we could decouple that.
+	Nodes []cid.Cid
 
 	// References to external subgraphs
 	// if no Nodes nor Internal above, root is 0-th; can be empty
+	// FIXME: Maybe replace by array of boxes CID.
+	//  From magik: "Or we may not need that at all if we write the boxed/raw
+	//  nodes back into the CAR files with the correct codec"
 	External []*Edge
 }
 
 type edgeTemplate struct {
-	box   int
+	box   BoxID
 	links WeakCID
 }
 
 type boxTemplate struct {
-	nodes    []*BoxedNode
-	internal []cid.Cid
+	nodes    []cid.Cid
 	external []edgeTemplate
 
+	// FIXME: We likely want to keep this in the final Box.
 	used uint64
 }
 
+type BoxID int
+
+// FIXME: Document, at least where do each come from. Where is the store provided?
 type builder struct {
 	st   cbor.IpldStore
 	serv ipld.DAGService
@@ -77,7 +77,7 @@ type builder struct {
 	boxes []*boxTemplate // box 0 = root
 }
 
-func (b *builder) getSize(nd ipld.Node) (uint64, error) {
+func (b *builder) getTotalSize(nd ipld.Node) (uint64, error) {
 	switch n := nd.(type) {
 	case *mdag.RawNode:
 		return uint64(len(n.RawData())), nil
@@ -89,14 +89,8 @@ func (b *builder) getSize(nd ipld.Node) (uint64, error) {
 		}
 
 		switch fsNode.Type() {
-		case unixfs.TFile, unixfs.TRaw:
-			return fsNode.FileSize(), nil
-		case unixfs.TDirectory, unixfs.THAMTShard:
-			var out uint64
-			for _, link := range n.Links() {
-				out += link.Size
-			}
-			return out, nil
+		case unixfs.TFile, unixfs.TRaw, unixfs.TDirectory, unixfs.THAMTShard:
+			return n.Size()
 		case unixfs.TMetadata:
 			/*if len(n.Links()) == 0 {
 				return nil, xerrors.New("incorrectly formatted metadata object")
@@ -122,104 +116,139 @@ func (b *builder) getSize(nd ipld.Node) (uint64, error) {
 	}
 }
 
-func (b *builder) getBox(data uint64) int {
-	if len(b.boxes) == 0 {
-		b.boxes = append(b.boxes, new(boxTemplate))
-	}
-
-	last := len(b.boxes) - 1
-
-	// if the data can fit in one chunk, but not the current one, start a new one
-	if data < b.chunk && b.boxes[last].used+data > b.chunk {
-		b.boxes = append(b.boxes, new(boxTemplate))
-		last++
-	}
-
-	// todo if full add
-
-	return last
-}
-
+// FIXME: Isn't this in go-units?
 const mib = 1 << 20
 
-func (b *builder) add(ctx context.Context, head cid.Cid, headNd ipld.Node, level string) (int, error) { // returns box id with head
-	headSize, err := b.getSize(headNd)
+// Get current box we are packing into. By definition now this is always the
+// last created box.
+func (b *builder) boxID() BoxID {
+	return BoxID(len(b.boxes) - 1)
+}
+
+// Get current box we are packing into.
+// FIXME: Make sure from the construction of the builder that there is always one.
+func (b *builder) box() *boxTemplate {
+	return b.boxes[b.boxID()]
+}
+
+func (b *builder) newBox() {
+	b.boxes = append(b.boxes, new(boxTemplate))
+}
+
+// Remaining size in the current box.
+func (b *builder) boxRemainingSize() uint64 {
+	// FIXME: Assert this is always `0 <= ret <= max_size`.
+	return b.chunk - b.box().used
+}
+
+// Check this size fits in the current box.
+func (b *builder) fits(size uint64) bool {
+	return size <= b.boxRemainingSize()
+}
+
+// Pack the entire the root node CID in this box.
+// FIXME: What is a link exactly in this context? A generic node, a child?
+func (b *builder) packNodeCid(root cid.Cid, size uint64) {
+	// FIXME: Maybe assert size (`fits`).
+	b.box().nodes = append(b.box().nodes, root)
+	b.box().used += size
+}
+
+func (b *builder) extractIntoRawNode(ctx context.Context, root cid.Cid, rootNode ipld.Node) (ipld.Node, error) {
+	p := root.Prefix()
+
+	// TODO: wasn't the ipfs blockstore supposed to operate on multihashes?
+	rn, err := mdag.NewRawNodeWPrefix(rootNode.RawData(), &cid.V1Builder{
+		Codec:    cid.Raw,
+		MhType:   p.MhType,
+		MhLength: p.MhLength,
+	})
 	if err != nil {
-		return 0, err
+		return nil, xerrors.Errorf("adding raw boxed node: %w", err)
 	}
 
-	bid := b.getBox(headSize)
-	_, _ = fmt.Fprintf(os.Stderr, level+"put %s into box %d\n", head, bid)
+	if err := b.serv.Add(ctx, rn); err != nil {
+		return nil, xerrors.Errorf("storing raw boxed node: %w", err)
+	}
 
-	if headSize+b.boxes[bid].used > b.chunk { // too big for this box, need more boxes
-		p := head.Prefix()
+	return rn, nil
+}
 
-		b.boxes[bid].nodes = append(b.boxes[bid].nodes, &BoxedNode{
-			Prefix: Prefix{
-				Version:  p.Version,
-				Codec:    p.Codec,
-				MhType:   p.MhType,
-				MhLength: int64(p.MhLength),
-			},
-			Raw: cid.NewCidV1(cid.Raw, head.Hash()),
-		})
+func (b *builder) add(ctx context.Context, head cid.Cid, headNd ipld.Node, level string) error { // returns box id with head
+	// FIXME: Rename to cumulative/total size. Head should track just the top node size.
+	headSize, err := b.getTotalSize(headNd)
+	if err != nil {
+		return xerrors.Errorf("getting node total size: %w", err)
+	}
 
-		{
-			// TODO: wasn't the ipfs blockstore supposed to operate on multihashes?
-			rn, err := mdag.NewRawNodeWPrefix(headNd.RawData(), &cid.V1Builder{
-				Codec:    cid.Raw,
-				MhType:   p.MhType,
-				MhLength: p.MhLength,
+	_, _ = fmt.Fprintf(os.Stderr, level+"put %s into box %d\n", head, b.boxID())
+
+	if b.fits(headSize) {
+		_, _ = fmt.Fprintf(os.Stderr, level+"^ make internal, %dmib\n", (headSize+b.box().used)/mib)
+		b.packNodeCid(head, headSize)
+		return nil
+	}
+
+	// Too big for the current box. We need to examine its links to see
+	// how to partition it.
+
+	// First the parent node.
+	// FIXME: How to check the size of the parent node without taking into
+	//  account the children? The Node interface doesn't seem to account for
+	//  that so we are going directly to the Block interface for now.
+	//  (If this is indeed the correct way reuse the raw data for the extract
+	//   call next.)
+	//  From magik:
+	//  That's a bit annoying, and something that could be better about dag-pb, but it's
+	//  likely not changing any time soon.. maybe with unixfs v2 we can get node count /
+	//  total raw byte size entries.
+	//  For now we can probably get away with not accounting non-file data well, and
+	//  just have some % overhead when accounting space (obviously that will break
+	//  horribly with small files, but it should be good enough in the average case)
+	if !b.fits(uint64(len(headNd.RawData()))) {
+		b.newBox()
+	}
+	// It may be the case that the parent node taken individually is still
+	// larger than the box size but this is still the best effort possible:
+	// packing a very big node in its own box separate from the rest.
+	rawNode, err := b.extractIntoRawNode(ctx, head, headNd)
+	// FIXME: Check if we really need to repackage the root into a raw node.
+	if err != nil {
+		return xerrors.Errorf("extracting raw node: %w", err)
+	}
+	rawNodeSize, err := rawNode.Size()
+	// FIXME: This call can probably be avoided.
+	if err != nil {
+		return xerrors.Errorf("getting raw node size: %w", err)
+	}
+	b.packNodeCid(rawNode.Cid(), rawNodeSize)
+
+	_, _ = fmt.Fprintf(os.Stderr, level+"^ make %s boxed\n", head)
+
+	// Now check child nodes.
+	currentBox := b.box()
+	// Track the current box we stored the root node before as the child nodes
+	// will start to create new boxes.
+	// FIXME: This will be cleaned up once we do a proper tracking of box IDs.
+	for _, subnd := range headNd.Links() { // todo maybe iterate in reverse (why?)
+		subNd, err := b.serv.Get(ctx, subnd.Cid)
+		if err != nil {
+			return xerrors.Errorf("getting subnode: %w", err)
+		}
+		err = b.add(ctx, subnd.Cid, subNd, level+" ")
+		if err != nil {
+			return xerrors.Errorf("processing subnode: %w", err)
+		}
+		if b.box() != currentBox {
+			// The child nodes have been stored in new boxes.
+			currentBox.external = append(currentBox.external, edgeTemplate{
+				box:   b.boxID(),
+				links: subnd.Cid.Bytes(),
 			})
-			if err != nil {
-				return 0, xerrors.Errorf("adding raw boxed node: %w", err)
-			}
-
-			if err := b.serv.Add(ctx, rn); err != nil {
-				return 0, xerrors.Errorf("storing raw boxed node: %w", err)
-			}
 		}
-
-		_, _ = fmt.Fprintf(os.Stderr, level+"^ make %s boxed\n", head)
-
-		for l, subnd := range headNd.Links() { // todo maybe iterate in reverse
-			subNd, err := b.serv.Get(ctx, subnd.Cid)
-			if err != nil {
-				return 0, xerrors.Errorf("getting subnode: %w", err)
-			}
-
-			subSize, err := b.getSize(subNd)
-			if err != nil {
-				return 0, xerrors.Errorf("getting subnode size: %w", err)
-			}
-
-			if subSize+b.boxes[bid].used > b.chunk { // sub node too big
-				subBox, err := b.add(ctx, subnd.Cid, subNd, level+" ")
-				if err != nil {
-					return 0, xerrors.Errorf("processing subnode: %w", err)
-				}
-
-				if subBox != bid {
-					_, _ = fmt.Fprintf(os.Stderr, level+"^ link %s/%s (link %d) external ref %s in box %d\n", head, subnd.Name, l, subnd.Cid, subBox)
-					b.boxes[bid].external = append(b.boxes[bid].external, edgeTemplate{
-						box:   subBox,
-						links: subnd.Cid.Bytes(),
-					})
-				}
-			} else { // fits here
-				_, _ = fmt.Fprintf(os.Stderr, level+"^ link %s/%s (link %d) INTERNAL ref %s\n", head, subnd.Name, l, subnd.Cid)
-				b.boxes[bid].used += subSize
-				b.boxes[bid].internal = append(b.boxes[bid].internal, subnd.Cid)
-			}
-		}
-
-	} else { // current box is big enough
-		_, _ = fmt.Fprintf(os.Stderr, level+"^ make internal, %dmib\n", (headSize+b.boxes[bid].used)/mib)
-		b.boxes[bid].used += headSize
-		b.boxes[bid].internal = append(b.boxes[bid].internal, head)
 	}
 
-	return bid, nil
+	return nil
 }
 
 var Cmd = &cli.Command{
@@ -257,14 +286,16 @@ var Cmd = &cli.Command{
 			serv: dag,
 
 			chunk: uint64(chunk),
+			boxes: make([]*boxTemplate, 0),
 		}
+		bb.newBox() // FIXME: Encapsulate in a constructor.
 
 		rootNd, err := dag.Get(ctx, root)
 		if err != nil {
 			return xerrors.Errorf("getting head node: %w", err)
 		}
 
-		_, err = bb.add(ctx, root, rootNd, "")
+		err = bb.add(ctx, root, rootNd, "")
 		if err != nil {
 			return err
 		}
@@ -283,7 +314,6 @@ var Cmd = &cli.Command{
 
 			box := &Box{
 				Nodes:    bb.boxes[i].nodes,
-				Internal: bb.boxes[i].internal,
 				External: edges,
 			}
 
@@ -298,3 +328,10 @@ var Cmd = &cli.Command{
 		return nil
 	},
 }
+
+// FIXME: Add real test. For now check that the output matches across refactors.
+// ```bash
+// ./lotus-shed dagsplit QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB 1M`
+// # bafy2bzacebucjp2d22m5mrdfkv2udcz3iabb4vtzodzr3jptihemcxkz2cfau
+// # bafy2bzaceaisuwk563a3zcbtn2kyi7klpq3q3secedrxnxax7l54c3rksnqpm
+// ```
