@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -22,7 +21,7 @@ import (
 )
 
 var DealSectorPriority = 1024
-var MaxTicketAge = abi.ChainEpoch(builtin0.EpochsInDay * 2)
+var MaxTicketAge = policy.MaxPreCommitRandomnessLookback
 
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
