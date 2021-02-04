@@ -59,11 +59,12 @@ type Box struct {
 	External []*Edge
 }
 
-// FIXME: This needs to be revised to see the most appropriate
-//  way to inspect external links without impacting performance.
 func (box *Box) isExternal(link *ipld.Link) bool {
+	// Boxes we're working on are likely to be in L2/L3 cache, and comparing bytes
+	// is really fast, so it may not even make sense to optimize this, at least
+	// unless it shows up in traces.
 	for _, edge := range box.External {
-		if bytes.Compare(edge.Links, link.Cid.Bytes()) == 0 {
+		if bytes.Equal(edge.Links, link.Cid.Bytes()) {
 			return true
 		}
 	}
@@ -225,11 +226,13 @@ func (b *builder) extractIntoRawNode(ctx context.Context, root cid.Cid, rootNode
 }
 
 func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
+	// LIFO queue with the roots that need to be scanned and boxed.
+	// LIFO(-ish, node links pushed in reverse) should result in slightly better
+	// data layout (less fragmentation in leaves) than FIFO.
 	rootsToPack := []ipld.Node{initialRoot}
 
 	for len(rootsToPack) > 0 {
 		// Pick one root node from the queue.
-		// FIXME: Is there a difference between a LIFO/FIFO for the CAR generation?
 		root := rootsToPack[len(rootsToPack)-1]
 		rootsToPack = rootsToPack[:len(rootsToPack)-1]
 		b.packRoot(root.Cid())
@@ -390,6 +393,12 @@ var Cmd = &cli.Command{
 			fmt.Printf("%s\n", boxCids[i])
 		}
 
+		// =====================
+		// CAR generation logic.
+		// =====================
+		// FIXME: Should be decoupled from the above (probably in its own
+		//  separate command).
+
 		CAR_OUT_DIR := "dagsplitter-car-files"
 		if _, err := os.Stat(CAR_OUT_DIR); os.IsNotExist(err) {
 			os.Mkdir(CAR_OUT_DIR, os.ModePerm)
@@ -431,7 +440,12 @@ func BoxCarWalkFunc(box *Box) func(nd ipld.Node) (out []*ipld.Link, err error) {
 				continue
 			}
 
-			// FIXME: Taken from the original `gen.CarWalkFunc`, what are these?
+			// Taken from the original `gen.CarWalkFunc`:
+			//  Filecoin sector commitment CIDs (CommD (padded/truncated sha256
+			//  binary tree), CommR (basically magic tree)). Those are linked
+			//  directly in the chain state, so this avoids trying to accidentally
+			//  walk over a few exabytes of data.
+			// FIXME: Avoid duplicating this code from the original.
 			pref := link.Cid.Prefix()
 			if pref.Codec == cid.FilCommitmentSealed || pref.Codec == cid.FilCommitmentUnsealed {
 				continue
