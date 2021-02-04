@@ -47,12 +47,10 @@ type Edge struct {
 // Wrapper around nodes to group into a fixed size. Alternative to actual
 // re-chunking.
 type Box struct {
-	// FIXME: Rename to ROOTS. We only care about top of (sub-)graphs, which
-	//  is what we need to generate CAR files.
-	Nodes []cid.Cid
+	Roots []cid.Cid
 
 	// References to external subgraphs
-	// if no Nodes nor Internal above, root is 0-th; can be empty
+	// if no Roots nor Internal above, root is 0-th; can be empty
 	// FIXME: Maybe replace by array of boxes CID.
 	//  From magik: "Or we may not need that at all if we write the boxed/raw
 	//  nodes back into the CAR files with the correct codec"
@@ -363,7 +361,7 @@ var Cmd = &cli.Command{
 			}
 
 			box := &Box{
-				Nodes:    bb.boxes[i].roots,
+				Roots:    bb.boxes[i].roots,
 				External: edges,
 			}
 
@@ -399,10 +397,10 @@ var Cmd = &cli.Command{
 				return xerrors.Errorf("failed retrieving box: %w", err)
 			}
 
-			//_, _ = fmt.Fprintf(os.Stderr, "Creating car with roots: %v\n", box.Nodes)
+			//_, _ = fmt.Fprintf(os.Stderr, "Creating car with roots: %v\n", box.Roots)
 
 			out := new(bytes.Buffer)
-			if err := car.WriteCarWithWalker(context.TODO(), dag, box.Nodes, out, BoxCarWalkFunc(&box)); err != nil {
+			if err := car.WriteCarWithWalker(context.TODO(), dag, box.Roots, out, BoxCarWalkFunc(&box)); err != nil {
 				return xerrors.Errorf("write car failed: %w", err)
 			}
 
@@ -447,8 +445,8 @@ func BoxCarWalkFunc(box *Box) func(nd ipld.Node) (out []*ipld.Link, err error) {
 // FIXME: Add real test. For now check that the output matches across refactors.
 // ```bash
 // ./lotus-shed dagsplit QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB 1M`
-// # bafy2bzacedqfsq3jggpowtmjhsseflp6tu56gnkoyrgnobb64oxtmzf2uzrei
-// # bafy2bzacecuyghj5wmna3xhkhkpon4lioaj5utcva7xqljz6vqaslze3wv7wo
+// # bafy2bzacebr7lznfzlr4ippmuwer7ntnlxdu6q4hn6gypywn7f64q2knxw6bw
+// # bafy2bzacedxrxpltoc7jjjc75xl7egw7lx7qsw7cirlbbe7rai6umzfwsclmw
 // ls -la dagsplitter-car-files/
 // # 1055442 feb  3 21:24 bafy2bzacecuyghj5wmna3xhkhkpon4lioaj5utcva7xqljz6vqaslze3wv7wo.car
 // # 416285 feb  3 21:24 bafy2bzacedqfsq3jggpowtmjhsseflp6tu56gnkoyrgnobb64oxtmzf2uzrei.car

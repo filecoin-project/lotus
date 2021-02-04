@@ -365,28 +365,28 @@ func (t *Box) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Nodes ([]cid.Cid) (slice)
-	if len("Nodes") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Nodes\" was too long")
+	// t.Roots ([]cid.Cid) (slice)
+	if len("Roots") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Roots\" was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Nodes"))); err != nil {
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Roots"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Nodes")); err != nil {
+	if _, err := io.WriteString(w, string("Roots")); err != nil {
 		return err
 	}
 
-	if len(t.Nodes) > cbg.MaxLength {
-		return xerrors.Errorf("Slice value in field t.Nodes was too long")
+	if len(t.Roots) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Roots was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(t.Nodes))); err != nil {
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(t.Roots))); err != nil {
 		return err
 	}
-	for _, v := range t.Nodes {
+	for _, v := range t.Roots {
 		if err := cbg.WriteCidBuf(scratch, w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.Nodes: %w", err)
+			return xerrors.Errorf("failed writing cid field t.Roots: %w", err)
 		}
 	}
 
@@ -450,8 +450,8 @@ func (t *Box) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.Nodes ([]cid.Cid) (slice)
-		case "Nodes":
+		// t.Roots ([]cid.Cid) (slice)
+		case "Roots":
 
 			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 			if err != nil {
@@ -459,7 +459,7 @@ func (t *Box) UnmarshalCBOR(r io.Reader) error {
 			}
 
 			if extra > cbg.MaxLength {
-				return fmt.Errorf("t.Nodes: array too large (%d)", extra)
+				return fmt.Errorf("t.Roots: array too large (%d)", extra)
 			}
 
 			if maj != cbg.MajArray {
@@ -467,16 +467,16 @@ func (t *Box) UnmarshalCBOR(r io.Reader) error {
 			}
 
 			if extra > 0 {
-				t.Nodes = make([]cid.Cid, extra)
+				t.Roots = make([]cid.Cid, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
 
 				c, err := cbg.ReadCid(br)
 				if err != nil {
-					return xerrors.Errorf("reading cid field t.Nodes failed: %w", err)
+					return xerrors.Errorf("reading cid field t.Roots failed: %w", err)
 				}
-				t.Nodes[i] = c
+				t.Roots[i] = c
 			}
 
 			// t.External ([]*dagspliter.Edge) (slice)
