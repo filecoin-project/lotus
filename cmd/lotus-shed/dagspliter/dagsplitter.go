@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/ipfsbstore"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	mdag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs"
@@ -166,23 +166,23 @@ func (b *builder) packRoot(c cid.Cid) {
 	b.box().Roots = append(b.box().Roots, c)
 }
 
-func (b *builder) addExternalLink(node ipld.Node) {
-	b.box().External = append(b.box().External, node.Cid())
+func (b *builder) addExternalLink(node cid.Cid) {
+	b.box().External = append(b.box().External, node)
 }
 
 // Pack a DAG delimited by `initialRoot` in boxes. To enforce the maximum
 // box size the DAG will be decomposed into smaller sub-DAGs if necessary.
-func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
+func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 	// LIFO queue with the roots that need to be scanned and boxed.
 	// LIFO(-ish, node links pushed in reverse) should result in slightly better
 	// data layout (less fragmentation in leaves) than FIFO.
-	rootsToPack := []ipld.Node{initialRoot}
+	rootsToPack := []cid.Cid{initialRoot}
 
 	for len(rootsToPack) > 0 {
 		// Pick one root node from the queue.
 		root := rootsToPack[len(rootsToPack)-1]
 		rootsToPack = rootsToPack[:len(rootsToPack)-1]
-		b.packRoot(root.Cid())
+		b.packRoot(root)
 
 		prevNumberOfRoots := len(rootsToPack)
 		err := mdag.Walk(ctx,
@@ -190,7 +190,7 @@ func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
 			func(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
 				return ipld.GetLinks(ctx, b.dagService, c)
 			},
-			root.Cid(),
+			root,
 			// FIXME: The `Visit` function can't return errors, which seems odd
 			//  given it should be the function that does the core of the walking
 			//  logic (besides signaling if we want to continue with the walk or
@@ -208,7 +208,7 @@ func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
 				}
 
 				_, _ = fmt.Fprintf(os.Stderr, "checking node %s (tree size %d) (box %d)\n",
-					node.String(), treeSize, b.boxID())
+					nodeCid.String(), treeSize, b.boxID())
 
 				if b.fits(treeSize) {
 					b.addSize(treeSize)
@@ -241,8 +241,8 @@ func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
 				}
 
 				// Doesn't fit: process this node in the next box as a root.
-				rootsToPack = append(rootsToPack, node)
-				b.addExternalLink(node)
+				rootsToPack = append(rootsToPack, nodeCid)
+				b.addExternalLink(nodeCid)
 				fmt.Fprintf(os.Stderr, "node too big, adding as root for another box\n")
 				// No need to visit children as not even the parent fits.
 				return false
@@ -273,11 +273,6 @@ var Cmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		bs, err := ipfsbstore.NewIpfsBstore(ctx, true)
-		if err != nil {
-			return xerrors.Errorf("getting ipfs bstore: %w", err)
-		}
-
 		if cctx.Args().Len() != 2 {
 			return xerrors.Errorf("expected 2 args, root, and chuck size")
 		}
@@ -292,7 +287,15 @@ var Cmd = &cli.Command{
 			return xerrors.Errorf("parsing chunk size: %w", err)
 		}
 
-		cst := cbor.NewCborStore(bs)
+		// FIXME: The DAG-to-Box generation and Box-to-CAR generation is now
+		//  coupled in the same command, so for now we don't save the intermediate
+		//  boxes in the block store (IPFS) but keep them in memory and dump
+		//  them directly as CAR files.
+
+		bs, err := ipfsbstore.NewIpfsBstore(ctx, true)
+		if err != nil {
+			return xerrors.Errorf("getting ipfs bstore: %w", err)
+		}
 
 		bb := builder{
 			dagService: mdag.NewDAGService(blockservice.New(bs, nil)),
@@ -301,32 +304,18 @@ var Cmd = &cli.Command{
 		}
 		bb.newBox() // FIXME: Encapsulate in a constructor.
 
-		rootNd, err := bb.dagService.Get(ctx, root)
+		err = bb.add(ctx, root)
 		if err != nil {
-			return xerrors.Errorf("getting head node: %w", err)
-		}
-
-		err = bb.add(ctx, rootNd)
-		if err != nil {
-			return err
-		}
-
-		boxCids := make([]cid.Cid, len(bb.boxes))
-		for i, box := range bb.boxes {
-			boxCids[i], err = cst.Put(ctx, box)
-			if err != nil {
-				return xerrors.Errorf("putting box %d: %w", i, err)
-			}
-
-			fmt.Printf("BOX %d: %s\n", i, boxCids[i])
+			return xerrors.Errorf("error generating boxes: %w", err)
 		}
 
 		// =====================
 		// CAR generation logic.
 		// =====================
-		// FIXME: Should be decoupled from the above (probably in its own
+		// FIXME: Maybe should be decoupled from the above (probably in its own
 		//  separate command).
 
+		// Create (hard-coded) output directory if necessary.
 		CAR_OUT_DIR := "dagsplitter-car-files"
 		if _, err := os.Stat(CAR_OUT_DIR); os.IsNotExist(err) {
 			if err := os.Mkdir(CAR_OUT_DIR, os.ModePerm); err != nil {
@@ -336,23 +325,18 @@ var Cmd = &cli.Command{
 			return xerrors.Errorf("querying directory stat: %w", err)
 		}
 
-		for _, boxCid := range boxCids {
-			box := Box{}
-			if err := cst.Get(ctx, boxCid, &box); err != nil {
-				// FIXME: We could just retain the created boxes but trying
-				//  to make it more decoupled (we might not have them available
-				//  by the time this is called).
-				return xerrors.Errorf("failed retrieving box: %w", err)
-			}
-
+		// Write one CAR file for each Box.
+		for i, box := range bb.boxes {
 			//_, _ = fmt.Fprintf(os.Stderr, "Creating car with roots: %v\n", box.Roots)
 
 			out := new(bytes.Buffer)
-			if err := car.WriteCarWithWalker(context.TODO(), bb.dagService, box.Roots, out, BoxCarWalkFunc(&box)); err != nil {
+			if err := car.WriteCarWithWalker(context.TODO(), bb.dagService, box.Roots, out, BoxCarWalkFunc(box)); err != nil {
 				return xerrors.Errorf("write car failed: %w", err)
 			}
 
-			if err := ioutil.WriteFile(filepath.Join(CAR_OUT_DIR, boxCid.String()+".car"),
+			boxIdWidth := 1 + int(math.Log10(float64(len(bb.boxes))))
+			if err := ioutil.WriteFile(filepath.Join(CAR_OUT_DIR,
+				fmt.Sprintf("box-%s-%*d.car", root.String(), boxIdWidth, i)),
 				out.Bytes(), 0644); err != nil {
 				return xerrors.Errorf("write file failed: %w", err)
 			}
@@ -393,9 +377,7 @@ func BoxCarWalkFunc(box *Box) func(nd ipld.Node) (out []*ipld.Link, err error) {
 // FIXME: Add real test. For now check that the output matches across refactors.
 // ```bash
 // ./lotus-shed dagsplit QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB 1M`
-// # BOX 0: bafy2bzaceabbm7sc5cltufptovdjwxdbvsxodnrrr5aafcfxqgc73czfpuc4m
-// # BOX 1: bafy2bzacebr7lznfzlr4ippmuwer7ntnlxdu6q4hn6gypywn7f64q2knxw6bw
-// ls -la dagsplitter-car-files/
-// # 1055442 feb  3 21:24 bafy2bzacecuyghj5wmna3xhkhkpon4lioaj5utcva7xqljz6vqaslze3wv7wo.car
-// # 416285 feb  3 21:24 bafy2bzacedqfsq3jggpowtmjhsseflp6tu56gnkoyrgnobb64oxtmzf2uzrei.car
+// stat -c "%s %n" dagsplitter-car-files/*.car
+// 1055442 dagsplitter-car-files/box-QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB-0.car
+// 416285 dagsplitter-car-files/box-QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB-1.car
 // ```
