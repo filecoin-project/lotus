@@ -34,15 +34,6 @@ type Prefix struct {
 	MhLength int64
 }
 
-// FIXME: Rethink the name. What is the difference between an edge and a link
-//  besides belonging to different abstraction layers. I'd rather have a
-//  BoxLink than an Edge.
-type Edge struct {
-	Box WeakCID
-	// FIXME: Rename to singular.
-	Links WeakCID // always links to Box-es
-}
-
 // Box contains part of a DAG, boxing of some edges
 // Wrapper around nodes to group into a fixed size. Alternative to actual
 // re-chunking.
@@ -54,36 +45,20 @@ type Box struct {
 	// FIXME: Maybe replace by array of boxes CID.
 	//  From magik: "Or we may not need that at all if we write the boxed/raw
 	//  nodes back into the CAR files with the correct codec"
-	External []*Edge
+	External []cid.Cid
 }
 
 func (box *Box) isExternal(link *ipld.Link) bool {
 	// Boxes we're working on are likely to be in L2/L3 cache, and comparing bytes
 	// is really fast, so it may not even make sense to optimize this, at least
 	// unless it shows up in traces.
-	for _, edge := range box.External {
-		if bytes.Equal(edge.Links, link.Cid.Bytes()) {
+	for _, externalLink := range box.External {
+		if bytes.Equal(externalLink.Bytes(), link.Cid.Bytes()) {
 			return true
 		}
 	}
 	return false
 }
-
-type edgeTemplate struct {
-	// FIXME: Not used at the moment but may be useful when unpacking many CAR
-	//  files together (we will now in which box/CAR file we can find this node).
-	//  Retaining it in the meanwhile.
-	box BoxID
-
-	links WeakCID
-}
-
-type boxTemplate struct {
-	roots    []cid.Cid
-	external []edgeTemplate
-}
-
-type BoxID int
 
 // FIXME: Document, at least where do each come from. Where is the store provided?
 type builder struct {
@@ -92,7 +67,7 @@ type builder struct {
 
 	chunk uint64
 
-	boxes []*boxTemplate // box 0 = root
+	boxes []*Box // box 0 = root
 	// Used size of the current box we are packing (last one in the list). Since
 	// we only pack one box at a time and don't come back to a box once we're
 	// done with it we just track a single value here and not in each box.
@@ -154,18 +129,18 @@ const kib = 1 << 10
 
 // Get current box we are packing into. By definition now this is always the
 // last created box.
-func (b *builder) boxID() BoxID {
-	return BoxID(len(b.boxes) - 1)
+func (b *builder) boxID() int {
+	return len(b.boxes) - 1
 }
 
 // Get current box we are packing into.
 // FIXME: Make sure from the construction of the builder that there is always one.
-func (b *builder) box() *boxTemplate {
+func (b *builder) box() *Box {
 	return b.boxes[b.boxID()]
 }
 
 func (b *builder) newBox() {
-	b.boxes = append(b.boxes, new(boxTemplate))
+	b.boxes = append(b.boxes, new(Box))
 	b.boxUsedSize = 0
 }
 
@@ -195,14 +170,11 @@ func (b *builder) addSize(size uint64) {
 }
 
 func (b *builder) packRoot(c cid.Cid) {
-	b.box().roots = append(b.box().roots, c)
+	b.box().Roots = append(b.box().Roots, c)
 }
 
 func (b *builder) addExternalLink(node ipld.Node) {
-	b.box().external = append(b.box().external, edgeTemplate{
-		box:   b.boxID(),
-		links: node.Cid().Bytes(),
-	})
+	b.box().External = append(b.box().External, node.Cid())
 }
 
 func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
@@ -334,7 +306,7 @@ var Cmd = &cli.Command{
 			serv: dag,
 
 			chunk: uint64(chunk),
-			boxes: make([]*boxTemplate, 0),
+			boxes: make([]*Box, 0),
 		}
 		bb.newBox() // FIXME: Encapsulate in a constructor.
 
@@ -349,28 +321,13 @@ var Cmd = &cli.Command{
 		}
 
 		boxCids := make([]cid.Cid, len(bb.boxes))
-		for i := range bb.boxes {
-			i = len(bb.boxes) - i - 1
-
-			edges := make([]*Edge, len(bb.boxes[i].external))
-			for j, template := range bb.boxes[i].external {
-				edges[j] = &Edge{
-					Box:   boxCids[template.box].Bytes(),
-					Links: template.links,
-				}
-			}
-
-			box := &Box{
-				Roots:    bb.boxes[i].roots,
-				External: edges,
-			}
-
+		for i, box := range bb.boxes {
 			boxCids[i], err = cst.Put(ctx, box)
 			if err != nil {
 				return xerrors.Errorf("putting box %d: %w", i, err)
 			}
 
-			fmt.Printf("%s\n", boxCids[i])
+			fmt.Printf("BOX %d: %s\n", i, boxCids[i])
 		}
 
 		// =====================
@@ -445,8 +402,8 @@ func BoxCarWalkFunc(box *Box) func(nd ipld.Node) (out []*ipld.Link, err error) {
 // FIXME: Add real test. For now check that the output matches across refactors.
 // ```bash
 // ./lotus-shed dagsplit QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB 1M`
-// # bafy2bzacebr7lznfzlr4ippmuwer7ntnlxdu6q4hn6gypywn7f64q2knxw6bw
-// # bafy2bzacedxrxpltoc7jjjc75xl7egw7lx7qsw7cirlbbe7rai6umzfwsclmw
+// # BOX 0: bafy2bzaceabbm7sc5cltufptovdjwxdbvsxodnrrr5aafcfxqgc73czfpuc4m
+// # BOX 1: bafy2bzacebr7lznfzlr4ippmuwer7ntnlxdu6q4hn6gypywn7f64q2knxw6bw
 // ls -la dagsplitter-car-files/
 // # 1055442 feb  3 21:24 bafy2bzacecuyghj5wmna3xhkhkpon4lioaj5utcva7xqljz6vqaslze3wv7wo.car
 // # 416285 feb  3 21:24 bafy2bzacedqfsq3jggpowtmjhsseflp6tu56gnkoyrgnobb64oxtmzf2uzrei.car
