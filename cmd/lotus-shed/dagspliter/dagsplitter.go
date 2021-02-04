@@ -227,7 +227,7 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 
 				// First check the size of the parent node alone.
 				parentSize := getSingleNodeSize(node)
-				b.print(fmt.Sprintf( "tree too big, single node size: %s",
+				b.print(fmt.Sprintf("tree too big, single node size: %s",
 					units.BytesSize(float64(parentSize))))
 
 				if b.fits(parentSize) || b.emptyBox() {
