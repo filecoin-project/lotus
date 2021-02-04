@@ -10,9 +10,12 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/docker/go-units"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/ipfsbstore"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -58,6 +61,9 @@ type builder struct {
 
 	// Maximum size allowed for each generated Box.
 	boxMaxSize uint64
+
+	// Minimum size of graph chunks to bother packing into boxes
+	minSubgraphSize uint64
 
 	// Generated boxes when packing a DAG.
 	boxes []*Box
@@ -225,27 +231,34 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 				// and sub-graphs (from the child nodes) and inspect their
 				// sizes separately.
 
-				// First check the size of the parent node alone.
-				parentSize := getSingleNodeSize(node)
-				b.print(fmt.Sprintf("tree too big, single node size: %s",
-					units.BytesSize(float64(parentSize))))
+				// First check if we should even bother splitting the graph more
+				if treeSize > b.minSubgraphSize {
+					// First check the size of the parent node alone.
+					parentSize := getSingleNodeSize(node)
+					b.print(fmt.Sprintf("tree too big, single node size: %s",
+						units.BytesSize(float64(parentSize))))
 
-				if b.fits(parentSize) || b.emptyBox() {
-					b.addSize(parentSize)
-					// Even if the node doesn't fit but this is an empty box we
-					// should add it nonetheless. It means it doesn't fit in *any*
-					// box so at least make sure it has its own dedicated one.
-					b.print("added node to box")
+					if b.fits(parentSize) || b.emptyBox() {
+						b.addSize(parentSize)
+						// Even if the node doesn't fit but this is an empty box we
+						// should add it nonetheless. It means it doesn't fit in *any*
+						// box so at least make sure it has its own dedicated one.
+						b.print("added node to box")
 
-					// Added the parent to the box, now process its children in the
-					// next `Walk()` calls.
-					return true
+						// Added the parent to the box, now process its children in the
+						// next `Walk()` calls.
+						return true
+					} else {
+						b.print(fmt.Sprintf("node too big (%s), adding as root for another box", units.BytesSize(float64(parentSize))))
+					}
+				} else {
+					b.print(fmt.Sprintf("subgraph too small (%s), adding as root for another box", units.BytesSize(float64(treeSize))))
 				}
 
-				// Doesn't fit: process this node in the next box as a root.
+				// Doesn't fit or it doesn't make sense to split the graph more:
+				// process this node in the next box as a root.
 				rootsToPack = append(rootsToPack, nodeCid)
 				b.addExternalLink(nodeCid)
-				b.print("node too big, adding as root for another box")
 				// No need to visit children as not even the parent fits.
 				return false
 			},
@@ -267,15 +280,30 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 	return nil
 }
 
+type countBs struct {
+	blockstore.Blockstore
+	get, has int64
+}
+
+func (cbs *countBs) Has(c cid.Cid) (bool, error) {
+	atomic.AddInt64(&cbs.has, 1)
+	return cbs.Blockstore.Has(c)
+}
+
+func (cbs *countBs) Get(c cid.Cid) (blocks.Block, error) {
+	atomic.AddInt64(&cbs.get, 1)
+	return cbs.Blockstore.Get(c)
+}
+
 var Cmd = &cli.Command{
 	Name:      "dagsplit",
 	Usage:     "Cid command",
-	ArgsUsage: "[root] [chunk size] [output dir]",
+	ArgsUsage: "[root] [chunk size] [minimum subgraph size] [output dir]",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		if cctx.Args().Len() < 2 {
-			return xerrors.Errorf("expected at least 2 args: root and chuck size")
+		if cctx.Args().Len() < 3 {
+			return xerrors.Errorf("expected at least 3 args: root, minimum subgraph, size and chuck size")
 		}
 
 		root, err := cid.Parse(cctx.Args().First())
@@ -288,6 +316,11 @@ var Cmd = &cli.Command{
 			return xerrors.Errorf("parsing chunk size: %w", err)
 		}
 
+		minSubgraph, err := units.RAMInBytes(cctx.Args().Get(2))
+		if err != nil {
+			return xerrors.Errorf("parsing min subgraph size: %w", err)
+		}
+
 		// FIXME: The DAG-to-Box generation and Box-to-CAR generation is now
 		//  coupled in the same command, so for now we don't save the intermediate
 		//  boxes in the block store (IPFS) but keep them in memory and dump
@@ -297,11 +330,13 @@ var Cmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("getting ipfs bstore: %w", err)
 		}
+		cbs := &countBs{Blockstore: bs}
 
 		bb := builder{
-			dagService: mdag.NewDAGService(blockservice.New(bs, nil)),
-			boxMaxSize: uint64(chunk),
-			boxes:      make([]*Box, 0),
+			dagService:      mdag.NewDAGService(blockservice.New(cbs, nil)),
+			boxMaxSize:      uint64(chunk),
+			minSubgraphSize: uint64(minSubgraph),
+			boxes:           make([]*Box, 0),
 		}
 		bb.newBox() // FIXME: Encapsulate in a constructor.
 
@@ -310,6 +345,8 @@ var Cmd = &cli.Command{
 			return xerrors.Errorf("error generating boxes: %w", err)
 		}
 
+		fmt.Fprintf(os.Stderr, "\nBlockstore access stats: get:%d has:%d\n", cbs.get, cbs.has)
+
 		// =====================
 		// CAR generation logic.
 		// =====================
@@ -317,7 +354,7 @@ var Cmd = &cli.Command{
 		//  separate command).
 
 		// Create output directory if necessary.
-		outDir := cctx.Args().Get(2)
+		outDir := cctx.Args().Get(3)
 		if outDir == "" {
 			outDir = "dagsplitter-car-files"
 			// FIXME: The default should be part of the command definition.
