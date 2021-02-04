@@ -117,9 +117,6 @@ func (b *builder) getTreeSize(nd ipld.Node) (uint64, error) {
 	}
 }
 
-// FIXME: Isn't this in go-units?
-const kib = 1 << 10
-
 // Get current box we are packing into. By definition now this is always the
 // last created box.
 func (b *builder) boxID() int {
@@ -145,6 +142,12 @@ func (b *builder) boxRemainingSize() uint64 {
 
 func (b *builder) used() uint64 {
 	return b.boxUsedSize
+}
+
+func (b *builder) print(msg string) {
+	status := fmt.Sprintf("[BOX %d] <%s>:",
+		b.boxID(), units.BytesSize(float64(b.used())))
+	fmt.Fprintf(os.Stderr, "%s %s\n", status, msg)
 }
 
 func (b *builder) emptyBox() bool {
@@ -207,13 +210,12 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 					panic(fmt.Sprintf("getting tree size: %s", err))
 				}
 
-				_, _ = fmt.Fprintf(os.Stderr, "checking node %s (tree size %d) (box %d)\n",
-					nodeCid.String(), treeSize, b.boxID())
+				b.print(fmt.Sprintf("checking node %s, tree size %s",
+					nodeCid.String(), units.BytesSize(float64(treeSize))))
 
 				if b.fits(treeSize) {
 					b.addSize(treeSize)
-
-					_, _ = fmt.Fprintf(os.Stderr, "entire tree fits in box (cumulative %dkib)\n", b.used()/kib)
+					b.print("added entire tree to box")
 
 					// The entire (sub-)graph fits so no need to keep walking it.
 					return false
@@ -225,16 +227,16 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 
 				// First check the size of the parent node alone.
 				parentSize := getSingleNodeSize(node)
-				fmt.Fprintf(os.Stderr, "tree too big, single node size: %d\n",
-					parentSize)
+				b.print(fmt.Sprintf( "tree too big, single node size: %s",
+					units.BytesSize(float64(parentSize))))
 
 				if b.fits(parentSize) || b.emptyBox() {
 					b.addSize(parentSize)
 					// Even if the node doesn't fit but this is an empty box we
 					// should add it nonetheless. It means it doesn't fit in *any*
 					// box so at least make sure it has its own dedicated one.
-					fmt.Fprintf(os.Stderr, "added node to box (cumulative %dkib)\n",
-						b.used()/kib)
+					b.print("added node to box")
+
 					// Added the parent to the box, now process its children in the
 					// next `Walk()` calls.
 					return true
@@ -243,7 +245,7 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 				// Doesn't fit: process this node in the next box as a root.
 				rootsToPack = append(rootsToPack, nodeCid)
 				b.addExternalLink(nodeCid)
-				fmt.Fprintf(os.Stderr, "node too big, adding as root for another box\n")
+				b.print("node too big, adding as root for another box")
 				// No need to visit children as not even the parent fits.
 				return false
 			},
@@ -257,9 +259,8 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 		if len(rootsToPack) > prevNumberOfRoots {
 			// We have added internal nodes as "new" roots which means we'll
 			// need a new box to put them in.
-			fmt.Fprintf(os.Stderr, "***CREATING NEW BOX %d*** (previous one used %d kib)\n",
-				b.boxID()+1, b.used()/kib)
 			b.newBox()
+			fmt.Fprintf(os.Stderr, "\n***CREATING NEW BOX %d***\n\n", b.boxID())
 		}
 	}
 
@@ -330,7 +331,7 @@ var Cmd = &cli.Command{
 		}
 
 		// Write one CAR file for each Box.
-		fmt.Fprintf(os.Stderr, "Writing CAR files to directory %s/:\n", outDir)
+		fmt.Fprintf(os.Stderr, "\nWriting CAR files to directory %s/:\n", outDir)
 		for i, box := range bb.boxes {
 			out := new(bytes.Buffer)
 			if err := car.WriteCarWithWalker(context.TODO(), bb.dagService, box.Roots, out, BoxCarWalkFunc(box)); err != nil {
