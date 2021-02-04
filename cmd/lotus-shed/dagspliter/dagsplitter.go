@@ -269,12 +269,12 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 var Cmd = &cli.Command{
 	Name:      "dagsplit",
 	Usage:     "Cid command",
-	ArgsUsage: "[root] [chunk size]",
+	ArgsUsage: "[root] [chunk size] [output dir]",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		if cctx.Args().Len() != 2 {
-			return xerrors.Errorf("expected 2 args, root, and chuck size")
+		if cctx.Args().Len() < 2 {
+			return xerrors.Errorf("expected at least 2 args: root and chuck size")
 		}
 
 		root, err := cid.Parse(cctx.Args().First())
@@ -315,10 +315,14 @@ var Cmd = &cli.Command{
 		// FIXME: Maybe should be decoupled from the above (probably in its own
 		//  separate command).
 
-		// Create (hard-coded) output directory if necessary.
-		CAR_OUT_DIR := "dagsplitter-car-files"
-		if _, err := os.Stat(CAR_OUT_DIR); os.IsNotExist(err) {
-			if err := os.Mkdir(CAR_OUT_DIR, os.ModePerm); err != nil {
+		// Create output directory if necessary.
+		outDir := cctx.Args().Get(2)
+		if outDir == "" {
+			outDir = "dagsplitter-car-files"
+			// FIXME: The default should be part of the command definition.
+		}
+		if _, err := os.Stat(outDir); os.IsNotExist(err) {
+			if err := os.Mkdir(outDir, os.ModePerm); err != nil {
 				return xerrors.Errorf("creating directory: %w", err)
 			}
 		} else if err != nil {
@@ -326,18 +330,18 @@ var Cmd = &cli.Command{
 		}
 
 		// Write one CAR file for each Box.
+		fmt.Fprintf(os.Stderr, "Writing CAR files to directory %s/:\n", outDir)
 		for i, box := range bb.boxes {
-			//_, _ = fmt.Fprintf(os.Stderr, "Creating car with roots: %v\n", box.Roots)
-
 			out := new(bytes.Buffer)
 			if err := car.WriteCarWithWalker(context.TODO(), bb.dagService, box.Roots, out, BoxCarWalkFunc(box)); err != nil {
 				return xerrors.Errorf("write car failed: %w", err)
 			}
 
 			boxIdWidth := 1 + int(math.Log10(float64(len(bb.boxes))))
-			if err := ioutil.WriteFile(filepath.Join(CAR_OUT_DIR,
-				fmt.Sprintf("box-%s-%*d.car", root.String(), boxIdWidth, i)),
-				out.Bytes(), 0644); err != nil {
+			carFilename := fmt.Sprintf("box-%s-%*d.car", root.String(), boxIdWidth, i)
+			fmt.Fprintf(os.Stderr, "%s\t%s\n", units.BytesSize(float64(out.Len())), carFilename)
+			err = ioutil.WriteFile(filepath.Join(outDir, carFilename), out.Bytes(), 0644)
+			if err != nil {
 				return xerrors.Errorf("write file failed: %w", err)
 			}
 		}
@@ -377,7 +381,7 @@ func BoxCarWalkFunc(box *Box) func(nd ipld.Node) (out []*ipld.Link, err error) {
 // FIXME: Add real test. For now check that the output matches across refactors.
 // ```bash
 // ./lotus-shed dagsplit QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB 1M`
-// stat -c "%s %n" dagsplitter-car-files/*.car
-// 1055442 dagsplitter-car-files/box-QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB-0.car
-// 416285 dagsplitter-car-files/box-QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB-1.car
+// Writing CAR files to directory dagsplitter-car-files/:
+// 1.007MiB	box-QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB-0.car
+// 406.5KiB	box-QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB-1.car
 // ```
