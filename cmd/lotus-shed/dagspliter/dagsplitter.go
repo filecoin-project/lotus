@@ -207,26 +207,6 @@ func (b *builder) addExternalLink(node ipld.Node) {
 	})
 }
 
-func (b *builder) extractIntoRawNode(ctx context.Context, root cid.Cid, rootNode ipld.Node) (ipld.Node, error) {
-	p := root.Prefix()
-
-	// TODO: wasn't the ipfs blockstore supposed to operate on multihashes?
-	rn, err := mdag.NewRawNodeWPrefix(rootNode.RawData(), &cid.V1Builder{
-		Codec:    cid.Raw,
-		MhType:   p.MhType,
-		MhLength: p.MhLength,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("adding raw boxed node: %w", err)
-	}
-
-	if err := b.serv.Add(ctx, rn); err != nil {
-		return nil, xerrors.Errorf("storing raw boxed node: %w", err)
-	}
-
-	return rn, nil
-}
-
 func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
 	// LIFO queue with the roots that need to be scanned and boxed.
 	// LIFO(-ish, node links pushed in reverse) should result in slightly better
