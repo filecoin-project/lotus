@@ -83,9 +83,6 @@ type edgeTemplate struct {
 type boxTemplate struct {
 	roots    []cid.Cid
 	external []edgeTemplate
-
-	// FIXME: We likely want to keep this in the final Box.
-	used uint64
 }
 
 type BoxID int
@@ -98,6 +95,10 @@ type builder struct {
 	chunk uint64
 
 	boxes []*boxTemplate // box 0 = root
+	// Used size of the current box we are packing (last one in the list). Since
+	// we only pack one box at a time and don't come back to a box once we're
+	// done with it we just track a single value here and not in each box.
+	boxUsedSize uint64
 }
 
 func getSingleNodeSize(node ipld.Node) uint64 {
@@ -167,6 +168,7 @@ func (b *builder) box() *boxTemplate {
 
 func (b *builder) newBox() {
 	b.boxes = append(b.boxes, new(boxTemplate))
+	b.boxUsedSize = 0
 }
 
 // Remaining size in the current box.
@@ -176,7 +178,7 @@ func (b *builder) boxRemainingSize() uint64 {
 }
 
 func (b *builder) used() uint64 {
-	return b.box().used
+	return b.boxUsedSize
 }
 
 func (b *builder) emptyBox() bool {
@@ -191,7 +193,7 @@ func (b *builder) fits(size uint64) bool {
 
 func (b *builder) addSize(size uint64) {
 	// FIXME: Maybe assert size (`fits`).
-	b.box().used += size
+	b.boxUsedSize += size
 }
 
 func (b *builder) packRoot(c cid.Cid) {
@@ -467,4 +469,7 @@ func BoxCarWalkFunc(box *Box) func(nd ipld.Node) (out []*ipld.Link, err error) {
 // ./lotus-shed dagsplit QmRLzQZ5efau2kJLfZRm9Guo1DxiBp3xCAVf6EuPCqKdsB 1M`
 // # bafy2bzacedqfsq3jggpowtmjhsseflp6tu56gnkoyrgnobb64oxtmzf2uzrei
 // # bafy2bzacecuyghj5wmna3xhkhkpon4lioaj5utcva7xqljz6vqaslze3wv7wo
+// ls -la dagsplitter-car-files/
+// # 1055442 feb  3 21:24 bafy2bzacecuyghj5wmna3xhkhkpon4lioaj5utcva7xqljz6vqaslze3wv7wo.car
+// # 416285 feb  3 21:24 bafy2bzacedqfsq3jggpowtmjhsseflp6tu56gnkoyrgnobb64oxtmzf2uzrei.car
 // ```
