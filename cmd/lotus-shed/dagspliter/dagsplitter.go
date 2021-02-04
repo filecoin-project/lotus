@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ipld/go-car"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,6 +19,7 @@ import (
 	mdag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs"
 	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -252,12 +252,12 @@ func (b *builder) add(ctx context.Context, initialRoot ipld.Node) error {
 			func(nodeCid cid.Cid) bool {
 				node, err := b.serv.Get(ctx, nodeCid)
 				if err != nil {
-					panic(fmt.Sprintf("getting head node: %w", err))
+					panic(fmt.Sprintf("getting head node: %s", err))
 				}
 
 				treeSize, err := b.getTreeSize(node)
 				if err != nil {
-					panic(fmt.Sprintf("getting tree size: %w", err))
+					panic(fmt.Sprintf("getting tree size: %s", err))
 				}
 
 				_, _ = fmt.Fprintf(os.Stderr, "checking node %s (tree size %d) (box %d)\n",
@@ -401,7 +401,11 @@ var Cmd = &cli.Command{
 
 		CAR_OUT_DIR := "dagsplitter-car-files"
 		if _, err := os.Stat(CAR_OUT_DIR); os.IsNotExist(err) {
-			os.Mkdir(CAR_OUT_DIR, os.ModePerm)
+			if err := os.Mkdir(CAR_OUT_DIR, os.ModePerm); err != nil {
+				return xerrors.Errorf("creating directory: %w", err)
+			}
+		} else if err != nil {
+			return xerrors.Errorf("querying directory stat: %w", err)
 		}
 
 		for _, boxCid := range boxCids {
