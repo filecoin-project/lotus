@@ -114,7 +114,7 @@ func (mgr *DealExpiryManager) OnDealExpiredOrSlashed(ctx context.Context, publis
 
 		changedDeals, ok := states.(state.ChangedDeals)
 		if !ok {
-			panic("Expected state.ChangedDeals")
+			return false, xerrors.Errorf("OnDealExpireOrSlashed stateChanged: Expected state.ChangedDeals")
 		}
 
 		deal, ok := changedDeals[res.DealID]
