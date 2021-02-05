@@ -226,8 +226,12 @@ var yeses = []string{
 	"YES",
 	"approve",
 	"Approve",
-	"sign",
-	"Sign",
+	"accept",
+	"Accept",
+	"authorize",
+	"Authorize",
+	"confirm",
+	"Confirm",
 }
 
 func randomYes() string {
