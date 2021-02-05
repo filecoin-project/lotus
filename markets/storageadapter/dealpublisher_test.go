@@ -156,17 +156,17 @@ func TestForcePublish(t *testing.T) {
 	// Should be two deals in the pending deals list
 	// (deal with cancelled context is ignored)
 	pendingInfo := dp.PendingDeals()
-	require.Len(t, pendingInfo.deals, 2)
-	require.Equal(t, publishPeriod, pendingInfo.publishPeriod)
-	require.True(t, pendingInfo.publishPeriodStart.After(start))
-	require.True(t, pendingInfo.publishPeriodStart.Before(time.Now()))
+	require.Len(t, pendingInfo.Deals, 2)
+	require.Equal(t, publishPeriod, pendingInfo.PublishPeriod)
+	require.True(t, pendingInfo.PublishPeriodStart.After(start))
+	require.True(t, pendingInfo.PublishPeriodStart.Before(time.Now()))
 
 	// Force publish all pending deals
 	dp.ForcePublishPendingDeals()
 
 	// Should be no pending deals
 	pendingInfo = dp.PendingDeals()
-	require.Len(t, pendingInfo.deals, 0)
+	require.Len(t, pendingInfo.Deals, 0)
 
 	// Make sure the expected deals were published
 	checkPublishedDeals(t, dpapi, dealsToPublish, []int{2})

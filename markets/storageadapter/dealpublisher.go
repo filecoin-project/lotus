@@ -121,16 +121,8 @@ func newDealPublisher(
 	}
 }
 
-// PendingInfo has info about pending deals and when they are due to be
-// published
-type PendingInfo struct {
-	deals              []*pendingDeal
-	publishPeriodStart time.Time
-	publishPeriod      time.Duration
-}
-
 // PendingDeals returns the list of deals that are queued up to be published
-func (p *DealPublisher) PendingDeals() *PendingInfo {
+func (p *DealPublisher) PendingDeals() api.PendingDealInfo {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
@@ -142,10 +134,15 @@ func (p *DealPublisher) PendingDeals() *PendingInfo {
 		}
 	}
 
-	return &PendingInfo{
-		deals:              deals,
-		publishPeriodStart: p.publishPeriodStart,
-		publishPeriod:      p.publishPeriod,
+	pending := make([]market2.ClientDealProposal, len(deals))
+	for i, deal := range deals {
+		pending[i] = deal.deal
+	}
+
+	return api.PendingDealInfo{
+		Deals:              pending,
+		PublishPeriodStart: p.publishPeriodStart,
+		PublishPeriod:      p.publishPeriod,
 	}
 }
 
