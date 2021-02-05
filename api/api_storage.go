@@ -243,7 +243,7 @@ type AddressConfig struct {
 // PendingDealInfo has info about pending deals and when they are due to be
 // published
 type PendingDealInfo struct {
-	Deals              []market.ClientDealProposal
+	Deals              []*market.ClientDealProposal
 	PublishPeriodStart time.Time
 	PublishPeriod      time.Duration
 }
