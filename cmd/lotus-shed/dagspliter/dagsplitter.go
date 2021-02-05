@@ -141,9 +141,12 @@ func (b *builder) newBox() {
 }
 
 // Remaining size in the current box.
-func (b *builder) boxRemainingSize() uint64 {
-	// FIXME: Assert this is always `0 <= ret <= max_size`.
-	return b.boxMaxSize - b.used()
+// FIXME: Since we allow to pack nodes bigger than box size this might
+//  return a negative value if we over-packed. This is not nice as we
+//  end up mixing signed and unsigned values, for now this is contained
+//  in `fits()` only.
+func (b *builder) boxRemainingSize() int64 {
+	return int64(b.boxMaxSize) - int64(b.used())
 }
 
 func (b *builder) used() uint64 {
@@ -163,7 +166,7 @@ func (b *builder) emptyBox() bool {
 
 // Check this size fits in the current box.
 func (b *builder) fits(size uint64) bool {
-	return size <= b.boxRemainingSize()
+	return int64(size) <= b.boxRemainingSize()
 }
 
 func (b *builder) addSize(size uint64) {
