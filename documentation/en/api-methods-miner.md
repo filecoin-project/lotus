@@ -48,6 +48,8 @@
   * [MarketListDeals](#MarketListDeals)
   * [MarketListIncompleteDeals](#MarketListIncompleteDeals)
   * [MarketListRetrievalDeals](#MarketListRetrievalDeals)
+  * [MarketPendingDeals](#MarketPendingDeals)
+  * [MarketPublishPendingDeals](#MarketPublishPendingDeals)
   * [MarketRestartDataTransfer](#MarketRestartDataTransfer)
   * [MarketSetAsk](#MarketSetAsk)
   * [MarketSetRetrievalAsk](#MarketSetRetrievalAsk)
@@ -524,7 +526,7 @@ Response: `{}`
 
 
 ### MarketCancelDataTransfer
-ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 
 
 Perms: read
@@ -725,8 +727,33 @@ Inputs: `null`
 
 Response: `null`
 
+### MarketPendingDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Deals": null,
+  "PublishPeriodStart": "0001-01-01T00:00:00Z",
+  "PublishPeriod": 60000000000
+}
+```
+
+### MarketPublishPendingDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
+
 ### MarketRestartDataTransfer
-MinerRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 
 
 Perms: read
