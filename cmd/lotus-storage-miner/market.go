@@ -862,7 +862,7 @@ var dealsPendingPublish = &cli.Command{
 		_, _ = fmt.Fprintf(w, "ProposalCID\tClient\tSize\n")
 
 		for _, deal := range pending.Deals {
-			proposalNd, err := cborutil.AsIpld(deal)
+			proposalNd, err := cborutil.AsIpld(&deal) // nolint
 			if err != nil {
 				return err
 			}
@@ -870,6 +870,6 @@ var dealsPendingPublish = &cli.Command{
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", proposalNd.Cid(), deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)))
 		}
 
-		return nil
+		return w.Flush()
 	},
 }

@@ -529,7 +529,7 @@ Response: `{}`
 MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 
 
-Perms: read
+Perms: write
 
 Inputs:
 ```json
@@ -730,7 +730,7 @@ Response: `null`
 ### MarketPendingDeals
 There are not yet any comments for this method.
 
-Perms: admin
+Perms: write
 
 Inputs: `null`
 
@@ -756,7 +756,7 @@ Response: `{}`
 MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 
 
-Perms: read
+Perms: write
 
 Inputs:
 ```json

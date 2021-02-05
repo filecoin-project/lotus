@@ -134,9 +134,9 @@ func (p *DealPublisher) PendingDeals() api.PendingDealInfo {
 		}
 	}
 
-	pending := make([]*market2.ClientDealProposal, len(deals))
+	pending := make([]market2.ClientDealProposal, len(deals))
 	for i, deal := range deals {
-		pending[i] = &deal.deal
+		pending[i] = deal.deal
 	}
 
 	return api.PendingDealInfo{
