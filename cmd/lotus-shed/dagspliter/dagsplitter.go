@@ -296,14 +296,32 @@ func (cbs *countBs) Get(c cid.Cid) (blocks.Block, error) {
 }
 
 var Cmd = &cli.Command{
+	// FIXME: Review command name. Splitting is just *one* of the recourses
+	//  to pack a box and generate a CAR file; it's not the *main* thing this does.
 	Name:      "dagsplit",
-	Usage:     "Cid command",
-	ArgsUsage: "[root] [chunk size] [minimum subgraph size] [output dir]",
+	Usage:     "Pack a DAG into a series of custom size CAR files",
+	ArgsUsage: "<DAG root> <CAR size>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "output-dir",
+			Usage: "specify path of directory to write the CAR files into",
+			Value: "dagsplitter-car-files",
+		},
+		&cli.IntFlag{
+			Name:  "min-subgraph-size",
+			Usage: "minimum size of graph chunks to bother packing into boxes",
+			Value: 0,
+		},
+		&cli.BoolFlag{
+			Name:  "breadth-first",
+			Usage: "pack in breadth-first order instead of the default depth-first",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		if cctx.Args().Len() < 3 {
-			return xerrors.Errorf("expected at least 3 args: root, minimum subgraph, size and chuck size")
+		if cctx.Args().Len() != 2 {
+			return xerrors.Errorf("expected 2 args: root and CAR size")
 		}
 
 		root, err := cid.Parse(cctx.Args().First())
@@ -316,9 +334,8 @@ var Cmd = &cli.Command{
 			return xerrors.Errorf("parsing chunk size: %w", err)
 		}
 
-		minSubgraph, err := units.RAMInBytes(cctx.Args().Get(2))
-		if err != nil {
-			return xerrors.Errorf("parsing min subgraph size: %w", err)
+		if cctx.Bool("breadth-first") {
+			return xerrors.Errorf("breadth-first pack not implemented yet")
 		}
 
 		// FIXME: The DAG-to-Box generation and Box-to-CAR generation is now
@@ -335,7 +352,7 @@ var Cmd = &cli.Command{
 		bb := builder{
 			dagService:      mdag.NewDAGService(blockservice.New(cbs, nil)),
 			boxMaxSize:      uint64(chunk),
-			minSubgraphSize: uint64(minSubgraph),
+			minSubgraphSize: uint64(cctx.Int("minSubgraphSize")),
 			boxes:           make([]*Box, 0),
 		}
 		bb.newBox() // FIXME: Encapsulate in a constructor.
@@ -354,11 +371,7 @@ var Cmd = &cli.Command{
 		//  separate command).
 
 		// Create output directory if necessary.
-		outDir := cctx.Args().Get(3)
-		if outDir == "" {
-			outDir = "dagsplitter-car-files"
-			// FIXME: The default should be part of the command definition.
-		}
+		outDir := cctx.String("output-dir")
 		if _, err := os.Stat(outDir); os.IsNotExist(err) {
 			if err := os.Mkdir(outDir, os.ModePerm); err != nil {
 				return xerrors.Errorf("creating directory: %w", err)
