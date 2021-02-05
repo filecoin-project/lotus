@@ -340,14 +340,15 @@ func (sw *schedWorker) workerCompactWindows() {
 func (sw *schedWorker) processAssignedWindows() {
 	worker := sw.worker
 
-assignLoop:
 	// process windows in order
-	for len(worker.activeWindows) > 0 {
-		firstWindow := worker.activeWindows[0]
+	widx := 0
+	for len(worker.activeWindows) > widx {
+		firstWindow := worker.activeWindows[widx]
 
 		// process tasks within a window, preferring tasks at lower indexes
+		tidx := 0
 		for len(firstWindow.todo) > 0 {
-			tidx := -1
+			tidx = -1
 
 			worker.lk.Lock()
 			for t, todo := range firstWindow.todo {
@@ -360,7 +361,7 @@ assignLoop:
 			worker.lk.Unlock()
 
 			if tidx == -1 {
-				break assignLoop
+				break
 			}
 
 			todo := firstWindow.todo[tidx]
@@ -379,11 +380,14 @@ assignLoop:
 			firstWindow.todo = firstWindow.todo[:len(firstWindow.todo)-1]
 		}
 
-		copy(worker.activeWindows, worker.activeWindows[1:])
-		worker.activeWindows[len(worker.activeWindows)-1] = nil
-		worker.activeWindows = worker.activeWindows[:len(worker.activeWindows)-1]
-
-		sw.windowsRequested--
+		if tidx != -1 {
+			copy(worker.activeWindows, worker.activeWindows[1:])
+			worker.activeWindows[len(worker.activeWindows)-1] = nil
+			worker.activeWindows = worker.activeWindows[:len(worker.activeWindows)-1]
+			sw.windowsRequested--
+		} else {
+			widx += 1
+		}
 	}
 }
 
