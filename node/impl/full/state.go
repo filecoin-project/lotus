@@ -40,6 +40,7 @@ import (
 type StateModuleAPI interface {
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
+	MsigGetPending(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.MsigTransaction, error)
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
@@ -52,8 +53,8 @@ type StateModuleAPI interface {
 	StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error)
-	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error)
+	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 }
@@ -975,6 +976,40 @@ func (m *StateModule) MsigGetVested(ctx context.Context, addr address.Address, s
 	}
 
 	return types.BigSub(startLk, endLk), nil
+}
+
+func (m *StateModule) MsigGetPending(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.MsigTransaction, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := m.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load multisig actor: %w", err)
+	}
+	msas, err := multisig.Load(m.Chain.Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	var out = []*api.MsigTransaction{}
+	if err := msas.ForEachPendingTxn(func(id int64, txn multisig.Transaction) error {
+		out = append(out, &api.MsigTransaction{
+			ID:     id,
+			To:     txn.To,
+			Value:  txn.Value,
+			Method: txn.Method,
+			Params: txn.Params,
+
+			Approved: txn.Approved,
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 var initialPledgeNum = types.NewInt(110)

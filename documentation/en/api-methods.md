@@ -99,6 +99,7 @@
   * [MsigCancel](#MsigCancel)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
+  * [MsigGetPending](#MsigGetPending)
   * [MsigGetVested](#MsigGetVested)
   * [MsigGetVestingSchedule](#MsigGetVestingSchedule)
   * [MsigPropose](#MsigPropose)
@@ -2444,6 +2445,31 @@ Inputs:
 ```
 
 Response: `"0"`
+
+### MsigGetPending
+MsigGetPending returns pending transactions for the given multisig
+wallet. Once pending transactions are fully approved, they will no longer
+appear here.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `null`
 
 ### MsigGetVested
 MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
