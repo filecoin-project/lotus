@@ -71,6 +71,9 @@ type builder struct {
 	// we only pack one box at a time and don't come back to a box once we're
 	// done with it we just track a single value here and not in each box.
 	boxUsedSize uint64
+
+	// Walk in breadth-first order instead of the default depth-search.
+	breadthFirst bool
 }
 
 func getSingleNodeSize(node ipld.Node) uint64 {
@@ -185,6 +188,11 @@ func (b *builder) addExternalLink(node cid.Cid) {
 // Pack a DAG delimited by `initialRoot` in boxes. To enforce the maximum
 // box size the DAG will be decomposed into smaller sub-DAGs if necessary.
 func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
+	walkOptions := make([]mdag.WalkOption, 0)
+	if b.breadthFirst {
+		walkOptions = append(walkOptions, mdag.BreadthFirst())
+	}
+
 	// LIFO queue with the roots that need to be scanned and boxed.
 	// LIFO(-ish, node links pushed in reverse) should result in slightly better
 	// data layout (less fragmentation in leaves) than FIFO.
@@ -272,8 +280,7 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 				// No need to visit children as not even the parent fits.
 				return false
 			},
-			// FIXME: We're probably not ready for any type of concurrency at this point.
-			mdag.Concurrency(0),
+			walkOptions...,
 		)
 		if err != nil {
 			return xerrors.Errorf("error walking dag: %w", err)
@@ -344,10 +351,6 @@ var Cmd = &cli.Command{
 			return xerrors.Errorf("parsing chunk size: %w", err)
 		}
 
-		if cctx.Bool("breadth-first") {
-			return xerrors.Errorf("breadth-first pack not implemented yet")
-		}
-
 		// FIXME: The DAG-to-Box generation and Box-to-CAR generation is now
 		//  coupled in the same command, so for now we don't save the intermediate
 		//  boxes in the block store (IPFS) but keep them in memory and dump
@@ -364,6 +367,7 @@ var Cmd = &cli.Command{
 			boxMaxSize:      uint64(chunk),
 			minSubgraphSize: uint64(cctx.Int("minSubgraphSize")),
 			boxes:           make([]*Box, 0),
+			breadthFirst: cctx.Bool("breadth-first"),
 		}
 		bb.newBox() // FIXME: Encapsulate in a constructor.
 
