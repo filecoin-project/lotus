@@ -15,7 +15,6 @@ import (
 
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -23,6 +22,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -341,6 +342,7 @@ var storageDealsCmd = &cli.Command{
 		getBlocklistCmd,
 		resetBlocklistCmd,
 		setSealDurationCmd,
+		dealsPendingPublish,
 	},
 }
 
@@ -823,5 +825,51 @@ var transfersListCmd = &cli.Command{
 		}
 		lcli.OutputDataTransferChannels(os.Stdout, channels, verbose, completed, color, showFailed)
 		return nil
+	},
+}
+
+var dealsPendingPublish = &cli.Command{
+	Name:  "pending-publish",
+	Usage: "list deals waiting in publish queue",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "publish-now",
+			Usage: "send a publish message now",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Bool("publish-now") {
+			if err := api.MarketPublishPendingDeals(ctx); err != nil {
+				return xerrors.Errorf("publishing deals: %w", err)
+			}
+			fmt.Println("triggered deal publishing")
+			return nil
+		}
+
+		pending, err := api.MarketPendingDeals(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting pending deals: %w", err)
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintf(w, "ProposalCID\tClient\tSize\n")
+
+		for _, deal := range pending.Deals {
+			proposalNd, err := cborutil.AsIpld(&deal) // nolint
+			if err != nil {
+				return err
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", proposalNd.Cid(), deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)))
+		}
+
+		return w.Flush()
 	},
 }

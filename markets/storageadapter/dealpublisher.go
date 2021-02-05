@@ -121,6 +121,41 @@ func newDealPublisher(
 	}
 }
 
+// PendingDeals returns the list of deals that are queued up to be published
+func (p *DealPublisher) PendingDeals() api.PendingDealInfo {
+	p.lk.Lock()
+	defer p.lk.Unlock()
+
+	// Filter out deals whose context has been cancelled
+	deals := make([]*pendingDeal, 0, len(p.pending))
+	for _, dl := range p.pending {
+		if dl.ctx.Err() == nil {
+			deals = append(deals, dl)
+		}
+	}
+
+	pending := make([]market2.ClientDealProposal, len(deals))
+	for i, deal := range deals {
+		pending[i] = deal.deal
+	}
+
+	return api.PendingDealInfo{
+		Deals:              pending,
+		PublishPeriodStart: p.publishPeriodStart,
+		PublishPeriod:      p.publishPeriod,
+	}
+}
+
+// ForcePublishPendingDeals publishes all pending deals without waiting for
+// the publish period to elapse
+func (p *DealPublisher) ForcePublishPendingDeals() {
+	p.lk.Lock()
+	defer p.lk.Unlock()
+
+	log.Infof("force publishing deals")
+	p.publishAllDeals()
+}
+
 func (p *DealPublisher) Publish(ctx context.Context, deal market2.ClientDealProposal) (cid.Cid, error) {
 	pdeal := newPendingDeal(ctx, deal)
 

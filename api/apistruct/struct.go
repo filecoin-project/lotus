@@ -299,8 +299,10 @@ type StorageMinerStruct struct {
 		MarketGetRetrievalAsk     func(ctx context.Context) (*retrievalmarket.Ask, error)                                                                                                                      `perm:"read"`
 		MarketListDataTransfers   func(ctx context.Context) ([]api.DataTransferChannel, error)                                                                                                                 `perm:"write"`
 		MarketDataTransferUpdates func(ctx context.Context) (<-chan api.DataTransferChannel, error)                                                                                                            `perm:"write"`
-		MarketRestartDataTransfer func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                     `perm:"read"`
-		MarketCancelDataTransfer  func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                     `perm:"read"`
+		MarketRestartDataTransfer func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                     `perm:"write"`
+		MarketCancelDataTransfer  func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                     `perm:"write"`
+		MarketPendingDeals        func(ctx context.Context) (api.PendingDealInfo, error)                                                                                                                       `perm:"write"`
+		MarketPublishPendingDeals func(ctx context.Context) error                                                                                                                                              `perm:"admin"`
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
@@ -1504,6 +1506,14 @@ func (c *StorageMinerStruct) MarketRestartDataTransfer(ctx context.Context, tran
 
 func (c *StorageMinerStruct) MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
 	return c.Internal.MarketCancelDataTransfer(ctx, transferID, otherPeer, isInitiator)
+}
+
+func (c *StorageMinerStruct) MarketPendingDeals(ctx context.Context) (api.PendingDealInfo, error) {
+	return c.Internal.MarketPendingDeals(ctx)
+}
+
+func (c *StorageMinerStruct) MarketPublishPendingDeals(ctx context.Context) error {
+	return c.Internal.MarketPublishPendingDeals(ctx)
 }
 
 func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {
