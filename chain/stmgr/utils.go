@@ -145,20 +145,6 @@ func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Addres
 	return mas.GetSector(sid)
 }
 
-func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address, snos *bitfield.BitField) ([]*miner.SectorOnChainInfo, error) {
-	act, err := sm.LoadActor(ctx, maddr, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
-	}
-
-	mas, err := miner.Load(sm.cs.Store(ctx), act)
-	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
-	}
-
-	return mas.LoadSectors(snos)
-}
-
 func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	act, err := sm.LoadActorRaw(ctx, maddr, st)
 	if err != nil {

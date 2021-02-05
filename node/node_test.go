@@ -92,6 +92,10 @@ func TestAPIDealFlowReal(t *testing.T) {
 }
 
 func TestDealMining(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	logging.SetLogLevel("miner", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")

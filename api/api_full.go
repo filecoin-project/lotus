@@ -331,10 +331,14 @@ type FullNode interface {
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
-	// Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+	// Most methods take a TipSetKey as a parameter. The state looked up is the parent state of the tipset.
 	// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 	// StateCall runs the given message and returns its result without any persisted changes.
+	//
+	// StateCall applies the message to the tipset's parent state. The
+	// message is not applied on-top-of the messages in the passed-in
+	// tipset.
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error)
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	// If no tipset key is provided, the appropriate tipset is looked up.

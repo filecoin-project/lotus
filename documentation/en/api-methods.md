@@ -254,7 +254,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 65536,
+  "APIVersion": 65792,
   "BlockDelay": 42
 }
 ```
@@ -3309,7 +3309,7 @@ Response:
 
 ## State
 The State methods are used to query, inspect, and interact with chain state.
-Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+Most methods take a TipSetKey as a parameter. The state looked up is the parent state of the tipset.
 A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 
@@ -3361,6 +3361,10 @@ Response: `null`
 
 ### StateCall
 StateCall runs the given message and returns its result without any persisted changes.
+
+StateCall applies the message to the tipset's parent state. The
+message is not applied on-top-of the messages in the passed-in
+tipset.
 
 
 Perms: read

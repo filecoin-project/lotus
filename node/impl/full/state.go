@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	cid "github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -35,7 +34,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -94,19 +92,20 @@ func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, er
 }
 
 func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
-	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr, sectorNos)
+
+	mas, err := miner.Load(a.StateManager.ChainStore().Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return mas.LoadSectors(sectorNos)
 }
 
 func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) { // TODO: only used in cli
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-
 	act, err := a.StateManager.LoadActorTsk(ctx, maddr, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -122,7 +121,7 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 		return nil, xerrors.Errorf("merge partition active sets: %w", err)
 	}
 
-	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, maddr, &activeSectors)
+	return mas.LoadSectors(&activeSectors)
 }
 
 func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
@@ -426,38 +425,12 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}, nil
 }
 
-func stateForTs(ctx context.Context, ts *types.TipSet, cstore *store.ChainStore, smgr *stmgr.StateManager) (*state.StateTree, error) {
-	if ts == nil {
-		ts = cstore.GetHeaviestTipSet()
-	}
-
-	st, _, err := smgr.TipSetState(ctx, ts)
-	if err != nil {
-		return nil, err
-	}
-
-	buf := bufbstore.NewBufferedBstore(cstore.Blockstore())
-	cst := cbor.NewCborStore(buf)
-	return state.LoadStateTree(cst, st)
-}
-func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.StateTree, error) {
-	return stateForTs(ctx, ts, a.Chain, a.StateManager)
-}
-func (m *StateModule) stateForTs(ctx context.Context, ts *types.TipSet) (*state.StateTree, error) {
-	return stateForTs(ctx, ts, m.Chain, m.StateManager)
-}
-
 func (m *StateModule) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	state, err := m.stateForTs(ctx, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("computing tipset state failed: %w", err)
-	}
-
-	return state.GetActor(actor)
+	return m.StateManager.LoadActor(ctx, actor, ts)
 }
 
 func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
@@ -483,17 +456,12 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	state, err := a.stateForTs(ctx, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("getting state for tipset: %w", err)
-	}
-
-	act, err := state.GetActor(actor)
+	act, err := a.StateManager.LoadActor(ctx, actor, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("getting actor: %w", err)
 	}
 
-	blk, err := state.Store.(*cbor.BasicIpldStore).Blocks.Get(act.Head)
+	blk, err := a.Chain.Blockstore().Get(act.Head)
 	if err != nil {
 		return nil, xerrors.Errorf("getting actor head: %w", err)
 	}
@@ -529,6 +497,7 @@ func (a *StateAPI) StateDecodeParams(ctx context.Context, toAddr address.Address
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
 func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+	// XXX: Gets the state by computing the tipset state, instead of looking at the parent.
 	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, a.Beacon, tsk, epoch, maddr, a.ProofVerifier)
 }
 
@@ -1372,11 +1341,11 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	sTree, err := a.stateForTs(ctx, ts)
+	sTree, err := a.StateManager.ParentState(ts)
 	if err != nil {
 		return types.EmptyInt, err
 	}
-	return a.StateManager.GetCirculatingSupply(ctx, ts.Height(), sTree)
+	return a.StateManager.GetCirculatingSupply(ctx, ts.Height()-1, sTree)
 }
 
 func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
@@ -1393,7 +1362,7 @@ func stateVMCirculatingSupplyInternal(
 		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	sTree, err := stateForTs(ctx, ts, cstore, smgr)
+	sTree, err := smgr.ParentState(ts)
 	if err != nil {
 		return api.CirculatingSupply{}, err
 	}
@@ -1407,5 +1376,7 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 		return network.VersionMax, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
+	// TODO: Height-1 to be consistent with the rest of the APIs?
+	// But that's likely going to break a bunch of stuff.
 	return m.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
 }
