@@ -656,6 +656,10 @@ github.com/ipfs/go-merkledag v0.2.3/go.mod h1:SQiXrtSts3KGNmgOzMICy5c0POOpUNQLvB
 github.com/ipfs/go-merkledag v0.3.1/go.mod h1:fvkZNNZixVW6cKSZ/JfLlON5OlgTXNdRLz0p6QG/I2M=
 github.com/ipfs/go-merkledag v0.3.2 h1:MRqj40QkrWkvPswXs4EfSslhZ4RVPRbxwX11js0t1xY=
 github.com/ipfs/go-merkledag v0.3.2/go.mod h1:fvkZNNZixVW6cKSZ/JfLlON5OlgTXNdRLz0p6QG/I2M=
+github.com/ipfs/go-merkledag v0.3.3-0.20210205160809-e9b9632687d0 h1:F/xdgTXv5aagyhIjq0Nn7kbatwIAMWUbfMdOi+W6ldc=
+github.com/ipfs/go-merkledag v0.3.3-0.20210205160809-e9b9632687d0/go.mod h1:fvkZNNZixVW6cKSZ/JfLlON5OlgTXNdRLz0p6QG/I2M=
+github.com/ipfs/go-merkledag v0.3.3-0.20210205232304-7f10548fe4d7 h1:B8guDNBRtH4lreZdOV/R5W1lJll1OdglFfFNIHYSc00=
+github.com/ipfs/go-merkledag v0.3.3-0.20210205232304-7f10548fe4d7/go.mod h1:fvkZNNZixVW6cKSZ/JfLlON5OlgTXNdRLz0p6QG/I2M=
 github.com/ipfs/go-metrics-interface v0.0.1 h1:j+cpbjYvu4R8zbleSs36gvB7jR+wsL2fGD6n0jO4kdg=
 github.com/ipfs/go-metrics-interface v0.0.1/go.mod h1:6s6euYU4zowdslK0GKHmqaIZ3j/b/tL7HTWtJ4VPgWY=
 github.com/ipfs/go-metrics-prometheus v0.0.2 h1:9i2iljLg12S78OhC6UAiXi176xvQGiZaGVF1CUVdE+s=
