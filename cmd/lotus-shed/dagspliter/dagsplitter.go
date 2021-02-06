@@ -194,7 +194,6 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 		// Pick one root node from the queue.
 		root := rootsToPack[len(rootsToPack)-1]
 		rootsToPack = rootsToPack[:len(rootsToPack)-1]
-		b.packRoot(root)
 
 		prevNumberOfRoots := len(rootsToPack)
 		err := mdag.Walk(ctx,
@@ -224,6 +223,11 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 
 				if b.fits(treeSize) {
 					b.addSize(treeSize)
+					if nodeCid == root {
+						b.packRoot(nodeCid)
+					}
+					// FIXME: Rethink above addSize/packRoot. We pack only the top node
+					//  and then just add the size of its children (implicit in DAG).
 					b.print("added entire tree to box")
 
 					// The entire (sub-)graph fits so no need to keep walking it.
@@ -243,6 +247,9 @@ func (b *builder) add(ctx context.Context, initialRoot cid.Cid) error {
 
 					if b.fits(parentSize) || b.emptyBox() {
 						b.addSize(parentSize)
+						if nodeCid == root {
+							b.packRoot(nodeCid)
+						}
 						// Even if the node doesn't fit but this is an empty box we
 						// should add it nonetheless. It means it doesn't fit in *any*
 						// box so at least make sure it has its own dedicated one.
