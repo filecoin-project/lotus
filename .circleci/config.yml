@@ -533,6 +533,14 @@ jobs:
         description: A comma-separated string containing docker image tags to build and push (default = latest)
 
     steps:
+      - run:
+          name: Confirm that environment variables are set
+          command: |
+            if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+              echo "No AWS_ACCESS_KEY_ID is set. Skipping build-and-push job ..."
+              circleci-agent step halt
+            fi
+
       - aws-cli/setup:
           profile-name: <<parameters.profile-name>>
           aws-access-key-id: <<parameters.aws-access-key-id>>
