@@ -32,7 +32,7 @@ Commands you ran.
 
 **Deal status**
 
-The output of `lotus client` or `lotus-miner storage-deals|retrieval-deals|data-transfers` commands for the deal(s) in question.
+The output of `lotus client list-deals -v` and/or `lotus-miner storage-deals|retrieval-deals|data-transfers list [-v]` commands for the deal(s) in question.
 
 **Lotus daemon and miner logs**
 
