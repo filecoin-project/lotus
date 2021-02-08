@@ -16,7 +16,7 @@ Including information like, Are you the client or the miner? Is this a storage d
 
 **Describe the problem**
 
-A brief description of the problem you encountered while deal making. 
+A brief description of the problem you encountered while trying to make a deal. 
 
 **Version**
 
