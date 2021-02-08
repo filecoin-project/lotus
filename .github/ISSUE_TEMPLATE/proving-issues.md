@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-Please provide all the information requested here to help us troubleshoot "proving/wdpost failed" issues.
+Please provide all the information requested here to help us troubleshoot "proving/window PoSt failed" issues.
 If the information requested is missing, we will probably have to just ask you to provide it anyway,
 before we can help debug.
 
