@@ -12,10 +12,14 @@ import (
 )
 
 func init() {
-	build.BlockDelaySecs = 2
+	build.BlockDelaySecs = 3
 	build.PropagationDelaySecs = 1
 
-	_ = log.SetLogLevel("*", "WARN")
+	_ = log.SetLogLevel("*", "DEBUG")
+	_ = log.SetLogLevel("dht", "WARN")
+	_ = log.SetLogLevel("swarm2", "WARN")
+	_ = log.SetLogLevel("addrutil", "WARN")
+	_ = log.SetLogLevel("stats", "WARN")
 	_ = log.SetLogLevel("dht/RtRefreshManager", "ERROR") // noisy
 	_ = log.SetLogLevel("bitswap", "ERROR")              // noisy
 
@@ -39,7 +43,8 @@ func init() {
 	policy.SetPreCommitChallengeDelay(abi.ChainEpoch(10))
 
 	policy.SetConsensusMinerMinPower(abi.NewTokenAmount(2048))
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
+
 	policy.SetMinVerifiedDealSize(abi.NewTokenAmount(256))
 
 	// Disable upgrades.
