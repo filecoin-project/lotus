@@ -859,8 +859,9 @@ var dealsPendingPublish = &cli.Command{
 		}
 
 		if len(pending.Deals) > 0 {
+			endsIn := pending.PublishPeriodStart.Add(pending.PublishPeriod).Sub(time.Now())
 			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-			_, _ = fmt.Fprintf(w, "Publish period:             %s\n", pending.PublishPeriod)
+			_, _ = fmt.Fprintf(w, "Publish period:             %s (ends in %s)\n", pending.PublishPeriod, endsIn.Round(time.Second))
 			_, _ = fmt.Fprintf(w, "First deal queued at:       %s\n", pending.PublishPeriodStart)
 			_, _ = fmt.Fprintf(w, "Deals will be published at: %s\n", pending.PublishPeriodStart.Add(pending.PublishPeriod))
 			_, _ = fmt.Fprintf(w, "%d deals queued to be published:\n", len(pending.Deals))
