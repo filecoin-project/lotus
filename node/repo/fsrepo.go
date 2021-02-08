@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	lblockstore "github.com/filecoin-project/lotus/lib/blockstore"
-	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
+	storethehash "github.com/hannahhoward/go-storethehash"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -307,24 +307,19 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 
 	fsr.bsOnce.Do(func() {
 		path := fsr.join(filepath.Join(fsDatastore, "chain"))
-		readonly := fsr.readonly
 
 		if err := os.MkdirAll(path, 0755); err != nil {
 			fsr.bsErr = err
 			return
 		}
 
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+		bs, err := storethehash.OpenHashedBlockstore(filepath.Join(path, "storethehash.index"), filepath.Join(path, "storethehash.data"),
+			storethehash.BurstRate(40*1024*1024))
 		if err != nil {
 			fsr.bsErr = err
 			return
 		}
-
-		bs, err := badgerbs.Open(opts)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
+		bs.Start()
 		fsr.bs = lblockstore.WrapIDStore(bs)
 	})
 
