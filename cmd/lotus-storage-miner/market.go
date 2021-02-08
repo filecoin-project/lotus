@@ -858,18 +858,25 @@ var dealsPendingPublish = &cli.Command{
 			return xerrors.Errorf("getting pending deals: %w", err)
 		}
 
-		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintf(w, "ProposalCID\tClient\tSize\n")
+		if len(pending.Deals) > 0 {
+			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+			_, _ = fmt.Fprintf(w, "Publish period:             %s\n", pending.PublishPeriod)
+			_, _ = fmt.Fprintf(w, "First deal queued at:       %s\n", pending.PublishPeriodStart)
+			_, _ = fmt.Fprintf(w, "Deals will be published at: %s\n", pending.PublishPeriodStart.Add(pending.PublishPeriod))
+			_, _ = fmt.Fprintf(w, "%d deals queued to be published:\n", len(pending.Deals))
+			_, _ = fmt.Fprintf(w, "ProposalCID\tClient\tSize\n")
+			for _, deal := range pending.Deals {
+				proposalNd, err := cborutil.AsIpld(&deal) // nolint
+				if err != nil {
+					return err
+				}
 
-		for _, deal := range pending.Deals {
-			proposalNd, err := cborutil.AsIpld(&deal) // nolint
-			if err != nil {
-				return err
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", proposalNd.Cid(), deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)))
 			}
-
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", proposalNd.Cid(), deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)))
+			return w.Flush()
 		}
 
-		return w.Flush()
+		fmt.Println("No deals queued to be published")
+		return nil
 	},
 }
