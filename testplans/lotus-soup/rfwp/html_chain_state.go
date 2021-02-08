@@ -55,7 +55,7 @@ func FetchChainState(t *testkit.TestEnvironment, m *testkit.LotusMiner) error {
 				return c.Code, nil
 			}
 
-			return cli.ComputeStateHTMLTempl(file, tipset, stout, true, getCode)
+			return cli.ComputeStateHTMLTempl(file, tipset, stout, getCode)
 		}()
 		if err != nil {
 			return err

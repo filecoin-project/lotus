@@ -165,7 +165,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			return nil, err
 		}
 
-		ds, err := lr.Datastore(context.Background(), "/metadata")
+		ds, err := lr.Datastore("/metadata")
 		if err != nil {
 			return nil, err
 		}
