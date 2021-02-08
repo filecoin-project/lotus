@@ -20,7 +20,7 @@ The output of `lotus --version`.
 
 **Setup**
 
-You miner and daemon setup.
+You miner and daemon setup, including what hardware do you use, your environment variable settings, how do you run your miner and worker, do you use GPU and etc.
 
 **Lotus daemon and miner logs**
 
