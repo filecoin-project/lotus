@@ -24,11 +24,12 @@ The output of `lotus --version`.
 
 **Setup**
 
-You miner(if applicable) and daemon setup.
+You miner(if applicable) and daemon setup, i.e: What hardware do you use, how much ram and etc.
 
-**Commands**
-
-Commands you ran.
+**To Reproduce**
+ Steps to reproduce the behavior:
+ 1. Run '...'
+ 2. See error
 
 **Deal status**
 
