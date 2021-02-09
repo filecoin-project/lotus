@@ -573,11 +573,14 @@ func TestDuplicateNonce(t *testing.T) {
 
 	base := tu.g.CurTipset
 
+	// Get the banker from computed tipset state, not the parent.
+	st, _, err := tu.g.StateManager().TipSetState(context.TODO(), base.TipSet())
+	require.NoError(t, err)
+	ba, err := tu.g.StateManager().LoadActorRaw(context.TODO(), tu.g.Banker(), st)
+	require.NoError(t, err)
+
 	// Produce a message from the banker to the rcvr
 	makeMsg := func(rcvr address.Address) *types.SignedMessage {
-
-		ba, err := tu.nds[0].StateGetActor(context.TODO(), tu.g.Banker(), base.TipSet().Key())
-		require.NoError(t, err)
 		msg := types.Message{
 			To:   rcvr,
 			From: tu.g.Banker(),

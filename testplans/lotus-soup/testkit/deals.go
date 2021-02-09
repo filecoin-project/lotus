@@ -27,7 +27,7 @@ func StartDeal(ctx context.Context, minerActorAddr address.Address, client api.F
 		},
 		Wallet:            addr,
 		Miner:             minerActorAddr,
-		EpochPrice:        types.NewInt(1000),
+		EpochPrice:        types.NewInt(4000000),
 		MinBlocksDuration: 640000,
 		DealStartEpoch:    200,
 		FastRetrieval:     fastRetrieval,

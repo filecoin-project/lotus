@@ -146,7 +146,7 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `65536`
+Response: `65792`
 
 ## Add
 
