@@ -25,6 +25,24 @@ var DealSectorPriority = 1024
 var MaxTicketAge = abi.ChainEpoch(builtin0.EpochsInDay * 2)
 
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
+	m.inputLk.Lock()
+	// make sure we not accepting deals into this sector
+	for _, c := range m.assignedPieces[m.minerSectorID(sector.SectorNumber)] {
+		pp := m.pendingPieces[c]
+		delete(m.pendingPieces, c)
+		if pp == nil {
+			log.Errorf("nil assigned pending piece %s", c)
+			continue
+		}
+
+		// todo: return to the sealing queue (this is extremely unlikely to happen)
+		pp.accepted(sector.SectorNumber, 0, xerrors.Errorf("sector entered packing state early"))
+	}
+
+	delete(m.openSectors, m.minerSectorID(sector.SectorNumber))
+	delete(m.assignedPieces, m.minerSectorID(sector.SectorNumber))
+	m.inputLk.Unlock()
+
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
 
 	var allocated abi.UnpaddedPieceSize
