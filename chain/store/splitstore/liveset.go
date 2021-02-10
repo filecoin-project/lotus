@@ -1,8 +1,9 @@
 package splitstore
 
 import (
-	"fmt"
 	"os"
+
+	"golang.org/x/xerrors"
 
 	"github.com/ledgerwatch/lmdb-go/lmdb"
 
@@ -27,31 +28,31 @@ var markBytes = []byte{}
 func NewLiveSetEnv(path string) (*lmdb.Env, error) {
 	env, err := lmdb.NewEnv()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize LDMB env: %w", err)
+		return nil, xerrors.Errorf("failed to initialize LDMB env: %w", err)
 	}
 	if err = env.SetMapSize(LiveSetMapSize); err != nil {
-		return nil, fmt.Errorf("failed to set LMDB map size: %w", err)
+		return nil, xerrors.Errorf("failed to set LMDB map size: %w", err)
 	}
 	if err = env.SetMaxDBs(2); err != nil {
-		return nil, fmt.Errorf("failed to set LMDB max dbs: %w", err)
+		return nil, xerrors.Errorf("failed to set LMDB max dbs: %w", err)
 	}
 	// if err = env.SetMaxReaders(1); err != nil {
-	// 	return nil, fmt.Errorf("failed to set LMDB max readers: %w", err)
+	// 	return nil, xerrors.Errorf("failed to set LMDB max readers: %w", err)
 	// }
 
 	if st, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0777); err != nil {
-			return nil, fmt.Errorf("failed to create LMDB data directory at %s: %w", path, err)
+			return nil, xerrors.Errorf("failed to create LMDB data directory at %s: %w", path, err)
 		}
 	} else if err != nil {
-		return nil, fmt.Errorf("failed to stat LMDB data dir: %w", err)
+		return nil, xerrors.Errorf("failed to stat LMDB data dir: %w", err)
 	} else if !st.IsDir() {
-		return nil, fmt.Errorf("LMDB path is not a directory %s", path)
+		return nil, xerrors.Errorf("LMDB path is not a directory %s", path)
 	}
 	err = env.Open(path, lmdb.NoSync|lmdb.WriteMap|lmdb.MapAsync|lmdb.NoReadahead, 0777)
 	if err != nil {
 		env.Close() //nolint:errcheck
-		return nil, fmt.Errorf("error opening LMDB database: %w", err)
+		return nil, xerrors.Errorf("error opening LMDB database: %w", err)
 	}
 
 	return env, nil
