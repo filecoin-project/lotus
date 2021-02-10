@@ -4405,6 +4405,9 @@ Response:
 ```json
 {
   "Balance": "0",
+  "Code": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "State": {}
 }
 ```
