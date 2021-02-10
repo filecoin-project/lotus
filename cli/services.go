@@ -18,6 +18,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
+//go:generate go run github.com/golang/mock/mockgen -destination=servicesmock_test.go -package=cli -self_package github.com/filecoin-project/lotus/cli . ServicesAPI
+
 type ServicesAPI interface {
 	// Sends executes a send given SendParams
 	Send(ctx context.Context, params SendParams) (cid.Cid, error)
@@ -74,14 +76,11 @@ type SendParams struct {
 	From address.Address
 	Val  abi.TokenAmount
 
-	GasPremium abi.TokenAmount
-	GasFeeCap  abi.TokenAmount
-	GasLimit   int64
+	GasPremium *abi.TokenAmount
+	GasFeeCap  *abi.TokenAmount
+	GasLimit   *int64
 
-	Nonce struct {
-		N   uint64
-		Set bool
-	}
+	Nonce  *uint64
 	Method abi.MethodNum
 	Params []byte
 
@@ -106,12 +105,24 @@ func (s *ServicesImpl) Send(ctx context.Context, params SendParams) (cid.Cid, er
 		To:    params.To,
 		Value: params.Val,
 
-		GasPremium: params.GasPremium,
-		GasFeeCap:  params.GasFeeCap,
-		GasLimit:   params.GasLimit,
-
 		Method: params.Method,
 		Params: params.Params,
+	}
+
+	if params.GasPremium != nil {
+		msg.GasPremium = *params.GasPremium
+	} else {
+		msg.GasPremium = types.NewInt(0)
+	}
+	if params.GasFeeCap != nil {
+		msg.GasFeeCap = *params.GasFeeCap
+	} else {
+		msg.GasFeeCap = types.NewInt(0)
+	}
+	if params.GasLimit != nil {
+		msg.GasLimit = *params.GasLimit
+	} else {
+		msg.GasLimit = 0
 	}
 
 	if !params.Force {
@@ -128,8 +139,8 @@ func (s *ServicesImpl) Send(ctx context.Context, params SendParams) (cid.Cid, er
 		}
 	}
 
-	if params.Nonce.Set {
-		msg.Nonce = params.Nonce.N
+	if params.Nonce != nil {
+		msg.Nonce = *params.Nonce
 		sm, err := s.api.WalletSignMessage(ctx, params.From, msg)
 		if err != nil {
 			return cid.Undef, err

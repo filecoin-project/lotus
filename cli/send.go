@@ -1,18 +1,15 @@
 package cli
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 
-	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -98,18 +95,26 @@ var sendCmd = &cli.Command{
 			params.From = addr
 		}
 
-		gp, err := types.BigFromString(cctx.String("gas-premium"))
-		if err != nil {
-			return err
+		if cctx.IsSet("gas-premium") {
+			gp, err := types.BigFromString(cctx.String("gas-premium"))
+			if err != nil {
+				return err
+			}
+			params.GasPremium = &gp
 		}
-		params.GasPremium = gp
 
-		gfc, err := types.BigFromString(cctx.String("gas-feecap"))
-		if err != nil {
-			return err
+		if cctx.IsSet("gas-feecap") {
+			gfc, err := types.BigFromString(cctx.String("gas-feecap"))
+			if err != nil {
+				return err
+			}
+			params.GasFeeCap = &gfc
 		}
-		params.GasFeeCap = gfc
-		params.GasLimit = cctx.Int64("gas-limit")
+
+		if cctx.IsSet("gas-limit") {
+			limit := cctx.Int64("gas-limit")
+			params.GasLimit = &limit
+		}
 
 		params.Method = abi.MethodNum(cctx.Uint64("method"))
 
@@ -134,8 +139,8 @@ var sendCmd = &cli.Command{
 		params.Force = cctx.Bool("force")
 
 		if cctx.IsSet("nonce") {
-			params.Nonce.Set = true
-			params.Nonce.N = cctx.Uint64("nonce")
+			n := cctx.Uint64("nonce")
+			params.Nonce = &n
 		}
 
 		msgCid, err := srv.Send(ctx, params)
@@ -147,13 +152,4 @@ var sendCmd = &cli.Command{
 		fmt.Printf("%s\n", msgCid)
 		return nil
 	},
-}
-
-type sendAPIs interface {
-	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
-	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
-
-	WalletBalance(context.Context, address.Address) (types.BigInt, error)
-	WalletDefaultAddress(context.Context) (address.Address, error)
-	WalletSignMessage(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)
 }
