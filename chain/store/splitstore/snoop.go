@@ -68,7 +68,7 @@ func NewTrackingStore(path string) (TrackingStore, error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("error creating tracking store: %w", err)
 	}
 
 	return s, nil
