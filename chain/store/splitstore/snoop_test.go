@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"golang.org/x/xerrors"
+
 	"github.com/ledgerwatch/lmdb-go/lmdb"
 
 	cid "github.com/ipfs/go-cid"
@@ -35,7 +37,11 @@ func TestTrackingStore(t *testing.T) {
 
 	mustNotHave := func(s TrackingStore, cid cid.Cid) {
 		_, err := s.Get(cid)
-		if !lmdb.IsNotFound(err) {
+		xerr := xerrors.Unwrap(err)
+		if xerr == nil {
+			xerr = err
+		}
+		if !lmdb.IsNotFound(xerr) {
 			t.Fatal("expected key not found")
 		}
 	}
