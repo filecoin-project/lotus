@@ -324,6 +324,6 @@ var Commands = []*cli.Command{
 }
 
 func WithCategory(cat string, cmd *cli.Command) *cli.Command {
-	cmd.Category = cat
+	cmd.Category = strings.ToUpper(cat)
 	return cmd
 }

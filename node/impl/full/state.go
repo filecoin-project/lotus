@@ -473,6 +473,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 
 	return &api.ActorState{
 		Balance: act.Balance,
+		Code:    act.Code,
 		State:   oif,
 	}, nil
 }

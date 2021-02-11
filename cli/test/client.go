@@ -69,7 +69,6 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 		dataCid2.String(),
 		duration,
 		minerAddr.String(),
-		"no",
 		"yes",
 	}
 	out = clientCLI.RunInteractiveCmd(cmd, interactiveCmds)

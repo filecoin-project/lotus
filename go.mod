@@ -33,7 +33,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v1.2.7
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
-	github.com/filecoin-project/go-fil-markets v1.1.7
+	github.com/filecoin-project/go-fil-markets v1.1.8
 	github.com/filecoin-project/go-jsonrpc v0.1.2
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
@@ -133,7 +133,7 @@ require (
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
-	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
+	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
 	go.opencensus.io v0.22.5
 	go.uber.org/dig v1.10.0 // indirect
@@ -147,7 +147,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gotest.tools v2.2.0+incompatible
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace github.com/filecoin-project/lotus => ./

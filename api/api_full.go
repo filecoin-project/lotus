@@ -650,6 +650,7 @@ type Message struct {
 
 type ActorState struct {
 	Balance types.BigInt
+	Code    cid.Cid
 	State   interface{}
 }
 
@@ -937,9 +938,10 @@ type DataSize struct {
 }
 
 type DataCIDSize struct {
-	PayloadSize int64
-	PieceSize   abi.PaddedPieceSize
-	PieceCID    cid.Cid
+	RawBlockSize uint64
+	PayloadSize  int64
+	PieceSize    abi.PaddedPieceSize
+	PieceCID     cid.Cid
 }
 
 type CommPRet struct {
