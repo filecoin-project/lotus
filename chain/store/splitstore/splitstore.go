@@ -62,10 +62,10 @@ func NewSplitStore(path string, ds dstore.Datastore, cold bstore.Blockstore) (*S
 	path = filepath.Join(path, "hot.db")
 	hot, err := lmdbbs.Open(&lmdbbs.Options{
 		Path:                 path,
-		InitialMmapSize:      256 << 20, // 256MiB.
-		MmapGrowthStepFactor: 1.25,      // scale slower than the default of 1.5
-		MmapGrowthStepMax:    512 << 20, // 512MiB.
-		MaxReaders:           32,
+		InitialMmapSize:      1 << 30, // 1GiB.
+		MmapGrowthStepFactor: 1.25,    // scale slower than the default of 1.5
+		MmapGrowthStepMax:    1 << 32, // 4GiB
+		MaxReaders:           192,
 	})
 	if err != nil {
 		return nil, err
