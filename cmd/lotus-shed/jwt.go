@@ -168,7 +168,7 @@ var jwtNewCmd = &cli.Command{
 
 		defer func() {
 			if err := file.Close(); err != nil {
-				log.Warnf("failed to close output file: %w", err)
+				log.Warnf("failed to close output file: %v", err)
 			}
 		}()
 

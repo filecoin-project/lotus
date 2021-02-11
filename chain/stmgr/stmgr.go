@@ -621,7 +621,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 	go func() {
 		fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit)
 		if err != nil {
-			log.Warnf("failed to look back through chain for message: %w", err)
+			log.Warnf("failed to look back through chain for message: %v", err)
 			return
 		}
 
