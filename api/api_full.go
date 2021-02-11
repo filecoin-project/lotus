@@ -938,9 +938,10 @@ type DataSize struct {
 }
 
 type DataCIDSize struct {
-	PayloadSize int64
-	PieceSize   abi.PaddedPieceSize
-	PieceCID    cid.Cid
+	RawBlockSize uint64
+	PayloadSize  int64
+	PieceSize    abi.PaddedPieceSize
+	PieceCID     cid.Cid
 }
 
 type CommPRet struct {
