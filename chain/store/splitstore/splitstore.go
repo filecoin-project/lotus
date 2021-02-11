@@ -65,6 +65,7 @@ func NewSplitStore(path string, ds dstore.Datastore, cold bstore.Blockstore) (*S
 		InitialMmapSize:      4 << 30, // 4GiB.
 		MmapGrowthStepFactor: 1.25,    // scale slower than the default of 1.5
 		MmapGrowthStepMax:    4 << 30, // 4GiB
+		RetryDelay:           time.Millisecond,
 	})
 	if err != nil {
 		return nil, err
