@@ -93,7 +93,7 @@ var logSetLevel = &cli.Command{
 
 		for _, system := range systems {
 			if err := api.LogSetLevel(ctx, system, cctx.Args().First()); err != nil {
-				return xerrors.Errorf("setting log level on %s: %w", system, err)
+				return xerrors.Errorf("setting log level on %s: %v", system, err)
 			}
 		}
 

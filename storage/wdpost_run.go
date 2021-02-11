@@ -45,7 +45,7 @@ func (s *WindowPoStScheduler) failPost(err error, ts *types.TipSet, deadline *dl
 		}
 	})
 
-	log.Errorf("Got err %w - TODO handle errors", err)
+	log.Errorf("Got err %+v - TODO handle errors", err)
 	/*s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps

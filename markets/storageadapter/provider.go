@@ -104,7 +104,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	for time.Since(curTime) < addPieceRetryTimeout {
 		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
 			if err != nil {
-				log.Errorf("failed to addPiece for deal %d, err: %w", deal.DealID, err)
+				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
 			}
 			break
 		}
