@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -91,6 +92,8 @@ type SendParams struct {
 // There might be room for generic Send that other commands can use to send their messages
 // We will see
 
+var ErrSendBalanceTooLow = errors.New("balance too low")
+
 func (s *ServicesImpl) Send(ctx context.Context, params SendParams) (cid.Cid, error) {
 	if params.From == address.Undef {
 		defaddr, err := s.api.WalletDefaultAddress(ctx)
@@ -134,8 +137,8 @@ func (s *ServicesImpl) Send(ctx context.Context, params SendParams) (cid.Cid, er
 		totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
 
 		if fromBalance.LessThan(totalCost) {
-			fmt.Printf("WARNING: From balance %s less than total cost %s\n", types.FIL(fromBalance), types.FIL(totalCost))
-			return cid.Undef, fmt.Errorf("--force must be specified for this action to have an effect; you have been warned")
+			return cid.Undef, xerrors.Errorf("From balance %s less than total cost %s: %w", types.FIL(fromBalance), types.FIL(totalCost), ErrSendBalanceTooLow)
+
 		}
 	}
 

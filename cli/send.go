@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/urfave/cli/v2"
@@ -146,6 +147,10 @@ var sendCmd = &cli.Command{
 		msgCid, err := srv.Send(ctx, params)
 
 		if err != nil {
+			if errors.Is(err, ErrSendBalanceTooLow) {
+				fmt.Printf("%s\n", err.Error())
+				return fmt.Errorf("--force must be specified for this action to have an effect; you have been warned: %w", err)
+			}
 			return xerrors.Errorf("executing send: %w", err)
 		}
 
