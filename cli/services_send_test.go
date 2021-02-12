@@ -120,7 +120,7 @@ func TestSendService(t *testing.T) {
 	t.Run("happy", func(t *testing.T) {
 		params := params
 		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close()
+		defer srvcs.Close() //nolint:errcheck
 		msgCid, sign := makeMessageSigner()
 		gomock.InOrder(
 			mockApi.EXPECT().WalletBalance(ctx, params.From).Return(types.NewInt(balance), nil),
@@ -135,7 +135,7 @@ func TestSendService(t *testing.T) {
 	t.Run("balance-too-low", func(t *testing.T) {
 		params := params
 		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close()
+		defer srvcs.Close() //nolint:errcheck
 		gomock.InOrder(
 			mockApi.EXPECT().WalletBalance(ctx, a1).Return(types.NewInt(balance-200), nil),
 			// no MpoolPushMessage
@@ -150,7 +150,7 @@ func TestSendService(t *testing.T) {
 		params := params
 		params.Force = true
 		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close()
+		defer srvcs.Close() //nolint:errcheck
 		msgCid, sign := makeMessageSigner()
 		gomock.InOrder(
 			mockApi.EXPECT().WalletBalance(ctx, a1).Return(types.NewInt(balance-200), nil).AnyTimes(),
@@ -169,7 +169,7 @@ func TestSendService(t *testing.T) {
 		mm.From = a1
 
 		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close()
+		defer srvcs.Close() //nolint:errcheck
 		msgCid, sign := makeMessageSigner()
 		gomock.InOrder(
 			mockApi.EXPECT().WalletDefaultAddress(ctx).Return(a1, nil),
@@ -189,7 +189,7 @@ func TestSendService(t *testing.T) {
 		mm := MessageMatcher(params)
 
 		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close()
+		defer srvcs.Close() //nolint:errcheck
 		_, _ = mm, mockApi
 
 		var sm *types.SignedMessage
@@ -220,7 +220,7 @@ func TestSendService(t *testing.T) {
 		params.GasPremium = &gp
 
 		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close()
+		defer srvcs.Close() //nolint:errcheck
 		msgCid, sign := makeMessageSigner()
 		gomock.InOrder(
 			mockApi.EXPECT().WalletBalance(ctx, params.From).Return(types.NewInt(balance), nil),

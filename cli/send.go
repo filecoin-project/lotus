@@ -71,7 +71,7 @@ var sendCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer srv.Close()
+		defer srv.Close() //nolint:errcheck
 
 		ctx := ReqContext(cctx)
 		var params SendParams
