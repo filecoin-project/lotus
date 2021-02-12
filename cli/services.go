@@ -25,7 +25,7 @@ type ServicesAPI interface {
 	// Sends executes a send given SendParams
 	Send(ctx context.Context, params SendParams) (cid.Cid, error)
 	// DecodeTypedParamsFromJSON takes in information needed to identify a method and converts JSON
-	// paramaters to bytes of their CBOR encoding
+	// parameters to bytes of their CBOR encoding
 	DecodeTypedParamsFromJSON(ctx context.Context, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error)
 
 	// Close ends the session of services and disconnects from RPC, using Services after Close is called
