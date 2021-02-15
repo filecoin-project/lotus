@@ -41,10 +41,15 @@ MODULES+=$(FFI_PATH)
 BUILD_DEPS+=build/.filecoin-install
 CLEAN+=build/.filecoin-install
 
-$(MODULES): build/.update-modules ;
+ffi-version-check:
+	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 1 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
+BUILD_DEPS+=ffi-version-check
+
+.PHONY: ffi-version-check
+
 
 # dummy file that marks the last time modules were updated
-build/.update-modules:
+build/.update-modules: $(MODULES)
 	git submodule update --init --recursive
 	touch $@
 
