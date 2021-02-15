@@ -48,8 +48,9 @@ BUILD_DEPS+=ffi-version-check
 .PHONY: ffi-version-check
 
 
+$(MODULES): build/.update-modules ;
 # dummy file that marks the last time modules were updated
-build/.update-modules: $(MODULES)
+build/.update-modules:
 	git submodule update --init --recursive
 	touch $@
 
