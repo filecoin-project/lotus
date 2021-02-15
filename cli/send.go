@@ -148,13 +148,12 @@ var sendCmd = &cli.Command{
 
 		if err != nil {
 			if errors.Is(err, ErrSendBalanceTooLow) {
-				fmt.Printf("%s\n", err.Error())
 				return fmt.Errorf("--force must be specified for this action to have an effect; you have been warned: %w", err)
 			}
 			return xerrors.Errorf("executing send: %w", err)
 		}
 
-		fmt.Printf("%s\n", msgCid)
+		fmt.Fprintf(cctx.App.Writer, "%s\n", msgCid)
 		return nil
 	},
 }

@@ -16,6 +16,39 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type makerKeyType struct{}
+
+var markerKey = makerKeyType{}
+
+type contextMatcher struct {
+	marker *int
+}
+
+// Matches returns whether x is a match.
+func (cm contextMatcher) Matches(x interface{}) bool {
+	ctx, ok := x.(context.Context)
+	if !ok {
+		return false
+	}
+	maybeMarker, ok := ctx.Value(markerKey).(*int)
+	if !ok {
+		return false
+	}
+
+	return cm.marker == maybeMarker
+}
+
+func (cm contextMatcher) String() string {
+	return fmt.Sprintf("Context with Value(%v/%T, %p)", markerKey, markerKey, cm.marker)
+}
+
+func ContextWithMarker(ctx context.Context) (context.Context, gomock.Matcher) {
+	marker := new(int)
+	outCtx := context.WithValue(ctx, markerKey, marker)
+	return outCtx, contextMatcher{marker: marker}
+
+}
+
 func setupMockSrvcs(t *testing.T) (*ServicesImpl, *mocks.MockFullNode) {
 	mockCtrl := gomock.NewController(t)
 
@@ -114,8 +147,7 @@ func TestSendService(t *testing.T) {
 		Val:  types.NewInt(balance - 100),
 	}
 
-	ctx, done := context.WithCancel(context.Background())
-	defer done()
+	ctx, ctxM := ContextWithMarker(context.Background())
 
 	t.Run("happy", func(t *testing.T) {
 		params := params
@@ -123,8 +155,8 @@ func TestSendService(t *testing.T) {
 		defer srvcs.Close() //nolint:errcheck
 		msgCid, sign := makeMessageSigner()
 		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctx, params.From).Return(types.NewInt(balance), nil),
-			mockApi.EXPECT().MpoolPushMessage(ctx, MessageMatcher(params), nil).DoAndReturn(sign),
+			mockApi.EXPECT().WalletBalance(ctxM, params.From).Return(types.NewInt(balance), nil),
+			mockApi.EXPECT().MpoolPushMessage(ctxM, MessageMatcher(params), nil).DoAndReturn(sign),
 		)
 
 		c, err := srvcs.Send(ctx, params)
@@ -137,7 +169,7 @@ func TestSendService(t *testing.T) {
 		srvcs, mockApi := setupMockSrvcs(t)
 		defer srvcs.Close() //nolint:errcheck
 		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctx, a1).Return(types.NewInt(balance-200), nil),
+			mockApi.EXPECT().WalletBalance(ctxM, a1).Return(types.NewInt(balance-200), nil),
 			// no MpoolPushMessage
 		)
 
@@ -153,8 +185,8 @@ func TestSendService(t *testing.T) {
 		defer srvcs.Close() //nolint:errcheck
 		msgCid, sign := makeMessageSigner()
 		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctx, a1).Return(types.NewInt(balance-200), nil).AnyTimes(),
-			mockApi.EXPECT().MpoolPushMessage(ctx, MessageMatcher(params), nil).DoAndReturn(sign),
+			mockApi.EXPECT().WalletBalance(ctxM, a1).Return(types.NewInt(balance-200), nil).AnyTimes(),
+			mockApi.EXPECT().MpoolPushMessage(ctxM, MessageMatcher(params), nil).DoAndReturn(sign),
 		)
 
 		c, err := srvcs.Send(ctx, params)
@@ -172,9 +204,9 @@ func TestSendService(t *testing.T) {
 		defer srvcs.Close() //nolint:errcheck
 		msgCid, sign := makeMessageSigner()
 		gomock.InOrder(
-			mockApi.EXPECT().WalletDefaultAddress(ctx).Return(a1, nil),
-			mockApi.EXPECT().WalletBalance(ctx, a1).Return(types.NewInt(balance), nil),
-			mockApi.EXPECT().MpoolPushMessage(ctx, mm, nil).DoAndReturn(sign),
+			mockApi.EXPECT().WalletDefaultAddress(ctxM).Return(a1, nil),
+			mockApi.EXPECT().WalletBalance(ctxM, a1).Return(types.NewInt(balance), nil),
+			mockApi.EXPECT().MpoolPushMessage(ctxM, mm, nil).DoAndReturn(sign),
 		)
 
 		c, err := srvcs.Send(ctx, params)
@@ -194,13 +226,13 @@ func TestSendService(t *testing.T) {
 
 		var sm *types.SignedMessage
 		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctx, a1).Return(types.NewInt(balance), nil),
-			mockApi.EXPECT().WalletSignMessage(ctx, a1, mm).DoAndReturn(
+			mockApi.EXPECT().WalletBalance(ctxM, a1).Return(types.NewInt(balance), nil),
+			mockApi.EXPECT().WalletSignMessage(ctxM, a1, mm).DoAndReturn(
 				func(_ context.Context, _ address.Address, msg *types.Message) (*types.SignedMessage, error) {
 					sm = fakeSign(msg)
 
 					// now we expect MpoolPush with that SignedMessage
-					mockApi.EXPECT().MpoolPush(ctx, sm).Return(sm.Cid(), nil)
+					mockApi.EXPECT().MpoolPush(ctxM, sm).Return(sm.Cid(), nil)
 					return sm, nil
 				}),
 		)
@@ -223,8 +255,8 @@ func TestSendService(t *testing.T) {
 		defer srvcs.Close() //nolint:errcheck
 		msgCid, sign := makeMessageSigner()
 		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctx, params.From).Return(types.NewInt(balance), nil),
-			mockApi.EXPECT().MpoolPushMessage(ctx, MessageMatcher(params), nil).DoAndReturn(sign),
+			mockApi.EXPECT().WalletBalance(ctxM, params.From).Return(types.NewInt(balance), nil),
+			mockApi.EXPECT().MpoolPushMessage(ctxM, MessageMatcher(params), nil).DoAndReturn(sign),
 		)
 
 		c, err := srvcs.Send(ctx, params)
