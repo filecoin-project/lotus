@@ -162,7 +162,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 			log.Errorf("WAIT")
 		}
 		log.Errorf("PLEDGING %d", i)
-		err := miner.PledgeSector(ctx)
+		_, err := miner.PledgeSector(ctx)
 		require.NoError(t, err)
 	}
 
