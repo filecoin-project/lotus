@@ -850,9 +850,8 @@ uiLoop:
 						TransferType: storagemarket.TTGraphsync,
 						Root:         data,
 
-						PieceCid:     &ds.PieceCID,
-						PieceSize:    ds.PieceSize.Unpadded(),
-						RawBlockSize: ds.RawBlockSize,
+						PieceCid:  &ds.PieceCID,
+						PieceSize: ds.PieceSize.Unpadded(),
 					},
 					Wallet:            a,
 					Miner:             maddr,
@@ -1568,7 +1567,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, 
 
 	if verbose {
 		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tTransfer %%\tVerified\tMessage\n")
+		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
 		for _, d := range deals {
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch != -1 {
@@ -1586,16 +1585,17 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, 
 				transferChannelID = d.LocalDeal.TransferChannelID.String()
 			}
 			transferStatus := ""
-			transferPct := ""
 			if d.LocalDeal.DataTransfer != nil {
 				transferStatus = datatransfer.Statuses[d.LocalDeal.DataTransfer.Status]
-				// Calculate transfer %
-				if d.LocalDeal.DataRef.RawBlockSize > 0 {
-					pct := (100 * d.LocalDeal.DataTransfer.Transferred) / d.LocalDeal.DataRef.RawBlockSize
-					transferPct = fmt.Sprintf("%d%%", pct)
-				}
+				// TODO: Include the transferred percentage once this bug is fixed:
+				// https://github.com/ipfs/go-graphsync/issues/126
+				//fmt.Printf("transferred: %d / size: %d\n", d.LocalDeal.DataTransfer.Transferred, d.LocalDeal.Size)
+				//if d.LocalDeal.Size > 0 {
+				//	pct := (100 * d.LocalDeal.DataTransfer.Transferred) / d.LocalDeal.Size
+				//	transferPct = fmt.Sprintf("%d%%", pct)
+				//}
 			}
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%v\t%s\n",
+			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
 				d.LocalDeal.CreationTime.Format(time.Stamp),
 				d.LocalDeal.ProposalCid,
 				d.LocalDeal.DealID,
@@ -1609,7 +1609,6 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, 
 				d.LocalDeal.Duration,
 				transferChannelID,
 				transferStatus,
-				transferPct,
 				d.LocalDeal.Verified,
 				d.LocalDeal.Message)
 		}
