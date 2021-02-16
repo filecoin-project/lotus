@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
@@ -34,7 +35,7 @@ func (m *Miner) GetSectorInfo(sid abi.SectorNumber) (sealing.SectorInfo, error) 
 	return m.sealing.GetSectorInfo(sid)
 }
 
-func (m *Miner) PledgeSector(ctx context.Context) error {
+func (m *Miner) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
 	return m.sealing.PledgeSector(ctx)
 }
 
