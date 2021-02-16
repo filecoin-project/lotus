@@ -219,6 +219,10 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 
 	out := make([]abi.SectorNumber, len(sectors))
 	for i, sector := range sectors {
+		if sector.State == sealing.UndefinedSectorState {
+			continue // sector ID not set yet
+		}
+
 		out[i] = sector.SectorNumber
 	}
 	return out, nil
