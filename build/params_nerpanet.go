@@ -31,16 +31,14 @@ const UpgradeActorsV2Height = 120 // critical: the network can bootstrap from v1
 
 const UpgradeKumquatHeight = -6
 
-const UpgradeCalicoHeight = 999999999
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
+const UpgradeCalicoHeight = 306000
+const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 12)
 
-const UpgradeOrangeHeight = 9999999999
+const UpgradeOrangeHeight = 307500
 
-// 2020-12-22T02:00:00Z
-const UpgradeClausHeight = 99999999999
+const UpgradeClausHeight = 307600
 
-// TODO
-const UpgradeActorsV3Height = 999999999999
+const UpgradeActorsV3Height = 308000
 
 func init() {
 	// Minimum block production power is set to 4 TiB

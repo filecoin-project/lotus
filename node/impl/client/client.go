@@ -755,13 +755,7 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 	w := &writer.Writer{}
 	bw := bufio.NewWriterSize(w, int(writer.CommPBuf))
 
-	// Calculate the raw block size so we can figure out the transfer percentage
-	// (the raw block size is the denominator)
-	var rawBlockSize uint64
-	err := car.WriteCarWithWalker(ctx, dag, []cid.Cid{root}, w, func(nd ipld.Node) ([]*ipld.Link, error) {
-		rawBlockSize += uint64(len(nd.RawData()))
-		return nd.Links(), nil
-	})
+	err := car.WriteCar(ctx, dag, []cid.Cid{root}, w)
 	if err != nil {
 		return api.DataCIDSize{}, err
 	}
@@ -771,12 +765,7 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 	}
 
 	dataCIDSize, err := w.Sum()
-	return api.DataCIDSize{
-		RawBlockSize: rawBlockSize,
-		PayloadSize:  dataCIDSize.PayloadSize,
-		PieceSize:    dataCIDSize.PieceSize,
-		PieceCID:     dataCIDSize.PieceCID,
-	}, err
+	return api.DataCIDSize(dataCIDSize), err
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
