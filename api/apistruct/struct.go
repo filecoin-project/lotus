@@ -304,7 +304,7 @@ type StorageMinerStruct struct {
 		MarketPendingDeals        func(ctx context.Context) (api.PendingDealInfo, error)                                                                                                                       `perm:"write"`
 		MarketPublishPendingDeals func(ctx context.Context) error                                                                                                                                              `perm:"admin"`
 
-		PledgeSector func(context.Context) error `perm:"write"`
+		PledgeSector func(context.Context) (abi.SectorID, error) `perm:"write"`
 
 		SectorsStatus                 func(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) `perm:"read"`
 		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)                                             `perm:"read"`
@@ -1274,7 +1274,7 @@ func (c *StorageMinerStruct) ActorAddressConfig(ctx context.Context) (api.Addres
 	return c.Internal.ActorAddressConfig(ctx)
 }
 
-func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
+func (c *StorageMinerStruct) PledgeSector(ctx context.Context) (abi.SectorID, error) {
 	return c.Internal.PledgeSector(ctx)
 }
 

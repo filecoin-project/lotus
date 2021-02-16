@@ -121,10 +121,10 @@ func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Add
 	return mi.SectorSize, nil
 }
 
-func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
+func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) (abi.SectorID, error) {
 	sr, err := sm.Miner.PledgeSector(ctx)
 	if err != nil {
-		return err
+		return abi.SectorID{}, err
 	}
 
 	// wait for the sector to enter the Packing state
@@ -132,17 +132,17 @@ func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
 	for {
 		info, err := sm.Miner.GetSectorInfo(sr.ID.Number)
 		if err != nil {
-			return xerrors.Errorf("getting pledged sector info: %w", err)
+			return abi.SectorID{}, xerrors.Errorf("getting pledged sector info: %w", err)
 		}
 
 		if info.State != sealing.UndefinedSectorState {
-			return nil
+			return sr.ID, nil
 		}
 
 		select {
 		case <-time.After(10 * time.Millisecond):
 		case <-ctx.Done():
-			return ctx.Err()
+			return abi.SectorID{}, ctx.Err()
 		}
 	}
 }

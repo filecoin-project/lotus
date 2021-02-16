@@ -1142,7 +1142,13 @@ Perms: write
 
 Inputs: `null`
 
-Response: `{}`
+Response:
+```json
+{
+  "Miner": 1000,
+  "Number": 9
+}
+```
 
 ## Return
 

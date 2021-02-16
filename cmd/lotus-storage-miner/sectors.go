@@ -55,7 +55,14 @@ var sectorsPledgeCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		return nodeApi.PledgeSector(ctx)
+		id, err := nodeApi.PledgeSector(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Created CC sector: ", id.Number)
+
+		return nil
 	},
 }
 
