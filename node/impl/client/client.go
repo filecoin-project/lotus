@@ -711,6 +711,16 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 		return nil, err
 	}
 
+	// check that the data is a car file; if it's not, retrieval won't work
+	_, _, err = car.ReadHeader(bufio.NewReader(rdr))
+	if err != nil {
+		return nil, xerrors.Errorf("not a car file: %w", err)
+	}
+
+	if _, err := rdr.Seek(0, io.SeekStart); err != nil {
+		return nil, xerrors.Errorf("seek to start: %w", err)
+	}
+
 	pieceReader, pieceSize := padreader.New(rdr, uint64(stat.Size()))
 	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
 
