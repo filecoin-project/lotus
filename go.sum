@@ -279,8 +279,8 @@ github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 h1:b3UDemBYN2HNfk3KOXNuxgTTxl
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0/go.mod h1:7aWZdaQ1b16BVoQUYR+eEvrDCGJoPLxFpDynFjYfBjI=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.0.1 h1:zbzs46G7bOctkZ+JUX3xirrj0RaEsi+27dtlsgrTNBg=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.0.1/go.mod h1:gXpNmr3oQx8l3o7qkGyDjJjYSRX7hp/FGOStdqrWyDI=
-github.com/filecoin-project/go-jsonrpc v0.1.2 h1:MTebUawBHLxxY9gDi1WXuGc89TWIDmsgoDqeZSk9KRw=
-github.com/filecoin-project/go-jsonrpc v0.1.2/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
+github.com/filecoin-project/go-jsonrpc v0.1.3 h1:Ep2PQzO1t3nUlUFXWuT12h7AfC4bZM3BjwfSDlpNzaQ=
+github.com/filecoin-project/go-jsonrpc v0.1.3/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
 github.com/filecoin-project/go-multistore v0.0.3 h1:vaRBY4YiA2UZFPK57RNuewypB8u0DzzQwqsL0XarpnI=
 github.com/filecoin-project/go-multistore v0.0.3/go.mod h1:kaNqCC4IhU4B1uyr7YWFHd23TL4KM32aChS0jNkyUvQ=
 github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20 h1:+/4aUeUoKr6AKfPE3mBhXA5spIV6UcKdTYDPNU2Tdmg=
