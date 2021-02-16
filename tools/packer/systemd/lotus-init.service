@@ -1,0 +1,13 @@
+[Unit]
+Type=oneshot
+Description=Sync Lotus chain for the first time
+
+[Service]
+User=fc
+Group=fc
+ExecStart=/usr/local/bin/lotus-init.sh
+Environment=LOTUS_PATH=/var/lib/lotus
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

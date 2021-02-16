@@ -1,0 +1,16 @@
+[Unit]
+Description=Lotus Daemon
+After=network.target
+After=lotus-init.service
+Wants=lotus-init.service
+
+[Service]
+User=fc
+Group=fc
+ExecStart=/usr/local/bin/lotus daemon
+Environment=LOTUS_PATH=/var/lib/lotus
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

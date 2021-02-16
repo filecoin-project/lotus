@@ -2,6 +2,7 @@ version: 2.1
 orbs:
   go: gotest/tools@0.0.13
   aws-cli: circleci/aws-cli@1.3.2
+  packer: salaxander/packer@0.0.3
 
 executors:
   golang:
@@ -583,6 +584,18 @@ jobs:
               docker push $<<parameters.account-url>>/<<parameters.repo>>:${tag}
             done
 
+  publish-packer:
+    description: build and push AWS IAM and DigitalOcean droplet.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+
 workflows:
   version: 2.1
   ci:
@@ -683,3 +696,13 @@ workflows:
           path: .
           repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
+      - publish-packer:
+          requires:
+            - build-all
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
