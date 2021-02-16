@@ -643,8 +643,7 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "PieceCid": null,
-    "PieceSize": 1024,
-    "RawBlockSize": 42
+    "PieceSize": 1024
   },
   "AvailableForRetrieval": true,
   "DealID": 5432,
