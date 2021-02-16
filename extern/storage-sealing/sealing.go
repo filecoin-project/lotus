@@ -202,21 +202,6 @@ func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) 
 	return m.terminator.Pending(ctx)
 }
 
-// newSectorCC accepts a slice of pieces with no deal (junk data)
-func (m *Sealing) newSectorCC(ctx context.Context, sid abi.SectorNumber, pieces []Piece) error {
-	spt, err := m.currentSealProof(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting current seal proof type: %w", err)
-	}
-
-	log.Infof("Creating CC sector %d", sid)
-	return m.sectors.Send(uint64(sid), SectorStartCC{
-		ID:         sid,
-		Pieces:     pieces,
-		SectorType: spt,
-	})
-}
-
 func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof, error) {
 	mi, err := m.api.StateMinerInfo(ctx, m.maddr, nil)
 	if err != nil {
