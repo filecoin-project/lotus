@@ -77,10 +77,6 @@ build {
     destination = "lotus-miner.service"
   }
   provisioner "file" {
-    source = "./tools/packer/systemd/lotus-init.service"
-    destination = "lotus-init.service"
-  }
-  provisioner "file" {
     source = "./tools/packer/homedir/LOTUS.txt"
     destination = "LOTUS.txt"
   }

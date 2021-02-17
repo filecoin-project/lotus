@@ -1,12 +1,11 @@
 [Unit]
 Description=Lotus Daemon
 After=network.target
-After=lotus-init.service
-Wants=lotus-init.service
 
 [Service]
 User=fc
 Group=fc
+ExecStartPre=/usr/local/bin/lotus-init.sh
 ExecStart=/usr/local/bin/lotus daemon
 Environment=LOTUS_PATH=/var/lib/lotus
 Restart=always
