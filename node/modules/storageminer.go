@@ -157,6 +157,9 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.Addre
 			return as, nil
 		}
 
+		as.DisableOwnerFallback = addrConf.DisableOwnerFallback
+		as.DisableWorkerFallback = addrConf.DisableWorkerFallback
+
 		for _, s := range addrConf.PreCommitControl {
 			addr, err := address.NewFromString(s)
 			if err != nil {
@@ -173,6 +176,15 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.Addre
 			}
 
 			as.CommitControl = append(as.CommitControl, addr)
+		}
+
+		for _, s := range addrConf.TerminateControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing terminate control address: %w", err)
+			}
+
+			as.TerminateControl = append(as.TerminateControl, addr)
 		}
 
 		return as, nil
