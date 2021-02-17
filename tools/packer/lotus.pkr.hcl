@@ -23,6 +23,10 @@ source "amazon-ebs" "lotus" {
     "us-east-1",
     "us-west-2",
   ]
+  ami_groups = [
+    # This causes the ami to be publicly-accessable.
+    "all",
+  ]
   ami_description = "Lotus Filecoin AMI"
 
   instance_type = "t2.micro"
