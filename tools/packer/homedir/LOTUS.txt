@@ -56,11 +56,18 @@ To check if the daemon is in sync:
 
 
 
-No wallets are crated by default. You can view, create, and delete wallets wit
-the lotus command. Be careful, now. Don't delete a wallet with funds!
+To check if the daemon is connecting to other lotus nodes:
 
-    lotus wallet list
-    lotus wallet new bls
+    lotus net peers
+
+
+
+No wallets are crated by default. You can view, create, and delete wallets with
+the lotus command. On this image, lotus is running as the user `fc`.
+Be careful, now. Don't delete a wallet with funds!
+
+    sudo -E -u fc lotus wallet list
+    sudo -E -u fc lotus wallet new bls
 
 
 
