@@ -54,6 +54,10 @@ To check if the daemon is in sync:
 
     lotus sync status
 
+    **note: When starting lotus for the first time, it will download a chain snapshot.
+            This is a large download and will take several minutes to complete. During
+            this time, the lotus API will not be up yet. Give it time! You can see
+	    progress by looking at the systemd journal.
 
 
 To check if the daemon is connecting to other lotus nodes:
