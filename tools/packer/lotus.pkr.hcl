@@ -1,7 +1,24 @@
-locals { timestamp = regex_replace(timestamp(), "[- TZ:]", "") }
+variable "ci_workspace_bins" {
+  type = string
+  default = "./linux"
+}
 
-source "amazon-ebs" "lotus-mainnet" {
-  ami_name      = "lotus-mainnet-${local.timestamp}"
+variable "lotus_network" {
+  type = string
+  default = "mainnet"
+}
+
+variable "git_tag" {
+  type = string
+  default = ""
+}
+
+locals {
+  timestamp = regex_replace(timestamp(), "[- TZ:]", "")
+} 
+
+source "amazon-ebs" "lotus" {
+  ami_name      = "lotus-${var.lotus_network}-${var.git_tag}-${local.timestamp}"
   ami_regions = [
     "us-east-1",
     "us-west-2",
@@ -21,33 +38,33 @@ source "amazon-ebs" "lotus-mainnet" {
   ssh_username = "ubuntu"
 }
 
-source "digitalocean" "lotus-mainnet" {
-  droplet_name = "lotus-mainnet"
+source "digitalocean" "lotus" {
+  droplet_name = "lotus-${var.lotus_network}"
   size = "s-1vcpu-1gb"
   region = "nyc3"
   image = "ubuntu-20-04-x64"
-  snapshot_name = "lotus-mainnet-${local.timestamp}"
+  snapshot_name = "lotus-${var.lotus_network}-${local.timestamp}"
   ssh_username = "root"
 }
 
 build {
   sources = [
-    "source.amazon-ebs.lotus-mainnet",
-    "source.digitalocean.lotus-mainnet",
+    "source.amazon-ebs.lotus",
+    "source.digitalocean.lotus",
   ]
 
   # Lotus software (from CI workspace)
   provisioner "file" {
-    source = "./linux/lotus"
+    source = "${var.ci_workspace_bins}/lotus"
     destination = "lotus"
   }
   provisioner "file" {
-    source = "./linux/lotus-miner"
+    source = "${var.ci_workspace_bins}/lotus-miner"
     destination = "lotus-miner"
   }
   # First run script
   provisioner "file" {
-    source = "./tools/packer/scripts/lotus-init.sh"
+    source = "./tools/packer/scripts/${var.lotus_network}/lotus-init.sh"
     destination = "lotus-init.sh"
   }
   # Systemd service units.
@@ -64,16 +81,15 @@ build {
     destination = "lotus-init.service"
   }
   provisioner "file" {
-    source = "./tools/packer/LOTUS.txt"
+    source = "./tools/packer/homedir/LOTUS.txt"
     destination = "LOTUS.txt"
   }
   provisioner "file" {
-    source = "./tools/packer/bashrc"
+    source = "./tools/packer/homedir/bashrc"
     destination = ".bashrc"
   }
   # build it.
   provisioner "shell" {
     script = "./tools/packer/setup.sh"
   }
-
 }

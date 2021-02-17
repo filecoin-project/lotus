@@ -278,6 +278,11 @@ jobs:
       - install-deps
       - prepare
       - run: make calibnet
+      - run: mkdir linux-calibnet && mv lotus lotus-miner lotus-worker linux-calibnet
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux-calibnet
   build-lotus-soup:
     description: |
       Compile `lotus-soup` Testground test plan
@@ -595,6 +600,10 @@ jobs:
           at: "."
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux-calibnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
 
 workflows:
   version: 2.1
@@ -699,10 +708,12 @@ workflows:
       - publish-packer:
           requires:
             - build-all
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+            - build-ntwk-calibration
+           filters:
+             branches:
+               ignore:
+                 - /.*/
+             tags:
+               only:
+                 - /^v\d+\.\d+\.\d+$/
+          
