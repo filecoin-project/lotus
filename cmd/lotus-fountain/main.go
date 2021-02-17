@@ -112,7 +112,7 @@ var runCmd = &cli.Command{
 				WalletRate:  15 * time.Minute,
 				WalletBurst: 2,
 			}),
-			recapTreshold: cctx.Float64("captcha-threshold"),
+			recapThreshold: cctx.Float64("captcha-threshold"),
 		}
 
 		box := rice.MustFindBox("site")
@@ -148,8 +148,8 @@ type handler struct {
 	from           address.Address
 	sendPerRequest types.FIL
 
-	limiter       *Limiter
-	recapTreshold float64
+	limiter        *Limiter
+	recapThreshold float64
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +172,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	if !capResp.Success || capResp.Score < h.recapTreshold {
+	if !capResp.Success || capResp.Score < h.recapThreshold {
 		log.Infow("spam", "capResp", capResp)
 		http.Error(w, "spam protection", http.StatusUnprocessableEntity)
 		return
