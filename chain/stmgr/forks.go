@@ -967,14 +967,16 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
 	}
 
-	err = terminateActor(tree, build.ZeroAddress, cb, epoch)
-	if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
-		return cid.Undef, xerrors.Errorf("deleting zero bls actor: %w", err)
-	}
+	if build.BuildType == build.BuildMainnet {
+		err := terminateActor(tree, build.ZeroAddress, cb, epoch)
+		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
+			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %w", err)
+		}
 
-	newRoot, err = tree.Flush(ctx)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
+		newRoot, err = tree.Flush(ctx)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
+		}
 	}
 
 	return newRoot, nil
