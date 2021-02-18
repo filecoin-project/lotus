@@ -9,6 +9,11 @@ import (
 	"sync"
 	"time"
 
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
+
+	init3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/init"
+
 	"github.com/filecoin-project/go-state-types/rt"
 
 	"github.com/filecoin-project/go-address"
@@ -900,7 +905,7 @@ func UpgradeCalico(ctx context.Context, sm *StateManager, _ MigrationCache, cb E
 	return newRoot, nil
 }
 
-func terminateActor(tree *state.StateTree, addr address.Address, cb ExecCallback, epoch abi.ChainEpoch) error {
+func terminateActor(ctx context.Context, tree *state.StateTree, addr address.Address, cb ExecCallback, epoch abi.ChainEpoch) error {
 	a, err := tree.GetActor(addr)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return types.ErrActorNotFound
@@ -929,7 +934,47 @@ func terminateActor(tree *state.StateTree, addr address.Address, cb ExecCallback
 		}
 	}
 
-	return tree.DeleteActor(addr)
+	err = tree.DeleteActor(addr)
+	if err != nil {
+		return xerrors.Errorf("deleting actor from tree: %w", err)
+	}
+
+	ia, err := tree.GetActor(init_.Address)
+	if err != nil {
+		return xerrors.Errorf("loading init actor: %w", err)
+	}
+
+	var ias init3.State
+	err = tree.Store.Get(ctx, ia.Head, &ias)
+	if err != nil {
+		return xerrors.Errorf("loading init actor state: %w", err)
+	}
+
+	am, err := adt3.AsMap(adt.WrapStore(ctx, tree.Store), ias.AddressMap, builtin3.DefaultHamtBitwidth)
+	if err != nil {
+		return xerrors.Errorf("loading address map: %w", err)
+	}
+
+	err = am.Delete(abi.AddrKey(addr))
+	if err != nil {
+		return xerrors.Errorf("deleting entry from address map: %w", err)
+	}
+
+	amr, err := am.Root()
+	if err != nil {
+		return xerrors.Errorf("failed to get new address map root: %w", err)
+	}
+
+	ias.AddressMap = amr
+
+	nih, err := tree.Store.Put(ctx, &ias)
+	if err != nil {
+		return xerrors.Errorf("writing new init actor state: %w", err)
+	}
+
+	ia.Head = nih
+
+	return tree.SetActor(init_.Address, ia)
 }
 
 func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
@@ -968,7 +1013,7 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache
 	}
 
 	if build.BuildType == build.BuildMainnet {
-		err := terminateActor(tree, build.ZeroAddress, cb, epoch)
+		err := terminateActor(ctx, tree, build.ZeroAddress, cb, epoch)
 		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
 			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %w", err)
 		}
