@@ -9,11 +9,6 @@ import (
 	"sync"
 	"time"
 
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
-
-	init3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/init"
-
 	"github.com/filecoin-project/go-state-types/rt"
 
 	"github.com/filecoin-project/go-address"
@@ -114,12 +109,6 @@ type Upgrade struct {
 type UpgradeSchedule []Upgrade
 
 type migrationLogger struct{}
-
-var fakeRct = &types.MessageReceipt{
-	ExitCode: 0,
-	Return:   nil,
-	GasUsed:  0,
-}
 
 func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}) {
 	switch level {
@@ -435,7 +424,7 @@ func doTransfer(tree types.StateTree, from, to address.Address, amt abi.TokenAmo
 
 		cb(types.ExecutionTrace{
 			Msg:        makeFakeMsg(from, to, amt, 0),
-			MsgRct:     fakeRct,
+			MsgRct:     makeFakeRct(),
 			Error:      "",
 			Duration:   0,
 			GasCharges: nil,
@@ -702,11 +691,11 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 		fakeMsg := makeFakeMsg(builtin.SystemActorAddr, builtin.SystemActorAddr, big.Zero(), uint64(epoch))
 
 		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
-			MessageReceipt: *fakeRct,
+			MessageReceipt: *makeFakeRct(),
 			ActorErr:       nil,
 			ExecutionTrace: types.ExecutionTrace{
 				Msg:        fakeMsg,
-				MsgRct:     fakeRct,
+				MsgRct:     makeFakeRct(),
 				Error:      "",
 				Duration:   0,
 				GasCharges: nil,
@@ -909,6 +898,8 @@ func terminateActor(ctx context.Context, tree *state.StateTree, addr address.Add
 	a, err := tree.GetActor(addr)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return types.ErrActorNotFound
+	} else if err != nil {
+		return xerrors.Errorf("failed to get actor to delete: %w", err)
 	}
 
 	var trace types.ExecutionTrace
@@ -924,7 +915,7 @@ func terminateActor(ctx context.Context, tree *state.StateTree, addr address.Add
 		fakeMsg := makeFakeMsg(builtin.SystemActorAddr, addr, big.Zero(), uint64(epoch))
 
 		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
-			MessageReceipt: *fakeRct,
+			MessageReceipt: *makeFakeRct(),
 			ActorErr:       nil,
 			ExecutionTrace: trace,
 			Duration:       0,
@@ -944,30 +935,16 @@ func terminateActor(ctx context.Context, tree *state.StateTree, addr address.Add
 		return xerrors.Errorf("loading init actor: %w", err)
 	}
 
-	var ias init3.State
-	err = tree.Store.Get(ctx, ia.Head, &ias)
+	ias, err := init_.Load(&state.AdtStore{IpldStore: tree.Store}, ia)
 	if err != nil {
 		return xerrors.Errorf("loading init actor state: %w", err)
 	}
 
-	am, err := adt3.AsMap(adt.WrapStore(ctx, tree.Store), ias.AddressMap, builtin3.DefaultHamtBitwidth)
-	if err != nil {
-		return xerrors.Errorf("loading address map: %w", err)
-	}
-
-	err = am.Delete(abi.AddrKey(addr))
-	if err != nil {
+	if err := ias.Remove(addr); err != nil {
 		return xerrors.Errorf("deleting entry from address map: %w", err)
 	}
 
-	amr, err := am.Root()
-	if err != nil {
-		return xerrors.Errorf("failed to get new address map root: %w", err)
-	}
-
-	ias.AddressMap = amr
-
-	nih, err := tree.Store.Put(ctx, &ias)
+	nih, err := tree.Store.Put(ctx, ias)
 	if err != nil {
 		return xerrors.Errorf("writing new init actor state: %w", err)
 	}
@@ -993,18 +970,6 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache
 	newRoot, err := upgradeActorsV3Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v3 state: %w", err)
-	}
-
-	// perform some basic sanity checks to make sure everything still works.
-	store := store.ActorStore(ctx, sm.ChainStore().Blockstore())
-	if newSm, err := state.LoadStateTree(store, newRoot); err != nil {
-		return cid.Undef, xerrors.Errorf("state tree sanity load failed: %w", err)
-	} else if newRoot2, err := newSm.Flush(ctx); err != nil {
-		return cid.Undef, xerrors.Errorf("state tree sanity flush failed: %w", err)
-	} else if newRoot2 != newRoot {
-		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
-	} else if _, err := newSm.GetActor(init_.Address); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %w", err)
 	}
 
 	tree, err := sm.StateTree(newRoot)
@@ -1221,11 +1186,11 @@ func splitGenesisMultisig0(ctx context.Context, cb ExecCallback, addr address.Ad
 		fakeMsg := makeFakeMsg(builtin.SystemActorAddr, addr, big.Zero(), uint64(epoch))
 
 		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
-			MessageReceipt: *fakeRct,
+			MessageReceipt: *makeFakeRct(),
 			ActorErr:       nil,
 			ExecutionTrace: types.ExecutionTrace{
 				Msg:        fakeMsg,
-				MsgRct:     fakeRct,
+				MsgRct:     makeFakeRct(),
 				Error:      "",
 				Duration:   0,
 				GasCharges: nil,
@@ -1351,5 +1316,13 @@ func makeFakeMsg(from address.Address, to address.Address, amt abi.TokenAmount, 
 		To:    to,
 		Value: amt,
 		Nonce: nonce,
+	}
+}
+
+func makeFakeRct() *types.MessageReceipt {
+	return &types.MessageReceipt{
+		ExitCode: 0,
+		Return:   nil,
+		GasUsed:  0,
 	}
 }
