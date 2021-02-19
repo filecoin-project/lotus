@@ -596,7 +596,7 @@ func TestCheckSpendable(t *testing.T) {
 	voucherLane := uint64(1)
 	nonce := uint64(1)
 	voucherAmount := big.NewInt(1)
-	voucher := createTestVoucherWithExtra(t, s.ch, voucherLane, nonce, voucherAmount, s.fromKeyPrivate)
+	voucher := createTestVoucher(t, s.ch, voucherLane, nonce, voucherAmount, s.fromKeyPrivate)
 
 	// Add voucher
 	minDelta := big.NewInt(0)
@@ -660,7 +660,7 @@ func TestSubmitVoucher(t *testing.T) {
 	voucherLane := uint64(1)
 	nonce := uint64(1)
 	voucherAmount := big.NewInt(1)
-	voucher := createTestVoucherWithExtra(t, s.ch, voucherLane, nonce, voucherAmount, s.fromKeyPrivate)
+	voucher := createTestVoucher(t, s.ch, voucherLane, nonce, voucherAmount, s.fromKeyPrivate)
 
 	// Add voucher
 	minDelta := big.NewInt(0)
@@ -668,8 +668,7 @@ func TestSubmitVoucher(t *testing.T) {
 	require.NoError(t, err)
 
 	// Submit voucher
-	secret := []byte("secret")
-	submitCid, err := s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret, nil)
+	submitCid, err := s.mgr.SubmitVoucher(ctx, s.ch, voucher, nil, nil)
 	require.NoError(t, err)
 
 	// Check that the secret was passed through correctly
@@ -677,21 +676,18 @@ func TestSubmitVoucher(t *testing.T) {
 	var p paych2.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
-	require.Equal(t, secret, p.Secret)
 
 	// Submit a voucher without first adding it
 	nonce++
 	voucherAmount = big.NewInt(3)
-	secret3 := []byte("secret2")
-	voucher = createTestVoucherWithExtra(t, s.ch, voucherLane, nonce, voucherAmount, s.fromKeyPrivate)
-	submitCid, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret3, nil)
+	voucher = createTestVoucher(t, s.ch, voucherLane, nonce, voucherAmount, s.fromKeyPrivate)
+	submitCid, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, nil, nil)
 	require.NoError(t, err)
 
 	msg = s.mock.pushedMessages(submitCid)
 	var p3 paych2.UpdateChannelStateParams
 	err = p3.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
-	require.Equal(t, secret3, p3.Secret)
 
 	// Verify that vouchers are marked as submitted
 	vis, err := s.mgr.ListVouchers(ctx, s.ch)
@@ -703,7 +699,7 @@ func TestSubmitVoucher(t *testing.T) {
 	}
 
 	// Attempting to submit the same voucher again should fail
-	_, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, secret3, nil)
+	_, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, nil, nil)
 	require.Error(t, err)
 }
 
