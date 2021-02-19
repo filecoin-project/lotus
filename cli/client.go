@@ -299,8 +299,20 @@ var clientLocalCmd = &cli.Command{
 }
 
 var clientDealCmd = &cli.Command{
-	Name:      "deal",
-	Usage:     "Initialize storage deal with a miner",
+	Name:  "deal",
+	Usage: "Initialize storage deal with a miner",
+	Description: `Make a deal with a miner.
+
+dataCid comes from running 'lotus client import'.
+
+miner is the address of the miner you wish to make a deal with.
+
+price is measured in FIL/GB/Block. Miners usually don't accept a bid
+lower than their advertised ask. You can check a miners listed price
+with 'lotus client query-ask <miner address>'.
+
+duration is how long the miner should store the data for, in blocks.
+The minimum value is 518400 (6 months).`,
 	ArgsUsage: "[dataCid miner price duration]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
