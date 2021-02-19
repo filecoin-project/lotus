@@ -232,7 +232,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.Secto
 		d := Decl{s, fileType}
 
 		if len(i.sectors[d]) == 0 {
-			return nil
+			continue
 		}
 
 		rewritten := make([]*declMeta, 0, len(i.sectors[d])-1)
@@ -245,7 +245,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.Secto
 		}
 		if len(rewritten) == 0 {
 			delete(i.sectors, d)
-			return nil
+			continue
 		}
 
 		i.sectors[d] = rewritten
