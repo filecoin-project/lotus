@@ -271,8 +271,8 @@ github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f/go
 github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a h1:hyJ+pUm/4U4RdEZBlg6k8Ma4rDiuvqyGpoICXAxwsTg=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a/go.mod h1:Eaox7Hvus1JgPrL5+M3+h7aSPHc0cVqpSxA+TxIEpZQ=
 github.com/filecoin-project/go-fil-markets v1.0.5-0.20201113164554-c5eba40d5335/go.mod h1:AJySOJC00JRWEZzRG2KsfUnqEf5ITXxeX09BE9N4f9c=
-github.com/filecoin-project/go-fil-markets v1.1.7 h1:7yy7alIDWzUxljxZhGmG3+wvaU4Ty5QDMbPmdZeaIJ8=
-github.com/filecoin-project/go-fil-markets v1.1.7/go.mod h1:6oTRaAsHnCqhi3mpZqdvnWIzH6QzHQc4dbhJrI9/BfQ=
+github.com/filecoin-project/go-fil-markets v1.0.8-0.20210219131722-1002d0c2a156 h1:0k/m0KP86Q5Vnh3YgS5vw9eIxyaznDLb/gmkWWTV61I=
+github.com/filecoin-project/go-fil-markets v1.0.8-0.20210219131722-1002d0c2a156/go.mod h1:0yQu5gvrjFoAIyzPSSJ+xUdCG83vjInAFbTswIB5/hk=
 github.com/filecoin-project/go-hamt-ipld v0.1.5 h1:uoXrKbCQZ49OHpsTCkrThPNelC4W3LPEk0OrS/ytIBM=
 github.com/filecoin-project/go-hamt-ipld v0.1.5/go.mod h1:6Is+ONR5Cd5R6XZoCse1CWaXZc0Hdb/JeX+EQCQzX24=
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 h1:b3UDemBYN2HNfk3KOXNuxgTTxlWi3xVvbQP0IT38fvM=
@@ -1488,6 +1488,8 @@ github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163 h1:TtcUeY2X
 github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2 h1:7HzUKl5d/dELS9lLeT4W6YvliZx+s9k/eOOIdHKrA/w=
 github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
+github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2 h1:bsUlNhdmbtlfdLVXAVfuvKQ01RnWAM09TVrJkI7NZs4=
+github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f h1:jQa4QT2UP9WYv2nzyawpKMOCl+Z/jW7djv2/J50lj9E=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f/go.mod h1:p9UJB6dDgdPgMJZs7UjUOdulKyRr9fqkS+6JKAInPy8=
 github.com/whyrusleeping/go-ctrlnet v0.0.0-20180313164037-f564fbbdaa95/go.mod h1:SJqKCCPXRfBFCwXjfNT/skfsceF7+MBFLI2OrvuRA7g=
