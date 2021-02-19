@@ -18,7 +18,11 @@ then
 fi
 
 MANAGED_BINS=( lotus lotus-miner lotus-init.sh )
-MANAGED_SYSTEMD=( lotus-daemon.service lotus-miner.service lotus-init.service )
+MANAGED_FILES=(
+  /lib/systemd/system/lotus-daemon.service
+	/lib/systemd/system/lotus-miner.service
+	/etc/motd
+)
 
 # install libs.
 apt update
@@ -37,11 +41,15 @@ do
 	rm $i
 done
 
-# Install systemd units
-for i in "${MANAGED_SYSTEMD[@]}"
+# Install systemd and other files.
+# Because packer doesn't copy files with root permisison,
+# files are in the home directory of the ssh user. Copy
+# these files into the right position.
+for i in "${MANAGED_FILES[@]}"
 do
-	install -o root -g root -m 644 -t /lib/systemd/system $i
-	rm $i
+	fn=$(basename $i)
+	install -o root -g root -m 644 $fn $i
+	rm $fn
 done
 
 # Enable services

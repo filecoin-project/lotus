@@ -28,6 +28,11 @@ source "amazon-ebs" "lotus" {
     "all",
   ]
   ami_description = "Lotus Filecoin AMI"
+  launch_block_device_mappings {
+    device_name = "/dev/sda1"
+    volume_size = 100
+    delete_on_termination = true
+  }
 
   instance_type = "t2.micro"
   source_ami_filter {
@@ -81,8 +86,8 @@ build {
     destination = "lotus-miner.service"
   }
   provisioner "file" {
-    source = "./tools/packer/homedir/LOTUS.txt"
-    destination = "LOTUS.txt"
+    source = "./tools/packer/etc/motd"
+    destination = "motd"
   }
   provisioner "file" {
     source = "./tools/packer/homedir/bashrc"
