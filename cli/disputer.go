@@ -20,9 +20,13 @@ import (
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	"golang.org/x/xerrors"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/urfave/cli/v2"
 )
+
+var disputeLog = logging.Logger("disputer")
 
 const Confidence = 10
 
@@ -165,13 +169,13 @@ var disputerStartCmd = &cli.Command{
 			startEpoch = abi.ChainEpoch(cctx.Uint64("height"))
 		}
 
-		fmt.Println("checking sync status")
+		disputeLog.Info("checking sync status")
 
 		if err := SyncWait(ctx, api, false); err != nil {
 			return xerrors.Errorf("sync wait: %w", err)
 		}
 
-		fmt.Println("setting up window post disputer")
+		disputeLog.Info("setting up window post disputer")
 
 		// subscribe to head changes and validate the current value
 
@@ -220,10 +224,10 @@ var disputerStartCmd = &cli.Command{
 		statusCheckTicker := time.NewTicker(time.Hour)
 		defer statusCheckTicker.Stop()
 
-		fmt.Println("starting up window post disputer")
+		disputeLog.Info("starting up window post disputer")
 
 		applyTsk := func(tsk types.TipSetKey) error {
-			log.Infof("last checked height: %d", lastEpoch)
+			disputeLog.Infow("last checked epoch", "epoch", lastEpoch)
 			dls, ok := deadlineMap[lastEpoch]
 			delete(deadlineMap, lastEpoch)
 			if !ok || startEpoch >= lastEpoch {
@@ -261,12 +265,12 @@ var disputerStartCmd = &cli.Command{
 
 			// TODO: Parallelizeable / can be integrated into the previous deadline-iterating for loop
 			for _, dpmsg := range dpmsgs {
-				log.Infof("disputing a PoSt from miner %s", dpmsg.To)
+				disputeLog.Infow("disputing a PoSt", "miner", dpmsg.To)
 				m, err := api.MpoolPushMessage(ctx, dpmsg, mss)
 				if err != nil {
-					log.Infof("failed to dispute post message: %s", err.Error())
+					disputeLog.Errorw("failed to dispute post message", "err", err.Error(), "miner", dpmsg.To)
 				} else {
-					log.Infof("disputed a PoSt in message: %s", m.Cid())
+					disputeLog.Infof("submited dispute", "mcid", m.Cid(), "miner", dpmsg.To)
 				}
 			}
 
@@ -296,7 +300,7 @@ var disputerStartCmd = &cli.Command{
 					}
 				}
 			case <-statusCheckTicker.C:
-				log.Infof("Running status check: ")
+				disputeLog.Infof("running status check")
 
 				minerList, err = api.StateListMiners(ctx, types.EmptyTSK)
 				if err != nil {
@@ -321,14 +325,14 @@ var disputerStartCmd = &cli.Command{
 					// if an epoch got "skipped" from the deadlineMap somehow, just fry it now instead of letting it sit around forever
 					_, ok := deadlineMap[lastStatusCheckEpoch]
 					if ok {
-						log.Infof("epoch %d was skipped during execution, deleting it from deadlineMap")
+						disputeLog.Infow("epoch skipped during execution, deleting it from deadlineMap", "epoch", lastStatusCheckEpoch)
 						delete(deadlineMap, lastStatusCheckEpoch)
 					}
 				}
 
-				log.Infof("Status check complete")
+				log.Infof("status check complete")
 			case <-ctx.Done():
-				return xerrors.Errorf("context cancelled")
+				return ctx.Err()
 			}
 
 			return nil
@@ -336,9 +340,13 @@ var disputerStartCmd = &cli.Command{
 
 		for {
 			err := disputeLoop()
-			if err != nil {
-				fmt.Println("disputer shutting down: ", err)
+			if err == context.Canceled {
+				disputeLog.Info("disputer shutting down")
 				break
+			}
+			if err != nil {
+				disputeLog.Errorw("disputer shutting down", "err", err)
+				return err
 			}
 		}
 
