@@ -236,7 +236,12 @@ func (mgr *SectorMgr) SealCommit1(ctx context.Context, sid storage.SectorRef, ti
 }
 
 func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid storage.SectorRef, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
-	var out [1920]byte
+	plen, err := sid.ProofType.ProofSize()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]byte, plen)
 	for i := range out[:len(phase1Out)] {
 		out[i] = phase1Out[i] ^ byte(sid.ID.Number&0xff)
 	}
@@ -464,7 +469,12 @@ func (mgr *SectorMgr) ReturnFetch(ctx context.Context, callID storiface.CallID, 
 }
 
 func (m mockVerif) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
-	if len(svi.Proof) != 1920 {
+	plen, err := svi.SealProof.ProofSize()
+	if err != nil {
+		return false, err
+	}
+
+	if len(svi.Proof) != int(plen) {
 		return false, nil
 	}
 

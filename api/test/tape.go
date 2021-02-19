@@ -18,7 +18,9 @@ import (
 )
 
 func TestTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
+	// The "before" case is disabled, because we need the builder to mock 32 GiB sectors to accurately repro this case
+	// TODO: Make the mock sector size configurable and reenable this
+	//t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
 	t.Run("after", func(t *testing.T) { testTapeFix(t, b, blocktime, true) })
 }
 func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool) {
