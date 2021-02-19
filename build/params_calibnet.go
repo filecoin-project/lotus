@@ -42,9 +42,8 @@ const UpgradeOrangeHeight = 300
 const UpgradeActorsV3Height = 600
 
 func init() {
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 30))
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(32 << 30))
 	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg512MiBV1,
 		abi.RegisteredSealProof_StackedDrg32GiBV1,
 		abi.RegisteredSealProof_StackedDrg64GiBV1,
 	)
