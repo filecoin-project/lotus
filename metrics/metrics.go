@@ -15,14 +15,24 @@ import (
 
 // Distribution
 var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100000)
+var workMillisecondsDistribution = view.Distribution(
+	250, 500, 1000, 2000, 5000, 10_000, 30_000, 60_000, 2*60_000, 5*60_000, 10*60_000, 15*60_000, 30*60_000, // short sealing tasks
+	40*60_000, 45*60_000, 50*60_000, 55*60_000, 60*60_000, 65*60_000, 70*60_000, 75*60_000, 80*60_000, 85*60_000, 100*60_000, 120*60_000, // PC2 / C2 range
+	130*60_000, 140*60_000, 150*60_000, 160*60_000, 180*60_000, 200*60_000, 220*60_000, 260*60_000, 300*60_000, // PC1 range
+	350*60_000, 400*60_000, 600*60_000, 800*60_000, 1000*60_000, 1300*60_000, 1800*60_000, 4000*60_000, 10000*60_000, // intel PC1 range
+)
 
 // Global Tags
 var (
-	Version, _      = tag.NewKey("version")
-	Commit, _       = tag.NewKey("commit")
-	PeerID, _       = tag.NewKey("peer_id")
-	MinerID, _      = tag.NewKey("miner_id")
-	FailureType, _  = tag.NewKey("failure_type")
+	// common
+	Version, _     = tag.NewKey("version")
+	Commit, _      = tag.NewKey("commit")
+	NodeType, _    = tag.NewKey("node_type")
+	PeerID, _      = tag.NewKey("peer_id")
+	MinerID, _     = tag.NewKey("miner_id")
+	FailureType, _ = tag.NewKey("failure_type")
+
+	// chain
 	Local, _        = tag.NewKey("local")
 	MessageFrom, _  = tag.NewKey("message_from")
 	MessageTo, _    = tag.NewKey("message_to")
@@ -30,11 +40,20 @@ var (
 	ReceivedFrom, _ = tag.NewKey("received_from")
 	Endpoint, _     = tag.NewKey("endpoint")
 	APIInterface, _ = tag.NewKey("api") // to distinguish between gateway api and full node api endpoint calls
+
+	// miner
+	TaskType, _       = tag.NewKey("task_type")
+	WorkerHostname, _ = tag.NewKey("worker_hostname")
 )
 
 // Measures
 var (
-	LotusInfo                           = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
+	// common
+	LotusInfo          = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
+	PeerCount          = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
+	APIRequestDuration = stats.Float64("api/request_duration_ms", "Duration of API requests", stats.UnitMilliseconds)
+
+	// chain
 	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
 	ChainNodeHeightExpected             = stats.Int64("chain/node_height_expected", "Expected Height of the node", stats.UnitDimensionless)
 	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
@@ -48,7 +67,6 @@ var (
 	BlockValidationSuccess              = stats.Int64("block/success", "Counter for block validation successes", stats.UnitDimensionless)
 	BlockValidationDurationMilliseconds = stats.Float64("block/validation_ms", "Duration for Block Validation in ms", stats.UnitMilliseconds)
 	BlockDelay                          = stats.Int64("block/delay", "Delay of accepted blocks, where delay is >5s", stats.UnitMilliseconds)
-	PeerCount                           = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
 	PubsubPublishMessage                = stats.Int64("pubsub/published", "Counter for total published messages", stats.UnitDimensionless)
 	PubsubDeliverMessage                = stats.Int64("pubsub/delivered", "Counter for total delivered messages", stats.UnitDimensionless)
 	PubsubRejectMessage                 = stats.Int64("pubsub/rejected", "Counter for total rejected messages", stats.UnitDimensionless)
@@ -56,9 +74,14 @@ var (
 	PubsubRecvRPC                       = stats.Int64("pubsub/recv_rpc", "Counter for total received RPCs", stats.UnitDimensionless)
 	PubsubSendRPC                       = stats.Int64("pubsub/send_rpc", "Counter for total sent RPCs", stats.UnitDimensionless)
 	PubsubDropRPC                       = stats.Int64("pubsub/drop_rpc", "Counter for total dropped RPCs", stats.UnitDimensionless)
-	APIRequestDuration                  = stats.Float64("api/request_duration_ms", "Duration of API requests", stats.UnitMilliseconds)
 	VMFlushCopyDuration                 = stats.Float64("vm/flush_copy_ms", "Time spent in VM Flush Copy", stats.UnitMilliseconds)
 	VMFlushCopyCount                    = stats.Int64("vm/flush_copy_count", "Number of copied objects", stats.UnitDimensionless)
+
+	// miner
+	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
+	WorkerCallsReturnedCount     = stats.Int64("sealing/worker_calls_returned_count", "Counter of returned worker tasks", stats.UnitDimensionless)
+	WorkerCallsReturnedDuration  = stats.Float64("sealing/worker_calls_returned_ms", "Counter of returned worker tasks", stats.UnitMilliseconds)
+	WorkerUntrackedCallsReturned = stats.Int64("sealing/worker_untracked_calls_returned", "Counter of returned untracked worker tasks", stats.UnitDimensionless)
 )
 
 var (
@@ -178,40 +201,71 @@ var (
 		Measure:     VMFlushCopyCount,
 		Aggregation: view.Sum(),
 	}
+
+	// miner
+	WorkerCallsStartedView = &view.View{
+		Measure:     WorkerCallsStarted,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{TaskType, WorkerHostname},
+	}
+	WorkerCallsReturnedCountView = &view.View{
+		Measure:     WorkerCallsReturnedCount,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{TaskType, WorkerHostname},
+	}
+	WorkerUntrackedCallsReturnedView = &view.View{
+		Measure:     WorkerUntrackedCallsReturned,
+		Aggregation: view.Count(),
+	}
+	WorkerCallsReturnedDurationView = &view.View{
+		Measure:     WorkerCallsReturnedDuration,
+		Aggregation: workMillisecondsDistribution,
+		TagKeys:     []tag.Key{TaskType, WorkerHostname},
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
 var DefaultViews = func() []*view.View {
 	views := []*view.View{
 		InfoView,
-		ChainNodeHeightView,
-		ChainNodeHeightExpectedView,
-		ChainNodeWorkerHeightView,
-		BlockReceivedView,
-		BlockValidationFailureView,
-		BlockValidationSuccessView,
-		BlockValidationDurationView,
-		BlockDelayView,
-		MessagePublishedView,
-		MessageReceivedView,
-		MessageValidationFailureView,
-		MessageValidationSuccessView,
 		PeerCountView,
-		PubsubPublishMessageView,
-		PubsubDeliverMessageView,
-		PubsubRejectMessageView,
-		PubsubDuplicateMessageView,
-		PubsubRecvRPCView,
-		PubsubSendRPCView,
-		PubsubDropRPCView,
 		APIRequestDurationView,
-		VMFlushCopyCountView,
-		VMFlushCopyDurationView,
 	}
 	views = append(views, blockstore.DefaultViews...)
 	views = append(views, rpcmetrics.DefaultViews...)
 	return views
 }()
+
+var ChainNodeViews = append([]*view.View{
+	ChainNodeHeightView,
+	ChainNodeHeightExpectedView,
+	ChainNodeWorkerHeightView,
+	BlockReceivedView,
+	BlockValidationFailureView,
+	BlockValidationSuccessView,
+	BlockValidationDurationView,
+	BlockDelayView,
+	MessagePublishedView,
+	MessageReceivedView,
+	MessageValidationFailureView,
+	MessageValidationSuccessView,
+	PubsubPublishMessageView,
+	PubsubDeliverMessageView,
+	PubsubRejectMessageView,
+	PubsubDuplicateMessageView,
+	PubsubRecvRPCView,
+	PubsubSendRPCView,
+	PubsubDropRPCView,
+	VMFlushCopyCountView,
+	VMFlushCopyDurationView,
+}, DefaultViews...)
+
+var MinerNodeViews = append([]*view.View{
+	WorkerCallsStartedView,
+	WorkerCallsReturnedCountView,
+	WorkerUntrackedCallsReturnedView,
+	WorkerCallsReturnedDurationView,
+}, DefaultViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
 func SinceInMilliseconds(startTime time.Time) float64 {

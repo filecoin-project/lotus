@@ -632,47 +632,47 @@ func (m *Manager) Remove(ctx context.Context, sector storage.SectorRef) error {
 }
 
 func (m *Manager) ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error {
-	return m.returnResult(callID, pi, err)
+	return m.returnResult(ctx, callID, pi, err)
 }
 
 func (m *Manager) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err *storiface.CallError) error {
-	return m.returnResult(callID, p1o, err)
+	return m.returnResult(ctx, callID, p1o, err)
 }
 
 func (m *Manager) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err *storiface.CallError) error {
-	return m.returnResult(callID, sealed, err)
+	return m.returnResult(ctx, callID, sealed, err)
 }
 
 func (m *Manager) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err *storiface.CallError) error {
-	return m.returnResult(callID, out, err)
+	return m.returnResult(ctx, callID, out, err)
 }
 
 func (m *Manager) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err *storiface.CallError) error {
-	return m.returnResult(callID, proof, err)
+	return m.returnResult(ctx, callID, proof, err)
 }
 
 func (m *Manager) ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
-	return m.returnResult(callID, nil, err)
+	return m.returnResult(ctx, callID, nil, err)
 }
 
 func (m *Manager) ReturnReleaseUnsealed(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
-	return m.returnResult(callID, nil, err)
+	return m.returnResult(ctx, callID, nil, err)
 }
 
 func (m *Manager) ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
-	return m.returnResult(callID, nil, err)
+	return m.returnResult(ctx, callID, nil, err)
 }
 
 func (m *Manager) ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
-	return m.returnResult(callID, nil, err)
+	return m.returnResult(ctx, callID, nil, err)
 }
 
 func (m *Manager) ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error {
-	return m.returnResult(callID, ok, err)
+	return m.returnResult(ctx, callID, ok, err)
 }
 
 func (m *Manager) ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
-	return m.returnResult(callID, nil, err)
+	return m.returnResult(ctx, callID, nil, err)
 }
 
 func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
