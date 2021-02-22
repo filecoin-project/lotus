@@ -27,7 +27,7 @@ func mustAddr(a address.Address, err error) address.Address {
 	return a
 }
 
-func newMockCmd(t *testing.T, cmd *ucli.Command) (*ucli.App, *MockServicesAPI, *bytes.Buffer, func()) {
+func newMockApp(t *testing.T, cmd *ucli.Command) (*ucli.App, *MockServicesAPI, *bytes.Buffer, func()) {
 	app := ucli.NewApp()
 	app.Commands = ucli.Commands{cmd}
 	app.Setup()
@@ -46,7 +46,7 @@ func TestSendCLI(t *testing.T) {
 	oneFil := abi.TokenAmount(types.MustParseFIL("1"))
 
 	t.Run("simple", func(t *testing.T) {
-		app, mockSrvcs, buf, done := newMockCmd(t, sendCmd)
+		app, mockSrvcs, buf, done := newMockApp(t, sendCmd)
 		defer done()
 
 		gomock.InOrder(
@@ -61,7 +61,7 @@ func TestSendCLI(t *testing.T) {
 		assert.EqualValues(t, arbtCid.String()+"\n", buf.String())
 	})
 	t.Run("ErrSendBalanceTooLow", func(t *testing.T) {
-		app, mockSrvcs, _, done := newMockCmd(t, sendCmd)
+		app, mockSrvcs, _, done := newMockApp(t, sendCmd)
 		defer done()
 
 		gomock.InOrder(
@@ -75,7 +75,7 @@ func TestSendCLI(t *testing.T) {
 		assert.ErrorIs(t, err, ErrSendBalanceTooLow)
 	})
 	t.Run("generic-err-is-forwarded", func(t *testing.T) {
-		app, mockSrvcs, _, done := newMockCmd(t, sendCmd)
+		app, mockSrvcs, _, done := newMockApp(t, sendCmd)
 		defer done()
 
 		errMark := errors.New("something")
@@ -91,7 +91,7 @@ func TestSendCLI(t *testing.T) {
 	})
 
 	t.Run("from-specific", func(t *testing.T) {
-		app, mockSrvcs, buf, done := newMockCmd(t, sendCmd)
+		app, mockSrvcs, buf, done := newMockApp(t, sendCmd)
 		defer done()
 
 		gomock.InOrder(
@@ -108,7 +108,7 @@ func TestSendCLI(t *testing.T) {
 	})
 
 	t.Run("nonce-specific", func(t *testing.T) {
-		app, mockSrvcs, buf, done := newMockCmd(t, sendCmd)
+		app, mockSrvcs, buf, done := newMockApp(t, sendCmd)
 		defer done()
 		zero := uint64(0)
 
