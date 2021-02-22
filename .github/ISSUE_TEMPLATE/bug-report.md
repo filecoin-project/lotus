@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+> Note: For security-related bugs/issues, please follow the [security policy](https://github.com/filecoin-project/lotus/security/policy).
+
 **Describe the bug**
 A clear and concise description of what the bug is. 
 (If you are not sure what the bug is, try to figure it out via a [discussion](https://github.com/filecoin-project/lotus/discussions/new) first!

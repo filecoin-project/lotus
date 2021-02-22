@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+> Note: For security-related bugs/issues, please follow the [security policy](https://github.com/filecoin-project/lotus/security/policy).
+
 Please provide all the information requested here to help us troubleshoot "proving/window PoSt failed" issues.
 If the information requested is missing, we will probably have to just ask you to provide it anyway,
 before we can help debug.
