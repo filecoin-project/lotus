@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type makerKeyType struct{}
+type markerKeyType struct{}
 
-var markerKey = makerKeyType{}
+var markerKey = markerKeyType{}
 
 type contextMatcher struct {
 	marker *int
