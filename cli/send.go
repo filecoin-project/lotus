@@ -1,22 +1,17 @@
 package cli
 
 import (
-	"bytes"
-	"context"
 	"encoding/hex"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -72,15 +67,16 @@ var sendCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("'send' expects two arguments, target and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
 
 		ctx := ReqContext(cctx)
+		var params SendParams
 
-		toAddr, err := address.NewFromString(cctx.Args().Get(0))
+		params.To, err = address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
 			return ShowHelp(cctx, fmt.Errorf("failed to parse target address: %w", err))
 		}
@@ -89,123 +85,75 @@ var sendCmd = &cli.Command{
 		if err != nil {
 			return ShowHelp(cctx, fmt.Errorf("failed to parse amount: %w", err))
 		}
+		params.Val = abi.TokenAmount(val)
 
-		var fromAddr address.Address
-		if from := cctx.String("from"); from == "" {
-			defaddr, err := api.WalletDefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-
-			fromAddr = defaddr
-		} else {
+		if from := cctx.String("from"); from != "" {
 			addr, err := address.NewFromString(from)
 			if err != nil {
 				return err
 			}
 
-			fromAddr = addr
+			params.From = addr
 		}
 
-		gp, err := types.BigFromString(cctx.String("gas-premium"))
-		if err != nil {
-			return err
-		}
-		gfc, err := types.BigFromString(cctx.String("gas-feecap"))
-		if err != nil {
-			return err
+		if cctx.IsSet("gas-premium") {
+			gp, err := types.BigFromString(cctx.String("gas-premium"))
+			if err != nil {
+				return err
+			}
+			params.GasPremium = &gp
 		}
 
-		method := abi.MethodNum(cctx.Uint64("method"))
+		if cctx.IsSet("gas-feecap") {
+			gfc, err := types.BigFromString(cctx.String("gas-feecap"))
+			if err != nil {
+				return err
+			}
+			params.GasFeeCap = &gfc
+		}
 
-		var params []byte
+		if cctx.IsSet("gas-limit") {
+			limit := cctx.Int64("gas-limit")
+			params.GasLimit = &limit
+		}
+
+		params.Method = abi.MethodNum(cctx.Uint64("method"))
+
 		if cctx.IsSet("params-json") {
-			decparams, err := decodeTypedParams(ctx, api, toAddr, method, cctx.String("params-json"))
+			decparams, err := srv.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, cctx.String("params-json"))
 			if err != nil {
 				return fmt.Errorf("failed to decode json params: %w", err)
 			}
-			params = decparams
+			params.Params = decparams
 		}
 		if cctx.IsSet("params-hex") {
-			if params != nil {
+			if params.Params != nil {
 				return fmt.Errorf("can only specify one of 'params-json' and 'params-hex'")
 			}
 			decparams, err := hex.DecodeString(cctx.String("params-hex"))
 			if err != nil {
 				return fmt.Errorf("failed to decode hex params: %w", err)
 			}
-			params = decparams
+			params.Params = decparams
 		}
 
-		msg := &types.Message{
-			From:       fromAddr,
-			To:         toAddr,
-			Value:      types.BigInt(val),
-			GasPremium: gp,
-			GasFeeCap:  gfc,
-			GasLimit:   cctx.Int64("gas-limit"),
-			Method:     method,
-			Params:     params,
-		}
-
-		if !cctx.Bool("force") {
-			// Funds insufficient check
-			fromBalance, err := api.WalletBalance(ctx, msg.From)
-			if err != nil {
-				return err
-			}
-			totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
-
-			if fromBalance.LessThan(totalCost) {
-				fmt.Printf("WARNING: From balance %s less than total cost %s\n", types.FIL(fromBalance), types.FIL(totalCost))
-				return fmt.Errorf("--force must be specified for this action to have an effect; you have been warned")
-			}
-		}
+		params.Force = cctx.Bool("force")
 
 		if cctx.IsSet("nonce") {
-			msg.Nonce = cctx.Uint64("nonce")
-			sm, err := api.WalletSignMessage(ctx, fromAddr, msg)
-			if err != nil {
-				return err
-			}
-
-			_, err = api.MpoolPush(ctx, sm)
-			if err != nil {
-				return err
-			}
-			fmt.Println(sm.Cid())
-		} else {
-			sm, err := api.MpoolPushMessage(ctx, msg, nil)
-			if err != nil {
-				return err
-			}
-			fmt.Println(sm.Cid())
+			n := cctx.Uint64("nonce")
+			params.Nonce = &n
 		}
 
+		msgCid, err := srv.Send(ctx, params)
+
+		if err != nil {
+			if errors.Is(err, ErrSendBalanceTooLow) {
+				return fmt.Errorf("--force must be specified for this action to have an effect; you have been warned: %w", err)
+			}
+			return xerrors.Errorf("executing send: %w", err)
+		}
+
+		fmt.Fprintf(cctx.App.Writer, "%s\n", msgCid)
 		return nil
 	},
-}
-
-func decodeTypedParams(ctx context.Context, fapi api.FullNode, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error) {
-	act, err := fapi.StateGetActor(ctx, to, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	methodMeta, found := stmgr.MethodsMap[act.Code][method]
-	if !found {
-		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
-	}
-
-	p := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORMarshaler)
-
-	if err := json.Unmarshal([]byte(paramstr), p); err != nil {
-		return nil, fmt.Errorf("unmarshaling input into params type: %w", err)
-	}
-
-	buf := new(bytes.Buffer)
-	if err := p.MarshalCBOR(buf); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
