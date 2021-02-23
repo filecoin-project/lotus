@@ -400,7 +400,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusOK {
-			return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
+			return xerrors.Errorf("fetching chain CAR failed with non-200 response: %d", resp.StatusCode)
 		}
 
 		rd = resp.Body
