@@ -21,6 +21,7 @@ func MetricedFullAPI(a api.FullNode) api.FullNode {
 	var out apistruct.FullNodeStruct
 	proxy(a, &out.Internal)
 	proxy(a, &out.CommonStruct.Internal)
+	proxy(a, &out.SentinelStruct.Internal)
 	return &out
 }
 

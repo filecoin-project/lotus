@@ -28,6 +28,7 @@ func PermissionedFullAPI(a api.FullNode) api.FullNode {
 	var out FullNodeStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
+	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.SentinelStruct.Internal)
 	return &out
 }
 

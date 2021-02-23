@@ -79,6 +79,7 @@ type CommonStruct struct {
 // FullNodeStruct implements API passing calls to user-provided function values.
 type FullNodeStruct struct {
 	CommonStruct
+	SentinelStruct
 
 	Internal struct {
 		ChainNotify                   func(context.Context) (<-chan []*api.HeadChange, error)                                                            `perm:"read"`
@@ -467,6 +468,12 @@ type WalletStruct struct {
 		WalletExport func(context.Context, address.Address) (*types.KeyInfo, error)                         `perm:"admin"`
 		WalletImport func(context.Context, *types.KeyInfo) (address.Address, error)                         `perm:"admin"`
 		WalletDelete func(context.Context, address.Address) error                                           `perm:"write"`
+	}
+}
+
+type SentinelStruct struct {
+	Internal struct {
+		WatchStart func(ctx context.Context) error `perm:"admin"`
 	}
 }
 
@@ -1854,9 +1861,14 @@ func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address) e
 	return c.Internal.WalletDelete(ctx, addr)
 }
 
+func (s *SentinelStruct) WatchStart(ctx context.Context) error {
+	return s.Internal.WatchStart(ctx)
+}
+
 var _ api.Common = &CommonStruct{}
 var _ api.FullNode = &FullNodeStruct{}
 var _ api.StorageMiner = &StorageMinerStruct{}
 var _ api.WorkerAPI = &WorkerStruct{}
 var _ api.GatewayAPI = &GatewayStruct{}
 var _ api.WalletAPI = &WalletStruct{}
+var _ api.Sentinel = &SentinelStruct{}

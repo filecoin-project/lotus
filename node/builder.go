@@ -9,12 +9,15 @@ import (
 	metricsi "github.com/ipfs/go-metrics-interface"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/node/impl/sentinel"
 	"github.com/filecoin-project/lotus/system"
 
 	logging "github.com/ipfs/go-log"
@@ -166,9 +169,10 @@ type Settings struct {
 
 	nodeType repo.RepoType
 
-	Online bool // Online option applied
-	Config bool // Config option applied
-	Lite   bool // Start node in "lite" mode
+	Online   bool // Online option applied
+	Config   bool // Config option applied
+	Lite     bool // Start node in "lite" mode
+	Sentinel bool // Start node in "sentinel" mode
 }
 
 // Basic lotus-app services
@@ -244,6 +248,7 @@ func isType(t repo.RepoType) func(s *Settings) bool {
 func isFullOrLiteNode(s *Settings) bool { return s.nodeType == repo.FullNode }
 func isFullNode(s *Settings) bool       { return s.nodeType == repo.FullNode && !s.Lite }
 func isLiteNode(s *Settings) bool       { return s.nodeType == repo.FullNode && s.Lite }
+func isSentinelNode(s *Settings) bool   { return s.nodeType == repo.FullNode && s.Sentinel }
 
 // Chain node provides access to the Filecoin blockchain, by setting up a full
 // validator node, or by delegating some actions to other nodes (lite mode)
@@ -352,6 +357,9 @@ var ChainNode = Options(
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 	),
+
+	// Sentinel API is unavailable by default
+	Override(new(api.Sentinel), From(new(sentinel.SentinelUnavailable))),
 )
 
 var MinerNode = Options(
@@ -433,9 +441,13 @@ var MinerNode = Options(
 	Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
 )
 
+var SentinelNode = Options(
+	Override(new(*events.Events), modules.NewEvents),
+	Override(new(api.Sentinel), From(new(sentinel.SentinelAPI))),
+)
+
 // Online sets up basic libp2p node
 func Online() Option {
-
 	return Options(
 		// make sure that online is applied before Config.
 		// This is important because Config overrides some of Online units
@@ -448,6 +460,8 @@ func Online() Option {
 
 		ApplyIf(isFullOrLiteNode, ChainNode),
 		ApplyIf(isType(repo.StorageMiner), MinerNode),
+		// sentinel node must apply after chain node else sentinel api is unavailable.
+		ApplyIf(isSentinelNode, SentinelNode),
 	)
 }
 
@@ -622,6 +636,13 @@ type FullOption = Option
 func Lite(enable bool) FullOption {
 	return func(s *Settings) error {
 		s.Lite = enable
+		return nil
+	}
+}
+
+func Sentinel(enable bool) FullOption {
+	return func(s *Settings) error {
+		s.Sentinel = enable
 		return nil
 	}
 }

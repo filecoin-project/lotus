@@ -319,6 +319,7 @@ var Commands = []*cli.Command{
 	WithCategory("developer", fetchParamCmd),
 	WithCategory("network", netCmd),
 	WithCategory("network", syncCmd),
+	WithCategory("sentinel", sentinelCmd),
 	pprofCmd,
 	VersionCmd,
 }

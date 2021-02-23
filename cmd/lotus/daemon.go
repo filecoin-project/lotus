@@ -51,6 +51,15 @@ const (
 	preTemplateFlag = "genesis-template"
 )
 
+type daemonMode int
+
+const (
+	modeUnknown  daemonMode = 0 // no valid mode could be determined
+	modeStandard daemonMode = 1 // standard mode
+	modeLite     daemonMode = 2 // lite mode, backed by gateway
+	modeSentinel daemonMode = 3 // stats collection mode, analyses chain events
+)
+
 var daemonStopCmd = &cli.Command{
 	Name:  "stop",
 	Usage: "Stop a running lotus daemon",
@@ -119,6 +128,10 @@ var DaemonCmd = &cli.Command{
 			Usage:  "start lotus in lite mode",
 			Hidden: true,
 		},
+		&cli.BoolFlag{
+			Name:  "sentinel",
+			Usage: "start lotus in sentinel mode.",
+		},
 		&cli.StringFlag{
 			Name:  "pprof",
 			Usage: "specify name of file for writing cpu profile to",
@@ -154,13 +167,15 @@ var DaemonCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		isLite := cctx.Bool("lite")
+		daemonMode, err := getDaemonMode(cctx)
+		if err != nil {
+			return err
+		}
 
-		err := runmetrics.Enable(runmetrics.RunMetricOptions{
+		if err := runmetrics.Enable(runmetrics.RunMetricOptions{
 			EnableCPU:    true,
 			EnableMemory: true,
-		})
-		if err != nil {
+		}); err != nil {
 			return xerrors.Errorf("enabling runtime metrics: %w", err)
 		}
 
@@ -217,7 +232,7 @@ var DaemonCmd = &cli.Command{
 		}
 		freshRepo := err != repo.ErrRepoExists
 
-		if !isLite {
+		if daemonMode != modeLite {
 			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
 				return xerrors.Errorf("fetching proof parameters: %w", err)
 			}
@@ -279,7 +294,7 @@ var DaemonCmd = &cli.Command{
 		// If the daemon is started in "lite mode", provide a  GatewayAPI
 		// for RPC calls
 		liteModeDeps := node.Options()
-		if isLite {
+		if daemonMode == modeLite {
 			gapi, closer, err := lcli.GetGatewayAPI(cctx)
 			if err != nil {
 				return err
@@ -298,7 +313,7 @@ var DaemonCmd = &cli.Command{
 
 		var api api.FullNode
 		stop, err := node.New(ctx,
-			node.FullAPI(&api, node.Lite(isLite)),
+			node.FullAPI(&api, node.Lite(daemonMode == modeLite), node.Sentinel(daemonMode == modeSentinel)),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
@@ -498,4 +513,20 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	return nil
+}
+
+func getDaemonMode(cctx *cli.Context) (daemonMode, error) {
+	isLite := cctx.Bool("lite")
+	isSentinel := cctx.Bool("sentinel")
+
+	switch {
+	case !isLite && !isSentinel:
+		return modeStandard, nil
+	case isLite && !isSentinel:
+		return modeLite, nil
+	case !isLite && isSentinel:
+		return modeSentinel, nil
+	default:
+		return modeUnknown, xerrors.Errorf("cannot specify more than one mode")
+	}
 }
