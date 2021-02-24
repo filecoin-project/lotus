@@ -1403,32 +1403,8 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
-		fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
-		fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
-		fmt.Printf("Return: %x\n", mw.Receipt.Return)
-		if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
-			return err
-		}
-
-		return nil
+		return printMsg(ctx, api, msg, mw, m)
 	},
-}
-
-func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message, r types.MessageReceipt) error {
-	act, err := api.StateGetActor(ctx, m.To, types.EmptyTSK)
-	if err != nil {
-		return err
-	}
-
-	jret, err := jsonReturn(act.Code, m.Method, r.Return)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(jret)
-
-	return nil
 }
 
 var stateSearchMsgCmd = &cli.Command{
@@ -1458,16 +1434,54 @@ var stateSearchMsgCmd = &cli.Command{
 			return err
 		}
 
-		if mw != nil {
-			fmt.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
-			fmt.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
-			fmt.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
-			fmt.Printf("\nReturn: %x", mw.Receipt.Return)
-		} else {
-			fmt.Print("message was not found on chain")
+		m, err := api.ChainGetMessage(ctx, msg)
+		if err != nil {
+			return err
 		}
-		return nil
+
+		return printMsg(ctx, api, msg, mw, m)
 	},
+}
+
+func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message, r types.MessageReceipt) error {
+	if len(r.Return) == 0 {
+		return nil
+	}
+
+	act, err := api.StateGetActor(ctx, m.To, types.EmptyTSK)
+	if err != nil {
+		return err
+	}
+
+	jret, err := jsonReturn(act.Code, m.Method, r.Return)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Decoded return value: ", jret)
+
+	return nil
+}
+
+func printMsg(ctx context.Context, api api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
+	if mw != nil {
+		if mw.Message != msg {
+			fmt.Printf("Message was replaced: %s\n", mw.Message)
+		}
+
+		fmt.Printf("Executed in tipset: %s\n", mw.TipSet.Cids())
+		fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
+		fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
+		fmt.Printf("Return: %x\n", mw.Receipt.Return)
+	} else {
+		fmt.Println("message was not found on chain")
+	}
+
+	if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var stateCallCmd = &cli.Command{
