@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/pprof"
+	"strconv"
 	"strings"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
@@ -127,10 +128,6 @@ var DaemonCmd = &cli.Command{
 			Name:   "lite",
 			Usage:  "start lotus in lite mode",
 			Hidden: true,
-		},
-		&cli.BoolFlag{
-			Name:  "sentinel",
-			Usage: "start lotus in sentinel mode.",
 		},
 		&cli.StringFlag{
 			Name:  "pprof",
@@ -517,7 +514,10 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 
 func getDaemonMode(cctx *cli.Context) (daemonMode, error) {
 	isLite := cctx.Bool("lite")
-	isSentinel := cctx.Bool("sentinel")
+	isSentinel, err := strconv.ParseBool(build.SentinelMode)
+	if err != nil {
+		return modeUnknown, err
+	}
 
 	switch {
 	case !isLite && !isSentinel:

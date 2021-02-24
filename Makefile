@@ -331,3 +331,11 @@ docsgen:
 
 print-%:
 	@echo $*=$($*)
+
+# Sentinel build mode
+lotus-sentinel: $(BUILD_DEPS)
+	rm -f lotus
+	go build $(GOFLAGS) -ldflags="-X=github.com/filecoin-project/lotus/build.SentinelMode=true" -o lotus ./cmd/lotus
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
+
+.PHONY: lotus
