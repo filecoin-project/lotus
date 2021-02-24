@@ -33,6 +33,7 @@ func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header)
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.CommonStruct.Internal,
+			&res.HelloWorldStruct.Internal,
 			&res.Internal,
 		}, requestHeader)
 

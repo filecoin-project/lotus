@@ -43,6 +43,12 @@ import (
 // All permissions are listed in permissioned.go
 var _ = AllPermissions
 
+type HelloWorldStruct struct {
+	Internal struct {
+		Hello func(ctx context.Context) error `perm:"read"`
+	}
+}
+
 type CommonStruct struct {
 	Internal struct {
 		AuthVerify func(ctx context.Context, token string) ([]auth.Permission, error) `perm:"read"`
@@ -79,6 +85,7 @@ type CommonStruct struct {
 // FullNodeStruct implements API passing calls to user-provided function values.
 type FullNodeStruct struct {
 	CommonStruct
+	HelloWorldStruct
 
 	Internal struct {
 		ChainNotify                   func(context.Context) (<-chan []*api.HeadChange, error)                                                            `perm:"read"`
@@ -468,6 +475,12 @@ type WalletStruct struct {
 		WalletImport func(context.Context, *types.KeyInfo) (address.Address, error)                         `perm:"admin"`
 		WalletDelete func(context.Context, address.Address) error                                           `perm:"write"`
 	}
+}
+
+// HelloStruct
+
+func (h *HelloWorldStruct) Hello(ctx context.Context) error {
+	return h.Internal.Hello(ctx)
 }
 
 // CommonStruct

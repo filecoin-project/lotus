@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/impl/helloworld"
 	"github.com/filecoin-project/lotus/node/impl/market"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -29,6 +30,7 @@ type FullNodeAPI struct {
 	full.WalletAPI
 	full.SyncAPI
 	full.BeaconAPI
+	helloworld.HelloWorldAPI
 
 	DS dtypes.MetadataDS
 }

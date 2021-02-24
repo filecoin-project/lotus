@@ -6,15 +6,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	metricsi "github.com/ipfs/go-metrics-interface"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/node/impl/helloworld"
 	"github.com/filecoin-project/lotus/system"
 
 	logging "github.com/ipfs/go-log"
@@ -351,6 +352,7 @@ var ChainNode = Options(
 		Override(RunPeerMgrKey, modules.RunPeerMgr),
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+		Override(new(api.HelloWorld), From(new(helloworld.HelloWorldAPI))),
 	),
 )
 
