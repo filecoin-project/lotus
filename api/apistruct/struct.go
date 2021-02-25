@@ -79,7 +79,7 @@ type CommonStruct struct {
 // FullNodeStruct implements API passing calls to user-provided function values.
 type FullNodeStruct struct {
 	CommonStruct
-	SentinelStruct
+	SentinelStruct `optional:"true"`
 
 	Internal struct {
 		ChainNotify                   func(context.Context) (<-chan []*api.HeadChange, error)                                                            `perm:"read"`

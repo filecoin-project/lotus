@@ -357,9 +357,6 @@ var ChainNode = Options(
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 	),
-
-	// Sentinel API is unavailable by default
-	Override(new(api.Sentinel), From(new(sentinel.SentinelUnavailable))),
 )
 
 var MinerNode = Options(
