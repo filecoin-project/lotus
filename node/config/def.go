@@ -72,6 +72,11 @@ type SealingConfig struct {
 	WaitDealsDelay Duration
 
 	AlwaysKeepUnsealedCopy bool
+
+	// Keep this many sectors in sealing pipeline, start CC if needed
+	// todo TargetSealingSectors uint64
+
+	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
 }
 
 type MinerFeeConfig struct {
