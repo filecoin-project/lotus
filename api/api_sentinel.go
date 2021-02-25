@@ -7,6 +7,6 @@ import (
 type Sentinel interface {
 	// MethodGroup: Sentinel
 
-	// WatchStart start a watch against the chain
+	// SentinelWatchStart start a watch against the chain
 	SentinelWatchStart(context.Context) error
 }
