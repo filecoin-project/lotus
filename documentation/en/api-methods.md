@@ -140,6 +140,8 @@
   * [PaychVoucherCreate](#PaychVoucherCreate)
   * [PaychVoucherList](#PaychVoucherList)
   * [PaychVoucherSubmit](#PaychVoucherSubmit)
+* [Sentinel](#Sentinel)
+  * [SentinelWatchStart](#SentinelWatchStart)
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
   * [StateAllMinerFaults](#StateAllMinerFaults)
@@ -3309,6 +3311,18 @@ Response:
   "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
+
+## Sentinel
+
+
+### SentinelWatchStart
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
 
 ## State
 The State methods are used to query, inspect, and interact with chain state.

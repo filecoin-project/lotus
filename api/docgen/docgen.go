@@ -405,13 +405,14 @@ func main() {
 	groups := make(map[string]*MethodGroup)
 
 	var t reflect.Type
-	var permStruct, commonPermStruct reflect.Type
+	var permStruct, commonPermStruct, sentinelPermStruct reflect.Type
 
 	switch os.Args[2] {
 	case "FullNode":
 		t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
 		permStruct = reflect.TypeOf(apistruct.FullNodeStruct{}.Internal)
 		commonPermStruct = reflect.TypeOf(apistruct.CommonStruct{}.Internal)
+		sentinelPermStruct = reflect.TypeOf(apistruct.SentinelStruct{}.Internal)
 	case "StorageMiner":
 		t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
 		permStruct = reflect.TypeOf(apistruct.StorageMinerStruct{}.Internal)
@@ -499,7 +500,10 @@ func main() {
 			if !ok {
 				meth, ok = commonPermStruct.FieldByName(m.Name)
 				if !ok {
-					panic("no perms for method: " + m.Name)
+					meth, ok = sentinelPermStruct.FieldByName(m.Name)
+					if !ok {
+						panic("no perms for method: " + m.Name)
+					}
 				}
 			}
 

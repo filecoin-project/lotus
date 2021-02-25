@@ -473,7 +473,7 @@ type WalletStruct struct {
 
 type SentinelStruct struct {
 	Internal struct {
-		WatchStart func(ctx context.Context) error `perm:"admin"`
+		SentinelWatchStart func(ctx context.Context) error `perm:"admin"`
 	}
 }
 
@@ -1862,7 +1862,7 @@ func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address) e
 }
 
 func (s *SentinelStruct) SentinelWatchStart(ctx context.Context) error {
-	return s.Internal.WatchStart(ctx)
+	return s.Internal.SentinelWatchStart(ctx)
 }
 
 var _ api.Common = &CommonStruct{}
