@@ -3,6 +3,7 @@ package sealing
 import (
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -352,6 +353,7 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 	}
 
 	var toFix []int
+	paddingPieces := 0
 
 	for i, p := range sector.Pieces {
 		// if no deal is associated with the piece, ensure that we added it as
@@ -361,6 +363,7 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 			if !p.Piece.PieceCID.Equals(exp) {
 				return xerrors.Errorf("sector %d piece %d had non-zero PieceCID %+v", sector.SectorNumber, i, p.Piece.PieceCID)
 			}
+			paddingPieces++
 			continue
 		}
 
@@ -396,6 +399,7 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 		}
 	}
 
+	failed := map[int]error{}
 	updates := map[int]abi.DealID{}
 	for _, i := range toFix {
 		p := sector.Pieces[i]
@@ -414,10 +418,25 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 		}
 		res, err := m.dealInfo.GetCurrentDealInfo(ctx.Context(), tok, dp, *p.DealInfo.PublishCid)
 		if err != nil {
-			return xerrors.Errorf("recovering deal ID for publish deal message %s (sector %d, piece %d): %w", *p.DealInfo.PublishCid, sector.SectorNumber, i, err)
+			failed[i] = xerrors.Errorf("getting current deal info for piece %d: %w", i, err)
 		}
 
 		updates[i] = res.DealID
+	}
+
+	if len(failed) > 0 {
+		var merr error
+		for _, e := range failed {
+			merr = multierror.Append(merr, e)
+		}
+
+		if len(failed)+paddingPieces == len(sector.Pieces) {
+			log.Errorf("removing sector %d: all deals expired or unrecoverable: %+v", sector.SectorNumber, merr)
+			return ctx.Send(SectorRemove{})
+		}
+
+		// todo: try to remove bad pieces (hard; see the todo above)
+		return xerrors.Errorf("failed to recover some deals: %w", merr)
 	}
 
 	// Not much to do here, we can't go back in time to commit this sector
