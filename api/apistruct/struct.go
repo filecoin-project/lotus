@@ -1861,7 +1861,7 @@ func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address) e
 	return c.Internal.WalletDelete(ctx, addr)
 }
 
-func (s *SentinelStruct) WatchStart(ctx context.Context) error {
+func (s *SentinelStruct) SentinelWatchStart(ctx context.Context) error {
 	return s.Internal.WatchStart(ctx)
 }
 

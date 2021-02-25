@@ -20,7 +20,7 @@ type SentinelAPI struct {
 	Events *events.Events
 }
 
-func (m *SentinelAPI) WatchStart(ctx context.Context) error {
+func (m *SentinelAPI) SentinelWatchStart(ctx context.Context) error {
 	log.Info("starting sentinel watch")
 	return m.Events.Observe(&sentinel.LoggingTipSetObserver{})
 }

@@ -30,7 +30,7 @@ var sentinelStartWatchCmd = &cli.Command{
 
 		//confidence := abi.ChainEpoch(cctx.Int64("confidence"))
 
-		if err := apic.WatchStart(ctx); err != nil {
+		if err := apic.SentinelWatchStart(ctx); err != nil {
 			return err
 		}
 
