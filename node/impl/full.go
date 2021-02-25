@@ -29,7 +29,7 @@ type FullNodeAPI struct {
 	full.WalletAPI
 	full.SyncAPI
 	full.BeaconAPI
-	api.Sentinel
+	api.Sentinel `optional:"true"`
 
 	DS dtypes.MetadataDS
 }
