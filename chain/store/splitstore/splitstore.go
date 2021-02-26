@@ -417,7 +417,17 @@ func (s *SplitStore) compact() {
 				// the object is reachable in the cold range, move it to the cold store
 				blk, err := s.hot.Get(cid)
 				if err != nil {
-					return xerrors.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
+					if err == dstore.ErrNotFound {
+						// this can happen if the node is killed after we have deleted the block from the hotstore
+						// but before we have deleted it from the snoop; just delete the snoop.
+						err = s.snoop.Delete(cid)
+						if err != nil {
+							return xerrors.Errorf("error deleting cid %s from tracking store: %w", cid, err)
+						}
+						return nil
+					} else {
+						return xerrors.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
+					}
 				}
 
 				err = s.cold.Put(blk)
@@ -434,7 +444,17 @@ func (s *SplitStore) compact() {
 			// if GC is disabled, we move both cold and dead objects to the coldstore
 			blk, err := s.hot.Get(cid)
 			if err != nil {
-				return xerrors.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
+				if err == dstore.ErrNotFound {
+					// this can happen if the node is killed after we have deleted the block from the hotstore
+					// but before we delete it from the snoop; just delete the snoop.
+					err = s.snoop.Delete(cid)
+					if err != nil {
+						return xerrors.Errorf("error deleting cid %s from tracking store: %w", cid, err)
+					}
+					return nil
+				} else {
+					return xerrors.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
+				}
 			}
 
 			err = s.cold.Put(blk)
