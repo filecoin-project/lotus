@@ -25,7 +25,10 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-var CompactionThreshold = 5 * build.Finality
+const (
+	CompactionThreshold = 5 * build.Finality
+	CompactionCold      = build.Finality
+)
 
 var baseEpochKey = dstore.NewKey("baseEpoch")
 
@@ -338,7 +341,7 @@ func (s *SplitStore) compact() {
 	s.mx.Unlock()
 
 	epoch := curTs.Height()
-	coldEpoch := s.baseEpoch + build.Finality
+	coldEpoch := s.baseEpoch + CompactionCold
 	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch, false, false,
 		func(cid cid.Cid) error {
 			return hotSet.Mark(cid)
@@ -356,7 +359,7 @@ func (s *SplitStore) compact() {
 		panic(err)
 	}
 
-	err = s.cs.WalkSnapshot(context.Background(), coldTs, build.Finality, false, false,
+	err = s.cs.WalkSnapshot(context.Background(), coldTs, CompactionCold, false, false,
 		func(cid cid.Cid) error {
 			return coldSet.Mark(cid)
 		})
