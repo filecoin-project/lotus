@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/ledgerwatch/lmdb-go/lmdb"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -369,51 +371,37 @@ func (s *SplitStore) compact() {
 	// Phase 2: sweep cold objects:
 	// - If a cold object is reachable in the hot range, it stays in the hotstore.
 	// - If a cold object is reachable in the cold range, it is moved to the coldstore.
-	// - If a cold object is unreachable, it is deleted.
-	ch, err := s.snoop.Keys(context.Background())
-	if err != nil {
-		// TODO do something better here
-		panic(err)
-	}
-
+	// - If a cold object is unreachable, it is deleted if GC is enabled, otherwise moved to the coldstore.
 	startSweep := time.Now()
 	log.Info("sweeping cold objects")
 
 	// some stats for logging
 	var stHot, stCold, stDead int
 
-	for cid := range ch {
-		wrEpoch, err := s.snoop.Get(cid)
-		if err != nil {
-			// TODO do something better here
-			panic(err)
-		}
-
+	err = s.snoop.ForEach(func(cid cid.Cid, wrEpoch abi.ChainEpoch) error {
 		// is the object stil hot?
 		if wrEpoch > coldEpoch {
 			// yes, stay in the hotstore
 			stHot++
-			continue
+			return nil
 		}
 
 		// the object is cold -- check whether it is reachable in the hot range
 		mark, err := hotSet.Has(cid)
 		if err != nil {
-			// TODO do something better here
-			panic(err)
+			return xerrors.Errorf("error checking live mark for %s: %w", cid, err)
 		}
 
 		if mark {
 			// the object is reachable in the hot range, stay in the hotstore
 			stHot++
-			continue
+			return nil
 		}
 
 		// check whether it is reachable in the cold range
 		mark, err = coldSet.Has(cid)
 		if err != nil {
-			// TODO do something better here
-			panic(err)
+			return xerrors.Errorf("error checkiing cold set for %s: %w", cid, err)
 		}
 
 		if s.enableGC {
@@ -421,14 +409,12 @@ func (s *SplitStore) compact() {
 				// the object is reachable in the cold range, move it to the cold store
 				blk, err := s.hot.Get(cid)
 				if err != nil {
-					// TODO do something better here
-					panic(err)
+					return xerrors.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
 				}
 
 				err = s.cold.Put(blk)
 				if err != nil {
-					// TODO do something better here
-					panic(err)
+					return xerrors.Errorf("error puting block %s to coldstore: %w", cid, err)
 				}
 
 				stCold++
@@ -440,14 +426,12 @@ func (s *SplitStore) compact() {
 			// if GC is disabled, we move both cold and dead objects to the coldstore
 			blk, err := s.hot.Get(cid)
 			if err != nil {
-				// TODO do something better here
-				panic(err)
+				return xerrors.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
 			}
 
 			err = s.cold.Put(blk)
 			if err != nil {
-				// TODO do something better here
-				panic(err)
+				return xerrors.Errorf("error puting block %s to coldstore: %w", cid, err)
 			}
 
 			if mark {
@@ -460,16 +444,21 @@ func (s *SplitStore) compact() {
 		// delete the object from the hotstore
 		err = s.hot.DeleteBlock(cid)
 		if err != nil {
-			// TODO do something better here
-			panic(err)
+			return xerrors.Errorf("error deleting block %s from hotstore: %w", cid, err)
 		}
 
 		// remove the snoop tracking
 		err = s.snoop.Delete(cid)
 		if err != nil {
-			// TODO do something better here
-			panic(err)
+			return xerrors.Errorf("error deleting cid %s from tracking store: %w", cid, err)
 		}
+
+		return nil
+	})
+
+	if err != nil {
+		// TODO do something better here
+		panic(err)
 	}
 
 	log.Infow("sweeping done", "took", time.Since(startSweep))
