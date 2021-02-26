@@ -38,6 +38,8 @@ func init() {
 type SplitStore struct {
 	compacting int32
 
+	enableGC bool // TODO disabled for now, as it causes panics
+
 	baseEpoch abi.ChainEpoch
 
 	mx    sync.Mutex
@@ -431,8 +433,28 @@ func (s *SplitStore) compact() {
 			panic(err)
 		}
 
-		if mark {
-			// the object is reachable in the cold range, move it to the cold store
+		if s.enableGC {
+			if mark {
+				// the object is reachable in the cold range, move it to the cold store
+				blk, err := s.hot.Get(cid)
+				if err != nil {
+					// TODO do something better here
+					panic(err)
+				}
+
+				err = s.cold.Put(blk)
+				if err != nil {
+					// TODO do something better here
+					panic(err)
+				}
+
+				stCold++
+			} else {
+				// the object will be deleted
+				stDead++
+			}
+		} else {
+			// if GC is disabled, we move both cold and dead objects to the coldstore
 			blk, err := s.hot.Get(cid)
 			if err != nil {
 				// TODO do something better here
@@ -445,9 +467,11 @@ func (s *SplitStore) compact() {
 				panic(err)
 			}
 
-			stCold++
-		} else {
-			stDead++
+			if mark {
+				stCold++
+			} else {
+				stDead++
+			}
 		}
 
 		// delete the object from the hotstore
