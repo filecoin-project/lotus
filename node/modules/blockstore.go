@@ -43,7 +43,7 @@ func LMDBHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore
 		return nil, err
 	}
 
-	path = filepath.Join(path, "hot.db")
+	path = filepath.Join(path, "hot.lmdb")
 	bs, err := lmdbbs.Open(&lmdbbs.Options{
 		Path:                 path,
 		InitialMmapSize:      4 << 30, // 4GiB.
@@ -71,7 +71,7 @@ func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlocksto
 		return nil, err
 	}
 
-	path = filepath.Join(path, "hot.bs")
+	path = filepath.Join(path, "hot.badger")
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return nil, err
 	}
