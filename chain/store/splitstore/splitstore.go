@@ -386,6 +386,9 @@ func (s *SplitStore) compact() {
 	// some stats for logging
 	var stHot, stCold, stDead int
 
+	cold := make(map[cid.Cid]struct{})
+	dead := make(map[cid.Cid]struct{})
+
 	err = s.snoop.ForEach(func(cid cid.Cid, wrEpoch abi.ChainEpoch) error {
 		// is the object stil hot?
 		if wrEpoch > coldEpoch {
@@ -415,70 +418,21 @@ func (s *SplitStore) compact() {
 		if s.enableGC {
 			if mark {
 				// the object is reachable in the cold range, move it to the cold store
-				blk, err := s.hot.Get(cid)
-				if err != nil {
-					if err == dstore.ErrNotFound {
-						// this can happen if the node is killed after we have deleted the block from the hotstore
-						// but before we have deleted it from the snoop; just delete the snoop.
-						err = s.snoop.Delete(cid)
-						if err != nil {
-							return xerrors.Errorf("error deleting cid %s from tracking store: %w", cid, err)
-						}
-						return nil
-					} else {
-						return xerrors.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
-					}
-				}
-
-				err = s.cold.Put(blk)
-				if err != nil {
-					return xerrors.Errorf("error puting block %s to coldstore: %w", cid, err)
-				}
-
+				cold[cid] = struct{}{}
 				stCold++
 			} else {
-				// the object will be deleted
+				// the object is dead and will be deleted
+				dead[cid] = struct{}{}
 				stDead++
 			}
 		} else {
 			// if GC is disabled, we move both cold and dead objects to the coldstore
-			blk, err := s.hot.Get(cid)
-			if err != nil {
-				if err == dstore.ErrNotFound {
-					// this can happen if the node is killed after we have deleted the block from the hotstore
-					// but before we delete it from the snoop; just delete the snoop.
-					err = s.snoop.Delete(cid)
-					if err != nil {
-						return xerrors.Errorf("error deleting cid %s from tracking store: %w", cid, err)
-					}
-					return nil
-				} else {
-					return xerrors.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
-				}
-			}
-
-			err = s.cold.Put(blk)
-			if err != nil {
-				return xerrors.Errorf("error puting block %s to coldstore: %w", cid, err)
-			}
-
+			cold[cid] = struct{}{}
 			if mark {
 				stCold++
 			} else {
 				stDead++
 			}
-		}
-
-		// delete the object from the hotstore
-		err = s.hot.DeleteBlock(cid)
-		if err != nil {
-			return xerrors.Errorf("error deleting block %s from hotstore: %w", cid, err)
-		}
-
-		// remove the snoop tracking
-		err = s.snoop.Delete(cid)
-		if err != nil {
-			return xerrors.Errorf("error deleting cid %s from tracking store: %w", cid, err)
 		}
 
 		return nil
@@ -487,6 +441,75 @@ func (s *SplitStore) compact() {
 	if err != nil {
 		// TODO do something better here
 		panic(err)
+	}
+
+	log.Info("moving cold objects to the coldstore")
+	for cid := range cold {
+		blk, err := s.hot.Get(cid)
+		if err != nil {
+			if err == dstore.ErrNotFound {
+				// this can happen if the node is killed after we have deleted the block from the hotstore
+				// but before we have deleted it from the snoop; just delete the snoop.
+				err = s.snoop.Delete(cid)
+				if err != nil {
+					log.Errorf("error deleting cid %s from tracking store: %w", cid, err)
+					// TODO do something better here -- just continue?
+					panic(err)
+
+				}
+			} else {
+				log.Errorf("error retrieving tracked block %s from hotstore: %w ", cid, err)
+				// TODO do something better here -- just continue?
+				panic(err)
+			}
+
+			continue
+		}
+
+		err = s.cold.Put(blk)
+		if err != nil {
+			log.Errorf("error puting block %s to coldstore: %w", cid, err)
+			// TODO do something better here -- just continue?
+			panic(err)
+		}
+
+		// delete the object from the hotstore
+		err = s.hot.DeleteBlock(cid)
+		if err != nil {
+			log.Errorf("error deleting block %s from hotstore: %w", cid, err)
+			// TODO do something better here -- just continue?
+			panic(err)
+		}
+
+		// remove the snoop tracking
+		err = s.snoop.Delete(cid)
+		if err != nil {
+			log.Errorf("error deleting cid %s from tracking store: %w", cid, err)
+			// TODO do something better here -- just continue?
+			panic(err)
+		}
+	}
+
+	if len(dead) > 0 {
+		log.Info("deleting dead objects")
+
+		for cid := range dead {
+			// delete the object from the hotstore
+			err = s.hot.DeleteBlock(cid)
+			if err != nil {
+				log.Errorf("error deleting block %s from hotstore: %w", cid, err)
+				// TODO do something better here -- just continue?
+				panic(err)
+			}
+
+			// remove the snoop tracking
+			err = s.snoop.Delete(cid)
+			if err != nil {
+				log.Errorf("error deleting cid %s from tracking store: %w", cid, err)
+				// TODO do something better here -- just continue?
+				panic(err)
+			}
+		}
 	}
 
 	log.Infow("sweeping done", "took", time.Since(startSweep))
