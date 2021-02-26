@@ -42,7 +42,9 @@ func init() {
 type SplitStore struct {
 	compacting int32
 
-	enableGC bool // TODO disabled for now, as it needs testing
+	enableGC        bool // TODO disabled for now, as it needs testing
+	skipOldMsgs     bool // TODO this should be false for full archival nodes
+	skipMsgReceipts bool // TODO this should be false for full archival nodes
 
 	baseEpoch abi.ChainEpoch
 
@@ -79,11 +81,14 @@ func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore
 
 	// and now we can make a SplitStore
 	ss := &SplitStore{
-		ds:    ds,
-		hot:   hot,
-		cold:  cold,
-		snoop: snoop,
-		env:   env,
+		ds:              ds,
+		hot:             hot,
+		cold:            cold,
+		snoop:           snoop,
+		env:             env,
+		enableGC:        false, // TODO option for this
+		skipOldMsgs:     true,  // TODO option for this
+		skipMsgReceipts: true,  // TODO option for this
 	}
 
 	return ss, nil
@@ -342,7 +347,7 @@ func (s *SplitStore) compact() {
 
 	epoch := curTs.Height()
 	coldEpoch := s.baseEpoch + CompactionCold
-	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch, false, false,
+	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
 			return hotSet.Mark(cid)
 		})
@@ -359,7 +364,7 @@ func (s *SplitStore) compact() {
 		panic(err)
 	}
 
-	err = s.cs.WalkSnapshot(context.Background(), coldTs, CompactionCold, false, false,
+	err = s.cs.WalkSnapshot(context.Background(), coldTs, CompactionCold, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
 			return coldSet.Mark(cid)
 		})
