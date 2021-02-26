@@ -1,7 +1,6 @@
 package splitstore
 
 import (
-	"context"
 	"os"
 
 	"golang.org/x/xerrors"
@@ -20,7 +19,7 @@ type TrackingStore interface {
 	PutBatch([]cid.Cid, abi.ChainEpoch) error
 	Get(cid.Cid) (abi.ChainEpoch, error)
 	Delete(cid.Cid) error
-	Keys(context.Context) (<-chan cid.Cid, error)
+	ForEach(func(cid.Cid, abi.ChainEpoch) error) error
 	Close() error
 }
 
@@ -40,9 +39,6 @@ func NewTrackingStore(path string) (TrackingStore, error) {
 	if err = env.SetMaxDBs(1); err != nil {
 		return nil, xerrors.Errorf("failed to set LMDB max dbs: %w", err)
 	}
-	// if err = env.SetMaxReaders(2); err != nil {
-	// 	return nil, xerrors.Errorf("failed to set LMDB max readers: %w", err)
-	// }
 
 	if st, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0777); err != nil {
@@ -129,47 +125,37 @@ func (s *trackingStore) Delete(cid cid.Cid) error {
 		})
 }
 
-func (s *trackingStore) Keys(ctx context.Context) (<-chan cid.Cid, error) {
-	ch := make(chan cid.Cid)
-	go func() {
-		defer close(ch)
+func (s *trackingStore) ForEach(f func(cid.Cid, abi.ChainEpoch) error) error {
+	return withMaxReadersRetry(
+		func() error {
+			return s.env.View(func(txn *lmdb.Txn) error {
+				txn.RawRead = true
+				cur, err := txn.OpenCursor(s.db)
+				if err != nil {
+					return err
+				}
+				defer cur.Close()
 
-		err := withMaxReadersRetry(
-			func() error {
-				return s.env.View(func(txn *lmdb.Txn) error {
+				for {
+					k, v, err := cur.Get(nil, nil, lmdb.Next)
+					if err != nil {
+						if lmdb.IsNotFound(err) {
+							return nil
+						}
 
-					txn.RawRead = true
-					cur, err := txn.OpenCursor(s.db)
+						return err
+					}
+
+					cid := cid.NewCidV1(cid.Raw, k)
+					epoch := bytesToEpoch(v)
+
+					err = f(cid, epoch)
 					if err != nil {
 						return err
 					}
-					defer cur.Close()
-
-					for {
-						k, _, err := cur.Get(nil, nil, lmdb.Next)
-						if err != nil {
-							if lmdb.IsNotFound(err) {
-								return nil
-							}
-
-							return err
-						}
-
-						select {
-						case ch <- cid.NewCidV1(cid.Raw, k):
-						case <-ctx.Done():
-							return nil
-						}
-					}
-				})
+				}
 			})
-
-		if err != nil {
-			log.Errorf("error iterating over tracking store keys: %s", err)
-		}
-	}()
-
-	return ch, nil
+		})
 }
 
 func (s *trackingStore) Close() error {
