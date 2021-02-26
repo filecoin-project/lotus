@@ -27,8 +27,14 @@ type (
 	// UniversalBlockstore is the cold blockstore.
 	UniversalBlockstore blockstore.Blockstore
 
+	// HotBlockstore is the Hot blockstore abstraction for the splitstore
+	HotBlockstore blockstore.Blockstore
+
 	// SplitBlockstore is the hot/cold blockstore that sits on top of the ColdBlockstore.
 	SplitBlockstore blockstore.Blockstore
+
+	// BaseBlockstore is something, coz DI
+	BaseBlockstore blockstore.Blockstore
 
 	// ChainBlockstore is a blockstore to store chain data (tipsets, blocks,
 	// messages). It is physically backed by the BareMonolithBlockstore, but it

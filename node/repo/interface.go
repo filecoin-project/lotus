@@ -23,6 +23,7 @@ const (
 	// well as state. In the future, they may get segregated into different
 	// domains.
 	UniversalBlockstore = BlockstoreDomain("universal")
+	HotBlockstore       = BlockstoreDomain("hot")
 )
 
 var (

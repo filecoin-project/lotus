@@ -3,7 +3,12 @@ package modules
 import (
 	"context"
 	"io"
+	"os"
+	"path/filepath"
+	"time"
 
+	lmdbbs "github.com/filecoin-project/go-bs-lmdb"
+	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -32,13 +37,71 @@ func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 	return bs, err
 }
 
-func SplitBlockstore(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, bs dtypes.UniversalBlockstore) (dtypes.SplitBlockstore, error) {
+func LMDBHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
 	path, err := r.SplitstorePath()
 	if err != nil {
 		return nil, err
 	}
 
-	ss, err := splitstore.NewSplitStore(path, ds, bs)
+	path = filepath.Join(path, "hot.db")
+	bs, err := lmdbbs.Open(&lmdbbs.Options{
+		Path:                 path,
+		InitialMmapSize:      4 << 30, // 4GiB.
+		MmapGrowthStepFactor: 1.25,    // scale slower than the default of 1.5
+		MmapGrowthStepMax:    4 << 30, // 4GiB
+		RetryDelay:           10 * time.Microsecond,
+		MaxReaders:           1024,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return bs.Close()
+		}})
+
+	hot := blockstore.WrapIDStore(bs)
+	return hot, err
+}
+
+func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
+	path, err := r.SplitstorePath()
+	if err != nil {
+		return nil, err
+	}
+
+	path = filepath.Join(path, "hot.bs")
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return nil, err
+	}
+
+	opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, r.Readonly())
+	if err != nil {
+		return nil, err
+	}
+
+	bs, err := badgerbs.Open(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return bs.Close()
+		}})
+
+	hot := blockstore.WrapIDStore(bs)
+	return hot, err
+}
+
+func SplitBlockstore(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.ColdBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {
+	path, err := r.SplitstorePath()
+	if err != nil {
+		return nil, err
+	}
+
+	ss, err := splitstore.NewSplitStore(path, ds, cold, hot)
 	if err != nil {
 		return nil, err
 	}
@@ -51,48 +114,20 @@ func SplitBlockstore(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, b
 	return ss, err
 }
 
-// StateBlockstore returns the blockstore to use to store the state tree.
-// StateBlockstore is a hook to overlay caches for state objects, or in the
-// future, to segregate the universal blockstore into different physical state
-// and chain stores.
-func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.SplitBlockstore) (dtypes.StateBlockstore, error) {
-	sbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs, blockstore.FreecacheConfig{
-		Name:           "state",
-		BlockCapacity:  288 * 1024 * 1024, // 288MiB.
-		ExistsCapacity: 48 * 1024 * 1024,  // 48MiB.
-	})
-	if err != nil {
-		return nil, err
-	}
-	// this may end up double closing the underlying blockstore, but all
-	// blockstores should be lenient or idempotent on double-close. The native
-	// badger blockstore is (and unit tested).
-	if c, ok := bs.(io.Closer); ok {
-		lc.Append(closerStopHook(c))
-	}
-	return sbs, nil
+func StateFlatBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ColdBlockstore) (dtypes.StateBlockstore, error) {
+	return bs, nil
 }
 
-// ChainBlockstore returns the blockstore to use for chain data (tipsets, blocks, messages).
-// ChainBlockstore is a hook to overlay caches for state objects, or in the
-// future, to segregate the universal blockstore into different physical state
-// and chain stores.
-func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.SplitBlockstore) (dtypes.ChainBlockstore, error) {
-	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs, blockstore.FreecacheConfig{
-		Name:           "chain",
-		BlockCapacity:  64 * 1024 * 1024, // 64MiB.
-		ExistsCapacity: 16 * 1024,        // 16MiB.
-	})
-	if err != nil {
-		return nil, err
-	}
-	// this may end up double closing the underlying blockstore, but all
-	// blockstores should be lenient or idempotent on double-close. The native
-	// badger blockstore is (and unit tested).
-	if c, ok := bs.(io.Closer); ok {
-		lc.Append(closerStopHook(c))
-	}
-	return cbs, nil
+func StateSplitBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.SplitBlockstore) (dtypes.StateBlockstore, error) {
+	return bs, nil
+}
+
+func ChainFlatBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ColdBlockstore) (dtypes.ChainBlockstore, error) {
+	return bs, nil
+}
+
+func ChainSplitBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.SplitBlockstore) (dtypes.ChainBlockstore, error) {
+	return bs, nil
 }
 
 func FallbackChainBlockstore(cbs dtypes.ChainBlockstore) dtypes.ChainBlockstore {
