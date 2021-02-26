@@ -1,7 +1,6 @@
 package splitstore
 
 import (
-	"context"
 	"testing"
 
 	"golang.org/x/xerrors"
@@ -46,7 +45,7 @@ func TestTrackingStore(t *testing.T) {
 		}
 	}
 
-	s, err := NewTrackingStore("/tmp/snoop-test")
+	s, err := NewLMDBTrackingStore("/tmp/snoop-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,14 +88,18 @@ func TestTrackingStore(t *testing.T) {
 		k4.String(): {},
 	}
 
-	ch, _ := s.Keys(context.Background()) //nolint:errcheck
-	for k := range ch {
+	err = s.ForEach(func(k cid.Cid, _ abi.ChainEpoch) error {
 		_, ok := allKeys[k.String()]
 		if !ok {
 			t.Fatal("unexpected key")
 		}
 
 		delete(allKeys, k.String())
+		return nil
+	})
+
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	if len(allKeys) != 0 {
@@ -109,7 +112,7 @@ func TestTrackingStore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s, err = NewTrackingStore("/tmp/snoop-test")
+	s, err = NewLMDBTrackingStore("/tmp/snoop-test")
 	if err != nil {
 		t.Fatal(err)
 	}
