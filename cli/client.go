@@ -1195,6 +1195,11 @@ var clientListAsksCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "by-ping",
 		},
+		&cli.StringFlag{
+			Name:  "output-format",
+			Value: "text",
+			Usage: "Either 'text' or 'csv'",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1214,11 +1219,16 @@ var clientListAsksCmd = &cli.Command{
 				return asks[i].Ping < asks[j].Ping
 			})
 		}
+		pfmt := "%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch ping:%s\n"
+		if cctx.String("output-format") == "csv" {
+			fmt.Printf("Miner, Min, Max, Price, VerifiedPrice, Ping\n")
+			pfmt = "%s, %s, %s, %s, %s, %s\n"
+		}
 
 		for _, a := range asks {
 			ask := a.Ask
 
-			fmt.Printf("%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch ping:%s\n", ask.Miner,
+			fmt.Printf(pfmt, ask.Miner,
 				types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))),
 				types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))),
 				types.FIL(ask.Price),
@@ -1237,7 +1247,13 @@ type QueriedAsk struct {
 }
 
 func GetAsks(ctx context.Context, api lapi.FullNode) ([]QueriedAsk, error) {
-	color.Blue(".. getting miner list")
+	isTTY := true
+	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+		isTTY = false
+	}
+	if isTTY {
+		color.Blue(".. getting miner list")
+	}
 	miners, err := api.StateListMiners(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting miner list: %w", err)
@@ -1282,14 +1298,18 @@ loop:
 	for {
 		select {
 		case <-time.After(150 * time.Millisecond):
-			fmt.Printf("\r* Found %d miners with power", atomic.LoadInt64(&found))
+			if isTTY {
+				fmt.Printf("\r* Found %d miners with power", atomic.LoadInt64(&found))
+			}
 		case <-done:
 			break loop
 		}
 	}
-	fmt.Printf("\r* Found %d miners with power\n", atomic.LoadInt64(&found))
+	if isTTY {
+		fmt.Printf("\r* Found %d miners with power\n", atomic.LoadInt64(&found))
 
-	color.Blue(".. querying asks")
+		color.Blue(".. querying asks")
+	}
 
 	var asks []QueriedAsk
 	var queried, got int64
@@ -1349,12 +1369,16 @@ loop2:
 	for {
 		select {
 		case <-time.After(150 * time.Millisecond):
-			fmt.Printf("\r* Queried %d asks, got %d responses", atomic.LoadInt64(&queried), atomic.LoadInt64(&got))
+			if isTTY {
+				fmt.Printf("\r* Queried %d asks, got %d responses", atomic.LoadInt64(&queried), atomic.LoadInt64(&got))
+			}
 		case <-done:
 			break loop2
 		}
 	}
-	fmt.Printf("\r* Queried %d asks, got %d responses\n", atomic.LoadInt64(&queried), atomic.LoadInt64(&got))
+	if isTTY {
+		fmt.Printf("\r* Queried %d asks, got %d responses\n", atomic.LoadInt64(&queried), atomic.LoadInt64(&got))
+	}
 
 	sort.Slice(asks, func(i, j int) bool {
 		return asks[i].Ask.Price.LessThan(asks[j].Ask.Price)
