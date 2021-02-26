@@ -37,12 +37,12 @@ func TestLiveSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hotSet, err := NewLiveSet(env, "hot")
+	hotSet, err := NewLMDBLiveSet(env, "hot")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err := NewLiveSet(env, "cold")
+	coldSet, err := NewLMDBLiveSet(env, "cold")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,12 +109,12 @@ func TestLiveSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hotSet, err = NewLiveSet(env, "hot")
+	hotSet, err = NewLMDBLiveSet(env, "hot")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err = NewLiveSet(env, "cold")
+	coldSet, err = NewLMDBLiveSet(env, "cold")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -67,13 +67,13 @@ var _ bstore.Blockstore = (*SplitStore)(nil)
 // compaction.
 func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore) (*SplitStore, error) {
 	// the tracking store
-	snoop, err := NewTrackingStore(filepath.Join(path, "snoop.db"))
+	snoop, err := NewLMDBTrackingStore(filepath.Join(path, "snoop.lmdb"))
 	if err != nil {
 		return nil, err
 	}
 
 	// the liveset env
-	env, err := NewLiveSetEnv(filepath.Join(path, "sweep.db"))
+	env, err := NewLMDBLiveSetEnv(filepath.Join(path, "sweep.lmdb"))
 	if err != nil {
 		snoop.Close() //nolint:errcheck
 		return nil, err
@@ -322,14 +322,14 @@ func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
 func (s *SplitStore) compact() {
 	// create two on disk live sets, one for marking the cold finality region
 	// and one for marking the hot region
-	hotSet, err := NewLiveSet(s.env, "hot")
+	hotSet, err := NewLMDBLiveSet(s.env, "hot")
 	if err != nil {
 		// TODO do something better here
 		panic(err)
 	}
 	defer hotSet.Close() //nolint:errcheck
 
-	coldSet, err := NewLiveSet(s.env, "cold")
+	coldSet, err := NewLMDBLiveSet(s.env, "cold")
 	if err != nil {
 		// TODO do something better here
 		panic(err)
