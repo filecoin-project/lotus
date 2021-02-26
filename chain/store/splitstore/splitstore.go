@@ -39,7 +39,7 @@ func init() {
 type SplitStore struct {
 	compacting int32
 
-	enableGC bool // TODO disabled for now, as it causes panics
+	enableGC bool // TODO disabled for now, as it needs testing
 
 	baseEpoch abi.ChainEpoch
 
