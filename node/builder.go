@@ -586,15 +586,47 @@ func Repo(r repo.Repo) Option {
 			return err
 		}
 
+		var cfg *config.Blockstore
+		switch settings.nodeType {
+		case repo.FullNode:
+			cfgp, ok := c.(*config.FullNode)
+			if !ok {
+				return xerrors.Errorf("invalid config from repo, got: %T", c)
+			}
+			cfg = &cfgp.Blockstore
+		case repo.StorageMiner:
+			cfgp, ok := c.(*config.StorageMiner)
+			if !ok {
+				return xerrors.Errorf("invalid config from repo, got: %T", c)
+			}
+			cfg = &cfgp.Blockstore
+		default:
+			cfg = &config.Blockstore{}
+		}
+
 		return Options(
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
-			Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore),
-			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
-			Override(new(dtypes.StateBlockstore), modules.StateBlockstore),
-			Override(new(dtypes.ExposedBlockstore), From(new(dtypes.UniversalBlockstore))),
+
+			If(cfg.Splitstore,
+				If(cfg.UseLMDB,
+					Override(new(dtypes.HotBlockstore), modules.LMDBHotBlockstore)),
+				If(!cfg.UseLMDB,
+					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
+				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore),
+				Override(new(dtypes.ChainBlockstore), modules.ChainSplitBlockstore),
+				Override(new(dtypes.StateBlockstore), modules.StateSplitBlockstore),
+				Override(new(dtypes.BaseBlockstore), From(new(dtypes.SplitBlockstore))),
+				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.SplitBlockstore))),
+			),
+			If(!cfg.Splitstore,
+				Override(new(dtypes.ChainBlockstore), modules.ChainFlatBlockstore),
+				Override(new(dtypes.StateBlockstore), modules.StateFlatBlockstore),
+				Override(new(dtypes.BaseBlockstore), From(new(dtypes.UniversalBlockstore))),
+				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.UniversalBlockstore))),
+			),
 
 			If(os.Getenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK") == "1",
 				Override(new(dtypes.ChainBlockstore), modules.FallbackChainBlockstore),

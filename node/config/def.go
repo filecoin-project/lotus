@@ -12,9 +12,10 @@ import (
 
 // Common is common config between full node and miner
 type Common struct {
-	API    API
-	Libp2p Libp2p
-	Pubsub Pubsub
+	API        API
+	Libp2p     Libp2p
+	Pubsub     Pubsub
+	Blockstore Blockstore
 }
 
 // FullNode is a full node config
@@ -112,6 +113,11 @@ type Pubsub struct {
 	Bootstrapper bool
 	DirectPeers  []string
 	RemoteTracer string
+}
+
+type Blockstore struct {
+	Splitstore bool
+	UseLMDB    bool
 }
 
 // // Full Node
