@@ -121,9 +121,16 @@ type Pubsub struct {
 }
 
 type Blockstore struct {
-	Splitstore      bool
-	UseLMDBHotstore bool
-	UseLMDBTracking bool
+	EnableSplitstore bool
+	Splitstore       Splitstore
+}
+
+type Splitstore struct {
+	UseLMDBHotstore      bool
+	UseLMDBTracking      bool
+	EnableFullCompaction bool
+	EnableGC             bool // EXPERIMENTAL
+	Archival             bool
 }
 
 // // Full Node
