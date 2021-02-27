@@ -466,6 +466,7 @@ func (s *SplitStore) compact() {
 			continue
 		}
 
+		// put the object in the coldstore
 		err = s.cold.Put(blk)
 		if err != nil {
 			log.Errorf("error puting block %s to coldstore: %w", cid, err)
