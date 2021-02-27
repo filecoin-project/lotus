@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,6 +31,8 @@ const (
 
 var baseEpochKey = dstore.NewKey("baseEpoch")
 
+var UseLMDB = true // TODO snake this through DI
+
 var log = logging.Logger("splitstore")
 
 func init() {
@@ -57,7 +58,7 @@ type SplitStore struct {
 	cold  bstore.Blockstore
 	snoop TrackingStore
 
-	env *lmdb.Env
+	env LiveSetEnv
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -67,13 +68,13 @@ var _ bstore.Blockstore = (*SplitStore)(nil)
 // compaction.
 func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore) (*SplitStore, error) {
 	// the tracking store
-	snoop, err := NewLMDBTrackingStore(filepath.Join(path, "snoop.lmdb"))
+	snoop, err := NewTrackingStore(path, UseLMDB)
 	if err != nil {
 		return nil, err
 	}
 
 	// the liveset env
-	env, err := NewLMDBLiveSetEnv(filepath.Join(path, "sweep.lmdb"))
+	env, err := NewLiveSetEnv(path, UseLMDB)
 	if err != nil {
 		snoop.Close() //nolint:errcheck
 		return nil, err
@@ -322,14 +323,14 @@ func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
 func (s *SplitStore) compact() {
 	// create two on disk live sets, one for marking the cold finality region
 	// and one for marking the hot region
-	hotSet, err := NewLMDBLiveSet(s.env, "hot")
+	hotSet, err := s.env.NewLiveSet("hot")
 	if err != nil {
 		// TODO do something better here
 		panic(err)
 	}
 	defer hotSet.Close() //nolint:errcheck
 
-	coldSet, err := NewLMDBLiveSet(s.env, "cold")
+	coldSet, err := s.env.NewLiveSet("cold")
 	if err != nil {
 		// TODO do something better here
 		panic(err)

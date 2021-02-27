@@ -12,6 +12,12 @@ import (
 
 var LMDBLiveSetMapSize int64 = 1 << 34 // 16G; TODO grow the map dynamically
 
+type LMDBLiveSetEnv struct {
+	env *lmdb.Env
+}
+
+var _ LiveSetEnv = (*LMDBLiveSetEnv)(nil)
+
 type LMDBLiveSet struct {
 	env *lmdb.Env
 	db  lmdb.DBI
@@ -19,7 +25,7 @@ type LMDBLiveSet struct {
 
 var _ LiveSet = (*LMDBLiveSet)(nil)
 
-func NewLMDBLiveSetEnv(path string) (*lmdb.Env, error) {
+func NewLMDBLiveSetEnv(path string) (*LMDBLiveSetEnv, error) {
 	env, err := lmdb.NewEnv()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to initialize LDMB env: %w", err)
@@ -49,7 +55,15 @@ func NewLMDBLiveSetEnv(path string) (*lmdb.Env, error) {
 		return nil, xerrors.Errorf("error opening LMDB database: %w", err)
 	}
 
-	return env, nil
+	return &LMDBLiveSetEnv{env: env}, nil
+}
+
+func (e *LMDBLiveSetEnv) NewLiveSet(name string) (LiveSet, error) {
+	return NewLMDBLiveSet(e.env, name+".lmdb")
+}
+
+func (e *LMDBLiveSetEnv) Close() error {
+	return e.env.Close()
 }
 
 func NewLMDBLiveSet(env *lmdb.Env, name string) (*LMDBLiveSet, error) {
