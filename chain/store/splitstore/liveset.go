@@ -25,5 +25,5 @@ func NewLiveSetEnv(path string, useLMDB bool) (LiveSetEnv, error) {
 		return NewLMDBLiveSetEnv(filepath.Join(path, "sweep.lmdb"))
 	}
 
-	return nil, fmt.Errorf("FIXME: non-lmdb livesets")
+	return nil, fmt.Errorf("TODO: non-lmdb livesets")
 }

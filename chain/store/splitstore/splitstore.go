@@ -31,8 +31,6 @@ const (
 
 var baseEpochKey = dstore.NewKey("baseEpoch")
 
-var UseLMDB = true // TODO snake this through DI
-
 var log = logging.Logger("splitstore")
 
 func init() {
@@ -66,15 +64,15 @@ var _ bstore.Blockstore = (*SplitStore)(nil)
 // NewSplitStore creates a new SplitStore instance, given a path for the hotstore dbs and a cold
 // blockstore. The SplitStore must be attached to the ChainStore with Start in order to trigger
 // compaction.
-func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore) (*SplitStore, error) {
+func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore, useLMDB bool) (*SplitStore, error) {
 	// the tracking store
-	snoop, err := NewTrackingStore(path, UseLMDB)
+	snoop, err := NewTrackingStore(path, useLMDB)
 	if err != nil {
 		return nil, err
 	}
 
 	// the liveset env
-	env, err := NewLiveSetEnv(path, UseLMDB)
+	env, err := NewLiveSetEnv(path, useLMDB)
 	if err != nil {
 		snoop.Close() //nolint:errcheck
 		return nil, err
