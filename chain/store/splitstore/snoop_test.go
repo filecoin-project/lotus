@@ -1,11 +1,8 @@
 package splitstore
 
 import (
+	"os"
 	"testing"
-
-	"golang.org/x/xerrors"
-
-	"github.com/ledgerwatch/lmdb-go/lmdb"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -13,7 +10,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-func TestTrackingStore(t *testing.T) {
+func testTrackingStore(t *testing.T, useLMDB bool) {
+	t.Helper()
+
 	makeCid := func(key string) cid.Cid {
 		h, err := multihash.Sum([]byte(key), multihash.SHA2_256, -1)
 		if err != nil {
@@ -36,16 +35,19 @@ func TestTrackingStore(t *testing.T) {
 
 	mustNotHave := func(s TrackingStore, cid cid.Cid) {
 		_, err := s.Get(cid)
-		xerr := xerrors.Unwrap(err)
-		if xerr == nil {
-			xerr = err
-		}
-		if !lmdb.IsNotFound(xerr) {
-			t.Fatal("expected key not found")
+		if err == nil {
+			t.Fatal("expected error")
 		}
 	}
 
-	s, err := NewLMDBTrackingStore("/tmp/snoop-test")
+	path := "/tmp/liveset-test"
+
+	err := os.MkdirAll(path, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := NewTrackingStore(path, useLMDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +114,7 @@ func TestTrackingStore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s, err = NewLMDBTrackingStore("/tmp/snoop-test")
+	s, err = NewTrackingStore(path, useLMDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,4 +125,12 @@ func TestTrackingStore(t *testing.T) {
 	mustHave(s, k4, 4)
 
 	s.Close() //nolint:errcheck
+}
+
+func TestLMDBTrackingStore(t *testing.T) {
+	testTrackingStore(t, true)
+}
+
+func TestBoltTrackingStore(t *testing.T) {
+	testTrackingStore(t, false)
 }
