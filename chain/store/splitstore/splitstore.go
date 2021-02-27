@@ -352,8 +352,7 @@ func (s *SplitStore) compactSimple() {
 
 	coldEpoch := s.baseEpoch + CompactionCold
 
-	log.Infof("running simple compaction; currentEpoch: %d baseEpoch: %d coldEpoch: %d",
-		curTs.Height(), s.baseEpoch, coldEpoch)
+	log.Infow("running simple compaction", "currentEpoch", curTs.Height(), "baseEpoch", s.baseEpoch, "coldEpoch", coldEpoch)
 
 	coldSet, err := s.env.NewLiveSet("cold")
 	if err != nil {
@@ -499,8 +498,7 @@ func (s *SplitStore) compactFull() {
 	epoch := curTs.Height()
 	coldEpoch := s.baseEpoch + CompactionCold
 
-	log.Infof("running full compaction; currentEpoch: %d baseEpoch: %d coldEpoch: %d",
-		curTs.Height(), s.baseEpoch, coldEpoch)
+	log.Infow("running full compaction", "currentEpoch", curTs.Height(), "baseEpoch", s.baseEpoch, "coldEpoch", coldEpoch)
 
 	// create two live sets, one for marking the cold finality region
 	// and one for marking the hot region
