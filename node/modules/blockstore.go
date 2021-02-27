@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/store/splitstore"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -95,23 +96,25 @@ func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlocksto
 	return hot, err
 }
 
-func SplitBlockstore(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.ColdBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {
-	path, err := r.SplitstorePath()
-	if err != nil {
-		return nil, err
-	}
+func SplitBlockstore(cfg *config.Blockstore) func(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.ColdBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {
+	return func(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.ColdBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {
+		path, err := r.SplitstorePath()
+		if err != nil {
+			return nil, err
+		}
 
-	ss, err := splitstore.NewSplitStore(path, ds, cold, hot)
-	if err != nil {
-		return nil, err
-	}
-	lc.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			return ss.Close()
-		},
-	})
+		ss, err := splitstore.NewSplitStore(path, ds, cold, hot, cfg.UseLMDB)
+		if err != nil {
+			return nil, err
+		}
+		lc.Append(fx.Hook{
+			OnStop: func(context.Context) error {
+				return ss.Close()
+			},
+		})
 
-	return ss, err
+		return ss, err
+	}
 }
 
 func StateFlatBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ColdBlockstore) (dtypes.StateBlockstore, error) {

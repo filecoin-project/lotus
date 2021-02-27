@@ -615,7 +615,7 @@ func Repo(r repo.Repo) Option {
 					Override(new(dtypes.HotBlockstore), modules.LMDBHotBlockstore)),
 				If(!cfg.UseLMDB,
 					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
-				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore),
+				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(cfg)),
 				Override(new(dtypes.ChainBlockstore), modules.ChainSplitBlockstore),
 				Override(new(dtypes.StateBlockstore), modules.StateSplitBlockstore),
 				Override(new(dtypes.BaseBlockstore), From(new(dtypes.SplitBlockstore))),
