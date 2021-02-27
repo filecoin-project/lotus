@@ -42,7 +42,7 @@ Alternatively please upload full log files and share a link here
 
 Please collect the following diagnostic information, and share a link here
 
-* lotus-miner diagnostic info `lotus-miner info all > allinfo`
+* lotus-miner diagnostic info `lotus-miner info all > allinfo.txt`
 
 ** Code modifications **
 
