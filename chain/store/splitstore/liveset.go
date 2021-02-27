@@ -1,6 +1,9 @@
 package splitstore
 
 import (
+	"fmt"
+	"path/filepath"
+
 	cid "github.com/ipfs/go-cid"
 )
 
@@ -11,3 +14,16 @@ type LiveSet interface {
 }
 
 var markBytes = []byte{}
+
+type LiveSetEnv interface {
+	NewLiveSet(name string) (LiveSet, error)
+	Close() error
+}
+
+func NewLiveSetEnv(path string, useLMDB bool) (LiveSetEnv, error) {
+	if useLMDB {
+		return NewLMDBLiveSetEnv(filepath.Join(path, "sweep.lmdb"))
+	}
+
+	return nil, fmt.Errorf("FIXME: non-lmdb livesets")
+}
