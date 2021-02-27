@@ -24,7 +24,7 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 **Logs**
-Provide daemon/miner/worker and goroutines(if available) for troubleshooting.
+Provide daemon/miner/worker logs, and goroutines(if available) for troubleshooting.
  
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
