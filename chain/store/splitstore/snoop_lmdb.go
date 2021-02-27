@@ -68,7 +68,11 @@ func (s *LMDBTrackingStore) Put(cid cid.Cid, epoch abi.ChainEpoch) error {
 	return withMaxReadersRetry(
 		func() error {
 			return s.env.Update(func(txn *lmdb.Txn) error {
-				return txn.Put(s.db, cid.Hash(), val, 0)
+				err := txn.Put(s.db, cid.Hash(), val, 0)
+				if err == nil || lmdb.IsErrno(err, lmdb.KeyExist) {
+					return nil
+				}
+				return err
 			})
 		})
 }
@@ -80,9 +84,10 @@ func (s *LMDBTrackingStore) PutBatch(cids []cid.Cid, epoch abi.ChainEpoch) error
 			return s.env.Update(func(txn *lmdb.Txn) error {
 				for _, cid := range cids {
 					err := txn.Put(s.db, cid.Hash(), val, 0)
-					if err != nil {
-						return err
+					if err == nil || lmdb.IsErrno(err, lmdb.KeyExist) {
+						continue
 					}
+					return err
 				}
 
 				return nil
