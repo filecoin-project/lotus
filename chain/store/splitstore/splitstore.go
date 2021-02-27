@@ -346,11 +346,14 @@ func (s *SplitStore) compact() {
 }
 
 func (s *SplitStore) compactSimple() {
-	// some stats for logging
-	var stHot, stCold int
+	s.mx.Lock()
+	curTs := s.curTs
+	s.mx.Unlock()
 
 	coldEpoch := s.baseEpoch + CompactionCold
-	cold := make(map[cid.Cid]struct{})
+
+	log.Infof("running simple compaction; currentEpoch: %d baseEpoch: %d coldEpoch: %d",
+		curTs.Height(), s.baseEpoch, coldEpoch)
 
 	coldSet, err := s.env.NewLiveSet("cold")
 	if err != nil {
@@ -360,12 +363,8 @@ func (s *SplitStore) compactSimple() {
 	defer coldSet.Close() //nolint:errcheck
 
 	// 1. mark reachable cold objects by looking at the objects reachable only from the cold epoch
-	log.Infof("marking reachable cold objects")
+	log.Info("marking reachable cold objects")
 	startMark := time.Now()
-
-	s.mx.Lock()
-	curTs := s.curTs
-	s.mx.Unlock()
 
 	coldTs, err := s.cs.GetTipsetByHeight(context.Background(), coldEpoch, curTs, true)
 	if err != nil {
@@ -388,6 +387,11 @@ func (s *SplitStore) compactSimple() {
 	// 2. move cold unreachable objects to the coldstore
 	log.Info("collecting cold objects")
 	startCollect := time.Now()
+
+	cold := make(map[cid.Cid]struct{})
+
+	// some stats for logging
+	var stHot, stCold int
 
 	err = s.snoop.ForEach(func(cid cid.Cid, wrEpoch abi.ChainEpoch) error {
 		// is the object stil hot?
@@ -488,7 +492,17 @@ func (s *SplitStore) compactSimple() {
 }
 
 func (s *SplitStore) compactFull() {
-	// create two on disk live sets, one for marking the cold finality region
+	s.mx.Lock()
+	curTs := s.curTs
+	s.mx.Unlock()
+
+	epoch := curTs.Height()
+	coldEpoch := s.baseEpoch + CompactionCold
+
+	log.Infof("running full compaction; currentEpoch: %d baseEpoch: %d coldEpoch: %d",
+		curTs.Height(), s.baseEpoch, coldEpoch)
+
+	// create two live sets, one for marking the cold finality region
 	// and one for marking the hot region
 	hotSet, err := s.env.NewLiveSet("hot")
 	if err != nil {
@@ -509,12 +523,6 @@ func (s *SplitStore) compactFull() {
 	startMark := time.Now()
 
 	// Phase 1a: mark all reachable CIDs in the hot range
-	s.mx.Lock()
-	curTs := s.curTs
-	s.mx.Unlock()
-
-	epoch := curTs.Height()
-	coldEpoch := s.baseEpoch + CompactionCold
 	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
 			return hotSet.Mark(cid)
