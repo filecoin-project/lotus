@@ -103,7 +103,7 @@ func SplitBlockstore(cfg *config.Blockstore) func(lc fx.Lifecycle, r repo.Locked
 			return nil, err
 		}
 
-		ss, err := splitstore.NewSplitStore(path, ds, cold, hot, cfg.UseLMDB)
+		ss, err := splitstore.NewSplitStore(path, ds, cold, hot, cfg.UseLMDBTracking)
 		if err != nil {
 			return nil, err
 		}
