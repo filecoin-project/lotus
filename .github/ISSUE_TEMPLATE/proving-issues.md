@@ -24,10 +24,6 @@ The output of `lotus --version`.
 
 You miner and daemon setup, including what hardware do you use, your environment variable settings, how do you run your miner and worker, do you use GPU and etc.
 
-**Commands**
-
-Commands you ran.
-
 **Proving status**
 
 The output of `lotus-miner proving` info.
