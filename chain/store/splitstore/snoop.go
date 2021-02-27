@@ -1,7 +1,6 @@
 package splitstore
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -22,5 +21,5 @@ func NewTrackingStore(path string, useLMDB bool) (TrackingStore, error) {
 		return NewLMDBTrackingStore(filepath.Join(path, "snoop.lmdb"))
 	}
 
-	return nil, fmt.Errorf("TODO: non-lmdb livesets")
+	return NewBoltTrackingStore(filepath.Join(path, "snoop.bolt"))
 }
