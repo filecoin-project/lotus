@@ -122,6 +122,21 @@ func (s *LMDBTrackingStore) Delete(cid cid.Cid) error {
 		})
 }
 
+func (s *LMDBTrackingStore) DeleteBatch(cids map[cid.Cid]struct{}) error {
+	return withMaxReadersRetry(
+		func() error {
+			return s.env.Update(func(txn *lmdb.Txn) error {
+				for cid := range cids {
+					err := txn.Del(s.db, cid.Hash(), nil)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+		})
+}
+
 func (s *LMDBTrackingStore) ForEach(f func(cid.Cid, abi.ChainEpoch) error) error {
 	return withMaxReadersRetry(
 		func() error {
