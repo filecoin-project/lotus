@@ -4,45 +4,40 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ledgerwatch/lmdb-go/lmdb"
-
 	cid "github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 )
 
-func TestLiveSet(t *testing.T) {
-	env, err := lmdb.NewEnv()
+func TestLMDBLiveSet(t *testing.T) {
+	testLiveSet(t, true)
+}
+
+func TestBoltLiveSet(t *testing.T) {
+	testLiveSet(t, false)
+}
+
+func testLiveSet(t *testing.T, useLMDB bool) {
+	t.Helper()
+
+	path := "/tmp/liveset-test"
+
+	err := os.MkdirAll(path, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	env, err := NewLiveSetEnv(path, useLMDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer env.Close() //nolint:errcheck
 
-	if err = env.SetMapSize(1 << 30); err != nil {
-		t.Fatal(err)
-	}
-	if err = env.SetMaxDBs(2); err != nil {
-		t.Fatal(err)
-	}
-	if err = env.SetMaxReaders(1); err != nil {
-		t.Fatal(err)
-	}
-
-	err = os.MkdirAll("/tmp/liveset-test", 0777)
+	hotSet, err := env.NewLiveSet("hot")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = env.Open("/tmp/liveset-test", lmdb.NoSync|lmdb.WriteMap|lmdb.MapAsync|lmdb.NoReadahead, 0777)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	hotSet, err := NewLMDBLiveSet(env, "hot")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	coldSet, err := NewLMDBLiveSet(env, "cold")
+	coldSet, err := env.NewLiveSet("cold")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,12 +104,12 @@ func TestLiveSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hotSet, err = NewLMDBLiveSet(env, "hot")
+	hotSet, err = env.NewLiveSet("hot")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err = NewLMDBLiveSet(env, "cold")
+	coldSet, err = env.NewLiveSet("cold")
 	if err != nil {
 		t.Fatal(err)
 	}
