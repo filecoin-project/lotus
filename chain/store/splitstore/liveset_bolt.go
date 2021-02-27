@@ -26,6 +26,7 @@ func NewBoltLiveSetEnv(path string) (*BoltLiveSetEnv, error) {
 	db, err := bolt.Open(path, 0644,
 		&bolt.Options{
 			Timeout: 1 * time.Second,
+			NoSync:  true,
 		})
 	if err != nil {
 		return nil, err
