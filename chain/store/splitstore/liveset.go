@@ -1,7 +1,6 @@
 package splitstore
 
 import (
-	"fmt"
 	"path/filepath"
 
 	cid "github.com/ipfs/go-cid"
@@ -25,5 +24,5 @@ func NewLiveSetEnv(path string, useLMDB bool) (LiveSetEnv, error) {
 		return NewLMDBLiveSetEnv(filepath.Join(path, "sweep.lmdb"))
 	}
 
-	return nil, fmt.Errorf("TODO: non-lmdb livesets")
+	return NewBoltLiveSetEnv(filepath.Join(path, "sweep.bolt"))
 }
