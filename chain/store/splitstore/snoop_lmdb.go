@@ -20,7 +20,7 @@ type LMDBTrackingStore struct {
 
 var _ TrackingStore = (*LMDBTrackingStore)(nil)
 
-func NewLMDBTrackingStore(path string) (TrackingStore, error) {
+func NewLMDBTrackingStore(path string) (*LMDBTrackingStore, error) {
 	env, err := lmdb.NewEnv()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to initialize LMDB env: %w", err)
