@@ -87,6 +87,19 @@ func (s *BoltTrackingStore) Delete(cid cid.Cid) error {
 	})
 }
 
+func (s *BoltTrackingStore) DeleteBatch(cids map[cid.Cid]struct{}) error {
+	return s.db.Batch(func(tx *bolt.Tx) error {
+		b := tx.Bucket(s.bucketId)
+		for cid := range cids {
+			err := b.Delete(cid.Hash())
+			if err != nil {
+				return xerrors.Errorf("error deleting %s", cid)
+			}
+		}
+		return nil
+	})
+}
+
 func (s *BoltTrackingStore) ForEach(f func(cid.Cid, abi.ChainEpoch) error) error {
 	return s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(s.bucketId)
