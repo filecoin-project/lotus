@@ -139,6 +139,7 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
+	go.etcd.io/bbolt v1.3.4
 	go.opencensus.io v0.22.5
 	go.uber.org/dig v1.10.0 // indirect
 	go.uber.org/fx v1.9.0
