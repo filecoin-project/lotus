@@ -1221,8 +1221,8 @@ var clientListAsksCmd = &cli.Command{
 		}
 		pfmt := "%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch ping:%s\n"
 		if cctx.String("output-format") == "csv" {
-			fmt.Printf("Miner, Min, Max, Price, VerifiedPrice, Ping\n")
-			pfmt = "%s, %s, %s, %s, %s, %s\n"
+			fmt.Printf("Miner,Min,Max,Price,VerifiedPrice,Ping\n")
+			pfmt = "%s,%s,%s,%s,%s,%s\n"
 		}
 
 		for _, a := range asks {
