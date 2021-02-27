@@ -5,9 +5,8 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/ledgerwatch/lmdb-go/lmdb"
-
 	cid "github.com/ipfs/go-cid"
+	"github.com/ledgerwatch/lmdb-go/lmdb"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
