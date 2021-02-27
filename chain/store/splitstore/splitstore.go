@@ -89,13 +89,10 @@ func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore
 	}
 
 	// the liveset env
-	var env LiveSetEnv
-	if cfg.EnableFullCompaction {
-		env, err = NewLiveSetEnv(path, cfg.UseLMDB)
-		if err != nil {
-			snoop.Close() //nolint:errcheck
-			return nil, err
-		}
+	env, err := NewLiveSetEnv(path, cfg.UseLMDB)
+	if err != nil {
+		snoop.Close() //nolint:errcheck
+		return nil, err
 	}
 
 	// and now we can make a SplitStore
@@ -306,11 +303,7 @@ func (s *SplitStore) Close() error {
 		}
 	}
 
-	if s.env != nil {
-		return s.env.Close()
-	}
-
-	return nil
+	return s.env.Close()
 }
 
 func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
@@ -359,10 +352,44 @@ func (s *SplitStore) compactSimple() {
 	coldEpoch := s.baseEpoch + CompactionCold
 	cold := make(map[cid.Cid]struct{})
 
+	coldSet, err := s.env.NewLiveSet("cold")
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+	defer coldSet.Close() //nolint:errcheck
+
+	// 1. mark reachable cold objects by looking at the objects reachable only from the cold epoch
+	log.Infof("marking reachable cold objects")
+	startMark := time.Now()
+
+	s.mx.Lock()
+	curTs := s.curTs
+	s.mx.Unlock()
+
+	coldTs, err := s.cs.GetTipsetByHeight(context.Background(), coldEpoch, curTs, true)
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+
+	err = s.cs.WalkSnapshot(context.Background(), coldTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
+		func(cid cid.Cid) error {
+			return coldSet.Mark(cid)
+		})
+
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+
+	log.Infow("marking done", "took", time.Since(startMark))
+
+	// 2. move cold unreachable objects to the coldstore
 	log.Info("collecting cold objects")
 	startCollect := time.Now()
 
-	err := s.snoop.ForEach(func(cid cid.Cid, wrEpoch abi.ChainEpoch) error {
+	err = s.snoop.ForEach(func(cid cid.Cid, wrEpoch abi.ChainEpoch) error {
 		// is the object stil hot?
 		if wrEpoch > coldEpoch {
 			// yes, stay in the hotstore
@@ -370,6 +397,18 @@ func (s *SplitStore) compactSimple() {
 			return nil
 		}
 
+		// check whether it is reachable in the cold boundary
+		mark, err := coldSet.Has(cid)
+		if err != nil {
+			return xerrors.Errorf("error checkiing cold set for %s: %w", cid, err)
+		}
+
+		if mark {
+			stHot++
+			return nil
+		}
+
+		// it's cold, mark it for move
 		cold[cid] = struct{}{}
 		stCold++
 		return nil
@@ -434,6 +473,18 @@ func (s *SplitStore) compactSimple() {
 
 	log.Infow("moving done", "took", time.Since(startMove))
 	log.Infow("compaction stats", "hot", stHot, "cold", stCold)
+
+	err = s.snoop.Sync()
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+
+	err = s.setBaseEpoch(coldEpoch)
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
 }
 
 func (s *SplitStore) compactFull() {
