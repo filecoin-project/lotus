@@ -105,8 +105,8 @@ func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore
 
 		fullCompaction:  cfg.EnableFullCompaction,
 		enableGC:        cfg.EnableGC,
-		skipOldMsgs:     !cfg.Archival,
-		skipMsgReceipts: !cfg.Archival,
+		skipOldMsgs:     !(cfg.EnableFullCompaction && cfg.Archival),
+		skipMsgReceipts: !(cfg.EnableFullCompaction && cfg.Archival),
 	}
 
 	return ss, nil
