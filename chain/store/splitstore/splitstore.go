@@ -633,6 +633,12 @@ func (s *SplitStore) compactFull() {
 	log.Infow("sweeping done", "took", time.Since(startSweep))
 	log.Infow("compaction stats", "hot", stHot, "cold", stCold, "dead", stDead)
 
+	err = s.snoop.Sync()
+	if err != nil {
+		// TODO do something better here
+		panic(err)
+	}
+
 	err = s.setBaseEpoch(coldEpoch)
 	if err != nil {
 		// TODO do something better here

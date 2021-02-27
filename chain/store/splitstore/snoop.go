@@ -13,6 +13,7 @@ type TrackingStore interface {
 	Get(cid.Cid) (abi.ChainEpoch, error)
 	Delete(cid.Cid) error
 	ForEach(func(cid.Cid, abi.ChainEpoch) error) error
+	Sync() error
 	Close() error
 }
 

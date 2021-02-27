@@ -22,6 +22,7 @@ func NewBoltTrackingStore(path string) (*BoltTrackingStore, error) {
 	db, err := bolt.Open(path, 0644,
 		&bolt.Options{
 			Timeout: 1 * time.Second,
+			NoSync:  true,
 		})
 	if err != nil {
 		return nil, err
@@ -95,6 +96,10 @@ func (s *BoltTrackingStore) ForEach(f func(cid.Cid, abi.ChainEpoch) error) error
 			return f(cid, epoch)
 		})
 	})
+}
+
+func (s *BoltTrackingStore) Sync() error {
+	return s.db.Sync()
 }
 
 func (s *BoltTrackingStore) Close() error {

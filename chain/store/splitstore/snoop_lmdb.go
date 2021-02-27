@@ -155,6 +155,10 @@ func (s *LMDBTrackingStore) ForEach(f func(cid.Cid, abi.ChainEpoch) error) error
 		})
 }
 
+func (s *LMDBTrackingStore) Sync() error {
+	return nil
+}
+
 func (s *LMDBTrackingStore) Close() error {
 	s.env.CloseDBI(s.db)
 	return s.env.Close()
