@@ -32,7 +32,7 @@ func NewBloomLiveSetEnv() (*BloomLiveSetEnv, error) {
 
 func (e *BloomLiveSetEnv) NewLiveSet(name string) (LiveSet, error) {
 	salt := make([]byte, 4)
-	_, err := rand.Read(salt)
+	_, err := rand.Read(salt) //nolint
 	if err != nil {
 		return nil, xerrors.Errorf("error reading salt: %w", err)
 	}
