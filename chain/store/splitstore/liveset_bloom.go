@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	BloomFilterSize        = 50_000_000
+	BloomFilterMinSize     = 10_000_000
 	BloomFilterProbability = 0.01
 )
 
@@ -31,9 +31,9 @@ func NewBloomLiveSetEnv() (*BloomLiveSetEnv, error) {
 }
 
 func (e *BloomLiveSetEnv) NewLiveSet(name string, sizeHint int64) (LiveSet, error) {
-	size := int64(BloomFilterSize)
+	size := int64(BloomFilterMinSize)
 	for size < sizeHint {
-		size += BloomFilterSize
+		size += BloomFilterMinSize
 	}
 
 	salt := make([]byte, 4)
