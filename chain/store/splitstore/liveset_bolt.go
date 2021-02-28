@@ -35,7 +35,7 @@ func NewBoltLiveSetEnv(path string) (*BoltLiveSetEnv, error) {
 	return &BoltLiveSetEnv{db: db}, nil
 }
 
-func (e *BoltLiveSetEnv) NewLiveSet(name string) (LiveSet, error) {
+func (e *BoltLiveSetEnv) NewLiveSet(name string, hint int64) (LiveSet, error) {
 	bucketId := []byte(name)
 	err := e.db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(bucketId)

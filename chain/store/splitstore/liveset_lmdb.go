@@ -57,7 +57,7 @@ func NewLMDBLiveSetEnv(path string) (*LMDBLiveSetEnv, error) {
 	return &LMDBLiveSetEnv{env: env}, nil
 }
 
-func (e *LMDBLiveSetEnv) NewLiveSet(name string) (LiveSet, error) {
+func (e *LMDBLiveSetEnv) NewLiveSet(name string, hint int64) (LiveSet, error) {
 	return NewLMDBLiveSet(e.env, name+".lmdb")
 }
 

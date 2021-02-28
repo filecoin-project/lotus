@@ -75,6 +75,8 @@ type SplitStore struct {
 	snoop TrackingStore
 
 	env LiveSetEnv
+
+	liveSetSize int64
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -328,10 +330,37 @@ func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
 
 // Compaction/GC Algorithm
 func (s *SplitStore) compact() {
+	if s.liveSetSize == 0 {
+		start := time.Now()
+		log.Info("estimating live set size")
+		s.estimateLiveSetSize()
+		log.Infow("estimating live set size done", "took", time.Since(start), "size", s.liveSetSize)
+	} else {
+		log.Infow("current live set size estimate", "size", s.liveSetSize)
+	}
+
 	if s.fullCompaction {
 		s.compactFull()
 	} else {
 		s.compactSimple()
+	}
+}
+
+func (s *SplitStore) estimateLiveSetSize() {
+	s.mx.Lock()
+	curTs := s.curTs
+	s.mx.Unlock()
+
+	s.liveSetSize = 0
+	err := s.cs.WalkSnapshot(context.Background(), curTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
+		func(cid cid.Cid) error {
+			s.liveSetSize++
+			return nil
+		})
+
+	if err != nil {
+		// TODO do something better here
+		panic(err)
 	}
 }
 
@@ -344,7 +373,7 @@ func (s *SplitStore) compactSimple() {
 
 	log.Infow("running simple compaction", "currentEpoch", curTs.Height(), "baseEpoch", s.baseEpoch, "coldEpoch", coldEpoch)
 
-	coldSet, err := s.env.NewLiveSet("cold")
+	coldSet, err := s.env.NewLiveSet("cold", s.liveSetSize)
 	if err != nil {
 		// TODO do something better here
 		panic(err)
@@ -361,14 +390,20 @@ func (s *SplitStore) compactSimple() {
 		panic(err)
 	}
 
+	count := int64(0)
 	err = s.cs.WalkSnapshot(context.Background(), coldTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
+			count++
 			return coldSet.Mark(cid)
 		})
 
 	if err != nil {
 		// TODO do something better here
 		panic(err)
+	}
+
+	if count > s.liveSetSize {
+		s.liveSetSize = count
 	}
 
 	log.Infow("marking done", "took", time.Since(startMark))
@@ -519,14 +554,14 @@ func (s *SplitStore) compactFull() {
 
 	// create two live sets, one for marking the cold finality region
 	// and one for marking the hot region
-	hotSet, err := s.env.NewLiveSet("hot")
+	hotSet, err := s.env.NewLiveSet("hot", s.liveSetSize)
 	if err != nil {
 		// TODO do something better here
 		panic(err)
 	}
 	defer hotSet.Close() //nolint:errcheck
 
-	coldSet, err := s.env.NewLiveSet("cold")
+	coldSet, err := s.env.NewLiveSet("cold", s.liveSetSize)
 	if err != nil {
 		// TODO do something better here
 		panic(err)
@@ -538,14 +573,20 @@ func (s *SplitStore) compactFull() {
 	startMark := time.Now()
 
 	// Phase 1a: mark all reachable CIDs in the hot range
+	count := int64(0)
 	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
+			count++
 			return hotSet.Mark(cid)
 		})
 
 	if err != nil {
 		// TODO do something better here
 		panic(err)
+	}
+
+	if count > s.liveSetSize {
+		s.liveSetSize = count
 	}
 
 	// Phase 1b: mark all reachable CIDs in the cold range
@@ -555,14 +596,20 @@ func (s *SplitStore) compactFull() {
 		panic(err)
 	}
 
+	count = 0
 	err = s.cs.WalkSnapshot(context.Background(), coldTs, CompactionCold, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
+			count++
 			return coldSet.Mark(cid)
 		})
 
 	if err != nil {
 		// TODO do something better here
 		panic(err)
+	}
+
+	if count > s.liveSetSize {
+		s.liveSetSize = count
 	}
 
 	log.Infow("marking done", "took", time.Since(startMark))

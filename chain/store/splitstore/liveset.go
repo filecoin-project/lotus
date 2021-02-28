@@ -17,7 +17,7 @@ type LiveSet interface {
 var markBytes = []byte{}
 
 type LiveSetEnv interface {
-	NewLiveSet(name string) (LiveSet, error)
+	NewLiveSet(name string, sizeHint int64) (LiveSet, error)
 	Close() error
 }
 
