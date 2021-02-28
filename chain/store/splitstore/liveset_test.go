@@ -9,14 +9,18 @@ import (
 )
 
 func TestLMDBLiveSet(t *testing.T) {
-	testLiveSet(t, true)
+	testLiveSet(t, "lmdb")
 }
 
 func TestBoltLiveSet(t *testing.T) {
-	testLiveSet(t, false)
+	testLiveSet(t, "bolt")
 }
 
-func testLiveSet(t *testing.T, useLMDB bool) {
+func TestBloomLiveSet(t *testing.T) {
+	testLiveSet(t, "bloom")
+}
+
+func testLiveSet(t *testing.T, lsType string) {
 	t.Helper()
 
 	path := "/tmp/liveset-test"
@@ -26,7 +30,7 @@ func testLiveSet(t *testing.T, useLMDB bool) {
 		t.Fatal(err)
 	}
 
-	env, err := NewLiveSetEnv(path, useLMDB)
+	env, err := NewLiveSetEnv(path, lsType)
 	if err != nil {
 		t.Fatal(err)
 	}
