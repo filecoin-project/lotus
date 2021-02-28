@@ -36,12 +36,12 @@ func testLiveSet(t *testing.T, lsType string) {
 	}
 	defer env.Close() //nolint:errcheck
 
-	hotSet, err := env.NewLiveSet("hot")
+	hotSet, err := env.NewLiveSet("hot", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err := env.NewLiveSet("cold")
+	coldSet, err := env.NewLiveSet("cold", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,12 +108,12 @@ func testLiveSet(t *testing.T, lsType string) {
 		t.Fatal(err)
 	}
 
-	hotSet, err = env.NewLiveSet("hot")
+	hotSet, err = env.NewLiveSet("hot", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err = env.NewLiveSet("cold")
+	coldSet, err = env.NewLiveSet("cold", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
