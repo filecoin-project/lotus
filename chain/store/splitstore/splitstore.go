@@ -443,7 +443,7 @@ func (s *SplitStore) compactSimple() {
 				// but before we have deleted it from the snoop; just delete the snoop.
 				err = s.snoop.Delete(cid)
 				if err != nil {
-					log.Errorf("error deleting cid %s from tracking store: %s", cid, err)
+					log.Errorf("error deleting cid %s from snoop: %s", cid, err)
 					// TODO do something better here -- just continue?
 					panic(err)
 				}
@@ -495,15 +495,15 @@ func (s *SplitStore) compactSimple() {
 
 	// 2.4 remove the snoop tracking for cold objects
 	purgeStart = time.Now()
-	log.Info("purging cold objects from tracking store")
+	log.Info("purging cold objects from snoop")
 
 	err = s.snoop.DeleteBatch(cold)
 	if err != nil {
-		log.Errorf("error purging cold objects from tracking store: %s", err)
+		log.Errorf("error purging cold objects from snoop: %s", err)
 		// TODO do something better here -- just continue?
 		panic(err)
 	}
-	log.Infow("purging cold from tracking store done", "took", time.Since(purgeStart))
+	log.Infow("purging cold from snoop done", "took", time.Since(purgeStart))
 
 	// we are done; do some housekeeping
 	err = s.snoop.Sync()
@@ -664,7 +664,7 @@ func (s *SplitStore) compactFull() {
 				// but before we have deleted it from the snoop; just delete the snoop.
 				err = s.snoop.Delete(cid)
 				if err != nil {
-					log.Errorf("error deleting cid %s from tracking store: %s", cid, err)
+					log.Errorf("error deleting cid %s from snoop: %s", cid, err)
 					// TODO do something better here -- just continue?
 					panic(err)
 				}
@@ -716,15 +716,15 @@ func (s *SplitStore) compactFull() {
 
 	// 2.4 remove the snoop tracking for cold objects
 	purgeStart = time.Now()
-	log.Info("purging cold objects from tracking store")
+	log.Info("purging cold objects from snoop")
 
 	err = s.snoop.DeleteBatch(cold)
 	if err != nil {
-		log.Errorf("error purging cold objects from tracking store: %s", err)
+		log.Errorf("error purging cold objects from snoop: %s", err)
 		// TODO do something better here -- just continue?
 		panic(err)
 	}
-	log.Infow("purging cold from tracking store done", "took", time.Since(purgeStart))
+	log.Infow("purging cold from snoop done", "took", time.Since(purgeStart))
 
 	// 3. if we have dead objects, delete them from the hotstore and remove the tracking
 	if len(dead) > 0 {
@@ -746,16 +746,16 @@ func (s *SplitStore) compactFull() {
 
 		// remove the snoop tracking
 		purgeStart := time.Now()
-		log.Info("purging dead objects from tracking store")
+		log.Info("purging dead objects from snoop")
 
 		err = s.snoop.DeleteBatch(dead)
 		if err != nil {
-			log.Errorf("error purging dead objects from tracking store: %s", err)
+			log.Errorf("error purging dead objects from snoop: %s", err)
 			// TODO do something better here -- just continue?
 			panic(err)
 		}
 
-		log.Infow("purging dead from trackingstore done", "took", time.Since(purgeStart))
+		log.Infow("purging dead from snoop done", "took", time.Since(purgeStart))
 	}
 
 	log.Infow("sweeping done", "took", time.Since(startSweep))
