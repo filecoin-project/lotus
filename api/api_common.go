@@ -16,11 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 )
 
-type ChainIO interface {
-	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
-	ChainHasObj(context.Context, cid.Cid) (bool, error)
-}
-
 type Common interface {
 
 	// MethodGroup: Auth

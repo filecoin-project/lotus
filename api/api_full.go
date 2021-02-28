@@ -32,6 +32,12 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+// ChainIO abstracts operations for accessing raw IPLD objects.
+type ChainIO interface {
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainHasObj(context.Context, cid.Cid) (bool, error)
+}
+
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common

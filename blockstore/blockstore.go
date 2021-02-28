@@ -59,5 +59,8 @@ func (a *adaptedBlockstore) View(cid cid.Cid, callback func([]byte) error) error
 // View proxies over to Get and calls the callback with the value supplied by Get.
 // Sync noops.
 func Adapt(bs blockstore.Blockstore) Blockstore {
+	if ret, ok := bs.(Blockstore); ok {
+		return ret
+	}
 	return &adaptedBlockstore{bs}
 }
