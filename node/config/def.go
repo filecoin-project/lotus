@@ -126,11 +126,20 @@ type Blockstore struct {
 }
 
 type Splitstore struct {
-	UseLMDBHotstore      bool
-	UseLMDBTracking      bool
+	HotStoreType         string
+	TrackingStoreType    string
+	LiveSetType          string
 	EnableFullCompaction bool
 	EnableGC             bool // EXPERIMENTAL
 	Archival             bool
+}
+
+func (s *Splitstore) GetHotStoreType() string {
+	// default is badger
+	if s.HotStoreType == "" {
+		return "badger"
+	}
+	return s.HotStoreType
 }
 
 // // Full Node

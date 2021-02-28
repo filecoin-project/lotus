@@ -39,8 +39,10 @@ func init() {
 }
 
 type Config struct {
-	// use LMDB for tracking store and liveset instead of BoltDB
-	UseLMDB bool
+	// TrackingStore type; bolt (default) or lmdb
+	TrackingStoreType string
+	// LiveSet type; bloom (default), bolt, or lmdb
+	LiveSetType string
 	// perform full reachability analysis (expensive) for compaction
 	// You should enable this option if you plan to use the splitstore without a backing coldstore
 	EnableFullCompaction bool
@@ -83,13 +85,13 @@ var _ bstore.Blockstore = (*SplitStore)(nil)
 // compaction.
 func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore, cfg *Config) (*SplitStore, error) {
 	// the tracking store
-	snoop, err := NewTrackingStore(path, cfg.UseLMDB)
+	snoop, err := NewTrackingStore(path, cfg.TrackingStoreType)
 	if err != nil {
 		return nil, err
 	}
 
 	// the liveset env
-	env, err := NewLiveSetEnv(path, cfg.UseLMDB)
+	env, err := NewLiveSetEnv(path, cfg.LiveSetType)
 	if err != nil {
 		snoop.Close() //nolint:errcheck
 		return nil, err

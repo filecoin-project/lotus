@@ -611,10 +611,10 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
 			If(cfg.EnableSplitstore,
-				If(cfg.Splitstore.UseLMDBHotstore,
-					Override(new(dtypes.HotBlockstore), modules.LMDBHotBlockstore)),
-				If(!cfg.Splitstore.UseLMDBHotstore,
+				If(cfg.Splitstore.GetHotStoreType() == "badger",
 					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
+				If(cfg.Splitstore.GetHotStoreType() == "lmdb",
+					Override(new(dtypes.HotBlockstore), modules.LMDBHotBlockstore)),
 				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(cfg)),
 				Override(new(dtypes.ChainBlockstore), modules.ChainSplitBlockstore),
 				Override(new(dtypes.StateBlockstore), modules.StateSplitBlockstore),
