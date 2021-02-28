@@ -30,14 +30,19 @@ func NewBloomLiveSetEnv() (*BloomLiveSetEnv, error) {
 	return &BloomLiveSetEnv{}, nil
 }
 
-func (e *BloomLiveSetEnv) NewLiveSet(name string) (LiveSet, error) {
+func (e *BloomLiveSetEnv) NewLiveSet(name string, sizeHint int64) (LiveSet, error) {
+	size := int64(BloomFilterSize)
+	for size < sizeHint {
+		size += BloomFilterSize
+	}
+
 	salt := make([]byte, 4)
 	_, err := rand.Read(salt) //nolint
 	if err != nil {
 		return nil, xerrors.Errorf("error reading salt: %w", err)
 	}
 
-	bf, err := bbloom.New(float64(BloomFilterSize), float64(BloomFilterProbability))
+	bf, err := bbloom.New(float64(size), float64(BloomFilterProbability))
 	if err != nil {
 		return nil, xerrors.Errorf("error creating bloom filter: %w", err)
 	}
