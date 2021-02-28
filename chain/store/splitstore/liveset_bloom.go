@@ -10,6 +10,11 @@ import (
 	blake2b "github.com/minio/blake2b-simd"
 )
 
+const (
+	BloomFilterSize        = 50_000_000
+	BloomFilterProbability = 0.01
+)
+
 type BloomLiveSetEnv struct{}
 
 var _ LiveSetEnv = (*BloomLiveSetEnv)(nil)
@@ -32,7 +37,7 @@ func (e *BloomLiveSetEnv) NewLiveSet(name string) (LiveSet, error) {
 		return nil, xerrors.Errorf("error reading salt: %w", err)
 	}
 
-	bf, err := bbloom.New(float64(50_000_000), float64(0.01))
+	bf, err := bbloom.New(float64(BloomFilterSize), float64(BloomFilterProbability))
 	if err != nil {
 		return nil, xerrors.Errorf("error creating bloom filter: %w", err)
 	}
