@@ -102,12 +102,14 @@ func (t *TimedCacheBlockstore) PutMany(bs []blocks.Block) error {
 	return t.active.PutMany(bs)
 }
 
-func (t *TimedCacheBlockstore) View(c cid.Cid, callback func([]byte) error) error {
-	blk, err := t.Get(c)
-	if err != nil {
-		return err
+func (t *TimedCacheBlockstore) View(k cid.Cid, callback func([]byte) error) error {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	err := t.active.View(k, callback)
+	if err == ErrNotFound {
+		err = t.inactive.View(k, callback)
 	}
-	return callback(blk.RawData())
+	return err
 }
 
 func (t *TimedCacheBlockstore) Get(k cid.Cid) (blocks.Block, error) {
