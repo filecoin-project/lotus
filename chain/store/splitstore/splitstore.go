@@ -22,7 +22,8 @@ import (
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-const (
+// these are variable so that 1) lotus-soup builds 2) we can change them in tests
+var (
 	CompactionThreshold = 5 * build.Finality
 	CompactionCold      = build.Finality
 )
