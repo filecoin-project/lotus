@@ -7,6 +7,7 @@ import (
 
 	bbloom "github.com/ipfs/bbloom"
 	cid "github.com/ipfs/go-cid"
+	blake2b "github.com/minio/blake2b-simd"
 )
 
 type BloomLiveSetEnv struct{}
@@ -48,7 +49,8 @@ func (s *BloomLiveSet) saltedKey(cid cid.Cid) []byte {
 	key := make([]byte, len(s.salt)+len(hash))
 	n := copy(key, s.salt)
 	copy(key[n:], hash)
-	return key
+	rehash := blake2b.Sum256(key)
+	return rehash[:]
 }
 
 func (s *BloomLiveSet) Mark(cid cid.Cid) error {
