@@ -10,7 +10,15 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-func testTrackingStore(t *testing.T, useLMDB bool) {
+func TestLMDBTrackingStore(t *testing.T) {
+	testTrackingStore(t, "lmdb")
+}
+
+func TestBoltTrackingStore(t *testing.T) {
+	testTrackingStore(t, "bolt")
+}
+
+func testTrackingStore(t *testing.T, tsType string) {
 	t.Helper()
 
 	makeCid := func(key string) cid.Cid {
@@ -47,7 +55,7 @@ func testTrackingStore(t *testing.T, useLMDB bool) {
 		t.Fatal(err)
 	}
 
-	s, err := NewTrackingStore(path, useLMDB)
+	s, err := NewTrackingStore(path, tsType)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +122,7 @@ func testTrackingStore(t *testing.T, useLMDB bool) {
 		t.Fatal(err)
 	}
 
-	s, err = NewTrackingStore(path, useLMDB)
+	s, err = NewTrackingStore(path, tsType)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,12 +133,4 @@ func testTrackingStore(t *testing.T, useLMDB bool) {
 	mustHave(s, k4, 4)
 
 	s.Close() //nolint:errcheck
-}
-
-func TestLMDBTrackingStore(t *testing.T) {
-	testTrackingStore(t, true)
-}
-
-func TestBoltTrackingStore(t *testing.T) {
-	testTrackingStore(t, false)
 }
