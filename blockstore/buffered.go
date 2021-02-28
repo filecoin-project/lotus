@@ -15,9 +15,6 @@ var buflog = log.Named("buf")
 type BufferedBlockstore struct {
 	read  Blockstore
 	write Blockstore
-
-	readviewer  Viewer
-	writeviewer Viewer
 }
 
 func NewBuffered(base Blockstore) *BufferedBlockstore {
@@ -32,15 +29,6 @@ func NewBuffered(base Blockstore) *BufferedBlockstore {
 	bs := &BufferedBlockstore{
 		read:  base,
 		write: buf,
-	}
-	if v, ok := base.(Viewer); ok {
-		bs.readviewer = v
-	}
-	if v, ok := buf.(Viewer); ok {
-		bs.writeviewer = v
-	}
-	if (bs.writeviewer == nil) != (bs.readviewer == nil) {
-		buflog.Warnf("one of the stores is not viewable; running less efficiently")
 	}
 	return bs
 }
@@ -109,22 +97,13 @@ func (bs *BufferedBlockstore) DeleteBlock(c cid.Cid) error {
 }
 
 func (bs *BufferedBlockstore) View(c cid.Cid, callback func([]byte) error) error {
-	if bs.writeviewer == nil || bs.readviewer == nil {
-		// one of the stores isn't Viewer; fall back to pure Get behaviour.
-		blk, err := bs.Get(c)
-		if err != nil {
-			return err
-		}
-		return callback(blk.RawData())
-	}
-
 	// both stores are viewable.
-	if err := bs.writeviewer.View(c, callback); err == ErrNotFound {
+	if err := bs.write.View(c, callback); err == ErrNotFound {
 		// not found in write blockstore; fall through.
 	} else {
 		return err // propagate errors, or nil, i.e. found.
 	}
-	return bs.readviewer.View(c, callback)
+	return bs.read.View(c, callback)
 }
 
 func (bs *BufferedBlockstore) Get(c cid.Cid) (block.Block, error) {
