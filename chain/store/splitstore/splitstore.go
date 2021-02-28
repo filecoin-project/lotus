@@ -10,8 +10,6 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/ledgerwatch/lmdb-go/lmdb"
-
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -171,7 +169,7 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 	s.mx.Unlock()
 
 	err := s.snoop.Put(blk.Cid(), epoch)
-	if err != nil && !lmdb.IsErrno(err, lmdb.KeyExist) {
+	if err != nil {
 		log.Errorf("error tracking CID in hotstore: %s; falling back to coldstore", err)
 		return s.cold.Put(blk)
 	}
@@ -196,17 +194,6 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 
 	err := s.snoop.PutBatch(batch, epoch)
 	if err != nil {
-		if lmdb.IsErrno(err, lmdb.KeyExist) {
-			// a write is duplicate, but we don't know which; write each block separately
-			for _, blk := range blks {
-				err = s.Put(blk)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-
 		log.Errorf("error tracking CIDs in hotstore: %s; falling back to coldstore", err)
 		return s.cold.PutMany(blks)
 	}
