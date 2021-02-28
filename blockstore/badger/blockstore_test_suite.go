@@ -8,18 +8,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/lotus/blockstore"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	u "github.com/ipfs/go-ipfs-util"
+
+	"github.com/filecoin-project/lotus/blockstore"
 
 	"github.com/stretchr/testify/require"
 )
 
 // TODO: move this to go-ipfs-blockstore.
 type Suite struct {
-	NewBlockstore  func(tb testing.TB) (bs blockstore.Blockstore, path string)
-	OpenBlockstore func(tb testing.TB, path string) (bs blockstore.Blockstore, err error)
+	NewBlockstore  func(tb testing.TB) (bs blockstore.BasicBlockstore, path string)
+	OpenBlockstore func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error)
 }
 
 func (s *Suite) RunTests(t *testing.T, prefix string) {
@@ -290,7 +291,7 @@ func (s *Suite) TestDelete(t *testing.T) {
 
 }
 
-func insertBlocks(t *testing.T, bs blockstore.Blockstore, count int) []cid.Cid {
+func insertBlocks(t *testing.T, bs blockstore.BasicBlockstore, count int) []cid.Cid {
 	keys := make([]cid.Cid, count)
 	for i := 0; i < count; i++ {
 		block := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))

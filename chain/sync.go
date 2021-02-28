@@ -354,7 +354,7 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	// Finally, flush.
-	return vm.Copy(context.TODO(), blockstore, syncer.store.Blockstore(), smroot)
+	return vm.Copy(context.TODO(), blockstore, syncer.store.ChainBlockstore(), smroot)
 }
 
 func (syncer *Syncer) LocalPeer() peer.ID {
@@ -640,7 +640,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 		return xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	powState, err := power.Load(syncer.store.Store(ctx), act)
+	powState, err := power.Load(syncer.store.ActorStore(ctx), act)
 	if err != nil {
 		return xerrors.Errorf("failed to load power actor state: %w", err)
 	}
@@ -1055,7 +1055,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return err
 	}
 
-	st, err := state.LoadStateTree(syncer.store.Store(ctx), stateroot)
+	st, err := state.LoadStateTree(syncer.store.ActorStore(ctx), stateroot)
 	if err != nil {
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
@@ -1172,7 +1172,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	// Finally, flush.
-	return vm.Copy(ctx, tmpbs, syncer.store.Blockstore(), mrcid)
+	return vm.Copy(ctx, tmpbs, syncer.store.ChainBlockstore(), mrcid)
 }
 
 func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signature, msgs []cid.Cid, pubks [][]byte) error {
@@ -1574,7 +1574,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				return err
 			}
 
-			if err := copyBlockstore(ctx, bs, syncer.store.Blockstore()); err != nil {
+			if err := copyBlockstore(ctx, bs, syncer.store.ChainBlockstore()); err != nil {
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
