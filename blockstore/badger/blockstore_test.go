@@ -61,8 +61,8 @@ func TestStorageKey(t *testing.T) {
 	require.Equal(t, k3, k2)
 }
 
-func newBlockstore(optsSupplier func(path string) Options) func(tb testing.TB) (bs blockstore.Blockstore, path string) {
-	return func(tb testing.TB) (bs blockstore.Blockstore, path string) {
+func newBlockstore(optsSupplier func(path string) Options) func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
+	return func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
 		tb.Helper()
 
 		path, err := ioutil.TempDir("", "")
@@ -83,8 +83,8 @@ func newBlockstore(optsSupplier func(path string) Options) func(tb testing.TB) (
 	}
 }
 
-func openBlockstore(optsSupplier func(path string) Options) func(tb testing.TB, path string) (bs blockstore.Blockstore, err error) {
-	return func(tb testing.TB, path string) (bs blockstore.Blockstore, err error) {
+func openBlockstore(optsSupplier func(path string) Options) func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error) {
+	return func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error) {
 		tb.Helper()
 		return Open(optsSupplier(path))
 	}
