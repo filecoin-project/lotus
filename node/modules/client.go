@@ -39,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
@@ -57,18 +58,18 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 				if xerrors.Is(err, datastore.ErrNotFound) {
 					return nil
 				}
-				log.Errorf("client funds migration - getting datastore value: %w", err)
+				log.Errorf("client funds migration - getting datastore value: %v", err)
 				return nil
 			}
 
 			var value abi.TokenAmount
 			if err = value.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-				log.Errorf("client funds migration - unmarshalling datastore value: %w", err)
+				log.Errorf("client funds migration - unmarshalling datastore value: %v", err)
 				return nil
 			}
 			_, err = fundMgr.Reserve(ctx, addr, addr, value)
 			if err != nil {
-				log.Errorf("client funds migration - reserving funds (wallet %s, addr %s, funds %d): %w",
+				log.Errorf("client funds migration - reserving funds (wallet %s, addr %s, funds %d): %v",
 					addr, addr, value, err)
 				return nil
 			}
@@ -78,8 +79,9 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 	})
 }
 
-func ClientMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
-	ds, err := r.Datastore("/client")
+func ClientMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	ds, err := r.Datastore(ctx, "/client")
 	if err != nil {
 		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
 	}

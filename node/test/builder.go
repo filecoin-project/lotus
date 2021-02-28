@@ -77,7 +77,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	})
 	require.NoError(t, err)
 
-	ds, err := lr.Datastore("/metadata")
+	ds, err := lr.Datastore(context.TODO(), "/metadata")
 	require.NoError(t, err)
 	err = ds.Put(datastore.NewKey("miner-address"), act.Bytes())
 	require.NoError(t, err)
@@ -288,7 +288,11 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		genMiner := maddrs[i]
 		wa := genms[i].Worker
 
-		storers[i] = CreateTestStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options())
+		opts := def.Opts
+		if opts == nil {
+			opts = node.Options()
+		}
+		storers[i] = CreateTestStorageNode(ctx, t, wa, genMiner, pk, f, mn, opts)
 		if err := storers[i].StorageAddLocal(ctx, presealDirs[i]); err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -455,12 +459,17 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			}
 		}
 
+		opts := def.Opts
+		if opts == nil {
+			opts = node.Options()
+		}
 		storers[i] = CreateTestStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
 			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
 				return mock.NewMockSectorMgr(sectors), nil
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Unset(new(*sectorstorage.Manager)),
+			opts,
 		))
 
 		if rpc {

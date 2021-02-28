@@ -249,6 +249,7 @@ var sectorsListCmd = &cli.Command{
 			tablewriter.Col("Events"),
 			tablewriter.Col("Deals"),
 			tablewriter.Col("DealWeight"),
+			tablewriter.Col("VerifiedPower"),
 			tablewriter.NewLineCol("Error"),
 			tablewriter.NewLineCol("RecoveryTimeout"))
 
@@ -268,9 +269,11 @@ var sectorsListCmd = &cli.Command{
 				_, inSSet := commitedIDs[s]
 				_, inASet := activeIDs[s]
 
-				dw := .0
+				dw, vp := .0, .0
 				if st.Expiration-st.Activation > 0 {
-					dw = float64(big.Div(st.DealWeight, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+					rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
+					dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(9)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 				}
 
 				var deals int
@@ -309,6 +312,9 @@ var sectorsListCmd = &cli.Command{
 
 						if !fast && deals > 0 {
 							m["DealWeight"] = units.BytesSize(dw)
+							if vp > 0 {
+								m["VerifiedPower"] = color.GreenString(units.BytesSize(vp))
+							}
 						}
 
 						if st.Early > 0 {
@@ -649,18 +655,45 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 			return err
 		}
 
+		mi, err := nApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		nv, err := nApi.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		spt, err := miner.PreferredSealProofTypeFromWindowPoStType(nv, mi.WindowPoStProofType)
+		if err != nil {
+			return err
+		}
+
 		pci := miner.SectorPreCommitInfo{
+			SealProof:  spt,
 			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
 		}
 		if pci.Expiration == 0 {
-			pci.Expiration = policy.GetMaxSectorExpirationExtension()
+			h, err := nApi.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			pci.Expiration = policy.GetMaxSectorExpirationExtension() + h.Height()
 		}
+
 		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Estimated collateral: %s\n", types.FIL(pc))
+		pcd, err := nApi.StateMinerPreCommitDepositForPower(ctx, maddr, pci, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Estimated collateral: %s\n", types.FIL(big.Max(pc, pcd)))
 
 		return nil
 	},

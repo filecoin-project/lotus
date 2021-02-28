@@ -218,7 +218,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, sealer, j, maddr)
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, verif, sealer, j, maddr)
 		if err != nil {
 			return nil, err
 		}
@@ -293,19 +293,19 @@ func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.
 			}
 			ts, err := node.ChainHead(ctx)
 			if err != nil {
-				log.Errorf("provider funds migration - getting chain head: %w", err)
+				log.Errorf("provider funds migration - getting chain head: %v", err)
 				return nil
 			}
 
 			mi, err := node.StateMinerInfo(ctx, address.Address(minerAddress), ts.Key())
 			if err != nil {
-				log.Errorf("provider funds migration - getting miner info %s: %w", minerAddress, err)
+				log.Errorf("provider funds migration - getting miner info %s: %v", minerAddress, err)
 				return nil
 			}
 
 			_, err = node.MarketReserveFunds(ctx, mi.Worker, address.Address(minerAddress), value)
 			if err != nil {
-				log.Errorf("provider funds migration - reserving funds (wallet %s, addr %s, funds %d): %w",
+				log.Errorf("provider funds migration - reserving funds (wallet %s, addr %s, funds %d): %v",
 					mi.Worker, minerAddress, value, err)
 				return nil
 			}
@@ -362,8 +362,9 @@ func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.Provid
 	return ps, nil
 }
 
-func StagingMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
-	ds, err := r.Datastore("/staging")
+func StagingMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	ds, err := r.Datastore(ctx, "/staging")
 	if err != nil {
 		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
 	}
@@ -384,8 +385,9 @@ func StagingMultiDatastore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.StagingMu
 
 // StagingBlockstore creates a blockstore for staging blocks for a miner
 // in a storage deal, prior to sealing
-func StagingBlockstore(r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
-	stagingds, err := r.Datastore("/staging")
+func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	stagingds, err := r.Datastore(ctx, "/staging")
 	if err != nil {
 		return nil, err
 	}
@@ -810,6 +812,7 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxSealingSectors:         cfg.MaxSealingSectors,
 				MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            config.Duration(cfg.WaitDealsDelay),
+				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
 			}
 		})
 		return
@@ -824,6 +827,7 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 				MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
 				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
+				AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
 			}
 		})
 		return

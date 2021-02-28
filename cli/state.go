@@ -935,6 +935,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "compute-state-output",
 			Usage: "a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes",
 		},
+		&cli.BoolFlag{
+			Name:  "no-timing",
+			Usage: "don't show timing information in html traces",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1026,7 +1030,9 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return ComputeStateHTMLTempl(os.Stdout, ts, stout, getCode)
+			_, _ = fmt.Fprintln(os.Stderr, "computed state cid: ", stout.Root)
+
+			return ComputeStateHTMLTempl(os.Stdout, ts, stout, !cctx.Bool("no-timing"), getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -1147,8 +1153,11 @@ var compStateMsg = `
  {{if gt (len .Msg.Params) 0}}
   <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
  {{end}}
- <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
-
+ {{if PrintTiming}}
+  <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ {{else}}
+  <div><span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ {{end}}
  {{if gt (len .MsgRct.Return) 0}}
   <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
  {{end}}
@@ -1174,7 +1183,7 @@ var compStateMsg = `
  {{range .GasCharges}}
  <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
  {{template "gasC" .}}
- <td>{{.TimeTaken}}</td>
+ <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
   <td>
    {{ $fImp := FirstImportant .Location }}
    {{ if $fImp }}
@@ -1213,7 +1222,7 @@ var compStateMsg = `
   {{with SumGas .GasCharges}}
   <tr class="sum"><td><b>Sum</b></td>
   {{template "gasC" .}}
-  <td>{{.TimeTaken}}</td>
+  <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
   <td></td></tr>
   {{end}}
 </table>
@@ -1234,19 +1243,20 @@ type compStateHTMLIn struct {
 	Comp   *api.ComputeStateOutput
 }
 
-func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, printTiming bool, getCode func(addr address.Address) (cid.Cid, error)) error {
 	t, err := template.New("compute_state").Funcs(map[string]interface{}{
-		"GetCode":    getCode,
-		"GetMethod":  getMethod,
-		"ToFil":      toFil,
-		"JsonParams": JsonParams,
-		"JsonReturn": jsonReturn,
-		"IsSlow":     isSlow,
-		"IsVerySlow": isVerySlow,
-		"IntExit":    func(i exitcode.ExitCode) int64 { return int64(i) },
-		"SumGas":     sumGas,
-		"CodeStr":    codeStr,
-		"Call":       call,
+		"GetCode":     getCode,
+		"GetMethod":   getMethod,
+		"ToFil":       toFil,
+		"JsonParams":  JsonParams,
+		"JsonReturn":  jsonReturn,
+		"IsSlow":      isSlow,
+		"IsVerySlow":  isVerySlow,
+		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
+		"SumGas":      sumGas,
+		"CodeStr":     codeStr,
+		"Call":        call,
+		"PrintTiming": func() bool { return printTiming },
 		"FirstImportant": func(locs []types.Loc) *types.Loc {
 			if len(locs) != 0 {
 				for _, l := range locs {
@@ -1393,32 +1403,8 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
-		fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
-		fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
-		fmt.Printf("Return: %x\n", mw.Receipt.Return)
-		if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
-			return err
-		}
-
-		return nil
+		return printMsg(ctx, api, msg, mw, m)
 	},
-}
-
-func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message, r types.MessageReceipt) error {
-	act, err := api.StateGetActor(ctx, m.To, types.EmptyTSK)
-	if err != nil {
-		return err
-	}
-
-	jret, err := jsonReturn(act.Code, m.Method, r.Return)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(jret)
-
-	return nil
 }
 
 var stateSearchMsgCmd = &cli.Command{
@@ -1448,16 +1434,54 @@ var stateSearchMsgCmd = &cli.Command{
 			return err
 		}
 
-		if mw != nil {
-			fmt.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
-			fmt.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
-			fmt.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
-			fmt.Printf("\nReturn: %x", mw.Receipt.Return)
-		} else {
-			fmt.Print("message was not found on chain")
+		m, err := api.ChainGetMessage(ctx, msg)
+		if err != nil {
+			return err
 		}
-		return nil
+
+		return printMsg(ctx, api, msg, mw, m)
 	},
+}
+
+func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message, r types.MessageReceipt) error {
+	if len(r.Return) == 0 {
+		return nil
+	}
+
+	act, err := api.StateGetActor(ctx, m.To, types.EmptyTSK)
+	if err != nil {
+		return err
+	}
+
+	jret, err := jsonReturn(act.Code, m.Method, r.Return)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Decoded return value: ", jret)
+
+	return nil
+}
+
+func printMsg(ctx context.Context, api api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
+	if mw != nil {
+		if mw.Message != msg {
+			fmt.Printf("Message was replaced: %s\n", mw.Message)
+		}
+
+		fmt.Printf("Executed in tipset: %s\n", mw.TipSet.Cids())
+		fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
+		fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
+		fmt.Printf("Return: %x\n", mw.Receipt.Return)
+	} else {
+		fmt.Println("message was not found on chain")
+	}
+
+	if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var stateCallCmd = &cli.Command{

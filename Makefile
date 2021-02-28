@@ -41,8 +41,14 @@ MODULES+=$(FFI_PATH)
 BUILD_DEPS+=build/.filecoin-install
 CLEAN+=build/.filecoin-install
 
-$(MODULES): build/.update-modules ;
+ffi-version-check:
+	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 2 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
+BUILD_DEPS+=ffi-version-check
 
+.PHONY: ffi-version-check
+
+
+$(MODULES): build/.update-modules ;
 # dummy file that marks the last time modules were updated
 build/.update-modules:
 	git submodule update --init --recursive
@@ -65,6 +71,12 @@ debug: lotus lotus-miner lotus-worker lotus-seed
 
 calibnet: GOFLAGS+=-tags=calibnet
 calibnet: lotus lotus-miner lotus-worker lotus-seed
+
+nerpanet: GOFLAGS+=-tags=nerpanet
+nerpanet: lotus lotus-miner lotus-worker lotus-seed
+
+butterflynet: GOFLAGS+=-tags=butterflynet
+butterflynet: lotus lotus-miner lotus-worker lotus-seed
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus

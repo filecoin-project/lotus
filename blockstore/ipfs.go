@@ -19,8 +19,8 @@ import (
 )
 
 type IPFSBlockstore struct {
-	ctx context.Context
-	api iface.CoreAPI
+	ctx             context.Context
+	api, offlineAPI iface.CoreAPI
 }
 
 var _ BasicBlockstore = (*IPFSBlockstore)(nil)
@@ -34,11 +34,22 @@ func NewLocalIPFSBlockstore(ctx context.Context, onlineMode bool) (Blockstore, e
 	if err != nil {
 		return nil, xerrors.Errorf("setting offline mode: %s", err)
 	}
-	b := &IPFSBlockstore{
-		ctx: ctx,
-		api: api,
+
+	offlineAPI := api
+	if onlineMode {
+		offlineAPI, err = localApi.WithOptions(options.Api.Offline(true))
+		if err != nil {
+			return nil, xerrors.Errorf("applying offline mode: %s", err)
+		}
 	}
-	return Adapt(b), nil
+
+	bs := &IPFSBlockstore{
+		ctx:        ctx,
+		api:        api,
+		offlineAPI: offlineAPI,
+	}
+
+	return Adapt(bs), nil
 }
 
 func NewRemoteIPFSBlockstore(ctx context.Context, maddr multiaddr.Multiaddr, onlineMode bool) (Blockstore, error) {
@@ -50,11 +61,22 @@ func NewRemoteIPFSBlockstore(ctx context.Context, maddr multiaddr.Multiaddr, onl
 	if err != nil {
 		return nil, xerrors.Errorf("applying offline mode: %s", err)
 	}
-	b := &IPFSBlockstore{
-		ctx: ctx,
-		api: api,
+
+	offlineAPI := api
+	if onlineMode {
+		offlineAPI, err = httpApi.WithOptions(options.Api.Offline(true))
+		if err != nil {
+			return nil, xerrors.Errorf("applying offline mode: %s", err)
+		}
 	}
-	return Adapt(b), nil
+
+	bs := &IPFSBlockstore{
+		ctx:        ctx,
+		api:        api,
+		offlineAPI: offlineAPI,
+	}
+
+	return Adapt(bs), nil
 }
 
 func (i *IPFSBlockstore) DeleteBlock(cid cid.Cid) error {
@@ -62,7 +84,7 @@ func (i *IPFSBlockstore) DeleteBlock(cid cid.Cid) error {
 }
 
 func (i *IPFSBlockstore) Has(cid cid.Cid) (bool, error) {
-	_, err := i.api.Block().Stat(i.ctx, path.IpldPath(cid))
+	_, err := i.offlineAPI.Block().Stat(i.ctx, path.IpldPath(cid))
 	if err != nil {
 		// The underlying client is running in Offline mode.
 		// Stat() will fail with an err if the block isn't in the

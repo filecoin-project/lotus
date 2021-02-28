@@ -1791,11 +1791,10 @@ func (syncer *Syncer) getLatestBeaconEntry(_ context.Context, ts *types.TipSet) 
 }
 
 func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
-	g, err := syncer.store.GetGenesis()
-	if err != nil {
+	if syncer.Genesis == nil {
 		return false
 	}
 
 	now := uint64(build.Clock.Now().Unix())
-	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelaySecs) + MaxHeightDrift)
+	return epoch > (abi.ChainEpoch((now-syncer.Genesis.MinTimestamp())/build.BlockDelaySecs) + MaxHeightDrift)
 }

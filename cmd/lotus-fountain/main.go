@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"net"
 	"net/http"
 	"os"
@@ -68,6 +69,10 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_FOUNTAIN_AMOUNT"},
 			Value:   "50",
 		},
+		&cli.Float64Flag{
+			Name:  "captcha-threshold",
+			Value: 0.5,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		sendPerRequest, err := types.ParseFIL(cctx.String("amount"))
@@ -107,11 +112,13 @@ var runCmd = &cli.Command{
 				WalletRate:  15 * time.Minute,
 				WalletBurst: 2,
 			}),
+			recapThreshold: cctx.Float64("captcha-threshold"),
 		}
 
-		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
-		http.HandleFunc("/send", h.send)
-
+		box := rice.MustFindBox("site")
+		http.Handle("/", http.FileServer(box.HTTPBox()))
+		http.HandleFunc("/funds.html", prepFundsHtml(box))
+		http.Handle("/send", h)
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
 		go func() {
@@ -123,6 +130,17 @@ var runCmd = &cli.Command{
 	},
 }
 
+func prepFundsHtml(box *rice.Box) http.HandlerFunc {
+	tmpl := template.Must(template.New("funds").Parse(box.MustString("funds.html")))
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := tmpl.Execute(w, os.Getenv("RECAPTCHA_SITE_KEY"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+	}
+}
+
 type handler struct {
 	ctx context.Context
 	api api.FullNode
@@ -130,13 +148,43 @@ type handler struct {
 	from           address.Address
 	sendPerRequest types.FIL
 
-	limiter *Limiter
+	limiter        *Limiter
+	recapThreshold float64
 }
 
-func (h *handler) send(w http.ResponseWriter, r *http.Request) {
+func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "only POST is allowed", http.StatusBadRequest)
+		return
+	}
+
+	reqIP := r.Header.Get("X-Real-IP")
+	if reqIP == "" {
+		h, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			log.Errorf("could not get ip from: %s, err: %s", r.RemoteAddr, err)
+		}
+		reqIP = h
+	}
+
+	capResp, err := VerifyToken(r.FormValue("g-recaptcha-response"), reqIP)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	if !capResp.Success || capResp.Score < h.recapThreshold {
+		log.Infow("spam", "capResp", capResp)
+		http.Error(w, "spam protection", http.StatusUnprocessableEntity)
+		return
+	}
+
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if to == address.Undef {
+		http.Error(w, "empty address", http.StatusBadRequest)
 		return
 	}
 
@@ -148,15 +196,6 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit based on IP
-
-	reqIP := r.Header.Get("X-Real-IP")
-	if reqIP == "" {
-		h, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			log.Errorf("could not get ip from: %s, err: %s", r.RemoteAddr, err)
-		}
-		reqIP = h
-	}
 	if i := net.ParseIP(reqIP); i != nil && i.IsLoopback() {
 		log.Errorf("rate limiting localhost: %s", reqIP)
 	}

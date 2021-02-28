@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.14.2
+ARG GO_VERSION=1.15.6
 
 FROM golang:${GO_VERSION}-buster as downloader
 
@@ -10,7 +10,7 @@ FROM golang:${GO_VERSION}-buster as downloader
 
 RUN go get github.com/filecoin-project/go-paramfetch/paramfetch
 COPY /proof-parameters.json /
-RUN paramfetch 2048 /proof-parameters.json
+RUN paramfetch 8388608 /proof-parameters.json
 
 FROM ubuntu:18.04
 

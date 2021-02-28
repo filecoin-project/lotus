@@ -28,29 +28,22 @@ var UpgradeActorsV2Height = abi.ChainEpoch(30)
 
 const UpgradeTapeHeight = 60
 
-// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
-// Miners, clients, developers, custodians all need time to prepare.
-// We still have upgrades and state changes to do, but can happen after signaling timing here.
 const UpgradeLiftoffHeight = -5
 
 const UpgradeKumquatHeight = 90
 
-const UpgradeCalicoHeight = 92000
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
+const UpgradeCalicoHeight = 100
+const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
 
-// 2020-12-17T19:00:00Z
-const UpgradeClausHeight = 161386
+const UpgradeClausHeight = 250
 
-// 2021-01-17T19:00:00Z
-const UpgradeOrangeHeight = 250666
+const UpgradeOrangeHeight = 300
 
-// 2021-01-28T21:00:00Z
-const UpgradeActorsV3Height = 282586
+const UpgradeActorsV3Height = 600
 
 func init() {
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 30))
+	policy.SetConsensusMinerMinPower(abi.NewStoragePower(32 << 30))
 	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg512MiBV1,
 		abi.RegisteredSealProof_StackedDrg32GiBV1,
 		abi.RegisteredSealProof_StackedDrg64GiBV1,
 	)

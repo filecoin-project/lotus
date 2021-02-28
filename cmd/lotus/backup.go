@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	dstore "github.com/ipfs/go-datastore"
@@ -87,7 +88,7 @@ func restore(cctx *cli.Context, r repo.Repo) error {
 
 	log.Info("Restoring metadata backup")
 
-	mds, err := lr.Datastore("/metadata")
+	mds, err := lr.Datastore(context.TODO(), "/metadata")
 	if err != nil {
 		return err
 	}

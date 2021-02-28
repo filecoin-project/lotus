@@ -157,50 +157,49 @@ func (c *HeadChangeCoalescer) coalesce(revert, apply []*types.TipSet) {
 	// coalesced revert set
 	// - pending reverts are cancelled by incoming applys
 	// - incoming reverts are cancelled by pending applys
-	newRevert := make([]*types.TipSet, 0, len(c.revert)+len(revert))
-	for _, ts := range c.revert {
-		_, cancel := applying[ts.Key()]
-		if cancel {
-			continue
-		}
-
-		newRevert = append(newRevert, ts)
-	}
-
-	for _, ts := range revert {
-		_, cancel := pendApply[ts.Key()]
-		if cancel {
-			continue
-		}
-
-		newRevert = append(newRevert, ts)
-	}
+	newRevert := c.merge(c.revert, revert, pendApply, applying)
 
 	// coalesced apply set
 	// - pending applys are cancelled by incoming reverts
 	// - incoming applys are cancelled by pending reverts
-	newApply := make([]*types.TipSet, 0, len(c.apply)+len(apply))
-	for _, ts := range c.apply {
-		_, cancel := reverting[ts.Key()]
-		if cancel {
-			continue
-		}
-
-		newApply = append(newApply, ts)
-	}
-
-	for _, ts := range apply {
-		_, cancel := pendRevert[ts.Key()]
-		if cancel {
-			continue
-		}
-
-		newApply = append(newApply, ts)
-	}
+	newApply := c.merge(c.apply, apply, pendRevert, reverting)
 
 	// commit the coalesced sets
 	c.revert = newRevert
 	c.apply = newApply
+}
+
+func (c *HeadChangeCoalescer) merge(pend, incoming []*types.TipSet, cancel1, cancel2 map[types.TipSetKey]struct{}) []*types.TipSet {
+	result := make([]*types.TipSet, 0, len(pend)+len(incoming))
+	for _, ts := range pend {
+		_, cancel := cancel1[ts.Key()]
+		if cancel {
+			continue
+		}
+
+		_, cancel = cancel2[ts.Key()]
+		if cancel {
+			continue
+		}
+
+		result = append(result, ts)
+	}
+
+	for _, ts := range incoming {
+		_, cancel := cancel1[ts.Key()]
+		if cancel {
+			continue
+		}
+
+		_, cancel = cancel2[ts.Key()]
+		if cancel {
+			continue
+		}
+
+		result = append(result, ts)
+	}
+
+	return result
 }
 
 func (c *HeadChangeCoalescer) dispatch() {

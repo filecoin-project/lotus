@@ -5,14 +5,12 @@ import (
 	"testing"
 	"time"
 
-	builder "github.com/filecoin-project/lotus/node/test"
-
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/lib/lotuslog"
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
+	builder "github.com/filecoin-project/lotus/node/test"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 func init() {
@@ -57,6 +55,9 @@ func TestAPIDealFlow(t *testing.T) {
 	t.Run("TestFastRetrievalDealFlow", func(t *testing.T) {
 		test.TestFastRetrievalDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
 	})
+	t.Run("TestPublishDealsBatching", func(t *testing.T) {
+		test.TestPublishDealsBatching(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
+	})
 }
 
 func TestAPIDealFlowReal(t *testing.T) {
@@ -91,6 +92,10 @@ func TestAPIDealFlowReal(t *testing.T) {
 }
 
 func TestDealMining(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	logging.SetLogLevel("miner", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")

@@ -337,10 +337,14 @@ type FullNode interface {
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
-	// Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+	// Most methods take a TipSetKey as a parameter. The state looked up is the parent state of the tipset.
 	// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 	// StateCall runs the given message and returns its result without any persisted changes.
+	//
+	// StateCall applies the message to the tipset's parent state. The
+	// message is not applied on-top-of the messages in the passed-in
+	// tipset.
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error)
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	// If no tipset key is provided, the appropriate tipset is looked up.
@@ -466,6 +470,12 @@ type FullNode interface {
 	// MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
 	// It takes the following params: <multisig address>, <start epoch>, <end epoch>
 	MsigGetVested(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (types.BigInt, error)
+
+	//MsigGetPending returns pending transactions for the given multisig
+	//wallet. Once pending transactions are fully approved, they will no longer
+	//appear here.
+	MsigGetPending(context.Context, address.Address, types.TipSetKey) ([]*MsigTransaction, error)
+
 	// MsigCreate creates a multisig wallet
 	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
 	//<initial balance>, <sender address of the create msg>, <gas price>
@@ -646,6 +656,7 @@ type Message struct {
 
 type ActorState struct {
 	Balance types.BigInt
+	Code    cid.Cid
 	State   interface{}
 }
 
@@ -987,4 +998,14 @@ type MsigVesting struct {
 type MessageMatch struct {
 	To   address.Address
 	From address.Address
+}
+
+type MsigTransaction struct {
+	ID     int64
+	To     address.Address
+	Value  abi.TokenAmount
+	Method abi.MethodNum
+	Params []byte
+
+	Approved []address.Address
 }

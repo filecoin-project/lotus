@@ -48,6 +48,8 @@
   * [MarketListDeals](#MarketListDeals)
   * [MarketListIncompleteDeals](#MarketListIncompleteDeals)
   * [MarketListRetrievalDeals](#MarketListRetrievalDeals)
+  * [MarketPendingDeals](#MarketPendingDeals)
+  * [MarketPublishPendingDeals](#MarketPublishPendingDeals)
   * [MarketRestartDataTransfer](#MarketRestartDataTransfer)
   * [MarketSetAsk](#MarketSetAsk)
   * [MarketSetRetrievalAsk](#MarketSetRetrievalAsk)
@@ -168,7 +170,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 65536,
+  "APIVersion": 65792,
   "BlockDelay": 42
 }
 ```
@@ -524,10 +526,10 @@ Response: `{}`
 
 
 ### MarketCancelDataTransfer
-ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 
 
-Perms: read
+Perms: write
 
 Inputs:
 ```json
@@ -641,7 +643,8 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "PieceCid": null,
-    "PieceSize": 1024
+    "PieceSize": 1024,
+    "RawBlockSize": 42
   },
   "AvailableForRetrieval": true,
   "DealID": 5432,
@@ -725,11 +728,36 @@ Inputs: `null`
 
 Response: `null`
 
+### MarketPendingDeals
+There are not yet any comments for this method.
+
+Perms: write
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Deals": null,
+  "PublishPeriodStart": "0001-01-01T00:00:00Z",
+  "PublishPeriod": 60000000000
+}
+```
+
+### MarketPublishPendingDeals
+There are not yet any comments for this method.
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
+
 ### MarketRestartDataTransfer
-MinerRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 
 
-Perms: read
+Perms: write
 
 Inputs:
 ```json

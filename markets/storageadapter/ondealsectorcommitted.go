@@ -5,6 +5,7 @@ import (
 	"context"
 	"sync"
 
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -19,11 +20,40 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type sectorCommittedEventsAPI interface {
+type eventsCalledAPI interface {
 	Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error
 }
 
-func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid, callback storagemarket.DealSectorPreCommittedCallback) error {
+type dealInfoAPI interface {
+	GetCurrentDealInfo(ctx context.Context, tok sealing.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (sealing.CurrentDealInfo, error)
+}
+
+type diffPreCommitsAPI interface {
+	diffPreCommits(ctx context.Context, actor address.Address, pre, cur types.TipSetKey) (*miner.PreCommitChanges, error)
+}
+
+type SectorCommittedManager struct {
+	ev       eventsCalledAPI
+	dealInfo dealInfoAPI
+	dpc      diffPreCommitsAPI
+}
+
+func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI sealing.CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
+	dim := &sealing.CurrentDealInfoManager{
+		CDAPI: &sealing.CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
+	}
+	return newSectorCommittedManager(ev, dim, dpcAPI)
+}
+
+func newSectorCommittedManager(ev eventsCalledAPI, dealInfo dealInfoAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
+	return &SectorCommittedManager{
+		ev:       ev,
+		dealInfo: dealInfo,
+		dpc:      dpcAPI,
+	}
+}
+
+func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, proposal market.DealProposal, publishCid cid.Cid, callback storagemarket.DealSectorPreCommittedCallback) error {
 	// Ensure callback is only called once
 	var once sync.Once
 	cb := func(sectorNumber abi.SectorNumber, isActive bool, err error) {
@@ -34,7 +64,7 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 
 	// First check if the deal is already active, and if so, bail out
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		di, isActive, publishTs, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
+		dealInfo, isActive, err := mgr.checkIfDealAlreadyActive(ctx, ts, &proposal, publishCid)
 		if err != nil {
 			// Note: the error returned from here will end up being returned
 			// from OnDealSectorPreCommitted so no need to call the callback
@@ -54,24 +84,19 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 		// when the client node was down after the deal was published, and when
 		// the precommit containing it landed on chain)
 
-		if publishTs == types.EmptyTSK {
-			lookup, err := api.StateSearchMsg(ctx, *publishCid)
-			if err != nil {
-				return false, false, err
-			}
-			if lookup != nil { // can be nil in tests
-				publishTs = lookup.TipSet
-			}
+		publishTs, err := types.TipSetKeyFromBytes(dealInfo.PublishMsgTipSet)
+		if err != nil {
+			return false, false, err
 		}
 
-		diff, err := api.diffPreCommits(ctx, provider, publishTs, ts.Key())
+		diff, err := mgr.dpc.diffPreCommits(ctx, provider, publishTs, ts.Key())
 		if err != nil {
 			return false, false, err
 		}
 
 		for _, info := range diff.Added {
 			for _, d := range info.Info.DealIDs {
-				if d == di {
+				if d == dealInfo.DealID {
 					cb(info.Info.SectorNumber, false, nil)
 					return true, false, nil
 				}
@@ -103,7 +128,7 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 		// If the deal hasn't been activated by the proposed start epoch, the
 		// deal will timeout (when msg == nil it means the timeout epoch was reached)
 		if msg == nil {
-			err = xerrors.Errorf("deal %d was not activated by proposed deal start epoch %d", dealID, proposal.StartEpoch)
+			err = xerrors.Errorf("deal with piece CID %s was not activated by proposed deal start epoch %d", proposal.PieceCID, proposal.StartEpoch)
 			return false, err
 		}
 
@@ -118,16 +143,16 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 			return false, xerrors.Errorf("unmarshal pre commit: %w", err)
 		}
 
-		// When the deal is published, the deal ID may change, so get the
+		// When there is a reorg, the deal ID may change, so get the
 		// current deal ID from the publish message CID
-		dealID, _, _, err = GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
+		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), &proposal, publishCid)
 		if err != nil {
 			return false, err
 		}
 
 		// Check through the deal IDs associated with this message
 		for _, did := range params.DealIDs {
-			if did == dealID {
+			if did == res.DealID {
 				// Found the deal ID in this message. Callback with the sector ID.
 				cb(params.SectorNumber, false, nil)
 				return false, nil
@@ -144,14 +169,14 @@ func OnDealSectorPreCommitted(ctx context.Context, api getCurrentDealInfoAPI, ev
 		return nil
 	}
 
-	if err := eventsApi.Called(checkFunc, called, revert, int(build.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
+	if err := mgr.ev.Called(checkFunc, called, revert, int(build.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
 	return nil
 }
 
-func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, eventsApi sectorCommittedEventsAPI, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market.DealProposal, publishCid *cid.Cid, callback storagemarket.DealSectorCommittedCallback) error {
+func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, provider address.Address, sectorNumber abi.SectorNumber, proposal market.DealProposal, publishCid cid.Cid, callback storagemarket.DealSectorCommittedCallback) error {
 	// Ensure callback is only called once
 	var once sync.Once
 	cb := func(err error) {
@@ -162,7 +187,7 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 
 	// First check if the deal is already active, and if so, bail out
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		_, isActive, _, err := checkIfDealAlreadyActive(ctx, api, ts, dealID, proposal, publishCid)
+		_, isActive, err := mgr.checkIfDealAlreadyActive(ctx, ts, &proposal, publishCid)
 		if err != nil {
 			// Note: the error returned from here will end up being returned
 			// from OnDealSectorCommitted so no need to call the callback
@@ -208,7 +233,7 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		// If the deal hasn't been activated by the proposed start epoch, the
 		// deal will timeout (when msg == nil it means the timeout epoch was reached)
 		if msg == nil {
-			err := xerrors.Errorf("deal %d was not activated by proposed deal start epoch %d", dealID, proposal.StartEpoch)
+			err := xerrors.Errorf("deal with piece CID %s was not activated by proposed deal start epoch %d", proposal.PieceCID, proposal.StartEpoch)
 			return false, err
 		}
 
@@ -218,17 +243,17 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		}
 
 		// Get the deal info
-		_, sd, _, err := GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
+		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), &proposal, publishCid)
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
 		// Make sure the deal is active
-		if sd.State.SectorStartEpoch < 1 {
-			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", dealID, ts.ParentState(), ts.Height())
+		if res.MarketDeal.State.SectorStartEpoch < 1 {
+			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", res.DealID, ts.ParentState(), ts.Height())
 		}
 
-		log.Infof("Storage deal %d activated at epoch %d", dealID, sd.State.SectorStartEpoch)
+		log.Infof("Storage deal %d activated at epoch %d", res.DealID, res.MarketDeal.State.SectorStartEpoch)
 
 		cb(nil)
 
@@ -241,29 +266,29 @@ func OnDealSectorCommitted(ctx context.Context, api getCurrentDealInfoAPI, event
 		return nil
 	}
 
-	if err := eventsApi.Called(checkFunc, called, revert, int(build.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
+	if err := mgr.ev.Called(checkFunc, called, revert, int(build.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
 	return nil
 }
 
-func checkIfDealAlreadyActive(ctx context.Context, api getCurrentDealInfoAPI, ts *types.TipSet, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid) (abi.DealID, bool, types.TipSetKey, error) {
-	di, sd, publishTs, err := GetCurrentDealInfo(ctx, ts, api, dealID, proposal, publishCid)
+func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (sealing.CurrentDealInfo, bool, error) {
+	res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), proposal, publishCid)
 	if err != nil {
 		// TODO: This may be fine for some errors
-		return 0, false, types.EmptyTSK, xerrors.Errorf("failed to look up deal on chain: %w", err)
-	}
-
-	// Sector with deal is already active
-	if sd.State.SectorStartEpoch > 0 {
-		return 0, true, publishTs, nil
+		return res, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 	}
 
 	// Sector was slashed
-	if sd.State.SlashEpoch > 0 {
-		return 0, false, types.EmptyTSK, xerrors.Errorf("deal %d was slashed at epoch %d", dealID, sd.State.SlashEpoch)
+	if res.MarketDeal.State.SlashEpoch > 0 {
+		return res, false, xerrors.Errorf("deal %d was slashed at epoch %d", res.DealID, res.MarketDeal.State.SlashEpoch)
 	}
 
-	return di, false, publishTs, nil
+	// Sector with deal is already active
+	if res.MarketDeal.State.SectorStartEpoch > 0 {
+		return res, true, nil
+	}
+
+	return res, false, nil
 }

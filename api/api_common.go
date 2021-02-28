@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
