@@ -105,7 +105,8 @@ func SplitBlockstore(cfg *config.Blockstore) func(lc fx.Lifecycle, r repo.Locked
 
 		ss, err := splitstore.NewSplitStore(path, ds, cold, hot,
 			&splitstore.Config{
-				UseLMDB:              cfg.Splitstore.UseLMDBTracking,
+				TrackingStoreType:    cfg.Splitstore.TrackingStoreType,
+				LiveSetType:          cfg.Splitstore.LiveSetType,
 				EnableFullCompaction: cfg.Splitstore.EnableFullCompaction,
 				EnableGC:             cfg.Splitstore.EnableGC,
 				Archival:             cfg.Splitstore.Archival,

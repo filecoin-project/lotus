@@ -3,6 +3,8 @@ package splitstore
 import (
 	"path/filepath"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	cid "github.com/ipfs/go-cid"
 )
@@ -18,10 +20,13 @@ type TrackingStore interface {
 	Close() error
 }
 
-func NewTrackingStore(path string, useLMDB bool) (TrackingStore, error) {
-	if useLMDB {
+func NewTrackingStore(path string, trackingStoreType string) (TrackingStore, error) {
+	switch trackingStoreType {
+	case "", "bolt":
+		return NewBoltTrackingStore(filepath.Join(path, "snoop.bolt"))
+	case "lmdb":
 		return NewLMDBTrackingStore(filepath.Join(path, "snoop.lmdb"))
+	default:
+		return nil, xerrors.Errorf("unknown tracking store type %s", trackingStoreType)
 	}
-
-	return NewBoltTrackingStore(filepath.Join(path, "snoop.bolt"))
 }
