@@ -80,14 +80,19 @@ func ChainStore(lc fx.Lifecycle, cbs dtypes.ChainBlockstore, sbs dtypes.StateBlo
 		log.Warnf("loading chain state from disk: %s", err)
 	}
 
+	var startHook func(context.Context) error
 	if ss, ok := basebs.(*splitstore.SplitStore); ok {
-		err := ss.Start(chain)
-		if err != nil {
-			log.Errorf("error starting splitstore: %s", err)
+		startHook = func(_ context.Context) error {
+			err := ss.Start(chain)
+			if err != nil {
+				err = xerrors.Errorf("error starting splitstore: %w", err)
+			}
+			return err
 		}
 	}
 
 	lc.Append(fx.Hook{
+		OnStart: startHook,
 		OnStop: func(_ context.Context) error {
 			return chain.Close()
 		},
