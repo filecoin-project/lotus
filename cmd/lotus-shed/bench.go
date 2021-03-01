@@ -3,6 +3,7 @@ package main
 import (
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -62,6 +63,10 @@ var benchStateCmd = &cli.Command{
 			Name:  "interval",
 			Value: 15 * time.Second,
 		},
+		&cli.IntFlag{
+			Name:  "concurrency",
+			Value: 1,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -86,23 +91,38 @@ var benchStateCmd = &cli.Command{
 		}
 		ringIdx = 0
 
+		concurrency := cctx.Int("concurrency")
+
+		var mvLock sync.Mutex
 		mv := &meanVar{}
 
 		t := time.NewTicker(cctx.Duration("interval"))
+
 		for {
 			select {
 			case <-t.C:
-				n := rand.Intn(len(ring))
-				ts := ring[n]
-				start := time.Now()
-				_, err := api.StateCompute(ctx, ts.Height(), nil, ts.Key())
-				took := time.Since(start)
-				if err != nil {
-					return err
-				}
+				wg := sync.WaitGroup{}
+				wg.Add(concurrency)
+				for i := 0; i < concurrency; i++ {
+					go func() {
+						n := rand.Intn(len(ring))
+						ts := ring[n]
+						start := time.Now()
+						_, err := api.StateCompute(ctx, ts.Height(), nil, ts.Key())
+						if err != nil {
+							log.Errorf("state compute err: %v", err)
+							return
+						}
+						took := time.Since(start)
 
-				mv.AddPoint(took.Seconds())
-				log.Infow("computing state", "took", took, "ts", ts.Key(), "mv", mv)
+						wg.Done()
+						mvLock.Lock()
+						mv.AddPoint(took.Seconds())
+						log.Infow("computing state", "took", took, "ts", ts.Key(), "mv", mv)
+						mvLock.Unlock()
+					}()
+				}
+				wg.Wait()
 
 				newHead, err := api.ChainHead(ctx)
 				if err != nil {
