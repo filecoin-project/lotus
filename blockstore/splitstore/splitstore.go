@@ -34,6 +34,8 @@ var (
 	log            = logging.Logger("splitstore")
 )
 
+const batchSize = 16384
+
 func init() {
 	// TODO temporary for debugging purposes; to be removed for merge.
 	_ = logging.SetLogLevel("splitstore", "DEBUG")
@@ -375,7 +377,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 func (s *SplitStore) warmup(curTs *types.TipSet) {
 	epoch := curTs.Height()
 
-	const batchSize = 4096
 	batchHot := make([]blocks.Block, 0, batchSize)
 	batchSnoop := make([]cid.Cid, 0, batchSize)
 
@@ -568,7 +569,6 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 	log.Info("moving cold objects to the coldstore")
 	startMove := time.Now()
 
-	const batchSize = 4096
 	batch := make([]blocks.Block, 0, batchSize)
 
 	for cid := range cold {
@@ -797,9 +797,7 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 	log.Info("moving cold objects to the coldstore")
 	startMove := time.Now()
 
-	const batchSize = 4096
 	batch := make([]blocks.Block, 0, batchSize)
-
 	for cid := range cold {
 		blk, err := s.hot.Get(cid)
 		if err != nil {
