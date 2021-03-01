@@ -10,10 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-func TestLMDBTrackingStore(t *testing.T) {
-	testTrackingStore(t, "lmdb")
-}
-
 func TestBoltTrackingStore(t *testing.T) {
 	testTrackingStore(t, "bolt")
 }

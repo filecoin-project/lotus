@@ -5,15 +5,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 
-	lmdbbs "github.com/filecoin-project/go-bs-lmdb"
-	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/store/splitstore"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -36,34 +34,6 @@ func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 		})
 	}
 	return bs, err
-}
-
-func LMDBHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
-	path, err := r.SplitstorePath()
-	if err != nil {
-		return nil, err
-	}
-
-	path = filepath.Join(path, "hot.lmdb")
-	bs, err := lmdbbs.Open(&lmdbbs.Options{
-		Path:                 path,
-		InitialMmapSize:      4 << 30, // 4GiB.
-		MmapGrowthStepFactor: 1.25,    // scale slower than the default of 1.5
-		MmapGrowthStepMax:    4 << 30, // 4GiB
-		RetryDelay:           10 * time.Microsecond,
-		MaxReaders:           1024,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			return bs.Close()
-		}})
-
-	hot := blockstore.WrapIDStore(bs)
-	return hot, err
 }
 
 func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
