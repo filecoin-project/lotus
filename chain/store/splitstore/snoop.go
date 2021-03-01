@@ -24,6 +24,8 @@ func NewTrackingStore(path string, trackingStoreType string) (TrackingStore, err
 	switch trackingStoreType {
 	case "", "bolt":
 		return NewBoltTrackingStore(filepath.Join(path, "snoop.bolt"))
+	case "lmdb":
+		return NewLMDBTrackingStore(filepath.Join(path, "snoop.lmdb"))
 	default:
 		return nil, xerrors.Errorf("unknown tracking store type %s", trackingStoreType)
 	}

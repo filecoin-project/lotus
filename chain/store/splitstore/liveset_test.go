@@ -8,6 +8,10 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
+func TestLMDBLiveSet(t *testing.T) {
+	testLiveSet(t, "lmdb")
+}
+
 func TestBoltLiveSet(t *testing.T) {
 	testLiveSet(t, "bolt")
 }
