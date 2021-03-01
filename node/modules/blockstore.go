@@ -8,7 +8,7 @@ import (
 	"time"
 
 	lmdbbs "github.com/filecoin-project/go-bs-lmdb"
-	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -96,8 +96,8 @@ func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlocksto
 	return hot, err
 }
 
-func SplitBlockstore(cfg *config.Blockstore) func(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.ColdBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {
-	return func(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.ColdBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {
+func SplitBlockstore(cfg *config.Blockstore) func(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.UniversalBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {
+	return func(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.UniversalBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {
 		path, err := r.SplitstorePath()
 		if err != nil {
 			return nil, err
@@ -124,7 +124,7 @@ func SplitBlockstore(cfg *config.Blockstore) func(lc fx.Lifecycle, r repo.Locked
 	}
 }
 
-func StateFlatBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ColdBlockstore) (dtypes.StateBlockstore, error) {
+func StateFlatBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.UniversalBlockstore) (dtypes.StateBlockstore, error) {
 	return bs, nil
 }
 
@@ -132,7 +132,7 @@ func StateSplitBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.Sp
 	return bs, nil
 }
 
-func ChainFlatBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ColdBlockstore) (dtypes.ChainBlockstore, error) {
+func ChainFlatBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.UniversalBlockstore) (dtypes.ChainBlockstore, error) {
 	return bs, nil
 }
 

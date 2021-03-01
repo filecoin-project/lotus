@@ -67,9 +67,6 @@ type LockedRepo interface {
 	// SplitstorePath returns the path for the SplitStore
 	SplitstorePath() (string, error)
 
-	// SplitstorePath returns the path for the SplitStore
-	SplitstorePath() (string, error)
-
 	// Returns config in this repo
 	Config() (interface{}, error)
 	SetConfig(func(interface{})) error
