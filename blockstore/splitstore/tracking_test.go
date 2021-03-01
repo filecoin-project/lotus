@@ -51,7 +51,7 @@ func testTrackingStore(t *testing.T, tsType string) {
 		t.Fatal(err)
 	}
 
-	s, err := NewTrackingStore(path, tsType)
+	s, err := OpenTrackingStore(path, tsType)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func testTrackingStore(t *testing.T, tsType string) {
 		t.Fatal(err)
 	}
 
-	s, err = NewTrackingStore(path, tsType)
+	s, err = OpenTrackingStore(path, tsType)
 	if err != nil {
 		t.Fatal(err)
 	}
