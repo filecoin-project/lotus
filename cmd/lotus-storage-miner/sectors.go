@@ -662,18 +662,45 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 			return err
 		}
 
+		mi, err := nApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		nv, err := nApi.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		spt, err := miner.PreferredSealProofTypeFromWindowPoStType(nv, mi.WindowPoStProofType)
+		if err != nil {
+			return err
+		}
+
 		pci := miner.SectorPreCommitInfo{
+			SealProof:  spt,
 			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
 		}
 		if pci.Expiration == 0 {
-			pci.Expiration = policy.GetMaxSectorExpirationExtension()
+			h, err := nApi.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			pci.Expiration = policy.GetMaxSectorExpirationExtension() + h.Height()
 		}
+
 		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Estimated collateral: %s\n", types.FIL(pc))
+		pcd, err := nApi.StateMinerPreCommitDepositForPower(ctx, maddr, pci, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Estimated collateral: %s\n", types.FIL(big.Max(pc, pcd)))
 
 		return nil
 	},
