@@ -52,7 +52,7 @@ source "digitalocean" "lotus" {
   size = "s-1vcpu-1gb"
   region = "nyc3"
   image = "ubuntu-20-04-x64"
-  snapshot_name = "lotus-${var.lotus_network}-${local.timestamp}"
+  snapshot_name = "lotus-${var.lotus_network}-${var.git_tag}-${local.timestamp}"
   ssh_username = "root"
 }
 
