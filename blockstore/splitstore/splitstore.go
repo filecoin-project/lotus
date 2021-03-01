@@ -19,7 +19,6 @@ import (
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -59,6 +58,15 @@ type Config struct {
 	Archival bool
 }
 
+// ChainAccessor allows the Splitstore to access the chain. It will most likely
+// be a ChainStore at runtime.
+type ChainAccessor interface {
+	GetTipsetByHeight(context.Context, abi.ChainEpoch, *types.TipSet, bool) (*types.TipSet, error)
+	GetHeaviestTipSet() *types.TipSet
+	SubscribeHeadChanges(change func(revert []*types.TipSet, apply []*types.TipSet) error)
+	WalkSnapshot(context.Context, *types.TipSet, abi.ChainEpoch, bool, bool, func(cid.Cid) error) error
+}
+
 type SplitStore struct {
 	compacting int32
 
@@ -73,7 +81,7 @@ type SplitStore struct {
 	mx    sync.Mutex
 	curTs *types.TipSet
 
-	cs    *store.ChainStore
+	chain ChainAccessor
 	ds    dstore.Datastore
 	hot   bstore.Blockstore
 	cold  bstore.Blockstore
@@ -260,9 +268,9 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 }
 
 // State tracking
-func (s *SplitStore) Start(cs *store.ChainStore) error {
-	s.cs = cs
-	s.curTs = cs.GetHeaviestTipSet()
+func (s *SplitStore) Start(chain ChainAccessor) error {
+	s.chain = chain
+	s.curTs = chain.GetHeaviestTipSet()
 
 	// load base epoch from metadata ds
 	// if none, then use current epoch because it's a fresh start
@@ -301,7 +309,7 @@ func (s *SplitStore) Start(cs *store.ChainStore) error {
 	}
 
 	// watch the chain
-	cs.SubscribeHeadChanges(s.HeadChange)
+	chain.SubscribeHeadChanges(s.HeadChange)
 
 	return nil
 }
@@ -317,7 +325,7 @@ func (s *SplitStore) Close() error {
 	return s.env.Close()
 }
 
-func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
+func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	s.mx.Lock()
 	curTs := apply[len(apply)-1]
 	epoch := curTs.Height()
@@ -432,7 +440,7 @@ func (s *SplitStore) compact(curTs *types.TipSet) {
 
 func (s *SplitStore) estimateLiveSetSize(curTs *types.TipSet) {
 	s.liveSetSize = 0
-	err := s.cs.WalkSnapshot(context.Background(), curTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
+	err := s.chain.WalkSnapshot(context.Background(), curTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
 			s.liveSetSize++
 			return nil
@@ -460,14 +468,14 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 	log.Info("marking reachable cold objects")
 	startMark := time.Now()
 
-	coldTs, err := s.cs.GetTipsetByHeight(context.Background(), coldEpoch, curTs, true)
+	coldTs, err := s.chain.GetTipsetByHeight(context.Background(), coldEpoch, curTs, true)
 	if err != nil {
 		// TODO do something better here
 		panic(err)
 	}
 
 	count := int64(0)
-	err = s.cs.WalkSnapshot(context.Background(), coldTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
+	err = s.chain.WalkSnapshot(context.Background(), coldTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
 			count++
 			return coldSet.Mark(cid)
@@ -646,7 +654,7 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 
 	// Phase 1a: mark all reachable CIDs in the hot range
 	count := int64(0)
-	err = s.cs.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch, s.skipOldMsgs, s.skipMsgReceipts,
+	err = s.chain.WalkSnapshot(context.Background(), curTs, epoch-coldEpoch, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
 			count++
 			return hotSet.Mark(cid)
@@ -662,14 +670,14 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 	}
 
 	// Phase 1b: mark all reachable CIDs in the cold range
-	coldTs, err := s.cs.GetTipsetByHeight(context.Background(), coldEpoch, curTs, true)
+	coldTs, err := s.chain.GetTipsetByHeight(context.Background(), coldEpoch, curTs, true)
 	if err != nil {
 		// TODO do something better here
 		panic(err)
 	}
 
 	count = 0
-	err = s.cs.WalkSnapshot(context.Background(), coldTs, CompactionCold, s.skipOldMsgs, s.skipMsgReceipts,
+	err = s.chain.WalkSnapshot(context.Background(), coldTs, CompactionCold, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
 			count++
 			return coldSet.Mark(cid)

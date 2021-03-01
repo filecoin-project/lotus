@@ -81,7 +81,7 @@ func init() {
 }
 
 // ReorgNotifee represents a callback that gets called upon reorgs.
-type ReorgNotifee func(rev, app []*types.TipSet) error
+type ReorgNotifee = func(rev, app []*types.TipSet) error
 
 // Journal event types.
 const (
