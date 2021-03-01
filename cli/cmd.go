@@ -207,6 +207,19 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 	return client.NewFullNodeRPC(ctx.Context, addr, headers)
 }
 
+func GetFullNodeServices(ctx *cli.Context) (ServicesAPI, error) {
+	if tn, ok := ctx.App.Metadata["test-services"]; ok {
+		return tn.(ServicesAPI), nil
+	}
+
+	api, c, err := GetFullNodeAPI(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ServicesImpl{api: api, closer: c}, nil
+}
+
 type GetStorageMinerOptions struct {
 	PreferHttp bool
 }

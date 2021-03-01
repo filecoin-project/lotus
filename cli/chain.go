@@ -642,7 +642,10 @@ var chainListCmd = &cli.Command{
 						gasUsed += r.GasUsed
 					}
 
-					fmt.Printf("\ttipset: \t%d msgs, %d / %d (%0.2f%%)\n", len(msgs), gasUsed, limitSum, 100*float64(gasUsed)/float64(limitSum))
+					gasEfficiency := 100 * float64(gasUsed) / float64(limitSum)
+					gasCapacity := 100 * float64(limitSum) / float64(build.BlockGasLimit)
+
+					fmt.Printf("\ttipset: \t%d msgs, %d (%0.2f%%) / %d (%0.2f%%)\n", len(msgs), gasUsed, gasEfficiency, limitSum, gasCapacity)
 				}
 				fmt.Println()
 			}

@@ -32,6 +32,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_full.go -package=mocks . FullNode
+
 // ChainIO abstracts operations for accessing raw IPLD objects.
 type ChainIO interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)

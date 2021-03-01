@@ -25,6 +25,24 @@ var DealSectorPriority = 1024
 var MaxTicketAge = abi.ChainEpoch(builtin0.EpochsInDay * 2)
 
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
+	m.inputLk.Lock()
+	// make sure we not accepting deals into this sector
+	for _, c := range m.assignedPieces[m.minerSectorID(sector.SectorNumber)] {
+		pp := m.pendingPieces[c]
+		delete(m.pendingPieces, c)
+		if pp == nil {
+			log.Errorf("nil assigned pending piece %s", c)
+			continue
+		}
+
+		// todo: return to the sealing queue (this is extremely unlikely to happen)
+		pp.accepted(sector.SectorNumber, 0, xerrors.Errorf("sector entered packing state early"))
+	}
+
+	delete(m.openSectors, m.minerSectorID(sector.SectorNumber))
+	delete(m.assignedPieces, m.minerSectorID(sector.SectorNumber))
+	m.inputLk.Unlock()
+
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
 
 	var allocated abi.UnpaddedPieceSize
@@ -52,12 +70,34 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorNumber)
 	}
 
-	fillerPieces, err := m.pledgeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.existingPieceSizes(), fillerSizes...)
+	fillerPieces, err := m.padSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.existingPieceSizes(), fillerSizes...)
 	if err != nil {
 		return xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
 
 	return ctx.Send(SectorPacked{FillerPieces: fillerPieces})
+}
+
+func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]abi.PieceInfo, error) {
+	if len(sizes) == 0 {
+		return nil, nil
+	}
+
+	log.Infof("Pledge %d, contains %+v", sectorID, existingPieceSizes)
+
+	out := make([]abi.PieceInfo, len(sizes))
+	for i, size := range sizes {
+		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, NewNullReader(size))
+		if err != nil {
+			return nil, xerrors.Errorf("add piece: %w", err)
+		}
+
+		existingPieceSizes = append(existingPieceSizes, size)
+
+		out[i] = ppi
+	}
+
+	return out, nil
 }
 
 func checkTicketExpired(sector SectorInfo, epoch abi.ChainEpoch) bool {

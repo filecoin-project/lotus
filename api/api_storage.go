@@ -36,7 +36,7 @@ type StorageMiner interface {
 	MiningBase(context.Context) (*types.TipSet, error)
 
 	// Temp api for testing
-	PledgeSector(context.Context) error
+	PledgeSector(context.Context) (abi.SectorID, error)
 
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error)
