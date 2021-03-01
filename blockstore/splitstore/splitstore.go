@@ -368,8 +368,11 @@ func (s *SplitStore) HeadChange(revert, apply []*types.TipSet) error {
 func (s *SplitStore) warmup(curTs *types.TipSet) {
 	epoch := curTs.Height()
 
+	count := int64(0)
 	err := s.cs.WalkSnapshot(context.Background(), curTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
+			count++
+
 			has, err := s.hot.Has(cid)
 			if err != nil {
 				return err
@@ -395,6 +398,10 @@ func (s *SplitStore) warmup(curTs *types.TipSet) {
 	if err != nil {
 		log.Errorf("error warming up splitstore: %s", err)
 		return
+	}
+
+	if count > s.liveSetSize {
+		s.liveSetSize = count
 	}
 
 	// save the warmup epoch
