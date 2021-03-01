@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -21,7 +21,7 @@ type RPCStateManager struct {
 }
 
 func NewRPCStateManager(api api.GatewayAPI) *RPCStateManager {
-	cstore := cbor.NewCborStore(apibstore.NewAPIBlockstore(api))
+	cstore := cbor.NewCborStore(blockstore.NewAPIBlockstore(api))
 	return &RPCStateManager{gapi: api, cstore: cstore}
 }
 

@@ -11,10 +11,10 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 

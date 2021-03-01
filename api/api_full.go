@@ -34,6 +34,12 @@ import (
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_full.go -package=mocks . FullNode
 
+// ChainIO abstracts operations for accessing raw IPLD objects.
+type ChainIO interface {
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainHasObj(context.Context, cid.Cid) (bool, error)
+}
+
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common

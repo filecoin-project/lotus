@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	blocks "github.com/ipfs/go-block-format"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/blockstore"
 )
 
 func TestBadgerBlockstore(t *testing.T) {

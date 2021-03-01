@@ -20,8 +20,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -400,7 +400,7 @@ func getPaychState(ctx context.Context, t *testing.T, node test.TestNode, chAddr
 	act, err := node.StateGetActor(ctx, chAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	store := cbor.NewCborStore(apibstore.NewAPIBlockstore(node))
+	store := cbor.NewCborStore(blockstore.NewAPIBlockstore(node))
 	chState, err := paych.Load(adt.WrapStore(ctx, store), act)
 	require.NoError(t, err)
 

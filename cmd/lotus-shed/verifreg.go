@@ -13,7 +13,7 @@ import (
 
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -190,7 +190,7 @@ var verifRegListVerifiersCmd = &cli.Command{
 			return err
 		}
 
-		apibs := apibstore.NewAPIBlockstore(api)
+		apibs := blockstore.NewAPIBlockstore(api)
 		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		st, err := verifreg.Load(store, act)
@@ -220,7 +220,7 @@ var verifRegListClientsCmd = &cli.Command{
 			return err
 		}
 
-		apibs := apibstore.NewAPIBlockstore(api)
+		apibs := blockstore.NewAPIBlockstore(api)
 		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		st, err := verifreg.Load(store, act)
@@ -303,7 +303,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 			return err
 		}
 
-		apibs := apibstore.NewAPIBlockstore(api)
+		apibs := blockstore.NewAPIBlockstore(api)
 		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		st, err := verifreg.Load(store, act)

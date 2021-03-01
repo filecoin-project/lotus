@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -327,7 +327,7 @@ var genesisCarCmd = &cli.Command{
 		}
 		ofile := c.String("out")
 		jrnl := journal.NilJournal()
-		bstor := blockstore.NewTemporarySync()
+		bstor := blockstore.NewMemorySync()
 		sbldr := vm.Syscalls(ffiwrapper.ProofVerifier)
 		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl)()
 		return err
