@@ -1,7 +1,7 @@
 package splitstore
 
 import (
-	"math/rand"
+	"crypto/rand"
 
 	"golang.org/x/xerrors"
 
@@ -37,7 +37,7 @@ func (e *BloomLiveSetEnv) NewLiveSet(name string, sizeHint int64) (LiveSet, erro
 	}
 
 	salt := make([]byte, 4)
-	_, err := rand.Read(salt) //nolint
+	_, err := rand.Read(salt)
 	if err != nil {
 		return nil, xerrors.Errorf("error reading salt: %w", err)
 	}
