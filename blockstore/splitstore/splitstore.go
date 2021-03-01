@@ -375,6 +375,10 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 func (s *SplitStore) warmup(curTs *types.TipSet) {
 	epoch := curTs.Height()
 
+	const batchSize = 4096
+	batchHot := make([]blocks.Block, 0, batchSize)
+	batchSnoop := make([]cid.Cid, 0, batchSize)
+
 	count := int64(0)
 	err := s.chain.WalkSnapshot(context.Background(), curTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
@@ -394,17 +398,43 @@ func (s *SplitStore) warmup(curTs *types.TipSet) {
 				return err
 			}
 
-			err = s.snoop.Put(cid, epoch)
-			if err != nil {
-				return err
+			batchHot = append(batchHot, blk)
+			batchSnoop = append(batchSnoop, cid)
+
+			if len(batchHot) == batchSize {
+				err = s.snoop.PutBatch(batchSnoop, epoch)
+				if err != nil {
+					return err
+				}
+				batchSnoop = batchSnoop[:0]
+
+				err = s.hot.PutMany(batchHot)
+				if err != nil {
+					return err
+				}
+				batchHot = batchHot[:0]
 			}
 
-			return s.hot.Put(blk)
+			return nil
 		})
 
 	if err != nil {
 		log.Errorf("error warming up splitstore: %s", err)
 		return
+	}
+
+	if len(batchHot) > 0 {
+		err = s.snoop.PutBatch(batchSnoop, epoch)
+		if err != nil {
+			log.Errorf("error warming up splitstore: %s", err)
+			return
+		}
+
+		err = s.hot.PutMany(batchHot)
+		if err != nil {
+			log.Errorf("error warming up splitstore: %s", err)
+			return
+		}
 	}
 
 	if count > s.liveSetSize {
@@ -538,7 +568,7 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 	log.Info("moving cold objects to the coldstore")
 	startMove := time.Now()
 
-	const batchSize = 1024
+	const batchSize = 4096
 	batch := make([]blocks.Block, 0, batchSize)
 
 	for cid := range cold {
@@ -767,7 +797,7 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 	log.Info("moving cold objects to the coldstore")
 	startMove := time.Now()
 
-	const batchSize = 1024
+	const batchSize = 4096
 	batch := make([]blocks.Block, 0, batchSize)
 
 	for cid := range cold {
