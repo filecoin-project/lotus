@@ -1097,9 +1097,9 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	var sectorWeight abi.StoragePower
 	if act, err := state.GetActor(market.Address); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading miner actor %s: %w", maddr, err)
+		return types.EmptyInt, xerrors.Errorf("loading market actor: %w", err)
 	} else if s, err := market.Load(store, act); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
+		return types.EmptyInt, xerrors.Errorf("loading market actor state: %w", err)
 	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
 		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
 	} else {
@@ -1113,7 +1113,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		pledgeCollateral abi.TokenAmount
 	)
 	if act, err := state.GetActor(power.Address); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
+		return types.EmptyInt, xerrors.Errorf("loading power actor: %w", err)
 	} else if s, err := power.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading power actor state: %w", err)
 	} else if p, err := s.TotalPowerSmoothed(); err != nil {
@@ -1127,7 +1127,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 
 	rewardActor, err := state.GetActor(reward.Address)
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading miner actor: %w", err)
+		return types.EmptyInt, xerrors.Errorf("loading reward actor: %w", err)
 	}
 
 	rewardState, err := reward.Load(store, rewardActor)
