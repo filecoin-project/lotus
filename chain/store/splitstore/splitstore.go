@@ -16,10 +16,10 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 // these are variable so that 1) lotus-soup builds 2) we can change them in tests
