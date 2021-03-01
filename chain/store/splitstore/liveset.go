@@ -27,8 +27,6 @@ func NewLiveSetEnv(path string, liveSetType string) (LiveSetEnv, error) {
 		return NewBloomLiveSetEnv()
 	case "bolt":
 		return NewBoltLiveSetEnv(filepath.Join(path, "sweep.bolt"))
-	case "lmdb":
-		return NewLMDBLiveSetEnv(filepath.Join(path, "sweep.lmdb"))
 	default:
 		return nil, xerrors.Errorf("unknown live set type %s", liveSetType)
 	}
