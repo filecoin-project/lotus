@@ -26,7 +26,7 @@ func testLiveSet(t *testing.T, lsType string) {
 		t.Fatal(err)
 	}
 
-	env, err := NewLiveSetEnv(path, lsType)
+	env, err := OpenLiveSetEnv(path, lsType)
 	if err != nil {
 		t.Fatal(err)
 	}

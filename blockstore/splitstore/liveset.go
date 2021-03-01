@@ -14,14 +14,14 @@ type LiveSet interface {
 	Close() error
 }
 
-var markBytes = []byte{}
+var markBytes []byte
 
 type LiveSetEnv interface {
 	NewLiveSet(name string, sizeHint int64) (LiveSet, error)
 	Close() error
 }
 
-func NewLiveSetEnv(path string, liveSetType string) (LiveSetEnv, error) {
+func OpenLiveSetEnv(path string, liveSetType string) (LiveSetEnv, error) {
 	switch liveSetType {
 	case "", "bloom":
 		return NewBloomLiveSetEnv()

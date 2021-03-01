@@ -31,13 +31,12 @@ var (
 var (
 	baseEpochKey   = dstore.NewKey("/splitstore/baseEpoch")
 	warmupEpochKey = dstore.NewKey("/splitstore/warmupEpoch")
+	log            = logging.Logger("splitstore")
 )
-
-var log = logging.Logger("splitstore")
 
 func init() {
 	// TODO temporary for debugging purposes; to be removed for merge.
-	logging.SetLogLevel("splitstore", "DEBUG")
+	_ = logging.SetLogLevel("splitstore", "DEBUG")
 }
 
 type Config struct {
@@ -94,20 +93,20 @@ type SplitStore struct {
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
 
-// NewSplitStore creates a new SplitStore instance, given a path for the hotstore dbs and a cold
-// blockstore. The SplitStore must be attached to the ChainStore with Start in order to trigger
-// compaction.
-func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore, cfg *Config) (*SplitStore, error) {
+// Open opens an existing splistore, or creates a new splitstore. The splitstore
+// is backed by the provided hot and cold stores. The returned SplitStore MUST be
+// attached to the ChainStore with Start in order to trigger compaction.
+func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Config) (*SplitStore, error) {
 	// the tracking store
-	snoop, err := NewTrackingStore(path, cfg.TrackingStoreType)
+	snoop, err := OpenTrackingStore(path, cfg.TrackingStoreType)
 	if err != nil {
 		return nil, err
 	}
 
 	// the liveset env
-	env, err := NewLiveSetEnv(path, cfg.LiveSetType)
+	env, err := OpenLiveSetEnv(path, cfg.LiveSetType)
 	if err != nil {
-		snoop.Close() //nolint:errcheck
+		_ = snoop.Close()
 		return nil, err
 	}
 
@@ -129,7 +128,7 @@ func NewSplitStore(path string, ds dstore.Datastore, cold, hot bstore.Blockstore
 }
 
 // Blockstore interface
-func (s *SplitStore) DeleteBlock(cid cid.Cid) error {
+func (s *SplitStore) DeleteBlock(_ cid.Cid) error {
 	// afaict we don't seem to be using this method, so it's not implemented
 	return errors.New("DeleteBlock not implemented on SplitStore; don't do this Luke!") //nolint
 }
@@ -377,7 +376,7 @@ func (s *SplitStore) warmup(curTs *types.TipSet) {
 	epoch := curTs.Height()
 
 	count := int64(0)
-	err := s.cs.WalkSnapshot(context.Background(), curTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
+	err := s.chain.WalkSnapshot(context.Background(), curTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
 			count++
 

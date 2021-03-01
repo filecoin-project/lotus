@@ -18,12 +18,12 @@ type BoltTrackingStore struct {
 
 var _ TrackingStore = (*BoltTrackingStore)(nil)
 
-func NewBoltTrackingStore(path string) (*BoltTrackingStore, error) {
-	db, err := bolt.Open(path, 0644,
-		&bolt.Options{
-			Timeout: 1 * time.Second,
-			NoSync:  true,
-		})
+func OpenBoltTrackingStore(path string) (*BoltTrackingStore, error) {
+	opts := &bolt.Options{
+		Timeout: 1 * time.Second,
+		NoSync:  true,
+	}
+	db, err := bolt.Open(path, 0644, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func NewBoltTrackingStore(path string) (*BoltTrackingStore, error) {
 	})
 
 	if err != nil {
-		db.Close() //nolint:errcheck
+		_ = db.Close()
 		return nil, err
 	}
 

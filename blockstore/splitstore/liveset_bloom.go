@@ -42,7 +42,7 @@ func (e *BloomLiveSetEnv) NewLiveSet(name string, sizeHint int64) (LiveSet, erro
 		return nil, xerrors.Errorf("error reading salt: %w", err)
 	}
 
-	bf, err := bbloom.New(float64(size), float64(BloomFilterProbability))
+	bf, err := bbloom.New(float64(size), BloomFilterProbability)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating bloom filter: %w", err)
 	}

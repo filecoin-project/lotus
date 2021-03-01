@@ -20,10 +20,10 @@ type TrackingStore interface {
 	Close() error
 }
 
-func NewTrackingStore(path string, trackingStoreType string) (TrackingStore, error) {
+func OpenTrackingStore(path string, trackingStoreType string) (TrackingStore, error) {
 	switch trackingStoreType {
 	case "", "bolt":
-		return NewBoltTrackingStore(filepath.Join(path, "snoop.bolt"))
+		return OpenBoltTrackingStore(filepath.Join(path, "snoop.bolt"))
 	default:
 		return nil, xerrors.Errorf("unknown tracking store type %s", trackingStoreType)
 	}
