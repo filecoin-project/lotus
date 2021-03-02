@@ -586,16 +586,16 @@ func Repo(r repo.Repo) Option {
 			return err
 		}
 
-		var cfg *config.Blockstore
+		var cfg *config.Chainstore
 		switch settings.nodeType {
 		case repo.FullNode:
 			cfgp, ok := c.(*config.FullNode)
 			if !ok {
 				return xerrors.Errorf("invalid config from repo, got: %T", c)
 			}
-			cfg = &cfgp.Blockstore
+			cfg = &cfgp.Chainstore
 		default:
-			cfg = &config.Blockstore{}
+			cfg = &config.Chainstore{}
 		}
 
 		return Options(
@@ -605,7 +605,7 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
 			If(cfg.EnableSplitstore,
-				If(cfg.Splitstore.GetHotStoreType() == "badger",
+				If(cfg.Splitstore.HotStoreType == "badger",
 					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
 				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(cfg)),
 				Override(new(dtypes.ChainBlockstore), modules.ChainSplitBlockstore),
