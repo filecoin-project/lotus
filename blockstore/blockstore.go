@@ -47,6 +47,8 @@ func WrapIDStore(bstore blockstore.Blockstore) Blockstore {
 		return NewIDStore(bs)
 	}
 
+    // The underlying blockstore does not implement DeleteMany, so we need to shim it.
+    // This is less efficient as it'll iterate and perform single deletes.
 	return NewIDStore(Adapt(bstore))
 }
 
