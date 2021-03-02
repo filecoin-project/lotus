@@ -611,7 +611,9 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 		panic(err)
 	}
 
-	s.coldPurgeSize = coldCnt
+	if coldCnt > 0 {
+		s.coldPurgeSize = coldCnt + coldCnt>>2 // overestimate a bit
+	}
 
 	log.Infow("collection done", "took", time.Since(startCollect))
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt)
@@ -701,9 +703,24 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 }
 
 func (s *SplitStore) purgeBlocks(cids []cid.Cid) error {
-	err := s.hot.DeleteMany(cids)
-	if err != nil {
-		return xerrors.Errorf("error deleting batch from hotstore: %e", err)
+	if len(cids) == 0 {
+		return nil
+	}
+
+	// don't delete one giant batch of 7M objects, but rather do smaller batches
+	done := false
+	for i := 0; done; i++ {
+		start := i * batchSize
+		end := start + batchSize
+		if end >= len(cids) {
+			end = len(cids)
+			done = true
+		}
+
+		err := s.hot.DeleteMany(cids[start:end])
+		if err != nil {
+			return xerrors.Errorf("error deleting batch from hotstore: %e", err)
+		}
 	}
 
 	return nil
@@ -854,8 +871,12 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 		panic(err)
 	}
 
-	s.coldPurgeSize = coldCnt + coldCnt>>2 // overestimate a bit
-	s.deadPurgeSize = deadCnt + deadCnt>>2 // overestimate a bit
+	if coldCnt > 0 {
+		s.coldPurgeSize = coldCnt + coldCnt>>2 // overestimate a bit
+	}
+	if deadCnt > 0 {
+		s.deadPurgeSize = deadCnt + deadCnt>>2 // overestimate a bit
+	}
 
 	log.Infow("collection done", "took", time.Since(startCollect))
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "dead", deadCnt)
