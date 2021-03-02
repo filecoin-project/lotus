@@ -1172,7 +1172,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	// Finally, flush.
-	return vm.Copy(ctx, tmpbs, syncer.store.ChainBlockstore(), mrcid)
+	return vm.Copy(ctx, tmpbs, syncer.store.StateBlockstore(), mrcid)
 }
 
 func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signature, msgs []cid.Cid, pubks [][]byte) error {

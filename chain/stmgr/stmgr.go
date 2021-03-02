@@ -430,7 +430,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
-	// XXX: Is the height correct? Or should it be epoch-1?
 	rectarr := blockadt.MakeEmptyArray(sm.cs.ActorStore(ctx))
 	for i, receipt := range receipts {
 		if err := rectarr.Set(uint64(i), receipt); err != nil {
