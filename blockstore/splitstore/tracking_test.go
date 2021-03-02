@@ -1,7 +1,7 @@
 package splitstore
 
 import (
-	"os"
+	"io/ioutil"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
@@ -44,9 +44,7 @@ func testTrackingStore(t *testing.T, tsType string) {
 		}
 	}
 
-	path := "/tmp/markset-test"
-
-	err := os.MkdirAll(path, 0777)
+	path, err := ioutil.TempDir("", "snoop-test.*")
 	if err != nil {
 		t.Fatal(err)
 	}
