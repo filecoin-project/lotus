@@ -10,10 +10,7 @@ import (
 )
 
 // TrackingStore is a persistent store that tracks blocks that are added
-// within the current compaction range, including the epoch at which they are
-// written.
-//
-// On every compaction, we iterate over
+// to the hotstore, tracking the epoch at which they are written.
 type TrackingStore interface {
 	Put(cid.Cid, abi.ChainEpoch) error
 	PutBatch([]cid.Cid, abi.ChainEpoch) error

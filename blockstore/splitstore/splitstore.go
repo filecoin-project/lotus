@@ -53,7 +53,8 @@ var (
 	// On first start, the splitstore will walk the state tree and will copy
 	// all active blocks into the hotstore.
 	warmupEpochKey = dstore.NewKey("/splitstore/warmupEpoch")
-	log            = logging.Logger("splitstore")
+
+	log = logging.Logger("splitstore")
 )
 
 const batchSize = 16384
@@ -66,12 +67,12 @@ func init() {
 type Config struct {
 	// TrackingStore is the type of tracking store to use.
 	//
-	// Supported values are: "bolt".
+	// Supported values are: "bolt" (default if omitted).
 	TrackingStoreType string
 
 	// MarkSetType is the type of mark set to use.
 	//
-	// Supported values are: "bolt", "bloom".
+	// Supported values are: "bloom" (default if omitted), "bolt".
 	MarkSetType string
 	// perform full reachability analysis (expensive) for compaction
 	// You should enable this option if you plan to use the splitstore without a backing coldstore
