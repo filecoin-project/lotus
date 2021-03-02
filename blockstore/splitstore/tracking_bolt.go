@@ -87,10 +87,10 @@ func (s *BoltTrackingStore) Delete(cid cid.Cid) error {
 	})
 }
 
-func (s *BoltTrackingStore) DeleteBatch(cids map[cid.Cid]struct{}) error {
+func (s *BoltTrackingStore) DeleteBatch(cids []cid.Cid) error {
 	return s.db.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket(s.bucketId)
-		for cid := range cids {
+		for _, cid := range cids {
 			err := b.Delete(cid.Hash())
 			if err != nil {
 				return xerrors.Errorf("error deleting %s", cid)

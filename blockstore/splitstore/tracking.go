@@ -16,7 +16,7 @@ type TrackingStore interface {
 	PutBatch([]cid.Cid, abi.ChainEpoch) error
 	Get(cid.Cid) (abi.ChainEpoch, error)
 	Delete(cid.Cid) error
-	DeleteBatch(map[cid.Cid]struct{}) error
+	DeleteBatch([]cid.Cid) error
 	ForEach(func(cid.Cid, abi.ChainEpoch) error) error
 	Sync() error
 	Close() error
