@@ -42,7 +42,8 @@ func WrapIDStore(bstore blockstore.Blockstore) Blockstore {
 	}
 
 	if bs, ok := bstore.(Blockstore); ok {
-		// we need to wrap our own becase we don't want to neuter the DeleteMany method
+		// we need to wrap our own because we don't want to neuter the DeleteMany method
+		// the underlying blockstore has implemented an (efficient) DeleteMany
 		return NewIDStore(bs)
 	}
 
