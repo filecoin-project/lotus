@@ -28,7 +28,7 @@ func OpenBoltTrackingStore(path string) (*BoltTrackingStore, error) {
 		return nil, err
 	}
 
-	bucketId := []byte("snoop")
+	bucketId := []byte("tracker")
 	err = db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(bucketId)
 		if err != nil {

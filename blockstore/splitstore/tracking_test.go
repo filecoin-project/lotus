@@ -44,7 +44,7 @@ func testTrackingStore(t *testing.T, tsType string) {
 		}
 	}
 
-	path := "/tmp/liveset-test"
+	path := "/tmp/markset-test"
 
 	err := os.MkdirAll(path, 0777)
 	if err != nil {

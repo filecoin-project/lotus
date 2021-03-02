@@ -76,7 +76,7 @@ func SplitBlockstore(cfg *config.Blockstore) func(lc fx.Lifecycle, r repo.Locked
 
 		cfg := &splitstore.Config{
 			TrackingStoreType:    cfg.Splitstore.TrackingStoreType,
-			LiveSetType:          cfg.Splitstore.LiveSetType,
+			MarkSetType:          cfg.Splitstore.MarkSetType,
 			EnableFullCompaction: cfg.Splitstore.EnableFullCompaction,
 			EnableGC:             cfg.Splitstore.EnableGC,
 			Archival:             cfg.Splitstore.Archival,

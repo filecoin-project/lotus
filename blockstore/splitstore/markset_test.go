@@ -8,36 +8,36 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-func TestBoltLiveSet(t *testing.T) {
-	testLiveSet(t, "bolt")
+func TestBoltMarkSet(t *testing.T) {
+	testMarkSet(t, "bolt")
 }
 
-func TestBloomLiveSet(t *testing.T) {
-	testLiveSet(t, "bloom")
+func TestBloomMarkSet(t *testing.T) {
+	testMarkSet(t, "bloom")
 }
 
-func testLiveSet(t *testing.T, lsType string) {
+func testMarkSet(t *testing.T, lsType string) {
 	t.Helper()
 
-	path := "/tmp/liveset-test"
+	path := "/tmp/markset-test"
 
 	err := os.MkdirAll(path, 0777)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	env, err := OpenLiveSetEnv(path, lsType)
+	env, err := OpenMarkSetEnv(path, lsType)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer env.Close() //nolint:errcheck
 
-	hotSet, err := env.NewLiveSet("hot", 0)
+	hotSet, err := env.Create("hot", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err := env.NewLiveSet("cold", 0)
+	coldSet, err := env.Create("cold", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func testLiveSet(t *testing.T, lsType string) {
 		return cid.NewCidV1(cid.Raw, h)
 	}
 
-	mustHave := func(s LiveSet, cid cid.Cid) {
+	mustHave := func(s MarkSet, cid cid.Cid) {
 		has, err := s.Has(cid)
 		if err != nil {
 			t.Fatal(err)
@@ -62,7 +62,7 @@ func testLiveSet(t *testing.T, lsType string) {
 		}
 	}
 
-	mustNotHave := func(s LiveSet, cid cid.Cid) {
+	mustNotHave := func(s MarkSet, cid cid.Cid) {
 		has, err := s.Has(cid)
 		if err != nil {
 			t.Fatal(err)
@@ -104,12 +104,12 @@ func testLiveSet(t *testing.T, lsType string) {
 		t.Fatal(err)
 	}
 
-	hotSet, err = env.NewLiveSet("hot", 0)
+	hotSet, err = env.Create("hot", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err = env.NewLiveSet("cold", 0)
+	coldSet, err = env.Create("cold", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

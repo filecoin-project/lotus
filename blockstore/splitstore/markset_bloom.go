@@ -15,22 +15,22 @@ const (
 	BloomFilterProbability = 0.01
 )
 
-type BloomLiveSetEnv struct{}
+type BloomMarkSetEnv struct{}
 
-var _ LiveSetEnv = (*BloomLiveSetEnv)(nil)
+var _ MarkSetEnv = (*BloomMarkSetEnv)(nil)
 
-type BloomLiveSet struct {
+type BloomMarkSet struct {
 	salt []byte
 	bf   *bbloom.Bloom
 }
 
-var _ LiveSet = (*BloomLiveSet)(nil)
+var _ MarkSet = (*BloomMarkSet)(nil)
 
-func NewBloomLiveSetEnv() (*BloomLiveSetEnv, error) {
-	return &BloomLiveSetEnv{}, nil
+func NewBloomMarkSetEnv() (*BloomMarkSetEnv, error) {
+	return &BloomMarkSetEnv{}, nil
 }
 
-func (e *BloomLiveSetEnv) NewLiveSet(name string, sizeHint int64) (LiveSet, error) {
+func (e *BloomMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 	size := int64(BloomFilterMinSize)
 	for size < sizeHint {
 		size += BloomFilterMinSize
@@ -47,14 +47,14 @@ func (e *BloomLiveSetEnv) NewLiveSet(name string, sizeHint int64) (LiveSet, erro
 		return nil, xerrors.Errorf("error creating bloom filter: %w", err)
 	}
 
-	return &BloomLiveSet{salt: salt, bf: bf}, nil
+	return &BloomMarkSet{salt: salt, bf: bf}, nil
 }
 
-func (e *BloomLiveSetEnv) Close() error {
+func (e *BloomMarkSetEnv) Close() error {
 	return nil
 }
 
-func (s *BloomLiveSet) saltedKey(cid cid.Cid) []byte {
+func (s *BloomMarkSet) saltedKey(cid cid.Cid) []byte {
 	hash := cid.Hash()
 	key := make([]byte, len(s.salt)+len(hash))
 	n := copy(key, s.salt)
@@ -63,15 +63,15 @@ func (s *BloomLiveSet) saltedKey(cid cid.Cid) []byte {
 	return rehash[:]
 }
 
-func (s *BloomLiveSet) Mark(cid cid.Cid) error {
+func (s *BloomMarkSet) Mark(cid cid.Cid) error {
 	s.bf.Add(s.saltedKey(cid))
 	return nil
 }
 
-func (s *BloomLiveSet) Has(cid cid.Cid) (bool, error) {
+func (s *BloomMarkSet) Has(cid cid.Cid) (bool, error) {
 	return s.bf.Has(s.saltedKey(cid)), nil
 }
 
-func (s *BloomLiveSet) Close() error {
+func (s *BloomMarkSet) Close() error {
 	return nil
 }
