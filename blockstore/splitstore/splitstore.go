@@ -163,6 +163,11 @@ func (s *SplitStore) DeleteBlock(_ cid.Cid) error {
 	return errors.New("DeleteBlock not implemented on SplitStore; don't do this Luke!") //nolint
 }
 
+func (s *SplitStore) DeleteMany(_ []cid.Cid) error {
+	// afaict we don't seem to be using this method, so it's not implemented
+	return errors.New("DeleteMany not implemented on SplitStore; don't do this Luke!") //nolint
+}
+
 func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 	has, err := s.hot.Has(cid)
 

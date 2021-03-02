@@ -318,6 +318,44 @@ func (b *Blockstore) DeleteBlock(cid cid.Cid) error {
 	})
 }
 
+func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
+
+	// toReturn tracks the byte slices to return to the pool, if we're using key
+	// prefixing. we can't return each slice to the pool after each Set, because
+	// badger holds on to the slice.
+	var toReturn [][]byte
+	if b.prefixing {
+		toReturn = make([][]byte, 0, len(cids))
+		defer func() {
+			for _, b := range toReturn {
+				KeyPool.Put(b)
+			}
+		}()
+	}
+
+	for _, cid := range cids {
+		k, pooled := b.PooledStorageKey(cid)
+		if pooled {
+			toReturn = append(toReturn, k)
+		}
+		if err := batch.Delete(k); err != nil {
+			return err
+		}
+	}
+
+	err := batch.Flush()
+	if err != nil {
+		err = fmt.Errorf("failed to delete blocks from badger blockstore: %w", err)
+	}
+	return err
+}
+
 // AllKeysChan implements Blockstore.AllKeysChan.
 func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
