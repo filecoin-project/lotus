@@ -356,7 +356,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		return xerrors.Errorf("error loading warmup epoch: %w", err)
 	}
 
-	log.Infof("starting splitstore at base epoch %d", s.baseEpoch)
+	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch)
 
 	// watch the chain
 	chain.SubscribeHeadChanges(s.HeadChange)
