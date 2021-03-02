@@ -1,7 +1,7 @@
 package blockstore
 
 import (
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -36,12 +36,22 @@ type BatchDeleter interface {
 // hash function and returns them on get/has, ignoring the contents of the
 // blockstore.
 func WrapIDStore(bstore blockstore.Blockstore) Blockstore {
-	return blockstore.NewIdStore(bstore).(Blockstore)
+	if is, ok := bstore.(*idstore); ok {
+		// already wrapped
+		return is
+	}
+
+	if bs, ok := bstore.(Blockstore); ok {
+		// we need to wrap our own becase we don't want to neuter the DeleteMany method
+		return NewIDStore(bs)
+	}
+
+	return NewIDStore(Adapt(bstore))
 }
 
 // FromDatastore creates a new blockstore backed by the given datastore.
 func FromDatastore(dstore ds.Batching) Blockstore {
-	return WrapIDStore(blockstore.NewBlockstore(dstore))
+	return WrapIDStore(Adapt(blockstore.NewBlockstore(dstore)))
 }
 
 type adaptedBlockstore struct {
