@@ -645,7 +645,7 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 	// 2.3 delete cold objects from the hotstore
 	// TODO we really want batching for this!
 	log.Info("purging cold objects from the hotstore")
-	purgeStart := time.Now()
+	startPurge := time.Now()
 	for cid := range cold {
 		// delete the object from the hotstore
 		err = s.hot.DeleteBlock(cid)
@@ -655,10 +655,10 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 			panic(err)
 		}
 	}
-	log.Infow("purging cold from hotstore done", "took", time.Since(purgeStart))
+	log.Infow("purging cold from hotstore done", "took", time.Since(startPurge))
 
 	// 2.4 remove the tracker tracking for cold objects
-	purgeStart = time.Now()
+	startPurge = time.Now()
 	log.Info("purging cold objects from tracker")
 
 	err = s.tracker.DeleteBatch(cold)
@@ -667,7 +667,7 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 		// TODO do something better here -- just continue?
 		panic(err)
 	}
-	log.Infow("purging cold from tracker done", "took", time.Since(purgeStart))
+	log.Infow("purging cold from tracker done", "took", time.Since(startPurge))
 
 	// we are done; do some housekeeping
 	err = s.tracker.Sync()
@@ -755,8 +755,8 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 	// - If a cold object is reachable in the hot range, it stays in the hotstore.
 	// - If a cold object is reachable in the cold range, it is moved to the coldstore.
 	// - If a cold object is unreachable, it is deleted if GC is enabled, otherwise moved to the coldstore.
-	startSweep := time.Now()
-	log.Info("sweeping cold objects")
+	log.Info("collecting cold objects")
+	startCollect := time.Now()
 
 	// some stats for logging
 	var stHot, stCold, stDead int
@@ -819,6 +819,7 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 		panic(err)
 	}
 
+	log.Infow("collection done", "took", time.Since(startCollect))
 	log.Infow("compaction stats", "hot", stHot, "cold", stCold, "dead", stDead)
 
 	// 2.2 copy the cold objects to the coldstore
@@ -872,7 +873,7 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 	// 2.3 delete cold objects from the hotstore
 	// TODO we really want batching for this!
 	log.Info("purging cold objects from the hotstore")
-	purgeStart := time.Now()
+	startPurge := time.Now()
 	for cid := range cold {
 		// delete the object from the hotstore
 		err = s.hot.DeleteBlock(cid)
@@ -882,10 +883,10 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 			panic(err)
 		}
 	}
-	log.Infow("purging cold from hotstore done", "took", time.Since(purgeStart))
+	log.Infow("purging cold from hotstore done", "took", time.Since(startPurge))
 
 	// 2.4 remove the tracker tracking for cold objects
-	purgeStart = time.Now()
+	startPurge = time.Now()
 	log.Info("purging cold objects from tracker")
 
 	err = s.tracker.DeleteBatch(cold)
@@ -894,13 +895,13 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 		// TODO do something better here -- just continue?
 		panic(err)
 	}
-	log.Infow("purging cold from tracker done", "took", time.Since(purgeStart))
+	log.Infow("purging cold from tracker done", "took", time.Since(startPurge))
 
 	// 3. if we have dead objects, delete them from the hotstore and remove the tracking
 	if len(dead) > 0 {
 		log.Info("deleting dead objects")
 
-		purgeStart = time.Now()
+		startPurge = time.Now()
 		log.Info("purging dead objects from the hotstore")
 		// TODO we really want batching for this!
 		for cid := range dead {
@@ -912,10 +913,10 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 				panic(err)
 			}
 		}
-		log.Infow("purging dead from hotstore done", "took", time.Since(purgeStart))
+		log.Infow("purging dead from hotstore done", "took", time.Since(startPurge))
 
 		// remove the tracker tracking
-		purgeStart := time.Now()
+		startPurge := time.Now()
 		log.Info("purging dead objects from tracker")
 
 		err = s.tracker.DeleteBatch(dead)
@@ -925,10 +926,8 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 			panic(err)
 		}
 
-		log.Infow("purging dead from tracker done", "took", time.Since(purgeStart))
+		log.Infow("purging dead from tracker done", "took", time.Since(startPurge))
 	}
-
-	log.Infow("sweeping done", "took", time.Since(startSweep))
 
 	// we are done; do some housekeeping
 	err = s.tracker.Sync()
