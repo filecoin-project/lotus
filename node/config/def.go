@@ -12,19 +12,19 @@ import (
 
 // Common is common config between full node and miner
 type Common struct {
-	API        API
-	Libp2p     Libp2p
-	Pubsub     Pubsub
-	Blockstore Blockstore
+	API    API
+	Libp2p Libp2p
+	Pubsub Pubsub
 }
 
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client  Client
-	Metrics Metrics
-	Wallet  Wallet
-	Fees    FeeConfig
+	Client     Client
+	Metrics    Metrics
+	Wallet     Wallet
+	Fees       FeeConfig
+	Chainstore Chainstore
 }
 
 // // Common
@@ -115,7 +115,7 @@ type Pubsub struct {
 	RemoteTracer string
 }
 
-type Blockstore struct {
+type Chainstore struct {
 	EnableSplitstore bool
 	Splitstore       Splitstore
 }
@@ -127,14 +127,6 @@ type Splitstore struct {
 	EnableFullCompaction bool
 	EnableGC             bool // EXPERIMENTAL
 	Archival             bool
-}
-
-func (s *Splitstore) GetHotStoreType() string {
-	// default is badger
-	if s.HotStoreType == "" {
-		return "badger"
-	}
-	return s.HotStoreType
 }
 
 // // Full Node
@@ -201,6 +193,12 @@ func DefaultFullNode() *FullNode {
 		},
 		Client: Client{
 			SimultaneousTransfers: DefaultSimultaneousTransfers,
+		},
+		Chainstore: Chainstore{
+			EnableSplitstore: false,
+			Splitstore: Splitstore{
+				HotStoreType: "badger",
+			},
 		},
 	}
 }
