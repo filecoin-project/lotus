@@ -1,7 +1,7 @@
 package splitstore
 
 import (
-	"os"
+	"io/ioutil"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
@@ -19,9 +19,7 @@ func TestBloomMarkSet(t *testing.T) {
 func testMarkSet(t *testing.T, lsType string) {
 	t.Helper()
 
-	path := "/tmp/markset-test"
-
-	err := os.MkdirAll(path, 0777)
+	path, err := ioutil.TempDir("", "sweep-test.*")
 	if err != nil {
 		t.Fatal(err)
 	}
