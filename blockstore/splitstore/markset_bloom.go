@@ -2,12 +2,12 @@ package splitstore
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 
 	"golang.org/x/xerrors"
 
 	bbloom "github.com/ipfs/bbloom"
 	cid "github.com/ipfs/go-cid"
-	blake2b "github.com/minio/blake2b-simd"
 )
 
 const (
@@ -59,7 +59,7 @@ func (s *BloomMarkSet) saltedKey(cid cid.Cid) []byte {
 	key := make([]byte, len(s.salt)+len(hash))
 	n := copy(key, s.salt)
 	copy(key[n:], hash)
-	rehash := blake2b.Sum256(key)
+	rehash := sha256.Sum256(key)
 	return rehash[:]
 }
 
