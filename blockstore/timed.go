@@ -153,6 +153,12 @@ func (t *TimedCacheBlockstore) DeleteBlock(k cid.Cid) error {
 	return multierr.Combine(t.active.DeleteBlock(k), t.inactive.DeleteBlock(k))
 }
 
+func (t *TimedCacheBlockstore) DeleteMany(ks []cid.Cid) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return multierr.Combine(t.active.DeleteMany(ks), t.inactive.DeleteMany(ks))
+}
+
 func (t *TimedCacheBlockstore) AllKeysChan(_ context.Context) (<-chan cid.Cid, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()

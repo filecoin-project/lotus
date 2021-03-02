@@ -18,12 +18,17 @@ var ErrNotFound = blockstore.ErrNotFound
 type Blockstore interface {
 	blockstore.Blockstore
 	blockstore.Viewer
+	BatchDeleter
 }
 
 // BasicBlockstore is an alias to the original IPFS Blockstore.
 type BasicBlockstore = blockstore.Blockstore
 
 type Viewer = blockstore.Viewer
+
+type BatchDeleter interface {
+	DeleteMany(cids []cid.Cid) error
+}
 
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 // The ID store filters out all puts for blocks with CIDs using the "identity"
@@ -51,6 +56,17 @@ func (a *adaptedBlockstore) View(cid cid.Cid, callback func([]byte) error) error
 		return err
 	}
 	return callback(blk.RawData())
+}
+
+func (a *adaptedBlockstore) DeleteMany(cids []cid.Cid) error {
+	for _, cid := range cids {
+		err := a.DeleteBlock(cid)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Adapt adapts a standard blockstore to a Lotus blockstore by
