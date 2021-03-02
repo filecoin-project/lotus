@@ -1549,6 +1549,11 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 }
 
 func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
+	// TODO: writing only to the state blockstore is incorrect.
+	//  At this time, both the state and chain blockstores are backed by the
+	//  universal store. When we physically segregate the stores, we will need
+	//  to route state objects to the state blockstore, and chain objects to
+	//  the chain blockstore.
 	header, err := car.LoadCar(cs.StateBlockstore(), r)
 	if err != nil {
 		return nil, xerrors.Errorf("loadcar failed: %w", err)
