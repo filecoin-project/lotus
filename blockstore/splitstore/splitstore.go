@@ -727,9 +727,24 @@ func (s *SplitStore) purgeBlocks(cids []cid.Cid) error {
 }
 
 func (s *SplitStore) purgeTracking(cids []cid.Cid) error {
-	err := s.tracker.DeleteBatch(cids)
-	if err != nil {
-		return xerrors.Errorf("error deleting batch from tracker: %w", err)
+	if len(cids) == 0 {
+		return nil
+	}
+
+	// don't delete one giant batch of 7M objects, but rather do smaller batches
+	done := false
+	for i := 0; done; i++ {
+		start := i * batchSize
+		end := start + batchSize
+		if end >= len(cids) {
+			end = len(cids)
+			done = true
+		}
+
+		err := s.tracker.DeleteBatch(cids[start:end])
+		if err != nil {
+			return xerrors.Errorf("error deleting batch from tracker: %w", err)
+		}
 	}
 
 	return nil
