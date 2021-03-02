@@ -9,6 +9,11 @@ import (
 	cid "github.com/ipfs/go-cid"
 )
 
+// TrackingStore is a persistent store that tracks blocks that are added
+// within the current compaction range, including the epoch at which they are
+// written.
+//
+// On every compaction, we iterate over
 type TrackingStore interface {
 	Put(cid.Cid, abi.ChainEpoch) error
 	PutBatch([]cid.Cid, abi.ChainEpoch) error
@@ -20,11 +25,13 @@ type TrackingStore interface {
 	Close() error
 }
 
-func OpenTrackingStore(path string, trackingStoreType string) (TrackingStore, error) {
-	switch trackingStoreType {
+// OpenTrackingStore opens a tracking store of the specified type in the
+// specified path.
+func OpenTrackingStore(path string, ttype string) (TrackingStore, error) {
+	switch ttype {
 	case "", "bolt":
-		return OpenBoltTrackingStore(filepath.Join(path, "snoop.bolt"))
+		return OpenBoltTrackingStore(filepath.Join(path, "tracker.bolt"))
 	default:
-		return nil, xerrors.Errorf("unknown tracking store type %s", trackingStoreType)
+		return nil, xerrors.Errorf("unknown tracking store type %s", ttype)
 	}
 }

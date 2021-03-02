@@ -128,7 +128,7 @@ type Blockstore struct {
 type Splitstore struct {
 	HotStoreType         string
 	TrackingStoreType    string
-	LiveSetType          string
+	MarkSetType          string
 	EnableFullCompaction bool
 	EnableGC             bool // EXPERIMENTAL
 	Archival             bool

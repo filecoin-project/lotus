@@ -9,20 +9,20 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-type BoltLiveSetEnv struct {
+type BoltMarkSetEnv struct {
 	db *bolt.DB
 }
 
-var _ LiveSetEnv = (*BoltLiveSetEnv)(nil)
+var _ MarkSetEnv = (*BoltMarkSetEnv)(nil)
 
-type BoltLiveSet struct {
+type BoltMarkSet struct {
 	db       *bolt.DB
 	bucketId []byte
 }
 
-var _ LiveSet = (*BoltLiveSet)(nil)
+var _ MarkSet = (*BoltMarkSet)(nil)
 
-func NewBoltLiveSetEnv(path string) (*BoltLiveSetEnv, error) {
+func NewBoltMarkSetEnv(path string) (*BoltMarkSetEnv, error) {
 	db, err := bolt.Open(path, 0644,
 		&bolt.Options{
 			Timeout: 1 * time.Second,
@@ -32,10 +32,10 @@ func NewBoltLiveSetEnv(path string) (*BoltLiveSetEnv, error) {
 		return nil, err
 	}
 
-	return &BoltLiveSetEnv{db: db}, nil
+	return &BoltMarkSetEnv{db: db}, nil
 }
 
-func (e *BoltLiveSetEnv) NewLiveSet(name string, hint int64) (LiveSet, error) {
+func (e *BoltMarkSetEnv) Create(name string, hint int64) (MarkSet, error) {
 	bucketId := []byte(name)
 	err := e.db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(bucketId)
@@ -49,21 +49,21 @@ func (e *BoltLiveSetEnv) NewLiveSet(name string, hint int64) (LiveSet, error) {
 		return nil, err
 	}
 
-	return &BoltLiveSet{db: e.db, bucketId: bucketId}, nil
+	return &BoltMarkSet{db: e.db, bucketId: bucketId}, nil
 }
 
-func (e *BoltLiveSetEnv) Close() error {
+func (e *BoltMarkSetEnv) Close() error {
 	return e.db.Close()
 }
 
-func (s *BoltLiveSet) Mark(cid cid.Cid) error {
+func (s *BoltMarkSet) Mark(cid cid.Cid) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(s.bucketId)
 		return b.Put(cid.Hash(), markBytes)
 	})
 }
 
-func (s *BoltLiveSet) Has(cid cid.Cid) (result bool, err error) {
+func (s *BoltMarkSet) Has(cid cid.Cid) (result bool, err error) {
 	err = s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(s.bucketId)
 		v := b.Get(cid.Hash())
@@ -74,7 +74,7 @@ func (s *BoltLiveSet) Has(cid cid.Cid) (result bool, err error) {
 	return result, err
 }
 
-func (s *BoltLiveSet) Close() error {
+func (s *BoltMarkSet) Close() error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		return tx.DeleteBucket(s.bucketId)
 	})
