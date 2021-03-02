@@ -47,14 +47,14 @@ func WrapIDStore(bstore blockstore.Blockstore) Blockstore {
 		return NewIDStore(bs)
 	}
 
-    // The underlying blockstore does not implement DeleteMany, so we need to shim it.
-    // This is less efficient as it'll iterate and perform single deletes.
+	// The underlying blockstore does not implement DeleteMany, so we need to shim it.
+	// This is less efficient as it'll iterate and perform single deletes.
 	return NewIDStore(Adapt(bstore))
 }
 
 // FromDatastore creates a new blockstore backed by the given datastore.
 func FromDatastore(dstore ds.Batching) Blockstore {
-	return WrapIDStore(Adapt(blockstore.NewBlockstore(dstore)))
+	return WrapIDStore(blockstore.NewBlockstore(dstore))
 }
 
 type adaptedBlockstore struct {
