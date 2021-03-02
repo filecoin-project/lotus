@@ -22,12 +22,16 @@ func NewIDStore(bs Blockstore) Blockstore {
 }
 
 func decodeCid(cid cid.Cid) (inline bool, data []byte, err error) {
+	if cid.Prefix().MhType != mh.IDENTITY {
+		return false, nil, nil
+	}
+
 	dmh, err := mh.Decode(cid.Hash())
 	if err != nil {
 		return false, nil, err
 	}
 
-	if dmh.Code == mh.ID {
+	if dmh.Code == mh.IDENTITY {
 		return true, dmh.Digest, nil
 	}
 
