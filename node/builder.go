@@ -594,12 +594,6 @@ func Repo(r repo.Repo) Option {
 				return xerrors.Errorf("invalid config from repo, got: %T", c)
 			}
 			cfg = &cfgp.Blockstore
-		case repo.StorageMiner:
-			cfgp, ok := c.(*config.StorageMiner)
-			if !ok {
-				return xerrors.Errorf("invalid config from repo, got: %T", c)
-			}
-			cfg = &cfgp.Blockstore
 		default:
 			cfg = &config.Blockstore{}
 		}
