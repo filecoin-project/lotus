@@ -546,7 +546,7 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 	defer coldSet.Close() //nolint:errcheck
 
 	// 1. mark reachable cold objects by looking at the objects reachable only from the cold epoch
-	log.Infow("marking reachable cold objects", "cold_epoch", coldEpoch)
+	log.Infow("marking reachable cold objects", "coldEpoch", coldEpoch)
 	startMark := time.Now()
 
 	coldTs, err := s.chain.GetTipsetByHeight(context.Background(), coldEpoch, curTs, true)
