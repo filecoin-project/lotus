@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -372,7 +373,7 @@ func (s *SplitStore) Close() error {
 		}
 	}
 
-	return s.env.Close()
+	return multierr.Combine(s.tracker.Close(), s.env.Close())
 }
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
