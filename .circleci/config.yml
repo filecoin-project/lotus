@@ -324,6 +324,18 @@ jobs:
           name: "trigger deals baseline testplan on taas"
           command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
       - run:
+          name: "trigger deals client@master / miner@commit testplan on taas"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-1-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
+          environment:
+            LOTUS_VERSION_CLIENT: master
+            LOTUS_VERSION_MINER: $CIRCLE_SHA1
+      - run:
+          name: "trigger deals client@commit / miner@master testplan on taas"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-1-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
+          environment:
+            LOTUS_VERSION_CLIENT: $CIRCLE_SHA1
+            LOTUS_VERSION_MINER: master
+      - run:
           name: "trigger payment channel stress testplan on taas"
           command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
       - run:
