@@ -11,6 +11,19 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+// UnwrapFallbackStore takes a blockstore, and returns the underlying blockstore
+// if it was a FallbackStore. Otherwise, it just returns the supplied store
+// unmodified.
+func UnwrapFallbackStore(bs Blockstore) (Blockstore, bool) {
+	if fbs, ok := bs.(*FallbackStore); ok {
+		return fbs.Blockstore, true
+	}
+	return bs, false
+}
+
+// FallbackStore is a read-through store that queries another (potentially
+// remote) source if the block is not found locally. If the block is found
+// during the fallback, it stores it in the local store.
 type FallbackStore struct {
 	Blockstore
 
@@ -30,7 +43,7 @@ func (fbs *FallbackStore) SetFallback(missFn func(context.Context, cid.Cid) (blo
 }
 
 func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
-	log.Errorw("fallbackstore: Block not found locally, fetching from the network", "cid", c)
+	log.Warnf("fallbackstore: block not found locally, fetching from the network; cid: %s", c)
 	fbs.lk.RLock()
 	defer fbs.lk.RUnlock()
 

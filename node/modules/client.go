@@ -83,7 +83,7 @@ func ClientMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locke
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	ds, err := r.Datastore(ctx, "/client")
 	if err != nil {
-		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
+		return nil, xerrors.Errorf("getting datastore out of repo: %w", err)
 	}
 
 	mds, err := multistore.NewMultiDstore(ds)

@@ -131,7 +131,7 @@ var stateTreePruneCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		bs, err := lkrepo.Blockstore(ctx, repo.BlockstoreChain)
+		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
@@ -191,7 +191,7 @@ var stateTreePruneCmd = &cli.Command{
 
 		rrLb := abi.ChainEpoch(cctx.Int64("keep-from-lookback"))
 
-		if err := cs.WalkSnapshot(ctx, ts, rrLb, true, func(c cid.Cid) error {
+		if err := cs.WalkSnapshot(ctx, ts, rrLb, true, true, func(c cid.Cid) error {
 			if goodSet.Len()%20 == 0 {
 				fmt.Printf("\renumerating keep set: %d             ", goodSet.Len())
 			}

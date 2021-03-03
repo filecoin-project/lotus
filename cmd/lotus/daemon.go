@@ -432,7 +432,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 	defer lr.Close() //nolint:errcheck
 
-	bs, err := lr.Blockstore(ctx, repo.BlockstoreChain)
+	bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 	if err != nil {
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}

@@ -201,6 +201,10 @@ func (mem *MemRepo) Lock(t RepoType) (LockedRepo, error) {
 	}, nil
 }
 
+func (lmem *lockedMemRepo) Readonly() bool {
+	return false
+}
+
 func (lmem *lockedMemRepo) checkToken() error {
 	lmem.RLock()
 	defer lmem.RUnlock()
@@ -246,10 +250,14 @@ func (lmem *lockedMemRepo) Datastore(_ context.Context, ns string) (datastore.Ba
 }
 
 func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != BlockstoreChain {
+	if domain != UniversalBlockstore {
 		return nil, ErrInvalidBlockstoreDomain
 	}
 	return lmem.mem.blockstore, nil
+}
+
+func (lmem *lockedMemRepo) SplitstorePath() (string, error) {
+	return ioutil.TempDir("", "splitstore.*")
 }
 
 func (lmem *lockedMemRepo) ListDatastores(ns string) ([]int64, error) {

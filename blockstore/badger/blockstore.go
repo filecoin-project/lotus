@@ -110,10 +110,7 @@ func Open(opts Options) (*Blockstore, error) {
 		return nil, fmt.Errorf("failed to open badger blockstore: %w", err)
 	}
 
-	bs := &Blockstore{
-		DB: db,
-	}
-
+	bs := &Blockstore{DB: db}
 	if p := opts.Prefix; p != "" {
 		bs.prefixing = true
 		bs.prefix = []byte(p)

@@ -9,10 +9,12 @@ import (
 	"go.opencensus.io/tag"
 
 	rpcmetrics "github.com/filecoin-project/go-jsonrpc/metrics"
+
+	"github.com/filecoin-project/lotus/blockstore"
 )
 
 // Distribution
-var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 5000, 10000, 20000, 50000, 100000)
+var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100000)
 
 // Global Tags
 var (
@@ -179,33 +181,37 @@ var (
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
-var DefaultViews = append([]*view.View{
-	InfoView,
-	ChainNodeHeightView,
-	ChainNodeHeightExpectedView,
-	ChainNodeWorkerHeightView,
-	BlockReceivedView,
-	BlockValidationFailureView,
-	BlockValidationSuccessView,
-	BlockValidationDurationView,
-	BlockDelayView,
-	MessagePublishedView,
-	MessageReceivedView,
-	MessageValidationFailureView,
-	MessageValidationSuccessView,
-	PeerCountView,
-	PubsubPublishMessageView,
-	PubsubDeliverMessageView,
-	PubsubRejectMessageView,
-	PubsubDuplicateMessageView,
-	PubsubRecvRPCView,
-	PubsubSendRPCView,
-	PubsubDropRPCView,
-	APIRequestDurationView,
-	VMFlushCopyCountView,
-	VMFlushCopyDurationView,
-},
-	rpcmetrics.DefaultViews...)
+var DefaultViews = func() []*view.View {
+	views := []*view.View{
+		InfoView,
+		ChainNodeHeightView,
+		ChainNodeHeightExpectedView,
+		ChainNodeWorkerHeightView,
+		BlockReceivedView,
+		BlockValidationFailureView,
+		BlockValidationSuccessView,
+		BlockValidationDurationView,
+		BlockDelayView,
+		MessagePublishedView,
+		MessageReceivedView,
+		MessageValidationFailureView,
+		MessageValidationSuccessView,
+		PeerCountView,
+		PubsubPublishMessageView,
+		PubsubDeliverMessageView,
+		PubsubRejectMessageView,
+		PubsubDuplicateMessageView,
+		PubsubRecvRPCView,
+		PubsubSendRPCView,
+		PubsubDropRPCView,
+		APIRequestDurationView,
+		VMFlushCopyCountView,
+		VMFlushCopyDurationView,
+	}
+	views = append(views, blockstore.DefaultViews...)
+	views = append(views, rpcmetrics.DefaultViews...)
+	return views
+}()
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
 func SinceInMilliseconds(startTime time.Time) float64 {
