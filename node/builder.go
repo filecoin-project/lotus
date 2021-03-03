@@ -329,6 +329,8 @@ var ChainNode = Options(
 	Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
 
+	Override(new(*full.GasPriceCache), full.NewGasPriceCache),
+
 	// Lite node API
 	ApplyIf(isLiteNode,
 		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
