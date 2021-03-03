@@ -711,7 +711,7 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 	return nil
 }
 
-func (s *SplitStore) purgeBlocks(cids []cid.Cid) error {
+func (s *SplitStore) purgeBatch(cids []cid.Cid, deleteBatch func([]cid.Cid) error) error {
 	if len(cids) == 0 {
 		return nil
 	}
@@ -726,37 +726,21 @@ func (s *SplitStore) purgeBlocks(cids []cid.Cid) error {
 			done = true
 		}
 
-		err := s.hot.DeleteMany(cids[start:end])
+		err := deleteBatch(cids[start:end])
 		if err != nil {
-			return xerrors.Errorf("error deleting batch from hotstore: %e", err)
+			return xerrors.Errorf("error deleting batch: %w", err)
 		}
 	}
 
 	return nil
 }
 
+func (s *SplitStore) purgeBlocks(cids []cid.Cid) error {
+	return s.purgeBatch(cids, s.hot.DeleteMany)
+}
+
 func (s *SplitStore) purgeTracking(cids []cid.Cid) error {
-	if len(cids) == 0 {
-		return nil
-	}
-
-	// don't delete one giant batch of 7M objects, but rather do smaller batches
-	done := false
-	for i := 0; !done; i++ {
-		start := i * batchSize
-		end := start + batchSize
-		if end >= len(cids) {
-			end = len(cids)
-			done = true
-		}
-
-		err := s.tracker.DeleteBatch(cids[start:end])
-		if err != nil {
-			return xerrors.Errorf("error deleting batch from tracker: %w", err)
-		}
-	}
-
-	return nil
+	return s.purgeBatch(cids, s.tracker.DeleteBatch)
 }
 
 func (s *SplitStore) compactFull(curTs *types.TipSet) {
