@@ -718,7 +718,7 @@ func (s *SplitStore) purgeBlocks(cids []cid.Cid) error {
 
 	// don't delete one giant batch of 7M objects, but rather do smaller batches
 	done := false
-	for i := 0; done; i++ {
+	for i := 0; !done; i++ {
 		start := i * batchSize
 		end := start + batchSize
 		if end >= len(cids) {
@@ -742,7 +742,7 @@ func (s *SplitStore) purgeTracking(cids []cid.Cid) error {
 
 	// don't delete one giant batch of 7M objects, but rather do smaller batches
 	done := false
-	for i := 0; done; i++ {
+	for i := 0; !done; i++ {
 		start := i * batchSize
 		end := start + batchSize
 		if end >= len(cids) {
