@@ -338,9 +338,6 @@ jobs:
       - run:
           name: "trigger payment channel stress testplan on taas"
           command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
-      - run:
-          name: "trigger graphsync testplan on taas"
-          command: ~/testground-cli run composition -f $HOME/testground/plans/graphsync/_compositions/stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
 
 
   build-macos:
