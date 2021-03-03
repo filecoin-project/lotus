@@ -518,10 +518,10 @@ func (s *SplitStore) compact(curTs *types.TipSet) {
 }
 
 func (s *SplitStore) estimateMarkSetSize(curTs *types.TipSet) {
-	s.markSetSize = 0
+	var count int64
 	err := s.chain.WalkSnapshot(context.Background(), curTs, 1, s.skipOldMsgs, s.skipMsgReceipts,
 		func(cid cid.Cid) error {
-			s.markSetSize++
+			count++
 			return nil
 		})
 
@@ -529,6 +529,8 @@ func (s *SplitStore) estimateMarkSetSize(curTs *types.TipSet) {
 		// TODO do something better here
 		panic(err)
 	}
+
+	s.markSetSize = count + count>>2
 }
 
 func (s *SplitStore) compactSimple(curTs *types.TipSet) {
@@ -566,7 +568,7 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 	}
 
 	if count > s.markSetSize {
-		s.markSetSize = count
+		s.markSetSize = count + count>>2
 	}
 
 	log.Infow("marking done", "took", time.Since(startMark))
@@ -790,7 +792,7 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 	}
 
 	if count > s.markSetSize {
-		s.markSetSize = count
+		s.markSetSize = count + count>>2
 	}
 
 	// Phase 1b: mark all reachable CIDs in the cold range
@@ -813,7 +815,7 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 	}
 
 	if count > s.markSetSize {
-		s.markSetSize = count
+		s.markSetSize = count + count>>2
 	}
 
 	log.Infow("marking done", "took", time.Since(startMark))
