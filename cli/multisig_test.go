@@ -20,7 +20,3 @@ func TestMultisig(t *testing.T) {
 	clientNode, _ := clitest.StartOneNodeOneMiner(ctx, t, blocktime)
 	clitest.RunMultisigTest(t, Commands, clientNode)
 }
-
-// TestMultisig does a basic test to exercise the multisig CLI
-// commands
-
