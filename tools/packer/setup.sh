@@ -22,10 +22,12 @@ MANAGED_FILES=(
   /lib/systemd/system/lotus-daemon.service
 	/lib/systemd/system/lotus-miner.service
 	/etc/motd
+	/var/lib/lotus/config.toml
 )
 
 # install libs.
 apt update
+apt -y upgrade
 apt -y install libhwloc15 ocl-icd-libopencl1
 ln -s /usr/lib/x86_64-linux-gnu/libhwloc.so.15 /usr/lib/x86_64-linux-gnu/libhwloc.so.5
 
@@ -58,8 +60,5 @@ systemctl enable lotus-daemon
 
 # Setup firewall
 ufw enable
-
-# Finally, update all packages.
-DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get -yq upgrade
+ufw allow 1234   #lotus api
+ufw allow 5678   #libp2p

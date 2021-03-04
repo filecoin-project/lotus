@@ -86,6 +86,10 @@ build {
     destination = "lotus-miner.service"
   }
   provisioner "file" {
+    source = "./tools/packer/repo/config.toml"
+    destination = "config.toml"
+  }
+  provisioner "file" {
     source = "./tools/packer/etc/motd"
     destination = "motd"
   }
