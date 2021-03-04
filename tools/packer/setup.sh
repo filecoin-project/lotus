@@ -55,3 +55,11 @@ done
 # Enable services
 systemctl daemon-reload
 systemctl enable lotus-daemon
+
+# Setup firewall
+ufw enable
+
+# Finally, update all packages.
+DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get -yq upgrade
