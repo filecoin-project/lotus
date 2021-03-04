@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	dealcli "github.com/filecoin-project/lotus/cli/deal"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
@@ -83,6 +84,7 @@ var clientCmd = &cli.Command{
 		WithCategory("storage", clientGetDealCmd),
 		WithCategory("storage", clientListAsksCmd),
 		WithCategory("storage", clientDealStatsCmd),
+		WithCategory("storage", clientShowDealsCmd),
 		WithCategory("data", clientImportCmd),
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
@@ -1111,6 +1113,23 @@ var clientRetrieveCmd = &cli.Command{
 				return xerrors.Errorf("retrieval timed out")
 			}
 		}
+	},
+}
+
+var clientShowDealsCmd = &cli.Command{
+	Name:  "show-deals",
+	Usage: "Show storage deals",
+	Action: func(cctx *cli.Context) error {
+		//api, closer, err := GetFullNodeAPI(cctx)
+		//if err != nil {
+		//	return err
+		//}
+		//defer closer()
+		var api api.FullNode
+
+		ctx := ReqContext(cctx)
+		//afmt := NewAppFmt(cctx.App)
+		return dealcli.ShowDealsCmd(ctx, api)
 	},
 }
 

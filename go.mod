@@ -72,7 +72,7 @@ require (
 	github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.5.2
+	github.com/ipfs/go-graphsync v0.6.0
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
@@ -115,6 +115,7 @@ require (
 	github.com/libp2p/go-libp2p-yamux v0.4.1
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mattn/go-colorable v0.1.6 // indirect
+	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.3
@@ -123,6 +124,7 @@ require (
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/nsf/termbox-go v0.0.0-20210114135735-d04385b850e8
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/prometheus/client_golang v1.6.0
@@ -159,3 +161,5 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/filecoin-project/go-fil-markets => ../go-fil-markets
