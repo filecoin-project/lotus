@@ -58,7 +58,7 @@ source "digitalocean" "lotus" {
 
 build {
   sources = [
-    /* "source.amazon-ebs.lotus", */
+    "source.amazon-ebs.lotus",
     "source.digitalocean.lotus",
   ]
 
