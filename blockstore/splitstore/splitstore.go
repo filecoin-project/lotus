@@ -73,11 +73,6 @@ const (
 	defaultDeadPurgeSize = 1_000_000
 )
 
-func init() {
-	// TODO temporary for debugging purposes; to be removed for merge.
-	_ = logging.SetLogLevel("splitstore", "DEBUG")
-}
-
 type Config struct {
 	// TrackingStore is the type of tracking store to use.
 	//
