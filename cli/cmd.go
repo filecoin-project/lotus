@@ -12,10 +12,6 @@ import (
 
 var log = logging.Logger("cli")
 
-const (
-	metadataTraceContext = "traceContext"
-)
-
 // custom CLI error
 
 type ErrCmdFailed struct {
