@@ -54,7 +54,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ss.Close()
+	defer ss.Close() //nolint
 
 	err = ss.Start(chain)
 	if err != nil {
@@ -107,7 +107,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _ = range ch {
+		for range ch {
 			count++
 		}
 		return count
