@@ -111,7 +111,9 @@ type ChainAccessor interface {
 }
 
 type SplitStore struct {
-	compacting int32
+	compacting  int32 // compaction (or warmp up) in progress
+	critsection int32 // compaction critical section
+	closing     int32 // the split store is closing
 
 	fullCompaction  bool
 	enableGC        bool
@@ -385,9 +387,11 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 }
 
 func (s *SplitStore) Close() error {
-	if atomic.LoadInt32(&s.compacting) == 1 {
-		log.Warn("ongoing compaction; waiting for it to finish...")
-		for atomic.LoadInt32(&s.compacting) == 1 {
+	atomic.StoreInt32(&s.closing, 1)
+
+	if atomic.LoadInt32(&s.critsection) == 1 {
+		log.Warn("ongoing compaction in critical section; waiting for it to finish...")
+		for atomic.LoadInt32(&s.critsection) == 1 {
 			time.Sleep(time.Second)
 		}
 	}
@@ -646,6 +650,16 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) {
 
 	log.Infow("collection done", "took", time.Since(startCollect))
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt)
+
+	// Enter critical section
+	atomic.StoreInt32(&s.critsection, 1)
+	defer atomic.StoreInt32(&s.critsection, 0)
+
+	// check to see if we are closing first; if that's the case just return
+	if atomic.LoadInt32(&s.closing) == 1 {
+		log.Info("splitstore is closing; aborting compaction")
+		return
+	}
 
 	// 2.2 copy the cold objects to the coldstore
 	log.Info("moving cold objects to the coldstore")
@@ -920,6 +934,16 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) {
 
 	log.Infow("collection done", "took", time.Since(startCollect))
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "dead", deadCnt)
+
+	// Enter critical section
+	atomic.StoreInt32(&s.critsection, 1)
+	defer atomic.StoreInt32(&s.critsection, 0)
+
+	// check to see if we are closing first; if that's the case just return
+	if atomic.LoadInt32(&s.closing) == 1 {
+		log.Info("splitstore is closing; aborting compaction")
+		return
+	}
 
 	// 2.2 copy the cold objects to the coldstore
 	log.Info("moving cold objects to the coldstore")
