@@ -77,7 +77,7 @@ var runCmd = &cli.Command{
 
 		// Register all metric views
 		if err := view.Register(
-			metrics.DefaultViews...,
+			metrics.ChainNodeViews...,
 		); err != nil {
 			log.Fatalf("Cannot register the view: %v", err)
 		}

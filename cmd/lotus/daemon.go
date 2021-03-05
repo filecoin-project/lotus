@@ -192,7 +192,20 @@ var DaemonCmd = &cli.Command{
 			return fmt.Errorf("unrecognized profile type: %q", profile)
 		}
 
-		ctx, _ := tag.New(context.Background(), tag.Insert(metrics.Version, build.BuildVersion), tag.Insert(metrics.Commit, build.CurrentCommit))
+		ctx, _ := tag.New(context.Background(),
+			tag.Insert(metrics.Version, build.BuildVersion),
+			tag.Insert(metrics.Commit, build.CurrentCommit),
+			tag.Insert(metrics.NodeType, "chain"),
+		)
+		// Register all metric views
+		if err = view.Register(
+			metrics.ChainNodeViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
+		// Set the metric to one so it is published to the exporter
+		stats.Record(ctx, metrics.LotusInfo.M(1))
+
 		{
 			dir, err := homedir.Expand(cctx.String("repo"))
 			if err != nil {
@@ -331,16 +344,6 @@ var DaemonCmd = &cli.Command{
 				log.Errorf("importing key failed: %+v", err)
 			}
 		}
-
-		// Register all metric views
-		if err = view.Register(
-			metrics.DefaultViews...,
-		); err != nil {
-			log.Fatalf("Cannot register the view: %v", err)
-		}
-
-		// Set the metric to one so it is published to the exporter
-		stats.Record(ctx, metrics.LotusInfo.M(1))
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
