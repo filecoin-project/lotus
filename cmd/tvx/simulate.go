@@ -154,7 +154,7 @@ func runSimulateCmd(_ *cli.Context) error {
 	version, err := FullAPI.Version(ctx)
 	if err != nil {
 		log.Printf("failed to get node version: %s; falling back to unknown", err)
-		version = api.Version{}
+		version = api.APIVersion{}
 	}
 
 	nv, err := FullAPI.StateNetworkVersion(ctx, ts.Key())

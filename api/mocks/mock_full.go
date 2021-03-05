@@ -6,6 +6,8 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -31,7 +33,6 @@ import (
 	network0 "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
-	reflect "reflect"
 )
 
 // MockFullNode is a mock of FullNode interface
@@ -2764,10 +2765,10 @@ func (mr *MockFullNodeMockRecorder) SyncValidateTipset(arg0, arg1 interface{}) *
 }
 
 // Version mocks base method
-func (m *MockFullNode) Version(arg0 context.Context) (api.Version, error) {
+func (m *MockFullNode) Version(arg0 context.Context) (api.APIVersion, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Version", arg0)
-	ret0, _ := ret[0].(api.Version)
+	ret0, _ := ret[0].(api.APIVersion)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

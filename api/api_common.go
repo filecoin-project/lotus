@@ -11,8 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
-
-	"github.com/filecoin-project/lotus/build"
 )
 
 type Common interface {
@@ -57,7 +55,7 @@ type Common interface {
 	ID(context.Context) (peer.ID, error)
 
 	// Version provides information about API provider
-	Version(context.Context) (Version, error)
+	Version(context.Context) (APIVersion, error)
 
 	LogList(context.Context) ([]string, error)
 	LogSetLevel(context.Context, string, string) error
@@ -71,15 +69,15 @@ type Common interface {
 	Closing(context.Context) (<-chan struct{}, error)
 }
 
-// Version provides various build-time information
-type Version struct {
+// APIVersion provides various build-time information
+type APIVersion struct {
 	Version string
 
 	// APIVersion is a binary encoded semver version of the remote implementing
 	// this api
 	//
 	// See APIVersion in build/version.go
-	APIVersion build.Version
+	APIVersion Version
 
 	// TODO: git commit / os / genesis cid?
 
@@ -87,7 +85,7 @@ type Version struct {
 	BlockDelay uint64
 }
 
-func (v Version) String() string {
+func (v APIVersion) String() string {
 	return fmt.Sprintf("%s+api%s", v.Version, v.APIVersion.String())
 }
 
