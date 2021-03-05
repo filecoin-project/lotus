@@ -709,11 +709,11 @@ workflows:
           requires:
             - build-all
             - build-ntwk-calibration
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
          
