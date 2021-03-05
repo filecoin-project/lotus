@@ -82,6 +82,13 @@ var (
 	WorkerCallsReturnedCount     = stats.Int64("sealing/worker_calls_returned_count", "Counter of returned worker tasks", stats.UnitDimensionless)
 	WorkerCallsReturnedDuration  = stats.Float64("sealing/worker_calls_returned_ms", "Counter of returned worker tasks", stats.UnitMilliseconds)
 	WorkerUntrackedCallsReturned = stats.Int64("sealing/worker_untracked_calls_returned", "Counter of returned untracked worker tasks", stats.UnitDimensionless)
+
+	// splitstore
+	SplitstoreMiss                  = stats.Int64("splitstore/miss", "Number of misses in hotstre access", stats.UnitDimensionless)
+	SplitstoreCompactionTimeSeconds = stats.Float64("splitstore/compaction_time", "Compaction time in seconds", stats.UnitSeconds)
+	SplitstoreCompactionHot         = stats.Int64("splitstore/hot", "Number of hot blocks in last compaction", stats.UnitDimensionless)
+	SplitstoreCompactionCold        = stats.Int64("splitstore/cold", "Number of cold blocks in last compaction", stats.UnitDimensionless)
+	SplitstoreCompactionDead        = stats.Int64("splitstore/dead", "Number of dead blocks in last compaction", stats.UnitDimensionless)
 )
 
 var (
@@ -222,6 +229,28 @@ var (
 		Aggregation: workMillisecondsDistribution,
 		TagKeys:     []tag.Key{TaskType, WorkerHostname},
 	}
+
+	// splitstore
+	SplitstoreMissView = &view.View{
+		Measure:     SplitstoreMiss,
+		Aggregation: view.Count(),
+	}
+	SplitstoreCompactionTimeSecondsView = &view.View{
+		Measure:     SplitstoreCompactionTimeSeconds,
+		Aggregation: view.LastValue(),
+	}
+	SplitstoreCompactionHotView = &view.View{
+		Measure:     SplitstoreCompactionHot,
+		Aggregation: view.LastValue(),
+	}
+	SplitstoreCompactionColdView = &view.View{
+		Measure:     SplitstoreCompactionCold,
+		Aggregation: view.Sum(),
+	}
+	SplitstoreCompactionDeadView = &view.View{
+		Measure:     SplitstoreCompactionDead,
+		Aggregation: view.Sum(),
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
@@ -258,6 +287,11 @@ var ChainNodeViews = append([]*view.View{
 	PubsubDropRPCView,
 	VMFlushCopyCountView,
 	VMFlushCopyDurationView,
+	SplitstoreMissView,
+	SplitstoreCompactionTimeSecondsView,
+	SplitstoreCompactionHotView,
+	SplitstoreCompactionColdView,
+	SplitstoreCompactionDeadView,
 }, DefaultViews...)
 
 var MinerNodeViews = append([]*view.View{
