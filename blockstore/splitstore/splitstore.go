@@ -210,7 +210,7 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 
 	case bstore.ErrNotFound:
 		blk, err = s.cold.Get(cid)
-		if err != nil {
+		if err == nil {
 			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
 		}
 		return blk, err
@@ -229,7 +229,7 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 
 	case bstore.ErrNotFound:
 		size, err = s.cold.GetSize(cid)
-		if err != nil {
+		if err == nil {
 			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
 		}
 		return size, err
