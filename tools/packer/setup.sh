@@ -28,8 +28,8 @@ MANAGED_FILES=(
 # install libs.
 DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get -y upgrade
 apt-get -y install libhwloc15 ocl-icd-libopencl1
+apt-get -y upgrade
 ln -s /usr/lib/x86_64-linux-gnu/libhwloc.so.15 /usr/lib/x86_64-linux-gnu/libhwloc.so.5
 
 # Create lotus user
