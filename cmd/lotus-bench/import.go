@@ -11,6 +11,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"sort"
@@ -20,12 +21,15 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	"github.com/ipfs/go-cid"
+	levelds "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -119,6 +123,13 @@ var importBenchCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "use-native-badger",
 		},
+		&cli.BoolFlag{
+			Name: "use-splitstore",
+		},
+		&cli.StringFlag{
+			Name:  "metadata-store",
+			Usage: "path to metadata store (required with --use-splitstore)",
+		},
 		&cli.StringFlag{
 			Name: "car",
 			Usage: "path to CAR file; required for import; on validation, either " +
@@ -208,6 +219,45 @@ var importBenchCmd = &cli.Command{
 			}
 			opts.SyncWrites = false
 			bs, err = badgerbs.Open(opts)
+
+		case cctx.Bool("use-splitstore"):
+			log.Info("using splitstore")
+
+			metadataPath := cctx.String("metadata-store")
+			if metadataPath == "" {
+				return fmt.Errorf("use-splitstore requires metadata-path flag")
+			}
+
+			// tdir is the splitstore path
+			//  cold will be in <path>/../datastore
+			//  hot will be in .<path>/splitstore.
+			var (
+				coldPath, _ = filepath.Rel(tdir, "../datastore")
+				coldOpts, _ = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false)
+			)
+			coldBs, err := badgerbs.Open(coldOpts)
+			if err != nil {
+				return err
+			}
+
+			var (
+				hotPath, _ = filepath.Rel(tdir, "../hot.badger")
+				hotOpts, _ = repo.BadgerBlockstoreOptions(repo.HotBlockstore, hotPath, false)
+			)
+			hotBs, err := badgerbs.Open(hotOpts)
+			if err != nil {
+				return err
+			}
+
+			metadataDs, err := levelds.NewDatastore(metadataPath, &levelds.Options{
+				Compression: ldbopts.NoCompression,
+				NoSync:      false,
+				Strict:      ldbopts.StrictAll,
+				ReadOnly:    true, // splitstore will not attempt to write.
+			})
+
+			cfg := new(splitstore.Config) // default
+			bs, err = splitstore.Open(tdir, metadataDs, hotBs, coldBs, cfg)
 
 		default: // legacy badger via datastore.
 			log.Info("using legacy badger")
