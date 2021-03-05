@@ -79,7 +79,7 @@ const (
 type Config struct {
 	// TrackingStore is the type of tracking store to use.
 	//
-	// Supported values are: "bolt" (default if omitted).
+	// Supported values are: "bolt" (default if omitted), "mem" (for tests and readonly access).
 	TrackingStoreType string
 
 	// MarkSetType is the type of mark set to use.
