@@ -99,6 +99,26 @@ func (a *CommonAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 	return out, nil
 }
 
+func (a *CommonAPI) NetPeerInfo(_ context.Context, p peer.ID) (*api.ExtendedPeerInfo, error) {
+	info := &api.ExtendedPeerInfo{ID: p}
+
+	agent, err := a.Host.Peerstore().Get(p, "AgentVersion")
+	if err == nil {
+		info.Agent = agent.(string)
+	}
+
+	for _, a := range a.Host.Peerstore().Addrs(p) {
+		info.Addrs = append(info.Addrs, a.String())
+	}
+
+	protocols, err := a.Host.Peerstore().GetProtocols(p)
+	if err == nil {
+		info.Protocols = protocols
+	}
+
+	return info, nil
+}
+
 func (a *CommonAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
 	if swrm, ok := a.Host.Network().(*swarm.Swarm); ok {
 		swrm.Backoff().Clear(p.ID)
