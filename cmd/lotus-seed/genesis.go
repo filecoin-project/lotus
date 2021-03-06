@@ -38,6 +38,7 @@ var genesisCmd = &cli.Command{
 		genesisAddMinerCmd,
 		genesisAddMsigsCmd,
 		genesisSetVRKCmd,
+		genesisSetRemainderCmd,
 		genesisCarCmd,
 	},
 }
@@ -391,6 +392,103 @@ var genesisSetVRKCmd = &cli.Command{
 			}
 
 			template.VerifregRootKey = act
+		} else {
+			return xerrors.Errorf("must include either --account or --multisig flag")
+		}
+
+		b, err = json.MarshalIndent(&template, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+			return err
+		}
+		return nil
+	},
+}
+
+var genesisSetRemainderCmd = &cli.Command{
+	Name:  "set-remainder",
+	Usage: "Set the remainder actor",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "multisig",
+			Usage: "CSV file to parse the multisig that will be set as the remainder actor",
+		},
+		&cli.StringFlag{
+			Name:  "account",
+			Usage: "pubkey address that will be set as the remainder key (must NOT be declared anywhere else, since it must be given ID 90)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("must specify template file")
+		}
+
+		genf, err := homedir.Expand(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		csvf, err := homedir.Expand(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		var template genesis.Template
+		b, err := ioutil.ReadFile(genf)
+		if err != nil {
+			return xerrors.Errorf("read genesis template: %w", err)
+		}
+
+		if err := json.Unmarshal(b, &template); err != nil {
+			return xerrors.Errorf("unmarshal genesis template: %w", err)
+		}
+
+		if cctx.IsSet("account") {
+			addr, err := address.NewFromString(cctx.String("account"))
+			if err != nil {
+				return err
+			}
+
+			am := genesis.AccountMeta{Owner: addr}
+
+			template.RemainderAccount = genesis.Actor{
+				Type:    genesis.TAccount,
+				Balance: big.Zero(),
+				Meta:    am.ActorMeta(),
+			}
+		} else if cctx.IsSet("multisig") {
+
+			entries, err := parseMultisigCsv(csvf)
+			if err != nil {
+				return xerrors.Errorf("parsing multisig csv file: %w", err)
+			}
+
+			if len(entries) == 0 {
+				return xerrors.Errorf("no msig entries in csv file: %w", err)
+			}
+
+			e := entries[0]
+			if len(e.Addresses) != e.N {
+				return fmt.Errorf("entry had mismatch between 'N' and number of addresses")
+			}
+
+			msig := &genesis.MultisigMeta{
+				Signers:         e.Addresses,
+				Threshold:       e.M,
+				VestingDuration: monthsToBlocks(e.VestingMonths),
+				VestingStart:    0,
+			}
+
+			act := genesis.Actor{
+				Type:    genesis.TMultisig,
+				Balance: abi.TokenAmount(e.Amount),
+				Meta:    msig.ActorMeta(),
+			}
+
+			template.RemainderAccount = act
 		} else {
 			return xerrors.Errorf("must include either --account or --multisig flag")
 		}
