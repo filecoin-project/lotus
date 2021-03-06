@@ -71,7 +71,16 @@ var NetPeers = &cli.Command{
 		})
 
 		if cctx.Bool("extended") {
+			// deduplicate
+			seen := make(map[peer.ID]struct{})
+
 			for _, peer := range peers {
+				_, dup := seen[peer.ID]
+				if dup {
+					continue
+				}
+				seen[peer.ID] = struct{}{}
+
 				info, err := api.NetPeerInfo(ctx, peer.ID)
 				if err != nil {
 					log.Warnf("error getting extended peer info: %s", err)
