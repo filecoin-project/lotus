@@ -233,13 +233,36 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	}
 
-	vregroot, err := address.NewIDAddress(80)
-	if err != nil {
-		return nil, nil, err
-	}
+	switch template.VerifregRootKey.Type {
+	case genesis.TAccount:
+		var ainfo genesis.AccountMeta
+		if err := json.Unmarshal(template.VerifregRootKey.Meta, &ainfo); err != nil {
+			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		st, err := cst.Put(ctx, &account0.State{Address: ainfo.Owner})
+		if err != nil {
+			return nil, nil, err
+		}
 
-	if err = createMultisigAccount(ctx, bs, cst, state, vregroot, template.VerifregRootKey, keyIDs); err != nil {
-		return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
+		_, ok := keyIDs[ainfo.Owner]
+		if ok {
+			return nil, nil, fmt.Errorf("rootkey account has already been declared, cannot be assigned 80: %s", ainfo.Owner)
+		}
+
+		err = state.SetActor(builtin.RootVerifierAddress, &types.Actor{
+			Code:    builtin0.AccountActorCodeID,
+			Balance: template.VerifregRootKey.Balance,
+			Head:    st,
+		})
+		if err != nil {
+			return nil, nil, xerrors.Errorf("setting verifreg rootkey account: %w", err)
+		}
+	case genesis.TMultisig:
+		if err = createMultisigAccount(ctx, bs, cst, state, builtin.RootVerifierAddress, template.VerifregRootKey, keyIDs); err != nil {
+			return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
+		}
+	default:
+		return nil, nil, xerrors.Errorf("unknown account type for verifreg rootkey: %w", err)
 	}
 
 	// Setup the first verifier as ID-address 81
