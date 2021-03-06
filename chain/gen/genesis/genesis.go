@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/filecoin-project/lotus/journal"
 
 	"github.com/ipfs/go-cid"
@@ -323,8 +324,36 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	template.RemainderAccount.Balance = remainingFil
 
-	if err := createMultisigAccount(ctx, bs, cst, state, builtin.ReserveAddress, template.RemainderAccount, keyIDs); err != nil {
-		return nil, nil, xerrors.Errorf("failed to set up remainder account: %w", err)
+	switch template.RemainderAccount.Type {
+	case genesis.TAccount:
+		var ainfo genesis.AccountMeta
+		if err := json.Unmarshal(template.RemainderAccount.Meta, &ainfo); err != nil {
+			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		st, err := cst.Put(ctx, &account0.State{Address: ainfo.Owner})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		_, ok := keyIDs[ainfo.Owner]
+		if ok {
+			return nil, nil, fmt.Errorf("remainder account has already been declared, cannot be assigned 90: %s", ainfo.Owner)
+		}
+
+		err = state.SetActor(builtin.ReserveAddress, &types.Actor{
+			Code:    builtin0.AccountActorCodeID,
+			Balance: template.RemainderAccount.Balance,
+			Head:    st,
+		})
+		if err != nil {
+			return nil, nil, xerrors.Errorf("setting remainder account: %w", err)
+		}
+	case genesis.TMultisig:
+		if err = createMultisigAccount(ctx, bs, cst, state, builtin.ReserveAddress, template.RemainderAccount, keyIDs); err != nil {
+			return nil, nil, xerrors.Errorf("failed to set up remainder: %w", err)
+		}
+	default:
+		return nil, nil, xerrors.Errorf("unknown account type for remainder: %w", err)
 	}
 
 	return state, keyIDs, nil
