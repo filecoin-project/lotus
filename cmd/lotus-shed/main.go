@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/cmd/lotus-shed/dagspliter"
 )
 
 var log = logging.Logger("lotus-shed")
@@ -51,6 +52,8 @@ func main() {
 		rpcCmd,
 		cidCmd,
 		blockmsgidCmd,
+		carCmd,
+		dagspliter.Cmd,
 	}
 
 	app := &cli.App{
