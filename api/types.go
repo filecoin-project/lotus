@@ -99,3 +99,10 @@ type NetBlockList struct {
 	IPAddrs   []string
 	IPSubnets []string
 }
+
+type ExtendedPeerInfo struct {
+	ID        peer.ID
+	Agent     string
+	Addrs     []string
+	Protocols []string
+}

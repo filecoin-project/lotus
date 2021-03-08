@@ -48,6 +48,11 @@ var NetPeers = &cli.Command{
 			Aliases: []string{"a"},
 			Usage:   "Print agent name",
 		},
+		&cli.BoolFlag{
+			Name:    "extended",
+			Aliases: []string{"x"},
+			Usage:   "Print extended peer information in json",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
@@ -65,18 +70,42 @@ var NetPeers = &cli.Command{
 			return strings.Compare(string(peers[i].ID), string(peers[j].ID)) > 0
 		})
 
-		for _, peer := range peers {
-			var agent string
-			if cctx.Bool("agent") {
-				agent, err = api.NetAgentVersion(ctx, peer.ID)
+		if cctx.Bool("extended") {
+			// deduplicate
+			seen := make(map[peer.ID]struct{})
+
+			for _, peer := range peers {
+				_, dup := seen[peer.ID]
+				if dup {
+					continue
+				}
+				seen[peer.ID] = struct{}{}
+
+				info, err := api.NetPeerInfo(ctx, peer.ID)
 				if err != nil {
-					log.Warnf("getting agent version: %s", err)
+					log.Warnf("error getting extended peer info: %s", err)
 				} else {
-					agent = ", " + agent
+					bytes, err := json.Marshal(&info)
+					if err != nil {
+						log.Warnf("error marshalling extended peer info: %s", err)
+					} else {
+						fmt.Println(string(bytes))
+					}
 				}
 			}
-
-			fmt.Printf("%s, %s%s\n", peer.ID, peer.Addrs, agent)
+		} else {
+			for _, peer := range peers {
+				var agent string
+				if cctx.Bool("agent") {
+					agent, err = api.NetAgentVersion(ctx, peer.ID)
+					if err != nil {
+						log.Warnf("getting agent version: %s", err)
+					} else {
+						agent = ", " + agent
+					}
+				}
+				fmt.Printf("%s, %s%s\n", peer.ID, peer.Addrs, agent)
+			}
 		}
 
 		return nil
@@ -88,8 +117,9 @@ var netScores = &cli.Command{
 	Usage: "Print peers' pubsub scores",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "extended",
-			Usage: "print extended peer scores in json",
+			Name:    "extended",
+			Aliases: []string{"x"},
+			Usage:   "print extended peer scores in json",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
