@@ -710,16 +710,7 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) error {
 		return xerrors.Errorf("error syncing tracker: %w", err)
 	}
 
-	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
-		log.Infof("garbage collecting hotstore")
-		startGC := time.Now()
-		err = gc.CollectGarbage()
-		if err != nil {
-			log.Warnf("error garbage collecting hotstore: %s", err)
-		} else {
-			log.Infow("garbage collection done", "took", time.Since(startGC))
-		}
-	}
+	s.gcHotstore()
 
 	err = s.setBaseEpoch(coldEpoch)
 	if err != nil {
@@ -804,6 +795,19 @@ func (s *SplitStore) purgeBlocks(cids []cid.Cid) error {
 
 func (s *SplitStore) purgeTracking(cids []cid.Cid) error {
 	return s.purgeBatch(cids, s.tracker.DeleteBatch)
+}
+
+func (s *SplitStore) gcHotstore() {
+	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
+		log.Infof("garbage collecting hotstore")
+		startGC := time.Now()
+		err := gc.CollectGarbage()
+		if err != nil {
+			log.Warnf("error garbage collecting hotstore: %s", err)
+		} else {
+			log.Infow("garbage collection done", "took", time.Since(startGC))
+		}
+	}
 }
 
 func (s *SplitStore) compactFull(curTs *types.TipSet) error {
@@ -1016,16 +1020,7 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) error {
 		return xerrors.Errorf("error syncing tracker: %w", err)
 	}
 
-	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
-		log.Infof("garbage collecting hotstore")
-		startGC := time.Now()
-		err = gc.CollectGarbage()
-		if err != nil {
-			log.Warnf("error garbage collecting hotstore: %s", err)
-		} else {
-			log.Infow("garbage collection done", "took", time.Since(startGC))
-		}
-	}
+	s.gcHotstore()
 
 	err = s.setBaseEpoch(coldEpoch)
 	if err != nil {
