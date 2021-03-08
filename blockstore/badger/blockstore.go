@@ -137,7 +137,11 @@ func (b *Blockstore) CollectGarbage() error {
 		return ErrBlockstoreClosed
 	}
 
-	err := b.DB.RunValueLogGC(0.125)
+	var err error
+	for err == nil {
+		err = b.DB.RunValueLogGC(0.125)
+	}
+
 	if err == badger.ErrNoRewrite {
 		// not really an error in this case
 		return nil
