@@ -121,6 +121,7 @@
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
+  * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
   * [NetPubsubScores](#NetPubsubScores)
 * [Paych](#Paych)
@@ -2884,6 +2885,28 @@ Response:
 {
   "Addrs": null,
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+}
+```
+
+### NetPeerInfo
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response:
+```json
+{
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Agent": "string value",
+  "Addrs": null,
+  "Protocols": null
 }
 ```
 

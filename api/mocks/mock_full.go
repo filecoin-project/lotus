@@ -1615,6 +1615,21 @@ func (mr *MockFullNodeMockRecorder) NetFindPeer(arg0, arg1 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetFindPeer", reflect.TypeOf((*MockFullNode)(nil).NetFindPeer), arg0, arg1)
 }
 
+// NetPeerInfo mocks base method
+func (m *MockFullNode) NetPeerInfo(arg0 context.Context, arg1 peer.ID) (*api.ExtendedPeerInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetPeerInfo", arg0, arg1)
+	ret0, _ := ret[0].(*api.ExtendedPeerInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetPeerInfo indicates an expected call of NetPeerInfo
+func (mr *MockFullNodeMockRecorder) NetPeerInfo(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPeerInfo", reflect.TypeOf((*MockFullNode)(nil).NetPeerInfo), arg0, arg1)
+}
+
 // NetPeers mocks base method
 func (m *MockFullNode) NetPeers(arg0 context.Context) ([]peer.AddrInfo, error) {
 	m.ctrl.T.Helper()
