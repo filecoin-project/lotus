@@ -7,6 +7,9 @@ import (
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/google/uuid"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
@@ -17,8 +20,6 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	ma "github.com/multiformats/go-multiaddr"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
@@ -110,10 +111,21 @@ func (a *CommonAPI) NetPeerInfo(_ context.Context, p peer.ID) (*api.ExtendedPeer
 	for _, a := range a.Host.Peerstore().Addrs(p) {
 		info.Addrs = append(info.Addrs, a.String())
 	}
+	sort.Strings(info.Addrs)
 
 	protocols, err := a.Host.Peerstore().GetProtocols(p)
 	if err == nil {
+		sort.Strings(protocols)
 		info.Protocols = protocols
+	}
+
+	if cm := a.Host.ConnManager().GetTagInfo(p); cm != nil {
+		info.ConnMgrMeta = &api.ConnMgrInfo{
+			FirstSeen: cm.FirstSeen,
+			Value:     cm.Value,
+			Tags:      cm.Tags,
+			Conns:     cm.Conns,
+		}
 	}
 
 	return info, nil

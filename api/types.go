@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -101,8 +102,16 @@ type NetBlockList struct {
 }
 
 type ExtendedPeerInfo struct {
-	ID        peer.ID
-	Agent     string
-	Addrs     []string
-	Protocols []string
+	ID          peer.ID
+	Agent       string
+	Addrs       []string
+	Protocols   []string
+	ConnMgrMeta *ConnMgrInfo
+}
+
+type ConnMgrInfo struct {
+	FirstSeen time.Time
+	Value     int
+	Tags      map[string]int
+	Conns     map[string]time.Time
 }
