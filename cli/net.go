@@ -97,7 +97,7 @@ var NetPeers = &cli.Command{
 			for _, peer := range peers {
 				var agent string
 				if cctx.Bool("agent") {
-					agent, err := api.NetAgentVersion(ctx, peer.ID)
+					agent, err = api.NetAgentVersion(ctx, peer.ID)
 					if err != nil {
 						log.Warnf("getting agent version: %s", err)
 					} else {
