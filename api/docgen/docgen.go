@@ -123,6 +123,8 @@ func init() {
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)
+	addExample(map[string]int{"name": 42})
+	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0)})
 	addExample(&types.ExecutionTrace{
 		Msg:    exampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
 		MsgRct: exampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),

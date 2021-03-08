@@ -2906,7 +2906,17 @@ Response:
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Agent": "string value",
   "Addrs": null,
-  "Protocols": null
+  "Protocols": null,
+  "ConnMgrMeta": {
+    "FirstSeen": "0001-01-01T00:00:00Z",
+    "Value": 123,
+    "Tags": {
+      "name": 42
+    },
+    "Conns": {
+      "name": "2021-03-08T23:52:18+01:00"
+    }
+  }
 }
 ```
 
