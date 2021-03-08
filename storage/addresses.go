@@ -40,7 +40,11 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 		delete(defaultCtl, mi.Owner)
 		delete(defaultCtl, mi.Worker)
 
-		for _, addr := range append(append([]address.Address{}, as.PreCommitControl...), as.CommitControl...) {
+		configCtl := append([]address.Address{}, as.PreCommitControl...)
+		configCtl = append(configCtl, as.CommitControl...)
+		configCtl = append(configCtl, as.TerminateControl...)
+
+		for _, addr := range configCtl {
 			if addr.Protocol() != address.ID {
 				var err error
 				addr, err = a.StateLookupID(ctx, addr, types.EmptyTSK)
@@ -97,7 +101,7 @@ func pickAddress(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, goodF
 		}
 	}
 
-	log.Warnw("No address had enough funds to for full PoSt message Fee, selecting least bad address", "address", leastBad, "balance", types.FIL(bestAvail), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
+	log.Warnw("No address had enough funds to for full message Fee, selecting least bad address", "address", leastBad, "balance", types.FIL(bestAvail), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
 
 	return leastBad, bestAvail, nil
 }
