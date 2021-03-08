@@ -131,6 +131,25 @@ func (b *Blockstore) Close() error {
 	return b.DB.Close()
 }
 
+// CollectGarbage runs garbage collection on the value log
+func (b *Blockstore) CollectGarbage() error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	var err error
+	for err == nil {
+		err = b.DB.RunValueLogGC(0.125)
+	}
+
+	if err == badger.ErrNoRewrite {
+		// not really an error in this case
+		return nil
+	}
+
+	return err
+}
+
 // View implements blockstore.Viewer, which leverages zero-copy read-only
 // access to values.
 func (b *Blockstore) View(cid cid.Cid, fn func([]byte) error) error {
@@ -316,6 +335,44 @@ func (b *Blockstore) DeleteBlock(cid cid.Cid) error {
 	return b.DB.Update(func(txn *badger.Txn) error {
 		return txn.Delete(k)
 	})
+}
+
+func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
+
+	// toReturn tracks the byte slices to return to the pool, if we're using key
+	// prefixing. we can't return each slice to the pool after each Set, because
+	// badger holds on to the slice.
+	var toReturn [][]byte
+	if b.prefixing {
+		toReturn = make([][]byte, 0, len(cids))
+		defer func() {
+			for _, b := range toReturn {
+				KeyPool.Put(b)
+			}
+		}()
+	}
+
+	for _, cid := range cids {
+		k, pooled := b.PooledStorageKey(cid)
+		if pooled {
+			toReturn = append(toReturn, k)
+		}
+		if err := batch.Delete(k); err != nil {
+			return err
+		}
+	}
+
+	err := batch.Flush()
+	if err != nil {
+		err = fmt.Errorf("failed to delete blocks from badger blockstore: %w", err)
+	}
+	return err
 }
 
 // AllKeysChan implements Blockstore.AllKeysChan.

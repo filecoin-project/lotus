@@ -96,6 +96,14 @@ func (bs *BufferedBlockstore) DeleteBlock(c cid.Cid) error {
 	return bs.write.DeleteBlock(c)
 }
 
+func (bs *BufferedBlockstore) DeleteMany(cids []cid.Cid) error {
+	if err := bs.read.DeleteMany(cids); err != nil {
+		return err
+	}
+
+	return bs.write.DeleteMany(cids)
+}
+
 func (bs *BufferedBlockstore) View(c cid.Cid, callback func([]byte) error) error {
 	// both stores are viewable.
 	if err := bs.write.View(c, callback); err == ErrNotFound {

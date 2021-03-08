@@ -1,7 +1,7 @@
 package blockstore
 
 import (
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -18,6 +18,7 @@ var ErrNotFound = blockstore.ErrNotFound
 type Blockstore interface {
 	blockstore.Blockstore
 	blockstore.Viewer
+	BatchDeleter
 }
 
 // BasicBlockstore is an alias to the original IPFS Blockstore.
@@ -25,13 +26,30 @@ type BasicBlockstore = blockstore.Blockstore
 
 type Viewer = blockstore.Viewer
 
+type BatchDeleter interface {
+	DeleteMany(cids []cid.Cid) error
+}
+
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 // The ID store filters out all puts for blocks with CIDs using the "identity"
 // hash function. It also extracts inlined blocks from CIDs using the identity
 // hash function and returns them on get/has, ignoring the contents of the
 // blockstore.
 func WrapIDStore(bstore blockstore.Blockstore) Blockstore {
-	return blockstore.NewIdStore(bstore).(Blockstore)
+	if is, ok := bstore.(*idstore); ok {
+		// already wrapped
+		return is
+	}
+
+	if bs, ok := bstore.(Blockstore); ok {
+		// we need to wrap our own because we don't want to neuter the DeleteMany method
+		// the underlying blockstore has implemented an (efficient) DeleteMany
+		return NewIDStore(bs)
+	}
+
+	// The underlying blockstore does not implement DeleteMany, so we need to shim it.
+	// This is less efficient as it'll iterate and perform single deletes.
+	return NewIDStore(Adapt(bstore))
 }
 
 // FromDatastore creates a new blockstore backed by the given datastore.
@@ -51,6 +69,17 @@ func (a *adaptedBlockstore) View(cid cid.Cid, callback func([]byte) error) error
 		return err
 	}
 	return callback(blk.RawData())
+}
+
+func (a *adaptedBlockstore) DeleteMany(cids []cid.Cid) error {
+	for _, cid := range cids {
+		err := a.DeleteBlock(cid)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Adapt adapts a standard blockstore to a Lotus blockstore by

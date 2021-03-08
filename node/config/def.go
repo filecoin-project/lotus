@@ -20,10 +20,11 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client  Client
-	Metrics Metrics
-	Wallet  Wallet
-	Fees    FeeConfig
+	Client     Client
+	Metrics    Metrics
+	Wallet     Wallet
+	Fees       FeeConfig
+	Chainstore Chainstore
 }
 
 // // Common
@@ -120,6 +121,20 @@ type Pubsub struct {
 	RemoteTracer          string
 }
 
+type Chainstore struct {
+	EnableSplitstore bool
+	Splitstore       Splitstore
+}
+
+type Splitstore struct {
+	HotStoreType         string
+	TrackingStoreType    string
+	MarkSetType          string
+	EnableFullCompaction bool
+	EnableGC             bool // EXPERIMENTAL
+	Archival             bool
+}
+
 // // Full Node
 
 type Metrics struct {
@@ -184,6 +199,12 @@ func DefaultFullNode() *FullNode {
 		},
 		Client: Client{
 			SimultaneousTransfers: DefaultSimultaneousTransfers,
+		},
+		Chainstore: Chainstore{
+			EnableSplitstore: false,
+			Splitstore: Splitstore{
+				HotStoreType: "badger",
+			},
 		},
 	}
 }
