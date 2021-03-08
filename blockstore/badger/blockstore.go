@@ -131,13 +131,19 @@ func (b *Blockstore) Close() error {
 	return b.DB.Close()
 }
 
-// GC runs garbage collection on the value log
-func (b *Blockstore) GC() error {
+// CollectGarbage runs garbage collection on the value log
+func (b *Blockstore) CollectGarbage() error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
 	}
 
-	return b.DB.RunValueLogGC(0.125)
+	err := b.DB.RunValueLogGC(0.125)
+	if err == badger.ErrNoRewrite {
+		// not really an error in this case
+		return nil
+	}
+
+	return err
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only

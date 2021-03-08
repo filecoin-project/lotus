@@ -710,14 +710,14 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) error {
 		return xerrors.Errorf("error syncing tracker: %w", err)
 	}
 
-	if gc, ok := s.hot.(interface{ GC() error }); ok {
+	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
 		log.Infof("garbage collecting hotstore")
 		startGC := time.Now()
-		err = gc.GC()
+		err = gc.CollectGarbage()
 		if err != nil {
 			log.Warnf("error garbage collecting hotstore: %s", err)
 		} else {
-			log.Infow("garbage collecting done", "took", time.Since(startGC))
+			log.Infow("garbage collection done", "took", time.Since(startGC))
 		}
 	}
 
@@ -1016,14 +1016,14 @@ func (s *SplitStore) compactFull(curTs *types.TipSet) error {
 		return xerrors.Errorf("error syncing tracker: %w", err)
 	}
 
-	if gc, ok := s.hot.(interface{ GC() error }); ok {
+	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
 		log.Infof("garbage collecting hotstore")
 		startGC := time.Now()
-		err = gc.GC()
+		err = gc.CollectGarbage()
 		if err != nil {
 			log.Warnf("error garbage collecting hotstore: %s", err)
 		} else {
-			log.Infow("garbage collecting done", "took", time.Since(startGC))
+			log.Infow("garbage collection done", "took", time.Since(startGC))
 		}
 	}
 
