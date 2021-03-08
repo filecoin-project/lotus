@@ -710,6 +710,17 @@ func (s *SplitStore) compactSimple(curTs *types.TipSet) error {
 		return xerrors.Errorf("error syncing tracker: %w", err)
 	}
 
+	if gc, ok := s.hot.(interface{ GC() error }); ok {
+		log.Infof("garbage collecting hotstore")
+		startGC := time.Now()
+		err = gc.GC()
+		if err != nil {
+			log.Warnf("error garbage collecting hotstore: %s", err)
+		} else {
+			log.Infow("garbage collecting done", "took", time.Since(startGC))
+		}
+	}
+
 	err = s.setBaseEpoch(coldEpoch)
 	if err != nil {
 		return xerrors.Errorf("error saving base epoch: %w", err)
