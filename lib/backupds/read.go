@@ -114,8 +114,6 @@ func ReadBackup(r io.Reader, cb func(key datastore.Key, value []byte) error) err
 			return err
 		}
 	}
-
-	return nil
 }
 
 func RestoreInto(r io.Reader, dest datastore.Batching) error {
