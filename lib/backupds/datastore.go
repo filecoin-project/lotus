@@ -23,18 +23,18 @@ type Datastore struct {
 
 	backupLk sync.RWMutex
 
-	log chan Entry
+	log             chan Entry
 	closing, closed chan struct{}
 }
 
 type Entry struct {
 	Key, Value []byte
-	Timestamp int64
+	Timestamp  int64
 }
 
 func Wrap(child datastore.Batching, logdir string) (*Datastore, error) {
 	ds := &Datastore{
-		child:    child,
+		child: child,
 	}
 
 	if logdir != NoLogdir {
@@ -223,7 +223,6 @@ func (b *bbatch) Put(key datastore.Key, value []byte) error {
 			Timestamp: time.Now().Unix(),
 		}
 	}
-
 
 	return b.b.Put(key, value)
 }

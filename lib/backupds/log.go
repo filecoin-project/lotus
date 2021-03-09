@@ -57,7 +57,6 @@ func (d *Datastore) startLog(logdir string) error {
 		}
 	}
 
-
 	go func() {
 		defer close(d.closed)
 		for {
@@ -91,7 +90,7 @@ func (d *Datastore) createLog(logdir string) (*logfile, error) {
 	p := filepath.Join(logdir, strconv.FormatInt(time.Now().Unix(), 10)+".log.cbor")
 	log.Infow("creating log", "file", p)
 
-	f, err := os.OpenFile(p, os.O_RDWR | os.O_CREATE | os.O_EXCL, 0644)
+	f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +125,6 @@ func openLog(p string) (*logfile, error) {
 		return nil, xerrors.Errorf("reading backup part of the logfile: %w", err)
 	}
 	log.Infow("log opened", "file", p)
-
 
 	// make sure we're at the end of the file
 	at, err := f.Seek(0, io.SeekCurrent)
