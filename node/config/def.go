@@ -97,8 +97,9 @@ type MinerAddressConfig struct {
 	// sent automatically
 	DisableOwnerFallback bool
 	// DisableWorkerFallback disables usage of the worker address for messages
-	// sent automatically if control addresses are configured, even if those
-	// addresses don't have enough funds available
+	// sent automatically, if control addresses are configured.
+	// A control address that doesn't have enough funds will still be chosen
+	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
 }
 
