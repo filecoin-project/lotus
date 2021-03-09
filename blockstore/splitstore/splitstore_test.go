@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -60,8 +61,6 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Fatal(err)
 	}
 
-	//time.Sleep(time.Second)
-
 	// make some tipsets, but not enough to cause compaction
 	mkBlock := func(curTs *types.TipSet, i int) *types.TipSet {
 		blk := mock.MkBlock(curTs, uint64(i), uint64(i))
@@ -91,15 +90,19 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		}
 	}
 
+	waitForCompaction := func() {
+		for atomic.LoadInt32(&ss.compacting) == 1 {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
 	curTs := genTs
 	for i := 1; i < 5; i++ {
 		curTs = mkBlock(curTs, i)
-		time.Sleep(time.Second)
+		waitForCompaction()
 	}
 
 	mkGarbageBlock(genTs, 1)
-
-	time.Sleep(time.Second)
 
 	// count objects in the cold and hot stores
 	ctx, cancel := context.WithCancel(context.Background())
@@ -121,7 +124,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	hotCnt := countBlocks(hot)
 
 	if coldCnt != 1 {
-		t.Errorf("expected %d blocks, but got %d", 5, coldCnt)
+		t.Errorf("expected %d blocks, but got %d", 1, coldCnt)
 	}
 
 	if hotCnt != 5 {
@@ -131,7 +134,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	// trigger a compaction
 	for i := 5; i < 10; i++ {
 		curTs = mkBlock(curTs, i)
-		time.Sleep(time.Second)
+		waitForCompaction()
 	}
 
 	coldCnt = countBlocks(cold)
