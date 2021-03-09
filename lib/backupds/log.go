@@ -83,6 +83,7 @@ func (d *Datastore) startLog(logdir string) error {
 				if err := l.Close(); err != nil {
 					log.Errorw("failed to close log", "error", err)
 				}
+				return
 			}
 		}
 	}()
@@ -193,7 +194,7 @@ func (l *logfile) writeLogHead(logname string, ds datastore.Batching) error {
 		return xerrors.Errorf("writing loghead to the datastore: %w", err)
 	}
 
-	log.Infow("now log head", "loghead", string(lval))
+	log.Infow("new log head", "loghead", string(lval))
 
 	return nil
 }
