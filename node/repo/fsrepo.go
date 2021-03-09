@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -546,19 +545,30 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	return res, nil
 }
 
+const KTrashPrefix = "trash-"
+
 // Put saves key info under given name
 func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
+	return fsr.put(name, info, 0)
+}
+
+func (fsr *fsLockedRepo) put(rawName string, info types.KeyInfo, retries int) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
+	}
+
+	name := rawName
+	if retries > 0 {
+		name = fmt.Sprintf("%s-%d", rawName, retries)
 	}
 
 	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
 	keyPath := fsr.join(fsKeystore, encName)
 
 	_, err := os.Stat(keyPath)
-	if err == nil && strings.HasPrefix(name, wallet.KTrashPrefix) {
-		// Fine to try to write the same trash-prefixed file multiple times
-		return nil
+	if err == nil && strings.HasPrefix(name, KTrashPrefix) {
+		// retry writing the trash-prefixed file with a number suffix
+		return fsr.put(rawName, info, retries+1)
 	} else if err == nil {
 		return xerrors.Errorf("checking key before put '%s': %w", name, types.ErrKeyExists)
 	} else if !os.IsNotExist(err) {
