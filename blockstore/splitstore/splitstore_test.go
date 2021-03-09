@@ -14,6 +14,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -25,8 +26,6 @@ func init() {
 }
 
 func testSplitStore(t *testing.T, cfg *Config) {
-	t.Helper()
-
 	chain := &mockChain{}
 	// genesis
 	genBlock := mock.MkBlock(nil, 0, 0)
@@ -34,7 +33,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	chain.push(genTs)
 
 	// the myriads of stores
-	ds := datastore.NewMapDatastore()
+	ds := dssync.MutexWrap(datastore.NewMapDatastore())
 	hot := blockstore.NewMemorySync()
 	cold := blockstore.NewMemorySync()
 
@@ -60,6 +59,8 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	//time.Sleep(time.Second)
 
 	// make some tipsets, but not enough to cause compaction
 	mkBlock := func(curTs *types.TipSet, i int) *types.TipSet {
@@ -93,9 +94,12 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	curTs := genTs
 	for i := 1; i < 5; i++ {
 		curTs = mkBlock(curTs, i)
+		time.Sleep(time.Second)
 	}
 
 	mkGarbageBlock(genTs, 1)
+
+	time.Sleep(time.Second)
 
 	// count objects in the cold and hot stores
 	ctx, cancel := context.WithCancel(context.Background())
@@ -117,11 +121,11 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	hotCnt := countBlocks(hot)
 
 	if coldCnt != 1 {
-		t.Fatalf("expected %d blocks, but got %d", 1, coldCnt)
+		t.Errorf("expected %d blocks, but got %d", 5, coldCnt)
 	}
 
-	if hotCnt != 4 {
-		t.Fatalf("expected %d blocks, but got %d", 4, hotCnt)
+	if hotCnt != 5 {
+		t.Errorf("expected %d blocks, but got %d", 5, hotCnt)
 	}
 
 	// trigger a compaction
@@ -135,31 +139,31 @@ func testSplitStore(t *testing.T, cfg *Config) {
 
 	if !cfg.EnableFullCompaction {
 		if coldCnt != 5 {
-			t.Fatalf("expected %d cold blocks, but got %d", 5, coldCnt)
+			t.Errorf("expected %d cold blocks, but got %d", 5, coldCnt)
 		}
 
 		if hotCnt != 5 {
-			t.Fatalf("expected %d hot blocks, but got %d", 5, hotCnt)
+			t.Errorf("expected %d hot blocks, but got %d", 5, hotCnt)
 		}
 	}
 
 	if cfg.EnableFullCompaction && !cfg.EnableGC {
 		if coldCnt != 3 {
-			t.Fatalf("expected %d cold blocks, but got %d", 3, coldCnt)
+			t.Errorf("expected %d cold blocks, but got %d", 3, coldCnt)
 		}
 
 		if hotCnt != 7 {
-			t.Fatalf("expected %d hot blocks, but got %d", 7, hotCnt)
+			t.Errorf("expected %d hot blocks, but got %d", 7, hotCnt)
 		}
 	}
 
 	if cfg.EnableFullCompaction && cfg.EnableGC {
 		if coldCnt != 2 {
-			t.Fatalf("expected %d cold blocks, but got %d", 2, coldCnt)
+			t.Errorf("expected %d cold blocks, but got %d", 2, coldCnt)
 		}
 
 		if hotCnt != 7 {
-			t.Fatalf("expected %d hot blocks, but got %d", 7, hotCnt)
+			t.Errorf("expected %d hot blocks, but got %d", 7, hotCnt)
 		}
 	}
 }
