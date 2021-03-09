@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	cliutil "github.com/filecoin-project/lotus/cli/util"
-
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"

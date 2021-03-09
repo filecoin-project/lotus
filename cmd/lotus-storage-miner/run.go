@@ -9,8 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	cliutil "github.com/filecoin-project/lotus/cli/util"
-
 	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
