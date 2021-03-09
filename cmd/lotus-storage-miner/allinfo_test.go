@@ -11,8 +11,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/test"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -55,7 +55,7 @@ func TestMinerAllInfo(t *testing.T) {
 			"testnode-full":    n[0],
 			"testnode-storage": sn[0],
 		}
-		build.RunningNodeType = build.NodeMiner
+		api.RunningNodeType = api.NodeMiner
 
 		cctx := cli.NewContext(app, flag.NewFlagSet("", flag.ContinueOnError), nil)
 

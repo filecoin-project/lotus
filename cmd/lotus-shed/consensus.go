@@ -36,7 +36,7 @@ type consensusItem struct {
 	targetTipset  *types.TipSet
 	headTipset    *types.TipSet
 	peerID        peer.ID
-	version       api.Version
+	version       api.APIVersion
 	api           api.FullNode
 }
 

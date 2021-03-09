@@ -9,12 +9,10 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-
-	"github.com/filecoin-project/lotus/build"
 )
 
 type WorkerAPI interface {
-	Version(context.Context) (build.Version, error)
+	Version(context.Context) (Version, error)
 	// TODO: Info() (name, ...) ?
 
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) // TaskType -> Weight

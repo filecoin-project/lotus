@@ -2779,10 +2779,10 @@ func (mr *MockFullNodeMockRecorder) SyncValidateTipset(arg0, arg1 interface{}) *
 }
 
 // Version mocks base method
-func (m *MockFullNode) Version(arg0 context.Context) (api.Version, error) {
+func (m *MockFullNode) Version(arg0 context.Context) (api.APIVersion, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Version", arg0)
-	ret0, _ := ret[0].(api.Version)
+	ret0, _ := ret[0].(api.APIVersion)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

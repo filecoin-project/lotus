@@ -18,6 +18,7 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/big"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -68,8 +69,8 @@ var initRestoreCmd = &cli.Command{
 			return err
 		}
 
-		if !v.APIVersion.EqMajorMinor(build.FullAPIVersion) {
-			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", build.FullAPIVersion, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion) {
+			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion, v.APIVersion)
 		}
 
 		if !cctx.Bool("nosync") {
