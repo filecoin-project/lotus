@@ -2,270 +2,85 @@ package deal
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
+	"strings"
 	"time"
 
-	tm "github.com/buger/goterm"
 	"github.com/fatih/color"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-state-types/abi"
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/tablewriter"
-	"github.com/ipfs/go-cid"
-	term "github.com/nsf/termbox-go"
 )
 
 var mockDealInfos []lapi.DealInfo
 
-func init() {
-	dummyCid, err := cid.Parse("bafkqaaa")
-	if err != nil {
-		panic(err)
-	}
-
-	mockDealStages := storagemarket.DealStages{
-		At: time.Now(),
-		Stages: []storagemarket.DealStage{{
-			Name:             "Reserving Funds",
-			ExpectedDuration: "5 epochs",
-			StartedAt:        time.Now().Add(-5 * time.Minute),
-			Logs: []string{
-				"Sending AddBalance message for 0.3FIL",
-				"Waiting 5 epochs (2:30) for confirmation",
-				"Funds for deal reserved successfully",
-			},
-		}, {
-			Name:             "Sending Deal Proposal to Provider",
-			ExpectedDuration: "5 epochs",
-			StartedAt:        time.Now().Add(-2 * time.Minute),
-			Logs: []string{
-				"Proposal: 512MB for 300 days @ 0.1FIL / GB / epoch",
-				"Deal proposal accepted by provider",
-				"Funds for deal reserved successfully",
-			},
-		}, {
-			Name:             "Sending deal data to Provider",
-			ExpectedDuration: "13 minutes",
-			StartedAt:        time.Now().Add(-53 * time.Second),
-			Logs: []string{
-				"Progress: 4:02 254MB / 1024MB (1MB / sec)",
-				"Connection to Provider f01234 disconnected, retrying in 8s",
-			},
-		}, {
-			Name:             "Waiting for deal to be published by Provider",
-			ExpectedDuration: "several hours",
-		}, {
-			Name:             "Waiting for pre-commit message from Provider",
-			ExpectedDuration: "several hours",
-		}, {
-			Name:             "Waiting for prove-commit message from Provider",
-			ExpectedDuration: "several hours",
-		}},
-	}
-
-	mockDealInfos = []lapi.DealInfo{{
-		State:             3,
-		Message:           "Reserving Client Funds",
-		DealStages:        mockDealStages,
-		Provider:          address.TestAddress,
-		DataRef:           nil,
-		PieceCID:          dummyCid,
-		Size:              512 * 1024 * 1024,
-		PricePerEpoch:     abi.NewTokenAmount(10),
-		Duration:          300,
-		DealID:            10,
-		CreationTime:      time.Now().Add(-5 * time.Second),
-		Verified:          false,
-		TransferChannelID: nil,
-		DataTransfer:      nil,
-	}, {
-		State:             5,
-		Message:           "Publishing Deal",
-		DealStages:        mockDealStages,
-		Provider:          address.TestAddress,
-		DataRef:           nil,
-		PieceCID:          dummyCid,
-		Size:              482 * 1024 * 1024,
-		PricePerEpoch:     abi.NewTokenAmount(12),
-		Duration:          323,
-		DealID:            14,
-		CreationTime:      time.Now().Add(-23 * time.Minute),
-		Verified:          false,
-		TransferChannelID: nil,
-		DataTransfer:      nil,
-	}, {
-		State:             7,
-		Message:           "Waiting for Pre-Commit",
-		DealStages:        mockDealStages,
-		Provider:          address.TestAddress,
-		DataRef:           nil,
-		PieceCID:          dummyCid,
-		Size:              2 * 1024 * 1024 * 1024,
-		PricePerEpoch:     abi.NewTokenAmount(8),
-		Duration:          298,
-		DealID:            8,
-		CreationTime:      time.Now().Add(-3 * time.Hour),
-		Verified:          false,
-		TransferChannelID: nil,
-		DataTransfer:      nil,
-	}, {
-		State:             2,
-		Message:           "Transferring Data",
-		DealStages:        mockDealStages,
-		Provider:          address.TestAddress,
-		DataRef:           nil,
-		PieceCID:          dummyCid,
-		Size:              23 * 1024 * 1024,
-		PricePerEpoch:     abi.NewTokenAmount(11),
-		Duration:          328,
-		DealID:            3,
-		CreationTime:      time.Now().Add(-49 * time.Hour),
-		Verified:          false,
-		TransferChannelID: nil,
-		DataTransfer:      nil,
-	}}
-}
-
-func ShowDealsCmd(ctx context.Context, api lapi.FullNode) error {
+func InspectDealCmd(ctx context.Context, api lapi.FullNode, proposalCid string, dealId int) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	//localDeals, err := api.ClientListDeals(ctx)
-	//if err != nil {
-	//	return err
-	//}
-	localDeals := mockDealInfos
-
-	return showDealsUX(ctx, localDeals)
-}
-
-func showDealsUX(ctx context.Context, deals []lapi.DealInfo) error {
-	err := term.Init()
+	deals, err := api.ClientListDeals(ctx)
 	if err != nil {
 		return err
 	}
-	defer term.Close()
 
-	renderer := dealRenderer{out: tm.Screen}
-
-	dealIdx := -1
-	state := "main"
-	highlighted := -1
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
+	var di lapi.DealInfo
+	found := false
+	for _, cdi := range deals {
+		if proposalCid != "" && cdi.ProposalCid.String() == proposalCid {
+			di = cdi
+			found = true
+			break
 		}
 
-		switch state {
-		case "main":
-			renderMain := func(hlite int) error {
-				tm.Clear()
-				tm.MoveCursor(1, 1)
-				err := renderer.renderDeals(deals, hlite)
-				if err != nil {
-					return err
-				}
-				tm.Flush()
-				return nil
-			}
-			err := renderMain(highlighted)
-			if err != nil {
-				return err
-			}
-
-			switch ev := term.PollEvent(); ev.Type {
-			case term.EventKey:
-				switch {
-				case ev.Ch == 'q', ev.Key == term.KeyEsc:
-					return nil
-				case ev.Key == term.KeyArrowUp:
-					term.Sync()
-					if highlighted > 0 {
-						highlighted--
-					}
-				case ev.Key == term.KeyArrowDown:
-					term.Sync()
-					highlighted++
-				case ev.Key == term.KeyEnter:
-					term.Sync()
-					dealIdx = highlighted
-					state = "deal"
-				}
-			case term.EventError:
-				return ev.Err
-			}
-		case "deal":
-			tm.Clear()
-			tm.MoveCursor(1, 1)
-			renderer.renderDeal(deals[dealIdx])
-			tm.Flush()
-
-			switch ev := term.PollEvent(); ev.Type {
-			case term.EventKey:
-				if ev.Ch == 'q' || ev.Key == term.KeyEsc || ev.Key == term.KeyEnter || ev.Key == term.KeyArrowLeft {
-					term.Sync()
-					state = "main"
-				}
-			case term.EventError:
-				return ev.Err
-			}
+		if dealId != 0 && int(cdi.DealID) == dealId {
+			di = cdi
+			found = true
+			break
 		}
 	}
-}
 
-type dealRenderer struct {
-	out io.Writer
-}
-
-func (r *dealRenderer) renderDeals(deals []lapi.DealInfo, highlighted int) error {
-	tw := tablewriter.New(
-		tablewriter.Col(""),
-		tablewriter.Col("Created"),
-		tablewriter.Col("Provider"),
-		tablewriter.Col("Size"),
-		tablewriter.Col("State"),
-	)
-	for i, di := range deals {
-		lineNum := fmt.Sprintf("%d", i+1)
-		cols := map[string]interface{}{
-			"":         lineNum,
-			"Created":  time.Since(di.CreationTime).Round(time.Second),
-			"Provider": di.Provider,
-			"Size":     di.Size,
-			"State":    di.Message,
+	if !found {
+		if proposalCid != "" {
+			return fmt.Errorf("cannot find deal with proposal cid: %s", proposalCid)
 		}
-		if i == highlighted {
-			for k, v := range cols {
-				cols[k] = color.YellowString(fmt.Sprint(v))
-			}
+		if dealId != 0 {
+			return fmt.Errorf("cannot find deal with deal id: %v", dealId)
 		}
-		tw.Write(cols)
+		return errors.New("you must specify proposal cid or deal id in order to inspect a deal")
 	}
-	return tw.Flush(r.out)
+
+	renderDeal(di)
+
+	return nil
 }
 
-func (r *dealRenderer) renderDeal(di lapi.DealInfo) error {
-	_, err := fmt.Fprintf(r.out, "Deal %d\n", di.DealID)
-	if err != nil {
-		return err
-	}
+func renderDeal(di lapi.DealInfo) {
+	color.Blue("Deal ID:      %d\n", int(di.DealID))
+	color.Blue("Proposal CID: %s\n\n", di.ProposalCid.String())
+
 	for _, stg := range di.DealStages.Stages {
-		msg := fmt.Sprintf("%s (%s)", stg.Name, stg.ExpectedDuration)
-		if stg.StartedAt.IsZero() {
+		msg := fmt.Sprintf("%s %s: %s (%s)", color.BlueString("Stage:"), color.BlueString(strings.TrimPrefix(stg.Name, "StorageDeal")), stg.Description, color.GreenString(stg.ExpectedDuration))
+		if stg.UpdatedTime.Time().IsZero() {
 			msg = color.YellowString(msg)
 		}
-		_, err := fmt.Fprintf(r.out, "%s\n", msg)
-		if err != nil {
-			return err
-		}
+		fmt.Println(msg)
+
 		for _, l := range stg.Logs {
-			_, err = fmt.Fprintf(r.out, "  %s\n", l)
-			if err != nil {
-				return err
+			fmt.Printf("  %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
+		}
+
+		if stg.Name == "StorageDealStartDataTransfer" {
+			for _, dt_stg := range di.DataTransfer.Stages.Stages {
+
+				msg := fmt.Sprintf("Data transfer stage: %s", dt_stg.Name)
+				msg = color.BlueString(msg)
+				if stg.UpdatedTime.Time().IsZero() {
+					msg = color.YellowString(msg)
+				}
+				fmt.Printf("              %s\n", msg)
+				for _, l := range dt_stg.Logs {
+					fmt.Printf("              %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
+				}
 			}
 		}
 	}
-	return nil
 }

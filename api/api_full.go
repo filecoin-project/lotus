@@ -605,7 +605,7 @@ type DealInfo struct {
 	ProposalCid cid.Cid
 	State       storagemarket.StorageDealStatus
 	Message     string // more information about deal state, particularly errors
-	DealStages  storagemarket.DealStages
+	DealStages  *storagemarket.DealStages
 	Provider    address.Address
 
 	DataRef  *storagemarket.DataRef

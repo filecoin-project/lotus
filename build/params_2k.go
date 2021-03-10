@@ -38,6 +38,9 @@ func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 
+	//policy.SetWPoStChallengeWindow(abi.ChainEpoch(5))
+	policy.SetPreCommitChallengeDelay(abi.ChainEpoch(10))
+
 	BuildType |= Build2k
 }
 

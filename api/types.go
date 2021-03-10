@@ -60,6 +60,7 @@ type DataTransferChannel struct {
 	Message     string
 	OtherPeer   peer.ID
 	Transferred uint64
+	Stages      *datatransfer.ChannelStages
 }
 
 // NewDataTransferChannel constructs an API DataTransferChannel type from full channel state snapshot and a host id
@@ -70,6 +71,7 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 		BaseCID:    channelState.BaseCID(),
 		IsSender:   channelState.Sender() == hostID,
 		Message:    channelState.Message(),
+		Stages:     channelState.Stages(),
 	}
 	stringer, ok := channelState.Voucher().(fmt.Stringer)
 	if ok {

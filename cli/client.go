@@ -84,7 +84,7 @@ var clientCmd = &cli.Command{
 		WithCategory("storage", clientGetDealCmd),
 		WithCategory("storage", clientListAsksCmd),
 		WithCategory("storage", clientDealStatsCmd),
-		WithCategory("storage", clientShowDealsCmd),
+		WithCategory("storage", clientInspectDealCmd),
 		WithCategory("data", clientImportCmd),
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
@@ -1116,20 +1116,26 @@ var clientRetrieveCmd = &cli.Command{
 	},
 }
 
-var clientShowDealsCmd = &cli.Command{
-	Name:  "show-deals",
-	Usage: "Show storage deals",
+var clientInspectDealCmd = &cli.Command{
+	Name:  "inspect-deal",
+	Usage: "Inspect storage deal",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name: "deal-id",
+		},
+		&cli.StringFlag{
+			Name: "proposal-cid",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		//api, closer, err := GetFullNodeAPI(cctx)
-		//if err != nil {
-		//	return err
-		//}
-		//defer closer()
-		var api api.FullNode
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
-		//afmt := NewAppFmt(cctx.App)
-		return dealcli.ShowDealsCmd(ctx, api)
+		return dealcli.InspectDealCmd(ctx, api, cctx.String("proposal-cid"), cctx.Int("deal-id"))
 	},
 }
 

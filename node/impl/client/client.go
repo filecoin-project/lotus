@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"golang.org/x/xerrors"
@@ -215,6 +216,8 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		out[k] = a.newDealInfoWithTransfer(transferCh, v)
 	}
 
+	spew.Dump(out)
+
 	return out, nil
 }
 
@@ -289,6 +292,7 @@ func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v sto
 		Verified:          v.Proposal.VerifiedDeal,
 		TransferChannelID: v.TransferChannelID,
 		DataTransfer:      transferCh,
+		DealStages:        v.DealStages,
 	}
 }
 
