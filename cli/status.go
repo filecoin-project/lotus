@@ -25,7 +25,8 @@ var statusCmd = &cli.Command{
 		fmt.Println("node status:")
 		fmt.Printf("Sync Epoch: %d\n", status.SyncStatus.Epoch)
 		fmt.Printf("Epochs Behind: %d\n", status.SyncStatus.Behind)
-		fmt.Printf("Peers to Publish: %d\n", status.PeerStatus.PeersToPublish)
+		fmt.Printf("Peers to Publish Messages: %d\n", status.PeerStatus.PeersToPublishMsgs)
+		fmt.Printf("Peers to Publish Blocks: %d\n", status.PeerStatus.PeersToPublishBlocks)
 
 		return nil
 	},

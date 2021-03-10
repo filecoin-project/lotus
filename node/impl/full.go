@@ -9,6 +9,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -51,15 +53,21 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context) (status api.NodeStatus, er
 	delta := time.Since(timestamp).Seconds()
 	status.SyncStatus.Behind = uint64(delta / 30)
 
-	// get connected peers
-	pis, err := n.NetPeers(ctx)
+	// get peers in the messages and blocks topics
+	peersMsgs := make(map[peer.ID]struct{})
+	peersBlocks := make(map[peer.ID]struct{})
+
+	netName, err := stmgr.GetNetworkName(ctx, n.StateManager, curTs.ParentState())
 	if err != nil {
 		return status, err
 	}
 
-	peers := make(map[peer.ID]struct{})
-	for _, pi := range pis {
-		peers[pi.ID] = struct{}{}
+	for _, p := range n.PubSub.ListPeers(build.MessagesTopic(netName)) {
+		peersMsgs[p] = struct{}{}
+	}
+
+	for _, p := range n.PubSub.ListPeers(build.BlocksTopic(netName)) {
+		peersBlocks[p] = struct{}{}
 	}
 
 	// get scores for all connected and recent peers
@@ -69,14 +77,16 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context) (status api.NodeStatus, er
 	}
 
 	for _, score := range scores {
-		// we only care about connected peers
-		_, connected := peers[score.ID]
-		if !connected {
-			continue
-		}
-
 		if score.Score.Score > -1000 {
-			status.PeerStatus.PeersToPublish++
+			_, inMsgs := peersMsgs[score.ID]
+			if inMsgs {
+				status.PeerStatus.PeersToPublishMsgs++
+			}
+
+			_, inBlocks := peersBlocks[score.ID]
+			if inBlocks {
+				status.PeerStatus.PeersToPublishBlocks++
+			}
 		}
 	}
 

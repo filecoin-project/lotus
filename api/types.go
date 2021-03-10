@@ -127,5 +127,6 @@ type NodeSyncStatus struct {
 }
 
 type NodePeerStatus struct {
-	PeersToPublish int
+	PeersToPublishMsgs   int
+	PeersToPublishBlocks int
 }
