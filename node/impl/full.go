@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/market"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
 var log = logging.Logger("node")
@@ -77,7 +78,7 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context) (status api.NodeStatus, er
 	}
 
 	for _, score := range scores {
-		if score.Score.Score > -1000 {
+		if score.Score.Score > lp2p.PublishScoreThreshold {
 			_, inMsgs := peersMsgs[score.ID]
 			if inMsgs {
 				status.PeerStatus.PeersToPublishMsgs++
