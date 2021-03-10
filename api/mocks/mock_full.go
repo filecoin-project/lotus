@@ -1660,6 +1660,21 @@ func (mr *MockFullNodeMockRecorder) NetPubsubScores(arg0 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPubsubScores", reflect.TypeOf((*MockFullNode)(nil).NetPubsubScores), arg0)
 }
 
+// NodeStatus mocks base method
+func (m *MockFullNode) NodeStatus(arg0 context.Context, arg1 bool) (api.NodeStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NodeStatus", arg0, arg1)
+	ret0, _ := ret[0].(api.NodeStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NodeStatus indicates an expected call of NodeStatus
+func (mr *MockFullNodeMockRecorder) NodeStatus(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NodeStatus", reflect.TypeOf((*MockFullNode)(nil).NodeStatus), arg0, arg1)
+}
+
 // PaychAllocateLane mocks base method
 func (m *MockFullNode) PaychAllocateLane(arg0 context.Context, arg1 address.Address) (uint64, error) {
 	m.ctrl.T.Helper()
