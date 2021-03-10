@@ -238,6 +238,9 @@ type AddressConfig struct {
 	PreCommitControl []address.Address
 	CommitControl    []address.Address
 	TerminateControl []address.Address
+
+	DisableOwnerFallback  bool
+	DisableWorkerFallback bool
 }
 
 // PendingDealInfo has info about pending deals and when they are due to be
