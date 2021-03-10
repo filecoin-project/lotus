@@ -115,3 +115,17 @@ type ConnMgrInfo struct {
 	Tags      map[string]int
 	Conns     map[string]time.Time
 }
+
+type NodeStatus struct {
+	SyncStatus NodeSyncStatus
+	PeerStatus NodePeerStatus
+}
+
+type NodeSyncStatus struct {
+	Epoch  uint64
+	Behind uint64
+}
+
+type NodePeerStatus struct {
+	PeersToPublish int
+}

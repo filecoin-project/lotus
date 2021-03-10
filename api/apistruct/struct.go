@@ -271,6 +271,7 @@ type FullNodeStruct struct {
 		PaychVoucherSubmit          func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)             `perm:"sign"`
 
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
+		NodeStatus   func(context.Context) (api.NodeStatus, error) `perm:"read"`
 	}
 }
 
@@ -1258,6 +1259,10 @@ func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Addr
 
 func (c *FullNodeStruct) CreateBackup(ctx context.Context, fpath string) error {
 	return c.Internal.CreateBackup(ctx, fpath)
+}
+
+func (c *FullNodeStruct) NodeStatus(ctx context.Context) (api.NodeStatus, error) {
+	return c.Internal.NodeStatus(ctx)
 }
 
 // StorageMinerStruct
