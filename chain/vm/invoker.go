@@ -16,10 +16,10 @@ import (
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
-	vmr "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
 	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
+	vmr "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"

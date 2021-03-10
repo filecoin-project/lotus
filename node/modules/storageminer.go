@@ -99,7 +99,7 @@ func GetParams(spt abi.RegisteredSealProof) error {
 	}
 
 	// TODO: We should fetch the params for the actual proof type, not just based on the size.
-	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), uint64(ssize)); err != nil {
+	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
@@ -824,6 +824,9 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            config.Duration(cfg.WaitDealsDelay),
 				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
+				AggregateCommits:          cfg.AggregateCommits,
+				MinCommitBatch:            cfg.MinCommitBatch,
+				MaxCommitBatch:            cfg.MaxCommitBatch,
 			}
 		})
 		return
@@ -839,6 +842,9 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
 				AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
+				AggregateCommits:          cfg.Sealing.AggregateCommits,
+				MinCommitBatch:            cfg.Sealing.MinCommitBatch,
+				MaxCommitBatch:            cfg.Sealing.MaxCommitBatch,
 			}
 		})
 		return

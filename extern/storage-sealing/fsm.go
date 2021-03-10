@@ -91,8 +91,18 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	SubmitCommit: planOne(
 		on(SectorCommitSubmitted{}, CommitWait),
 		on(SectorCommitFailed{}, CommitFailed),
+		on(SectorSubmitCommitAggregate{}, SubmitCommitAggregate),
+	),
+	SubmitCommitAggregate: planOne(
+		on(SectorCommitAggregateSent{}, CommitWait),
+		on(SectorCommitFailed{}, CommitFailed),
 	),
 	CommitWait: planOne(
+		on(SectorProving{}, FinalizeSector),
+		on(SectorCommitFailed{}, CommitFailed),
+		on(SectorRetrySubmitCommit{}, SubmitCommit),
+	),
+	CommitAggregateWait: planOne(
 		on(SectorProving{}, FinalizeSector),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
@@ -338,8 +348,12 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleCommitting, processed, nil
 	case SubmitCommit:
 		return m.handleSubmitCommit, processed, nil
+	case CommitAggregateWait:
+		fallthrough
 	case CommitWait:
 		return m.handleCommitWait, processed, nil
+	case SubmitCommitAggregate:
+		return m.handleSubmitCommitAggregate, processed, nil
 	case FinalizeSector:
 		return m.handleFinalizeSector, processed, nil
 

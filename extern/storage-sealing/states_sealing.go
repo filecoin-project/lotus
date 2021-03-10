@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -452,6 +453,14 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo) error {
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+	if cfg.AggregateCommits {
+		return ctx.Send(SectorSubmitCommitAggregate{})
+	}
+
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
@@ -512,6 +521,29 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 	return ctx.Send(SectorCommitSubmitted{
 		Message: mcid,
 	})
+}
+
+func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.CommD == nil || sector.CommR == nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
+	}
+
+	mcid, err := m.commiter.AddCommit(ctx.Context(), sector.SectorNumber, AggregateInput{
+		info: proof.AggregateSealVerifyInfo{
+			Number:                sector.SectorNumber,
+			DealIDs:               sector.dealIDs(),
+			Randomness:            sector.TicketValue,
+			InteractiveRandomness: sector.SeedValue,
+			SealedCID:             *sector.CommR,
+			UnsealedCID:           *sector.CommD,
+		},
+		proof: sector.Proof, // todo: this correct??
+	})
+	if err != nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})
+	}
+
+	return ctx.Send(SectorCommitAggregateSent{mcid})
 }
 
 func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) error {
