@@ -19,6 +19,6 @@ type Config struct {
 	AlwaysKeepUnsealedCopy bool
 
 	AggregateCommits bool
-	MinCommitBatch   uint64
-	MaxCommitBatch   uint64
+	MinCommitBatch   int
+	MaxCommitBatch   int
 }
