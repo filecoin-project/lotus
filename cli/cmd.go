@@ -80,6 +80,7 @@ var Commands = []*cli.Command{
 	WithCategory("developer", fetchParamCmd),
 	WithCategory("network", netCmd),
 	WithCategory("network", syncCmd),
+	WithCategory("status", statusCmd),
 	pprofCmd,
 	VersionCmd,
 }
