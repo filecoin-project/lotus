@@ -281,6 +281,8 @@ type FullNodeStruct struct {
 
 		MsigSwapPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (cid.Cid, error) `perm:"sign"`
 
+		NodeStatus func(p0 context.Context, p1 bool) (api.NodeStatus, error) `perm:"read"`
+
 		PaychAllocateLane func(p0 context.Context, p1 address.Address) (uint64, error) `perm:"sign"`
 
 		PaychAvailableFunds func(p0 context.Context, p1 address.Address) (*api.ChannelAvailableFunds, error) `perm:"sign"`
@@ -1233,6 +1235,10 @@ func (s *FullNodeStruct) MsigSwapCancel(p0 context.Context, p1 address.Address, 
 
 func (s *FullNodeStruct) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (cid.Cid, error) {
 	return s.Internal.MsigSwapPropose(p0, p1, p2, p3, p4)
+}
+
+func (s *FullNodeStruct) NodeStatus(p0 context.Context, p1 bool) (api.NodeStatus, error) {
+	return s.Internal.NodeStatus(p0, p1)
 }
 
 func (s *FullNodeStruct) PaychAllocateLane(p0 context.Context, p1 address.Address) (uint64, error) {

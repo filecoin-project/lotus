@@ -689,6 +689,11 @@ type FullNode interface {
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                  //perm:write
 	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)         //perm:sign
 
+	// MethodGroup: Node
+	// These methods are general node management and status commands
+
+	NodeStatus(ctx context.Context, inclChainStatus bool) (NodeStatus, error) //perm:read
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
