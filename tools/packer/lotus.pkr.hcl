@@ -53,7 +53,7 @@ source "amazon-ebs" "lotus" {
   instance_type = "t2.micro"
   source_ami_filter {
     filters = {
-      name = "ubuntu/images/*ubuntu-focal-20.04-amd64-minimal*"
+      name = "ubuntu-pro-server/images/*ubuntu-focal-20.04-amd64-*"
       root-device-type = "ebs"
       virtualization-type = "hvm"
     }
