@@ -33,7 +33,6 @@ var statusCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("node status:")
 		fmt.Printf("Sync Epoch: %d\n", status.SyncStatus.Epoch)
 		fmt.Printf("Epochs Behind: %d\n", status.SyncStatus.Behind)
 		fmt.Printf("Peers to Publish Messages: %d\n", status.PeerStatus.PeersToPublishMsgs)
