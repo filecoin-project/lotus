@@ -612,6 +612,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 
 				if !bytes.Equal(checkRand, rand) {
 					log.Warnw("windowpost randomness changed", "old", rand, "new", checkRand, "ts-height", ts.Height(), "challenge-height", di.Challenge, "tsk", ts.Key())
+					continue
 				}
 
 				// If we generated an incorrect proof, try again.
