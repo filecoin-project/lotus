@@ -17,4 +17,8 @@ type Config struct {
 	WaitDealsDelay time.Duration
 
 	AlwaysKeepUnsealedCopy bool
+
+	AggregateCommits bool
+	MinCommitBatch   uint64
+	MaxCommitBatch   uint64
 }

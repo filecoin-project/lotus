@@ -233,11 +233,23 @@ func (evt SectorCommitted) apply(state *SectorInfo) {
 	state.Proof = evt.Proof
 }
 
+type SectorSubmitCommitAggregate struct{}
+
+func (evt SectorSubmitCommitAggregate) apply(*SectorInfo) {}
+
 type SectorCommitSubmitted struct {
 	Message cid.Cid
 }
 
 func (evt SectorCommitSubmitted) apply(state *SectorInfo) {
+	state.CommitMessage = &evt.Message
+}
+
+type SectorCommitAggregateSent struct {
+	Message cid.Cid
+}
+
+func (evt SectorCommitAggregateSent) apply(state *SectorInfo) {
 	state.CommitMessage = &evt.Message
 }
 

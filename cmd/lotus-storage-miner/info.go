@@ -295,6 +295,8 @@ var stateList = []stateMeta{
 	{col: color.FgYellow, state: sealing.Committing},
 	{col: color.FgYellow, state: sealing.SubmitCommit},
 	{col: color.FgYellow, state: sealing.CommitWait},
+	{col: color.FgYellow, state: sealing.SubmitCommitAggregate},
+	{col: color.FgYellow, state: sealing.CommitAggregateWait},
 	{col: color.FgYellow, state: sealing.FinalizeSector},
 
 	{col: color.FgCyan, state: sealing.Terminating},
