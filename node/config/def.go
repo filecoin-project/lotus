@@ -13,6 +13,7 @@ import (
 // Common is common config between full node and miner
 type Common struct {
 	API    API
+	Backup Backup
 	Libp2p Libp2p
 	Pubsub Pubsub
 }
@@ -28,6 +29,10 @@ type FullNode struct {
 }
 
 // // Common
+
+type Backup struct {
+	DisableMetadataLog bool
+}
 
 // StorageMiner is a miner config
 type StorageMiner struct {
