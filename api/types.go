@@ -117,8 +117,9 @@ type ConnMgrInfo struct {
 }
 
 type NodeStatus struct {
-	SyncStatus NodeSyncStatus
-	PeerStatus NodePeerStatus
+	SyncStatus  NodeSyncStatus
+	PeerStatus  NodePeerStatus
+	ChainStatus NodeChainStatus
 }
 
 type NodeSyncStatus struct {
@@ -129,4 +130,9 @@ type NodeSyncStatus struct {
 type NodePeerStatus struct {
 	PeersToPublishMsgs   int
 	PeersToPublishBlocks int
+}
+
+type NodeChainStatus struct {
+	BlocksPerTipsetLast100      float64
+	BlocksPerTipsetLastFinality float64
 }

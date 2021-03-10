@@ -43,7 +43,7 @@ func (n *FullNodeAPI) CreateBackup(ctx context.Context, fpath string) error {
 	return backup(n.DS, fpath)
 }
 
-func (n *FullNodeAPI) NodeStatus(ctx context.Context) (status api.NodeStatus, err error) {
+func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (status api.NodeStatus, err error) {
 	curTs, err := n.ChainHead(ctx)
 	if err != nil {
 		return status, err
@@ -91,7 +91,35 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context) (status api.NodeStatus, er
 		}
 	}
 
-	return status, err
+	if inclChainStatus && status.SyncStatus.Epoch > uint64(build.Finality) {
+		blockCnt := 0
+		ts := curTs
+
+		for i := 0; i < 100; i++ {
+			blockCnt += len(ts.Blocks())
+			tsk := ts.Parents()
+			ts, err = n.ChainGetTipSet(ctx, tsk)
+			if err != nil {
+				return status, err
+			}
+		}
+
+		status.ChainStatus.BlocksPerTipsetLast100 = float64(blockCnt) / 100
+
+		for i := 100; i < int(build.Finality); i++ {
+			blockCnt += len(ts.Blocks())
+			tsk := ts.Parents()
+			ts, err = n.ChainGetTipSet(ctx, tsk)
+			if err != nil {
+				return status, err
+			}
+		}
+
+		status.ChainStatus.BlocksPerTipsetLastFinality = float64(blockCnt) / float64(build.Finality)
+
+	}
+
+	return status, nil
 }
 
 var _ api.FullNode = &FullNodeAPI{}
