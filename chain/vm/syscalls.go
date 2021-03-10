@@ -282,7 +282,15 @@ func (ss *syscallShim) VerifySeal(info proof3.SealVerifyInfo) error {
 }
 
 func (ss *syscallShim) VerifyAggregateSeals(aggregate proof3.AggregateSealVerifyProofAndInfos) error {
-	aggregate.
+	ok, err := ss.verifier.VerifyAggregateSeals(aggregate)
+	if err != nil {
+		return xerrors.Errorf("failed to verify aggregated PoRep: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("invalid aggredate proof")
+	}
+
+	return nil
 }
 
 func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) error {

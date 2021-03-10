@@ -27,7 +27,7 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	runtime3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
 
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -46,7 +46,7 @@ func MinerAddress(genesisIndex uint64) address.Address {
 }
 
 type fakedSigSyscalls struct {
-	runtime2.Syscalls
+	runtime3.Syscalls
 }
 
 func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
@@ -54,7 +54,7 @@ func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer 
 }
 
 func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
-	return func(ctx context.Context, rt *vm.Runtime) runtime2.Syscalls {
+	return func(ctx context.Context, rt *vm.Runtime) runtime3.Syscalls {
 		return &fakedSigSyscalls{
 			base(ctx, rt),
 		}
