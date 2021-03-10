@@ -350,7 +350,7 @@ func (m *mockStorageMinerAPI) GasEstimateMessageGas(ctx context.Context, message
 }
 
 func (m *mockStorageMinerAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
-	panic("implement me")
+	return nil, nil
 }
 
 func (m *mockStorageMinerAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {

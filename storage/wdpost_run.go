@@ -600,7 +600,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 					return nil, xerrors.Errorf("received no proofs back from generate window post")
 				}
 
-				checkRand, err := s.api.ChainGetRandomnessFromBeacon(ctx, types.EmptyTSK, crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+				headTs, err := s.api.ChainHead(ctx)
+				if err != nil {
+					return nil, xerrors.Errorf("getting current head: %w", err)
+				}
+
+				checkRand, err := s.api.ChainGetRandomnessFromBeacon(ctx, headTs.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
 				if err != nil {
 					return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 				}
