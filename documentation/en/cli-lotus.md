@@ -31,6 +31,8 @@ COMMANDS:
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
+   STATUS:
+     status  Check node status
 
 GLOBAL OPTIONS:
    --help, -h     show help (default: false)
@@ -2669,5 +2671,22 @@ USAGE:
 OPTIONS:
    --epoch value  checkpoint the tipset at the given epoch (default: 0)
    --help, -h     show help (default: false)
+   
+```
+
+## lotus status
+```
+NAME:
+   lotus status - Check node status
+
+USAGE:
+   lotus status [command options] [arguments...]
+
+CATEGORY:
+   STATUS
+
+OPTIONS:
+   --chain     include chain health status (default: false)
+   --help, -h  show help (default: false)
    
 ```
