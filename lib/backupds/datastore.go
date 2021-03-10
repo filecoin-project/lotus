@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
@@ -189,11 +190,10 @@ func (d *Datastore) CloseLog() error {
 }
 
 func (d *Datastore) Close() error {
-	if err := d.child.Close(); err != nil {
-		return xerrors.Errorf("closing child datastore: %w", err)
-	}
-
-	return d.CloseLog()
+	return multierr.Combine(
+		d.child.Close(),
+		d.CloseLog(),
+	)
 }
 
 func (d *Datastore) Batch() (datastore.Batch, error) {

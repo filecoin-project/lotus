@@ -65,30 +65,32 @@ func (d *Datastore) startLog(logdir string) error {
 		return xerrors.Errorf("writing new log head: %w", err)
 	}
 
-	go func() {
-		defer close(d.closed)
-		for {
-			select {
-			case ent := <-d.log:
-				if err := l.writeEntry(&ent); err != nil {
-					log.Errorw("failed to write log entry", "error", err)
-					// todo try to do something, maybe start a new log file (but not when we're out of disk space)
-				}
-
-				// todo: batch writes when multiple are pending; flush on a timer
-				if err := l.file.Sync(); err != nil {
-					log.Errorw("failed to sync log", "error", err)
-				}
-			case <-d.closing:
-				if err := l.Close(); err != nil {
-					log.Errorw("failed to close log", "error", err)
-				}
-				return
-			}
-		}
-	}()
+	go d.runLog(l)
 
 	return nil
+}
+
+func (d *Datastore) runLog(l *logfile) {
+	defer close(d.closed)
+	for {
+		select {
+		case ent := <-d.log:
+			if err := l.writeEntry(&ent); err != nil {
+				log.Errorw("failed to write log entry", "error", err)
+				// todo try to do something, maybe start a new log file (but not when we're out of disk space)
+			}
+
+			// todo: batch writes when multiple are pending; flush on a timer
+			if err := l.file.Sync(); err != nil {
+				log.Errorw("failed to sync log", "error", err)
+			}
+		case <-d.closing:
+			if err := l.Close(); err != nil {
+				log.Errorw("failed to close log", "error", err)
+			}
+			return
+		}
+	}
 }
 
 type logfile struct {
