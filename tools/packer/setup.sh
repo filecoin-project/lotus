@@ -28,7 +28,7 @@ MANAGED_FILES=(
 # install libs.
 DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get -y install libhwloc15 ocl-icd-libopencl1
+apt-get -y install libhwloc15 ocl-icd-libopencl1 ufw
 apt-get -y upgrade
 ln -s /usr/lib/x86_64-linux-gnu/libhwloc.so.15 /usr/lib/x86_64-linux-gnu/libhwloc.so.5
 
@@ -61,5 +61,8 @@ systemctl enable lotus-daemon
 
 # Setup firewall
 ufw enable
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
 ufw allow 1234   #lotus api
 ufw allow 5678   #libp2p
