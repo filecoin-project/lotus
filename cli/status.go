@@ -52,7 +52,7 @@ var statusCmd = &cli.Command{
 			}
 
 			fmt.Printf("Blocks per TipSet in last 100 epochs: %f %s\n", status.ChainStatus.BlocksPerTipsetLast100, ok100)
-			fmt.Printf("Blocks per TipSet in last 100 finality: %f %s\n", status.ChainStatus.BlocksPerTipsetLastFinality, okFin)
+			fmt.Printf("Blocks per TipSet in last finality: %f %s\n", status.ChainStatus.BlocksPerTipsetLastFinality, okFin)
 		}
 
 		return nil
