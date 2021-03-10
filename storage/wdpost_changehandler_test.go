@@ -395,7 +395,7 @@ func TestChangeHandlerStartProvingNextDeadline(t *testing.T) {
 
 	// Trigger a head change
 	currentEpoch := abi.ChainEpoch(1)
-	go triggerHeadAdvance(t, s, currentEpoch + ChallengeConfidence)
+	go triggerHeadAdvance(t, s, currentEpoch+ChallengeConfidence)
 
 	// Should start proving
 	<-s.ch.proveHdlr.processedHeadChanges
@@ -405,7 +405,7 @@ func TestChangeHandlerStartProvingNextDeadline(t *testing.T) {
 	// Trigger a head change that advances the chain beyond the submit
 	// confidence
 	currentEpoch = 1 + SubmitConfidence
-	go triggerHeadAdvance(t, s, currentEpoch + ChallengeConfidence)
+	go triggerHeadAdvance(t, s, currentEpoch+ChallengeConfidence)
 
 	// Should be no change to state yet
 	<-s.ch.proveHdlr.processedHeadChanges
@@ -446,7 +446,7 @@ func TestChangeHandlerProvingRounds(t *testing.T) {
 	for currentEpoch := abi.ChainEpoch(1); currentEpoch < miner.WPoStChallengeWindow*5; currentEpoch++ {
 		// Trigger a head change
 		di := mock.getDeadline(currentEpoch)
-		go triggerHeadAdvance(t, s, currentEpoch + ChallengeConfidence)
+		go triggerHeadAdvance(t, s, currentEpoch+ChallengeConfidence)
 
 		// Wait for prover to process head change
 		<-s.ch.proveHdlr.processedHeadChanges
