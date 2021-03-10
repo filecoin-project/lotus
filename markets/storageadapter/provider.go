@@ -38,6 +38,7 @@ import (
 
 var addPieceRetryWait = 5 * time.Minute
 var addPieceRetryTimeout = 6 * time.Hour
+var defaultMaxProviderCollateralMultiplier = uint64(2)
 var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
@@ -51,12 +52,13 @@ type ProviderNodeAdapter struct {
 
 	dealPublisher *DealPublisher
 
-	addBalanceSpec *api.MessageSendSpec
-	dsMatcher      *dealStateMatcher
-	scMgr          *SectorCommittedManager
+	addBalanceSpec              *api.MessageSendSpec
+	maxDealCollateralMultiplier uint64
+	dsMatcher                   *dealStateMatcher
+	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MinerFeeConfig, dc *config.DealmakingConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
@@ -72,6 +74,10 @@ func NewProviderNodeAdapter(fc *config.MinerFeeConfig) func(mctx helpers.Metrics
 		}
 		if fc != nil {
 			na.addBalanceSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
+		}
+		na.maxDealCollateralMultiplier = defaultMaxProviderCollateralMultiplier
+		if dc != nil {
+			na.maxDealCollateralMultiplier = dc.MaxProviderCollateralMultiplier
 		}
 		na.scMgr = NewSectorCommittedManager(ev, na, &apiWrapper{api: full})
 
@@ -257,7 +263,11 @@ func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, 
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	return bounds.Min, bounds.Max, nil
+	// The maximum amount of collateral that the provider will put into escrow
+	// for a deal is calculated as a multiple of the minimum bounded amount
+	max := types.BigMul(bounds.Min, types.NewInt(n.maxDealCollateralMultiplier))
+
+	return bounds.Min, max, nil
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)

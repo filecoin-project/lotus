@@ -55,6 +55,9 @@ type DealmakingConfig struct {
 	// The maximum number of deals to include in a single PublishStorageDeals
 	// message
 	MaxDealsPerPublishMsg uint64
+	// The maximum collateral that the provider will put up against a deal,
+	// as a multiplier of the minimum collateral bound
+	MaxProviderCollateralMultiplier uint64
 
 	Filter          string
 	RetrievalFilter string
@@ -241,9 +244,10 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
-			ExpectedSealDuration:  Duration(time.Hour * 24),
-			PublishMsgPeriod:      Duration(time.Hour),
-			MaxDealsPerPublishMsg: 8,
+			ExpectedSealDuration:            Duration(time.Hour * 24),
+			PublishMsgPeriod:                Duration(time.Hour),
+			MaxDealsPerPublishMsg:           8,
+			MaxProviderCollateralMultiplier: 2,
 		},
 
 		Fees: MinerFeeConfig{

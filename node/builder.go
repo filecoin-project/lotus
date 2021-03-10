@@ -408,7 +408,7 @@ var MinerNode = Options(
 	Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
 	Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 	Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
-	Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(nil)),
+	Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(nil, nil)),
 	Override(HandleMigrateProviderFundsKey, modules.HandleMigrateProviderFunds),
 	Override(HandleDealsKey, modules.HandleDeals),
 
@@ -567,7 +567,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Period:         time.Duration(cfg.Dealmaking.PublishMsgPeriod),
 			MaxDealsPerMsg: cfg.Dealmaking.MaxDealsPerPublishMsg,
 		})),
-		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees)),
+		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
 
 		Override(new(sectorstorage.SealerConfig), cfg.Storage),
 		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
