@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -36,7 +35,8 @@ type FullNodeAPI struct {
 	full.SyncAPI
 	full.BeaconAPI
 
-	DS dtypes.MetadataDS
+	DS          dtypes.MetadataDS
+	NetworkName dtypes.NetworkName
 }
 
 func (n *FullNodeAPI) CreateBackup(ctx context.Context, fpath string) error {
@@ -58,16 +58,11 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 	peersMsgs := make(map[peer.ID]struct{})
 	peersBlocks := make(map[peer.ID]struct{})
 
-	netName, err := stmgr.GetNetworkName(ctx, n.StateManager, curTs.ParentState())
-	if err != nil {
-		return status, err
-	}
-
-	for _, p := range n.PubSub.ListPeers(build.MessagesTopic(netName)) {
+	for _, p := range n.PubSub.ListPeers(build.MessagesTopic(n.NetworkName)) {
 		peersMsgs[p] = struct{}{}
 	}
 
-	for _, p := range n.PubSub.ListPeers(build.BlocksTopic(netName)) {
+	for _, p := range n.PubSub.ListPeers(build.BlocksTopic(n.NetworkName)) {
 		peersBlocks[p] = struct{}{}
 	}
 
