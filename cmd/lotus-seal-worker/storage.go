@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
@@ -46,6 +47,10 @@ var storageAttachCmd = &cli.Command{
 			Name:  "store",
 			Usage: "(for init) use path for long-term storage",
 		},
+		&cli.StringFlag{
+			Name:  "max-storage",
+			Usage: "(for init) limit storage space for sectors (expensive for very large paths!)",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetWorkerAPI(cctx)
@@ -79,11 +84,20 @@ var storageAttachCmd = &cli.Command{
 				return err
 			}
 
+			var maxStor int64
+			if cctx.IsSet("max-storage") {
+				maxStor, err = units.RAMInBytes(cctx.String("max-storage"))
+				if err != nil {
+					return xerrors.Errorf("parsing max-storage: %w", err)
+				}
+			}
+
 			cfg := &stores.LocalStorageMeta{
-				ID:       stores.ID(uuid.New().String()),
-				Weight:   cctx.Uint64("weight"),
-				CanSeal:  cctx.Bool("seal"),
-				CanStore: cctx.Bool("store"),
+				ID:         stores.ID(uuid.New().String()),
+				Weight:     cctx.Uint64("weight"),
+				CanSeal:    cctx.Bool("seal"),
+				CanStore:   cctx.Bool("store"),
+				MaxStorage: uint64(maxStor),
 			}
 
 			if !(cfg.CanStore || cfg.CanSeal) {

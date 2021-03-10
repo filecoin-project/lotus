@@ -42,6 +42,10 @@ type LocalStorageMeta struct {
 
 	// Finalized sectors that will be proved over time will be stored here
 	CanStore bool
+
+	// MaxStorage specifies the maximum number of bytes to use for sector storage
+	// (0 = unlimited)
+	MaxStorage uint64
 }
 
 // StorageConfig .lotusstorage/storage.json
@@ -77,7 +81,8 @@ type Local struct {
 }
 
 type path struct {
-	local string // absolute local path
+	local      string // absolute local path
+	maxStorage uint64
 
 	reserved     int64
 	reservations map[abi.SectorID]storiface.SectorFileType
@@ -127,6 +132,25 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 		stat.Available = 0
 	}
 
+	if p.maxStorage > 0 {
+		used, err := ls.DiskUsage(p.local)
+		if err != nil {
+			return fsutil.FsStat{}, err
+		}
+
+		stat.Max = int64(p.maxStorage)
+		stat.Used = used
+
+		avail := int64(p.maxStorage) - used
+		if uint64(used) > p.maxStorage {
+			avail = 0
+		}
+
+		if avail < stat.Available {
+			stat.Available = avail
+		}
+	}
+
 	return stat, err
 }
 
@@ -164,6 +188,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 	out := &path{
 		local: p,
 
+		maxStorage:   meta.MaxStorage,
 		reserved:     0,
 		reservations: map[abi.SectorID]storiface.SectorFileType{},
 	}
@@ -174,11 +199,12 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 	}
 
 	err = st.index.StorageAttach(ctx, StorageInfo{
-		ID:       meta.ID,
-		URLs:     st.urls,
-		Weight:   meta.Weight,
-		CanSeal:  meta.CanSeal,
-		CanStore: meta.CanStore,
+		ID:         meta.ID,
+		URLs:       st.urls,
+		Weight:     meta.Weight,
+		MaxStorage: meta.MaxStorage,
+		CanSeal:    meta.CanSeal,
+		CanStore:   meta.CanStore,
 	}, fst)
 	if err != nil {
 		return xerrors.Errorf("declaring storage in index: %w", err)
@@ -237,11 +263,12 @@ func (st *Local) Redeclare(ctx context.Context) error {
 		}
 
 		err = st.index.StorageAttach(ctx, StorageInfo{
-			ID:       id,
-			URLs:     st.urls,
-			Weight:   meta.Weight,
-			CanSeal:  meta.CanSeal,
-			CanStore: meta.CanStore,
+			ID:         id,
+			URLs:       st.urls,
+			Weight:     meta.Weight,
+			MaxStorage: meta.MaxStorage,
+			CanSeal:    meta.CanSeal,
+			CanStore:   meta.CanStore,
 		}, fst)
 		if err != nil {
 			return xerrors.Errorf("redeclaring storage in index: %w", err)

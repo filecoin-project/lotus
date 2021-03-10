@@ -154,9 +154,10 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 			CanSeal:  path.CanSeal,
 			CanStore: path.CanStore,
 		}, fsutil.FsStat{
-			Capacity:  1 << 40,
-			Available: 1 << 40,
-			Reserved:  3,
+			Capacity:    1 << 40,
+			Available:   1 << 40,
+			FSAvailable: 1 << 40,
+			Reserved:    3,
 		})
 		require.NoError(t, err)
 	}

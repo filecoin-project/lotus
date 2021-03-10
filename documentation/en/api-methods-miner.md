@@ -1812,13 +1812,17 @@ Inputs:
     "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
     "URLs": null,
     "Weight": 42,
+    "MaxStorage": 42,
     "CanSeal": true,
     "CanStore": true
   },
   {
     "Capacity": 9,
     "Available": 9,
-    "Reserved": 9
+    "FSAvailable": 9,
+    "Reserved": 9,
+    "Max": 9,
+    "Used": 9
   }
 ]
 ```
@@ -1918,6 +1922,7 @@ Response:
   "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
   "URLs": null,
   "Weight": 42,
+  "MaxStorage": 42,
   "CanSeal": true,
   "CanStore": true
 }
@@ -1989,7 +1994,10 @@ Inputs:
     "Stat": {
       "Capacity": 9,
       "Available": 9,
-      "Reserved": 9
+      "FSAvailable": 9,
+      "Reserved": 9,
+      "Max": 9,
+      "Used": 9
     },
     "Err": "string value"
   }
@@ -2015,7 +2023,10 @@ Response:
 {
   "Capacity": 9,
   "Available": 9,
-  "Reserved": 9
+  "FSAvailable": 9,
+  "Reserved": 9,
+  "Max": 9,
+  "Used": 9
 }
 ```
 
