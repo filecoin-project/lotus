@@ -103,6 +103,7 @@ type Sealing struct {
 	stats SectorStats
 
 	terminator *TerminateBatcher
+	commiter   *CommitBatcher
 
 	getConfig GetSealingConfigFunc
 	dealInfo  *CurrentDealInfoManager
@@ -152,6 +153,7 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		addrSel: as,
 
 		terminator: NewTerminationBatcher(context.TODO(), maddr, api, as, fc),
+		commiter:   NewCommitBatcher(context.TODO(), maddr, api, as, fc),
 
 		getConfig: gc,
 		dealInfo:  &CurrentDealInfoManager{api},
