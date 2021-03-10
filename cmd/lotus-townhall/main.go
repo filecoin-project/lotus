@@ -15,8 +15,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var topic = "/fil/headnotifs/"
@@ -28,7 +28,7 @@ func init() {
 		return
 	}
 
-	bs := blockstore.NewTemporary()
+	bs := blockstore.NewMemory()
 
 	c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 	if err != nil {

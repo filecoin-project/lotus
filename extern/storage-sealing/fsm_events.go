@@ -1,13 +1,16 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"time"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
 type mutator interface {
@@ -67,22 +70,33 @@ func (evt SectorStart) apply(state *SectorInfo) {
 type SectorStartCC struct {
 	ID         abi.SectorNumber
 	SectorType abi.RegisteredSealProof
-	Pieces     []Piece
 }
 
 func (evt SectorStartCC) apply(state *SectorInfo) {
 	state.SectorNumber = evt.ID
-	state.Pieces = evt.Pieces
 	state.SectorType = evt.SectorType
 }
 
-type SectorAddPiece struct {
-	NewPiece Piece
-}
+type SectorAddPiece struct{}
 
 func (evt SectorAddPiece) apply(state *SectorInfo) {
-	state.Pieces = append(state.Pieces, evt.NewPiece)
+	if state.CreationTime == 0 {
+		state.CreationTime = time.Now().Unix()
+	}
 }
+
+type SectorPieceAdded struct {
+	NewPieces []Piece
+}
+
+func (evt SectorPieceAdded) apply(state *SectorInfo) {
+	state.Pieces = append(state.Pieces, evt.NewPieces...)
+}
+
+type SectorAddPieceFailed struct{ error }
+
+func (evt SectorAddPieceFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorAddPieceFailed) apply(si *SectorInfo)                     {}
 
 type SectorStartPacking struct{}
 

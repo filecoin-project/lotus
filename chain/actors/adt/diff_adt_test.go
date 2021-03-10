@@ -16,7 +16,7 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	bstore "github.com/filecoin-project/lotus/blockstore"
 )
 
 func TestDiffAdtArray(t *testing.T) {
@@ -295,7 +295,7 @@ func (t *TestDiffArray) Remove(key uint64, val *typegen.Deferred) error {
 
 func newContextStore() Store {
 	ctx := context.Background()
-	bs := bstore.NewTemporarySync()
+	bs := bstore.NewMemorySync()
 	store := cbornode.NewCborStore(bs)
 	return WrapStore(ctx, store)
 }

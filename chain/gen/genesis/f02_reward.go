@@ -9,9 +9,9 @@ import (
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 func SetupRewardActor(bs bstore.Blockstore, qaPower big.Int) (*types.Actor, error) {

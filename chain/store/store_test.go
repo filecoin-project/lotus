@@ -11,12 +11,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -52,7 +52,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	bs, err := lr.Blockstore(context.TODO(), repo.BlockstoreChain)
+	bs, err := lr.Blockstore(context.TODO(), repo.UniversalBlockstore)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestChainExportImport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewTemporary()
+	nbs := blockstore.NewMemory()
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
 	defer cs.Close() //nolint:errcheck
 
@@ -139,7 +139,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewTemporary()
+	nbs := blockstore.NewMemory()
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
 	defer cs.Close() //nolint:errcheck
 

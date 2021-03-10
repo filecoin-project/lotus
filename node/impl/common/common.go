@@ -7,6 +7,9 @@ import (
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/google/uuid"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
@@ -17,8 +20,6 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	ma "github.com/multiformats/go-multiaddr"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
@@ -97,6 +98,37 @@ func (a *CommonAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 	}
 
 	return out, nil
+}
+
+func (a *CommonAPI) NetPeerInfo(_ context.Context, p peer.ID) (*api.ExtendedPeerInfo, error) {
+	info := &api.ExtendedPeerInfo{ID: p}
+
+	agent, err := a.Host.Peerstore().Get(p, "AgentVersion")
+	if err == nil {
+		info.Agent = agent.(string)
+	}
+
+	for _, a := range a.Host.Peerstore().Addrs(p) {
+		info.Addrs = append(info.Addrs, a.String())
+	}
+	sort.Strings(info.Addrs)
+
+	protocols, err := a.Host.Peerstore().GetProtocols(p)
+	if err == nil {
+		sort.Strings(protocols)
+		info.Protocols = protocols
+	}
+
+	if cm := a.Host.ConnManager().GetTagInfo(p); cm != nil {
+		info.ConnMgrMeta = &api.ConnMgrInfo{
+			FirstSeen: cm.FirstSeen,
+			Value:     cm.Value,
+			Tags:      cm.Tags,
+			Conns:     cm.Conns,
+		}
+	}
+
+	return info, nil
 }
 
 func (a *CommonAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
@@ -179,13 +211,13 @@ func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
 	return a.Host.ID(), nil
 }
 
-func (a *CommonAPI) Version(context.Context) (api.Version, error) {
-	v, err := build.VersionForType(build.RunningNodeType)
+func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
+	v, err := api.VersionForType(api.RunningNodeType)
 	if err != nil {
-		return api.Version{}, err
+		return api.APIVersion{}, err
 	}
 
-	return api.Version{
+	return api.APIVersion{
 		Version:    build.UserVersion(),
 		APIVersion: v,
 

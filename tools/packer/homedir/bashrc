@@ -1,0 +1,5 @@
+PS1="[\h \w] ⨎ "
+
+export PROMT_DIRTRIM=1
+export LOTUS_PATH=/var/lib/lotus
+export LOTUS_MINER_PATH=/var/lib/lotus-miner

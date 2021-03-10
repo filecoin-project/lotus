@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -49,7 +50,7 @@ const FlagWorkerRepo = "worker-repo"
 const FlagWorkerRepoDeprecation = "workerrepo"
 
 func main() {
-	build.RunningNodeType = build.NodeWorker
+	api.RunningNodeType = api.NodeWorker
 
 	lotuslog.SetupLogLevels()
 
@@ -183,7 +184,7 @@ var runCmd = &cli.Command{
 		var closer func()
 		var err error
 		for {
-			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, lcli.StorageMinerUseHttp)
+			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
 			if err == nil {
 				_, err = nodeApi.Version(ctx)
 				if err == nil {
@@ -210,8 +211,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if v.APIVersion != build.MinerAPIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.Version{APIVersion: build.MinerAPIVersion})
+		if v.APIVersion != api.MinerAPIVersion {
+			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.MinerAPIVersion})
 		}
 		log.Infof("Remote version %s", v)
 

@@ -15,7 +15,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -132,7 +132,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal("Unable to settle payment channel")
 	}
 
-	creatorStore := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(paymentCreator)))
+	creatorStore := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(paymentCreator)))
 
 	// wait for the receiver to submit their vouchers
 	ev := events.NewEvents(ctx, paymentCreator)

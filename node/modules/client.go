@@ -30,9 +30,9 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/host"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
@@ -83,7 +83,7 @@ func ClientMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locke
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	ds, err := r.Datastore(ctx, "/client")
 	if err != nil {
-		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
+		return nil, xerrors.Errorf("getting datastore out of repo: %w", err)
 	}
 
 	mds, err := multistore.NewMultiDstore(ds)

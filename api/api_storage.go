@@ -36,7 +36,7 @@ type StorageMiner interface {
 	MiningBase(context.Context) (*types.TipSet, error)
 
 	// Temp api for testing
-	PledgeSector(context.Context) error
+	PledgeSector(context.Context) (abi.SectorID, error)
 
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error)
@@ -238,6 +238,9 @@ type AddressConfig struct {
 	PreCommitControl []address.Address
 	CommitControl    []address.Address
 	TerminateControl []address.Address
+
+	DisableOwnerFallback  bool
+	DisableWorkerFallback bool
 }
 
 // PendingDealInfo has info about pending deals and when they are due to be

@@ -18,14 +18,12 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
 )
 
 var infoCmd = &cli.Command{
@@ -102,7 +100,7 @@ func infoCmdAct(cctx *cli.Context) error {
 		return err
 	}
 
-	tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(api), blockstore.NewTemporary())
+	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(api), blockstore.NewMemory())
 	mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 	if err != nil {
 		return err
@@ -284,6 +282,7 @@ var stateList = []stateMeta{
 
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
+	{col: color.FgBlue, state: sealing.AddPiece},
 
 	{col: color.FgRed, state: sealing.UndefinedSectorState},
 	{col: color.FgYellow, state: sealing.Packing},
@@ -306,6 +305,7 @@ var stateList = []stateMeta{
 	{col: color.FgCyan, state: sealing.Removed},
 
 	{col: color.FgRed, state: sealing.FailedUnrecoverable},
+	{col: color.FgRed, state: sealing.AddPieceFailed},
 	{col: color.FgRed, state: sealing.SealPreCommit1Failed},
 	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
 	{col: color.FgRed, state: sealing.PreCommitFailed},

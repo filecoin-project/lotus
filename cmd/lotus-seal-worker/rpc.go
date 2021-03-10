@@ -8,7 +8,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -23,8 +23,8 @@ type worker struct {
 	disabled int64
 }
 
-func (w *worker) Version(context.Context) (build.Version, error) {
-	return build.WorkerAPIVersion, nil
+func (w *worker) Version(context.Context) (api.Version, error) {
+	return api.WorkerAPIVersion, nil
 }
 
 func (w *worker) StorageAddLocal(ctx context.Context, path string) error {

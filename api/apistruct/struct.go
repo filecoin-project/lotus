@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -60,12 +59,13 @@ type CommonStruct struct {
 		NetBandwidthStatsByPeer     func(ctx context.Context) (map[string]metrics.Stats, error)      `perm:"read"`
 		NetBandwidthStatsByProtocol func(ctx context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
 		NetAgentVersion             func(ctx context.Context, p peer.ID) (string, error)             `perm:"read"`
+		NetPeerInfo                 func(context.Context, peer.ID) (*api.ExtendedPeerInfo, error)    `perm:"read"`
 		NetBlockAdd                 func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
 		NetBlockRemove              func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
 		NetBlockList                func(ctx context.Context) (api.NetBlockList, error)              `perm:"read"`
 
-		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
-		Version func(context.Context) (api.Version, error) `perm:"read"`
+		ID      func(context.Context) (peer.ID, error)        `perm:"read"`
+		Version func(context.Context) (api.APIVersion, error) `perm:"read"`
 
 		LogList     func(context.Context) ([]string, error)     `perm:"write"`
 		LogSetLevel func(context.Context, string, string) error `perm:"write"`
@@ -304,7 +304,7 @@ type StorageMinerStruct struct {
 		MarketPendingDeals        func(ctx context.Context) (api.PendingDealInfo, error)                                                                                                                       `perm:"write"`
 		MarketPublishPendingDeals func(ctx context.Context) error                                                                                                                                              `perm:"admin"`
 
-		PledgeSector func(context.Context) error `perm:"write"`
+		PledgeSector func(context.Context) (abi.SectorID, error) `perm:"write"`
 
 		SectorsStatus                 func(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) `perm:"read"`
 		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)                                             `perm:"read"`
@@ -389,7 +389,7 @@ type WorkerStruct struct {
 	Internal struct {
 		// TODO: lower perms
 
-		Version func(context.Context) (build.Version, error) `perm:"admin"`
+		Version func(context.Context) (api.Version, error) `perm:"admin"`
 
 		TaskTypes func(context.Context) (map[sealtasks.TaskType]struct{}, error) `perm:"admin"`
 		Paths     func(context.Context) ([]stores.StoragePath, error)            `perm:"admin"`
@@ -540,13 +540,17 @@ func (c *CommonStruct) NetAgentVersion(ctx context.Context, p peer.ID) (string, 
 	return c.Internal.NetAgentVersion(ctx, p)
 }
 
+func (c *CommonStruct) NetPeerInfo(ctx context.Context, p peer.ID) (*api.ExtendedPeerInfo, error) {
+	return c.Internal.NetPeerInfo(ctx, p)
+}
+
 // ID implements API.ID
 func (c *CommonStruct) ID(ctx context.Context) (peer.ID, error) {
 	return c.Internal.ID(ctx)
 }
 
 // Version implements API.Version
-func (c *CommonStruct) Version(ctx context.Context) (api.Version, error) {
+func (c *CommonStruct) Version(ctx context.Context) (api.APIVersion, error) {
 	return c.Internal.Version(ctx)
 }
 
@@ -1274,7 +1278,7 @@ func (c *StorageMinerStruct) ActorAddressConfig(ctx context.Context) (api.Addres
 	return c.Internal.ActorAddressConfig(ctx)
 }
 
-func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
+func (c *StorageMinerStruct) PledgeSector(ctx context.Context) (abi.SectorID, error) {
 	return c.Internal.PledgeSector(ctx)
 }
 
@@ -1610,7 +1614,7 @@ func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.Registere
 
 // WorkerStruct
 
-func (w *WorkerStruct) Version(ctx context.Context) (build.Version, error) {
+func (w *WorkerStruct) Version(ctx context.Context) (api.Version, error) {
 	return w.Internal.Version(ctx)
 }
 

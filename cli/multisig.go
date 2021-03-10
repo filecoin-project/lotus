@@ -29,7 +29,7 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -202,7 +202,7 @@ var msigInspectCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api)))
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
 
 		maddr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
@@ -1275,7 +1275,7 @@ var msigLockApproveCmd = &cli.Command{
 		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
-			Amount:         abi.NewTokenAmount(amount.Int64()),
+			Amount:         big.Int(amount),
 		})
 
 		if actErr != nil {
@@ -1367,7 +1367,7 @@ var msigLockCancelCmd = &cli.Command{
 		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
-			Amount:         abi.NewTokenAmount(amount.Int64()),
+			Amount:         big.Int(amount),
 		})
 
 		if actErr != nil {
