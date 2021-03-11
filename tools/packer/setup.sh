@@ -64,5 +64,4 @@ ufw enable
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
-ufw allow 1234   #lotus api
 ufw allow 5678   #libp2p
