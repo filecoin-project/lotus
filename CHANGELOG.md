@@ -1,5 +1,13 @@
 # Lotus changelog
 
+# 1.5.2 / 2021-03-11
+
+This is an hotfix release of Lotus that fixes a critical bug introduced in v1.5.1 in the miner windowPoSt logic. This upgrade is only affecting miner nodes.
+
+## Changes
+- fix window post rand check (https://github.com/filecoin-project/lotus/pull/5773)
+- wdpost: Always use head tipset to get randomness (https://github.com/filecoin-project/lotus/pull/5774)
+
 # 1.5.1 / 2021-03-10
 
 This is an optional release of Lotus that introduces an important fix to the WindowPoSt computation process. The change is to wait for some confidence before drawing beacon randomness for the proof. Without this, invalid proofs might be generated as the result of a null tipset. 
