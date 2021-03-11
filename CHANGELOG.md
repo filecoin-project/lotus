@@ -6,32 +6,15 @@ This is an optional release of Lotus that introduces an important fix to the Win
 
 ## Splitstore
 
-This release also introduces the splitstore, a new optional blockstore that
-segregates the monolithic blockstore into cold and hot regions. The
-hot region contains objects from the last 4-5 finalities plus all
-reachable objects from two finalities away. All other objects are
-moved to the cold region using a compaction process that executes
-every finality, once 5 finalities have elapsed.
-The splitstore allows us to separate the two regions quite
-effectively, using two separate badger blockstores. The separation
-means that the live working set is much smaller, which results in
-potentially significant performance improvements. In addition, it
-means that the coldstore can be moved to a separate (bigger, slower,
-cheaper) disk without loss of performance.
-The design also allows us to use different implementations for the two
-blockstores; for example, an append-only blockstore could be used for
-coldstore and a faster memory mapped blockstore could be used for the
-hotstore (eg LMDB). We plan to experiment with these options in the
-future.
-Once the splitstore has been enabled, the existing monolithic
-blockstore becomes the coldstore. On the first head change
-notification, the splitstore will warm up the hotstore by copying all
-reachable objects from the current tipset into the hotstore.  All new
-writes go into the hotstore, with the splitstore tracking the write
-epoch. Once 5 finalities have elapsed, and every finality thereafter,
-the splitstore compacts by moving cold objects into the coldstore.
-There is also experimental support for garbage collection, whereby
-unreachable objects are simply discarded.
+This release also introduces the splitstore, a new optional blockstore that segregates the monolithic blockstore into cold and hot regions. The hot region contains objects from the last 4-5 finalities plus all reachable objects from two finalities away. All other objects are moved to the cold region using a compaction process that executes every finality, once 5 finalities have elapsed.
+
+The splitstore allows us to separate the two regions quite effectively, using two separate badger blockstores. The separation
+means that the live working set is much smaller, which results in potentially significant performance improvements. In addition, it means that the coldstore can be moved to a separate (bigger, slower, cheaper) disk without loss of performance.
+
+The design also allows us to use different implementations for the two blockstores; for example, an append-only blockstore could be used for coldstore and a faster memory mapped blockstore could be used for the hotstore (eg LMDB). We plan to experiment with these options in the future.
+
+Once the splitstore has been enabled, the existing monolithic blockstore becomes the coldstore. On the first head change notification, the splitstore will warm up the hotstore by copying all reachable objects from the current tipset into the hotstore.  All new writes go into the hotstore, with the splitstore tracking the write epoch. Once 5 finalities have elapsed, and every finality thereafter, the splitstore compacts by moving cold objects into the coldstore. There is also experimental support for garbage collection, whereby nunreachable objects are simply discarded.
+
 To enable the splitstore, add the following to config.toml:
 
 ```
