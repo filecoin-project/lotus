@@ -191,15 +191,16 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FailedUnrecoverable: final,
 }
 
-func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, uint64, error) {
-	/////
-	// First process all events
-
+func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
 	for _, event := range events {
 		e, err := json.Marshal(event)
 		if err != nil {
 			log.Errorf("marshaling event for logging: %+v", err)
 			continue
+		}
+
+		if event.User == (SectorRestart{}) {
+			continue // don't log on every fsm restart
 		}
 
 		l := Log{
@@ -225,6 +226,13 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 		state.Log = append(state.Log, l)
 	}
+}
+
+func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, uint64, error) {
+	/////
+	// First process all events
+
+	m.logEvents(events, state)
 
 	if m.notifee != nil {
 		defer func(before SectorInfo) {
