@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
 )
@@ -100,14 +99,6 @@ func main() {
 		sectorstorage.Call{},
 		sectorstorage.WorkState{},
 		sectorstorage.WorkID{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./lib/backupds/cbor_gen.go", "backupds",
-		backupds.Entry{},
 	)
 	if err != nil {
 		fmt.Println(err)
