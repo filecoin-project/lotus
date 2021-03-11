@@ -126,7 +126,7 @@ func (t *Entry) UnmarshalCBOR(r io.Reader) error {
 			return fmt.Errorf("wrong type for int64 field: %d", maj)
 		}
 
-		t.Timestamp = int64(extraI)
+		t.Timestamp = extraI
 	}
 	return nil
 }
