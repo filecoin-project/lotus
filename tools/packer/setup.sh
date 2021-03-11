@@ -26,7 +26,7 @@ MANAGED_FILES=(
 )
 
 # install libs.
-DEBIAN_FRONTEND=noninteractive
+export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get -y install libhwloc15 ocl-icd-libopencl1 ufw
 apt-get -y upgrade -q -y -u -o Dpkg::Options::="--force-confold"
