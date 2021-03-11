@@ -805,9 +805,8 @@ func (s *SplitStore) gcHotstore() {
 		if err != nil {
 			log.Warnf("error compacting hotstore: %s", err)
 			return
-		} else {
-			log.Infow("hotstore compaction done", "took", time.Since(startCompact))
 		}
+		log.Infow("hotstore compaction done", "took", time.Since(startCompact))
 	}
 
 	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
@@ -816,9 +815,9 @@ func (s *SplitStore) gcHotstore() {
 		err := gc.CollectGarbage()
 		if err != nil {
 			log.Warnf("error garbage collecting hotstore: %s", err)
-		} else {
-			log.Infow("garbage collection done", "took", time.Since(startGC))
+			return
 		}
+		log.Infow("hotstore garbage collection done", "took", time.Since(startGC))
 	}
 }
 
