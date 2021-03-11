@@ -39,7 +39,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/go-statemachine v0.0.0-20200925024713-05bd7c71fbfe
-	github.com/filecoin-project/go-statestore v0.1.0
+	github.com/filecoin-project/go-statestore v0.1.1-0.20210311122610-6c7a5aedbdea
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
