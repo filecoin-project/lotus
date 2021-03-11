@@ -93,7 +93,6 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 	if sector.CreationTime != 0 {
 		cfg, err := m.getConfig()
 		if err != nil {
-			m.inputLk.Unlock()
 			return false, xerrors.Errorf("getting storage config: %w", err)
 		}
 
@@ -101,7 +100,6 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		sealTime := time.Unix(sector.CreationTime, 0).Add(cfg.WaitDealsDelay)
 
 		if now.After(sealTime) {
-			m.inputLk.Unlock()
 			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timeout")
 			return true, ctx.Send(SectorStartPacking{})
 		}
