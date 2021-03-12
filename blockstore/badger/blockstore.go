@@ -288,9 +288,6 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 		return ErrBlockstoreClosed
 	}
 
-	batch := b.DB.NewWriteBatch()
-	defer batch.Cancel()
-
 	// toReturn tracks the byte slices to return to the pool, if we're using key
 	// prefixing. we can't return each slice to the pool after each Set, because
 	// badger holds on to the slice.
@@ -303,6 +300,9 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 			}
 		}()
 	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
 
 	for _, block := range blocks {
 		k, pooled := b.PooledStorageKey(block.Cid())
@@ -342,9 +342,6 @@ func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
 		return ErrBlockstoreClosed
 	}
 
-	batch := b.DB.NewWriteBatch()
-	defer batch.Cancel()
-
 	// toReturn tracks the byte slices to return to the pool, if we're using key
 	// prefixing. we can't return each slice to the pool after each Set, because
 	// badger holds on to the slice.
@@ -357,6 +354,9 @@ func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
 			}
 		}()
 	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
 
 	for _, cid := range cids {
 		k, pooled := b.PooledStorageKey(cid)
