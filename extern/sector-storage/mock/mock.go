@@ -325,6 +325,8 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 }
 
 func generateFakePoStProof(sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) []byte {
+	randomness[31] &= 0x3f
+
 	hasher := sha256.New()
 	_, _ = hasher.Write(randomness)
 	for _, info := range sectorInfo {
