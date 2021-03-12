@@ -40,8 +40,8 @@ func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []CheckStatu
 	return mp.checkMessages(msgs, false)
 }
 
-// CheckHealth performs a set of logical sets for all messages pending from a given actor
-func (mp *MessagePool) CheckHealth(from address.Address) (result []CheckStatus, err error) {
+// CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
+func (mp *MessagePool) CheckPendingMessages(from address.Address) (result []CheckStatus, err error) {
 	var msgs []*types.Message
 	mp.lk.Lock()
 	mset, ok := mp.pending[from]

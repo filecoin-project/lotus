@@ -139,8 +139,8 @@ type FullNodeStruct struct {
 		MpoolBatchPushUntrusted func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
 		MpoolBatchPushMessage   func(ctx context.Context, msgs []*types.Message, spec *api.MessageSendSpec) ([]*types.SignedMessage, error) `perm:"sign"`
 
-		MpoolCheckMessages func(context.Context, []*types.Message) ([]api.MessageCheckStatus, error) `perm:"read"`
-		MpoolCheckHealth   func(context.Context, address.Address) ([]api.MessageCheckStatus, error)  `perm:"read"`
+		MpoolCheckMessages        func(context.Context, []*types.Message) ([]api.MessageCheckStatus, error) `perm:"read"`
+		MpoolCheckPendingMessages func(context.Context, address.Address) ([]api.MessageCheckStatus, error)  `perm:"read"`
 
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
@@ -736,8 +736,8 @@ func (c *FullNodeStruct) MpoolCheckMessages(ctx context.Context, msgs []*types.M
 	return c.Internal.MpoolCheckMessages(ctx, msgs)
 }
 
-func (c *FullNodeStruct) MpoolCheckHealth(ctx context.Context, from address.Address) ([]api.MessageCheckStatus, error) {
-	return c.Internal.MpoolCheckHealth(ctx, from)
+func (c *FullNodeStruct) MpoolCheckPendingMessages(ctx context.Context, from address.Address) ([]api.MessageCheckStatus, error) {
+	return c.Internal.MpoolCheckPendingMessages(ctx, from)
 }
 
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
