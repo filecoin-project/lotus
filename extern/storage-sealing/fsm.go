@@ -394,6 +394,10 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 }
 
 func (m *Sealing) onUpdateSector(ctx context.Context, state *SectorInfo) error {
+	if m.getConfig == nil {
+		return nil // tests
+	}
+
 	cfg, err := m.getConfig()
 	if err != nil {
 		return xerrors.Errorf("getting config: %w", err)
