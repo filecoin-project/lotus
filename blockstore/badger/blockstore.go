@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
@@ -148,6 +149,20 @@ func (b *Blockstore) CollectGarbage() error {
 	}
 
 	return err
+}
+
+// Compact runs a synchronous compaction
+func (b *Blockstore) Compact() error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	nworkers := runtime.NumCPU() / 2
+	if nworkers < 2 {
+		nworkers = 2
+	}
+
+	return b.DB.Flatten(nworkers)
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
