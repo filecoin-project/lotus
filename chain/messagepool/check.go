@@ -97,7 +97,7 @@ func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []CheckStatu
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
 				ErrorCode: CheckStatusErrMinGas,
-				ErrorMsg:  "GasLimit less than epoch minumum gas",
+				ErrorMsg:  "GasLimit less than epoch minimum gas",
 			})
 		}
 
@@ -105,7 +105,7 @@ func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []CheckStatu
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
 				ErrorCode: CheckStatusErrMinBaseFee,
-				ErrorMsg:  "GasFeeCap less than minumum base fee",
+				ErrorMsg:  "GasFeeCap less than minimum base fee",
 			})
 			goto checkState
 		}
