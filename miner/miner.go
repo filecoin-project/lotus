@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
@@ -506,33 +505,3 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 		WinningPoStProof: wpostProof,
 	})
 }
-
-type actCacheEntry struct {
-	act *types.Actor
-	err error
-}
-
-type cachedActorLookup struct {
-	tsk      types.TipSetKey
-	cache    map[address.Address]actCacheEntry
-	fallback gasguess.ActorLookup
-}
-
-func (c *cachedActorLookup) StateGetActor(ctx context.Context, a address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	if c.tsk == tsk {
-		e, has := c.cache[a]
-		if has {
-			return e.act, e.err
-		}
-	}
-
-	e, err := c.fallback(ctx, a, tsk)
-	if c.tsk == tsk {
-		c.cache[a] = actCacheEntry{
-			act: e, err: err,
-		}
-	}
-	return e, err
-}
-
-type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)

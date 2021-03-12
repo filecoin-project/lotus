@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -24,8 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -422,20 +421,9 @@ func doTransfer(tree types.StateTree, from, to address.Address, amt abi.TokenAmo
 	if cb != nil {
 		// record the transfer in execution traces
 
-		fakeMsg := &types.Message{
-			From:  from,
-			To:    to,
-			Value: amt,
-		}
-		fakeRct := &types.MessageReceipt{
-			ExitCode: 0,
-			Return:   nil,
-			GasUsed:  0,
-		}
-
 		cb(types.ExecutionTrace{
-			Msg:        fakeMsg,
-			MsgRct:     fakeRct,
+			Msg:        makeFakeMsg(from, to, amt, 0),
+			MsgRct:     makeFakeRct(),
 			Error:      "",
 			Duration:   0,
 			GasCharges: nil,
@@ -516,7 +504,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 			}
 		case builtin0.StorageMinerActorCodeID:
 			var st miner0.State
-			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
+			if err := sm.ChainStore().ActorStore(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
@@ -560,7 +548,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 		return cid.Undef, xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
+	cst := cbor.NewCborStore(sm.ChainStore().StateBlockstore())
 	if err := cst.Get(ctx, powAct.Head, &ps); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to get power actor state: %w", err)
 	}
@@ -594,7 +582,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 			}
 		case builtin0.StorageMinerActorCodeID:
 			var st miner0.State
-			if err := sm.ChainStore().Store(ctx).Get(ctx, act.Head, &st); err != nil {
+			if err := sm.ChainStore().ActorStore(ctx).Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %w", err)
 			}
 
@@ -603,7 +591,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 				return xerrors.Errorf("failed to get miner info: %w", err)
 			}
 
-			sectorsArr, err := adt0.AsArray(sm.ChainStore().Store(ctx), st.Sectors)
+			sectorsArr, err := adt0.AsArray(sm.ChainStore().ActorStore(ctx), st.Sectors)
 			if err != nil {
 				return xerrors.Errorf("failed to load sectors array: %w", err)
 			}
@@ -623,11 +611,11 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 			lbact, err := lbtree.GetActor(addr)
 			if err == nil {
 				var lbst miner0.State
-				if err := sm.ChainStore().Store(ctx).Get(ctx, lbact.Head, &lbst); err != nil {
+				if err := sm.ChainStore().ActorStore(ctx).Get(ctx, lbact.Head, &lbst); err != nil {
 					return xerrors.Errorf("failed to load miner state: %w", err)
 				}
 
-				lbsectors, err := adt0.AsArray(sm.ChainStore().Store(ctx), lbst.Sectors)
+				lbsectors, err := adt0.AsArray(sm.ChainStore().ActorStore(ctx), lbst.Sectors)
 				if err != nil {
 					return xerrors.Errorf("failed to load lb sectors array: %w", err)
 				}
@@ -699,24 +687,14 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 	if cb != nil {
 		// record the transfer in execution traces
 
-		fakeMsg := &types.Message{
-			From:  builtin.SystemActorAddr,
-			To:    builtin.SystemActorAddr,
-			Value: big.Zero(),
-			Nonce: uint64(epoch),
-		}
-		fakeRct := &types.MessageReceipt{
-			ExitCode: 0,
-			Return:   nil,
-			GasUsed:  0,
-		}
+		fakeMsg := makeFakeMsg(builtin.SystemActorAddr, builtin.SystemActorAddr, big.Zero(), uint64(epoch))
 
 		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
-			MessageReceipt: *fakeRct,
+			MessageReceipt: *makeFakeRct(),
 			ActorErr:       nil,
 			ExecutionTrace: types.ExecutionTrace{
 				Msg:        fakeMsg,
-				MsgRct:     fakeRct,
+				MsgRct:     makeFakeRct(),
 				Error:      "",
 				Duration:   0,
 				GasCharges: nil,
@@ -733,7 +711,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 }
 
 func UpgradeIgnition(ctx context.Context, sm *StateManager, _ MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	store := sm.cs.Store(ctx)
+	store := sm.cs.ActorStore(ctx)
 
 	if build.UpgradeLiftoffHeight <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
@@ -789,7 +767,7 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, _ MigrationCache, cb
 
 func UpgradeRefuel(ctx context.Context, sm *StateManager, _ MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 
-	store := sm.cs.Store(ctx)
+	store := sm.cs.ActorStore(ctx)
 	tree, err := sm.StateTree(root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
@@ -814,7 +792,7 @@ func UpgradeRefuel(ctx context.Context, sm *StateManager, _ MigrationCache, cb E
 }
 
 func UpgradeActorsV2(ctx context.Context, sm *StateManager, _ MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	buf := bufbstore.NewTieredBstore(sm.cs.Blockstore(), bstore.NewTemporarySync())
+	buf := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
 	store := store.ActorStore(ctx, buf)
 
 	info, err := store.Put(ctx, new(types.StateInfo0))
@@ -865,7 +843,7 @@ func UpgradeLiftoff(ctx context.Context, sm *StateManager, _ MigrationCache, cb 
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
 	}
 
-	err = setNetworkName(ctx, sm.cs.Store(ctx), tree, "mainnet")
+	err = setNetworkName(ctx, sm.cs.ActorStore(ctx), tree, "mainnet")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("setting network name: %w", err)
 	}
@@ -874,7 +852,7 @@ func UpgradeLiftoff(ctx context.Context, sm *StateManager, _ MigrationCache, cb 
 }
 
 func UpgradeCalico(ctx context.Context, sm *StateManager, _ MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	store := sm.cs.Store(ctx)
+	store := sm.cs.ActorStore(ctx)
 	var stateRoot types.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
@@ -915,6 +893,66 @@ func UpgradeCalico(ctx context.Context, sm *StateManager, _ MigrationCache, cb E
 	return newRoot, nil
 }
 
+func terminateActor(ctx context.Context, tree *state.StateTree, addr address.Address, cb ExecCallback, epoch abi.ChainEpoch) error {
+	a, err := tree.GetActor(addr)
+	if xerrors.Is(err, types.ErrActorNotFound) {
+		return types.ErrActorNotFound
+	} else if err != nil {
+		return xerrors.Errorf("failed to get actor to delete: %w", err)
+	}
+
+	var trace types.ExecutionTrace
+	if err := doTransfer(tree, addr, builtin.BurntFundsActorAddr, a.Balance, func(t types.ExecutionTrace) {
+		trace = t
+	}); err != nil {
+		return xerrors.Errorf("transferring terminated actor's balance: %w", err)
+	}
+
+	if cb != nil {
+		// record the transfer in execution traces
+
+		fakeMsg := makeFakeMsg(builtin.SystemActorAddr, addr, big.Zero(), uint64(epoch))
+
+		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
+			MessageReceipt: *makeFakeRct(),
+			ActorErr:       nil,
+			ExecutionTrace: trace,
+			Duration:       0,
+			GasCosts:       nil,
+		}); err != nil {
+			return xerrors.Errorf("recording transfers: %w", err)
+		}
+	}
+
+	err = tree.DeleteActor(addr)
+	if err != nil {
+		return xerrors.Errorf("deleting actor from tree: %w", err)
+	}
+
+	ia, err := tree.GetActor(init_.Address)
+	if err != nil {
+		return xerrors.Errorf("loading init actor: %w", err)
+	}
+
+	ias, err := init_.Load(&state.AdtStore{IpldStore: tree.Store}, ia)
+	if err != nil {
+		return xerrors.Errorf("loading init actor state: %w", err)
+	}
+
+	if err := ias.Remove(addr); err != nil {
+		return xerrors.Errorf("deleting entry from address map: %w", err)
+	}
+
+	nih, err := tree.Store.Put(ctx, ias)
+	if err != nil {
+		return xerrors.Errorf("writing new init actor state: %w", err)
+	}
+
+	ia.Head = nih
+
+	return tree.SetActor(init_.Address, ia)
+}
+
 func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
 	workerCount := runtime.NumCPU() - 3
@@ -933,16 +971,21 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache
 		return cid.Undef, xerrors.Errorf("migrating actors v3 state: %w", err)
 	}
 
-	// perform some basic sanity checks to make sure everything still works.
-	store := store.ActorStore(ctx, sm.ChainStore().Blockstore())
-	if newSm, err := state.LoadStateTree(store, newRoot); err != nil {
-		return cid.Undef, xerrors.Errorf("state tree sanity load failed: %w", err)
-	} else if newRoot2, err := newSm.Flush(ctx); err != nil {
-		return cid.Undef, xerrors.Errorf("state tree sanity flush failed: %w", err)
-	} else if newRoot2 != newRoot {
-		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
-	} else if _, err := newSm.GetActor(init_.Address); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %w", err)
+	tree, err := sm.StateTree(newRoot)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
+	}
+
+	if build.BuildType == build.BuildMainnet {
+		err := terminateActor(ctx, tree, build.ZeroAddress, cb, epoch)
+		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
+			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %w", err)
+		}
+
+		newRoot, err = tree.Flush(ctx)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
+		}
 	}
 
 	return newRoot, nil
@@ -966,7 +1009,7 @@ func upgradeActorsV3Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config nv10.Config,
 ) (cid.Cid, error) {
-	buf := bufbstore.NewTieredBstore(sm.cs.Blockstore(), bstore.NewTemporarySync())
+	buf := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
 	store := store.ActorStore(ctx, buf)
 
 	// Load the state root.
@@ -1139,24 +1182,14 @@ func splitGenesisMultisig0(ctx context.Context, cb ExecCallback, addr address.Ad
 	if cb != nil {
 		// record the transfer in execution traces
 
-		fakeMsg := &types.Message{
-			From:  builtin.SystemActorAddr,
-			To:    addr,
-			Value: big.Zero(),
-			Nonce: uint64(epoch),
-		}
-		fakeRct := &types.MessageReceipt{
-			ExitCode: 0,
-			Return:   nil,
-			GasUsed:  0,
-		}
+		fakeMsg := makeFakeMsg(builtin.SystemActorAddr, addr, big.Zero(), uint64(epoch))
 
 		if err := cb(fakeMsg.Cid(), fakeMsg, &vm.ApplyRet{
-			MessageReceipt: *fakeRct,
+			MessageReceipt: *makeFakeRct(),
 			ActorErr:       nil,
 			ExecutionTrace: types.ExecutionTrace{
 				Msg:        fakeMsg,
-				MsgRct:     fakeRct,
+				MsgRct:     makeFakeRct(),
 				Error:      "",
 				Duration:   0,
 				GasCharges: nil,
@@ -1206,7 +1239,7 @@ func resetGenesisMsigs0(ctx context.Context, sm *StateManager, store adt0.Store,
 		return xerrors.Errorf("getting genesis tipset: %w", err)
 	}
 
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	genesisTree, err := state.LoadStateTree(cst, gts.ParentState())
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %w", err)
@@ -1274,4 +1307,21 @@ func resetMultisigVesting0(ctx context.Context, store adt0.Store, tree *state.St
 	}
 
 	return nil
+}
+
+func makeFakeMsg(from address.Address, to address.Address, amt abi.TokenAmount, nonce uint64) *types.Message {
+	return &types.Message{
+		From:  from,
+		To:    to,
+		Value: amt,
+		Nonce: nonce,
+	}
+}
+
+func makeFakeRct() *types.MessageReceipt {
+	return &types.MessageReceipt{
+		ExitCode: 0,
+		Return:   nil,
+		GasUsed:  0,
+	}
 }

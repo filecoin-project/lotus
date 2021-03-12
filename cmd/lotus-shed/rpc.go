@@ -24,9 +24,18 @@ import (
 var rpcCmd = &cli.Command{
 	Name:  "rpc",
 	Usage: "Interactive JsonPRC shell",
-	// TODO: flag for miner/worker
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "miner",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		addr, headers, err := lcli.GetRawAPI(cctx, repo.FullNode)
+		rt := repo.FullNode
+		if cctx.Bool("miner") {
+			rt = repo.StorageMiner
+		}
+
+		addr, headers, err := lcli.GetRawAPI(cctx, rt)
 		if err != nil {
 			return err
 		}

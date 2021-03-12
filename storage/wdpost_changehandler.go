@@ -13,7 +13,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const SubmitConfidence = 4
+const (
+	SubmitConfidence    = 4
+	ChallengeConfidence = 10
+)
 
 type CompleteGeneratePoSTCb func(posts []miner.SubmitWindowedPoStParams, err error)
 type CompleteSubmitPoSTCb func(err error)
@@ -230,7 +233,7 @@ func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSe
 	}
 
 	// Check if the chain is above the Challenge height for the post window
-	if newTS.Height() < di.Challenge {
+	if newTS.Height() < di.Challenge+ChallengeConfidence {
 		return
 	}
 

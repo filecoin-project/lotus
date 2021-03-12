@@ -44,6 +44,7 @@ import (
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -54,7 +55,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 )
@@ -321,7 +321,7 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 
 	// We use a temporary bstore here to avoid writing intermediate pieces
 	// into the blockstore.
-	blockstore := bstore.NewTemporary()
+	blockstore := bstore.NewMemory()
 	cst := cbor.NewCborStore(blockstore)
 
 	var bcids, scids []cid.Cid
@@ -354,7 +354,7 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	// Finally, flush.
-	return vm.Copy(context.TODO(), blockstore, syncer.store.Blockstore(), smroot)
+	return vm.Copy(context.TODO(), blockstore, syncer.store.ChainBlockstore(), smroot)
 }
 
 func (syncer *Syncer) LocalPeer() peer.ID {
@@ -640,7 +640,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 		return xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	powState, err := power.Load(syncer.store.Store(ctx), act)
+	powState, err := power.Load(syncer.store.ActorStore(ctx), act)
 	if err != nil {
 		return xerrors.Errorf("failed to load power actor state: %w", err)
 	}
@@ -1055,7 +1055,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return err
 	}
 
-	st, err := state.LoadStateTree(syncer.store.Store(ctx), stateroot)
+	st, err := state.LoadStateTree(syncer.store.ActorStore(ctx), stateroot)
 	if err != nil {
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
@@ -1102,7 +1102,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	// Validate message arrays in a temporary blockstore.
-	tmpbs := bstore.NewTemporary()
+	tmpbs := bstore.NewMemory()
 	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
 
 	bmArr := blockadt.MakeEmptyArray(tmpstore)
@@ -1172,7 +1172,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	// Finally, flush.
-	return vm.Copy(ctx, tmpbs, syncer.store.Blockstore(), mrcid)
+	return vm.Copy(ctx, tmpbs, syncer.store.ChainBlockstore(), mrcid)
 }
 
 func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signature, msgs []cid.Cid, pubks [][]byte) error {
@@ -1553,7 +1553,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 
 		for bsi := 0; bsi < len(bstout); bsi++ {
 			// temp storage so we don't persist data we dont want to
-			bs := bstore.NewTemporary()
+			bs := bstore.NewMemory()
 			blks := cbor.NewCborStore(bs)
 
 			this := headers[i-bsi]
@@ -1574,7 +1574,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				return err
 			}
 
-			if err := copyBlockstore(ctx, bs, syncer.store.Blockstore()); err != nil {
+			if err := copyBlockstore(ctx, bs, syncer.store.ChainBlockstore()); err != nil {
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
@@ -1791,11 +1791,10 @@ func (syncer *Syncer) getLatestBeaconEntry(_ context.Context, ts *types.TipSet) 
 }
 
 func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
-	g, err := syncer.store.GetGenesis()
-	if err != nil {
+	if syncer.Genesis == nil {
 		return false
 	}
 
 	now := uint64(build.Clock.Now().Unix())
-	return epoch > (abi.ChainEpoch((now-g.Timestamp)/build.BlockDelaySecs) + MaxHeightDrift)
+	return epoch > (abi.ChainEpoch((now-syncer.Genesis.MinTimestamp())/build.BlockDelaySecs) + MaxHeightDrift)
 }

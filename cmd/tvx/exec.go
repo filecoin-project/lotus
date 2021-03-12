@@ -17,10 +17,10 @@ import (
 
 	"github.com/filecoin-project/test-vectors/schema"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/conformance"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var execFlags struct {

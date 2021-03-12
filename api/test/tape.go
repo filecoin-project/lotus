@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -18,7 +17,9 @@ import (
 )
 
 func TestTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
+	// The "before" case is disabled, because we need the builder to mock 32 GiB sectors to accurately repro this case
+	// TODO: Make the mock sector size configurable and reenable this
+	//t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
 	t.Run("after", func(t *testing.T) { testTapeFix(t, b, blocktime, true) })
 }
 func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool) {
@@ -73,22 +74,8 @@ func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool
 		<-done
 	}()
 
-	err = miner.PledgeSector(ctx)
+	sid, err := miner.PledgeSector(ctx)
 	require.NoError(t, err)
-
-	// Wait till done.
-	var sectorNo abi.SectorNumber
-	for {
-		s, err := miner.SectorsList(ctx) // Note - the test builder doesn't import genesis sectors into FSM
-		require.NoError(t, err)
-		fmt.Printf("Sectors: %d\n", len(s))
-		if len(s) == 1 {
-			sectorNo = s[0]
-			break
-		}
-
-		build.Clock.Sleep(100 * time.Millisecond)
-	}
 
 	fmt.Printf("All sectors is fsm\n")
 
@@ -101,7 +88,7 @@ func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool
 	}
 
 	for {
-		st, err := miner.SectorsStatus(ctx, sectorNo, false)
+		st, err := miner.SectorsStatus(ctx, sid.Number, false)
 		require.NoError(t, err)
 		if st.State == successState {
 			break

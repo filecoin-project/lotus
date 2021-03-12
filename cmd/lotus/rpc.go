@@ -15,11 +15,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
-
-	"contrib.go.opencensus.io/exporter/prometheus"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -55,23 +52,7 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 
 	http.Handle("/rest/v0/import", importAH)
 
-	// Prometheus globals are exposed as interfaces, but the prometheus
-	// OpenCensus exporter expects a concrete *Registry. The concrete type of
-	// the globals are actually *Registry, so we downcast them, staying
-	// defensive in case things change under the hood.
-	registry, ok := promclient.DefaultRegisterer.(*promclient.Registry)
-	if !ok {
-		log.Warnf("failed to export default prometheus registry; some metrics will be unavailable; unexpected type: %T", promclient.DefaultRegisterer)
-	}
-	exporter, err := prometheus.NewExporter(prometheus.Options{
-		Registry:  registry,
-		Namespace: "lotus",
-	})
-	if err != nil {
-		log.Fatalf("could not create the prometheus stats exporter: %v", err)
-	}
-
-	http.Handle("/debug/metrics", exporter)
+	http.Handle("/debug/metrics", metrics.Exporter())
 	http.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
 	http.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction",
 		func(x int) { runtime.SetMutexProfileFraction(x) },

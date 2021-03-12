@@ -13,6 +13,7 @@ import (
 // Common is common config between full node and miner
 type Common struct {
 	API    API
+	Backup Backup
 	Libp2p Libp2p
 	Pubsub Pubsub
 }
@@ -20,13 +21,18 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client  Client
-	Metrics Metrics
-	Wallet  Wallet
-	Fees    FeeConfig
+	Client     Client
+	Metrics    Metrics
+	Wallet     Wallet
+	Fees       FeeConfig
+	Chainstore Chainstore
 }
 
 // // Common
+
+type Backup struct {
+	DisableMetadataLog bool
+}
 
 // StorageMiner is a miner config
 type StorageMiner struct {
@@ -48,6 +54,15 @@ type DealmakingConfig struct {
 	ConsiderUnverifiedStorageDeals bool
 	PieceCidBlocklist              []cid.Cid
 	ExpectedSealDuration           Duration
+	// The amount of time to wait for more deals to arrive before
+	// publishing
+	PublishMsgPeriod Duration
+	// The maximum number of deals to include in a single PublishStorageDeals
+	// message
+	MaxDealsPerPublishMsg uint64
+	// The maximum collateral that the provider will put up against a deal,
+	// as a multiplier of the minimum collateral bound
+	MaxProviderCollateralMultiplier uint64
 
 	Filter          string
 	RetrievalFilter string
@@ -64,6 +79,13 @@ type SealingConfig struct {
 	MaxSealingSectorsForDeals uint64
 
 	WaitDealsDelay Duration
+
+	AlwaysKeepUnsealedCopy bool
+
+	// Keep this many sectors in sealing pipeline, start CC if needed
+	// todo TargetSealingSectors uint64
+
+	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
 }
 
 type MinerFeeConfig struct {
@@ -78,6 +100,16 @@ type MinerFeeConfig struct {
 type MinerAddressConfig struct {
 	PreCommitControl []string
 	CommitControl    []string
+	TerminateControl []string
+
+	// DisableOwnerFallback disables usage of the owner address for messages
+	// sent automatically
+	DisableOwnerFallback bool
+	// DisableWorkerFallback disables usage of the worker address for messages
+	// sent automatically, if control addresses are configured.
+	// A control address that doesn't have enough funds will still be chosen
+	// over the worker address if this flag is set.
+	DisableWorkerFallback bool
 }
 
 // API contains configs for API endpoint
@@ -101,9 +133,24 @@ type Libp2p struct {
 }
 
 type Pubsub struct {
-	Bootstrapper bool
-	DirectPeers  []string
-	RemoteTracer string
+	Bootstrapper          bool
+	DirectPeers           []string
+	IPColocationWhitelist []string
+	RemoteTracer          string
+}
+
+type Chainstore struct {
+	EnableSplitstore bool
+	Splitstore       Splitstore
+}
+
+type Splitstore struct {
+	HotStoreType         string
+	TrackingStoreType    string
+	MarkSetType          string
+	EnableFullCompaction bool
+	EnableGC             bool // EXPERIMENTAL
+	Archival             bool
 }
 
 // // Full Node
@@ -171,6 +218,12 @@ func DefaultFullNode() *FullNode {
 		Client: Client{
 			SimultaneousTransfers: DefaultSimultaneousTransfers,
 		},
+		Chainstore: Chainstore{
+			EnableSplitstore: false,
+			Splitstore: Splitstore{
+				HotStoreType: "badger",
+			},
+		},
 	}
 }
 
@@ -206,7 +259,10 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
-			ExpectedSealDuration: Duration(time.Hour * 24),
+			ExpectedSealDuration:            Duration(time.Hour * 24),
+			PublishMsgPeriod:                Duration(time.Hour),
+			MaxDealsPerPublishMsg:           8,
+			MaxProviderCollateralMultiplier: 2,
 		},
 
 		Fees: MinerFeeConfig{

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
@@ -18,11 +18,12 @@ import (
 type BlockstoreDomain string
 
 const (
-	// BlockstoreChain represents the blockstore domain for chain data.
+	// UniversalBlockstore represents the blockstore domain for all data.
 	// Right now, this includes chain objects (tipsets, blocks, messages), as
 	// well as state. In the future, they may get segregated into different
 	// domains.
-	BlockstoreChain = BlockstoreDomain("chain")
+	UniversalBlockstore = BlockstoreDomain("universal")
+	HotBlockstore       = BlockstoreDomain("hot")
 )
 
 var (
@@ -63,6 +64,9 @@ type LockedRepo interface {
 	// the lifecycle.
 	Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error)
 
+	// SplitstorePath returns the path for the SplitStore
+	SplitstorePath() (string, error)
+
 	// Returns config in this repo
 	Config() (interface{}, error)
 	SetConfig(func(interface{})) error
@@ -84,4 +88,7 @@ type LockedRepo interface {
 
 	// Path returns absolute path of the repo
 	Path() string
+
+	// Readonly returns true if the repo is readonly
+	Readonly() bool
 }

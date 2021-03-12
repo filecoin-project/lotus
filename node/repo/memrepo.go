@@ -15,10 +15,10 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -161,7 +161,7 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 
 	return &MemRepo{
 		repoLock:   make(chan struct{}, 1),
-		blockstore: blockstore.WrapIDStore(blockstore.NewTemporarySync()),
+		blockstore: blockstore.WrapIDStore(blockstore.NewMemorySync()),
 		datastore:  opts.Ds,
 		configF:    opts.ConfigF,
 		keystore:   opts.KeyStore,
@@ -199,6 +199,10 @@ func (mem *MemRepo) Lock(t RepoType) (LockedRepo, error) {
 		t:     t,
 		token: mem.token,
 	}, nil
+}
+
+func (lmem *lockedMemRepo) Readonly() bool {
+	return false
 }
 
 func (lmem *lockedMemRepo) checkToken() error {
@@ -246,10 +250,14 @@ func (lmem *lockedMemRepo) Datastore(_ context.Context, ns string) (datastore.Ba
 }
 
 func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != BlockstoreChain {
+	if domain != UniversalBlockstore {
 		return nil, ErrInvalidBlockstoreDomain
 	}
 	return lmem.mem.blockstore, nil
+}
+
+func (lmem *lockedMemRepo) SplitstorePath() (string, error) {
+	return ioutil.TempDir("", "splitstore.*")
 }
 
 func (lmem *lockedMemRepo) ListDatastores(ns string) ([]int64, error) {

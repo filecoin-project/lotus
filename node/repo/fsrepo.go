@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
-	"github.com/filecoin-project/lotus/lib/blockstore"
+
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
@@ -22,10 +22,10 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	lblockstore "github.com/filecoin-project/lotus/lib/blockstore"
-	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -264,9 +264,16 @@ type fsLockedRepo struct {
 	bs     blockstore.Blockstore
 	bsErr  error
 	bsOnce sync.Once
+	ssPath string
+	ssErr  error
+	ssOnce sync.Once
 
 	storageLk sync.Mutex
 	configLk  sync.Mutex
+}
+
+func (fsr *fsLockedRepo) Readonly() bool {
+	return fsr.readonly
 }
 
 func (fsr *fsLockedRepo) Path() string {
@@ -301,7 +308,7 @@ func (fsr *fsLockedRepo) Close() error {
 
 // Blockstore returns a blockstore for the provided data domain.
 func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != BlockstoreChain {
+	if domain != UniversalBlockstore {
 		return nil, ErrInvalidBlockstoreDomain
 	}
 
@@ -325,10 +332,25 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 			fsr.bsErr = err
 			return
 		}
-		fsr.bs = lblockstore.WrapIDStore(bs)
+		fsr.bs = blockstore.WrapIDStore(bs)
 	})
 
 	return fsr.bs, fsr.bsErr
+}
+
+func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
+	fsr.ssOnce.Do(func() {
+		path := fsr.join(filepath.Join(fsDatastore, "splitstore"))
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.ssErr = err
+			return
+		}
+
+		fsr.ssPath = path
+	})
+
+	return fsr.ssPath, fsr.ssErr
 }
 
 // join joins path elements with fsr.path

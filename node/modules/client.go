@@ -30,9 +30,9 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/host"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
@@ -58,18 +58,18 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 				if xerrors.Is(err, datastore.ErrNotFound) {
 					return nil
 				}
-				log.Errorf("client funds migration - getting datastore value: %w", err)
+				log.Errorf("client funds migration - getting datastore value: %v", err)
 				return nil
 			}
 
 			var value abi.TokenAmount
 			if err = value.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-				log.Errorf("client funds migration - unmarshalling datastore value: %w", err)
+				log.Errorf("client funds migration - unmarshalling datastore value: %v", err)
 				return nil
 			}
 			_, err = fundMgr.Reserve(ctx, addr, addr, value)
 			if err != nil {
-				log.Errorf("client funds migration - reserving funds (wallet %s, addr %s, funds %d): %w",
+				log.Errorf("client funds migration - reserving funds (wallet %s, addr %s, funds %d): %v",
 					addr, addr, value, err)
 				return nil
 			}
@@ -83,7 +83,7 @@ func ClientMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locke
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	ds, err := r.Datastore(ctx, "/client")
 	if err != nil {
-		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
+		return nil, xerrors.Errorf("getting datastore out of repo: %w", err)
 	}
 
 	mds, err := multistore.NewMultiDstore(ds)

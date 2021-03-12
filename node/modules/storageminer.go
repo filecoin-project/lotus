@@ -56,6 +56,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -63,7 +64,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
@@ -157,6 +157,9 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.Addre
 			return as, nil
 		}
 
+		as.DisableOwnerFallback = addrConf.DisableOwnerFallback
+		as.DisableWorkerFallback = addrConf.DisableWorkerFallback
+
 		for _, s := range addrConf.PreCommitControl {
 			addr, err := address.NewFromString(s)
 			if err != nil {
@@ -173,6 +176,15 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.Addre
 			}
 
 			as.CommitControl = append(as.CommitControl, addr)
+		}
+
+		for _, s := range addrConf.TerminateControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing terminate control address: %w", err)
+			}
+
+			as.TerminateControl = append(as.TerminateControl, addr)
 		}
 
 		return as, nil
@@ -218,7 +230,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, sealer, j, maddr)
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, verif, sealer, j, maddr)
 		if err != nil {
 			return nil, err
 		}
@@ -293,19 +305,19 @@ func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.
 			}
 			ts, err := node.ChainHead(ctx)
 			if err != nil {
-				log.Errorf("provider funds migration - getting chain head: %w", err)
+				log.Errorf("provider funds migration - getting chain head: %v", err)
 				return nil
 			}
 
 			mi, err := node.StateMinerInfo(ctx, address.Address(minerAddress), ts.Key())
 			if err != nil {
-				log.Errorf("provider funds migration - getting miner info %s: %w", minerAddress, err)
+				log.Errorf("provider funds migration - getting miner info %s: %v", minerAddress, err)
 				return nil
 			}
 
 			_, err = node.MarketReserveFunds(ctx, mi.Worker, address.Address(minerAddress), value)
 			if err != nil {
-				log.Errorf("provider funds migration - reserving funds (wallet %s, addr %s, funds %d): %w",
+				log.Errorf("provider funds migration - reserving funds (wallet %s, addr %s, funds %d): %v",
 					mi.Worker, minerAddress, value, err)
 				return nil
 			}
@@ -392,7 +404,7 @@ func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 		return nil, err
 	}
 
-	return blockstore.NewBlockstore(stagingds), nil
+	return blockstore.FromDatastore(stagingds), nil
 }
 
 // StagingDAG is a DAGService for the StagingBlockstore
@@ -812,6 +824,7 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxSealingSectors:         cfg.MaxSealingSectors,
 				MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            config.Duration(cfg.WaitDealsDelay),
+				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
 			}
 		})
 		return
@@ -826,6 +839,7 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 				MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
 				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
+				AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
 			}
 		})
 		return

@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -55,9 +56,10 @@ type StorageMinerAPI struct {
 	IStorageMgr       sectorstorage.SectorManager
 	*stores.Index
 	storiface.WorkerReturn
-	DataTransfer dtypes.ProviderDataTransfer
-	Host         host.Host
-	AddrSel      *storage.AddressSelector
+	DataTransfer  dtypes.ProviderDataTransfer
+	Host          host.Host
+	AddrSel       *storage.AddressSelector
+	DealPublisher *storageadapter.DealPublisher
 
 	DS dtypes.MetadataDS
 
@@ -119,8 +121,30 @@ func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Add
 	return mi.SectorSize, nil
 }
 
-func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
-	return sm.Miner.PledgeSector()
+func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) (abi.SectorID, error) {
+	sr, err := sm.Miner.PledgeSector(ctx)
+	if err != nil {
+		return abi.SectorID{}, err
+	}
+
+	// wait for the sector to enter the Packing state
+	// TODO: instead of polling implement some pubsub-type thing in storagefsm
+	for {
+		info, err := sm.Miner.GetSectorInfo(sr.ID.Number)
+		if err != nil {
+			return abi.SectorID{}, xerrors.Errorf("getting pledged sector info: %w", err)
+		}
+
+		if info.State != sealing.UndefinedSectorState {
+			return sr.ID, nil
+		}
+
+		select {
+		case <-time.After(10 * time.Millisecond):
+		case <-ctx.Done():
+			return abi.SectorID{}, ctx.Err()
+		}
+	}
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
@@ -217,6 +241,10 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 
 	out := make([]abi.SectorNumber, len(sectors))
 	for i, sector := range sectors {
+		if sector.State == sealing.UndefinedSectorState {
+			continue // sector ID not set yet
+		}
+
 		out[i] = sector.SectorNumber
 	}
 	return out, nil
@@ -499,6 +527,15 @@ func (sm *StorageMinerAPI) MarketDataTransferUpdates(ctx context.Context) (<-cha
 	}()
 
 	return channels, nil
+}
+
+func (sm *StorageMinerAPI) MarketPendingDeals(ctx context.Context) (api.PendingDealInfo, error) {
+	return sm.DealPublisher.PendingDeals(), nil
+}
+
+func (sm *StorageMinerAPI) MarketPublishPendingDeals(ctx context.Context) error {
+	sm.DealPublisher.ForcePublishPendingDeals()
+	return nil
 }
 
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {

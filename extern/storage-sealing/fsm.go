@@ -37,13 +37,21 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	// Sealing
 
 	UndefinedSectorState: planOne(
-		on(SectorStart{}, Empty),
+		on(SectorStart{}, WaitDeals),
 		on(SectorStartCC{}, Packing),
 	),
-	Empty: planOne(on(SectorAddPiece{}, WaitDeals)),
-	WaitDeals: planOne(
-		on(SectorAddPiece{}, WaitDeals),
+	Empty: planOne( // deprecated
+		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
+	),
+	WaitDeals: planOne(
+		on(SectorAddPiece{}, AddPiece),
+		on(SectorStartPacking{}, Packing),
+	),
+	AddPiece: planOne(
+		on(SectorPieceAdded{}, WaitDeals),
+		apply(SectorStartPacking{}),
+		on(SectorAddPieceFailed{}, AddPieceFailed),
 	),
 	Packing: planOne(on(SectorPacked{}, GetTicket)),
 	GetTicket: planOne(
@@ -97,6 +105,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 
 	// Sealing errors
 
+	AddPieceFailed: planOne(),
 	SealPreCommit1Failed: planOne(
 		on(SectorRetrySealPreCommit1{}, PreCommit1),
 	),
@@ -182,15 +191,16 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FailedUnrecoverable: final,
 }
 
-func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, uint64, error) {
-	/////
-	// First process all events
-
+func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
 	for _, event := range events {
 		e, err := json.Marshal(event)
 		if err != nil {
 			log.Errorf("marshaling event for logging: %+v", err)
 			continue
+		}
+
+		if event.User == (SectorRestart{}) {
+			continue // don't log on every fsm restart
 		}
 
 		l := Log{
@@ -216,6 +226,13 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 		state.Log = append(state.Log, l)
 	}
+}
+
+func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, uint64, error) {
+	/////
+	// First process all events
+
+	m.logEvents(events, state)
 
 	if m.notifee != nil {
 		defer func(before SectorInfo) {
@@ -238,12 +255,11 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	/*
 
-				*   Empty <- incoming deals
-				|   |
-				|   v
-			    *<- WaitDeals <- incoming deals
-				|   |
-				|   v
+				      UndefinedSectorState (start)
+				       v                     |
+				*<- WaitDeals <-> AddPiece   |
+				|   |   /--------------------/
+				|   v   v
 				*<- Packing <- incoming committed capacity
 				|   |
 				|   v
@@ -282,10 +298,6 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 				v
 				FailedUnrecoverable
 
-				UndefinedSectorState <- ¯\_(ツ)_/¯
-					|                     ^
-					*---------------------/
-
 	*/
 
 	m.stats.updateSector(m.minerSectorID(state.SectorNumber), state.State)
@@ -295,7 +307,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case Empty:
 		fallthrough
 	case WaitDeals:
-		log.Infof("Waiting for deals %d", state.SectorNumber)
+		return m.handleWaitDeals, processed, nil
+	case AddPiece:
+		return m.handleAddPiece, processed, nil
 	case Packing:
 		return m.handlePacking, processed, nil
 	case GetTicket:
@@ -418,59 +432,9 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 		log.Errorf("loading sector list: %+v", err)
 	}
 
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting the sealing delay: %w", err)
-	}
-
-	spt, err := m.currentSealProof(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting current seal proof: %w", err)
-	}
-	ssize, err := spt.SectorSize()
-	if err != nil {
-		return err
-	}
-
-	// m.unsealedInfoMap.lk.Lock() taken early in .New to prevent races
-	defer m.unsealedInfoMap.lk.Unlock()
-
 	for _, sector := range trackedSectors {
 		if err := m.sectors.Send(uint64(sector.SectorNumber), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorNumber, err)
-		}
-
-		if sector.State == WaitDeals {
-
-			// put the sector in the unsealedInfoMap
-			if _, ok := m.unsealedInfoMap.infos[sector.SectorNumber]; ok {
-				// something's funky here, but probably safe to move on
-				log.Warnf("sector %v was already in the unsealedInfoMap when restarting", sector.SectorNumber)
-			} else {
-				ui := UnsealedSectorInfo{
-					ssize: ssize,
-				}
-				for _, p := range sector.Pieces {
-					if p.DealInfo != nil {
-						ui.numDeals++
-					}
-					ui.stored += p.Piece.Size
-					ui.pieceSizes = append(ui.pieceSizes, p.Piece.Size.Unpadded())
-				}
-
-				m.unsealedInfoMap.infos[sector.SectorNumber] = ui
-			}
-
-			// start a fresh timer for the sector
-			if cfg.WaitDealsDelay > 0 {
-				timer := time.NewTimer(cfg.WaitDealsDelay)
-				go func() {
-					<-timer.C
-					if err := m.StartPacking(sector.SectorNumber); err != nil {
-						log.Errorf("starting sector %d: %+v", sector.SectorNumber, err)
-					}
-				}()
-			}
 		}
 	}
 
@@ -494,56 +458,72 @@ func final(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	return 0, xerrors.Errorf("didn't expect any events in state %s, got %+v", state.State, events)
 }
 
-func on(mut mutator, next SectorState) func() (mutator, func(*SectorInfo) error) {
-	return func() (mutator, func(*SectorInfo) error) {
-		return mut, func(state *SectorInfo) error {
+func on(mut mutator, next SectorState) func() (mutator, func(*SectorInfo) (bool, error)) {
+	return func() (mutator, func(*SectorInfo) (bool, error)) {
+		return mut, func(state *SectorInfo) (bool, error) {
 			state.State = next
-			return nil
+			return false, nil
 		}
 	}
 }
 
-func onReturning(mut mutator) func() (mutator, func(*SectorInfo) error) {
-	return func() (mutator, func(*SectorInfo) error) {
-		return mut, func(state *SectorInfo) error {
+// like `on`, but doesn't change state
+func apply(mut mutator) func() (mutator, func(*SectorInfo) (bool, error)) {
+	return func() (mutator, func(*SectorInfo) (bool, error)) {
+		return mut, func(state *SectorInfo) (bool, error) {
+			return true, nil
+		}
+	}
+}
+
+func onReturning(mut mutator) func() (mutator, func(*SectorInfo) (bool, error)) {
+	return func() (mutator, func(*SectorInfo) (bool, error)) {
+		return mut, func(state *SectorInfo) (bool, error) {
 			if state.Return == "" {
-				return xerrors.Errorf("return state not set")
+				return false, xerrors.Errorf("return state not set")
 			}
 
 			state.State = SectorState(state.Return)
 			state.Return = ""
-			return nil
+			return false, nil
 		}
 	}
 }
 
-func planOne(ts ...func() (mut mutator, next func(*SectorInfo) error)) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+func planOne(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err error))) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	return func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
-		if gm, ok := events[0].User.(globalMutator); ok {
-			gm.applyGlobal(state)
-			return 1, nil
-		}
+		for i, event := range events {
+			if gm, ok := event.User.(globalMutator); ok {
+				gm.applyGlobal(state)
+				return uint64(i + 1), nil
+			}
 
-		for _, t := range ts {
-			mut, next := t()
+			for _, t := range ts {
+				mut, next := t()
 
-			if reflect.TypeOf(events[0].User) != reflect.TypeOf(mut) {
+				if reflect.TypeOf(event.User) != reflect.TypeOf(mut) {
+					continue
+				}
+
+				if err, iserr := event.User.(error); iserr {
+					log.Warnf("sector %d got error event %T: %+v", state.SectorNumber, event.User, err)
+				}
+
+				event.User.(mutator).apply(state)
+				more, err := next(state)
+				if err != nil || !more {
+					return uint64(i + 1), err
+				}
+			}
+
+			_, ok := event.User.(Ignorable)
+			if ok {
 				continue
 			}
 
-			if err, iserr := events[0].User.(error); iserr {
-				log.Warnf("sector %d got error event %T: %+v", state.SectorNumber, events[0].User, err)
-			}
-
-			events[0].User.(mutator).apply(state)
-			return 1, next(state)
+			return uint64(i + 1), xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", state.State, event.User, event)
 		}
 
-		_, ok := events[0].User.(Ignorable)
-		if ok {
-			return 1, nil
-		}
-
-		return 0, xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", state.State, events[0].User, events[0])
+		return uint64(len(events)), nil
 	}
 }

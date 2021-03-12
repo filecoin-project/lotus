@@ -415,7 +415,7 @@ func (ca *channelAccessor) waitForPaychCreateMsg(channelID string, mcid cid.Cid)
 func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) error {
 	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence)
 	if err != nil {
-		log.Errorf("wait msg: %w", err)
+		log.Errorf("wait msg: %v", err)
 		return err
 	}
 

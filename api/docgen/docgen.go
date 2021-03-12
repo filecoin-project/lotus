@@ -113,7 +113,7 @@ func init() {
 	addExample(network.Connected)
 	addExample(dtypes.NetworkName("lotus"))
 	addExample(api.SyncStateStage(1))
-	addExample(build.FullAPIVersion)
+	addExample(api.FullAPIVersion)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
 	addExample(datatransfer.TransferID(3))
@@ -123,6 +123,8 @@ func init() {
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)
+	addExample(map[string]int{"name": 42})
+	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(&types.ExecutionTrace{
 		Msg:    exampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
 		MsgRct: exampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),

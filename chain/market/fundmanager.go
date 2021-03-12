@@ -324,7 +324,7 @@ func (a *fundedAddress) saveState() {
 	// Not much we can do if saving to the datastore fails, just log
 	err := a.str.save(a.state)
 	if err != nil {
-		log.Errorf("saving state to store for addr %s: %w", a.state.Addr, err)
+		log.Errorf("saving state to store for addr %s: %v", a.state.Addr, err)
 	}
 }
 
@@ -579,7 +579,7 @@ func (a *fundedAddress) startWaitForResults(msgCid cid.Cid) {
 		if err != nil {
 			// We don't really care about the results here, we're just waiting
 			// so as to only process one on-chain message at a time
-			log.Errorf("waiting for results of message %s for addr %s: %w", msgCid, a.state.Addr, err)
+			log.Errorf("waiting for results of message %s for addr %s: %v", msgCid, a.state.Addr, err)
 		}
 
 		a.lk.Lock()

@@ -99,6 +99,7 @@
   * [MsigCancel](#MsigCancel)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
+  * [MsigGetPending](#MsigGetPending)
   * [MsigGetVested](#MsigGetVested)
   * [MsigGetVestingSchedule](#MsigGetVestingSchedule)
   * [MsigPropose](#MsigPropose)
@@ -120,6 +121,7 @@
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
+  * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
   * [NetPubsubScores](#NetPubsubScores)
 * [Paych](#Paych)
@@ -253,7 +255,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 65536,
+  "APIVersion": 65792,
   "BlockDelay": 42
 }
 ```
@@ -1027,7 +1029,8 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "PieceCid": null,
-    "PieceSize": 1024
+    "PieceSize": 1024,
+    "RawBlockSize": 42
   },
   "PieceCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1097,7 +1100,8 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "PieceCid": null,
-    "PieceSize": 1024
+    "PieceSize": 1024,
+    "RawBlockSize": 42
   },
   "PieceCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1415,7 +1419,8 @@ Inputs:
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
       "PieceCid": null,
-      "PieceSize": 1024
+      "PieceSize": 1024,
+      "RawBlockSize": 42
     },
     "Wallet": "f01234",
     "Miner": "f01234",
@@ -2445,6 +2450,31 @@ Inputs:
 
 Response: `"0"`
 
+### MsigGetPending
+MsigGetPending returns pending transactions for the given multisig
+wallet. Once pending transactions are fully approved, they will no longer
+appear here.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `null`
+
 ### MsigGetVested
 MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
 It takes the following params: <multisig address>, <start epoch>, <end epoch>
@@ -2855,6 +2885,38 @@ Response:
 {
   "Addrs": null,
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+}
+```
+
+### NetPeerInfo
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response:
+```json
+{
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Agent": "string value",
+  "Addrs": null,
+  "Protocols": null,
+  "ConnMgrMeta": {
+    "FirstSeen": "0001-01-01T00:00:00Z",
+    "Value": 123,
+    "Tags": {
+      "name": 42
+    },
+    "Conns": {
+      "name": "2021-03-08T22:52:18Z"
+    }
+  }
 }
 ```
 
@@ -3283,7 +3345,7 @@ Response:
 
 ## State
 The State methods are used to query, inspect, and interact with chain state.
-Most methods take a TipSetKey as a parameter. The state looked up is the state at that tipset.
+Most methods take a TipSetKey as a parameter. The state looked up is the parent state of the tipset.
 A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
 
 
@@ -3335,6 +3397,10 @@ Response: `null`
 
 ### StateCall
 StateCall runs the given message and returns its result without any persisted changes.
+
+StateCall applies the message to the tipset's parent state. The
+message is not applied on-top-of the messages in the passed-in
+tipset.
 
 
 Perms: read
@@ -4375,6 +4441,9 @@ Response:
 ```json
 {
   "Balance": "0",
+  "Code": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "State": {}
 }
 ```

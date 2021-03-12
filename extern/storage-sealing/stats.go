@@ -9,7 +9,8 @@ import (
 type statSectorState int
 
 const (
-	sstSealing statSectorState = iota
+	sstStaging statSectorState = iota
+	sstSealing
 	sstFailed
 	sstProving
 	nsst
@@ -41,5 +42,13 @@ func (ss *SectorStats) curSealing() uint64 {
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	return ss.totals[sstSealing] + ss.totals[sstFailed]
+	return ss.totals[sstStaging] + ss.totals[sstSealing] + ss.totals[sstFailed]
+}
+
+// return the number of sectors waiting to enter the sealing pipeline
+func (ss *SectorStats) curStaging() uint64 {
+	ss.lk.Lock()
+	defer ss.lk.Unlock()
+
+	return ss.totals[sstStaging]
 }

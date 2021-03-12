@@ -20,6 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	"github.com/filecoin-project/specs-actors/v3/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -44,7 +45,7 @@ func (s *WindowPoStScheduler) failPost(err error, ts *types.TipSet, deadline *dl
 		}
 	})
 
-	log.Errorf("Got err %w - TODO handle errors", err)
+	log.Errorf("Got err %+v - TODO handle errors", err)
 	/*s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps
@@ -480,7 +481,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
-	rand, err := s.api.ChainGetRandomnessFromBeacon(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+	headTs, err := s.api.ChainHead(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("getting current head: %w", err)
+	}
+
+	rand, err := s.api.ChainGetRandomnessFromBeacon(ctx, headTs.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
@@ -588,14 +594,45 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 				return nil, err
 			}
 
-			postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
+			postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, append(abi.PoStRandomness{}, rand...))
 			elapsed := time.Since(tsStart)
 
 			log.Infow("computing window post", "batch", batchIdx, "elapsed", elapsed)
 
 			if err == nil {
+				// If we proved nothing, something is very wrong.
 				if len(postOut) == 0 {
 					return nil, xerrors.Errorf("received no proofs back from generate window post")
+				}
+
+				headTs, err := s.api.ChainHead(ctx)
+				if err != nil {
+					return nil, xerrors.Errorf("getting current head: %w", err)
+				}
+
+				checkRand, err := s.api.ChainGetRandomnessFromBeacon(ctx, headTs.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+				if err != nil {
+					return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+				}
+
+				if !bytes.Equal(checkRand, rand) {
+					log.Warnw("windowpost randomness changed", "old", rand, "new", checkRand, "ts-height", ts.Height(), "challenge-height", di.Challenge, "tsk", ts.Key())
+					continue
+				}
+
+				// If we generated an incorrect proof, try again.
+				if correct, err := s.verifier.VerifyWindowPoSt(ctx, proof.WindowPoStVerifyInfo{
+					Randomness:        abi.PoStRandomness(checkRand),
+					Proofs:            postOut,
+					ChallengedSectors: sinfos,
+					Prover:            abi.ActorID(mid),
+				}); err != nil {
+					log.Errorw("window post verification failed", "post", postOut, "error", err)
+					time.Sleep(5 * time.Second)
+					continue
+				} else if !correct {
+					log.Errorw("generated incorrect window post proof", "post", postOut, "error", err)
+					continue
 				}
 
 				// Proof generation successful, stop retrying

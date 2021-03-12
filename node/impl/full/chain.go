@@ -31,10 +31,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("fullnode")
@@ -57,6 +58,11 @@ type ChainModule struct {
 	fx.In
 
 	Chain *store.ChainStore
+
+	// ExposedBlockstore is the global monolith blockstore that is safe to
+	// expose externally. In the future, this will be segregated into two
+	// blockstores.
+	ExposedBlockstore dtypes.ExposedBlockstore
 }
 
 var _ ChainModuleAPI = (*ChainModule)(nil)
@@ -68,6 +74,11 @@ type ChainAPI struct {
 	ChainModuleAPI
 
 	Chain *store.ChainStore
+
+	// ExposedBlockstore is the global monolith blockstore that is safe to
+	// expose externally. In the future, this will be segregated into two
+	// blockstores.
+	ExposedBlockstore dtypes.ExposedBlockstore
 }
 
 func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
@@ -212,7 +223,7 @@ func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpo
 }
 
 func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
-	blk, err := m.Chain.Blockstore().Get(obj)
+	blk, err := m.ExposedBlockstore.Get(obj)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}
@@ -221,15 +232,15 @@ func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, er
 }
 
 func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
-	return a.Chain.Blockstore().DeleteBlock(obj)
+	return a.ExposedBlockstore.DeleteBlock(obj)
 }
 
 func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
-	return m.Chain.Blockstore().Has(obj)
+	return m.ExposedBlockstore.Has(obj)
 }
 
 func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
-	bs := a.Chain.Blockstore()
+	bs := a.ExposedBlockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
 	dag := merkledag.NewDAGService(bsvc)
@@ -514,7 +525,7 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 		return nil, xerrors.Errorf("parsing path: %w", err)
 	}
 
-	bs := a.Chain.Blockstore()
+	bs := a.ExposedBlockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
 	dag := merkledag.NewDAGService(bsvc)

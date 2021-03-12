@@ -349,7 +349,7 @@ func (m *Manager) waitCall(ctx context.Context, callID storiface.CallID) (interf
 	}
 }
 
-func (m *Manager) returnResult(callID storiface.CallID, r interface{}, cerr *storiface.CallError) error {
+func (m *Manager) returnResult(ctx context.Context, callID storiface.CallID, r interface{}, cerr *storiface.CallError) error {
 	res := result{
 		r: r,
 	}
@@ -357,7 +357,7 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, cerr *sto
 		res.err = cerr
 	}
 
-	m.sched.workTracker.onDone(callID)
+	m.sched.workTracker.onDone(ctx, callID)
 
 	m.workLk.Lock()
 	defer m.workLk.Unlock()
@@ -413,5 +413,5 @@ func (m *Manager) returnResult(callID storiface.CallID, r interface{}, cerr *sto
 
 func (m *Manager) Abort(ctx context.Context, call storiface.CallID) error {
 	// TODO: Allow temp error
-	return m.returnResult(call, nil, storiface.Err(storiface.ErrUnknown, xerrors.New("task aborted")))
+	return m.returnResult(ctx, call, nil, storiface.Err(storiface.ErrUnknown, xerrors.New("task aborted")))
 }

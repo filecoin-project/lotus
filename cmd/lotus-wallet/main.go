@@ -45,6 +45,12 @@ func main() {
 				EnvVars: []string{"WALLET_PATH"},
 				Value:   "~/.lotuswallet", // TODO: Consider XDG_DATA_HOME
 			},
+			&cli.StringFlag{
+				Name:    "repo",
+				EnvVars: []string{"LOTUS_PATH"},
+				Hidden:  true,
+				Value:   "~/.lotus",
+			},
 		},
 
 		Commands: local,
@@ -69,6 +75,14 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "ledger",
 			Usage: "use a ledger device instead of an on-disk wallet",
+		},
+		&cli.BoolFlag{
+			Name:  "interactive",
+			Usage: "prompt before performing actions (DO NOT USE FOR MINER WORKER ADDRESS)",
+		},
+		&cli.BoolFlag{
+			Name:  "offline",
+			Usage: "don't query chain state in interactive mode",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -134,8 +148,25 @@ var runCmd = &cli.Command{
 
 		log.Info("Setting up API endpoint at " + address)
 
+		if cctx.Bool("interactive") {
+			var ag func() (api.FullNode, jsonrpc.ClientCloser, error)
+
+			if !cctx.Bool("offline") {
+				ag = func() (api.FullNode, jsonrpc.ClientCloser, error) {
+					return lcli.GetFullNodeAPI(cctx)
+				}
+			}
+
+			w = &InteractiveWallet{
+				under:     w,
+				apiGetter: ag,
+			}
+		} else {
+			w = &LoggedWallet{under: w}
+		}
+
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", &LoggedWallet{under: metrics.MetricedWalletAPI(w)})
+		rpcServer.Register("Filecoin", metrics.MetricedWalletAPI(w))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof

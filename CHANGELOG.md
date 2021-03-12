@@ -1,5 +1,212 @@
 # Lotus changelog
 
+# 1.5.2 / 2021-03-11
+
+This is an hotfix release of Lotus that fixes a critical bug introduced in v1.5.1 in the miner windowPoSt logic. This upgrade is only affecting miner nodes.
+
+## Changes
+- fix window post rand check (https://github.com/filecoin-project/lotus/pull/5773)
+- wdpost: Always use head tipset to get randomness (https://github.com/filecoin-project/lotus/pull/5774)
+
+# 1.5.1 / 2021-03-10
+
+This is an optional release of Lotus that introduces an important fix to the WindowPoSt computation process. The change is to wait for some confidence before drawing beacon randomness for the proof. Without this, invalid proofs might be generated as the result of a null tipset. 
+
+## Splitstore
+
+This release also introduces the splitstore, a new optional blockstore that segregates the monolithic blockstore into cold and hot regions. The hot region contains objects from the last 4-5 finalities plus all reachable objects from two finalities away. All other objects are moved to the cold region using a compaction process that executes every finality, once 5 finalities have elapsed.
+
+The splitstore allows us to separate the two regions quite effectively, using two separate badger blockstores. The separation
+means that the live working set is much smaller, which results in potentially significant performance improvements. In addition, it means that the coldstore can be moved to a separate (bigger, slower, cheaper) disk without loss of performance.
+
+The design also allows us to use different implementations for the two blockstores; for example, an append-only blockstore could be used for coldstore and a faster memory mapped blockstore could be used for the hotstore (eg LMDB). We plan to experiment with these options in the future.
+
+Once the splitstore has been enabled, the existing monolithic blockstore becomes the coldstore. On the first head change notification, the splitstore will warm up the hotstore by copying all reachable objects from the current tipset into the hotstore.  All new writes go into the hotstore, with the splitstore tracking the write epoch. Once 5 finalities have elapsed, and every finality thereafter, the splitstore compacts by moving cold objects into the coldstore. There is also experimental support for garbage collection, whereby nunreachable objects are simply discarded.
+
+To enable the splitstore, add the following to config.toml:
+
+```
+[Chainstore]
+  EnableSplitstore = true
+```
+
+## Highlights
+
+Other highlights include:
+
+- Improved deal data handling - now multiple deals can be adding to sectors in parallel
+- Rewriten sector pledging - it now actually cares about max sealing sector limits
+- Better handling for sectors stuck in the RecoverDealIDs state
+- lotus-miner sectors extend command
+- Optional configurable storage path size limit
+- Config to disable owner/worker fallback from control addresses (useful when owner is a key on a hardware wallet)
+- A write log for node metadata, which can be restored as a backup when the metadata leveldb becomes corrupted (e.g. when you run out of disk space / system crashes in some bad way)
+
+## Changes
+
+- avoid use mp.cfg directly to avoid race (https://github.com/filecoin-project/lotus/pull/5350)
+- Show replacing message CID is state search-msg cli (https://github.com/filecoin-project/lotus/pull/5656)
+- Fix riceing by importing the main package (https://github.com/filecoin-project/lotus/pull/5675)
+- Remove sectors with all deals expired in RecoverDealIDs (https://github.com/filecoin-project/lotus/pull/5658)
+- storagefsm: Rewrite input handling (https://github.com/filecoin-project/lotus/pull/5375)
+- reintroduce Refactor send command for better testability (https://github.com/filecoin-project/lotus/pull/5668)
+- Improve error message with importing a chain (https://github.com/filecoin-project/lotus/pull/5669)
+- storagefsm: Cleanup CC sector creation (https://github.com/filecoin-project/lotus/pull/5612)
+- chain list --gas-stats display capacity (https://github.com/filecoin-project/lotus/pull/5676)
+- Correct some logs (https://github.com/filecoin-project/lotus/pull/5694)
+- refactor blockstores (https://github.com/filecoin-project/lotus/pull/5484)
+- Add idle to sync stage's String() (https://github.com/filecoin-project/lotus/pull/5702)
+- packer provisioner (https://github.com/filecoin-project/lotus/pull/5604)
+- add DeleteMany to Blockstore interface (https://github.com/filecoin-project/lotus/pull/5703)
+- segregate chain and state blockstores (https://github.com/filecoin-project/lotus/pull/5695)
+- fix(multisig): The format of the amount is not correct in msigLockApp (https://github.com/filecoin-project/lotus/pull/5718)
+- Update butterfly network (https://github.com/filecoin-project/lotus/pull/5627)
+- Collect worker task metrics (https://github.com/filecoin-project/lotus/pull/5648)
+- Correctly format disputer log (https://github.com/filecoin-project/lotus/pull/5716)
+- Log block CID in the large delay warning (https://github.com/filecoin-project/lotus/pull/5704)
+- Move api client builders to a cliutil package (https://github.com/filecoin-project/lotus/pull/5728)
+- Implement net peers --extended (https://github.com/filecoin-project/lotus/pull/5734)
+- Command to extend sector expiration (https://github.com/filecoin-project/lotus/pull/5666)
+- garbage collect hotstore after compaction (https://github.com/filecoin-project/lotus/pull/5744)
+- tune badger gc to repeatedly gc the value log until there is no rewrite (https://github.com/filecoin-project/lotus/pull/5745)
+- Add configuration option for pubsub IPColocationWhitelist subnets (https://github.com/filecoin-project/lotus/pull/5735)
+- hot/cold blockstore segregation (aka. splitstore) (https://github.com/filecoin-project/lotus/pull/4992)
+- Customize verifreg root key and remainder account when making genesis (https://github.com/filecoin-project/lotus/pull/5730)
+- chore: update go-graphsync to 0.6.0 (https://github.com/filecoin-project/lotus/pull/5746)
+- Add connmgr metadata to NetPeerInfo (https://github.com/filecoin-project/lotus/pull/5749)
+- test: attempt to make the splitstore test deterministic (https://github.com/filecoin-project/lotus/pull/5750)
+- Feat/api no dep build (https://github.com/filecoin-project/lotus/pull/5729)
+- Fix bootstrapper profile setting (https://github.com/filecoin-project/lotus/pull/5756)
+- Check liveness of sectors when processing termination batches (https://github.com/filecoin-project/lotus/pull/5759)
+- Configurable storage path storage limit (https://github.com/filecoin-project/lotus/pull/5624)
+- miner: Config to disable owner/worker address fallback (https://github.com/filecoin-project/lotus/pull/5620)
+- Fix TestUnpadReader on Go 1.16 (https://github.com/filecoin-project/lotus/pull/5761)
+- Metadata datastore log (https://github.com/filecoin-project/lotus/pull/5755)
+- Remove the SR2 stats, leave just the network totals (https://github.com/filecoin-project/lotus/pull/5757)
+- fix: wait a bit before starting to compute window post proofs (https://github.com/filecoin-project/lotus/pull/5764)
+- fix: retry proof when randomness changes (https://github.com/filecoin-project/lotus/pull/5768)
+
+
+# 1.5.0 / 2021-02-23
+
+This is a mandatory release of Lotus that introduces the fifth upgrade to the Filecoin network. The network upgrade occurs at height 550321, before which time all nodes must have updated to this release (or later). At this height, [v3 specs-actors](https://github.com/filecoin-project/specs-actors/releases/tag/v3.0.0) will take effect, which in turn implements the following two FIPs:
+
+- [FIP-0007 h/amt-v3](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0007.md) which improves the performance of the Filecoin HAMT and AMT.
+- [FIP-0010 off-chain Window PoSt Verification](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0010.md) which reduces the gas consumption of `SubmitWindowedPoSt` messages significantly by optimistically accepting Window PoSt proofs without verification, and allowing them to be disputed later by off-chain verifiers.
+
+Note that the integration of v3 actors was already completed in 1.4.2, this upgrade simply sets the epoch for the upgrade to occur.
+
+## Disputer
+
+FIP-0010 introduces the ability to dispute bad Window PoSts. Node operators are encouraged to run the new Lotus disputer alongside their Lotus daemons. For more information, see the announcement [here](https://github.com/filecoin-project/lotus/discussions/5617#discussioncomment-387333).
+
+## Changes
+
+- [#5341](https://github.com/filecoin-project/lotus/pull/5341)  Add a  `LOTUS_DISABLE_V3_ACTOR_MIGRATION` envvar
+    - Setting this envvar to 1 disables the v3 actor migration, should only be used in the event of a failed migration
+
+# 1.4.2 / 2021-02-17
+
+This is a large, and highly recommended, optional release with new features and improvements for lotus miner and deal-making UX. The release also integrates [v3 specs-actors](https://github.com/filecoin-project/specs-actors/releases/tag/v3.0.0), which implements two FIPs:
+
+- [FIP-0007 h/amt-v3](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0007.md) which improves the performance of the Filecoin HAMT and AMT.
+- [FIP-0010 off-chain Window PoSt Verification](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0010.md) which reduces the gas consumption of `SubmitWindowedPoSt` messages significantly by optimistically accepting Window PoSt proofs without verification, and allowing them to be disputed later by off-chain verifiers.
+ 
+Note that this release does NOT set an upgrade epoch for v3 actors to take effect. That will be done in the upcoming 1.5.0 release.
+ 
+ ## New Features
+ 
+ - [#5341](https://github.com/filecoin-project/lotus/pull/5341)  Added sector termination API and CLI 
+     - Run `lotus-miner sectors terminate`
+- [#5342](https://github.com/filecoin-project/lotus/pull/5342) Added CLI for using a multisig wallet as miner's owner address 
+  - See how to set it up [here](https://github.com/filecoin-project/lotus/pull/5342#issue-554009129)
+- [#5363](https://github.com/filecoin-project/lotus/pull/5363), [#5418](https://github.com/filecoin-project/lotus/pull/), [#5476](https://github.com/filecoin-project/lotus/pull/5476), [#5459](https://github.com/filecoin-project/lotus/pull/5459) Integrated [spec-actor v3](https://github.com/filecoin-pro5418ject/specs-actors/releases/tag/v3.0.0)
+  - [#5472](https://github.com/filecoin-project/lotus/pull/5472) Generate actor v3 methods for pond
+- [#5379](https://github.com/filecoin-project/lotus/pull/5379) Added WindowPoSt disputer
+  - This is to support [FIP-0010 off-chian Window PoSt verification](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0010.md)
+  - See how to run a disputer [here](https://github.com/filecoin-project/lotus/pull/5379#issuecomment-776482445)
+- [#5309](https://github.com/filecoin-project/lotus/pull/5309) Batch multiple deals in one `PublishStorageMessages`
+  - [#5411](https://github.com/filecoin-project/lotus/pull/5411) Handle batch `PublishStorageDeals` message in sealing recovery
+  - [#5505](https://github.com/filecoin-project/lotus/pull/5505) Exclude expired deals from batching in `PublishStorageDeals` messages
+  - Added `PublishMsgPeriod` and `MaxDealsPerPublishMsg` to miner `Dealmaking` [configuration](https://docs.filecoin.io/mine/lotus/miner-configuration/#dealmaking-section). See how they work [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#publishing-several-deals-in-one-message).
+  - [#5538](https://github.com/filecoin-project/lotus/pull/5538), [#5549](https://github.com/filecoin-project/lotus/pull/5549) Added a command to list pending deals and force publish messages. 
+    - Run `lotus-miner market pending-publish`
+  - [#5428](https://github.com/filecoin-project/lotus/pull/5428) Moved waiting for `PublishStorageDeals` messages' receipt from markets to lotus
+- [#5510](https://github.com/filecoin-project/lotus/pull/5510) Added `nerpanet` build option
+  - To build `nerpanet`, run `make nerpanet`
+- [#5433](https://github.com/filecoin-project/lotus/pull/5433) Added `AlwaysKeepUnsealedCopy` option to the miner configuration
+- [#5520](https://github.com/filecoin-project/lotus/pull/5520) Added `MsigGetPending` to get pending transactions for multisig wallets
+- [#5219](https://github.com/filecoin-project/lotus/pull/5219) Added interactive mode for lotus-wallet
+- [5529](https://github.com/filecoin-project/lotus/pull/5529) Added support for minder nodes in `lotus-shed rpc` util
+
+ ## Bug Fixes
+ 
+ - [#5210](https://github.com/filecoin-project/lotus/pull/5210) Miner should not dial client on restart
+ - [#5403](https://github.com/filecoin-project/lotus/pull/5403) When estimating GasLimit only apply prior messages up to the nonce
+ - [#5410](https://github.com/filecoin-project/lotus/pull/510) Fix the calibnet build option
+ - [#5492](https://github.com/filecoin-project/lotus/pull/5492) Fixed `has` for ipfsbstore for non-existing blocks
+ - [#5361](https://github.com/filecoin-project/lotus/pull/5361) Fixed retrieval hangs when using `IpfsOnlineMode=true`
+ - [#5493](https://github.com/filecoin-project/lotus/pull/5493) Fixed retrieval failure when price-per-byte is zero
+ - [#5506](https://github.com/filecoin-project/lotus/pull/5506) Fixed contexts in the storage adpater
+ - [#5515](https://github.com/filecoin-project/lotus/pull/5515) Properly wire up `StateReadState` on gateway API
+ - [#5582](https://github.com/filecoin-project/lotus/pull/5582) Fixed error logging format strings
+ - [#5614](https://github.com/filecoin-project/lotus/pull/5614) Fixed websocket reconnecting handling
+
+
+ ## Improvements
+ 
+ - [#5389](https://github.com/filecoin-project/lotus/pull/5389) Show verified indicator for `./lotus-miner storage-deals list`  
+- [#5229](https://github.com/filecoin-project/lotus/pull/5220) Show power for verified deals in `./lotus-miner setocr list`
+- [#5407](https://github.com/filecoin-project/lotus/pull/5407) Added explicit check of the miner address protocol
+ - [#5399](https://github.com/filecoin-project/lotus/pull/5399) watchdog: increase heapprof capture threshold to 90%
+ - [#5398](https://github.com/filecoin-project/lotus/pull/5398) storageadapter: Look at precommits on-chain since deal publish msg
+ - [#5470](https://github.com/filecoin-project/lotus/pull/5470) Added `--no-timing` option for `./lotus state compute-state --html`
+- [#5417](https://github.com/filecoin-project/lotus/pull/5417) Storage Manager: Always unseal full sectors
+- [#5393](https://github.com/filecoin-project/lotus/pull/5393) Switched to [filecoin-ffi bls api ](https://github.com/filecoin-project/filecoin-ffi/pull/159)for bls signatures
+- [#5380](https://github.com/filecoin-project/lotus/pull/5210) Refactor deals API tests 
+- [#5397](https://github.com/filecoin-project/lotus/pull/5397) Fixed a flake in the sync manager edge case test 
+- [#5406](https://github.com/filecoin-project/lotus/pull/5406) Added a test to ensure a correct window post cannot be disputed
+- [#5294](https://github.com/filecoin-project/lotus/pull/5394) Added jobs to build Lotus docker image and push it to AWS ECR
+- [#5387](https://github.com/filecoin-project/lotus/pull/5387) Added network info(mainnet|calibnet) in version
+- [#5497](https://github.com/filecoin-project/lotus/pull/5497) Export metric for lotus-gateaway
+- [#4950](https://github.com/filecoin-project/lotus/pull/4950) Removed bench policy
+- [#5047](https://github.com/filecoin-project/lotus/pull/5047) Improved the UX for `./lotus-shed bitfield enc`
+- [#5282](https://github.com/filecoin-project/lotus/pull/5282) Snake a context through the chian blockstore creation
+- [#5350](https://github.com/filecoin-project/lotus/pull/5350) Avoid using `mp.cfg` directrly to prevent race condition
+- [#5449](https://github.com/filecoin-project/lotus/pull/5449) Documented the block-header better 
+- [#5404](https://github.com/filecoin-project/lotus/pull/5404) Added retrying proofs if an incorrect one is generated
+- [#4545](https://github.com/filecoin-project/lotus/pull/4545) Made state tipset usage consistent in the API
+- [#5540](https://github.com/filecoin-project/lotus/pull/5540) Removed unnecessary database reads in validation check
+- [#5554](https://github.com/filecoin-project/lotus/pull/5554) Fixed `build lotus-soup` CI job
+- [#5552](https://github.com/filecoin-project/lotus/pull/5552) Updated CircleCI to halt gracefully
+- [#5555](https://github.com/filecoin-project/lotus/pull/5555) Cleanup and add docstrings of node builder
+- [#5564](https://github.com/filecoin-project/lotus/pull/5564) Stopped depending on gocheck with gomod
+- [#5574](https://github.com/filecoin-project/lotus/pull/5574) Updated CLI UI
+- [#5570](https://github.com/filecoin-project/lotus/pull/5570) Added code CID to `StateReadState` return object
+- [#5565](https://github.com/filecoin-project/lotus/pull/5565) Added storageadapter.PublishMsgConfig to miner in testkit for lotus-soup testplan
+- [#5571](https://github.com/filecoin-project/lotus/pull/5571) Added `lotus-seed gensis car` to generate lotus block for devnets
+- [#5613](https://github.com/filecoin-project/lotus/pull/5613) Check format in client commP util
+- [#5507](https://github.com/filecoin-project/lotus/pull/5507) Refactored coalescing logic into its own function and take both cancellation sets into account
+- [#5592](https://github.com/filecoin-project/lotus/pull/5592) Verify FFI version before building
+
+## Dependency Updates
+ - [#5296](https://github.com/filecoin-project/lotus/pull/5396) Upgraded to [raulk/go-watchdog@v1.0.1](https://github.com/raulk/go-watchdog/releases/tag/v1.0.1)
+ - [#5450](https://github.com/filecoin-project/lotus/pull/5450) Dependency updates
+ - [#5425](https://github.com/filecoin-project/lotus/pull/5425) Fixed stale imports in testplans/lotus-soup
+ - [#5535](https://github.com/filecoin-project/lotus/pull/5535) Updated to [go-fil-markets@v1.1.7](https://github.com/filecoin-project/go-fil-markets/releases/tag/v1.1.7)
+ - [#5616](https://github.com/filecoin-project/lotus/pull/5600) Updated to [filecoin-ffi@b6e0b35fb49ed0fe](https://github.com/filecoin-project/filecoin-ffi/releases/tag/b6e0b35fb49ed0fe)
+ - [#5599](https://github.com/filecoin-project/lotus/pull/5599) Updated to [go-bitfield@v0.2.4](https://github.com/filecoin-project/go-bitfield/releases/tag/v0.2.4)
+ - [#5614](https://github.com/filecoin-project/lotus/pull/5614), , [#5621](https://github.com/filecoin-project/lotus/pull/5621) Updated to [go-jsonrpc@v0.1.3](https://github.com/filecoin-project/go-jsonrpc/releases/tag/v0.1.3)
+ - [#5459](https://github.com/filecoin-project/lotus/pull/5459) Updated to [spec-actors@v3.0.1](https://github.com/filecoin-project/specs-actors/releases/tag/v3.0.1)
+
+
+## Network Version v10 Upgrade
+- [#5473](https://github.com/filecoin-project/lotus/pull/5473) Merged staging branch for v1.5.0
+- [#5603](https://github.com/filecoin-project/lotus/pull/5603) Set nerpanet's upgrade epochs up to v3 actors
+- [#5471](https://github.com/filecoin-project/lotus/pull/5471), [#5456](https://github.com/filecoin-project/lotus/pull/5456) Set calibration net actor v3 migration epochs for testing
+- [#5434](https://github.com/filecoin-project/lotus/pull/5434) Implemented pre-migration framework
+- [#5476](https://github.com/filecoin-project/lotus/pull/5477) Tune migration 
+
 # 1.4.1 / 2021-01-20
 
 This is an optional Lotus release that introduces various improvements to the sealing, mining, and deal-making processes. In particular, [#5341](https://github.com/filecoin-project/lotus/pull/5341) introduces the ability for Lotus miners to terminate sectors.

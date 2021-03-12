@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -88,6 +89,10 @@ over time
 			Name:  "store",
 			Usage: "(for init) use path for long-term storage",
 		},
+		&cli.StringFlag{
+			Name:  "max-storage",
+			Usage: "(for init) limit storage space for sectors (expensive for very large paths!)",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -121,11 +126,20 @@ over time
 				return err
 			}
 
+			var maxStor int64
+			if cctx.IsSet("max-storage") {
+				maxStor, err = units.RAMInBytes(cctx.String("max-storage"))
+				if err != nil {
+					return xerrors.Errorf("parsing max-storage: %w", err)
+				}
+			}
+
 			cfg := &stores.LocalStorageMeta{
-				ID:       stores.ID(uuid.New().String()),
-				Weight:   cctx.Uint64("weight"),
-				CanSeal:  cctx.Bool("seal"),
-				CanStore: cctx.Bool("store"),
+				ID:         stores.ID(uuid.New().String()),
+				Weight:     cctx.Uint64("weight"),
+				CanSeal:    cctx.Bool("seal"),
+				CanStore:   cctx.Bool("store"),
+				MaxStorage: uint64(maxStor),
 			}
 
 			if !(cfg.CanStore || cfg.CanSeal) {
@@ -220,26 +234,66 @@ var storageListCmd = &cli.Command{
 			}
 			ping := time.Now().Sub(pingStart)
 
-			usedPercent := (st.Capacity - st.Available) * 100 / st.Capacity
-
-			percCol := color.FgGreen
-			switch {
-			case usedPercent > 98:
-				percCol = color.FgRed
-			case usedPercent > 90:
-				percCol = color.FgYellow
+			safeRepeat := func(s string, count int) string {
+				if count < 0 {
+					return ""
+				}
+				return strings.Repeat(s, count)
 			}
 
 			var barCols = int64(50)
-			set := (st.Capacity - st.Available) * barCols / st.Capacity
-			used := (st.Capacity - (st.Available + st.Reserved)) * barCols / st.Capacity
-			reserved := set - used
-			bar := strings.Repeat("#", int(used)) + strings.Repeat("*", int(reserved)) + strings.Repeat(" ", int(barCols-set))
 
-			fmt.Printf("\t[%s] %s/%s %s\n", color.New(percCol).Sprint(bar),
-				types.SizeStr(types.NewInt(uint64(st.Capacity-st.Available))),
-				types.SizeStr(types.NewInt(uint64(st.Capacity))),
-				color.New(percCol).Sprintf("%d%%", usedPercent))
+			// filesystem use bar
+			{
+				usedPercent := (st.Capacity - st.FSAvailable) * 100 / st.Capacity
+
+				percCol := color.FgGreen
+				switch {
+				case usedPercent > 98:
+					percCol = color.FgRed
+				case usedPercent > 90:
+					percCol = color.FgYellow
+				}
+
+				set := (st.Capacity - st.FSAvailable) * barCols / st.Capacity
+				used := (st.Capacity - (st.FSAvailable + st.Reserved)) * barCols / st.Capacity
+				reserved := set - used
+				bar := safeRepeat("#", int(used)) + safeRepeat("*", int(reserved)) + safeRepeat(" ", int(barCols-set))
+
+				desc := ""
+				if st.Max > 0 {
+					desc = " (filesystem)"
+				}
+
+				fmt.Printf("\t[%s] %s/%s %s%s\n", color.New(percCol).Sprint(bar),
+					types.SizeStr(types.NewInt(uint64(st.Capacity-st.FSAvailable))),
+					types.SizeStr(types.NewInt(uint64(st.Capacity))),
+					color.New(percCol).Sprintf("%d%%", usedPercent), desc)
+			}
+
+			// optional configured limit bar
+			if st.Max > 0 {
+				usedPercent := st.Used * 100 / st.Max
+
+				percCol := color.FgGreen
+				switch {
+				case usedPercent > 98:
+					percCol = color.FgRed
+				case usedPercent > 90:
+					percCol = color.FgYellow
+				}
+
+				set := st.Used * barCols / st.Max
+				used := (st.Used + st.Reserved) * barCols / st.Max
+				reserved := set - used
+				bar := safeRepeat("#", int(used)) + safeRepeat("*", int(reserved)) + safeRepeat(" ", int(barCols-set))
+
+				fmt.Printf("\t[%s] %s/%s %s (limit)\n", color.New(percCol).Sprint(bar),
+					types.SizeStr(types.NewInt(uint64(st.Used))),
+					types.SizeStr(types.NewInt(uint64(st.Max))),
+					color.New(percCol).Sprintf("%d%%", usedPercent))
+			}
+
 			fmt.Printf("\t%s; %s; %s; Reserved: %s\n",
 				color.YellowString("Unsealed: %d", cnt[0]),
 				color.GreenString("Sealed: %d", cnt[1]),

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 
@@ -123,6 +124,34 @@ func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, si
 	}, nil, nil
 }
 
+type mockVerif struct {
+}
+
+func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
+	panic("implement me")
+}
+
+func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error) {
+	if len(info.Proofs) != 1 {
+		return false, xerrors.Errorf("expected 1 proof entry")
+	}
+
+	proof := info.Proofs[0]
+
+	if !bytes.Equal(proof.ProofBytes, []byte("post-proof")) {
+		return false, xerrors.Errorf("bad proof")
+	}
+	return true, nil
+}
+
+func (m mockVerif) VerifySeal(proof2.SealVerifyInfo) (bool, error) {
+	panic("implement me")
+}
+
+func (m mockVerif) GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error) {
+	panic("implement me")
+}
+
 type mockFaultTracker struct {
 }
 
@@ -176,6 +205,7 @@ func TestWDPostDoPost(t *testing.T) {
 	scheduler := &WindowPoStScheduler{
 		api:          mockStgMinerAPI,
 		prover:       &mockProver{},
+		verifier:     &mockVerif{},
 		faultTracker: &mockFaultTracker{},
 		proofType:    proofType,
 		actor:        postAct,
@@ -320,7 +350,7 @@ func (m *mockStorageMinerAPI) GasEstimateMessageGas(ctx context.Context, message
 }
 
 func (m *mockStorageMinerAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
-	panic("implement me")
+	return nil, nil
 }
 
 func (m *mockStorageMinerAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {

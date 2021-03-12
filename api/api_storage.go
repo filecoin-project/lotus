@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -35,7 +36,7 @@ type StorageMiner interface {
 	MiningBase(context.Context) (*types.TipSet, error)
 
 	// Temp api for testing
-	PledgeSector(context.Context) error
+	PledgeSector(context.Context) (abi.SectorID, error)
 
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error)
@@ -105,10 +106,12 @@ type StorageMiner interface {
 	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)
 	MarketListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)
 	MarketDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)
-	// MinerRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+	// MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
-	// ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+	// MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
+	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)
+	MarketPublishPendingDeals(ctx context.Context) error
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
 	DealsList(ctx context.Context) ([]MarketDeal, error)
@@ -235,4 +238,15 @@ type AddressConfig struct {
 	PreCommitControl []address.Address
 	CommitControl    []address.Address
 	TerminateControl []address.Address
+
+	DisableOwnerFallback  bool
+	DisableWorkerFallback bool
+}
+
+// PendingDealInfo has info about pending deals and when they are due to be
+// published
+type PendingDealInfo struct {
+	Deals              []market.ClientDealProposal
+	PublishPeriodStart time.Time
+	PublishPeriod      time.Duration
 }
