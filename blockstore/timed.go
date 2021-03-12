@@ -103,13 +103,20 @@ func (t *TimedCacheBlockstore) PutMany(bs []blocks.Block) error {
 }
 
 func (t *TimedCacheBlockstore) View(k cid.Cid, callback func([]byte) error) error {
+	// The underlying blockstore is always a "mem" blockstore so there's no difference,
+	// from a performance perspective, between view & get. So we call Get to avoid
+	// calling an arbitrary callback while holding a lock.
 	t.mu.RLock()
-	defer t.mu.RUnlock()
-	err := t.active.View(k, callback)
+	block, err := t.active.Get(k)
 	if err == ErrNotFound {
-		err = t.inactive.View(k, callback)
+		block, err = t.inactive.Get(k)
 	}
-	return err
+	t.mu.RUnlock()
+
+	if err != nil {
+		return err
+	}
+	return callback(block.RawData())
 }
 
 func (t *TimedCacheBlockstore) Get(k cid.Cid) (blocks.Block, error) {
