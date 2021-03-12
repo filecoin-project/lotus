@@ -400,6 +400,9 @@ func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSeal
 		return xerrors.Errorf("initializing sector: %w", err)
 	}
 
+	// update stats early, fsm planner would do that async
+	m.stats.updateSector(cfg, m.minerSectorID(sid), UndefinedSectorState)
+
 	log.Infow("Creating sector", "number", sid, "type", "deal", "proofType", sp)
 	return m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,

@@ -203,8 +203,8 @@ func TestBatchDealInput(t *testing.T, b APIBuilder, blocktime time.Duration, sta
 				return func() (sealiface.Config, error) {
 					return sealiface.Config{
 						MaxWaitDealsSectors:       1,
-						MaxSealingSectors:         2,
-						MaxSealingSectorsForDeals: 3,
+						MaxSealingSectors:         1,
+						MaxSealingSectorsForDeals: 2,
 						AlwaysKeepUnsealedCopy:    true,
 					}, nil
 				}, nil

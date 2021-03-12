@@ -38,6 +38,9 @@ func (m *Sealing) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
 		return storage.SectorRef{}, xerrors.Errorf("notifying sealer of the new sector: %w", err)
 	}
 
+	// update stats early, fsm planner would do that async
+	m.stats.updateSector(cfg, m.minerSectorID(sid), UndefinedSectorState)
+
 	log.Infof("Creating CC sector %d", sid)
 	return sectorID, m.sectors.Send(uint64(sid), SectorStartCC{
 		ID:         sid,

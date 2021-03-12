@@ -45,6 +45,8 @@ func (ss *SectorStats) updateSector(cfg sealiface.Config, id abi.SectorID, st Se
 	sealing := ss.curSealingLocked()
 	staging := ss.curStagingLocked()
 
+	log.Debugw("sector stats", "sealing", sealing, "staging", staging)
+
 	if cfg.MaxSealingSectorsForDeals > 0 && // max sealing deal sector limit set
 		preSealing >= cfg.MaxSealingSectorsForDeals && // we were over limit
 		sealing < cfg.MaxSealingSectorsForDeals { // and we're below the limit now
