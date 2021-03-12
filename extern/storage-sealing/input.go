@@ -16,6 +16,7 @@ import (
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
 func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) error {
@@ -388,26 +389,36 @@ func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSeal
 		return nil
 	}
 
-	// Now actually create a new sector
-
-	sid, err := m.sc.Next()
+	sid, err := m.createSector(ctx, cfg, sp)
 	if err != nil {
-		return xerrors.Errorf("getting sector number: %w", err)
+		return err
 	}
-
-	err = m.sealer.NewSector(ctx, m.minerSector(sp, sid))
-	if err != nil {
-		return xerrors.Errorf("initializing sector: %w", err)
-	}
-
-	// update stats early, fsm planner would do that async
-	m.stats.updateSector(cfg, m.minerSectorID(sid), UndefinedSectorState)
 
 	log.Infow("Creating sector", "number", sid, "type", "deal", "proofType", sp)
 	return m.sectors.Send(uint64(sid), SectorStart{
 		ID:         sid,
 		SectorType: sp,
 	})
+}
+
+// call with m.inputLk
+func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi.RegisteredSealProof) (abi.SectorNumber, error) {
+	// Now actually create a new sector
+
+	sid, err := m.sc.Next()
+	if err != nil {
+		return 0, xerrors.Errorf("getting sector number: %w", err)
+	}
+
+	err = m.sealer.NewSector(ctx, m.minerSector(sp, sid))
+	if err != nil {
+		return 0, xerrors.Errorf("initializing sector: %w", err)
+	}
+
+	// update stats early, fsm planner would do that async
+	m.stats.updateSector(cfg, m.minerSectorID(sid), UndefinedSectorState)
+
+	return sid, nil
 }
 
 func (m *Sealing) StartPacking(sid abi.SectorNumber) error {

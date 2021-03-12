@@ -28,21 +28,13 @@ func (m *Sealing) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
 		return storage.SectorRef{}, xerrors.Errorf("getting seal proof type: %w", err)
 	}
 
-	sid, err := m.sc.Next()
+	sid, err := m.createSector(ctx, cfg, spt)
 	if err != nil {
-		return storage.SectorRef{}, xerrors.Errorf("generating sector number: %w", err)
+		return storage.SectorRef{}, err
 	}
-	sectorID := m.minerSector(spt, sid)
-	err = m.sealer.NewSector(ctx, sectorID)
-	if err != nil {
-		return storage.SectorRef{}, xerrors.Errorf("notifying sealer of the new sector: %w", err)
-	}
-
-	// update stats early, fsm planner would do that async
-	m.stats.updateSector(cfg, m.minerSectorID(sid), UndefinedSectorState)
 
 	log.Infof("Creating CC sector %d", sid)
-	return sectorID, m.sectors.Send(uint64(sid), SectorStartCC{
+	return m.minerSector(spt, sid), m.sectors.Send(uint64(sid), SectorStartCC{
 		ID:         sid,
 		SectorType: spt,
 	})
