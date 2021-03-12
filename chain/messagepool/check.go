@@ -9,23 +9,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-
-	cid "github.com/ipfs/go-cid"
 )
 
 var baseFeeUpperBoundFactor = types.NewInt(10)
 
-// CheckStatus encodes a message check failure for some message
-type CheckStatus struct {
-	// message CID
-	Cid cid.Cid
-	// check failure details
-	ErrorCode int
-	ErrorMsg  string
-}
+type CheckStatus = api.MessageCheckStatus
 
 const (
 	CheckStatusErrSerialize = iota
