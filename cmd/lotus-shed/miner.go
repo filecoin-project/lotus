@@ -2,13 +2,14 @@ package main
 
 import (
 	"bufio"
-	"github.com/mitchellh/go-homedir"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 var minerCmd = &cli.Command{
@@ -20,8 +21,8 @@ var minerCmd = &cli.Command{
 }
 
 var minerUnpackInfoCmd = &cli.Command{
-	Name:  "unpack-info",
-	Usage: "unpack miner info all dump",
+	Name:      "unpack-info",
+	Usage:     "unpack miner info all dump",
 	ArgsUsage: "[allinfo.txt] [dir]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
@@ -48,7 +49,7 @@ var minerUnpackInfoCmd = &cli.Command{
 
 		r := bufio.NewReader(f)
 		for {
-			l, _ ,err := r.ReadLine()
+			l, _, err := r.ReadLine()
 			if err == io.EOF {
 				if outf != nil {
 					return outf.Close()
