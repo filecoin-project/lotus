@@ -82,6 +82,8 @@
   * [MpoolBatchPush](#MpoolBatchPush)
   * [MpoolBatchPushMessage](#MpoolBatchPushMessage)
   * [MpoolBatchPushUntrusted](#MpoolBatchPushUntrusted)
+  * [MpoolCheckMessages](#MpoolCheckMessages)
+  * [MpoolCheckPendingMessages](#MpoolCheckPendingMessages)
   * [MpoolClear](#MpoolClear)
   * [MpoolGetConfig](#MpoolGetConfig)
   * [MpoolGetNonce](#MpoolGetNonce)
@@ -1989,6 +1991,36 @@ Inputs:
 ```json
 [
   null
+]
+```
+
+Response: `null`
+
+### MpoolCheckMessages
+MpoolCheckMessages performs logical checks on a batch of messages
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response: `null`
+
+### MpoolCheckPendingMessages
+MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
 ]
 ```
 

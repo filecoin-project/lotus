@@ -252,6 +252,11 @@ type FullNode interface {
 	// MpoolBatchPushMessage batch pushes a unsigned message to mempool.
 	MpoolBatchPushMessage(context.Context, []*types.Message, *MessageSendSpec) ([]*types.SignedMessage, error) //perm:sign
 
+	// MpoolCheckMessages performs logical checks on a batch of messages
+	MpoolCheckMessages(context.Context, []*types.Message) ([][]MessageCheckStatus, error) //perm:read
+	// MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
+	MpoolCheckPendingMessages(context.Context, address.Address) ([][]MessageCheckStatus, error) //perm:read
+
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.
 	MpoolGetNonce(context.Context, address.Address) (uint64, error) //perm:read
