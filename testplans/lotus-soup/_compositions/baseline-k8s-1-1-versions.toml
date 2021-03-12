@@ -55,7 +55,7 @@
       role = "miner"
   [groups.build]
     dependencies = [
-      { module = "github.com/filecoin-project/lotus", version = "{{.ENV.LOTUS_VERSION_MINER}}"},
+      { module = "github.com/filecoin-project/lotus", version = "{{.Env.LOTUS_VERSION_MINER}}"},
     ]
 [[groups]]
   id = "clients"
@@ -70,5 +70,5 @@
       role = "client"
   [groups.build]
     dependencies = [
-      { module = "github.com/filecoin-project/lotus", version = "{{.ENV.LOTUS_VERSION_CLIENT}}"},
+      { module = "github.com/filecoin-project/lotus", version = "{{.Env.LOTUS_VERSION_CLIENT}}"},
     ]
