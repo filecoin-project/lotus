@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/exchange"
+	rpcstmgr "github.com/filecoin-project/lotus/chain/stmgr/rpc"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -334,7 +335,7 @@ var ChainNode = Options(
 		Override(new(full.GasModuleAPI), From(new(api.GatewayAPI))),
 		Override(new(full.MpoolModuleAPI), From(new(api.GatewayAPI))),
 		Override(new(full.StateModuleAPI), From(new(api.GatewayAPI))),
-		Override(new(stmgr.StateManagerAPI), modules.NewRPCStateManager),
+		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 	),
 
 	// Full node API / service startup
