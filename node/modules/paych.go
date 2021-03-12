@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -22,6 +23,13 @@ func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm stmgr.StateManagerA
 func NewPaychStore(ds dtypes.MetadataDS) *paychmgr.Store {
 	ds = namespace.Wrap(ds, datastore.NewKey("/paych/"))
 	return paychmgr.NewStore(ds)
+}
+
+type PaychAPI struct {
+	fx.In
+
+	full.MpoolAPI
+	full.StateAPI
 }
 
 // HandlePaychManager is called by dependency injection to set up hooks

@@ -8,7 +8,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
-	"go.uber.org/fx"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -19,20 +18,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
 var log = logging.Logger("paych")
 
 var errProofNotSupported = errors.New("payment channel proof parameter is not supported")
-
-// PaychAPI is used by dependency injection to pass the consituent APIs to NewManager()
-type PaychAPI struct {
-	fx.In
-
-	full.MpoolAPI
-	full.StateAPI
-}
 
 // stateManagerAPI defines the methods needed from StateManager
 type stateManagerAPI interface {
@@ -42,7 +32,7 @@ type stateManagerAPI interface {
 }
 
 // paychAPI defines the API methods needed by the payment channel manager
-type paychAPI interface {
+type PaychAPI interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee *api.MessageSendSpec) (*types.SignedMessage, error)
@@ -54,13 +44,13 @@ type paychAPI interface {
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
 	stateManagerAPI
-	paychAPI
+	PaychAPI
 }
 
 // managerAPIImpl is used to create a composite that implements managerAPI
 type managerAPIImpl struct {
 	stmgr.StateManagerAPI
-	paychAPI
+	PaychAPI
 }
 
 type Manager struct {
@@ -77,7 +67,7 @@ type Manager struct {
 }
 
 func NewManager(ctx context.Context, shutdown func(), sm stmgr.StateManagerAPI, pchstore *Store, api PaychAPI) *Manager {
-	impl := &managerAPIImpl{StateManagerAPI: sm, paychAPI: &api}
+	impl := &managerAPIImpl{StateManagerAPI: sm, PaychAPI: api}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
