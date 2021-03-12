@@ -25,6 +25,7 @@ const (
 	CheckStatusErrInvalid
 	CheckStatusErrMinGas
 	CheckStatusErrMinBaseFee
+	CheckStatusErrBaseFee
 	CheckStatusErrBaseFeeLowerBound
 	CheckStatusErrBaseFeeUpperBound
 	CheckStatusErrGetStateNonce
@@ -108,6 +109,14 @@ func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []CheckStatu
 				ErrorMsg:  "GasFeeCap less than minimum base fee",
 			})
 			goto checkState
+		}
+
+		if m.GasFeeCap.LessThan(baseFee) {
+			result = append(result, CheckStatus{
+				Cid:       m.Cid(),
+				ErrorCode: CheckStatusErrBaseFee,
+				ErrorMsg:  "GasFeeCap less than current base fee",
+			})
 		}
 
 		if m.GasFeeCap.LessThan(baseFeeLowerBound) {
