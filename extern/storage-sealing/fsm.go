@@ -412,7 +412,7 @@ func (m *Sealing) onUpdateSector(ctx context.Context, state *SectorInfo) error {
 	// trigger more input processing when we've dipped below max sealing limits
 	if shouldUpdateInput {
 		go func() {
-			m.inputLk.Unlock()
+			m.inputLk.Lock()
 			defer m.inputLk.Unlock()
 
 			if err := m.updateInput(ctx, sp); err != nil {
