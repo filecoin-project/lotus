@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	stdbig "math/big"
+	"sort"
 
 	"golang.org/x/xerrors"
 
@@ -34,8 +35,35 @@ const (
 	CheckStatusErrInsufficientBalance
 )
 
-// Check performs a set of logic checks for a list of messages, prior to submitting it to the mpool
+// CheckMessages performs a set of logic checks for a list of messages, prior to submitting it to the mpool
 func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []CheckStatus, err error) {
+	return mp.checkMessages(msgs, false)
+}
+
+// CheckHealth performs a set of logical sets for all messages pending from a given actor
+func (mp *MessagePool) CheckHealth(from address.Address) (result []CheckStatus, err error) {
+	var msgs []*types.Message
+	mp.lk.Lock()
+	mset, ok := mp.pending[from]
+	if ok {
+		for _, sm := range mset.msgs {
+			msgs = append(msgs, &sm.Message)
+		}
+	}
+	mp.lk.Unlock()
+
+	if len(msgs) == 0 {
+		return nil, nil
+	}
+
+	sort.Slice(msgs, func(i, j int) bool {
+		return msgs[i].Nonce < msgs[j].Nonce
+	})
+
+	return mp.checkMessages(msgs, true)
+}
+
+func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (result []CheckStatus, err error) {
 	mp.curTsLk.Lock()
 	curTs := mp.curTs
 	mp.curTsLk.Unlock()
@@ -142,7 +170,7 @@ func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []CheckStatu
 		if !ok {
 			mp.lk.Lock()
 			mset, ok := mp.pending[m.From]
-			if ok {
+			if ok && !interned {
 				st = &actorState{nextNonce: mset.nextNonce, requiredFunds: mset.requiredFunds}
 				for _, m := range mset.msgs {
 					st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.Message.Value.Int)
