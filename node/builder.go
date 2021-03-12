@@ -307,9 +307,9 @@ var ChainNode = Options(
 	Override(new(api.WalletAPI), From(new(wallet.MultiWallet))),
 
 	// Service: Payment channels
-	Override(new(*paychmgr.Store), paychmgr.NewStore),
-	Override(new(*paychmgr.Manager), paychmgr.NewManager),
-	Override(HandlePaymentChannelManagerKey, paychmgr.HandleManager),
+	Override(new(*paychmgr.Store), modules.NewPaychStore),
+	Override(new(*paychmgr.Manager), modules.NewManager),
+	Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
 	Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 
 	// Markets (common)

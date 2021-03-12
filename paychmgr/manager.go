@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 var log = logging.Logger("paych")
@@ -77,10 +76,7 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 
-func NewManager(mctx helpers.MetricsCtx, lc fx.Lifecycle, sm stmgr.StateManagerAPI, pchstore *Store, api PaychAPI) *Manager {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-	ctx, shutdown := context.WithCancel(ctx)
-
+func NewManager(ctx context.Context, shutdown func(), sm stmgr.StateManagerAPI, pchstore *Store, api PaychAPI) *Manager {
 	impl := &managerAPIImpl{StateManagerAPI: sm, paychAPI: &api}
 	return &Manager{
 		ctx:      ctx,
@@ -101,18 +97,6 @@ func newManager(pchstore *Store, pchapi managerAPI) (*Manager, error) {
 		pchapi:   pchapi,
 	}
 	return pm, pm.Start()
-}
-
-// HandleManager is called by dependency injection to set up hooks
-func HandleManager(lc fx.Lifecycle, pm *Manager) {
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return pm.Start()
-		},
-		OnStop: func(context.Context) error {
-			return pm.Stop()
-		},
-	})
 }
 
 // Start restarts tracking of any messages that were sent to chain.
