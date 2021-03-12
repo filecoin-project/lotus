@@ -491,6 +491,7 @@ func (m mockVerif) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 }
 
 func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
+	info.Randomness[31] &= 0x3f
 	return true, nil
 }
 
