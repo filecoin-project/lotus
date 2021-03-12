@@ -28,8 +28,8 @@ func (ss *SectorStats) updateSector(cfg sealiface.Config, id abi.SectorID, st Se
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	preSealing := ss.totals[sstStaging] + ss.totals[sstSealing] + ss.totals[sstFailed]
-	preStaging := ss.totals[sstStaging]
+	preSealing := ss.curSealingLocked()
+	preStaging := ss.curStagingLocked()
 
 	// update totals
 	oldst, found := ss.bySector[id]
@@ -42,8 +42,8 @@ func (ss *SectorStats) updateSector(cfg sealiface.Config, id abi.SectorID, st Se
 	ss.totals[sst]++
 
 	// check if we may need be able to process more deals
-	sealing := ss.totals[sstStaging] + ss.totals[sstSealing] + ss.totals[sstFailed]
-	staging := ss.totals[sstStaging]
+	sealing := ss.curSealingLocked()
+	staging := ss.curStagingLocked()
 
 	if cfg.MaxSealingSectorsForDeals > 0 && // max sealing deal sector limit set
 		preSealing >= cfg.MaxSealingSectorsForDeals && // we were over limit
@@ -60,12 +60,20 @@ func (ss *SectorStats) updateSector(cfg sealiface.Config, id abi.SectorID, st Se
 	return updateInput
 }
 
+func (ss *SectorStats) curSealingLocked() uint64 {
+	return ss.totals[sstStaging] + ss.totals[sstSealing] + ss.totals[sstFailed]
+}
+
+func (ss *SectorStats) curStagingLocked() uint64 {
+	return ss.totals[sstStaging]
+}
+
 // return the number of sectors currently in the sealing pipeline
 func (ss *SectorStats) curSealing() uint64 {
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	return ss.totals[sstStaging] + ss.totals[sstSealing] + ss.totals[sstFailed]
+	return ss.curSealingLocked()
 }
 
 // return the number of sectors waiting to enter the sealing pipeline
@@ -73,5 +81,5 @@ func (ss *SectorStats) curStaging() uint64 {
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	return ss.totals[sstStaging]
+	return ss.curStagingLocked()
 }
