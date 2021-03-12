@@ -229,6 +229,10 @@ type FullNodeStruct struct {
 
 		MpoolBatchPushUntrusted func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) `perm:"write"`
 
+		MpoolCheckMessages func(p0 context.Context, p1 []*types.Message) ([][]api.MessageCheckStatus, error) `perm:"read"`
+
+		MpoolCheckPendingMessages func(p0 context.Context, p1 address.Address) ([][]api.MessageCheckStatus, error) `perm:"read"`
+
 		MpoolClear func(p0 context.Context, p1 bool) error `perm:"write"`
 
 		MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) `perm:"read"`
@@ -1131,6 +1135,14 @@ func (s *FullNodeStruct) MpoolBatchPushMessage(p0 context.Context, p1 []*types.M
 
 func (s *FullNodeStruct) MpoolBatchPushUntrusted(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) {
 	return s.Internal.MpoolBatchPushUntrusted(p0, p1)
+}
+
+func (s *FullNodeStruct) MpoolCheckMessages(p0 context.Context, p1 []*types.Message) ([][]api.MessageCheckStatus, error) {
+	return s.Internal.MpoolCheckMessages(p0, p1)
+}
+
+func (s *FullNodeStruct) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]api.MessageCheckStatus, error) {
+	return s.Internal.MpoolCheckPendingMessages(p0, p1)
 }
 
 func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) error {

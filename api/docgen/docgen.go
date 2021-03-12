@@ -260,6 +260,9 @@ func init() {
 		},
 		"methods": []interface{}{}},
 	)
+
+	addExample(api.CheckStatusCode(0))
+	addExample(map[string]interface{}{"abc": 123})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

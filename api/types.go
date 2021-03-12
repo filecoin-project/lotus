@@ -136,3 +136,35 @@ type NodeChainStatus struct {
 	BlocksPerTipsetLast100      float64
 	BlocksPerTipsetLastFinality float64
 }
+
+type CheckStatusCode int
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type=CheckStatusCode -trimprefix=CheckStatus
+const (
+	_ CheckStatusCode = iota
+	// Message Checks
+	CheckStatusMessageSerialize
+	CheckStatusMessageSize
+	CheckStatusMessageValidity
+	CheckStatusMessageMinGas
+	CheckStatusMessageMinBaseFee
+	CheckStatusMessageBaseFee
+	CheckStatusMessageBaseFeeLowerBound
+	CheckStatusMessageBaseFeeUpperBound
+	CheckStatusMessageGetStateNonce
+	CheckStatusMessageNonce
+	CheckStatusMessageGetStateBalance
+	CheckStatusMessageBalance
+)
+
+type CheckStatus struct {
+	Code CheckStatusCode
+	OK   bool
+	Err  string
+	Hint map[string]interface{}
+}
+
+type MessageCheckStatus struct {
+	Cid cid.Cid
+	CheckStatus
+}
