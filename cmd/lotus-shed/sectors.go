@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-address"
 	"strconv"
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -36,7 +36,7 @@ var terminateSectorCmd = &cli.Command{
 	ArgsUsage: "[sectorNum1 sectorNum2 ...]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "actor",
+			Name:  "actor",
 			Usage: "specify the address of miner actor",
 		},
 		&cli.BoolFlag{
@@ -165,7 +165,7 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 	ArgsUsage: "[sectorNum1 sectorNum2 ...]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "actor",
+			Name:  "actor",
 			Usage: "specify the address of miner actor",
 		},
 	},
