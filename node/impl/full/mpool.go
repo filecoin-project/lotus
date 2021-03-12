@@ -227,6 +227,10 @@ func (a *MpoolAPI) MpoolCheckMessages(ctx context.Context, msgs []*types.Message
 	return a.Mpool.CheckMessages(msgs)
 }
 
+func (a *MpoolAPI) MpoolCheckHealth(ctx context.Context, from address.Address) ([]api.MessageCheckStatus, error) {
+	return a.Mpool.CheckHealth(from)
+}
+
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	return a.Mpool.GetNonce(addr)
 }
