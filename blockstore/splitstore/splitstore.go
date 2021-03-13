@@ -1,6 +1,7 @@
 package splitstore
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -48,7 +50,7 @@ var (
 	CompactionCold = build.Finality
 
 	// CompactionBoundary is the number of epochs from the current epoch at which
-	// we will walk the chain for live objects
+	// we will walk the chain for live objects.
 	CompactionBoundary = 2 * build.Finality
 )
 
@@ -73,7 +75,6 @@ const (
 	batchSize = 16384
 
 	defaultColdPurgeSize = 7_000_000
-	defaultDeadPurgeSize = 1_000_000
 )
 
 type Config struct {
@@ -94,7 +95,6 @@ type ChainAccessor interface {
 	GetTipsetByHeight(context.Context, abi.ChainEpoch, *types.TipSet, bool) (*types.TipSet, error)
 	GetHeaviestTipSet() *types.TipSet
 	SubscribeHeadChanges(change func(revert []*types.TipSet, apply []*types.TipSet) error)
-	WalkSnapshot(context.Context, *types.TipSet, abi.ChainEpoch, bool, bool, func(cid.Cid) error) error
 }
 
 type SplitStore struct {
@@ -104,6 +104,7 @@ type SplitStore struct {
 
 	baseEpoch   abi.ChainEpoch
 	warmupEpoch abi.ChainEpoch
+	warm        bool
 
 	coldPurgeSize int
 
@@ -340,6 +341,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	switch err {
 	case nil:
 		s.warmupEpoch = bytesToEpoch(bs)
+		s.warm = true
 
 	case dstore.ErrNotFound:
 	default:
@@ -396,7 +398,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 		return nil
 	}
 
-	if s.warmupEpoch == 0 {
+	if !s.warm {
 		// splitstore needs to warm up
 		go func() {
 			defer atomic.StoreInt32(&s.compacting, 0)
@@ -404,7 +406,17 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 			log.Info("warming up hotstore")
 			start := time.Now()
 
-			s.warmup(curTs)
+			baseTs, err := s.chain.GetTipsetByHeight(context.Background(), s.baseEpoch, curTs, true)
+			if err != nil {
+				log.Errorf("error warming up hotstore: error getting tipset at base epoch: %s", err)
+				return
+			}
+
+			err = s.warmup(baseTs)
+			if err != nil {
+				log.Errorf("error warming up hotstore: %s", err)
+				return
+			}
 
 			log.Infow("warm up done", "took", time.Since(start))
 		}()
@@ -432,14 +444,16 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	return nil
 }
 
-func (s *SplitStore) warmup(curTs *types.TipSet) {
+func (s *SplitStore) warmup(curTs *types.TipSet) error {
 	epoch := curTs.Height()
 
 	batchHot := make([]blocks.Block, 0, batchSize)
 	batchSnoop := make([]cid.Cid, 0, batchSize)
 
 	count := int64(0)
-	err := s.chain.WalkSnapshot(context.Background(), curTs, 1, true, true,
+	xcount := int64(0)
+	missing := int64(0)
+	err := s.walk(curTs, epoch,
 		func(cid cid.Cid) error {
 			count++
 
@@ -454,8 +468,14 @@ func (s *SplitStore) warmup(curTs *types.TipSet) {
 
 			blk, err := s.cold.Get(cid)
 			if err != nil {
+				if err == bstore.ErrNotFound {
+					missing++
+					return nil
+				}
 				return err
 			}
+
+			xcount++
 
 			batchHot = append(batchHot, blk)
 			batchSnoop = append(batchSnoop, cid)
@@ -478,39 +498,41 @@ func (s *SplitStore) warmup(curTs *types.TipSet) {
 		})
 
 	if err != nil {
-		log.Errorf("error warming up splitstore: %s", err)
-		return
+		return err
 	}
 
 	if len(batchHot) > 0 {
 		err = s.tracker.PutBatch(batchSnoop, epoch)
 		if err != nil {
-			log.Errorf("error warming up splitstore: %s", err)
-			return
+			return err
 		}
 
 		err = s.hot.PutMany(batchHot)
 		if err != nil {
-			log.Errorf("error warming up splitstore: %s", err)
-			return
+			return err
 		}
 	}
+
+	log.Infow("warmup stats", "visited", count, "cold", xcount, "missing", missing)
 
 	if count > s.markSetSize {
 		s.markSetSize = count + count>>2 // overestimate a bit
 	}
 
 	// save the warmup epoch
+	s.warm = true
 	s.warmupEpoch = epoch
 	err = s.ds.Put(warmupEpochKey, epochToBytes(epoch))
 	if err != nil {
-		log.Errorf("error saving warmup epoch: %s", err)
+		log.Warnf("error saving warmup epoch: %s", err)
 	}
 
 	err = s.ds.Put(markSetSizeKey, int64ToBytes(s.markSetSize))
 	if err != nil {
-		log.Errorf("error saving mark set size: %s", err)
+		log.Warnf("error saving mark set size: %s", err)
 	}
+
+	return nil
 }
 
 // Compaction/GC Algorithm
@@ -540,8 +562,10 @@ func (s *SplitStore) compact(curTs *types.TipSet) {
 }
 
 func (s *SplitStore) estimateMarkSetSize(curTs *types.TipSet) error {
+	epoch := curTs.Height()
+
 	var count int64
-	err := s.chain.WalkSnapshot(context.Background(), curTs, 1, true, true,
+	err := s.walk(curTs, epoch,
 		func(cid cid.Cid) error {
 			count++
 			return nil
@@ -578,7 +602,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 
 	var count int64
-	err = s.chain.WalkSnapshot(context.Background(), boundaryTs, 1, true, true,
+	err = s.walk(boundaryTs, boundaryEpoch,
 		func(cid cid.Cid) error {
 			count++
 			return coldSet.Mark(cid)
@@ -592,7 +616,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		s.markSetSize = count + count>>2 // overestimate a bit
 	}
 
-	log.Infow("marking done", "took", time.Since(startMark))
+	log.Infow("marking done", "took", time.Since(startMark), "marked", count)
 
 	// 2. move cold unreachable objects to the coldstore
 	log.Info("collecting cold objects")
@@ -698,6 +722,93 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 
 	return nil
+}
+
+func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, f func(cid.Cid) error) error {
+	walked := cid.NewSet()
+	toWalk := ts.Cids()
+
+	walkBlock := func(c cid.Cid) error {
+		if !walked.Visit(c) {
+			return nil
+		}
+
+		blk, err := s.Get(c)
+		if err != nil {
+			return xerrors.Errorf("error retrieving block (cid: %s): %w", c, err)
+		}
+
+		var hdr types.BlockHeader
+		if err := hdr.UnmarshalCBOR(bytes.NewBuffer(blk.RawData())); err != nil {
+			return xerrors.Errorf("error unmarshaling block header (cid: %s): %w", c, err)
+		}
+
+		// don't walk under the boundary
+		if hdr.Height < boundary {
+			return nil
+		}
+
+		if err := f(c); err != nil {
+			return err
+		}
+
+		if err := s.walkLinks(hdr.Messages, walked, f); err != nil {
+			return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
+		}
+
+		if err := s.walkLinks(hdr.ParentStateRoot, walked, f); err != nil {
+			return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
+		}
+
+		toWalk = append(toWalk, hdr.Parents...)
+		return nil
+	}
+
+	for len(toWalk) > 0 {
+		walking := toWalk
+		toWalk = nil
+		for _, c := range walking {
+			if err := walkBlock(c); err != nil {
+				return xerrors.Errorf("error walking block (cid: %s): %w", c, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *SplitStore) walkLinks(c cid.Cid, walked *cid.Set, f func(cid.Cid) error) error {
+	if !walked.Visit(c) {
+		return nil
+	}
+
+	if c.Prefix().Codec != cid.DagCBOR {
+		return nil
+	}
+
+	if err := f(c); err != nil {
+		return err
+	}
+
+	blk, err := s.Get(c)
+	if err != nil {
+		return xerrors.Errorf("error retrieving linked block (cid: %s): %w", c, err)
+	}
+
+	var rerr error
+	err = cbg.ScanForLinks(bytes.NewReader(blk.RawData()), func(c cid.Cid) {
+		if rerr != nil {
+			return
+		}
+
+		rerr = s.walkLinks(c, walked, f)
+	})
+
+	if err != nil {
+		return xerrors.Errorf("error scanning links (cid: %s): %w", c, err)
+	}
+
+	return rerr
 }
 
 func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
