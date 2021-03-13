@@ -140,34 +140,12 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	coldCnt = countBlocks(cold)
 	hotCnt = countBlocks(hot)
 
-	if !cfg.EnableFullCompaction {
-		if coldCnt != 5 {
-			t.Errorf("expected %d cold blocks, but got %d", 5, coldCnt)
-		}
-
-		if hotCnt != 5 {
-			t.Errorf("expected %d hot blocks, but got %d", 5, hotCnt)
-		}
+	if coldCnt != 7 {
+		t.Errorf("expected %d cold blocks, but got %d", 7, coldCnt)
 	}
 
-	if cfg.EnableFullCompaction && !cfg.EnableGC {
-		if coldCnt != 3 {
-			t.Errorf("expected %d cold blocks, but got %d", 3, coldCnt)
-		}
-
-		if hotCnt != 7 {
-			t.Errorf("expected %d hot blocks, but got %d", 7, hotCnt)
-		}
-	}
-
-	if cfg.EnableFullCompaction && cfg.EnableGC {
-		if coldCnt != 2 {
-			t.Errorf("expected %d cold blocks, but got %d", 2, coldCnt)
-		}
-
-		if hotCnt != 7 {
-			t.Errorf("expected %d hot blocks, but got %d", 7, hotCnt)
-		}
+	if hotCnt != 4 {
+		t.Errorf("expected %d hot blocks, but got %d", 4, hotCnt)
 	}
 }
 
