@@ -145,12 +145,9 @@ type Chainstore struct {
 }
 
 type Splitstore struct {
-	HotStoreType         string
-	TrackingStoreType    string
-	MarkSetType          string
-	EnableFullCompaction bool
-	EnableGC             bool // EXPERIMENTAL
-	Archival             bool
+	HotStoreType      string
+	TrackingStoreType string
+	MarkSetType       string
 }
 
 // // Full Node
