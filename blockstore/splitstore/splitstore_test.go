@@ -46,6 +46,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	genBlock.Messages = garbage.Cid()
 	genBlock.ParentMessageReceipts = garbage.Cid()
 	genBlock.ParentStateRoot = garbage.Cid()
+	genBlock.Timestamp = uint64(time.Now().Unix())
 
 	genTs := mock.TipSet(genBlock)
 	chain.push(genTs)
@@ -80,6 +81,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		blk.Messages = garbage.Cid()
 		blk.ParentMessageReceipts = garbage.Cid()
 		blk.ParentStateRoot = garbage.Cid()
+		blk.Timestamp = uint64(time.Now().Unix())
 
 		sblk, err := blk.ToStorageBlock()
 		if err != nil {
