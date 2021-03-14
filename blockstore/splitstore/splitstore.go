@@ -747,10 +747,6 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, f func(cid.
 			return err
 		}
 
-		if err := s.walkLinks(hdr.Messages, walked, f); err != nil {
-			return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
-		}
-
 		if err := s.walkLinks(hdr.ParentStateRoot, walked, f); err != nil {
 			return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 		}
