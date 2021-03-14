@@ -581,26 +581,21 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "coldEpoch", coldEpoch, "boundaryEpoch", boundaryEpoch)
 
-	coldSet, err := s.env.Create("cold", s.markSetSize)
+	markSet, err := s.env.Create("live", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating mark set: %w", err)
 	}
-	defer coldSet.Close() //nolint:errcheck
+	defer markSet.Close() //nolint:errcheck
 
-	// 1. mark reachable cold objects by looking at the objects reachable only from the cold epoch
-	log.Infow("marking reachable cold blocks", "boundaryEpoch", boundaryEpoch)
+	// 1. mark reachable objects by walking the chain from the current epoch to the boundary epoch
+	log.Infow("marking reachable blocks", "currentEpoch", currentEpoch, "boundaryEpoch", boundaryEpoch)
 	startMark := time.Now()
 
-	boundaryTs, err := s.chain.GetTipsetByHeight(context.Background(), boundaryEpoch, curTs, true)
-	if err != nil {
-		return xerrors.Errorf("error getting tipset at boundary epoch: %w", err)
-	}
-
 	var count int64
-	err = s.walk(boundaryTs, boundaryEpoch,
+	err = s.walk(curTs, boundaryEpoch,
 		func(cid cid.Cid) error {
 			count++
-			return coldSet.Mark(cid)
+			return markSet.Mark(cid)
 		})
 
 	if err != nil {
@@ -632,9 +627,9 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		}
 
 		// check whether it is reachable in the cold boundary
-		mark, err := coldSet.Has(cid)
+		mark, err := markSet.Has(cid)
 		if err != nil {
-			return xerrors.Errorf("error checkiing cold set for %s: %w", cid, err)
+			return xerrors.Errorf("error checkiing mark set for %s: %w", cid, err)
 		}
 
 		if mark {
