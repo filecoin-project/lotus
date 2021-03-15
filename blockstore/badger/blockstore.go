@@ -165,6 +165,15 @@ func (b *Blockstore) Compact() error {
 	return b.DB.Flatten(nworkers)
 }
 
+func (b *Blockstore) Size() (int64, error) {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return 0, ErrBlockstoreClosed
+	}
+
+	lsm, vlog := b.DB.Size()
+	return lsm + vlog, nil
+}
+
 // View implements blockstore.Viewer, which leverages zero-copy read-only
 // access to values.
 func (b *Blockstore) View(cid cid.Cid, fn func([]byte) error) error {
