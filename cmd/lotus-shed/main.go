@@ -54,6 +54,7 @@ func main() {
 		cidCmd,
 		blockmsgidCmd,
 		signaturesCmd,
+		splitstoreCmd,
 	}
 
 	app := &cli.App{
