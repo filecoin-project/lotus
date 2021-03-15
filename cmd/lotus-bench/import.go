@@ -107,6 +107,11 @@ var importBenchCmd = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
+			Name:  "full-traces",
+			Usage: "should we export full traces or only abbreviated ones (tipset, duration)",
+			Value: true,
+		},
+		&cli.BoolFlag{
 			Name:  "no-import",
 			Usage: "should we import the chain? if set to true chain has to be previously imported",
 		},
@@ -229,10 +234,10 @@ var importBenchCmd = &cli.Command{
 			}
 
 			// tdir is the splitstore path
-			//  cold will be in <path>/../datastore
-			//  hot will be in .<path>/splitstore.
+			//  cold will be in <splistore_path>/../chain
+			//  hot will be in <splitstore_path>/hot.badger
 			var (
-				coldPath, _ = filepath.Rel(tdir, "../datastore")
+				coldPath    = filepath.Join(tdir, "../chain")
 				coldOpts, _ = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false)
 			)
 			coldBs, err := badgerbs.Open(coldOpts)
@@ -241,7 +246,7 @@ var importBenchCmd = &cli.Command{
 			}
 
 			var (
-				hotPath, _ = filepath.Rel(tdir, "../hot.badger")
+				hotPath    = filepath.Join(tdir, "./hot.badger")
 				hotOpts, _ = repo.BadgerBlockstoreOptions(repo.HotBlockstore, hotPath, false)
 			)
 			hotBs, err := badgerbs.Open(hotOpts)
@@ -527,6 +532,8 @@ var importBenchCmd = &cli.Command{
 			}
 		}
 
+		fullTraces := cctx.Bool("full-traces")
+
 		for i := len(inverseChain) - 1; i >= 1; i-- {
 			cur := inverseChain[i]
 			start := time.Now()
@@ -537,8 +544,10 @@ var importBenchCmd = &cli.Command{
 			}
 			tse := &TipSetExec{
 				TipSet:   cur.Key(),
-				Trace:    trace,
 				Duration: time.Since(start),
+			}
+			if fullTraces {
+				tse.Trace = trace
 			}
 			if enc != nil {
 				stripCallers(tse.Trace)
