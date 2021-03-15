@@ -537,7 +537,7 @@ func (s *SplitStore) warmup(curTs *types.TipSet) error {
 		}
 	}
 
-	log.Infow("warmup stats", "visited", count, "cold", xcount, "missing", missing)
+	log.Infow("warmup stats", "visited", count, "warmed", xcount, "missing", missing)
 
 	if count > s.markSetSize {
 		s.markSetSize = count + count>>2 // overestimate a bit
