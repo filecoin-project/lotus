@@ -83,7 +83,10 @@ var (
 const (
 	batchSize = 16384
 
-	defaultColdPurgeSize = 7_000_000
+	defaultColdPurgeSize = 12_000_000
+
+	aggressiveGCThreshold         = 60 << 30      // 60GiB
+	continueAggressiveGCThreshold = (1 << 30) / 2 // 512MiB
 )
 
 type Config struct {
@@ -919,26 +922,94 @@ func (s *SplitStore) purgeTracking(cids []cid.Cid) error {
 }
 
 func (s *SplitStore) gcHotstore() {
-	if compact, ok := s.hot.(interface{ Compact() error }); ok {
-		log.Infof("compacting hotstore")
-		startCompact := time.Now()
-		err := compact.Compact()
-		if err != nil {
-			log.Warnf("error compacting hotstore: %s", err)
-			return
+	getSize := func() (int64, error) {
+		if sizer, ok := s.hot.(interface{ Size() (int64, error) }); ok {
+			return sizer.Size()
 		}
-		log.Infow("hotstore compaction done", "took", time.Since(startCompact))
+
+		return 0, nil
 	}
 
-	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
-		log.Infof("garbage collecting hotstore")
-		startGC := time.Now()
-		err := gc.CollectGarbage()
+	doCompact := func() error {
+		if compact, ok := s.hot.(interface{ Compact() error }); ok {
+			log.Infof("compacting hotstore")
+			startCompact := time.Now()
+			err := compact.Compact()
+			if err != nil {
+				return err
+			}
+			log.Infow("hotstore compaction done", "took", time.Since(startCompact))
+		}
+		return nil
+	}
+
+	doGC := func() error {
+		if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
+			log.Infof("garbage collecting hotstore")
+			startGC := time.Now()
+			err := gc.CollectGarbage()
+			if err != nil {
+				return err
+			}
+			log.Infow("hotstore garbage collection done", "took", time.Since(startGC))
+		}
+		return nil
+	}
+
+	err := doCompact()
+	if err != nil {
+		log.Errorf("error compacting hotstore: %s", err)
+		return
+	}
+
+	size, err := getSize()
+	if err != nil {
+		log.Errorf("error getting hotstore size: %s", err)
+		return
+	}
+
+	aggressive := size > aggressiveGCThreshold
+	if aggressive {
+		log.Infof("hotstore size is over threshold; running aggressive gc")
+	}
+
+	err = doGC()
+	if err != nil {
+		log.Errorf("error garbage collecting hotstore: %s", err)
+		return
+	}
+
+	if !aggressive {
+		return
+	}
+
+	for {
+		// we need to compact for badger to give us an accurate size and we also need to run
+		// gc multiple times to convince it to reclaim as much space as it can
+		err = doCompact()
 		if err != nil {
-			log.Warnf("error garbage collecting hotstore: %s", err)
+			log.Errorf("error compacting hotstore: %s", err)
 			return
 		}
-		log.Infow("hotstore garbage collection done", "took", time.Since(startGC))
+
+		newSize, err := getSize()
+		if err != nil {
+			log.Errorf("error getting hotstore size: %s", err)
+			return
+		}
+
+		log.Infof("gc reclaimed %d bytes", size-newSize)
+
+		if size-newSize < continueAggressiveGCThreshold {
+			return
+		}
+
+		size = newSize
+		err = doGC()
+		if err != nil {
+			log.Errorf("error garbage collecting hotstore: %s", err)
+			return
+		}
 	}
 }
 
