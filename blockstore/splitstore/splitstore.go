@@ -632,7 +632,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet, syncGapEpoch abi.ChainEpoch)
 		// In this case we perform a full walk to avoid pathologies with pushing actually hot
 		// objects into the coldstore.
 		markTs = curTs
-		log.Info("sync gap detected at epoch %d; marking from current epoch to boundary epoch", syncGapEpoch)
+		log.Infof("sync gap detected at epoch %d; marking from current epoch to boundary epoch", syncGapEpoch)
 	} else {
 		// There is no pathological sync gap, so we can use the much faster single tipset walk at
 		// the boundary epoch.
