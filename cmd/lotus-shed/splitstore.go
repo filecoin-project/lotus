@@ -99,7 +99,7 @@ var splitstoreGCCmd = &cli.Command{
 		for {
 			// gc more aggressively than CollectGarbage
 			for err == nil {
-				err = bs.DB.RunValueLogGC(0.05)
+				err = bs.DB.RunValueLogGC(0.025)
 			}
 
 			if err != badger.ErrNoRewrite {

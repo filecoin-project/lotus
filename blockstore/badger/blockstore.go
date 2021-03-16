@@ -140,7 +140,7 @@ func (b *Blockstore) CollectGarbage() error {
 
 	var err error
 	for err == nil {
-		err = b.DB.RunValueLogGC(0.125)
+		err = b.DB.RunValueLogGC(0.0625)
 	}
 
 	if err == badger.ErrNoRewrite {
