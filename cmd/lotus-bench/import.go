@@ -17,7 +17,6 @@ import (
 	"sort"
 	"time"
 
-	ocprom "contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	"github.com/ipfs/go-cid"
@@ -25,6 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
+	"go.opencensus.io/stats/view"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -37,6 +37,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -152,27 +153,17 @@ var importBenchCmd = &cli.Command{
 		metricsprometheus.Inject() //nolint:errcheck
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 
+		// Register all metric views
+		if err := view.Register(
+			metrics.DefaultViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
+
+		http.Handle("/debug/metrics", metrics.Exporter())
+
 		go func() {
-			// Prometheus globals are exposed as interfaces, but the prometheus
-			// OpenCensus exporter expects a concrete *Registry. The concrete type of
-			// the globals are actually *Registry, so we downcast them, staying
-			// defensive in case things change under the hood.
-			registry, ok := prometheus.DefaultRegisterer.(*prometheus.Registry)
-			if !ok {
-				log.Warnf("failed to export default prometheus registry; some metrics will be unavailable; unexpected type: %T", prometheus.DefaultRegisterer)
-				return
-			}
-			exporter, err := ocprom.NewExporter(ocprom.Options{
-				Registry:  registry,
-				Namespace: "lotus",
-			})
-			if err != nil {
-				log.Fatalf("could not create the prometheus stats exporter: %v", err)
-			}
-
-			http.Handle("/debug/metrics", exporter)
-
-			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
+			_ = http.ListenAndServe("localhost:6060", nil)
 		}()
 
 		var tdir string
