@@ -310,7 +310,11 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	err := s.hot.View(cid, cb)
 	switch err {
 	case bstore.ErrNotFound:
-		return s.cold.View(cid, cb)
+		err = s.cold.View(cid, cb)
+		if err == nil {
+			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
+		}
+		return err
 
 	default:
 		return err
