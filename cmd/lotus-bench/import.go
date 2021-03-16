@@ -154,9 +154,7 @@ var importBenchCmd = &cli.Command{
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 
 		// Register all metric views
-		if err := view.Register(
-			metrics.DefaultViews...,
-		); err != nil {
+		if err := view.Register(metrics.DefaultViews...); err != nil {
 			log.Fatalf("Cannot register the view: %v", err)
 		}
 

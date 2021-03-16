@@ -23,7 +23,6 @@ import (
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/metrics"
 
 	"go.opencensus.io/stats"
 )
@@ -199,7 +198,7 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	case bstore.ErrNotFound:
 		blk, err = s.cold.Get(cid)
 		if err == nil {
-			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
+			stats.Record(context.Background(), bstore.SplitstoreMeasures.Miss.M(1))
 		}
 		return blk, err
 
@@ -218,7 +217,7 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	case bstore.ErrNotFound:
 		size, err = s.cold.GetSize(cid)
 		if err == nil {
-			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
+			stats.Record(context.Background(), bstore.SplitstoreMeasures.Miss.M(1))
 		}
 		return size, err
 
@@ -315,7 +314,7 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	case bstore.ErrNotFound:
 		err = s.cold.View(cid, cb)
 		if err == nil {
-			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
+			stats.Record(context.Background(), bstore.SplitstoreMeasures.Miss.M(1))
 		}
 		return err
 
@@ -585,7 +584,7 @@ func (s *SplitStore) compact(curTs *types.TipSet, syncGapEpoch abi.ChainEpoch) {
 	start := time.Now()
 	err = s.doCompact(curTs, syncGapEpoch)
 	took := time.Since(start).Milliseconds()
-	stats.Record(context.Background(), metrics.SplitstoreCompactionTimeSeconds.M(float64(took)/1e3))
+	stats.Record(context.Background(), bstore.SplitstoreMeasures.CompactionTimeSeconds.M(float64(took)/1e3))
 
 	if err != nil {
 		log.Errorf("COMPACTION ERROR: %s", err)
@@ -709,8 +708,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet, syncGapEpoch abi.ChainEpoch)
 
 	log.Infow("collection done", "took", time.Since(startCollect))
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt)
-	stats.Record(context.Background(), metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
-	stats.Record(context.Background(), metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
+	stats.Record(context.Background(), bstore.SplitstoreMeasures.CompactionHot.M(int64(hotCnt)))
+	stats.Record(context.Background(), bstore.SplitstoreMeasures.CompactionCold.M(int64(coldCnt)))
 
 	// Enter critical section
 	atomic.StoreInt32(&s.critsection, 1)

@@ -53,6 +53,20 @@ var CacheMeasures = struct {
 	QueriesDropped: stats.Int64("blockstore/cache/queries_dropped", "Total number of queries dropped by blockstore cache", stats.UnitDimensionless),
 }
 
+var SplitstoreMeasures = struct {
+	Miss                  *stats.Int64Measure
+	CompactionTimeSeconds *stats.Float64Measure
+	CompactionHot         *stats.Int64Measure
+	CompactionCold        *stats.Int64Measure
+	CompactionDead        *stats.Int64Measure
+}{
+	Miss:                  stats.Int64("splitstore/miss", "Number of misses in hotstre access", stats.UnitDimensionless),
+	CompactionTimeSeconds: stats.Float64("splitstore/compaction_time", "Compaction time in seconds", stats.UnitSeconds),
+	CompactionHot:         stats.Int64("splitstore/hot", "Number of hot blocks in last compaction", stats.UnitDimensionless),
+	CompactionCold:        stats.Int64("splitstore/cold", "Number of cold blocks in last compaction", stats.UnitDimensionless),
+	CompactionDead:        stats.Int64("splitstore/dead", "Number of dead blocks in last compaction", stats.UnitDimensionless),
+}
+
 // CacheViews groups all cache-related default views.
 var CacheViews = struct {
 	HitRatio       *view.View
@@ -136,6 +150,35 @@ var CacheViews = struct {
 	},
 }
 
+var SplitstoreViews = struct {
+	Miss                  *view.View
+	CompactionTimeSeconds *view.View
+	CompactionHot         *view.View
+	CompactionCold        *view.View
+	CompactionDead        *view.View
+}{
+	Miss: &view.View{
+		Measure:     SplitstoreMeasures.Miss,
+		Aggregation: view.Count(),
+	},
+	CompactionTimeSeconds: &view.View{
+		Measure:     SplitstoreMeasures.CompactionTimeSeconds,
+		Aggregation: view.LastValue(),
+	},
+	CompactionHot: &view.View{
+		Measure:     SplitstoreMeasures.CompactionHot,
+		Aggregation: view.LastValue(),
+	},
+	CompactionCold: &view.View{
+		Measure:     SplitstoreMeasures.CompactionCold,
+		Aggregation: view.Sum(),
+	},
+	CompactionDead: &view.View{
+		Measure:     SplitstoreMeasures.CompactionDead,
+		Aggregation: view.Sum(),
+	},
+}
+
 // DefaultViews exports all default views for this package.
 var DefaultViews = []*view.View{
 	CacheViews.HitRatio,
@@ -151,4 +194,9 @@ var DefaultViews = []*view.View{
 	CacheViews.SetsDropped,
 	CacheViews.SetsRejected,
 	CacheViews.QueriesDropped,
+	SplitstoreViews.Miss,
+	SplitstoreViews.CompactionTimeSeconds,
+	SplitstoreViews.CompactionHot,
+	SplitstoreViews.CompactionCold,
+	SplitstoreViews.CompactionDead,
 }
