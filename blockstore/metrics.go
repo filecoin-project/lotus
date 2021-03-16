@@ -60,7 +60,7 @@ var SplitstoreMeasures = struct {
 	CompactionCold        *stats.Int64Measure
 	CompactionDead        *stats.Int64Measure
 }{
-	Miss:                  stats.Int64("splitstore/miss", "Number of misses in hotstre access", stats.UnitDimensionless),
+	Miss:                  stats.Int64("splitstore/miss", "Number of misses in hotstore access", stats.UnitDimensionless),
 	CompactionTimeSeconds: stats.Float64("splitstore/compaction_time", "Compaction time in seconds", stats.UnitSeconds),
 	CompactionHot:         stats.Int64("splitstore/hot", "Number of hot blocks in last compaction", stats.UnitDimensionless),
 	CompactionCold:        stats.Int64("splitstore/cold", "Number of cold blocks in last compaction", stats.UnitDimensionless),
