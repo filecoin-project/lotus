@@ -85,8 +85,8 @@ const (
 
 	defaultColdPurgeSize = 12_000_000
 
-	aggressiveGCThreshold         = 60 << 30  // 60GiB
-	continueAggressiveGCThreshold = 128 << 20 // 128MiB
+	aggressiveGCThreshold         = 64 << 30 // 64GiB
+	continueAggressiveGCThreshold = 64 << 20 // 64MiB
 )
 
 type Config struct {
@@ -968,24 +968,29 @@ func (s *SplitStore) gcHotstore() {
 		return
 	}
 
+	gcIters := 1
 	aggressive := size > aggressiveGCThreshold
 	if aggressive {
+		gcIters = 3
 		log.Infof("hotstore size is over threshold; running aggressive gc")
 	}
 
-	err = doGC()
-	if err != nil {
-		log.Errorf("error garbage collecting hotstore: %s", err)
-		return
-	}
-
-	if !aggressive {
-		return
-	}
-
 	for {
-		// we need to compact for badger to give us an accurate size and we also need to run
-		// gc multiple times to convince it to reclaim as much space as it can
+		// we need to work hard to convince badger to reclaim garbage as it visits
+		// vlogs in random order.
+		for i := 0; i < gcIters; i++ {
+			err = doGC()
+			if err != nil {
+				log.Errorf("error garbage collecting hotstore: %s", err)
+				return
+			}
+		}
+
+		if !aggressive {
+			return
+		}
+
+		// we need to compact for badger to give us an accurate size, otherwise it's cached.
 		err = doCompact()
 		if err != nil {
 			log.Errorf("error compacting hotstore: %s", err)
@@ -998,18 +1003,14 @@ func (s *SplitStore) gcHotstore() {
 			return
 		}
 
-		log.Infof("gc reclaimed %d bytes", size-newSize)
+		reclaimed := size - newSize
+		log.Infof("gc reclaimed %d bytes", reclaimed)
 
-		if size-newSize < continueAggressiveGCThreshold {
+		if reclaimed < continueAggressiveGCThreshold {
 			return
 		}
 
 		size = newSize
-		err = doGC()
-		if err != nil {
-			log.Errorf("error garbage collecting hotstore: %s", err)
-			return
-		}
 	}
 }
 
