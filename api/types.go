@@ -136,3 +136,11 @@ type NodeChainStatus struct {
 	BlocksPerTipsetLast100      float64
 	BlocksPerTipsetLastFinality float64
 }
+
+type MessageCheckStatus struct {
+	// message CID
+	Cid cid.Cid
+	// check failure details
+	ErrorCode int
+	ErrorMsg  string
+}

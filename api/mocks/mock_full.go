@@ -1036,6 +1036,36 @@ func (mr *MockFullNodeMockRecorder) MpoolBatchPushUntrusted(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolBatchPushUntrusted", reflect.TypeOf((*MockFullNode)(nil).MpoolBatchPushUntrusted), arg0, arg1)
 }
 
+// MpoolCheckMessages mocks base method
+func (m *MockFullNode) MpoolCheckMessages(arg0 context.Context, arg1 []*types.Message) ([]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolCheckMessages", arg0, arg1)
+	ret0, _ := ret[0].([]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolCheckMessages indicates an expected call of MpoolCheckMessages
+func (mr *MockFullNodeMockRecorder) MpoolCheckMessages(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolCheckMessages", reflect.TypeOf((*MockFullNode)(nil).MpoolCheckMessages), arg0, arg1)
+}
+
+// MpoolCheckPendingMessages mocks base method
+func (m *MockFullNode) MpoolCheckPendingMessages(arg0 context.Context, arg1 address.Address) ([]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolCheckPendingMessages", arg0, arg1)
+	ret0, _ := ret[0].([]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolCheckPendingMessages indicates an expected call of MpoolCheckPendingMessages
+func (mr *MockFullNodeMockRecorder) MpoolCheckPendingMessages(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolCheckPendingMessages", reflect.TypeOf((*MockFullNode)(nil).MpoolCheckPendingMessages), arg0, arg1)
+}
+
 // MpoolClear mocks base method
 func (m *MockFullNode) MpoolClear(arg0 context.Context, arg1 bool) error {
 	m.ctrl.T.Helper()
