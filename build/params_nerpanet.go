@@ -50,9 +50,9 @@ func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(4 << 40))
 
 	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg512MiBV1_1,
-		abi.RegisteredSealProof_StackedDrg32GiBV1_1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1_1,
+		abi.RegisteredSealProof_StackedDrg512MiBV1,
+		abi.RegisteredSealProof_StackedDrg32GiBV1,
+		abi.RegisteredSealProof_StackedDrg64GiBV1,
 	)
 
 	// Lower the most time-consuming parts of PoRep
