@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -179,6 +180,8 @@ var importBenchCmd = &cli.Command{
 			ds  datastore.Batching
 			bs  blockstore.Blockstore
 			err error
+
+			baseEpoch abi.ChainEpoch
 		)
 
 		switch {
@@ -249,6 +252,14 @@ var importBenchCmd = &cli.Command{
 				Strict:      ldbopts.StrictAll,
 				ReadOnly:    true, // splitstore will not attempt to write.
 			})
+
+			baseEpochKey := datastore.NewKey("/splitstore/baseEpoch")
+			baseEpochBytes, err := metadataDs.Get(baseEpochKey)
+			if err != nil {
+				return err
+			}
+			i, _ := binary.Uvarint(baseEpochBytes)
+			baseEpoch = abi.ChainEpoch(i)
 
 			cfg := new(splitstore.Config) // default
 			bs, err = splitstore.Open(tdir, metadataDs, hotBs, coldBs, cfg)
@@ -470,6 +481,9 @@ var importBenchCmd = &cli.Command{
 			log.Infof("getting start tipset at height %d...", h)
 			// lookback from the end tipset (which falls back to head if not supplied).
 			start, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), end, true)
+		} else if baseEpoch > 0 {
+			log.Infof("getting start tipset at baseEpoch height %d...", baseEpoch)
+			start, err = cs.GetTipsetByHeight(context.TODO(), baseEpoch, end, true)
 		}
 
 		if err != nil {
