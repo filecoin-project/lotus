@@ -31,14 +31,14 @@ const UpgradeActorsV2Height = 120 // critical: the network can bootstrap from v1
 
 const UpgradeKumquatHeight = -6
 
-const UpgradeCalicoHeight = 306000
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 12)
+const UpgradeCalicoHeight = -7
+const UpgradePersianHeight = -7
 
-const UpgradeOrangeHeight = 307500
+const UpgradeOrangeHeight = -8
 
-const UpgradeClausHeight = 307600
+const UpgradeClausHeight = -9
 
-const UpgradeActorsV3Height = 308000
+const UpgradeActorsV3Height = 240 // critical: the network can boottrap from v1 only
 
 func init() {
 	// Minimum block production power is set to 4 TiB
@@ -50,9 +50,9 @@ func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(4 << 40))
 
 	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg512MiBV1,
-		abi.RegisteredSealProof_StackedDrg32GiBV1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1,
+		abi.RegisteredSealProof_StackedDrg512MiBV1_1,
+		abi.RegisteredSealProof_StackedDrg32GiBV1_1,
+		abi.RegisteredSealProof_StackedDrg64GiBV1_1,
 	)
 
 	// Lower the most time-consuming parts of PoRep
