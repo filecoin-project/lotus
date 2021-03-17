@@ -20,21 +20,6 @@ var baseFeeUpperBoundFactor = types.NewInt(10)
 
 type CheckStatus = api.MessageCheckStatus
 
-const (
-	CheckStatusErrSerialize = iota
-	CheckStatusErrTooBig
-	CheckStatusErrInvalid
-	CheckStatusErrMinGas
-	CheckStatusErrMinBaseFee
-	CheckStatusErrBaseFee
-	CheckStatusErrBaseFeeLowerBound
-	CheckStatusErrBaseFeeUpperBound
-	CheckStatusErrGetStateNonce
-	CheckStatusErrBadNonce
-	CheckStatusErrGetStateBalance
-	CheckStatusErrInsufficientBalance
-)
-
 // CheckMessages performs a set of logic checks for a list of messages, prior to submitting it to the mpool
 func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []CheckStatus, err error) {
 	return mp.checkMessages(msgs, false)
@@ -97,7 +82,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if err != nil {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrSerialize,
+				ErrorCode: api.CheckStatusErrSerialize,
 				ErrorMsg:  err.Error(),
 			})
 		}
@@ -105,7 +90,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if len(bytes) > 32*1024-128 { // 128 bytes to account for signature size
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrTooBig,
+				ErrorCode: api.CheckStatusErrTooBig,
 				ErrorMsg:  "message too big",
 			})
 		}
@@ -113,7 +98,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if err := m.ValidForBlockInclusion(0, build.NewestNetworkVersion); err != nil {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrInvalid,
+				ErrorCode: api.CheckStatusErrInvalid,
 				ErrorMsg:  fmt.Sprintf("syntactically invalid message: %s", err.Error()),
 			})
 			// skip the remaining checks if it's syntactically invalid
@@ -125,7 +110,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if m.GasLimit < minGas.Total() {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrMinGas,
+				ErrorCode: api.CheckStatusErrMinGas,
 				ErrorMsg:  "GasLimit less than epoch minimum gas",
 			})
 		}
@@ -133,7 +118,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if m.GasFeeCap.LessThan(minimumBaseFee) {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrMinBaseFee,
+				ErrorCode: api.CheckStatusErrMinBaseFee,
 				ErrorMsg:  "GasFeeCap less than minimum base fee",
 			})
 			goto checkState
@@ -142,7 +127,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if m.GasFeeCap.LessThan(baseFee) {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrBaseFee,
+				ErrorCode: api.CheckStatusErrBaseFee,
 				ErrorMsg:  "GasFeeCap less than current base fee",
 			})
 		}
@@ -150,7 +135,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if m.GasFeeCap.LessThan(baseFeeLowerBound) {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrBaseFeeLowerBound,
+				ErrorCode: api.CheckStatusErrBaseFeeLowerBound,
 				ErrorMsg:  "GasFeeCap less than base fee lower bound for inclusion in next 20 epochs",
 			})
 			goto checkState
@@ -159,7 +144,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if m.GasFeeCap.LessThan(baseFeeUpperBound) {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrBaseFeeUpperBound,
+				ErrorCode: api.CheckStatusErrBaseFeeUpperBound,
 				ErrorMsg:  "GasFeeCap less than base fee upper bound for inclusion in next 20 epochs",
 			})
 		}
@@ -184,7 +169,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 				if err != nil {
 					result = append(result, CheckStatus{
 						Cid:       m.Cid(),
-						ErrorCode: CheckStatusErrGetStateNonce,
+						ErrorCode: api.CheckStatusErrGetStateNonce,
 						ErrorMsg:  fmt.Sprintf("error retrieving state nonce: %s", err.Error()),
 					})
 
@@ -199,7 +184,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if st.nextNonce != m.Nonce {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrBadNonce,
+				ErrorCode: api.CheckStatusErrBadNonce,
 				ErrorMsg:  fmt.Sprintf("message nonce doesn't match next nonce (%d)", st.nextNonce),
 			})
 		} else {
@@ -215,7 +200,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			if err != nil {
 				result = append(result, CheckStatus{
 					Cid:       m.Cid(),
-					ErrorCode: CheckStatusErrGetStateBalance,
+					ErrorCode: api.CheckStatusErrGetStateBalance,
 					ErrorMsg:  fmt.Sprintf("error retrieving state balance: %s", err),
 				})
 				continue
@@ -226,7 +211,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		if balance.Int.Cmp(st.requiredFunds) < 0 {
 			result = append(result, CheckStatus{
 				Cid:       m.Cid(),
-				ErrorCode: CheckStatusErrInsufficientBalance,
+				ErrorCode: api.CheckStatusErrInsufficientBalance,
 				ErrorMsg:  "insufficient balance",
 			})
 		}
