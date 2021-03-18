@@ -3695,6 +3695,8 @@ for the replacing message - if the caller needs the receipt for exactly the
 requested message, use StateSearchMsg().Receipt, and check that MsgLookup.Message
 is matching the requseted CID
 
+DEPRECATED: Use StateSearchMsg, this method won't be supported in v1 API
+
 
 Perms: read
 
@@ -4550,6 +4552,20 @@ Response:
 
 ### StateSearchMsg
 StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
