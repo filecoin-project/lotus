@@ -71,12 +71,7 @@ func renderDeal(di lapi.DealInfo) {
 		if stg.Name == "StorageDealStartDataTransfer" {
 			for _, dt_stg := range di.DataTransfer.Stages.Stages {
 
-				msg := fmt.Sprintf("Data transfer stage: %s", dt_stg.Name)
-				msg = color.BlueString(msg)
-				if stg.UpdatedTime.Time().IsZero() {
-					msg = color.YellowString(msg)
-				}
-				fmt.Printf("              %s\n", msg)
+				fmt.Printf("        %s %s %s\n", color.YellowString(dt_stg.CreatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), color.BlueString("Data transfer stage:"), color.BlueString(dt_stg.Name))
 				for _, l := range dt_stg.Logs {
 					fmt.Printf("              %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
 				}
