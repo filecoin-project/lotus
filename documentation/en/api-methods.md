@@ -425,6 +425,17 @@ Response:
 ### ChainGetBlockMessages
 ChainGetBlockMessages returns messages stored in the specified block.
 
+Note: If there are multiple blocks in a tipset, it's likely that some
+messages will be duplicated. It's also possible for blocks in a tipset to have
+different messages from the same sender at the same nonce. When that happens,
+only the first message (in a block with lowest ticket) will be considered
+for execution
+
+NOTE: THIS METHOD SHOULD ONLY BE USED FOR GETTING MESSAGES IN A SPECIFIC BLOCK
+
+DO NOT USE THIS METHOD TO GET MESSAGES INCLUDED IN A TIPSET
+Use ChainGetParentMessages, which will perform correct message deduplication
+
 
 Perms: read
 
