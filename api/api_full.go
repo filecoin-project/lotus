@@ -70,7 +70,8 @@ type FullNode interface {
 	ChainGetBlockMessages(ctx context.Context, blockCid cid.Cid) (*BlockMessages, error)
 
 	// ChainGetParentReceipts returns receipts for messages in parent tipset of
-	// the specified block.
+	// the specified block. The receipts in the list returned is one-to-one with the
+	// messages returned by a call to ChainGetParentMessages with the same blockCid.
 	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
 
 	// ChainGetParentMessages returns messages stored in parent tipset of the
