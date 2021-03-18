@@ -666,11 +666,11 @@ workflows:
           vectors-branch: master
       - build-ntwk-calibration
       - build-lotus-soup
-      - trigger-testplans:
-          filters:
-            branches:
-              only:
-                - master
+      - trigger-testplans
+          # filters:
+          #   branches:
+          #     only:
+          #       - master
       - build-debug
       - build-all:
           requires:
