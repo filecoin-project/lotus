@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/lotus/build"
@@ -70,6 +71,138 @@ var auditsCmd = &cli.Command{
 		chainBalanceStateCmd,
 		chainPledgeCmd,
 		fillBalancesCmd,
+		duplicatedMessagesCmd,
+	},
+}
+
+var duplicatedMessagesCmd = &cli.Command{
+	Name: "duplicate-messages",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name: "count",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		var printLk sync.Mutex
+
+		threads := 64
+		mcount := 0
+
+		throttle := make(chan struct{}, threads)
+
+		for i := 0; i < cctx.Int("count"); i++ {
+			select {
+			case throttle <- struct{}{}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			go func(ts *types.TipSet) {
+				defer func() {
+					<-throttle
+				}()
+
+				type addrNonce struct {
+					s address.Address
+					n uint64
+				}
+				anonce := func(m *types.Message) addrNonce {
+					return addrNonce{
+						s: m.From,
+						n: m.Nonce,
+					}
+				}
+
+				type mc struct {
+					m abi.MethodNum
+					c cid.Cid
+				}
+
+				msgs := map[addrNonce]mc{}
+
+				for _, bh := range ts.Blocks() {
+					bms, err := api.ChainGetBlockMessages(ctx, bh.Cid())
+					if err != nil {
+						fmt.Println("ERROR: ", err)
+						return
+					}
+
+					for _, m := range bms.SecpkMessages {
+						c, found := msgs[anonce(&m.Message)]
+						if found {
+							if c.c == m.Cid() {
+								continue
+							}
+							printLk.Lock()
+							fmt.Printf("DUPE: M:%d %s / %s ; val: %s\tto: %s\n", c.m, c.c, m.Message.Cid(), types.FIL(m.Message.Value), m.Message.To)
+							printLk.Unlock()
+						}
+						msgs[anonce(&m.Message)] = mc{
+							m: m.Message.Method,
+							c: m.Cid(),
+						}
+					}
+
+					for _, m := range bms.BlsMessages {
+						c, found := msgs[anonce(m)]
+						if found {
+							if c.c == m.Cid() {
+								continue
+							}
+							printLk.Lock()
+							fmt.Printf("DUPE: M:%d %s / %s ; val: %s\tto: %s\n", c.m, c.c, m.Cid(), types.FIL(m.Value), m.To)
+							printLk.Unlock()
+						}
+						msgs[anonce(m)] = mc{
+							m: m.Method,
+							c: m.Cid(),
+						}
+					}
+
+					mcount += len(bms.SecpkMessages) + len(bms.BlsMessages)
+				}
+			}(head)
+			head, err = api.ChainGetTipSet(ctx, head.Parents())
+			if err != nil {
+				return err
+			}
+
+			if head.Height() % 20 == 0 {
+				printLk.Lock()
+				//fmt.Printf("H:%d; Ms: %d\n", head.Height(), mcount)
+				printLk.Unlock()
+			}
+		}
+
+		for i := 0; i < threads; i++ {
+			select {
+			case throttle <- struct{}{}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			if head.Height() % 20 == 0 {
+				printLk.Lock()
+				//fmt.Printf("finH:%d; Ms: %d\n", head.Height(), mcount)
+				printLk.Unlock()
+			}
+		}
+
+		return nil
 	},
 }
 
