@@ -4459,7 +4459,22 @@ Response:
 
 ### StateReplay
 StateReplay replays a given message, assuming it was included in a block in the specified tipset.
-If no tipset key is provided, the appropriate tipset is looked up.
+
+If a tipset key is provided, and a replacing message is found on chain,
+the method will return an error saying that the message wasn't found
+
+If no tipset key is provided, the appropriate tipset is looked up, and if
+the message was gas-repriced, the on-chain message will be replayed - in
+that case the returned InvocResult.MsgCid will not match the Cid param
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that InvocResult.MsgCid is equal to the provided Cid.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
