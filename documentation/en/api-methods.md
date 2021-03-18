@@ -3686,7 +3686,13 @@ Response:
 ```
 
 ### StateGetReceipt
-StateGetReceipt returns the message receipt for the given message
+StateGetReceipt returns the message receipt for the given message or for a
+matching gas-repriced replacing message
+
+NOTE: If the requested message was replaced, this method will return the receipt
+for the replacing message - if the caller needs the receipt for exactly the
+requested message, use StateSearchMsg().Receipt, and check that MsgLookup.Message
+is matching the requseted CID
 
 
 Perms: read
@@ -4583,6 +4589,20 @@ Response:
 ### StateSearchMsgLimited
 StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
 
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
+
 
 Perms: read
 
@@ -4877,6 +4897,20 @@ Response: `"0"`
 StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 message arrives on chain, and gets to the indicated confidence depth.
 
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
+
 
 Perms: read
 
@@ -4918,6 +4952,20 @@ Response:
 StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
 If not found, it blocks until the message arrives on chain, and gets to the
 indicated confidence depth.
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
