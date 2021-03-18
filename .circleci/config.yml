@@ -322,7 +322,7 @@ jobs:
           command: cd testplans/lotus-soup && go get github.com/filecoin-project/lotus@master
       - run:
           name: "trigger deals baseline testplan on taas"
-          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH --runner local:docker
       - run:
           name: "trigger payment channel stress testplan on taas"
           command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
