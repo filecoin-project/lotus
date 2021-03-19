@@ -3,7 +3,7 @@ package build
 import (
 	"testing"
 
-	"github.com/filecoin-project/lotus/api/types"
+	apitypes "github.com/filecoin-project/lotus/api/types"
 )
 
 func TestOpenRPCDiscoverJSON_Version(t *testing.T) {

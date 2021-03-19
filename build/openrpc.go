@@ -7,7 +7,7 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 
-	"github.com/filecoin-project/lotus/api/types"
+	apitypes "github.com/filecoin-project/lotus/api/types"
 )
 
 func mustReadGzippedOpenRPCDocument(data []byte) apitypes.OpenRPCDocument {
