@@ -3577,6 +3577,36 @@ Response: `"0"`
 StateCompute is a flexible command that applies the given messages on the given tipset.
 The messages are run as though the VM were at the provided height.
 
+When called, StateCompute will:
+- Load the provided tipset, or use the current chain head if not provided
+- Compute the tipset state of the provided tipset on top of the parent state
+  - (note that this step runs before vmheight is applied to the execution)
+  - Execute state upgrade if any were scheduled at the epoch, or in null
+    blocks preceding the tipset
+  - Call the cron actor on null blocks preceding the tipset
+  - For each block in the tipset
+    - Apply messages in blocks in the specified
+    - Award block reward by calling the reward actor
+  - Call the cron actor for the current epoch
+- If the specified vmheight is higher than the current epoch, apply any
+  needed state upgrades to the state
+- Apply the specified messages to the state
+
+The vmheight parameter sets VM execution epoch, and can be used to simulate
+message execution in different network versions. If the specified vmheight
+epoch is higher than the epoch of the specified tipset, any state upgrades
+until the vmheight will be executed on the state before applying messages
+specified by the user.
+
+Note that the initial tipset state computation is not affected by the
+vmheight parameter - only the messages in the `apply` set are
+
+If the caller wants to simply compute the state, vmheight should be set to
+the epoch of the specified tipset.
+
+Messages in the `apply` parameter must have the correct nonces, and gas
+values set.
+
 
 Perms: read
 
@@ -3704,7 +3734,7 @@ matching gas-repriced replacing message
 NOTE: If the requested message was replaced, this method will return the receipt
 for the replacing message - if the caller needs the receipt for exactly the
 requested message, use StateSearchMsg().Receipt, and check that MsgLookup.Message
-is matching the requseted CID
+is matching the requested CID
 
 DEPRECATED: Use StateSearchMsg, this method won't be supported in v1 API
 
