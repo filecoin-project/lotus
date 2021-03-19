@@ -76,4 +76,8 @@ func (w *worker) Session(ctx context.Context) (uuid.UUID, error) {
 	return w.LocalWorker.Session(ctx)
 }
 
+func (w *worker) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+	return build.OpenRPCDiscoverJSON_Worker(), nil
+}
+
 var _ storiface.WorkerCalls = &worker{}

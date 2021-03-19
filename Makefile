@@ -327,10 +327,17 @@ method-gen:
 
 gen: type-gen method-gen
 
-docsgen:
-	go run ./api/docgen "api/api_full.go" "FullNode" > documentation/en/api-methods.md
-	go run ./api/docgen "api/api_storage.go" "StorageMiner" > documentation/en/api-methods-miner.md
-	go run ./api/docgen "api/api_worker.go" "WorkerAPI" > documentation/en/api-methods-worker.md
+docsgen: docsgen-documentation-md docsgen-openrpc-json
+
+docsgen-documentation-md:
+	go run ./api/docgen/cmd "api/api_full.go" "FullNode" > documentation/en/api-methods.md
+	go run ./api/docgen/cmd "api/api_storage.go" "StorageMiner" > documentation/en/api-methods-miner.md
+	go run ./api/docgen/cmd "api/api_worker.go" "WorkerAPI" > documentation/en/api-methods-worker.md
+
+docsgen-openrpc-json:
+	go run ./api/docgen-openrpc/cmd "api/api_full.go" "FullNode" -gzip > build/openrpc/full.json.gz
+	go run ./api/docgen-openrpc/cmd "api/api_storage.go" "StorageMiner" -gzip > build/openrpc/miner.json.gz
+	go run ./api/docgen-openrpc/cmd "api/api_worker.go" "WorkerAPI" -gzip > build/openrpc/worker.json.gz
 
 print-%:
 	@echo $*=$($*)

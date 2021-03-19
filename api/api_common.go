@@ -52,6 +52,9 @@ type Common interface {
 
 	// MethodGroup: Common
 
+	// Discover returns an OpenRPC document describing an RPC API.
+	Discover(ctx context.Context) (build.OpenRPCDocument, error)
+
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)
 
