@@ -13,6 +13,7 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-data-transfer/channelmonitor"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
@@ -136,8 +137,17 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 	}
 
 	// data-transfer push channel restart configuration
-	dtRestartConfig := dtimpl.PushChannelRestartConfig(time.Minute, 10, 1024, 10*time.Minute, 3)
-	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, sc, dtRestartConfig)
+	dtRestartConf := dtimpl.ChannelRestartConfig(channelmonitor.Config{
+		AcceptTimeout:          100 * time.Millisecond,
+		Interval:               100 * time.Millisecond,
+		MinBytesTransferred:    1,
+		ChecksPerInterval:      10,
+		RestartBackoff:         500 * time.Millisecond,
+		MaxConsecutiveRestarts: 5,
+		CompleteTimeout:        100 * time.Millisecond,
+	})
+	//dtRestartConfig := dtimpl.PushChannelRestartConfig(time.Minute, 10, 1024, 10*time.Minute, 3)
+	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, sc, dtRestartConf)
 	if err != nil {
 		return nil, err
 	}
