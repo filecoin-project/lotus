@@ -132,8 +132,8 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Errorf("expected %d blocks, but got %d", 2, coldCnt)
 	}
 
-	if hotCnt != 5 {
-		t.Errorf("expected %d blocks, but got %d", 5, hotCnt)
+	if hotCnt != 6 {
+		t.Errorf("expected %d blocks, but got %d", 6, hotCnt)
 	}
 
 	// trigger a compaction
@@ -149,8 +149,8 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Errorf("expected %d cold blocks, but got %d", 7, coldCnt)
 	}
 
-	if hotCnt != 4 {
-		t.Errorf("expected %d hot blocks, but got %d", 4, hotCnt)
+	if hotCnt != 6 {
+		t.Errorf("expected %d hot blocks, but got %d", 6, hotCnt)
 	}
 }
 
@@ -160,6 +160,7 @@ func TestSplitStoreSimpleCompaction(t *testing.T) {
 
 type mockChain struct {
 	sync.Mutex
+	genesis  *types.BlockHeader
 	tipsets  []*types.TipSet
 	listener func(revert []*types.TipSet, apply []*types.TipSet) error
 }
@@ -167,6 +168,9 @@ type mockChain struct {
 func (c *mockChain) push(ts *types.TipSet) {
 	c.Lock()
 	c.tipsets = append(c.tipsets, ts)
+	if c.genesis == nil {
+		c.genesis = ts.Blocks()[0]
+	}
 	c.Unlock()
 
 	if c.listener != nil {
@@ -175,6 +179,10 @@ func (c *mockChain) push(ts *types.TipSet) {
 			log.Errorf("mockchain: error dispatching listener: %s", err)
 		}
 	}
+}
+
+func (c *mockChain) GetGenesis() (*types.BlockHeader, error) {
+	return c.genesis, nil
 }
 
 func (c *mockChain) GetTipsetByHeight(_ context.Context, epoch abi.ChainEpoch, _ *types.TipSet, _ bool) (*types.TipSet, error) {
