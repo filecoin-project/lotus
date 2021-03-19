@@ -358,22 +358,26 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		}
 	}
 
-	has, err = s.hot.Has(s.genesisStateRoot)
-	if err != nil {
-		return xerrors.Errorf("error checking hotstore for genesis state root: %w", err)
-	}
-
-	if !has {
-		blk, err := s.cold.Get(s.genesisStateRoot)
+	s.walkLinks(s.genesisStateRoot, cid.NewSet(), func(c cid.Cid) error {
+		has, err = s.hot.Has(c)
 		if err != nil {
-			return xerrors.Errorf("error retrieving genesis state root from coldstore: %w", err)
+			return xerrors.Errorf("error checking hotstore for genesis state root: %w", err)
 		}
 
-		err = s.hot.Put(blk)
-		if err != nil {
-			return xerrors.Errorf("error putting genesis state root to hotstore: %w", err)
+		if !has {
+			blk, err := s.cold.Get(c)
+			if err != nil {
+				return xerrors.Errorf("error retrieving genesis state root from coldstore: %w", err)
+			}
+
+			err = s.hot.Put(blk)
+			if err != nil {
+				return xerrors.Errorf("error putting genesis state root to hotstore: %w", err)
+			}
 		}
-	}
+
+		return nil
+	})
 
 	// load base epoch from metadata ds
 	// if none, then use current epoch because it's a fresh start
