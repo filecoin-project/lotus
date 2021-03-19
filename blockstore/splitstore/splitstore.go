@@ -101,6 +101,7 @@ type Config struct {
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
 // be a ChainStore at runtime.
 type ChainAccessor interface {
+	GetGenesis() (*types.BlockHeader, error)
 	GetTipsetByHeight(context.Context, abi.ChainEpoch, *types.TipSet, bool) (*types.TipSet, error)
 	GetHeaviestTipSet() *types.TipSet
 	SubscribeHeadChanges(change func(revert []*types.TipSet, apply []*types.TipSet) error)
@@ -126,6 +127,8 @@ type SplitStore struct {
 	hot     bstore.Blockstore
 	cold    bstore.Blockstore
 	tracker TrackingStore
+
+	genesis, genesisStateRoot cid.Cid
 
 	env MarkSetEnv
 
@@ -325,6 +328,60 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 func (s *SplitStore) Start(chain ChainAccessor) error {
 	s.chain = chain
 	s.curTs = chain.GetHeaviestTipSet()
+
+	// make sure the genesis and its state root are hot
+	gb, err := chain.GetGenesis()
+	if err != nil {
+		return xerrors.Errorf("error getting genesis: %w", err)
+	}
+
+	s.genesis = gb.Cid()
+	s.genesisStateRoot = gb.ParentStateRoot
+
+	has, err := s.hot.Has(s.genesis)
+	if err != nil {
+		return xerrors.Errorf("error checking hotstore for genesis: %w", err)
+	}
+
+	if !has {
+		blk, err := gb.ToStorageBlock()
+		if err != nil {
+			return xerrors.Errorf("error converting genesis block to storage block: %w", err)
+		}
+
+		err = s.hot.Put(blk)
+		if err != nil {
+			return xerrors.Errorf("error putting genesis block to hotstore: %w", err)
+		}
+	}
+
+	err = s.walkLinks(s.genesisStateRoot, cid.NewSet(), func(c cid.Cid) error {
+		has, err = s.hot.Has(c)
+		if err != nil {
+			return xerrors.Errorf("error checking hotstore for genesis state root: %w", err)
+		}
+
+		if !has {
+			blk, err := s.cold.Get(c)
+			if err != nil {
+				if err == bstore.ErrNotFound {
+					return nil
+				}
+
+				return xerrors.Errorf("error retrieving genesis state linked object from coldstore: %w", err)
+			}
+
+			err = s.hot.Put(blk)
+			if err != nil {
+				return xerrors.Errorf("error putting genesis state linked object to hotstore: %w", err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return xerrors.Errorf("error walking genesis state root links: %w", err)
+	}
 
 	// load base epoch from metadata ds
 	// if none, then use current epoch because it's a fresh start
