@@ -1879,6 +1879,6 @@ func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address) e
 var _ api.Common = &CommonStruct{}
 var _ api.FullNode = &FullNodeStruct{}
 var _ api.StorageMiner = &StorageMinerStruct{}
-var _ api.WorkerAPI = &WorkerStruct{}
-var _ api.GatewayAPI = &GatewayStruct{}
-var _ api.WalletAPI = &WalletStruct{}
+var _ api.Worker = &WorkerStruct{}
+var _ api.Gateway = &GatewayStruct{}
+var _ api.Wallet = &WalletStruct{}

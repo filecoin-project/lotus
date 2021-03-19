@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-type WorkerAPI interface {
+type Worker interface {
 	Version(context.Context) (Version, error)
 	// TODO: Info() (name, ...) ?
 
