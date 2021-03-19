@@ -29,7 +29,7 @@ enabled = true
 
 [[testcases]]
 name = "deals-e2e"
-instances = { min = 1, max = 100, default = 5 }
+instances = { min = 1, max = 5, default = 5 }
 
   [testcases.params]
   clients   = { type = "int", default = 1 }
@@ -61,7 +61,7 @@ instances = { min = 1, max = 100, default = 5 }
 
 [[testcases]]
 name = "drand-halting"
-instances = { min = 1, max = 100, default = 5 }
+instances = { min = 1, max = 5, default = 5 }
 
   [testcases.params]
   clients = { type = "int", default = 1 }
@@ -91,7 +91,7 @@ instances = { min = 1, max = 100, default = 5 }
 
 [[testcases]]
 name = "drand-outage"
-instances = { min = 1, max = 100, default = 5 }
+instances = { min = 1, max = 5, default = 5 }
 
   [testcases.params]
   clients = { type = "int", default = 0 }
@@ -122,7 +122,7 @@ instances = { min = 1, max = 100, default = 5 }
 
 [[testcases]]
 name = "deals-stress"
-instances = { min = 1, max = 100, default = 5 }
+instances = { min = 1, max = 5, default = 5 }
 
   [testcases.params]
   clients = { type = "int", default = 1 }
@@ -155,7 +155,7 @@ instances = { min = 1, max = 100, default = 5 }
 
 [[testcases]]
 name = "paych-stress"
-instances = { min = 1, max = 100, default = 5 }
+instances = { min = 1, max = 5, default = 5 }
 
   [testcases.params]
   clients = { type = "int", default = 1 }
@@ -188,7 +188,7 @@ instances = { min = 1, max = 100, default = 5 }
 
 [[testcases]]
 name = "recovery-failed-windowed-post"
-instances = { min = 1, max = 100, default = 5 }
+instances = { min = 1, max = 5, default = 5 }
 
   [testcases.params]
   clients   = { type = "int", default = 1 }

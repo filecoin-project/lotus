@@ -14,7 +14,7 @@ name = "graphsync"
 
 [[testcases]]
 name = "stress"
-instances = { min = 2, max = 10000, default = 2 }
+instances = { min = 2, max = 2, default = 2 }
 
   [testcases.params]
   size = { type = "int", desc = "size of file to transfer, in human-friendly form", default = "1MiB" }
