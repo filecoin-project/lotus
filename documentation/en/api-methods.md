@@ -765,8 +765,7 @@ Response:
 ```
 
 ### ChainNotify
-ChainNotify returns channel with chain head updates.
-First message is guaranteed to be of len == 1, and type == 'current'.
+perm:read
 
 
 Perms: read

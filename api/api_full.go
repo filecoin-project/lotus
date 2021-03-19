@@ -7,7 +7,6 @@ import (
 	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -25,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 
+	"github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -50,67 +50,67 @@ type FullNode interface {
 
 	// ChainNotify returns channel with chain head updates.
 	// First message is guaranteed to be of len == 1, and type == 'current'.
-	ChainNotify(context.Context) (<-chan []*HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*HeadChange, error) // perm:read
 
 	// ChainHead returns the current head of the chain.
-	ChainHead(context.Context) (*types.TipSet, error)
+	ChainHead(context.Context) (*types.TipSet, error) // perm:read
 
 	// ChainGetRandomnessFromTickets is used to sample the chain for randomness.
-	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) // perm:read
 
 	// ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
-	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) // perm:read
 
 	// ChainGetBlock returns the block specified by the given CID.
-	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
+	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error) // perm:read
 	// ChainGetTipSet returns the tipset specified by the given TipSetKey.
-	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error) // perm:read
 
 	// ChainGetBlockMessages returns messages stored in the specified block.
-	ChainGetBlockMessages(ctx context.Context, blockCid cid.Cid) (*BlockMessages, error)
+	ChainGetBlockMessages(ctx context.Context, blockCid cid.Cid) (*BlockMessages, error) // perm:read
 
 	// ChainGetParentReceipts returns receipts for messages in parent tipset of
 	// the specified block. The receipts in the list returned is one-to-one with the
 	// messages returned by a call to ChainGetParentMessages with the same blockCid.
-	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
+	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error) // perm:read
 
 	// ChainGetParentMessages returns messages stored in parent tipset of the
 	// specified block.
-	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]Message, error)
+	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]Message, error) // perm:read
 
 	// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
 	// If there are no blocks at the specified epoch, a tipset at an earlier epoch
 	// will be returned.
-	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) // perm:read
 
 	// ChainReadObj reads ipld nodes referenced by the specified CID from chain
 	// blockstore and returns raw bytes.
-	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error) // perm:read
 
 	// ChainDeleteObj deletes node referenced by the given CID
-	ChainDeleteObj(context.Context, cid.Cid) error
+	ChainDeleteObj(context.Context, cid.Cid) error // perm:admin
 
 	// ChainHasObj checks if a given CID exists in the chain blockstore.
-	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainHasObj(context.Context, cid.Cid) (bool, error) // perm:read
 
 	// ChainStatObj returns statistics about the graph referenced by 'obj'.
 	// If 'base' is also specified, then the returned stat will be a diff
 	// between the two objects.
-	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (ObjStat, error)
+	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (ObjStat, error) // perm:read
 
 	// ChainSetHead forcefully sets current chain head. Use with caution.
-	ChainSetHead(context.Context, types.TipSetKey) error
+	ChainSetHead(context.Context, types.TipSetKey) error // perm:admin
 
 	// ChainGetGenesis returns the genesis tipset.
-	ChainGetGenesis(context.Context) (*types.TipSet, error)
+	ChainGetGenesis(context.Context) (*types.TipSet, error) // perm:read
 
 	// ChainTipSetWeight computes weight for the specified tipset.
-	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
-	ChainGetNode(ctx context.Context, p string) (*IpldObject, error)
+	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error) // perm:read
+	ChainGetNode(ctx context.Context, p string) (*IpldObject, error)          // perm:read
 
 	// ChainGetMessage reads a message referenced by the specified CID from the
 	// chain blockstore.
-	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
+	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error) // perm:read
 
 	// ChainGetPath returns a set of revert/apply operations needed to get from
 	// one tipset to another, for example:
@@ -125,14 +125,14 @@ type FullNode interface {
 	//     tRR
 	//```
 	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error)
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error) // perm:read
 
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	// The exported chain data includes the header chain from the given tipset
 	// back to genesis, the entire genesis state, and the most recent 'nroots'
 	// state trees.
 	// If oldmsgskip is set, messages from before the requested roots are also not included.
-	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error)
+	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error) // perm:read
 
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
@@ -140,74 +140,74 @@ type FullNode interface {
 	// BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
 	// the entry has not yet been produced, the call will block until the entry
 	// becomes available
-	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)
+	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) // perm:read
 
 	// GasEstimateFeeCap estimates gas fee cap
-	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)
+	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error) // perm:read
 
 	// GasEstimateGasLimit estimates gas used by the message and returns it.
 	// It fails if message fails to execute.
-	GasEstimateGasLimit(context.Context, *types.Message, types.TipSetKey) (int64, error)
+	GasEstimateGasLimit(context.Context, *types.Message, types.TipSetKey) (int64, error) // perm:read
 
 	// GasEstimateGasPremium estimates what gas price should be used for a
 	// message to have high likelihood of inclusion in `nblocksincl` epochs.
 
 	GasEstimateGasPremium(_ context.Context, nblocksincl uint64,
-		sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
+		sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error) // perm:read
 
 	// GasEstimateMessageGas estimates gas values for unset message gas fields
-	GasEstimateMessageGas(context.Context, *types.Message, *MessageSendSpec, types.TipSetKey) (*types.Message, error)
+	GasEstimateMessageGas(context.Context, *types.Message, *MessageSendSpec, types.TipSetKey) (*types.Message, error) // perm:read
 
 	// MethodGroup: Sync
 	// The Sync method group contains methods for interacting with and
 	// observing the lotus sync service.
 
 	// SyncState returns the current status of the lotus sync system.
-	SyncState(context.Context) (*SyncState, error)
+	SyncState(context.Context) (*SyncState, error) // perm:read
 
 	// SyncSubmitBlock can be used to submit a newly created block to the.
 	// network through this node
-	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
+	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error // perm:write
 
 	// SyncIncomingBlocks returns a channel streaming incoming, potentially not
 	// yet synced block headers.
-	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
+	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) // perm:read
 
 	// SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
-	SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error
+	SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error // perm:admin
 
 	// SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.
 	// Use with extreme caution.
-	SyncMarkBad(ctx context.Context, bcid cid.Cid) error
+	SyncMarkBad(ctx context.Context, bcid cid.Cid) error // perm:admin
 
 	// SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
-	SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error
+	SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error // perm:admin
 
 	// SyncUnmarkAllBad purges bad block cache, making it possible to sync to chains previously marked as bad
-	SyncUnmarkAllBad(ctx context.Context) error
+	SyncUnmarkAllBad(ctx context.Context) error // perm:admin
 
 	// SyncCheckBad checks if a block was marked as bad, and if it was, returns
 	// the reason.
-	SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error)
+	SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) // perm:read
 
 	// SyncValidateTipset indicates whether the provided tipset is valid or not
-	SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error)
+	SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error) // perm:read
 
 	// MethodGroup: Mpool
 	// The Mpool methods are for interacting with the message pool. The message pool
 	// manages all incoming and outgoing 'messages' going over the network.
 
 	// MpoolPending returns pending mempool messages.
-	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
+	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) // perm:read
 
 	// MpoolSelect returns a list of pending messages for inclusion in the next block
-	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
+	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error) // perm:read
 
 	// MpoolPush pushes a signed message to mempool.
-	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
+	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error) // perm:write
 
 	// MpoolPushUntrusted pushes a signed message to mempool from untrusted sources.
-	MpoolPushUntrusted(context.Context, *types.SignedMessage) (cid.Cid, error)
+	MpoolPushUntrusted(context.Context, *types.SignedMessage) (cid.Cid, error) // perm:write
 
 	// MpoolPushMessage atomically assigns a nonce, signs, and pushes a message
 	// to mempool.
@@ -215,34 +215,34 @@ type FullNode interface {
 	//
 	// When maxFee is set to 0, MpoolPushMessage will guess appropriate fee
 	// based on current chain conditions
-	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *MessageSendSpec) (*types.SignedMessage, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *MessageSendSpec) (*types.SignedMessage, error) // perm:sign
 
 	// MpoolBatchPush batch pushes a signed message to mempool.
-	MpoolBatchPush(context.Context, []*types.SignedMessage) ([]cid.Cid, error)
+	MpoolBatchPush(context.Context, []*types.SignedMessage) ([]cid.Cid, error) // perm:write
 
 	// MpoolBatchPushUntrusted batch pushes a signed message to mempool from untrusted sources.
-	MpoolBatchPushUntrusted(context.Context, []*types.SignedMessage) ([]cid.Cid, error)
+	MpoolBatchPushUntrusted(context.Context, []*types.SignedMessage) ([]cid.Cid, error) // perm:write
 
 	// MpoolBatchPushMessage batch pushes a unsigned message to mempool.
-	MpoolBatchPushMessage(context.Context, []*types.Message, *MessageSendSpec) ([]*types.SignedMessage, error)
+	MpoolBatchPushMessage(context.Context, []*types.Message, *MessageSendSpec) ([]*types.SignedMessage, error) // perm:sign
 
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.
-	MpoolGetNonce(context.Context, address.Address) (uint64, error)
-	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
+	MpoolGetNonce(context.Context, address.Address) (uint64, error) // perm:read
+	MpoolSub(context.Context) (<-chan MpoolUpdate, error)           // perm:read
 
 	// MpoolClear clears pending messages from the mpool
-	MpoolClear(context.Context, bool) error
+	MpoolClear(context.Context, bool) error // perm:write
 
 	// MpoolGetConfig returns (a copy of) the current mpool config
-	MpoolGetConfig(context.Context) (*types.MpoolConfig, error)
+	MpoolGetConfig(context.Context) (*types.MpoolConfig, error) // perm:read
 	// MpoolSetConfig sets the mpool config to (a copy of) the supplied config
-	MpoolSetConfig(context.Context, *types.MpoolConfig) error
+	MpoolSetConfig(context.Context, *types.MpoolConfig) error // perm:admin
 
 	// MethodGroup: Miner
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
-	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) // perm:read
+	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   // perm:write
 
 	// // UX ?
 
@@ -524,7 +524,7 @@ type FullNode interface {
 	// This is the value reported by the runtime interface to actors code.
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error)
 	// StateNetworkVersion returns the network version at the given tipset
-	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error)
 
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
