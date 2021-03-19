@@ -45,8 +45,8 @@
 [[groups]]
   id = "miners"
   [groups.resources]
-    memory = "14000Mi"
-    cpu = "1000m"
+    memory = "512Mi"
+    cpu = "100m"
   [groups.instances]
     count = 2
     percentage = 0.0
@@ -57,7 +57,7 @@
 [[groups]]
   id = "clients"
   [groups.resources]
-    memory = "2048Mi"
+    memory = "512Mi"
     cpu = "100m"
   [groups.instances]
     count = 3

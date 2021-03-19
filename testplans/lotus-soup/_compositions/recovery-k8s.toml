@@ -32,7 +32,7 @@
   id = "bootstrapper"
   [groups.resources]
     memory = "512Mi"
-    cpu = "1000m"
+    cpu = "100m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -43,8 +43,8 @@
 [[groups]]
   id = "miners"
   [groups.resources]
-    memory = "4096Mi"
-    cpu = "1000m"
+    memory = "512Mi"
+    cpu = "100m"
   [groups.instances]
     count = 2
     percentage = 0.0
@@ -57,8 +57,8 @@
 [[groups]]
   id = "miners-full-slash"
   [groups.resources]
-    memory = "4096Mi"
-    cpu = "1000m"
+    memory = "512Mi"
+    cpu = "100m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -71,8 +71,8 @@
 [[groups]]
   id = "miners-partial-slash"
   [groups.resources]
-    memory = "4096Mi"
-    cpu = "1000m"
+    memory = "512Mi"
+    cpu = "100m"
   [groups.instances]
     count = 1
     percentage = 0.0
@@ -85,8 +85,8 @@
 [[groups]]
   id = "clients"
   [groups.resources]
-    memory = "1024Mi"
-    cpu = "1000m"
+    memory = "512Mi"
+    cpu = "100m"
   [groups.instances]
     count = 4
     percentage = 0.0

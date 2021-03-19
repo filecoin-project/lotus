@@ -48,8 +48,8 @@
   [groups.run.test_params]
     role = "miner"
   [groups.resources]
-    memory = "2048Mi"
-    cpu = "100m"
+    memory = "512Mi"
+    cpu = "10m"
 
 [[groups]]
   id = "clients"
@@ -58,5 +58,5 @@
   [groups.run.test_params]
     role = "client"
   [groups.resources]
-    memory = "1024Mi"
-    cpu = "100m"
+    memory = "512Mi"
+    cpu = "10m"

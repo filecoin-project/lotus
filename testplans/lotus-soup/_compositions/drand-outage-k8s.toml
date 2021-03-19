@@ -33,7 +33,7 @@
 [[groups]]
   id = "bootstrapper"
   [groups.resources]
-    memory = "1024Mi"
+    memory = "512Mi"
     cpu = "10m"
   [groups.instances]
     count = 1
@@ -45,7 +45,7 @@
 [[groups]]
   id = "miners"
   [groups.resources]
-    memory = "1024Mi"
+    memory = "512Mi"
     cpu = "10m"
   [groups.instances]
     count = 3
@@ -57,7 +57,7 @@
 [[groups]]
   id = "drand"
   [groups.resources]
-    memory = "1024Mi"
+    memory = "512Mi"
     cpu = "10m"
   [groups.instances]
     count = 3
