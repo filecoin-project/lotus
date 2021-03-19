@@ -31,6 +31,7 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -691,7 +692,7 @@ func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressC
 	return sm.AddrSel.AddressConfig, nil
 }
 
-func (sm *StorageMinerAPI) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+func (sm *StorageMinerAPI) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
 	return build.OpenRPCDiscoverJSON_Miner(), nil
 }
 

@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -384,7 +385,7 @@ type StorageMinerStruct struct {
 
 		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
-		Discover func(ctx context.Context) (build.OpenRPCDocument, error) `perm:"read"`
+		Discover func(ctx context.Context) (apitypes.OpenRPCDocument, error) `perm:"read"`
 	}
 }
 
@@ -424,7 +425,7 @@ type WorkerStruct struct {
 		ProcessSession func(context.Context) (uuid.UUID, error) `perm:"admin"`
 		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
 
-		Discover func(ctx context.Context) (build.OpenRPCDocument, error) `perm:"read"`
+		Discover func(ctx context.Context) (apitypes.OpenRPCDocument, error) `perm:"read"`
 	}
 }
 
@@ -549,7 +550,7 @@ func (c *CommonStruct) NetPeerInfo(ctx context.Context, p peer.ID) (*api.Extende
 	return c.Internal.NetPeerInfo(ctx, p)
 }
 
-func (c *CommonStruct) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+func (c *CommonStruct) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
 	return c.Internal.Discover(ctx)
 }
 
@@ -1621,7 +1622,7 @@ func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.Registere
 	return c.Internal.CheckProvable(ctx, pp, sectors, expensive)
 }
 
-func (c *StorageMinerStruct) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+func (c *StorageMinerStruct) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
 	return c.Internal.Discover(ctx)
 }
 
@@ -1723,7 +1724,7 @@ func (w *WorkerStruct) Session(ctx context.Context) (uuid.UUID, error) {
 	return w.Internal.Session(ctx)
 }
 
-func (c *WorkerStruct) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+func (c *WorkerStruct) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
 	return c.Internal.Discover(ctx)
 }
 

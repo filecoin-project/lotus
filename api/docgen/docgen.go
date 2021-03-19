@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -251,7 +252,7 @@ func init() {
 		sealtasks.TTPreCommit2: {},
 	})
 	addExample(sealtasks.TTCommit2)
-	addExample(build.OpenRPCDocument{
+	addExample(apitypes.OpenRPCDocument{
 		"openrpc": "1.2.6",
 		"info": map[string]interface{}{
 			"title":   "Lotus RPC API",

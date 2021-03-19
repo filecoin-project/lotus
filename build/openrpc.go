@@ -6,16 +6,16 @@ import (
 	"encoding/json"
 
 	rice "github.com/GeertJohan/go.rice"
+
+	"github.com/filecoin-project/lotus/api/types"
 )
 
-type OpenRPCDocument map[string]interface{}
-
-func mustReadGzippedOpenRPCDocument(data []byte) OpenRPCDocument {
+func mustReadGzippedOpenRPCDocument(data []byte) apitypes.OpenRPCDocument {
 	zr, err := gzip.NewReader(bytes.NewBuffer(data))
 	if err != nil {
 		log.Fatal(err)
 	}
-	m := OpenRPCDocument{}
+	m := apitypes.OpenRPCDocument{}
 	err = json.NewDecoder(zr).Decode(&m)
 	if err != nil {
 		log.Fatal(err)
@@ -27,17 +27,17 @@ func mustReadGzippedOpenRPCDocument(data []byte) OpenRPCDocument {
 	return m
 }
 
-func OpenRPCDiscoverJSON_Full() OpenRPCDocument {
+func OpenRPCDiscoverJSON_Full() apitypes.OpenRPCDocument {
 	data := rice.MustFindBox("openrpc").MustBytes("full.json.gz")
 	return mustReadGzippedOpenRPCDocument(data)
 }
 
-func OpenRPCDiscoverJSON_Miner() OpenRPCDocument {
+func OpenRPCDiscoverJSON_Miner() apitypes.OpenRPCDocument {
 	data := rice.MustFindBox("openrpc").MustBytes("miner.json.gz")
 	return mustReadGzippedOpenRPCDocument(data)
 }
 
-func OpenRPCDiscoverJSON_Worker() OpenRPCDocument {
+func OpenRPCDiscoverJSON_Worker() apitypes.OpenRPCDocument {
 	data := rice.MustFindBox("openrpc").MustBytes("worker.json.gz")
 	return mustReadGzippedOpenRPCDocument(data)
 }

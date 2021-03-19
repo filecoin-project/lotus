@@ -2,13 +2,15 @@ package build
 
 import (
 	"testing"
+
+	"github.com/filecoin-project/lotus/api/types"
 )
 
 func TestOpenRPCDiscoverJSON_Version(t *testing.T) {
 	// openRPCDocVersion is the current OpenRPC version of the API docs.
 	openRPCDocVersion := "1.2.6"
 
-	for i, docFn := range []func() OpenRPCDocument{
+	for i, docFn := range []func() apitypes.OpenRPCDocument{
 		OpenRPCDiscoverJSON_Full,
 		OpenRPCDiscoverJSON_Miner,
 		OpenRPCDiscoverJSON_Worker,

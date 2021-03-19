@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
@@ -207,7 +208,7 @@ func (a *CommonAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protoc
 	return a.Reporter.GetBandwidthByProtocol(), nil
 }
 
-func (a *CommonAPI) Discover(ctx context.Context) (build.OpenRPCDocument, error) {
+func (a *CommonAPI) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
 	return build.OpenRPCDiscoverJSON_Full(), nil
 }
 
