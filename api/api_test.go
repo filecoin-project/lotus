@@ -37,6 +37,18 @@ func TestDoesntDependOnFFI(t *testing.T) {
 	}
 }
 
+func TestDoesntDependOnBuild(t *testing.T) {
+	deps, err := exec.Command(goCmd(), "list", "-deps", "github.com/filecoin-project/lotus/api").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pkg := range strings.Fields(string(deps)) {
+		if pkg == "github.com/filecoin-project/build" {
+			t.Fatal("api depends on filecoin-ffi")
+		}
+	}
+}
+
 func TestReturnTypes(t *testing.T) {
 	errType := reflect.TypeOf(new(error)).Elem()
 	bareIface := reflect.TypeOf(new(interface{})).Elem()

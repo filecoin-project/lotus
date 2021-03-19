@@ -11,6 +11,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
+
+	apitypes "github.com/filecoin-project/lotus/api/types"
 )
 
 type Common interface {
@@ -51,6 +53,9 @@ type Common interface {
 	NetBlockList(ctx context.Context) (NetBlockList, error)
 
 	// MethodGroup: Common
+
+	// Discover returns an OpenRPC document describing an RPC API.
+	Discover(ctx context.Context) (apitypes.OpenRPCDocument, error)
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)

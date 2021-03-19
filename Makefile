@@ -327,10 +327,32 @@ method-gen:
 
 gen: type-gen method-gen
 
-docsgen:
-	go run ./api/docgen "api/api_full.go" "FullNode" > documentation/en/api-methods.md
-	go run ./api/docgen "api/api_storage.go" "StorageMiner" > documentation/en/api-methods-miner.md
-	go run ./api/docgen "api/api_worker.go" "WorkerAPI" > documentation/en/api-methods-worker.md
+docsgen: docsgen-md docsgen-openrpc
+
+docsgen-md-bin:
+	go build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
+docsgen-openrpc-bin:
+	go build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
+
+docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
+
+docsgen-md-full: docsgen-md-bin
+	./docgen-md "api/api_full.go" "FullNode" > documentation/en/api-methods.md
+docsgen-md-storage: docsgen-md-bin
+	./docgen-md "api/api_storage.go" "StorageMiner" > documentation/en/api-methods-miner.md
+docsgen-md-worker: docsgen-md-bin
+	./docgen-md "api/api_worker.go" "WorkerAPI" > documentation/en/api-methods-worker.md
+
+docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker
+
+docsgen-openrpc-full: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_full.go" "FullNode" -gzip > build/openrpc/full.json.gz
+docsgen-openrpc-storage: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_storage.go" "StorageMiner" -gzip > build/openrpc/miner.json.gz
+docsgen-openrpc-worker: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_worker.go" "WorkerAPI" -gzip > build/openrpc/worker.json.gz
+
+.PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
 print-%:
 	@echo $*=$($*)

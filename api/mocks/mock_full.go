@@ -18,6 +18,7 @@ import (
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
 	api "github.com/filecoin-project/lotus/api"
+	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
@@ -781,6 +782,21 @@ func (m *MockFullNode) CreateBackup(arg0 context.Context, arg1 string) error {
 func (mr *MockFullNodeMockRecorder) CreateBackup(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBackup", reflect.TypeOf((*MockFullNode)(nil).CreateBackup), arg0, arg1)
+}
+
+// Discover mocks base method
+func (m *MockFullNode) Discover(arg0 context.Context) (apitypes.OpenRPCDocument, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Discover", arg0)
+	ret0, _ := ret[0].(apitypes.OpenRPCDocument)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Discover indicates an expected call of Discover
+func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discover", reflect.TypeOf((*MockFullNode)(nil).Discover), arg0)
 }
 
 // GasEstimateFeeCap mocks base method

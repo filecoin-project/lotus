@@ -5,6 +5,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
@@ -12,8 +14,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -63,6 +64,7 @@ type CommonStruct struct {
 		NetBlockAdd                 func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
 		NetBlockRemove              func(ctx context.Context, acl api.NetBlockList) error            `perm:"admin"`
 		NetBlockList                func(ctx context.Context) (api.NetBlockList, error)              `perm:"read"`
+		Discover                    func(ctx context.Context) (map[string]interface{}, error)        `perm:"read"`
 
 		ID      func(context.Context) (peer.ID, error)        `perm:"read"`
 		Version func(context.Context) (api.APIVersion, error) `perm:"read"`
@@ -382,6 +384,8 @@ type StorageMinerStruct struct {
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 
 		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+
+		Discover func(ctx context.Context) (apitypes.OpenRPCDocument, error) `perm:"read"`
 	}
 }
 
@@ -420,6 +424,8 @@ type WorkerStruct struct {
 
 		ProcessSession func(context.Context) (uuid.UUID, error) `perm:"admin"`
 		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
+
+		Discover func(ctx context.Context) (apitypes.OpenRPCDocument, error) `perm:"read"`
 	}
 }
 
@@ -542,6 +548,10 @@ func (c *CommonStruct) NetAgentVersion(ctx context.Context, p peer.ID) (string, 
 
 func (c *CommonStruct) NetPeerInfo(ctx context.Context, p peer.ID) (*api.ExtendedPeerInfo, error) {
 	return c.Internal.NetPeerInfo(ctx, p)
+}
+
+func (c *CommonStruct) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
+	return c.Internal.Discover(ctx)
 }
 
 // ID implements API.ID
@@ -1612,6 +1622,10 @@ func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.Registere
 	return c.Internal.CheckProvable(ctx, pp, sectors, expensive)
 }
 
+func (c *StorageMinerStruct) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
+	return c.Internal.Discover(ctx)
+}
+
 // WorkerStruct
 
 func (w *WorkerStruct) Version(ctx context.Context) (api.Version, error) {
@@ -1708,6 +1722,10 @@ func (w *WorkerStruct) ProcessSession(ctx context.Context) (uuid.UUID, error) {
 
 func (w *WorkerStruct) Session(ctx context.Context) (uuid.UUID, error) {
 	return w.Internal.Session(ctx)
+}
+
+func (c *WorkerStruct) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
+	return c.Internal.Discover(ctx)
 }
 
 func (g GatewayStruct) ChainGetBlockMessages(ctx context.Context, c cid.Cid) (*api.BlockMessages, error) {
