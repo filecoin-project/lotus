@@ -21,7 +21,6 @@ var _ TrackingStore = (*BoltTrackingStore)(nil)
 func OpenBoltTrackingStore(path string) (*BoltTrackingStore, error) {
 	opts := &bolt.Options{
 		Timeout: 1 * time.Second,
-		NoSync:  true,
 	}
 	db, err := bolt.Open(path, 0644, opts)
 	if err != nil {
