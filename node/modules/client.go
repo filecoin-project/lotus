@@ -138,15 +138,14 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 
 	// data-transfer push channel restart configuration
 	dtRestartConf := dtimpl.ChannelRestartConfig(channelmonitor.Config{
-		AcceptTimeout:          100 * time.Millisecond,
-		Interval:               100 * time.Millisecond,
-		MinBytesTransferred:    1,
+		AcceptTimeout:          30 * time.Second,
+		Interval:               1 * time.Minute,
+		MinBytesTransferred:    1024,
 		ChecksPerInterval:      10,
-		RestartBackoff:         500 * time.Millisecond,
-		MaxConsecutiveRestarts: 5,
-		CompleteTimeout:        100 * time.Millisecond,
+		RestartBackoff:         10 * time.Minute,
+		MaxConsecutiveRestarts: 3,
+		CompleteTimeout:        30 * time.Second,
 	})
-	//dtRestartConfig := dtimpl.PushChannelRestartConfig(time.Minute, 10, 1024, 10*time.Minute, 3)
 	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, sc, dtRestartConf)
 	if err != nil {
 		return nil, err
