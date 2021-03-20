@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type GatewayAPI interface {
+type Gateway interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)

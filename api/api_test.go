@@ -111,5 +111,5 @@ func TestReturnTypes(t *testing.T) {
 	t.Run("common", tst(new(Common)))
 	t.Run("full", tst(new(FullNode)))
 	t.Run("miner", tst(new(StorageMiner)))
-	t.Run("worker", tst(new(WorkerAPI)))
+	t.Run("worker", tst(new(Worker)))
 }

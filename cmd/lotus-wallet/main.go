@@ -130,7 +130,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		var w api.WalletAPI = lw
+		var w api.Wallet = lw
 		if cctx.Bool("ledger") {
 			ds, err := lr.Datastore(context.Background(), "/metadata")
 			if err != nil {

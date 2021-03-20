@@ -404,7 +404,7 @@ func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []
 	return sigs.Verify(sig, k, msg) == nil, nil
 }
 
-var _ api.GatewayAPI = (*GatewayAPI)(nil)
+var _ api.Gateway = (*GatewayAPI)(nil)
 var _ full.ChainModuleAPI = (*GatewayAPI)(nil)
 var _ full.GasModuleAPI = (*GatewayAPI)(nil)
 var _ full.MpoolModuleAPI = (*GatewayAPI)(nil)

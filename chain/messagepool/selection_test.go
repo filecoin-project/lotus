@@ -1333,7 +1333,7 @@ readLoop:
 	}
 
 	actorMap := make(map[address.Address]address.Address)
-	actorWallets := make(map[address.Address]api.WalletAPI)
+	actorWallets := make(map[address.Address]api.Wallet)
 
 	for _, m := range msgs {
 		baseNonce := baseNonces[m.Message.From]

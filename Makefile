@@ -341,7 +341,7 @@ docsgen-md-full: docsgen-md-bin
 docsgen-md-storage: docsgen-md-bin
 	./docgen-md "api/api_storage.go" "StorageMiner" > documentation/en/api-methods-miner.md
 docsgen-md-worker: docsgen-md-bin
-	./docgen-md "api/api_worker.go" "WorkerAPI" > documentation/en/api-methods-worker.md
+	./docgen-md "api/api_worker.go" "Worker" > documentation/en/api-methods-worker.md
 
 docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker
 
@@ -350,7 +350,7 @@ docsgen-openrpc-full: docsgen-openrpc-bin
 docsgen-openrpc-storage: docsgen-openrpc-bin
 	./docgen-openrpc "api/api_storage.go" "StorageMiner" -gzip > build/openrpc/miner.json.gz
 docsgen-openrpc-worker: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_worker.go" "WorkerAPI" -gzip > build/openrpc/worker.json.gz
+	./docgen-openrpc "api/api_worker.go" "Worker" -gzip > build/openrpc/worker.json.gz
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
