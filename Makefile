@@ -325,7 +325,11 @@ type-gen:
 method-gen:
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
 
-gen: type-gen method-gen
+api-gen:
+	go run ./gen/api | tee api/apistruct/struct.go
+	goimports -w api/apistruct
+	goimports -w api/apistruct
+.PHONY: api-gen
 
 docsgen: docsgen-md docsgen-openrpc
 
@@ -353,6 +357,9 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 	./docgen-openrpc "api/api_worker.go" "Worker" -gzip > build/openrpc/worker.json.gz
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
+
+gen: type-gen method-gen docsgen api-gen
+.PHONY: gen
 
 print-%:
 	@echo $*=$($*)

@@ -2,65 +2,37 @@ package apistruct
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/go-bitfield"
-
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-
 	"github.com/filecoin-project/go-jsonrpc/auth"
-
 	"github.com/filecoin-project/go-multistore"
-
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/filecoin-project/go-state-types/dline"
-
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-
 	"github.com/filecoin-project/lotus/chain/types"
-
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
 	"github.com/filecoin-project/specs-storage/storage"
-
 	"github.com/google/uuid"
-
 	"github.com/ipfs/go-cid"
-
 	"github.com/libp2p/go-libp2p-core/metrics"
-
 	"github.com/libp2p/go-libp2p-core/network"
-
 	"github.com/libp2p/go-libp2p-core/peer"
-
 	"github.com/libp2p/go-libp2p-core/protocol"
-
-	"time"
 )
 
 type ChainIOStruct struct {
@@ -475,7 +447,7 @@ type FullNodeStruct struct {
 	}
 }
 
-type GatewayAPIStruct struct {
+type GatewayStruct struct {
 	Internal struct {
 		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) ``
 
@@ -681,7 +653,7 @@ type StorageMinerStruct struct {
 	}
 }
 
-type WalletAPIStruct struct {
+type WalletStruct struct {
 	Internal struct {
 		WalletDelete func(p0 context.Context, p1 address.Address) error ``
 
@@ -699,7 +671,7 @@ type WalletAPIStruct struct {
 	}
 }
 
-type WorkerAPIStruct struct {
+type WorkerStruct struct {
 	Internal struct {
 		Enabled func(p0 context.Context) (bool, error) ``
 
@@ -1529,119 +1501,119 @@ func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2
 	return s.Internal.WalletVerify(p0, p1, p2, p3)
 }
 
-func (s *GatewayAPIStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) {
+func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) {
 	return s.Internal.ChainGetBlockMessages(p0, p1)
 }
 
-func (s *GatewayAPIStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
+func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return s.Internal.ChainGetMessage(p0, p1)
 }
 
-func (s *GatewayAPIStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
+func (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
 	return s.Internal.ChainGetTipSet(p0, p1)
 }
 
-func (s *GatewayAPIStruct) ChainGetTipSetByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
+func (s *GatewayStruct) ChainGetTipSetByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
 	return s.Internal.ChainGetTipSetByHeight(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
+func (s *GatewayStruct) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
 	return s.Internal.ChainHasObj(p0, p1)
 }
 
-func (s *GatewayAPIStruct) ChainHead(p0 context.Context) (*types.TipSet, error) {
+func (s *GatewayStruct) ChainHead(p0 context.Context) (*types.TipSet, error) {
 	return s.Internal.ChainHead(p0)
 }
 
-func (s *GatewayAPIStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
 	return s.Internal.ChainNotify(p0)
 }
 
-func (s *GatewayAPIStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
+func (s *GatewayStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
 	return s.Internal.ChainReadObj(p0, p1)
 }
 
-func (s *GatewayAPIStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
+func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
 	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
 }
 
-func (s *GatewayAPIStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
+func (s *GatewayStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
 	return s.Internal.MpoolPush(p0, p1)
 }
 
-func (s *GatewayAPIStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+func (s *GatewayStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
 	return s.Internal.MsigGetAvailableBalance(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*api.MsigTransaction, error) {
+func (s *GatewayStruct) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*api.MsigTransaction, error) {
 	return s.Internal.MsigGetPending(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
+func (s *GatewayStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
 	return s.Internal.MsigGetVested(p0, p1, p2, p3)
 }
 
-func (s *GatewayAPIStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+func (s *GatewayStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	return s.Internal.StateAccountKey(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (api.DealCollateralBounds, error) {
+func (s *GatewayStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (api.DealCollateralBounds, error) {
 	return s.Internal.StateDealProviderCollateralBounds(p0, p1, p2, p3)
 }
 
-func (s *GatewayAPIStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
+func (s *GatewayStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
 	return s.Internal.StateGetActor(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateGetReceipt(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) {
+func (s *GatewayStruct) StateGetReceipt(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) {
 	return s.Internal.StateGetReceipt(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
+func (s *GatewayStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
 	return s.Internal.StateListMiners(p0, p1)
 }
 
-func (s *GatewayAPIStruct) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+func (s *GatewayStruct) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	return s.Internal.StateLookupID(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) {
+func (s *GatewayStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) {
 	return s.Internal.StateMarketBalance(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) {
+func (s *GatewayStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) {
 	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) {
+func (s *GatewayStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) {
 	return s.Internal.StateMinerInfo(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*api.MinerPower, error) {
+func (s *GatewayStruct) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*api.MinerPower, error) {
 	return s.Internal.StateMinerPower(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
+func (s *GatewayStruct) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
 	return s.Internal.StateMinerProvingDeadline(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
+func (s *GatewayStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
 	return s.Internal.StateNetworkVersion(p0, p1)
 }
 
-func (s *GatewayAPIStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
 	return s.Internal.StateSearchMsg(p0, p1)
 }
 
-func (s *GatewayAPIStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+func (s *GatewayStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
 	return s.Internal.StateSectorGetInfo(p0, p1, p2, p3)
 }
 
-func (s *GatewayAPIStruct) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+func (s *GatewayStruct) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
 	return s.Internal.StateVerifiedClientStatus(p0, p1, p2)
 }
 
-func (s *GatewayAPIStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
 	return s.Internal.StateWaitMsg(p0, p1, p2)
 }
 
@@ -1917,82 +1889,82 @@ func (s *StorageMinerStruct) WorkerStats(p0 context.Context) (map[uuid.UUID]stor
 	return s.Internal.WorkerStats(p0)
 }
 
-func (s *WalletAPIStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
+func (s *WalletStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
 	return s.Internal.WalletDelete(p0, p1)
 }
 
-func (s *WalletAPIStruct) WalletExport(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) {
+func (s *WalletStruct) WalletExport(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) {
 	return s.Internal.WalletExport(p0, p1)
 }
 
-func (s *WalletAPIStruct) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
+func (s *WalletStruct) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
 	return s.Internal.WalletHas(p0, p1)
 }
 
-func (s *WalletAPIStruct) WalletImport(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) {
+func (s *WalletStruct) WalletImport(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) {
 	return s.Internal.WalletImport(p0, p1)
 }
 
-func (s *WalletAPIStruct) WalletList(p0 context.Context) ([]address.Address, error) {
+func (s *WalletStruct) WalletList(p0 context.Context) ([]address.Address, error) {
 	return s.Internal.WalletList(p0)
 }
 
-func (s *WalletAPIStruct) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {
+func (s *WalletStruct) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {
 	return s.Internal.WalletNew(p0, p1)
 }
 
-func (s *WalletAPIStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 api.MsgMeta) (*crypto.Signature, error) {
+func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 api.MsgMeta) (*crypto.Signature, error) {
 	return s.Internal.WalletSign(p0, p1, p2, p3)
 }
 
-func (s *WorkerAPIStruct) Enabled(p0 context.Context) (bool, error) {
+func (s *WorkerStruct) Enabled(p0 context.Context) (bool, error) {
 	return s.Internal.Enabled(p0)
 }
 
-func (s *WorkerAPIStruct) Info(p0 context.Context) (storiface.WorkerInfo, error) {
+func (s *WorkerStruct) Info(p0 context.Context) (storiface.WorkerInfo, error) {
 	return s.Internal.Info(p0)
 }
 
-func (s *WorkerAPIStruct) Paths(p0 context.Context) ([]stores.StoragePath, error) {
+func (s *WorkerStruct) Paths(p0 context.Context) ([]stores.StoragePath, error) {
 	return s.Internal.Paths(p0)
 }
 
-func (s *WorkerAPIStruct) ProcessSession(p0 context.Context) (uuid.UUID, error) {
+func (s *WorkerStruct) ProcessSession(p0 context.Context) (uuid.UUID, error) {
 	return s.Internal.ProcessSession(p0)
 }
 
-func (s *WorkerAPIStruct) Remove(p0 context.Context, p1 abi.SectorID) error {
+func (s *WorkerStruct) Remove(p0 context.Context, p1 abi.SectorID) error {
 	return s.Internal.Remove(p0, p1)
 }
 
-func (s *WorkerAPIStruct) Session(p0 context.Context) (uuid.UUID, error) {
+func (s *WorkerStruct) Session(p0 context.Context) (uuid.UUID, error) {
 	return s.Internal.Session(p0)
 }
 
-func (s *WorkerAPIStruct) SetEnabled(p0 context.Context, p1 bool) error {
+func (s *WorkerStruct) SetEnabled(p0 context.Context, p1 bool) error {
 	return s.Internal.SetEnabled(p0, p1)
 }
 
-func (s *WorkerAPIStruct) StorageAddLocal(p0 context.Context, p1 string) error {
+func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
 	return s.Internal.StorageAddLocal(p0, p1)
 }
 
-func (s *WorkerAPIStruct) TaskDisable(p0 context.Context, p1 sealtasks.TaskType) error {
+func (s *WorkerStruct) TaskDisable(p0 context.Context, p1 sealtasks.TaskType) error {
 	return s.Internal.TaskDisable(p0, p1)
 }
 
-func (s *WorkerAPIStruct) TaskEnable(p0 context.Context, p1 sealtasks.TaskType) error {
+func (s *WorkerStruct) TaskEnable(p0 context.Context, p1 sealtasks.TaskType) error {
 	return s.Internal.TaskEnable(p0, p1)
 }
 
-func (s *WorkerAPIStruct) TaskTypes(p0 context.Context) (map[sealtasks.TaskType]struct{}, error) {
+func (s *WorkerStruct) TaskTypes(p0 context.Context) (map[sealtasks.TaskType]struct{}, error) {
 	return s.Internal.TaskTypes(p0)
 }
 
-func (s *WorkerAPIStruct) Version(p0 context.Context) (api.Version, error) {
+func (s *WorkerStruct) Version(p0 context.Context) (api.Version, error) {
 	return s.Internal.Version(p0)
 }
 
-func (s *WorkerAPIStruct) WaitQuiet(p0 context.Context) error {
+func (s *WorkerStruct) WaitQuiet(p0 context.Context) error {
 	return s.Internal.WaitQuiet(p0)
 }
