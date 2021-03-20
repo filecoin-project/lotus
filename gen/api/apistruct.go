@@ -216,7 +216,7 @@ func runMain() error {
 				}
 
 				// try to parse tag info
-				if len(filteredComments) > 1 {
+				if len(filteredComments) > 0 {
 					tagstr := filteredComments[len(filteredComments)-1].Text()
 					tl := strings.Split(strings.TrimSpace(tagstr), " ")
 					for _, ts := range tl {
