@@ -20,20 +20,20 @@ type Common interface {
 	// MethodGroup: Auth
 
 	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) // perm:read
-	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) // perm:admin
+	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)    // perm:admin
 
 	// MethodGroup: Net
 
 	NetConnectedness(context.Context, peer.ID) (network.Connectedness, error) // perm:read
-	NetPeers(context.Context) ([]peer.AddrInfo, error) // perm:read
-	NetConnect(context.Context, peer.AddrInfo) error // perm:write
-	NetAddrsListen(context.Context) (peer.AddrInfo, error) // perm:read
-	NetDisconnect(context.Context, peer.ID) error // perm:write
-	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error) // perm:read
-	NetPubsubScores(context.Context) ([]PubsubScore, error) // perm:read
-	NetAutoNatStatus(context.Context) (NatInfo, error) // perm:read
-	NetAgentVersion(ctx context.Context, p peer.ID) (string, error) // perm:read
-	NetPeerInfo(context.Context, peer.ID) (*ExtendedPeerInfo, error) // perm:read
+	NetPeers(context.Context) ([]peer.AddrInfo, error)                        // perm:read
+	NetConnect(context.Context, peer.AddrInfo) error                          // perm:write
+	NetAddrsListen(context.Context) (peer.AddrInfo, error)                    // perm:read
+	NetDisconnect(context.Context, peer.ID) error                             // perm:write
+	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)              // perm:read
+	NetPubsubScores(context.Context) ([]PubsubScore, error)                   // perm:read
+	NetAutoNatStatus(context.Context) (NatInfo, error)                        // perm:read
+	NetAgentVersion(ctx context.Context, p peer.ID) (string, error)           // perm:read
+	NetPeerInfo(context.Context, peer.ID) (*ExtendedPeerInfo, error)          // perm:read
 
 	// NetBandwidthStats returns statistics about the nodes total bandwidth
 	// usage and current rate across all peers and protocols.
@@ -48,9 +48,9 @@ type Common interface {
 	NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) // perm:read
 
 	// ConnectionGater API
-	NetBlockAdd(ctx context.Context, acl NetBlockList) error // perm:admin
+	NetBlockAdd(ctx context.Context, acl NetBlockList) error    // perm:admin
 	NetBlockRemove(ctx context.Context, acl NetBlockList) error // perm:admin
-	NetBlockList(ctx context.Context) (NetBlockList, error) // perm:read
+	NetBlockList(ctx context.Context) (NetBlockList, error)     // perm:read
 
 	// MethodGroup: Common
 
@@ -63,7 +63,7 @@ type Common interface {
 	// Version provides information about API provider
 	Version(context.Context) (APIVersion, error) // perm:read
 
-	LogList(context.Context) ([]string, error) // perm:write
+	LogList(context.Context) ([]string, error)         // perm:write
 	LogSetLevel(context.Context, string, string) error // perm:write
 
 	// trigger graceful shutdown

@@ -320,7 +320,7 @@ type FullNode interface {
 	// ClientDealSize calculates real deal data size
 	ClientDealSize(ctx context.Context, root cid.Cid) (DataSize, error) // perm:read
 	// ClientListTransfers returns the status of all ongoing transfers of data
-	ClientListDataTransfers(ctx context.Context) ([]DataTransferChannel, error) // perm:write
+	ClientListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)        // perm:write
 	ClientDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error) // perm:write
 	// ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 	ClientRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error // perm:write
@@ -614,22 +614,22 @@ type FullNode interface {
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels
 
-	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error) // perm:sign
-	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error) // perm:sign
-	PaychAvailableFunds(ctx context.Context, ch address.Address) (*ChannelAvailableFunds, error) // perm:sign
-	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*ChannelAvailableFunds, error) // perm:sign
-	PaychList(context.Context) ([]address.Address, error) // perm:read
-	PaychStatus(context.Context, address.Address) (*PaychStatus, error) // perm:read
-	PaychSettle(context.Context, address.Address) (cid.Cid, error) // perm:sign
-	PaychCollect(context.Context, address.Address) (cid.Cid, error) // perm:sign
-	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) // perm:sign
-	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error) // perm:sign
-	PaychVoucherCheckValid(context.Context, address.Address, *paych.SignedVoucher) error // perm:read
-	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error) // perm:read
-	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*VoucherCreateResult, error) // perm:sign
+	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)                     // perm:sign
+	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)                                                // perm:sign
+	PaychAvailableFunds(ctx context.Context, ch address.Address) (*ChannelAvailableFunds, error)                        // perm:sign
+	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*ChannelAvailableFunds, error)          // perm:sign
+	PaychList(context.Context) ([]address.Address, error)                                                               // perm:read
+	PaychStatus(context.Context, address.Address) (*PaychStatus, error)                                                 // perm:read
+	PaychSettle(context.Context, address.Address) (cid.Cid, error)                                                      // perm:sign
+	PaychCollect(context.Context, address.Address) (cid.Cid, error)                                                     // perm:sign
+	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)                                          // perm:sign
+	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)        // perm:sign
+	PaychVoucherCheckValid(context.Context, address.Address, *paych.SignedVoucher) error                                // perm:read
+	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)    // perm:read
+	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*VoucherCreateResult, error)            // perm:sign
 	PaychVoucherAdd(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error) // perm:write
-	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error) // perm:write
-	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error) // perm:sign
+	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                  // perm:write
+	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)         // perm:sign
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the

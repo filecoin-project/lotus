@@ -15,7 +15,7 @@ import (
 )
 
 type methodMeta struct {
-	node ast.Node
+	node  ast.Node
 	ftype *ast.FuncType
 }
 
@@ -43,7 +43,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 			v.Include[st.Name.Name] = append(v.Include[st.Name.Name], ft.Name)
 		case *ast.FuncType:
 			v.Methods[st.Name.Name][m.Names[0].Name] = &methodMeta{
-				node: m,
+				node:  m,
 				ftype: ft,
 			}
 		}
@@ -88,7 +88,7 @@ func typeName(e ast.Expr) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return "map["+k+"]"+v, nil
+		return "map[" + k + "]" + v, nil
 	case *ast.StructType:
 		if len(t.Fields.List) != 0 {
 			return "", xerrors.Errorf("can't struct")
@@ -132,9 +132,9 @@ func runMain() error {
 	ast.Walk(v, ap)
 
 	type methodInfo struct {
-		Name string
-		node ast.Node
-		Tags map[string][]string
+		Name                             string
+		node                             ast.Node
+		Tags                             map[string][]string
 		NamedParams, ParamNames, Results string
 	}
 
@@ -162,7 +162,7 @@ func runMain() error {
 		//fmt.Println("F:", fn)
 		cmap := ast.NewCommentMap(fset, f, f.Comments)
 
-		for _, im := range f.Imports{
+		for _, im := range f.Imports {
 			m.Imports[im.Path.Value] = im.Path.Value
 		}
 
@@ -187,12 +187,14 @@ func runMain() error {
 						}
 
 						c := len(param.Names)
-						if c == 0 { c = 1 }
+						if c == 0 {
+							c = 1
+						}
 
 						for i := 0; i < c; i++ {
 							pname := fmt.Sprintf("p%d", len(params))
 							pnames = append(pnames, pname)
-							params = append(params, pname + " " + pstr)
+							params = append(params, pname+" "+pstr)
 						}
 					}
 
@@ -206,12 +208,12 @@ func runMain() error {
 					}
 
 					info.Methods[mname] = &methodInfo{
-						Name: mname,
-						node: node.node,
-						Tags: map[string][]string{},
+						Name:        mname,
+						node:        node.node,
+						Tags:        map[string][]string{},
 						NamedParams: strings.Join(params, ", "),
-						ParamNames: strings.Join(pnames, ", "),
-						Results: strings.Join(results, ", "),
+						ParamNames:  strings.Join(pnames, ", "),
+						Results:     strings.Join(results, ", "),
 					}
 				}
 
