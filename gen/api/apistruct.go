@@ -20,7 +20,7 @@ type methodMeta struct {
 }
 
 type Visitor struct {
-	Methods map[string]map[string]methodMeta
+	Methods map[string]map[string]*methodMeta
 	Include map[string][]string
 }
 
@@ -35,15 +35,15 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 		return v
 	}
 	if v.Methods[st.Name.Name] == nil {
-		v.Methods[st.Name.Name] = map[string]methodMeta{}
+		v.Methods[st.Name.Name] = map[string]*methodMeta{}
 	}
 	for _, m := range iface.Methods.List {
 		switch ft := m.Type.(type) {
 		case *ast.Ident:
 			v.Include[st.Name.Name] = append(v.Include[st.Name.Name], ft.Name)
 		case *ast.FuncType:
-			v.Methods[st.Name.Name][m.Names[0].Name] = methodMeta{
-				node: node,
+			v.Methods[st.Name.Name][m.Names[0].Name] = &methodMeta{
+				node: m,
 				ftype: ft,
 			}
 		}
@@ -128,7 +128,7 @@ func runMain() error {
 
 	ap := pkgs["api"]
 
-	v := &Visitor{make(map[string]map[string]methodMeta), map[string][]string{}}
+	v := &Visitor{make(map[string]map[string]*methodMeta), map[string][]string{}}
 	ast.Walk(v, ap)
 
 	type methodInfo struct {
@@ -231,8 +231,6 @@ func runMain() error {
 					}
 				}
 			}
-
-			m.Infos[ifname] = info
 		}
 	}
 

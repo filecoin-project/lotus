@@ -104,49 +104,49 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) ``
+		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
-		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error ``
+		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
-		ChainExport func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) ``
+		ChainExport func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) `perm:"read"`
 
-		ChainGetBlock func(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) ``
+		ChainGetBlock func(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) `perm:"read"`
 
-		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) ``
+		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) `perm:"read"`
 
-		ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
+		ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
-		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
+		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) `perm:"read"`
 
 		ChainGetNode func(p0 context.Context, p1 string) (*api.IpldObject, error) ``
 
-		ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]api.Message, error) ``
+		ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]api.Message, error) `perm:"read"`
 
-		ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) ``
+		ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) `perm:"read"`
 
-		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*api.HeadChange, error) ``
+		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*api.HeadChange, error) `perm:"read"`
 
-		ChainGetRandomnessFromBeacon func(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) ``
+		ChainGetRandomnessFromBeacon func(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 
-		ChainGetRandomnessFromTickets func(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) ``
+		ChainGetRandomnessFromTickets func(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 
-		ChainGetTipSet func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) ``
+		ChainGetTipSet func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) `perm:"read"`
 
-		ChainGetTipSetByHeight func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) ``
+		ChainGetTipSetByHeight func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) `perm:"read"`
 
-		ChainHasObj func(p0 context.Context, p1 cid.Cid) (bool, error) ``
+		ChainHasObj func(p0 context.Context, p1 cid.Cid) (bool, error) `perm:"read"`
 
-		ChainHead func(p0 context.Context) (*types.TipSet, error) ``
+		ChainHead func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
-		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) ``
+		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) `perm:"read"`
 
-		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
+		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) `perm:"read"`
 
-		ChainSetHead func(p0 context.Context, p1 types.TipSetKey) error ``
+		ChainSetHead func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
 
-		ChainStatObj func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (api.ObjStat, error) ``
+		ChainStatObj func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (api.ObjStat, error) `perm:"read"`
 
-		ChainTipSetWeight func(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) ``
+		ChainTipSetWeight func(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		ClientCalcCommP func(p0 context.Context, p1 string) (*api.CommPRet, error) ``
 
@@ -194,15 +194,15 @@ type FullNodeStruct struct {
 
 		ClientStartDeal func(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) ``
 
-		CreateBackup func(p0 context.Context, p1 string) error ``
+		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) ``
+		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
-		GasEstimateGasLimit func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) ``
+		GasEstimateGasLimit func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) `perm:"read"`
 
-		GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) ``
+		GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
-		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
+		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) `perm:"read"`
 
 		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) ``
 
@@ -216,31 +216,31 @@ type FullNodeStruct struct {
 
 		MinerCreateBlock func(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) ``
 
-		MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*api.MiningBaseInfo, error) ``
+		MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 
-		MpoolBatchPush func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) ``
+		MpoolBatchPush func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) `perm:"write"`
 
-		MpoolBatchPushMessage func(p0 context.Context, p1 []*types.Message, p2 *api.MessageSendSpec) ([]*types.SignedMessage, error) ``
+		MpoolBatchPushMessage func(p0 context.Context, p1 []*types.Message, p2 *api.MessageSendSpec) ([]*types.SignedMessage, error) `perm:"sign"`
 
-		MpoolBatchPushUntrusted func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) ``
+		MpoolBatchPushUntrusted func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) `perm:"write"`
 
-		MpoolClear func(p0 context.Context, p1 bool) error ``
+		MpoolClear func(p0 context.Context, p1 bool) error `perm:"write"`
 
-		MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) ``
+		MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) `perm:"read"`
 
-		MpoolGetNonce func(p0 context.Context, p1 address.Address) (uint64, error) ``
+		MpoolGetNonce func(p0 context.Context, p1 address.Address) (uint64, error) `perm:"read"`
 
-		MpoolPending func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) ``
+		MpoolPending func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 
-		MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
+		MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 
-		MpoolPushMessage func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec) (*types.SignedMessage, error) ``
+		MpoolPushMessage func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec) (*types.SignedMessage, error) `perm:"sign"`
 
-		MpoolPushUntrusted func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
+		MpoolPushUntrusted func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 
-		MpoolSelect func(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error) ``
+		MpoolSelect func(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error) `perm:"read"`
 
-		MpoolSetConfig func(p0 context.Context, p1 *types.MpoolConfig) error ``
+		MpoolSetConfig func(p0 context.Context, p1 *types.MpoolConfig) error `perm:"admin"`
 
 		MpoolSub func(p0 context.Context) (<-chan api.MpoolUpdate, error) ``
 
@@ -404,23 +404,23 @@ type FullNodeStruct struct {
 
 		StateWaitMsgLimited func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*api.MsgLookup, error) ``
 
-		SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) ``
+		SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
-		SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) error ``
+		SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
 
-		SyncIncomingBlocks func(p0 context.Context) (<-chan *types.BlockHeader, error) ``
+		SyncIncomingBlocks func(p0 context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 
-		SyncMarkBad func(p0 context.Context, p1 cid.Cid) error ``
+		SyncMarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
-		SyncState func(p0 context.Context) (*api.SyncState, error) ``
+		SyncState func(p0 context.Context) (*api.SyncState, error) `perm:"read"`
 
-		SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg) error ``
+		SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg) error `perm:"write"`
 
-		SyncUnmarkAllBad func(p0 context.Context) error ``
+		SyncUnmarkAllBad func(p0 context.Context) error `perm:"admin"`
 
-		SyncUnmarkBad func(p0 context.Context, p1 cid.Cid) error ``
+		SyncUnmarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
-		SyncValidateTipset func(p0 context.Context, p1 types.TipSetKey) (bool, error) ``
+		SyncValidateTipset func(p0 context.Context, p1 types.TipSetKey) (bool, error) `perm:"read"`
 
 		WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
 
