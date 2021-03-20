@@ -2,6 +2,7 @@ package apistruct
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -100,6 +101,8 @@ type CommonStruct struct {
 }
 
 type FullNodeStruct struct {
+	CommonStruct
+
 	Internal struct {
 		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) ``
 
@@ -201,7 +204,7 @@ type FullNodeStruct struct {
 
 		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
 
-		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 types.BigInt) (cid.Cid, error) ``
+		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) ``
 
 		MarketGetReserved func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
 
@@ -209,7 +212,7 @@ type FullNodeStruct struct {
 
 		MarketReserveFunds func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) ``
 
-		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 types.BigInt) (cid.Cid, error) ``
+		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) ``
 
 		MinerCreateBlock func(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) ``
 
@@ -277,17 +280,17 @@ type FullNodeStruct struct {
 
 		PaychAvailableFunds func(p0 context.Context, p1 address.Address) (*api.ChannelAvailableFunds, error) ``
 
-		PaychAvailableFundsByFromTo func(p0 context.Context, p1 address.Address) (*api.ChannelAvailableFunds, error) ``
+		PaychAvailableFundsByFromTo func(p0 context.Context, p1 address.Address, p2 address.Address) (*api.ChannelAvailableFunds, error) ``
 
 		PaychCollect func(p0 context.Context, p1 address.Address) (cid.Cid, error) ``
 
-		PaychGet func(p0 context.Context, p1 address.Address, p2 types.BigInt) (*api.ChannelInfo, error) ``
+		PaychGet func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (*api.ChannelInfo, error) ``
 
 		PaychGetWaitReady func(p0 context.Context, p1 cid.Cid) (address.Address, error) ``
 
 		PaychList func(p0 context.Context) ([]address.Address, error) ``
 
-		PaychNewPayment func(p0 context.Context, p1 address.Address, p2 []api.VoucherSpec) (*api.PaymentInfo, error) ``
+		PaychNewPayment func(p0 context.Context, p1 address.Address, p2 address.Address, p3 []api.VoucherSpec) (*api.PaymentInfo, error) ``
 
 		PaychSettle func(p0 context.Context, p1 address.Address) (cid.Cid, error) ``
 
@@ -319,7 +322,7 @@ type FullNodeStruct struct {
 
 		StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (api.DealCollateralBounds, error) ``
 
-		StateDecodeParams func(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (struct{}, error) ``
+		StateDecodeParams func(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) ``
 
 		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) ``
 
@@ -516,6 +519,8 @@ type SignableStruct struct {
 }
 
 type StorageMinerStruct struct {
+	CommonStruct
+
 	Internal struct {
 		ActorAddress func(p0 context.Context) (address.Address, error) ``
 
@@ -601,9 +606,31 @@ type StorageMinerStruct struct {
 
 		PledgeSector func(p0 context.Context) (abi.SectorID, error) ``
 
+		ReturnAddPiece func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error ``
+
+		ReturnFetch func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error ``
+
+		ReturnFinalizeSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error ``
+
+		ReturnMoveStorage func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error ``
+
+		ReturnReadPiece func(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) error ``
+
+		ReturnReleaseUnsealed func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error ``
+
+		ReturnSealCommit1 func(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) error ``
+
+		ReturnSealCommit2 func(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) error ``
+
+		ReturnSealPreCommit1 func(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) error ``
+
+		ReturnSealPreCommit2 func(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) error ``
+
+		ReturnUnsealPiece func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error ``
+
 		SealingAbort func(p0 context.Context, p1 storiface.CallID) error ``
 
-		SealingSchedDiag func(p0 context.Context, p1 bool) (struct{}, error) ``
+		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) ``
 
 		SectorGetExpectedSealDuration func(p0 context.Context) (time.Duration, error) ``
 
@@ -639,11 +666,29 @@ type StorageMinerStruct struct {
 
 		StorageAddLocal func(p0 context.Context, p1 string) error ``
 
+		StorageAttach func(p0 context.Context, p1 stores.StorageInfo, p2 fsutil.FsStat) error ``
+
+		StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]stores.StorageInfo, error) ``
+
+		StorageDeclareSector func(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error ``
+
+		StorageDropSector func(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error ``
+
+		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) ``
+
+		StorageInfo func(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) ``
+
 		StorageList func(p0 context.Context) (map[stores.ID][]stores.Decl, error) ``
 
 		StorageLocal func(p0 context.Context) (map[stores.ID]string, error) ``
 
+		StorageLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error ``
+
+		StorageReportHealth func(p0 context.Context, p1 stores.ID, p2 stores.HealthReport) error ``
+
 		StorageStat func(p0 context.Context, p1 stores.ID) (fsutil.FsStat, error) ``
+
+		StorageTryLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) ``
 
 		WorkerConnect func(p0 context.Context, p1 string) error ``
 
@@ -673,15 +718,35 @@ type WalletStruct struct {
 
 type WorkerStruct struct {
 	Internal struct {
+		AddPiece func(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) ``
+
 		Enabled func(p0 context.Context) (bool, error) ``
 
+		Fetch func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) ``
+
+		FinalizeSector func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) ``
+
 		Info func(p0 context.Context) (storiface.WorkerInfo, error) ``
+
+		MoveStorage func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType) (storiface.CallID, error) ``
 
 		Paths func(p0 context.Context) ([]stores.StoragePath, error) ``
 
 		ProcessSession func(p0 context.Context) (uuid.UUID, error) ``
 
+		ReadPiece func(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) ``
+
+		ReleaseUnsealed func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) ``
+
 		Remove func(p0 context.Context, p1 abi.SectorID) error ``
+
+		SealCommit1 func(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 abi.InteractiveSealRandomness, p4 []abi.PieceInfo, p5 storage.SectorCids) (storiface.CallID, error) ``
+
+		SealCommit2 func(p0 context.Context, p1 storage.SectorRef, p2 storage.Commit1Out) (storiface.CallID, error) ``
+
+		SealPreCommit1 func(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 []abi.PieceInfo) (storiface.CallID, error) ``
+
+		SealPreCommit2 func(p0 context.Context, p1 storage.SectorRef, p2 storage.PreCommit1Out) (storiface.CallID, error) ``
 
 		Session func(p0 context.Context) (uuid.UUID, error) ``
 
@@ -694,6 +759,8 @@ type WorkerStruct struct {
 		TaskEnable func(p0 context.Context, p1 sealtasks.TaskType) error ``
 
 		TaskTypes func(p0 context.Context) (map[sealtasks.TaskType]struct{}, error) ``
+
+		UnsealPiece func(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 cid.Cid) (storiface.CallID, error) ``
 
 		Version func(p0 context.Context) (api.Version, error) ``
 
@@ -1013,8 +1080,8 @@ func (s *FullNodeStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Mes
 	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStruct) MarketAddBalance(p0 context.Context, p1 address.Address, p2 types.BigInt) (cid.Cid, error) {
-	return s.Internal.MarketAddBalance(p0, p1, p2)
+func (s *FullNodeStruct) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
+	return s.Internal.MarketAddBalance(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStruct) MarketGetReserved(p0 context.Context, p1 address.Address) (types.BigInt, error) {
@@ -1029,8 +1096,8 @@ func (s *FullNodeStruct) MarketReserveFunds(p0 context.Context, p1 address.Addre
 	return s.Internal.MarketReserveFunds(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStruct) MarketWithdraw(p0 context.Context, p1 address.Address, p2 types.BigInt) (cid.Cid, error) {
-	return s.Internal.MarketWithdraw(p0, p1, p2)
+func (s *FullNodeStruct) MarketWithdraw(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
+	return s.Internal.MarketWithdraw(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStruct) MinerCreateBlock(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) {
@@ -1165,16 +1232,16 @@ func (s *FullNodeStruct) PaychAvailableFunds(p0 context.Context, p1 address.Addr
 	return s.Internal.PaychAvailableFunds(p0, p1)
 }
 
-func (s *FullNodeStruct) PaychAvailableFundsByFromTo(p0 context.Context, p1 address.Address) (*api.ChannelAvailableFunds, error) {
-	return s.Internal.PaychAvailableFundsByFromTo(p0, p1)
+func (s *FullNodeStruct) PaychAvailableFundsByFromTo(p0 context.Context, p1 address.Address, p2 address.Address) (*api.ChannelAvailableFunds, error) {
+	return s.Internal.PaychAvailableFundsByFromTo(p0, p1, p2)
 }
 
 func (s *FullNodeStruct) PaychCollect(p0 context.Context, p1 address.Address) (cid.Cid, error) {
 	return s.Internal.PaychCollect(p0, p1)
 }
 
-func (s *FullNodeStruct) PaychGet(p0 context.Context, p1 address.Address, p2 types.BigInt) (*api.ChannelInfo, error) {
-	return s.Internal.PaychGet(p0, p1, p2)
+func (s *FullNodeStruct) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (*api.ChannelInfo, error) {
+	return s.Internal.PaychGet(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStruct) PaychGetWaitReady(p0 context.Context, p1 cid.Cid) (address.Address, error) {
@@ -1185,8 +1252,8 @@ func (s *FullNodeStruct) PaychList(p0 context.Context) ([]address.Address, error
 	return s.Internal.PaychList(p0)
 }
 
-func (s *FullNodeStruct) PaychNewPayment(p0 context.Context, p1 address.Address, p2 []api.VoucherSpec) (*api.PaymentInfo, error) {
-	return s.Internal.PaychNewPayment(p0, p1, p2)
+func (s *FullNodeStruct) PaychNewPayment(p0 context.Context, p1 address.Address, p2 address.Address, p3 []api.VoucherSpec) (*api.PaymentInfo, error) {
+	return s.Internal.PaychNewPayment(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStruct) PaychSettle(p0 context.Context, p1 address.Address) (cid.Cid, error) {
@@ -1249,7 +1316,7 @@ func (s *FullNodeStruct) StateDealProviderCollateralBounds(p0 context.Context, p
 	return s.Internal.StateDealProviderCollateralBounds(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStruct) StateDecodeParams(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (struct{}, error) {
+func (s *FullNodeStruct) StateDecodeParams(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) {
 	return s.Internal.StateDecodeParams(p0, p1, p2, p3, p4)
 }
 
@@ -1789,11 +1856,55 @@ func (s *StorageMinerStruct) PledgeSector(p0 context.Context) (abi.SectorID, err
 	return s.Internal.PledgeSector(p0)
 }
 
+func (s *StorageMinerStruct) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
+	return s.Internal.ReturnAddPiece(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return s.Internal.ReturnFetch(p0, p1, p2)
+}
+
+func (s *StorageMinerStruct) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return s.Internal.ReturnFinalizeSector(p0, p1, p2)
+}
+
+func (s *StorageMinerStruct) ReturnMoveStorage(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return s.Internal.ReturnMoveStorage(p0, p1, p2)
+}
+
+func (s *StorageMinerStruct) ReturnReadPiece(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) error {
+	return s.Internal.ReturnReadPiece(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) ReturnReleaseUnsealed(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return s.Internal.ReturnReleaseUnsealed(p0, p1, p2)
+}
+
+func (s *StorageMinerStruct) ReturnSealCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) error {
+	return s.Internal.ReturnSealCommit1(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) ReturnSealCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) error {
+	return s.Internal.ReturnSealCommit2(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) ReturnSealPreCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) error {
+	return s.Internal.ReturnSealPreCommit1(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) ReturnSealPreCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) error {
+	return s.Internal.ReturnSealPreCommit2(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) ReturnUnsealPiece(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return s.Internal.ReturnUnsealPiece(p0, p1, p2)
+}
+
 func (s *StorageMinerStruct) SealingAbort(p0 context.Context, p1 storiface.CallID) error {
 	return s.Internal.SealingAbort(p0, p1)
 }
 
-func (s *StorageMinerStruct) SealingSchedDiag(p0 context.Context, p1 bool) (struct{}, error) {
+func (s *StorageMinerStruct) SealingSchedDiag(p0 context.Context, p1 bool) (interface{}, error) {
 	return s.Internal.SealingSchedDiag(p0, p1)
 }
 
@@ -1865,6 +1976,30 @@ func (s *StorageMinerStruct) StorageAddLocal(p0 context.Context, p1 string) erro
 	return s.Internal.StorageAddLocal(p0, p1)
 }
 
+func (s *StorageMinerStruct) StorageAttach(p0 context.Context, p1 stores.StorageInfo, p2 fsutil.FsStat) error {
+	return s.Internal.StorageAttach(p0, p1, p2)
+}
+
+func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]stores.StorageInfo, error) {
+	return s.Internal.StorageBestAlloc(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) StorageDeclareSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
+	return s.Internal.StorageDeclareSector(p0, p1, p2, p3, p4)
+}
+
+func (s *StorageMinerStruct) StorageDropSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
+	return s.Internal.StorageDropSector(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) {
+	return s.Internal.StorageFindSector(p0, p1, p2, p3, p4)
+}
+
+func (s *StorageMinerStruct) StorageInfo(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) {
+	return s.Internal.StorageInfo(p0, p1)
+}
+
 func (s *StorageMinerStruct) StorageList(p0 context.Context) (map[stores.ID][]stores.Decl, error) {
 	return s.Internal.StorageList(p0)
 }
@@ -1873,8 +2008,20 @@ func (s *StorageMinerStruct) StorageLocal(p0 context.Context) (map[stores.ID]str
 	return s.Internal.StorageLocal(p0)
 }
 
+func (s *StorageMinerStruct) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error {
+	return s.Internal.StorageLock(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStruct) StorageReportHealth(p0 context.Context, p1 stores.ID, p2 stores.HealthReport) error {
+	return s.Internal.StorageReportHealth(p0, p1, p2)
+}
+
 func (s *StorageMinerStruct) StorageStat(p0 context.Context, p1 stores.ID) (fsutil.FsStat, error) {
 	return s.Internal.StorageStat(p0, p1)
+}
+
+func (s *StorageMinerStruct) StorageTryLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) {
+	return s.Internal.StorageTryLock(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStruct) WorkerConnect(p0 context.Context, p1 string) error {
@@ -1917,12 +2064,28 @@ func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []b
 	return s.Internal.WalletSign(p0, p1, p2, p3)
 }
 
+func (s *WorkerStruct) AddPiece(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) {
+	return s.Internal.AddPiece(p0, p1, p2, p3, p4)
+}
+
 func (s *WorkerStruct) Enabled(p0 context.Context) (bool, error) {
 	return s.Internal.Enabled(p0)
 }
 
+func (s *WorkerStruct) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) {
+	return s.Internal.Fetch(p0, p1, p2, p3, p4)
+}
+
+func (s *WorkerStruct) FinalizeSector(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
+	return s.Internal.FinalizeSector(p0, p1, p2)
+}
+
 func (s *WorkerStruct) Info(p0 context.Context) (storiface.WorkerInfo, error) {
 	return s.Internal.Info(p0)
+}
+
+func (s *WorkerStruct) MoveStorage(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType) (storiface.CallID, error) {
+	return s.Internal.MoveStorage(p0, p1, p2)
 }
 
 func (s *WorkerStruct) Paths(p0 context.Context) ([]stores.StoragePath, error) {
@@ -1933,8 +2096,32 @@ func (s *WorkerStruct) ProcessSession(p0 context.Context) (uuid.UUID, error) {
 	return s.Internal.ProcessSession(p0)
 }
 
+func (s *WorkerStruct) ReadPiece(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) {
+	return s.Internal.ReadPiece(p0, p1, p2, p3, p4)
+}
+
+func (s *WorkerStruct) ReleaseUnsealed(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
+	return s.Internal.ReleaseUnsealed(p0, p1, p2)
+}
+
 func (s *WorkerStruct) Remove(p0 context.Context, p1 abi.SectorID) error {
 	return s.Internal.Remove(p0, p1)
+}
+
+func (s *WorkerStruct) SealCommit1(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 abi.InteractiveSealRandomness, p4 []abi.PieceInfo, p5 storage.SectorCids) (storiface.CallID, error) {
+	return s.Internal.SealCommit1(p0, p1, p2, p3, p4, p5)
+}
+
+func (s *WorkerStruct) SealCommit2(p0 context.Context, p1 storage.SectorRef, p2 storage.Commit1Out) (storiface.CallID, error) {
+	return s.Internal.SealCommit2(p0, p1, p2)
+}
+
+func (s *WorkerStruct) SealPreCommit1(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 []abi.PieceInfo) (storiface.CallID, error) {
+	return s.Internal.SealPreCommit1(p0, p1, p2, p3)
+}
+
+func (s *WorkerStruct) SealPreCommit2(p0 context.Context, p1 storage.SectorRef, p2 storage.PreCommit1Out) (storiface.CallID, error) {
+	return s.Internal.SealPreCommit2(p0, p1, p2)
 }
 
 func (s *WorkerStruct) Session(p0 context.Context) (uuid.UUID, error) {
@@ -1961,6 +2148,10 @@ func (s *WorkerStruct) TaskTypes(p0 context.Context) (map[sealtasks.TaskType]str
 	return s.Internal.TaskTypes(p0)
 }
 
+func (s *WorkerStruct) UnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 cid.Cid) (storiface.CallID, error) {
+	return s.Internal.UnsealPiece(p0, p1, p2, p3, p4, p5)
+}
+
 func (s *WorkerStruct) Version(p0 context.Context) (api.Version, error) {
 	return s.Internal.Version(p0)
 }
@@ -1968,3 +2159,12 @@ func (s *WorkerStruct) Version(p0 context.Context) (api.Version, error) {
 func (s *WorkerStruct) WaitQuiet(p0 context.Context) error {
 	return s.Internal.WaitQuiet(p0)
 }
+
+var _ api.ChainIO = new(ChainIOStruct)
+var _ api.Common = new(CommonStruct)
+var _ api.FullNode = new(FullNodeStruct)
+var _ api.Gateway = new(GatewayStruct)
+var _ api.Signable = new(SignableStruct)
+var _ api.StorageMiner = new(StorageMinerStruct)
+var _ api.Wallet = new(WalletStruct)
+var _ api.Worker = new(WorkerStruct)

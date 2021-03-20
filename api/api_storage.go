@@ -87,13 +87,35 @@ type StorageMiner interface {
 	WorkerConnect(context.Context, string) error
 	WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error)
 	WorkerJobs(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error)
-	storiface.WorkerReturn
+
+
+	//storiface.WorkerReturn
+	ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error
+	ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err *storiface.CallError) error
+	ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err *storiface.CallError) error
+	ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err *storiface.CallError) error
+	ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err *storiface.CallError) error
+	ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error
+	ReturnReleaseUnsealed(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error
+	ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error
+	ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error
+	ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error
+	ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error
 
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error)
 	SealingAbort(ctx context.Context, call storiface.CallID) error
 
-	stores.SectorIndex
+	//stores.SectorIndex
+	StorageAttach(context.Context, stores.StorageInfo, fsutil.FsStat) error
+	StorageInfo(context.Context, stores.ID) (stores.StorageInfo, error)
+	StorageReportHealth(context.Context, stores.ID, stores.HealthReport) error
+	StorageDeclareSector(ctx context.Context, storageID stores.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error
+	StorageDropSector(ctx context.Context, storageID stores.ID, s abi.SectorID, ft storiface.SectorFileType) error
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]stores.SectorStorageInfo, error)
+	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]stores.StorageInfo, error)
+	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error
+	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]MarketDeal, error)
@@ -145,6 +167,9 @@ type StorageMiner interface {
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error)
 }
+
+var _ storiface.WorkerReturn = *new(StorageMiner)
+var _ stores.SectorIndex = *new(StorageMiner)
 
 type SealRes struct {
 	Err   string
