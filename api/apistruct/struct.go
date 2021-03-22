@@ -718,53 +718,53 @@ type WalletStruct struct {
 
 type WorkerStruct struct {
 	Internal struct {
-		AddPiece func(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) ``
+		AddPiece func(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) `perm:"admin"`
 
-		Enabled func(p0 context.Context) (bool, error) ``
+		Enabled func(p0 context.Context) (bool, error) `perm:"admin"`
 
-		Fetch func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) ``
+		Fetch func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) `perm:"admin"`
 
-		FinalizeSector func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) ``
+		FinalizeSector func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
-		Info func(p0 context.Context) (storiface.WorkerInfo, error) ``
+		Info func(p0 context.Context) (storiface.WorkerInfo, error) `perm:"admin"`
 
-		MoveStorage func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType) (storiface.CallID, error) ``
+		MoveStorage func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType) (storiface.CallID, error) `perm:"admin"`
 
-		Paths func(p0 context.Context) ([]stores.StoragePath, error) ``
+		Paths func(p0 context.Context) ([]stores.StoragePath, error) `perm:"admin"`
 
-		ProcessSession func(p0 context.Context) (uuid.UUID, error) ``
+		ProcessSession func(p0 context.Context) (uuid.UUID, error) `perm:"admin"`
 
-		ReadPiece func(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) ``
+		ReadPiece func(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) `perm:"admin"`
 
-		ReleaseUnsealed func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) ``
+		ReleaseUnsealed func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
-		Remove func(p0 context.Context, p1 abi.SectorID) error ``
+		Remove func(p0 context.Context, p1 abi.SectorID) error `perm:"admin"`
 
-		SealCommit1 func(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 abi.InteractiveSealRandomness, p4 []abi.PieceInfo, p5 storage.SectorCids) (storiface.CallID, error) ``
+		SealCommit1 func(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 abi.InteractiveSealRandomness, p4 []abi.PieceInfo, p5 storage.SectorCids) (storiface.CallID, error) `perm:"admin"`
 
-		SealCommit2 func(p0 context.Context, p1 storage.SectorRef, p2 storage.Commit1Out) (storiface.CallID, error) ``
+		SealCommit2 func(p0 context.Context, p1 storage.SectorRef, p2 storage.Commit1Out) (storiface.CallID, error) `perm:"admin"`
 
-		SealPreCommit1 func(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 []abi.PieceInfo) (storiface.CallID, error) ``
+		SealPreCommit1 func(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 []abi.PieceInfo) (storiface.CallID, error) `perm:"admin"`
 
-		SealPreCommit2 func(p0 context.Context, p1 storage.SectorRef, p2 storage.PreCommit1Out) (storiface.CallID, error) ``
+		SealPreCommit2 func(p0 context.Context, p1 storage.SectorRef, p2 storage.PreCommit1Out) (storiface.CallID, error) `perm:"admin"`
 
-		Session func(p0 context.Context) (uuid.UUID, error) ``
+		Session func(p0 context.Context) (uuid.UUID, error) `perm:"admin"`
 
-		SetEnabled func(p0 context.Context, p1 bool) error ``
+		SetEnabled func(p0 context.Context, p1 bool) error `perm:"admin"`
 
-		StorageAddLocal func(p0 context.Context, p1 string) error ``
+		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error ``
+		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
 
-		TaskEnable func(p0 context.Context, p1 sealtasks.TaskType) error ``
+		TaskEnable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
 
-		TaskTypes func(p0 context.Context) (map[sealtasks.TaskType]struct{}, error) ``
+		TaskTypes func(p0 context.Context) (map[sealtasks.TaskType]struct{}, error) `perm:"admin"`
 
-		UnsealPiece func(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 cid.Cid) (storiface.CallID, error) ``
+		UnsealPiece func(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 cid.Cid) (storiface.CallID, error) `perm:"admin"`
 
-		Version func(p0 context.Context) (api.Version, error) ``
+		Version func(p0 context.Context) (api.Version, error) `perm:"admin"`
 
-		WaitQuiet func(p0 context.Context) error ``
+		WaitQuiet func(p0 context.Context) error `perm:"admin"`
 	}
 }
 
