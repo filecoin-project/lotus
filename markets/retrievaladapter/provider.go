@@ -72,7 +72,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 		if si.CommD != nil {
 			commD = *si.CommD
 		}
-		// Unseal the piece into the pipe's writer
+		// Read the piece into the pipe's writer, unsealing the piece if necessary
 		err := rpn.sealer.ReadPiece(ctx, w, ref, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
 		if err != nil {
 			log.Errorf("failed to unseal piece from sector %d: %s", sectorID, err)
