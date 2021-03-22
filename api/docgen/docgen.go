@@ -251,6 +251,9 @@ func init() {
 		sealtasks.TTPreCommit2: {},
 	})
 	addExample(sealtasks.TTCommit2)
+
+	addExample(api.CheckStatusCode(0))
+	addExample(map[string]interface{}{"abc": 123})
 }
 
 func exampleValue(method string, t, parent reflect.Type) interface{} {
