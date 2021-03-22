@@ -1,5 +1,5 @@
 ---
-backend: http://127.0.0.1:8043
+backend: http://127.0.0.1:8042
 compositions:
   - PlanDir: testplans/lotus-soup
     CompFile: testplans/lotus-soup/_compositions/baseline-docker-1-1.toml
