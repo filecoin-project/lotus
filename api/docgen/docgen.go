@@ -387,9 +387,9 @@ func ParseApiASTInfo(apiFile, iface string) (comments map[string]string, groupDo
 				}
 			}
 
-			l := len(filteredComments)-1
+			l := len(filteredComments) - 1
 			if len(filteredComments) > 1 {
-				l = len(filteredComments)-2
+				l = len(filteredComments) - 2
 			}
 			last := filteredComments[l].Text()
 			if !strings.HasPrefix(last, "MethodGroup:") {
