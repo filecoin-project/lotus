@@ -40,7 +40,6 @@
 
 
 ### Enabled
-perm:admin
 
 
 Perms: admin
@@ -50,7 +49,6 @@ Inputs: `null`
 Response: `true`
 
 ### Fetch
-perm:admin
 
 
 Perms: admin
@@ -83,7 +81,6 @@ Response:
 ```
 
 ### Info
-perm:admin
 
 
 Perms: admin
@@ -105,7 +102,6 @@ Response:
 ```
 
 ### Paths
-perm:admin
 
 
 Perms: admin
@@ -143,7 +139,6 @@ Inputs: `null`
 Response: `"07070707-0707-0707-0707-070707070707"`
 
 ### Version
-perm:admin
 
 
 Perms: admin
@@ -192,7 +187,6 @@ Response:
 
 
 ### FinalizeSector
-perm:admin
 
 
 Perms: admin
@@ -226,7 +220,6 @@ Response:
 
 
 ### MoveStorage
-perm:admin
 
 
 Perms: admin
@@ -274,7 +267,6 @@ Response: `"07070707-0707-0707-0707-070707070707"`
 
 
 ### ReadPiece
-perm:admin
 
 
 Perms: admin
@@ -310,7 +302,6 @@ Response:
 
 
 ### ReleaseUnsealed
-perm:admin
 
 
 Perms: admin
@@ -344,7 +335,6 @@ Response:
 
 
 ### SealCommit1
-perm:admin
 
 
 Perms: admin
@@ -385,7 +375,6 @@ Response:
 ```
 
 ### SealCommit2
-perm:admin
 
 
 Perms: admin
@@ -416,7 +405,6 @@ Response:
 ```
 
 ### SealPreCommit1
-perm:admin
 
 
 Perms: admin
@@ -448,7 +436,6 @@ Response:
 ```
 
 ### SealPreCommit2
-perm:admin
 
 
 Perms: admin
@@ -501,7 +488,6 @@ Response: `{}`
 
 
 ### StorageAddLocal
-perm:admin
 
 
 Perms: admin
@@ -519,7 +505,6 @@ Response: `{}`
 
 
 ### TaskDisable
-perm:admin
 
 
 Perms: admin
@@ -534,7 +519,6 @@ Inputs:
 Response: `{}`
 
 ### TaskEnable
-perm:admin
 
 
 Perms: admin
@@ -567,7 +551,6 @@ Response:
 
 
 ### UnsealPiece
-perm:admin
 
 
 Perms: admin

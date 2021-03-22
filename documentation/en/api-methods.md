@@ -519,7 +519,6 @@ Response:
 ```
 
 ### ChainGetNode
-perm:read
 
 
 Perms: read
@@ -912,7 +911,6 @@ Inputs:
 Response: `{}`
 
 ### ClientDataTransferUpdates
-perm:write
 
 
 Perms: write
@@ -1785,7 +1783,6 @@ Response:
 
 
 ### MinerCreateBlock
-perm:write
 
 
 Perms: write
@@ -2221,7 +2218,6 @@ Inputs:
 Response: `{}`
 
 ### MpoolSub
-perm:read
 
 
 Perms: read
@@ -2968,7 +2964,6 @@ The Paych methods are for interacting with and managing payment channels
 
 
 ### PaychAllocateLane
-perm:sign
 
 
 Perms: sign
@@ -2983,7 +2978,6 @@ Inputs:
 Response: `42`
 
 ### PaychAvailableFunds
-perm:sign
 
 
 Perms: sign
@@ -3010,7 +3004,6 @@ Response:
 ```
 
 ### PaychAvailableFundsByFromTo
-perm:sign
 
 
 Perms: sign
@@ -3038,7 +3031,6 @@ Response:
 ```
 
 ### PaychCollect
-perm:sign
 
 
 Perms: sign
@@ -3082,7 +3074,6 @@ Response:
 ```
 
 ### PaychGetWaitReady
-perm:sign
 
 
 Perms: sign
@@ -3099,7 +3090,6 @@ Inputs:
 Response: `"f01234"`
 
 ### PaychList
-perm:read
 
 
 Perms: read
@@ -3109,7 +3099,6 @@ Inputs: `null`
 Response: `null`
 
 ### PaychNewPayment
-perm:sign
 
 
 Perms: sign
@@ -3135,7 +3124,6 @@ Response:
 ```
 
 ### PaychSettle
-perm:sign
 
 
 Perms: sign
@@ -3155,7 +3143,6 @@ Response:
 ```
 
 ### PaychStatus
-perm:read
 
 
 Perms: read
@@ -3176,7 +3163,6 @@ Response:
 ```
 
 ### PaychVoucherAdd
-perm:write
 
 
 Perms: write
@@ -3213,7 +3199,6 @@ Inputs:
 Response: `"0"`
 
 ### PaychVoucherCheckSpendable
-perm:read
 
 
 Perms: read
@@ -3250,7 +3235,6 @@ Inputs:
 Response: `true`
 
 ### PaychVoucherCheckValid
-perm:read
 
 
 Perms: read
@@ -3285,7 +3269,6 @@ Inputs:
 Response: `{}`
 
 ### PaychVoucherCreate
-perm:sign
 
 
 Perms: sign
@@ -3327,7 +3310,6 @@ Response:
 ```
 
 ### PaychVoucherList
-perm:write
 
 
 Perms: write
@@ -3342,7 +3324,6 @@ Inputs:
 Response: `null`
 
 ### PaychVoucherSubmit
-perm:sign
 
 
 Perms: sign

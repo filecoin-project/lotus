@@ -200,7 +200,6 @@ Response:
 
 
 ### ActorAddress
-perm:read
 
 
 Perms: read
@@ -210,7 +209,6 @@ Inputs: `null`
 Response: `"f01234"`
 
 ### ActorAddressConfig
-perm:read
 
 
 Perms: read
@@ -229,7 +227,6 @@ Response:
 ```
 
 ### ActorSectorSize
-perm:read
 
 
 Perms: read
@@ -278,7 +275,6 @@ Response: `null`
 
 
 ### CheckProvable
-perm:admin
 
 
 Perms: admin
@@ -324,7 +320,6 @@ Response: `{}`
 
 
 ### DealsConsiderOfflineRetrievalDeals
-perm:admin
 
 
 Perms: admin
@@ -334,7 +329,6 @@ Inputs: `null`
 Response: `true`
 
 ### DealsConsiderOfflineStorageDeals
-perm:admin
 
 
 Perms: admin
@@ -344,7 +338,6 @@ Inputs: `null`
 Response: `true`
 
 ### DealsConsiderOnlineRetrievalDeals
-perm:admin
 
 
 Perms: admin
@@ -354,7 +347,6 @@ Inputs: `null`
 Response: `true`
 
 ### DealsConsiderOnlineStorageDeals
-perm:admin
 
 
 Perms: admin
@@ -364,7 +356,6 @@ Inputs: `null`
 Response: `true`
 
 ### DealsConsiderUnverifiedStorageDeals
-perm:admin
 
 
 Perms: admin
@@ -374,7 +365,6 @@ Inputs: `null`
 Response: `true`
 
 ### DealsConsiderVerifiedStorageDeals
-perm:admin
 
 
 Perms: admin
@@ -384,7 +374,6 @@ Inputs: `null`
 Response: `true`
 
 ### DealsImportData
-perm:admin
 
 
 Perms: admin
@@ -402,7 +391,6 @@ Inputs:
 Response: `{}`
 
 ### DealsList
-perm:admin
 
 
 Perms: admin
@@ -412,7 +400,6 @@ Inputs: `null`
 Response: `null`
 
 ### DealsPieceCidBlocklist
-perm:admin
 
 
 Perms: admin
@@ -422,7 +409,6 @@ Inputs: `null`
 Response: `null`
 
 ### DealsSetConsiderOfflineRetrievalDeals
-perm:admin
 
 
 Perms: admin
@@ -437,7 +423,6 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOfflineStorageDeals
-perm:admin
 
 
 Perms: admin
@@ -452,7 +437,6 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineRetrievalDeals
-perm:admin
 
 
 Perms: admin
@@ -467,7 +451,6 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineStorageDeals
-perm:admin
 
 
 Perms: admin
@@ -482,7 +465,6 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderUnverifiedStorageDeals
-perm:admin
 
 
 Perms: admin
@@ -497,7 +479,6 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderVerifiedStorageDeals
-perm:admin
 
 
 Perms: admin
@@ -512,7 +493,6 @@ Inputs:
 Response: `{}`
 
 ### DealsSetPieceCidBlocklist
-perm:admin
 
 
 Perms: admin
@@ -586,7 +566,6 @@ Inputs:
 Response: `{}`
 
 ### MarketDataTransferUpdates
-perm:write
 
 
 Perms: write
@@ -611,7 +590,6 @@ Response:
 ```
 
 ### MarketGetAsk
-perm:read
 
 
 Perms: read
@@ -639,7 +617,6 @@ Response:
 ```
 
 ### MarketGetDealUpdates
-perm:read
 
 
 Perms: read
@@ -705,7 +682,6 @@ Response:
 ```
 
 ### MarketGetRetrievalAsk
-perm:read
 
 
 Perms: read
@@ -723,7 +699,6 @@ Response:
 ```
 
 ### MarketImportDealData
-perm:write
 
 
 Perms: write
@@ -741,7 +716,6 @@ Inputs:
 Response: `{}`
 
 ### MarketListDataTransfers
-perm:write
 
 
 Perms: write
@@ -751,7 +725,6 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListDeals
-perm:read
 
 
 Perms: read
@@ -761,7 +734,6 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListIncompleteDeals
-perm:read
 
 
 Perms: read
@@ -771,7 +743,6 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListRetrievalDeals
-perm:read
 
 
 Perms: read
@@ -781,7 +752,6 @@ Inputs: `null`
 Response: `null`
 
 ### MarketPendingDeals
-perm:write
 
 
 Perms: write
@@ -798,7 +768,6 @@ Response:
 ```
 
 ### MarketPublishPendingDeals
-perm:admin
 
 
 Perms: admin
@@ -825,7 +794,6 @@ Inputs:
 Response: `{}`
 
 ### MarketSetAsk
-perm:admin
 
 
 Perms: admin
@@ -844,7 +812,6 @@ Inputs:
 Response: `{}`
 
 ### MarketSetRetrievalAsk
-perm:admin
 
 
 Perms: admin
@@ -867,7 +834,6 @@ Response: `{}`
 
 
 ### MiningBase
-perm:read
 
 
 Perms: read
@@ -1156,7 +1122,6 @@ Response: `null`
 
 
 ### PiecesGetCIDInfo
-perm:read
 
 
 Perms: read
@@ -1181,7 +1146,6 @@ Response:
 ```
 
 ### PiecesGetPieceInfo
-perm:read
 
 
 Perms: read
@@ -1206,7 +1170,6 @@ Response:
 ```
 
 ### PiecesListCidInfos
-perm:read
 
 
 Perms: read
@@ -1216,7 +1179,6 @@ Inputs: `null`
 Response: `null`
 
 ### PiecesListPieces
-perm:read
 
 
 Perms: read
@@ -1279,7 +1241,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnFetch
-perm:admin retry:true
 
 
 Perms: admin
@@ -1304,7 +1265,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnFinalizeSector
-perm:admin retry:true
 
 
 Perms: admin
@@ -1329,7 +1289,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnMoveStorage
-perm:admin retry:true
 
 
 Perms: admin
@@ -1354,7 +1313,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnReadPiece
-perm:admin retry:true
 
 
 Perms: admin
@@ -1380,7 +1338,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnReleaseUnsealed
-perm:admin retry:true
 
 
 Perms: admin
@@ -1405,7 +1362,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealCommit1
-perm:admin retry:true
 
 
 Perms: admin
@@ -1431,7 +1387,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealCommit2
-perm:admin retry:true
 
 
 Perms: admin
@@ -1457,7 +1412,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealPreCommit1
-perm:admin retry:true
 
 
 Perms: admin
@@ -1483,7 +1437,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealPreCommit2
-perm:admin retry:true
 
 
 Perms: admin
@@ -1516,7 +1469,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnUnsealPiece
-perm:admin retry:true
 
 
 Perms: admin
@@ -1544,7 +1496,6 @@ Response: `{}`
 
 
 ### SealingAbort
-perm:admin
 
 
 Perms: admin
@@ -1604,7 +1555,6 @@ Inputs: `null`
 Response: `60000000000`
 
 ### SectorMarkForUpgrade
-perm:admin
 
 
 Perms: admin
@@ -1759,7 +1709,6 @@ Response:
 ```
 
 ### SectorsRefs
-perm:read
 
 
 Perms: read
@@ -1843,7 +1792,6 @@ Response:
 ```
 
 ### SectorsUpdate
-perm:admin
 
 
 Perms: admin
@@ -1862,7 +1810,6 @@ Response: `{}`
 
 
 ### StorageAddLocal
-perm:admin
 
 
 Perms: admin
@@ -1907,7 +1854,6 @@ Inputs:
 Response: `{}`
 
 ### StorageBestAlloc
-perm:admin
 
 
 Perms: admin
@@ -1924,7 +1870,6 @@ Inputs:
 Response: `null`
 
 ### StorageDeclareSector
-perm:admin
 
 
 Perms: admin
@@ -1945,7 +1890,6 @@ Inputs:
 Response: `{}`
 
 ### StorageDropSector
-perm:admin
 
 
 Perms: admin
@@ -1965,7 +1909,6 @@ Inputs:
 Response: `{}`
 
 ### StorageFindSector
-perm:admin
 
 
 Perms: admin
@@ -1986,7 +1929,6 @@ Inputs:
 Response: `null`
 
 ### StorageInfo
-perm:admin
 
 
 Perms: admin
@@ -2011,7 +1953,6 @@ Response:
 ```
 
 ### StorageList
-perm:admin
 
 
 Perms: admin
@@ -2032,7 +1973,6 @@ Response:
 ```
 
 ### StorageLocal
-perm:admin
 
 
 Perms: admin
@@ -2047,7 +1987,6 @@ Response:
 ```
 
 ### StorageLock
-perm:admin
 
 
 Perms: admin
@@ -2067,7 +2006,6 @@ Inputs:
 Response: `{}`
 
 ### StorageReportHealth
-perm:admin
 
 
 Perms: admin
@@ -2093,7 +2031,6 @@ Inputs:
 Response: `{}`
 
 ### StorageStat
-perm:admin
 
 
 Perms: admin
@@ -2118,7 +2055,6 @@ Response:
 ```
 
 ### StorageTryLock
-perm:admin
 
 
 Perms: admin
@@ -2156,7 +2092,6 @@ Inputs:
 Response: `{}`
 
 ### WorkerJobs
-perm:admin
 
 
 Perms: admin
@@ -2189,7 +2124,6 @@ Response:
 ```
 
 ### WorkerStats
-perm:admin
 
 
 Perms: admin
