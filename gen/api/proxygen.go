@@ -220,7 +220,8 @@ func runMain() error {
 
 				// try to parse tag info
 				if len(filteredComments) > 0 {
-					tagstr := filteredComments[len(filteredComments)-1].Text()
+					tagstr := filteredComments[len(filteredComments)-1].List[0].Text
+					tagstr = strings.TrimPrefix(tagstr, "//")
 					tl := strings.Split(strings.TrimSpace(tagstr), " ")
 					for _, ts := range tl {
 						tf := strings.Split(ts, ":")
@@ -290,11 +291,7 @@ func (s *{{$name}}Struct) {{.Name}}({{.NamedParams}}) ({{.Results}}) {
 
 func doTemplate(w io.Writer, info interface{}, templ string) error {
 	t := template.Must(template.New("").
-		Funcs(template.FuncMap{
-			"ReadHeader": func(rdr string) string {
-				return fmt.Sprintf(`cbg.CborReadHeaderBuf(%s, scratch)`, rdr)
-			},
-		}).Parse(templ))
+		Funcs(template.FuncMap{}).Parse(templ))
 
 	return t.Execute(w, info)
 }
