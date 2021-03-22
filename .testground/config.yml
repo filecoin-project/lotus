@@ -2,3 +2,5 @@
 compositions:
   - PlanDir: testplans/lotus-soup
     CompFile: testplans/lotus-soup/_compositions/baseline-docker-1-1.toml
+  - PlanDir: testplans/lotus-soup
+    CompFile: testplans/lotus-soup/_compositions/baseline-docker-5-1.toml
