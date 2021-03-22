@@ -7,12 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/go-state-types/abi"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"go.uber.org/fx"
-
+	"github.com/filecoin-project/go-data-transfer/channelmonitor"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
@@ -25,6 +23,8 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -135,8 +135,23 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 		return nil, err
 	}
 
-	// data-transfer push channel restart configuration
-	dtRestartConfig := dtimpl.PushChannelRestartConfig(time.Minute, 10, 1024, 10*time.Minute, 3)
+	// data-transfer push / pull channel restart configuration:
+	dtRestartConfig := dtimpl.ChannelRestartConfig(channelmonitor.Config{
+		// Wait up to 30s for the other side to respond to an Open channel message
+		AcceptTimeout: 30 * time.Second,
+		// Send a restart message if the data rate falls below 1024 bytes / minute
+		Interval:            time.Minute,
+		MinBytesTransferred: 1024,
+		// Perform check 10 times / minute
+		ChecksPerInterval: 10,
+		// After sending a restart, wait for at least 1 minute before sending another
+		RestartBackoff: time.Minute,
+		// After trying to restart 3 times, give up and fail the transfer
+		MaxConsecutiveRestarts: 3,
+		// Wait up to 30s for the other side to send a Complete message once all
+		// data has been sent / received
+		CompleteTimeout: 30 * time.Second,
+	})
 	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, sc, dtRestartConfig)
 	if err != nil {
 		return nil, err
