@@ -852,6 +852,10 @@ func UpgradeLiftoff(ctx context.Context, sm *StateManager, _ MigrationCache, cb 
 }
 
 func UpgradeCalico(ctx context.Context, sm *StateManager, _ MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	if build.BuildType != build.BuildMainnet {
+		return root, nil
+	}
+
 	store := sm.cs.ActorStore(ctx)
 	var stateRoot types.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {

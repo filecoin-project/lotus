@@ -334,11 +334,6 @@ var genesisSetVRKCmd = &cli.Command{
 			return err
 		}
 
-		csvf, err := homedir.Expand(cctx.Args().Get(1))
-		if err != nil {
-			return err
-		}
-
 		var template genesis.Template
 		b, err := ioutil.ReadFile(genf)
 		if err != nil {
@@ -363,6 +358,10 @@ var genesisSetVRKCmd = &cli.Command{
 				Meta:    am.ActorMeta(),
 			}
 		} else if cctx.IsSet("multisig") {
+			csvf, err := homedir.Expand(cctx.String("multisig"))
+			if err != nil {
+				return err
+			}
 
 			entries, err := parseMultisigCsv(csvf)
 			if err != nil {
@@ -431,11 +430,6 @@ var genesisSetRemainderCmd = &cli.Command{
 			return err
 		}
 
-		csvf, err := homedir.Expand(cctx.Args().Get(1))
-		if err != nil {
-			return err
-		}
-
 		var template genesis.Template
 		b, err := ioutil.ReadFile(genf)
 		if err != nil {
@@ -460,6 +454,10 @@ var genesisSetRemainderCmd = &cli.Command{
 				Meta:    am.ActorMeta(),
 			}
 		} else if cctx.IsSet("multisig") {
+			csvf, err := homedir.Expand(cctx.String("multisig"))
+			if err != nil {
+				return err
+			}
 
 			entries, err := parseMultisigCsv(csvf)
 			if err != nil {
