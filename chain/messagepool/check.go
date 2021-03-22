@@ -19,12 +19,12 @@ import (
 var baseFeeUpperBoundFactor = types.NewInt(10)
 
 // CheckMessages performs a set of logic checks for a list of messages, prior to submitting it to the mpool
-func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []api.MessageCheckStatus, err error) {
+func (mp *MessagePool) CheckMessages(msgs []*types.Message) ([][]api.MessageCheckStatus, error) {
 	return mp.checkMessages(msgs, false)
 }
 
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
-func (mp *MessagePool) CheckPendingMessages(from address.Address) (result []api.MessageCheckStatus, err error) {
+func (mp *MessagePool) CheckPendingMessages(from address.Address) ([][]api.MessageCheckStatus, error) {
 	var msgs []*types.Message
 	mp.lk.Lock()
 	mset, ok := mp.pending[from]
@@ -46,7 +46,7 @@ func (mp *MessagePool) CheckPendingMessages(from address.Address) (result []api.
 	return mp.checkMessages(msgs, true)
 }
 
-func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (result []api.MessageCheckStatus, err error) {
+func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (result [][]api.MessageCheckStatus, err error) {
 	mp.curTsLk.Lock()
 	curTs := mp.curTs
 	mp.curTsLk.Unlock()
@@ -74,7 +74,9 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 	state := make(map[address.Address]*actorState)
 	balances := make(map[address.Address]big.Int)
 
-	for _, m := range msgs {
+	result = make([][]api.MessageCheckStatus, len(msgs))
+
+	for i, m := range msgs {
 		// pre-check: actor nonce
 		check := api.MessageCheckStatus{
 			Cid: m.Cid(),
@@ -118,7 +120,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			}
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 		if !check.OK {
 			continue
 		}
@@ -152,7 +154,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			}
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 		if !check.OK {
 			continue
 		}
@@ -173,7 +175,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 
 		// 2. Message size
 		check = api.MessageCheckStatus{
@@ -190,7 +192,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 
 		// 3. Syntactic validation
 		check = api.MessageCheckStatus{
@@ -207,7 +209,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 		if !check.OK {
 			// skip remaining checks if it is a syntatically invalid message
 			continue
@@ -235,7 +237,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 
 		// 5. Min Base Fee
 		check = api.MessageCheckStatus{
@@ -252,7 +254,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 		if !check.OK {
 			goto checkState
 		}
@@ -275,7 +277,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 
 		// 7. Base Fee lower bound
 		check = api.MessageCheckStatus{
@@ -295,7 +297,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 		if !check.OK {
 			goto checkState
 		}
@@ -318,7 +320,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 
 		// stateful checks
 	checkState:
@@ -341,7 +343,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			st.nextNonce++
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 
 		// check required funds -vs- balance
 		st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.RequiredFunds().Int)
@@ -365,7 +367,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			check.OK = true
 		}
 
-		result = append(result, check)
+		result[i] = append(result[i], check)
 	}
 
 	return result, nil
