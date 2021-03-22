@@ -200,7 +200,8 @@ Response:
 
 
 ### ActorAddress
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -209,7 +210,8 @@ Inputs: `null`
 Response: `"f01234"`
 
 ### ActorAddressConfig
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -227,7 +229,8 @@ Response:
 ```
 
 ### ActorSectorSize
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -275,7 +278,8 @@ Response: `null`
 
 
 ### CheckProvable
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -299,10 +303,7 @@ Response:
 
 
 ### CreateBackup
-CreateBackup creates node backup onder the specified file name. The
-method requires that the lotus-miner is running with the
-LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
-the path specified when calling CreateBackup is within the base path
+perm:admin
 
 
 Perms: admin
@@ -320,63 +321,70 @@ Response: `{}`
 
 
 ### DealsConsiderOfflineRetrievalDeals
-There are not yet any comments for this method.
+perm:admin
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderOfflineStorageDeals
-There are not yet any comments for this method.
+perm:admin
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderOnlineRetrievalDeals
-There are not yet any comments for this method.
+perm:admin
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderOnlineStorageDeals
-There are not yet any comments for this method.
+perm:admin
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderUnverifiedStorageDeals
-There are not yet any comments for this method.
+perm:admin
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderVerifiedStorageDeals
-There are not yet any comments for this method.
+perm:admin
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsImportData
-There are not yet any comments for this method.
+perm:admin
 
-Perms: write
+
+Perms: admin
 
 Inputs:
 ```json
@@ -391,25 +399,28 @@ Inputs:
 Response: `{}`
 
 ### DealsList
-There are not yet any comments for this method.
+perm:admin
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `null`
 
 ### DealsPieceCidBlocklist
-There are not yet any comments for this method.
+perm:admin
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `null`
 
 ### DealsSetConsiderOfflineRetrievalDeals
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -423,7 +434,8 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOfflineStorageDeals
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -437,7 +449,8 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineRetrievalDeals
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -451,7 +464,8 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineStorageDeals
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -465,7 +479,8 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderUnverifiedStorageDeals
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -479,7 +494,8 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderVerifiedStorageDeals
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -493,7 +509,8 @@ Inputs:
 Response: `{}`
 
 ### DealsSetPieceCidBlocklist
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -549,7 +566,7 @@ Response: `{}`
 
 
 ### MarketCancelDataTransfer
-MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
+perm:write
 
 
 Perms: write
@@ -566,7 +583,8 @@ Inputs:
 Response: `{}`
 
 ### MarketDataTransferUpdates
-There are not yet any comments for this method.
+perm:write
+
 
 Perms: write
 
@@ -590,7 +608,8 @@ Response:
 ```
 
 ### MarketGetAsk
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -617,7 +636,8 @@ Response:
 ```
 
 ### MarketGetDealUpdates
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -682,7 +702,8 @@ Response:
 ```
 
 ### MarketGetRetrievalAsk
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -699,7 +720,8 @@ Response:
 ```
 
 ### MarketImportDealData
-There are not yet any comments for this method.
+perm:write
+
 
 Perms: write
 
@@ -716,7 +738,8 @@ Inputs:
 Response: `{}`
 
 ### MarketListDataTransfers
-There are not yet any comments for this method.
+perm:write
+
 
 Perms: write
 
@@ -725,7 +748,8 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListDeals
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -734,7 +758,8 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListIncompleteDeals
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -743,7 +768,8 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListRetrievalDeals
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -752,7 +778,8 @@ Inputs: `null`
 Response: `null`
 
 ### MarketPendingDeals
-There are not yet any comments for this method.
+perm:write
+
 
 Perms: write
 
@@ -768,7 +795,8 @@ Response:
 ```
 
 ### MarketPublishPendingDeals
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -777,7 +805,7 @@ Inputs: `null`
 Response: `{}`
 
 ### MarketRestartDataTransfer
-MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
+perm:write
 
 
 Perms: write
@@ -794,7 +822,8 @@ Inputs:
 Response: `{}`
 
 ### MarketSetAsk
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -812,7 +841,8 @@ Inputs:
 Response: `{}`
 
 ### MarketSetRetrievalAsk
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -834,7 +864,8 @@ Response: `{}`
 
 
 ### MiningBase
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -1122,7 +1153,8 @@ Response: `null`
 
 
 ### PiecesGetCIDInfo
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -1146,7 +1178,8 @@ Response:
 ```
 
 ### PiecesGetPieceInfo
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -1170,7 +1203,8 @@ Response:
 ```
 
 ### PiecesListCidInfos
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -1179,7 +1213,8 @@ Inputs: `null`
 Response: `null`
 
 ### PiecesListPieces
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -1191,7 +1226,7 @@ Response: `null`
 
 
 ### PledgeSector
-Temp api for testing
+perm:write
 
 
 Perms: write
@@ -1210,6 +1245,7 @@ Response:
 
 
 ### ReturnAddPiece
+perm:admin retry:true
 
 
 Perms: admin
@@ -1240,6 +1276,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnFetch
+perm:admin retry:true
 
 
 Perms: admin
@@ -1264,6 +1301,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnFinalizeSector
+perm:admin retry:true
 
 
 Perms: admin
@@ -1288,6 +1326,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnMoveStorage
+perm:admin retry:true
 
 
 Perms: admin
@@ -1312,6 +1351,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnReadPiece
+perm:admin retry:true
 
 
 Perms: admin
@@ -1337,6 +1377,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnReleaseUnsealed
+perm:admin retry:true
 
 
 Perms: admin
@@ -1361,6 +1402,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealCommit1
+perm:admin retry:true
 
 
 Perms: admin
@@ -1386,6 +1428,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealCommit2
+perm:admin retry:true
 
 
 Perms: admin
@@ -1411,6 +1454,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealPreCommit1
+perm:admin retry:true
 
 
 Perms: admin
@@ -1436,6 +1480,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealPreCommit2
+perm:admin retry:true
 
 
 Perms: admin
@@ -1468,6 +1513,7 @@ Inputs:
 Response: `{}`
 
 ### ReturnUnsealPiece
+perm:admin retry:true
 
 
 Perms: admin
@@ -1495,7 +1541,8 @@ Response: `{}`
 
 
 ### SealingAbort
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -1515,7 +1562,7 @@ Inputs:
 Response: `{}`
 
 ### SealingSchedDiag
-SealingSchedDiag dumps internal sealing scheduler state
+perm:admin
 
 
 Perms: admin
@@ -1533,7 +1580,7 @@ Response: `{}`
 
 
 ### SectorGetExpectedSealDuration
-SectorGetExpectedSealDuration gets the expected time for a sector to seal
+perm:read
 
 
 Perms: read
@@ -1543,8 +1590,7 @@ Inputs: `null`
 Response: `60000000000`
 
 ### SectorGetSealDelay
-SectorGetSealDelay gets the time that a newly-created sector
-waits for more deals before it starts sealing
+perm:read
 
 
 Perms: read
@@ -1554,7 +1600,8 @@ Inputs: `null`
 Response: `60000000000`
 
 ### SectorMarkForUpgrade
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -1568,8 +1615,7 @@ Inputs:
 Response: `{}`
 
 ### SectorRemove
-SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
-be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
+perm:admin
 
 
 Perms: admin
@@ -1584,7 +1630,7 @@ Inputs:
 Response: `{}`
 
 ### SectorSetExpectedSealDuration
-SectorSetExpectedSealDuration sets the expected time for a sector to seal
+perm:write
 
 
 Perms: write
@@ -1599,8 +1645,7 @@ Inputs:
 Response: `{}`
 
 ### SectorSetSealDelay
-SectorSetSealDelay sets the time that a newly-created sector
-waits for more deals before it starts sealing
+perm:write
 
 
 Perms: write
@@ -1615,8 +1660,7 @@ Inputs:
 Response: `{}`
 
 ### SectorStartSealing
-SectorStartSealing can be called on sectors in Empty or WaitDeals states
-to trigger sealing early
+perm:write
 
 
 Perms: write
@@ -1631,8 +1675,7 @@ Inputs:
 Response: `{}`
 
 ### SectorTerminate
-SectorTerminate terminates the sector on-chain (adding it to a termination batch first), then
-automatically removes it from storage
+perm:admin
 
 
 Perms: admin
@@ -1647,8 +1690,7 @@ Inputs:
 Response: `{}`
 
 ### SectorTerminateFlush
-SectorTerminateFlush immediately sends a terminate message with sectors batched for termination.
-Returns null if message wasn't sent
+perm:admin
 
 
 Perms: admin
@@ -1658,7 +1700,7 @@ Inputs: `null`
 Response: `null`
 
 ### SectorTerminatePending
-SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
+perm:admin
 
 
 Perms: admin
@@ -1671,7 +1713,7 @@ Response: `null`
 
 
 ### SectorsList
-List all staged sectors
+perm:read
 
 
 Perms: read
@@ -1687,7 +1729,7 @@ Response:
 ```
 
 ### SectorsListInStates
-List sectors in particular states
+perm:read
 
 
 Perms: read
@@ -1708,7 +1750,8 @@ Response:
 ```
 
 ### SectorsRefs
-There are not yet any comments for this method.
+perm:read
+
 
 Perms: read
 
@@ -1728,7 +1771,7 @@ Response:
 ```
 
 ### SectorsStatus
-Get the status of a given sector by ID
+perm:read
 
 
 Perms: read
@@ -1776,7 +1819,7 @@ Response:
 ```
 
 ### SectorsSummary
-Get summary info of sectors
+perm:read
 
 
 Perms: read
@@ -1791,7 +1834,8 @@ Response:
 ```
 
 ### SectorsUpdate
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -1809,7 +1853,8 @@ Response: `{}`
 
 
 ### StorageAddLocal
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -1823,6 +1868,7 @@ Inputs:
 Response: `{}`
 
 ### StorageAttach
+perm:admin
 
 
 Perms: admin
@@ -1852,6 +1898,7 @@ Inputs:
 Response: `{}`
 
 ### StorageBestAlloc
+perm:admin
 
 
 Perms: admin
@@ -1868,6 +1915,7 @@ Inputs:
 Response: `null`
 
 ### StorageDeclareSector
+perm:admin
 
 
 Perms: admin
@@ -1888,6 +1936,7 @@ Inputs:
 Response: `{}`
 
 ### StorageDropSector
+perm:admin
 
 
 Perms: admin
@@ -1907,6 +1956,7 @@ Inputs:
 Response: `{}`
 
 ### StorageFindSector
+perm:admin
 
 
 Perms: admin
@@ -1927,6 +1977,7 @@ Inputs:
 Response: `null`
 
 ### StorageInfo
+perm:admin
 
 
 Perms: admin
@@ -1951,7 +2002,8 @@ Response:
 ```
 
 ### StorageList
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -1971,7 +2023,8 @@ Response:
 ```
 
 ### StorageLocal
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -1985,6 +2038,7 @@ Response:
 ```
 
 ### StorageLock
+perm:admin
 
 
 Perms: admin
@@ -2004,6 +2058,7 @@ Inputs:
 Response: `{}`
 
 ### StorageReportHealth
+perm:admin
 
 
 Perms: admin
@@ -2029,7 +2084,8 @@ Inputs:
 Response: `{}`
 
 ### StorageStat
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -2053,6 +2109,7 @@ Response:
 ```
 
 ### StorageTryLock
+perm:admin
 
 
 Perms: admin
@@ -2075,7 +2132,7 @@ Response: `true`
 
 
 ### WorkerConnect
-WorkerConnect tells the node to connect to workers RPC
+perm:admin retry:true
 
 
 Perms: admin
@@ -2090,7 +2147,8 @@ Inputs:
 Response: `{}`
 
 ### WorkerJobs
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -2122,7 +2180,8 @@ Response:
 ```
 
 ### WorkerStats
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 

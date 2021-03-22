@@ -40,7 +40,8 @@
 
 
 ### Enabled
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -49,6 +50,7 @@ Inputs: `null`
 Response: `true`
 
 ### Fetch
+perm:admin
 
 
 Perms: admin
@@ -81,7 +83,8 @@ Response:
 ```
 
 ### Info
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -102,7 +105,8 @@ Response:
 ```
 
 ### Paths
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -111,7 +115,7 @@ Inputs: `null`
 Response: `null`
 
 ### Remove
-Storage / Other
+perm:admin
 
 
 Perms: admin
@@ -129,7 +133,7 @@ Inputs:
 Response: `{}`
 
 ### Session
-Like ProcessSession, but returns an error when worker is disabled
+perm:admin
 
 
 Perms: admin
@@ -139,7 +143,7 @@ Inputs: `null`
 Response: `"07070707-0707-0707-0707-070707070707"`
 
 ### Version
-TODO: Info() (name, ...) ?
+perm:admin
 
 
 Perms: admin
@@ -152,6 +156,7 @@ Response: `65792`
 
 
 ### AddPiece
+perm:admin
 
 
 Perms: admin
@@ -187,6 +192,7 @@ Response:
 
 
 ### FinalizeSector
+perm:admin
 
 
 Perms: admin
@@ -220,6 +226,7 @@ Response:
 
 
 ### MoveStorage
+perm:admin
 
 
 Perms: admin
@@ -253,8 +260,7 @@ Response:
 
 
 ### ProcessSession
-returns a random UUID of worker session, generated randomly when worker
-process starts
+perm:admin
 
 
 Perms: admin
@@ -267,6 +273,7 @@ Response: `"07070707-0707-0707-0707-070707070707"`
 
 
 ### ReadPiece
+perm:admin
 
 
 Perms: admin
@@ -302,6 +309,7 @@ Response:
 
 
 ### ReleaseUnsealed
+perm:admin
 
 
 Perms: admin
@@ -335,6 +343,7 @@ Response:
 
 
 ### SealCommit1
+perm:admin
 
 
 Perms: admin
@@ -375,6 +384,7 @@ Response:
 ```
 
 ### SealCommit2
+perm:admin
 
 
 Perms: admin
@@ -405,6 +415,7 @@ Response:
 ```
 
 ### SealPreCommit1
+perm:admin
 
 
 Perms: admin
@@ -436,6 +447,7 @@ Response:
 ```
 
 ### SealPreCommit2
+perm:admin
 
 
 Perms: admin
@@ -469,8 +481,7 @@ Response:
 
 
 ### SetEnabled
-SetEnabled marks the worker as enabled/disabled. Not that this setting
-may take a few seconds to propagate to task scheduler
+perm:admin
 
 
 Perms: admin
@@ -488,7 +499,8 @@ Response: `{}`
 
 
 ### StorageAddLocal
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -505,7 +517,8 @@ Response: `{}`
 
 
 ### TaskDisable
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -519,7 +532,8 @@ Inputs:
 Response: `{}`
 
 ### TaskEnable
-There are not yet any comments for this method.
+perm:admin
+
 
 Perms: admin
 
@@ -533,7 +547,7 @@ Inputs:
 Response: `{}`
 
 ### TaskTypes
-TaskType -> Weight
+perm:admin
 
 
 Perms: admin
@@ -551,6 +565,7 @@ Response:
 
 
 ### UnsealPiece
+perm:admin
 
 
 Perms: admin
@@ -589,7 +604,7 @@ Response:
 
 
 ### WaitQuiet
-WaitQuiet blocks until there are no tasks running
+perm:admin
 
 
 Perms: admin
