@@ -316,7 +316,9 @@ The Beacon method group contains methods for interacting with the random beacon 
 
 
 ### BeaconGetEntry
-perm:read
+BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
+the entry has not yet been produced, the call will block until the entry
+becomes available
 
 
 Perms: read
@@ -342,7 +344,7 @@ blockchain, but that do not require any form of state computation.
 
 
 ### ChainDeleteObj
-perm:admin
+ChainDeleteObj deletes node referenced by the given CID
 
 
 Perms: admin
@@ -359,7 +361,11 @@ Inputs:
 Response: `{}`
 
 ### ChainExport
-perm:read
+ChainExport returns a stream of bytes with CAR dump of chain data.
+The exported chain data includes the header chain from the given tipset
+back to genesis, the entire genesis state, and the most recent 'nroots'
+state trees.
+If oldmsgskip is set, messages from before the requested roots are also not included.
 
 
 Perms: read
@@ -383,7 +389,7 @@ Inputs:
 Response: `"Ynl0ZSBhcnJheQ=="`
 
 ### ChainGetBlock
-perm:read
+ChainGetBlock returns the block specified by the given CID.
 
 
 Perms: read
@@ -437,7 +443,7 @@ Response:
 ```
 
 ### ChainGetBlockMessages
-perm:read
+ChainGetBlockMessages returns messages stored in the specified block.
 
 
 Perms: read
@@ -461,7 +467,7 @@ Response:
 ```
 
 ### ChainGetGenesis
-perm:read
+ChainGetGenesis returns the genesis tipset.
 
 
 Perms: read
@@ -478,7 +484,8 @@ Response:
 ```
 
 ### ChainGetMessage
-perm:read
+ChainGetMessage reads a message referenced by the specified CID from the
+chain blockstore.
 
 
 Perms: read
@@ -535,7 +542,8 @@ Response:
 ```
 
 ### ChainGetParentMessages
-perm:read
+ChainGetParentMessages returns messages stored in parent tipset of the
+specified block.
 
 
 Perms: read
@@ -552,7 +560,9 @@ Inputs:
 Response: `null`
 
 ### ChainGetParentReceipts
-perm:read
+ChainGetParentReceipts returns receipts for messages in parent tipset of
+the specified block. The receipts in the list returned is one-to-one with the
+messages returned by a call to ChainGetParentMessages with the same blockCid.
 
 
 Perms: read
@@ -569,7 +579,19 @@ Inputs:
 Response: `null`
 
 ### ChainGetPath
-perm:read
+ChainGetPath returns a set of revert/apply operations needed to get from
+one tipset to another, for example:
+```
+       to
+        ^
+from   tAA
+  ^     ^
+tBA    tAB
+ ^---*--^
+     ^
+    tRR
+```
+Would return `[revert(tBA), apply(tAB), apply(tAA)]`
 
 
 Perms: read
@@ -599,7 +621,7 @@ Inputs:
 Response: `null`
 
 ### ChainGetRandomnessFromBeacon
-perm:read
+ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
 
 
 Perms: read
@@ -624,7 +646,7 @@ Inputs:
 Response: `null`
 
 ### ChainGetRandomnessFromTickets
-perm:read
+ChainGetRandomnessFromTickets is used to sample the chain for randomness.
 
 
 Perms: read
@@ -649,7 +671,7 @@ Inputs:
 Response: `null`
 
 ### ChainGetTipSet
-perm:read
+ChainGetTipSet returns the tipset specified by the given TipSetKey.
 
 
 Perms: read
@@ -678,7 +700,9 @@ Response:
 ```
 
 ### ChainGetTipSetByHeight
-perm:read
+ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
+If there are no blocks at the specified epoch, a tipset at an earlier epoch
+will be returned.
 
 
 Perms: read
@@ -708,7 +732,7 @@ Response:
 ```
 
 ### ChainHasObj
-perm:read
+ChainHasObj checks if a given CID exists in the chain blockstore.
 
 
 Perms: read
@@ -725,7 +749,7 @@ Inputs:
 Response: `true`
 
 ### ChainHead
-perm:read
+ChainHead returns the current head of the chain.
 
 
 Perms: read
@@ -742,7 +766,8 @@ Response:
 ```
 
 ### ChainNotify
-perm:read
+ChainNotify returns channel with chain head updates.
+First message is guaranteed to be of len == 1, and type == 'current'.
 
 
 Perms: read
@@ -752,7 +777,8 @@ Inputs: `null`
 Response: `null`
 
 ### ChainReadObj
-perm:read
+ChainReadObj reads ipld nodes referenced by the specified CID from chain
+blockstore and returns raw bytes.
 
 
 Perms: read
@@ -769,7 +795,7 @@ Inputs:
 Response: `"Ynl0ZSBhcnJheQ=="`
 
 ### ChainSetHead
-perm:admin
+ChainSetHead forcefully sets current chain head. Use with caution.
 
 
 Perms: admin
@@ -791,7 +817,9 @@ Inputs:
 Response: `{}`
 
 ### ChainStatObj
-perm:read
+ChainStatObj returns statistics about the graph referenced by 'obj'.
+If 'base' is also specified, then the returned stat will be a diff
+between the two objects.
 
 
 Perms: read
@@ -817,7 +845,7 @@ Response:
 ```
 
 ### ChainTipSetWeight
-perm:read
+ChainTipSetWeight computes weight for the specified tipset.
 
 
 Perms: read
@@ -844,7 +872,7 @@ retrieval markets as a client
 
 
 ### ClientCalcCommP
-perm:write
+ClientCalcCommP calculates the CommP for a specified file
 
 
 Perms: write
@@ -867,7 +895,7 @@ Response:
 ```
 
 ### ClientCancelDataTransfer
-perm:write
+ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 
 
 Perms: write
@@ -909,7 +937,7 @@ Response:
 ```
 
 ### ClientDealPieceCID
-perm:read
+ClientCalcCommP calculates the CommP and data size of the specified CID
 
 
 Perms: read
@@ -935,7 +963,7 @@ Response:
 ```
 
 ### ClientDealSize
-perm:read
+ClientDealSize calculates real deal data size
 
 
 Perms: read
@@ -958,7 +986,7 @@ Response:
 ```
 
 ### ClientFindData
-perm:read
+ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).
 
 
 Perms: read
@@ -976,7 +1004,7 @@ Inputs:
 Response: `null`
 
 ### ClientGenCar
-perm:write
+ClientGenCar generates a CAR file for the specified file.
 
 
 Perms: write
@@ -995,7 +1023,7 @@ Inputs:
 Response: `{}`
 
 ### ClientGetDealInfo
-perm:read
+ClientGetDealInfo returns the latest information about a given deal.
 
 
 Perms: read
@@ -1058,7 +1086,7 @@ Response:
 ```
 
 ### ClientGetDealStatus
-perm:read
+ClientGetDealStatus returns status given a code
 
 
 Perms: read
@@ -1073,7 +1101,7 @@ Inputs:
 Response: `"string value"`
 
 ### ClientGetDealUpdates
-perm:write
+ClientGetDealUpdates returns the status of updated deals
 
 
 Perms: write
@@ -1129,7 +1157,7 @@ Response:
 ```
 
 ### ClientHasLocal
-perm:write
+ClientHasLocal indicates whether a certain CID is locally stored.
 
 
 Perms: write
@@ -1146,7 +1174,7 @@ Inputs:
 Response: `true`
 
 ### ClientImport
-perm:admin
+ClientImport imports file under the specified path into filestore.
 
 
 Perms: admin
@@ -1172,7 +1200,7 @@ Response:
 ```
 
 ### ClientListDataTransfers
-perm:write
+ClientListTransfers returns the status of all ongoing transfers of data
 
 
 Perms: write
@@ -1182,7 +1210,7 @@ Inputs: `null`
 Response: `null`
 
 ### ClientListDeals
-perm:write
+ClientListDeals returns information about the deals made by the local client.
 
 
 Perms: write
@@ -1192,7 +1220,7 @@ Inputs: `null`
 Response: `null`
 
 ### ClientListImports
-perm:write
+ClientListImports lists imported files and their root CIDs
 
 
 Perms: write
@@ -1202,7 +1230,7 @@ Inputs: `null`
 Response: `null`
 
 ### ClientMinerQueryOffer
-perm:read
+ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
 
 
 Perms: read
@@ -1241,7 +1269,7 @@ Response:
 ```
 
 ### ClientQueryAsk
-perm:read
+ClientQueryAsk returns a signed StorageAsk from the specified miner.
 
 
 Perms: read
@@ -1269,7 +1297,7 @@ Response:
 ```
 
 ### ClientRemoveImport
-perm:admin
+ClientRemoveImport removes file import
 
 
 Perms: admin
@@ -1284,7 +1312,7 @@ Inputs:
 Response: `{}`
 
 ### ClientRestartDataTransfer
-perm:write
+ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 
 
 Perms: write
@@ -1301,7 +1329,7 @@ Inputs:
 Response: `{}`
 
 ### ClientRetrieve
-perm:admin
+ClientRetrieve initiates the retrieval of a file, as specified in the order.
 
 
 Perms: admin
@@ -1337,7 +1365,8 @@ Inputs:
 Response: `{}`
 
 ### ClientRetrieveTryRestartInsufficientFunds
-perm:write
+ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
+which are stuck due to insufficient funds
 
 
 Perms: write
@@ -1352,7 +1381,8 @@ Inputs:
 Response: `{}`
 
 ### ClientRetrieveWithEvents
-perm:admin
+ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
+of status updates.
 
 
 Perms: admin
@@ -1397,7 +1427,7 @@ Response:
 ```
 
 ### ClientStartDeal
-perm:admin
+ClientStartDeal proposes a deal with a miner.
 
 
 Perms: admin
@@ -1433,7 +1463,10 @@ Response: `null`
 
 
 ### CreateBackup
-perm:admin
+CreateBackup creates node backup onder the specified file name. The
+method requires that the lotus daemon is running with the
+LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
+the path specified when calling CreateBackup is within the base path
 
 
 Perms: admin
@@ -1451,7 +1484,7 @@ Response: `{}`
 
 
 ### GasEstimateFeeCap
-perm:read
+GasEstimateFeeCap estimates gas fee cap
 
 
 Perms: read
@@ -1489,7 +1522,8 @@ Inputs:
 Response: `"0"`
 
 ### GasEstimateGasLimit
-perm:read
+GasEstimateGasLimit estimates gas used by the message and returns it.
+It fails if message fails to execute.
 
 
 Perms: read
@@ -1526,7 +1560,8 @@ Inputs:
 Response: `9`
 
 ### GasEstimateGasPremium
-perm:read
+GasEstimateGasPremium estimates what gas price should be used for a
+message to have high likelihood of inclusion in `nblocksincl` epochs.
 
 
 Perms: read
@@ -1551,7 +1586,7 @@ Inputs:
 Response: `"0"`
 
 ### GasEstimateMessageGas
-perm:read
+GasEstimateMessageGas estimates gas values for unset message gas fields
 
 
 Perms: read
@@ -1650,7 +1685,7 @@ Response: `{}`
 
 
 ### MarketAddBalance
-perm:sign
+MarketAddBalance adds funds to the market actor
 
 
 Perms: sign
@@ -1672,7 +1707,7 @@ Response:
 ```
 
 ### MarketGetReserved
-perm:sign
+MarketGetReserved gets the amount of funds that are currently reserved for the address
 
 
 Perms: sign
@@ -1687,7 +1722,7 @@ Inputs:
 Response: `"0"`
 
 ### MarketReleaseFunds
-perm:sign
+MarketReleaseFunds releases funds reserved by MarketReserveFunds
 
 
 Perms: sign
@@ -1703,7 +1738,7 @@ Inputs:
 Response: `{}`
 
 ### MarketReserveFunds
-perm:sign
+MarketReserveFunds reserves funds for a deal
 
 
 Perms: sign
@@ -1725,7 +1760,7 @@ Response:
 ```
 
 ### MarketWithdraw
-perm:sign
+MarketWithdraw withdraws unlocked funds from the market actor
 
 
 Perms: sign
@@ -1828,8 +1863,7 @@ Response:
 ```
 
 ### MinerGetBaseInfo
-perm:read
-
+There are not yet any comments for this method.
 
 Perms: read
 
@@ -1872,7 +1906,7 @@ manages all incoming and outgoing 'messages' going over the network.
 
 
 ### MpoolBatchPush
-perm:write
+MpoolBatchPush batch pushes a signed message to mempool.
 
 
 Perms: write
@@ -1887,7 +1921,7 @@ Inputs:
 Response: `null`
 
 ### MpoolBatchPushMessage
-perm:sign
+MpoolBatchPushMessage batch pushes a unsigned message to mempool.
 
 
 Perms: sign
@@ -1905,7 +1939,7 @@ Inputs:
 Response: `null`
 
 ### MpoolBatchPushUntrusted
-perm:write
+MpoolBatchPushUntrusted batch pushes a signed message to mempool from untrusted sources.
 
 
 Perms: write
@@ -1920,7 +1954,7 @@ Inputs:
 Response: `null`
 
 ### MpoolClear
-perm:write
+MpoolClear clears pending messages from the mpool
 
 
 Perms: write
@@ -1935,7 +1969,7 @@ Inputs:
 Response: `{}`
 
 ### MpoolGetConfig
-perm:read
+MpoolGetConfig returns (a copy of) the current mpool config
 
 
 Perms: read
@@ -1955,7 +1989,8 @@ Response:
 ```
 
 ### MpoolGetNonce
-perm:read
+MpoolGetNonce gets next nonce for the specified sender.
+Note that this method may not be atomic. Use MpoolPushMessage instead.
 
 
 Perms: read
@@ -1970,7 +2005,7 @@ Inputs:
 Response: `42`
 
 ### MpoolPending
-perm:read
+MpoolPending returns pending mempool messages.
 
 
 Perms: read
@@ -1992,7 +2027,7 @@ Inputs:
 Response: `null`
 
 ### MpoolPush
-perm:write
+MpoolPush pushes a signed message to mempool.
 
 
 Perms: write
@@ -2035,7 +2070,12 @@ Response:
 ```
 
 ### MpoolPushMessage
-perm:sign
+MpoolPushMessage atomically assigns a nonce, signs, and pushes a message
+to mempool.
+maxFee is only used when GasFeeCap/GasPremium fields aren't specified
+
+When maxFee is set to 0, MpoolPushMessage will guess appropriate fee
+based on current chain conditions
 
 
 Perms: sign
@@ -2093,7 +2133,7 @@ Response:
 ```
 
 ### MpoolPushUntrusted
-perm:write
+MpoolPushUntrusted pushes a signed message to mempool from untrusted sources.
 
 
 Perms: write
@@ -2136,7 +2176,7 @@ Response:
 ```
 
 ### MpoolSelect
-perm:read
+MpoolSelect returns a list of pending messages for inclusion in the next block
 
 
 Perms: read
@@ -2159,7 +2199,7 @@ Inputs:
 Response: `null`
 
 ### MpoolSetConfig
-perm:admin
+MpoolSetConfig sets the mpool config to (a copy of) the supplied config
 
 
 Perms: admin
@@ -2225,7 +2265,9 @@ filecoin network
 
 
 ### MsigAddApprove
-perm:sign
+MsigAddApprove approves a previously proposed AddSigner message
+It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
+<proposer address>, <new signer>, <whether the number of required signers should be increased>
 
 
 Perms: sign
@@ -2250,7 +2292,9 @@ Response:
 ```
 
 ### MsigAddCancel
-perm:sign
+MsigAddCancel cancels a previously proposed AddSigner message
+It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
+<new signer>, <whether the number of required signers should be increased>
 
 
 Perms: sign
@@ -2274,7 +2318,9 @@ Response:
 ```
 
 ### MsigAddPropose
-perm:sign
+MsigAddPropose proposes adding a signer in the multisig
+It takes the following params: <multisig address>, <sender address of the propose msg>,
+<new signer>, <whether the number of required signers should be increased>
 
 
 Perms: sign
@@ -2297,7 +2343,8 @@ Response:
 ```
 
 ### MsigApprove
-perm:sign
+MsigApprove approves a previously-proposed multisig message by transaction ID
+It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
 
 
 Perms: sign
@@ -2319,7 +2366,12 @@ Response:
 ```
 
 ### MsigApproveTxnHash
-perm:sign
+MsigApproveTxnHash approves a previously-proposed multisig message, specified
+using both transaction ID and a hash of the parameters used in the
+proposal. This method of approval can be used to ensure you only approve
+exactly the transaction you think you are.
+It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
+<sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
 
 
 Perms: sign
@@ -2346,7 +2398,9 @@ Response:
 ```
 
 ### MsigCancel
-perm:sign
+MsigCancel cancels a previously-proposed multisig message
+It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
+<sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 
 
 Perms: sign
@@ -2372,7 +2426,9 @@ Response:
 ```
 
 ### MsigCreate
-perm:sign
+MsigCreate creates a multisig wallet
+It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
+<initial balance>, <sender address of the create msg>, <gas price>
 
 
 Perms: sign
@@ -2397,7 +2453,7 @@ Response:
 ```
 
 ### MsigGetAvailableBalance
-perm:read
+MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
 
 
 Perms: read
@@ -2420,7 +2476,9 @@ Inputs:
 Response: `"0"`
 
 ### MsigGetPending
-perm:read
+MsigGetPending returns pending transactions for the given multisig
+wallet. Once pending transactions are fully approved, they will no longer
+appear here.
 
 
 Perms: read
@@ -2443,7 +2501,8 @@ Inputs:
 Response: `null`
 
 ### MsigGetVested
-perm:read
+MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.
+It takes the following params: <multisig address>, <start epoch>, <end epoch>
 
 
 Perms: read
@@ -2474,7 +2533,7 @@ Inputs:
 Response: `"0"`
 
 ### MsigGetVestingSchedule
-perm:read
+MsigGetVestingSchedule returns the vesting details of a given multisig.
 
 
 Perms: read
@@ -2504,7 +2563,9 @@ Response:
 ```
 
 ### MsigPropose
-perm:sign
+MsigPropose proposes a multisig message
+It takes the following params: <multisig address>, <recipient address>, <value to transfer>,
+<sender address of the propose msg>, <method to call in the proposed message>, <params to include in the proposed message>
 
 
 Perms: sign
@@ -2529,7 +2590,11 @@ Response:
 ```
 
 ### MsigRemoveSigner
-perm:sign
+MsigRemoveSigner proposes the removal of a signer from the multisig.
+It accepts the multisig to make the change on, the proposer address to
+send the message from, the address to be removed, and a boolean
+indicating whether or not the signing threshold should be lowered by one
+along with the address removal.
 
 
 Perms: sign
@@ -2552,7 +2617,9 @@ Response:
 ```
 
 ### MsigSwapApprove
-perm:sign
+MsigSwapApprove approves a previously proposed SwapSigner
+It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
+<proposer address>, <old signer>, <new signer>
 
 
 Perms: sign
@@ -2577,7 +2644,9 @@ Response:
 ```
 
 ### MsigSwapCancel
-perm:sign
+MsigSwapCancel cancels a previously proposed SwapSigner message
+It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
+<old signer>, <new signer>
 
 
 Perms: sign
@@ -2601,7 +2670,9 @@ Response:
 ```
 
 ### MsigSwapPropose
-perm:sign
+MsigSwapPropose proposes swapping 2 signers in the multisig
+It takes the following params: <multisig address>, <sender address of the propose msg>,
+<old signer>, <new signer>
 
 
 Perms: sign
@@ -2987,8 +3058,7 @@ Response:
 ```
 
 ### PaychGet
-perm:sign
-
+There are not yet any comments for this method.
 
 Perms: sign
 
@@ -3320,7 +3390,7 @@ A nil TipSetKey can be provided as a param, this will cause the heaviest tipset 
 
 
 ### StateAccountKey
-perm:read
+StateAccountKey returns the public key address of the given ID address
 
 
 Perms: read
@@ -3343,7 +3413,7 @@ Inputs:
 Response: `"f01234"`
 
 ### StateAllMinerFaults
-perm:read
+StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
 
 
 Perms: read
@@ -3366,7 +3436,11 @@ Inputs:
 Response: `null`
 
 ### StateCall
-perm:read
+StateCall runs the given message and returns its result without any persisted changes.
+
+StateCall applies the message to the tipset's parent state. The
+message is not applied on-top-of the messages in the passed-in
+tipset.
 
 
 Perms: read
@@ -3470,7 +3544,8 @@ Response:
 ```
 
 ### StateChangedActors
-perm:read
+StateChangedActors returns all the actors whose states change between the two given state CIDs
+TODO: Should this take tipset keys instead?
 
 
 Perms: read
@@ -3504,7 +3579,8 @@ Response:
 ```
 
 ### StateCirculatingSupply
-perm:read
+StateCirculatingSupply returns the exact circulating supply of Filecoin at the given tipset.
+This is not used anywhere in the protocol itself, and is only for external consumption.
 
 
 Perms: read
@@ -3526,7 +3602,8 @@ Inputs:
 Response: `"0"`
 
 ### StateCompute
-perm:read
+StateCompute is a flexible command that applies the given messages on the given tipset.
+The messages are run as though the VM were at the provided height.
 
 
 Perms: read
@@ -3558,7 +3635,8 @@ Response:
 ```
 
 ### StateDealProviderCollateralBounds
-perm:read
+StateDealProviderCollateralBounds returns the min and max collateral a storage provider
+can issue. It takes the deal size and verified status as parameters.
 
 
 Perms: read
@@ -3588,7 +3666,7 @@ Response:
 ```
 
 ### StateDecodeParams
-perm:read
+StateDecodeParams attempts to decode the provided params, based on the recipient actor address and method number.
 
 
 Perms: read
@@ -3613,7 +3691,7 @@ Inputs:
 Response: `{}`
 
 ### StateGetActor
-perm:read
+StateGetActor returns the indicated actor's nonce and balance.
 
 
 Perms: read
@@ -3648,7 +3726,15 @@ Response:
 ```
 
 ### StateGetReceipt
-perm:read
+StateGetReceipt returns the message receipt for the given message or for a
+matching gas-repriced replacing message
+
+NOTE: If the requested message was replaced, this method will return the receipt
+for the replacing message - if the caller needs the receipt for exactly the
+requested message, use StateSearchMsg().Receipt, and check that MsgLookup.Message
+is matching the requseted CID
+
+DEPRECATED: Use StateSearchMsg, this method won't be supported in v1 API
 
 
 Perms: read
@@ -3680,7 +3766,7 @@ Response:
 ```
 
 ### StateListActors
-perm:read
+StateListActors returns the addresses of every actor in the state
 
 
 Perms: read
@@ -3702,7 +3788,7 @@ Inputs:
 Response: `null`
 
 ### StateListMessages
-perm:read
+StateListMessages looks back and returns all messages with a matching to or from address, stopping at the given height.
 
 
 Perms: read
@@ -3729,7 +3815,7 @@ Inputs:
 Response: `null`
 
 ### StateListMiners
-perm:read
+StateListMiners returns the addresses of every miner that has claimed power in the Power Actor
 
 
 Perms: read
@@ -3751,7 +3837,7 @@ Inputs:
 Response: `null`
 
 ### StateLookupID
-perm:read
+StateLookupID retrieves the ID address of the given address
 
 
 Perms: read
@@ -3774,7 +3860,7 @@ Inputs:
 Response: `"f01234"`
 
 ### StateMarketBalance
-perm:read
+StateMarketBalance looks up the Escrow and Locked balances of the given address in the Storage Market
 
 
 Perms: read
@@ -3803,7 +3889,7 @@ Response:
 ```
 
 ### StateMarketDeals
-perm:read
+StateMarketDeals returns information about every deal in the Storage Market
 
 
 Perms: read
@@ -3851,7 +3937,7 @@ Response:
 ```
 
 ### StateMarketParticipants
-perm:read
+StateMarketParticipants returns the Escrow and Locked balances of every participant in the Storage Market
 
 
 Perms: read
@@ -3881,7 +3967,7 @@ Response:
 ```
 
 ### StateMarketStorageDeal
-perm:read
+StateMarketStorageDeal returns information about the indicated deal
 
 
 Perms: read
@@ -3928,7 +4014,7 @@ Response:
 ```
 
 ### StateMinerActiveSectors
-perm:read
+StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
 
 
 Perms: read
@@ -3951,7 +4037,7 @@ Inputs:
 Response: `null`
 
 ### StateMinerAvailableBalance
-perm:read
+StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 
 
 Perms: read
@@ -3974,7 +4060,7 @@ Inputs:
 Response: `"0"`
 
 ### StateMinerDeadlines
-perm:read
+StateMinerDeadlines returns all the proving deadlines for the given miner
 
 
 Perms: read
@@ -3997,7 +4083,7 @@ Inputs:
 Response: `null`
 
 ### StateMinerFaults
-perm:read
+StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
 
 
 Perms: read
@@ -4026,7 +4112,7 @@ Response:
 ```
 
 ### StateMinerInfo
-perm:read
+StateMinerInfo returns info about the indicated miner
 
 
 Perms: read
@@ -4064,7 +4150,7 @@ Response:
 ```
 
 ### StateMinerInitialPledgeCollateral
-perm:read
+StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
 
 
 Perms: read
@@ -4101,7 +4187,7 @@ Inputs:
 Response: `"0"`
 
 ### StateMinerPartitions
-perm:read
+StateMinerPartitions returns all partitions in the specified deadline
 
 
 Perms: read
@@ -4125,7 +4211,7 @@ Inputs:
 Response: `null`
 
 ### StateMinerPower
-perm:read
+StateMinerPower returns the power of the indicated miner
 
 
 Perms: read
@@ -4161,7 +4247,7 @@ Response:
 ```
 
 ### StateMinerPreCommitDepositForPower
-perm:read
+StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
 
 
 Perms: read
@@ -4198,7 +4284,8 @@ Inputs:
 Response: `"0"`
 
 ### StateMinerProvingDeadline
-perm:read
+StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
+and returns the deadline-related calculations.
 
 
 Perms: read
@@ -4237,7 +4324,7 @@ Response:
 ```
 
 ### StateMinerRecoveries
-perm:read
+StateMinerRecoveries returns a bitfield indicating the recovering sectors of the given miner
 
 
 Perms: read
@@ -4266,7 +4353,7 @@ Response:
 ```
 
 ### StateMinerSectorAllocated
-perm:read
+StateMinerSectorAllocated checks if a sector is allocated
 
 
 Perms: read
@@ -4290,7 +4377,7 @@ Inputs:
 Response: `true`
 
 ### StateMinerSectorCount
-perm:read
+StateMinerSectorCount returns the number of sectors in a miner's sector set and proving set
 
 
 Perms: read
@@ -4320,7 +4407,7 @@ Response:
 ```
 
 ### StateMinerSectors
-perm:read
+StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
 
 
 Perms: read
@@ -4346,7 +4433,7 @@ Inputs:
 Response: `null`
 
 ### StateNetworkName
-perm:read
+StateNetworkName returns the name of the network the node is synced to
 
 
 Perms: read
@@ -4356,7 +4443,7 @@ Inputs: `null`
 Response: `"lotus"`
 
 ### StateNetworkVersion
-perm:read
+StateNetworkVersion returns the network version at the given tipset
 
 
 Perms: read
@@ -4378,7 +4465,7 @@ Inputs:
 Response: `9`
 
 ### StateReadState
-perm:read
+StateReadState returns the indicated actor's state.
 
 
 Perms: read
@@ -4410,7 +4497,8 @@ Response:
 ```
 
 ### StateReplay
-perm:read
+StateReplay replays a given message, assuming it was included in a block in the specified tipset.
+If no tipset key is provided, the appropriate tipset is looked up.
 
 
 Perms: read
@@ -4502,7 +4590,21 @@ Response:
 ```
 
 ### StateSearchMsg
-perm:read
+StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4541,7 +4643,21 @@ Response:
 ```
 
 ### StateSearchMsgLimited
-perm:read
+StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4581,7 +4697,7 @@ Response:
 ```
 
 ### StateSectorExpiration
-perm:read
+StateSectorExpiration returns epoch at which given sector will expire
 
 
 Perms: read
@@ -4611,7 +4727,9 @@ Response:
 ```
 
 ### StateSectorGetInfo
-perm:read
+StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
+NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
+expiration epoch
 
 
 Perms: read
@@ -4652,7 +4770,7 @@ Response:
 ```
 
 ### StateSectorPartition
-perm:read
+StateSectorPartition finds deadline/partition with the specified sector
 
 
 Perms: read
@@ -4682,7 +4800,7 @@ Response:
 ```
 
 ### StateSectorPreCommitInfo
-perm:read
+StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
 
 
 Perms: read
@@ -4728,7 +4846,8 @@ Response:
 ```
 
 ### StateVMCirculatingSupplyInternal
-perm:read
+StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
+This is the value reported by the runtime interface to actors code.
 
 
 Perms: read
@@ -4759,7 +4878,9 @@ Response:
 ```
 
 ### StateVerifiedClientStatus
-perm:read
+StateVerifiedClientStatus returns the data cap for the given address.
+Returns nil if there is no entry in the data cap table for the
+address.
 
 
 Perms: read
@@ -4782,7 +4903,7 @@ Inputs:
 Response: `"0"`
 
 ### StateVerifiedRegistryRootKey
-perm:read
+StateVerifiedClientStatus returns the address of the Verified Registry's root key
 
 
 Perms: read
@@ -4804,7 +4925,9 @@ Inputs:
 Response: `"f01234"`
 
 ### StateVerifierStatus
-perm:read
+StateVerifierStatus returns the data cap for the given address.
+Returns nil if there is no entry in the data cap table for the
+address.
 
 
 Perms: read
@@ -4827,7 +4950,22 @@ Inputs:
 Response: `"0"`
 
 ### StateWaitMsg
-perm:read
+StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
+message arrives on chain, and gets to the indicated confidence depth.
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4867,7 +5005,23 @@ Response:
 ```
 
 ### StateWaitMsgLimited
-perm:read
+StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
+If not found, it blocks until the message arrives on chain, and gets to the
+indicated confidence depth.
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4913,7 +5067,8 @@ observing the lotus sync service.
 
 
 ### SyncCheckBad
-perm:read
+SyncCheckBad checks if a block was marked as bad, and if it was, returns
+the reason.
 
 
 Perms: read
@@ -4930,7 +5085,7 @@ Inputs:
 Response: `"string value"`
 
 ### SyncCheckpoint
-perm:admin
+SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
 
 
 Perms: admin
@@ -4952,7 +5107,8 @@ Inputs:
 Response: `{}`
 
 ### SyncIncomingBlocks
-perm:read
+SyncIncomingBlocks returns a channel streaming incoming, potentially not
+yet synced block headers.
 
 
 Perms: read
@@ -4999,7 +5155,8 @@ Response:
 ```
 
 ### SyncMarkBad
-perm:admin
+SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.
+Use with extreme caution.
 
 
 Perms: admin
@@ -5016,7 +5173,7 @@ Inputs:
 Response: `{}`
 
 ### SyncState
-perm:read
+SyncState returns the current status of the lotus sync system.
 
 
 Perms: read
@@ -5032,7 +5189,8 @@ Response:
 ```
 
 ### SyncSubmitBlock
-perm:write
+SyncSubmitBlock can be used to submit a newly created block to the.
+network through this node
 
 
 Perms: write
@@ -5085,7 +5243,7 @@ Inputs:
 Response: `{}`
 
 ### SyncUnmarkAllBad
-perm:admin
+SyncUnmarkAllBad purges bad block cache, making it possible to sync to chains previously marked as bad
 
 
 Perms: admin
@@ -5095,7 +5253,7 @@ Inputs: `null`
 Response: `{}`
 
 ### SyncUnmarkBad
-perm:admin
+SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
 
 
 Perms: admin
@@ -5112,7 +5270,7 @@ Inputs:
 Response: `{}`
 
 ### SyncValidateTipset
-perm:read
+SyncValidateTipset indicates whether the provided tipset is valid or not
 
 
 Perms: read
@@ -5137,7 +5295,7 @@ Response: `true`
 
 
 ### WalletBalance
-perm:read
+WalletBalance returns the balance of the given address at the current head of the chain.
 
 
 Perms: read
@@ -5152,7 +5310,7 @@ Inputs:
 Response: `"0"`
 
 ### WalletDefaultAddress
-perm:write
+WalletDefaultAddress returns the address marked as default in the wallet.
 
 
 Perms: write
@@ -5162,7 +5320,7 @@ Inputs: `null`
 Response: `"f01234"`
 
 ### WalletDelete
-perm:admin
+WalletDelete deletes an address from the wallet.
 
 
 Perms: admin
@@ -5177,7 +5335,7 @@ Inputs:
 Response: `{}`
 
 ### WalletExport
-perm:admin
+WalletExport returns the private key of an address in the wallet.
 
 
 Perms: admin
@@ -5198,7 +5356,7 @@ Response:
 ```
 
 ### WalletHas
-perm:write
+WalletHas indicates whether the given address is in the wallet.
 
 
 Perms: write
@@ -5213,7 +5371,7 @@ Inputs:
 Response: `true`
 
 ### WalletImport
-perm:admin
+WalletImport receives a KeyInfo, which includes a private key, and imports it into the wallet.
 
 
 Perms: admin
@@ -5231,7 +5389,7 @@ Inputs:
 Response: `"f01234"`
 
 ### WalletList
-perm:write
+WalletList lists all the addresses in the wallet.
 
 
 Perms: write
@@ -5241,7 +5399,9 @@ Inputs: `null`
 Response: `null`
 
 ### WalletNew
-perm:write
+WalletNew creates a new address in the wallet with the given sigType.
+Available key types: bls, secp256k1, secp256k1-ledger
+Support for numerical types: 1 - secp256k1, 2 - BLS is deprecated
 
 
 Perms: write
@@ -5256,7 +5416,7 @@ Inputs:
 Response: `"f01234"`
 
 ### WalletSetDefault
-perm:write
+WalletSetDefault marks the given address as as the default one.
 
 
 Perms: write
@@ -5271,7 +5431,7 @@ Inputs:
 Response: `{}`
 
 ### WalletSign
-perm:sign
+WalletSign signs the given bytes using the given address.
 
 
 Perms: sign
@@ -5293,7 +5453,7 @@ Response:
 ```
 
 ### WalletSignMessage
-perm:sign
+WalletSignMessage signs the given message using the given address.
 
 
 Perms: sign
@@ -5349,7 +5509,7 @@ Response:
 ```
 
 ### WalletValidateAddress
-perm:read
+WalletValidateAddress validates whether a given string can be decoded as a well-formed address
 
 
 Perms: read
@@ -5364,7 +5524,8 @@ Inputs:
 Response: `"f01234"`
 
 ### WalletVerify
-perm:read
+WalletVerify takes an address, a signature, and some bytes, and indicates whether the signature is valid.
+The address does not have to be in the wallet.
 
 
 Perms: read

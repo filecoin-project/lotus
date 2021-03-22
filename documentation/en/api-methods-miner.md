@@ -303,7 +303,10 @@ Response:
 
 
 ### CreateBackup
-perm:admin
+CreateBackup creates node backup onder the specified file name. The
+method requires that the lotus-miner is running with the
+LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
+the path specified when calling CreateBackup is within the base path
 
 
 Perms: admin
@@ -566,7 +569,7 @@ Response: `{}`
 
 
 ### MarketCancelDataTransfer
-perm:write
+MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 
 
 Perms: write
@@ -805,7 +808,7 @@ Inputs: `null`
 Response: `{}`
 
 ### MarketRestartDataTransfer
-perm:write
+MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 
 
 Perms: write
@@ -1226,7 +1229,7 @@ Response: `null`
 
 
 ### PledgeSector
-perm:write
+Temp api for testing
 
 
 Perms: write
@@ -1245,7 +1248,7 @@ Response:
 
 
 ### ReturnAddPiece
-perm:admin retry:true
+storiface.WorkerReturn
 
 
 Perms: admin
@@ -1562,7 +1565,7 @@ Inputs:
 Response: `{}`
 
 ### SealingSchedDiag
-perm:admin
+SealingSchedDiag dumps internal sealing scheduler state
 
 
 Perms: admin
@@ -1580,7 +1583,7 @@ Response: `{}`
 
 
 ### SectorGetExpectedSealDuration
-perm:read
+SectorGetExpectedSealDuration gets the expected time for a sector to seal
 
 
 Perms: read
@@ -1590,7 +1593,8 @@ Inputs: `null`
 Response: `60000000000`
 
 ### SectorGetSealDelay
-perm:read
+SectorGetSealDelay gets the time that a newly-created sector
+waits for more deals before it starts sealing
 
 
 Perms: read
@@ -1615,7 +1619,8 @@ Inputs:
 Response: `{}`
 
 ### SectorRemove
-perm:admin
+SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
+be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
 
 
 Perms: admin
@@ -1630,7 +1635,7 @@ Inputs:
 Response: `{}`
 
 ### SectorSetExpectedSealDuration
-perm:write
+SectorSetExpectedSealDuration sets the expected time for a sector to seal
 
 
 Perms: write
@@ -1645,7 +1650,8 @@ Inputs:
 Response: `{}`
 
 ### SectorSetSealDelay
-perm:write
+SectorSetSealDelay sets the time that a newly-created sector
+waits for more deals before it starts sealing
 
 
 Perms: write
@@ -1660,7 +1666,8 @@ Inputs:
 Response: `{}`
 
 ### SectorStartSealing
-perm:write
+SectorStartSealing can be called on sectors in Empty or WaitDeals states
+to trigger sealing early
 
 
 Perms: write
@@ -1675,7 +1682,8 @@ Inputs:
 Response: `{}`
 
 ### SectorTerminate
-perm:admin
+SectorTerminate terminates the sector on-chain (adding it to a termination batch first), then
+automatically removes it from storage
 
 
 Perms: admin
@@ -1690,7 +1698,8 @@ Inputs:
 Response: `{}`
 
 ### SectorTerminateFlush
-perm:admin
+SectorTerminateFlush immediately sends a terminate message with sectors batched for termination.
+Returns null if message wasn't sent
 
 
 Perms: admin
@@ -1700,7 +1709,7 @@ Inputs: `null`
 Response: `null`
 
 ### SectorTerminatePending
-perm:admin
+SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
 
 
 Perms: admin
@@ -1713,7 +1722,7 @@ Response: `null`
 
 
 ### SectorsList
-perm:read
+List all staged sectors
 
 
 Perms: read
@@ -1729,7 +1738,7 @@ Response:
 ```
 
 ### SectorsListInStates
-perm:read
+List sectors in particular states
 
 
 Perms: read
@@ -1771,7 +1780,7 @@ Response:
 ```
 
 ### SectorsStatus
-perm:read
+Get the status of a given sector by ID
 
 
 Perms: read
@@ -1819,7 +1828,7 @@ Response:
 ```
 
 ### SectorsSummary
-perm:read
+Get summary info of sectors
 
 
 Perms: read
@@ -1868,7 +1877,7 @@ Inputs:
 Response: `{}`
 
 ### StorageAttach
-perm:admin
+stores.SectorIndex
 
 
 Perms: admin
@@ -2132,7 +2141,7 @@ Response: `true`
 
 
 ### WorkerConnect
-perm:admin retry:true
+WorkerConnect tells the node to connect to workers RPC
 
 
 Perms: admin

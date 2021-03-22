@@ -115,7 +115,7 @@ Inputs: `null`
 Response: `null`
 
 ### Remove
-perm:admin
+Storage / Other
 
 
 Perms: admin
@@ -133,7 +133,7 @@ Inputs:
 Response: `{}`
 
 ### Session
-perm:admin
+Like ProcessSession, but returns an error when worker is disabled
 
 
 Perms: admin
@@ -156,7 +156,7 @@ Response: `65792`
 
 
 ### AddPiece
-perm:admin
+storiface.WorkerCalls
 
 
 Perms: admin
@@ -260,7 +260,8 @@ Response:
 
 
 ### ProcessSession
-perm:admin
+returns a random UUID of worker session, generated randomly when worker
+process starts
 
 
 Perms: admin
@@ -481,7 +482,8 @@ Response:
 
 
 ### SetEnabled
-perm:admin
+SetEnabled marks the worker as enabled/disabled. Not that this setting
+may take a few seconds to propagate to task scheduler
 
 
 Perms: admin
@@ -547,7 +549,7 @@ Inputs:
 Response: `{}`
 
 ### TaskTypes
-perm:admin
+TaskType -> Weight
 
 
 Perms: admin
@@ -604,7 +606,7 @@ Response:
 
 
 ### WaitQuiet
-perm:admin
+WaitQuiet blocks until there are no tasks running
 
 
 Perms: admin
