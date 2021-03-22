@@ -5,13 +5,14 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"golang.org/x/xerrors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 	"unicode"
+
+	"golang.org/x/xerrors"
 )
 
 type methodMeta struct {
