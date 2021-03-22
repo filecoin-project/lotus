@@ -1666,7 +1666,7 @@ Response: `{}`
 
 
 ### MarketAddBalance
-MarketAddBalance adds funds to the market actor
+INVERT
 
 
 Perms: sign
@@ -1719,7 +1719,7 @@ Inputs:
 Response: `{}`
 
 ### MarketReserveFunds
-MarketReserveFunds reserves funds for a deal
+INVERT
 
 
 Perms: sign
@@ -1741,7 +1741,7 @@ Response:
 ```
 
 ### MarketWithdraw
-MarketWithdraw withdraws unlocked funds from the market actor
+INVERT
 
 
 Perms: sign
@@ -2274,9 +2274,7 @@ filecoin network
 
 
 ### MsigAddApprove
-MsigAddApprove approves a previously proposed AddSigner message
-It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
-<proposer address>, <new signer>, <whether the number of required signers should be increased>
+INVERT
 
 
 Perms: sign
@@ -2301,9 +2299,7 @@ Response:
 ```
 
 ### MsigAddCancel
-MsigAddCancel cancels a previously proposed AddSigner message
-It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
-<new signer>, <whether the number of required signers should be increased>
+INVERT
 
 
 Perms: sign
@@ -2327,9 +2323,7 @@ Response:
 ```
 
 ### MsigAddPropose
-MsigAddPropose proposes adding a signer in the multisig
-It takes the following params: <multisig address>, <sender address of the propose msg>,
-<new signer>, <whether the number of required signers should be increased>
+INVERT
 
 
 Perms: sign
@@ -2352,8 +2346,7 @@ Response:
 ```
 
 ### MsigApprove
-MsigApprove approves a previously-proposed multisig message by transaction ID
-It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
+INVERT
 
 
 Perms: sign
@@ -2375,12 +2368,7 @@ Response:
 ```
 
 ### MsigApproveTxnHash
-MsigApproveTxnHash approves a previously-proposed multisig message, specified
-using both transaction ID and a hash of the parameters used in the
-proposal. This method of approval can be used to ensure you only approve
-exactly the transaction you think you are.
-It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
-<sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
+INVERT
 
 
 Perms: sign
@@ -2407,9 +2395,7 @@ Response:
 ```
 
 ### MsigCancel
-MsigCancel cancels a previously-proposed multisig message
-It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
-<sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
+INVERT
 
 
 Perms: sign
@@ -2435,9 +2421,7 @@ Response:
 ```
 
 ### MsigCreate
-MsigCreate creates a multisig wallet
-It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
-<initial balance>, <sender address of the create msg>, <gas price>
+INVERT
 
 
 Perms: sign
@@ -2572,9 +2556,7 @@ Response:
 ```
 
 ### MsigPropose
-MsigPropose proposes a multisig message
-It takes the following params: <multisig address>, <recipient address>, <value to transfer>,
-<sender address of the propose msg>, <method to call in the proposed message>, <params to include in the proposed message>
+INVERT
 
 
 Perms: sign
@@ -2599,11 +2581,7 @@ Response:
 ```
 
 ### MsigRemoveSigner
-MsigRemoveSigner proposes the removal of a signer from the multisig.
-It accepts the multisig to make the change on, the proposer address to
-send the message from, the address to be removed, and a boolean
-indicating whether or not the signing threshold should be lowered by one
-along with the address removal.
+INVERT
 
 
 Perms: sign
@@ -2626,9 +2604,7 @@ Response:
 ```
 
 ### MsigSwapApprove
-MsigSwapApprove approves a previously proposed SwapSigner
-It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
-<proposer address>, <old signer>, <new signer>
+INVERT
 
 
 Perms: sign
@@ -2653,9 +2629,7 @@ Response:
 ```
 
 ### MsigSwapCancel
-MsigSwapCancel cancels a previously proposed SwapSigner message
-It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
-<old signer>, <new signer>
+INVERT
 
 
 Perms: sign
@@ -2679,9 +2653,7 @@ Response:
 ```
 
 ### MsigSwapPropose
-MsigSwapPropose proposes swapping 2 signers in the multisig
-It takes the following params: <multisig address>, <sender address of the propose msg>,
-<old signer>, <new signer>
+INVERT
 
 
 Perms: sign
@@ -3078,7 +3050,8 @@ Response:
 ```
 
 ### PaychCollect
-There are not yet any comments for this method.
+INVERT
+
 
 Perms: sign
 
@@ -3171,7 +3144,8 @@ Response:
 ```
 
 ### PaychSettle
-There are not yet any comments for this method.
+INVERT
+
 
 Perms: sign
 
@@ -3371,7 +3345,8 @@ Inputs:
 Response: `null`
 
 ### PaychVoucherSubmit
-There are not yet any comments for this method.
+INVERT
+
 
 Perms: sign
 
