@@ -75,9 +75,90 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 	balances := make(map[address.Address]big.Int)
 
 	for _, m := range msgs {
-		// basic syntactic checks
-		// 1. Serialization
+		// pre-check: actor nonce
 		check := api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageGetStateNonce,
+			},
+		}
+
+		st, ok := state[m.From]
+		if !ok {
+			mp.lk.Lock()
+			mset, ok := mp.pending[m.From]
+			if ok && !interned {
+				st = &actorState{nextNonce: mset.nextNonce, requiredFunds: mset.requiredFunds}
+				for _, m := range mset.msgs {
+					st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.Message.Value.Int)
+				}
+				state[m.From] = st
+				mp.lk.Unlock()
+
+				check.OK = true
+				check.Hint = map[string]interface{}{
+					"nonce": st.nextNonce,
+				}
+			} else {
+				mp.lk.Unlock()
+
+				stateNonce, err := mp.getStateNonce(m.From, curTs)
+				if err != nil {
+					check.OK = false
+					check.Err = fmt.Sprintf("error retrieving state nonce: %s", err.Error())
+				} else {
+					check.OK = true
+					check.Hint = map[string]interface{}{
+						"nonce": stateNonce,
+					}
+				}
+
+				st = &actorState{nextNonce: stateNonce, requiredFunds: new(stdbig.Int)}
+				state[m.From] = st
+			}
+		}
+
+		result = append(result, check)
+		if !check.OK {
+			continue
+		}
+
+		// pre-check: actor balance
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageGetStateBalance,
+			},
+		}
+
+		balance, ok := balances[m.From]
+		if !ok {
+			balance, err = mp.getStateBalance(m.From, curTs)
+			if err != nil {
+				check.OK = false
+				check.Err = fmt.Sprintf("error retrieving state balance: %s", err)
+			} else {
+				check.OK = true
+				check.Hint = map[string]interface{}{
+					"balance": balance,
+				}
+			}
+
+			balances[m.From] = balance
+		} else {
+			check.OK = true
+			check.Hint = map[string]interface{}{
+				"balance": balance,
+			}
+		}
+
+		result = append(result, check)
+		if !check.OK {
+			continue
+		}
+
+		// 1. Serialization
+		check = api.MessageCheckStatus{
 			Cid: m.Cid(),
 			CheckStatus: api.CheckStatus{
 				Code: api.CheckStatusMessageSerialize,
@@ -241,50 +322,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 
 		// stateful checks
 	checkState:
-		st, ok := state[m.From]
-		if !ok {
-			mp.lk.Lock()
-			mset, ok := mp.pending[m.From]
-			if ok && !interned {
-				st = &actorState{nextNonce: mset.nextNonce, requiredFunds: mset.requiredFunds}
-				for _, m := range mset.msgs {
-					st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.Message.Value.Int)
-				}
-				state[m.From] = st
-				mp.lk.Unlock()
-			} else {
-				mp.lk.Unlock()
-
-				// 9. GetStateNonce
-				check = api.MessageCheckStatus{
-					Cid: m.Cid(),
-					CheckStatus: api.CheckStatus{
-						Code: api.CheckStatusMessageGetStateNonce,
-					},
-				}
-
-				stateNonce, err := mp.getStateNonce(m.From, curTs)
-				if err != nil {
-					check.OK = false
-					check.Err = fmt.Sprintf("error retrieving state nonce: %s", err.Error())
-				} else {
-					check.OK = true
-					check.Hint = map[string]interface{}{
-						"nonce": stateNonce,
-					}
-				}
-
-				result = append(result, check)
-				if !check.OK {
-					continue
-				}
-
-				st = &actorState{nextNonce: stateNonce, requiredFunds: new(stdbig.Int)}
-				state[m.From] = st
-			}
-		}
-
-		// 10. Message Nonce
+		// 9. Message Nonce
 		check = api.MessageCheckStatus{
 			Cid: m.Cid(),
 			CheckStatus: api.CheckStatus{
@@ -305,47 +343,17 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 
 		result = append(result, check)
 
-		// required funds -vs- balance
+		// check required funds -vs- balance
 		st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.RequiredFunds().Int)
 		st.requiredFunds.Add(st.requiredFunds, m.Value.Int)
 
-		balance, ok := balances[m.From]
-		if !ok {
-			// 11. GetStateBalance
-			check = api.MessageCheckStatus{
-				Cid: m.Cid(),
-				CheckStatus: api.CheckStatus{
-					Code: api.CheckStatusMessageGetStateBalance,
-				},
-			}
-
-			balance, err = mp.getStateBalance(m.From, curTs)
-			if err != nil {
-				check.OK = false
-				check.Err = fmt.Sprintf("error retrieving state balance: %s", err)
-			} else {
-				check.OK = true
-				check.Hint = map[string]interface{}{
-					"balance": balance,
-				}
-			}
-
-			result = append(result, check)
-			if !check.OK {
-				continue
-			}
-
-			balances[m.From] = balance
-		}
-
-		// 12. Balance
+		// 10. Balance
 		check = api.MessageCheckStatus{
 			Cid: m.Cid(),
 			CheckStatus: api.CheckStatus{
 				Code: api.CheckStatusMessageBalance,
 				Hint: map[string]interface{}{
 					"requiredFunds": big.Int{Int: stdbig.NewInt(0).Set(st.requiredFunds)},
-					"balance":       balance,
 				},
 			},
 		}
