@@ -20,7 +20,7 @@ func SetupRemoteWallet(info string) func(mctx helpers.MetricsCtx, lc fx.Lifecycl
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
 		ai := cliutil.ParseApiInfo(info)
 
-		url, err := ai.DialArgs()
+		url, err := ai.DialArgs("v0")
 		if err != nil {
 			return nil, err
 		}

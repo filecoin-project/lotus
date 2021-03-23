@@ -113,7 +113,7 @@ var consensusCheckCmd = &cli.Command{
 				return err
 			}
 			ainfo := cliutil.APIInfo{Addr: apima.String()}
-			addr, err := ainfo.DialArgs()
+			addr, err := ainfo.DialArgs("v1")
 			if err != nil {
 				return err
 			}

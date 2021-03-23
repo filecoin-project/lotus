@@ -133,13 +133,13 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	}, nil
 }
 
-func GetRawAPI(ctx *cli.Context, t repo.RepoType) (string, http.Header, error) {
+func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get API info: %w", err)
 	}
 
-	addr, err := ainfo.DialArgs()
+	addr, err := ainfo.DialArgs(version)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
@@ -165,7 +165,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		return tn.(api.FullNode), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, t)
+	addr, headers, err := GetRawAPI(ctx, t, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -178,7 +178,7 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 		return tn.(api.FullNode), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -206,7 +206,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		return tn.(api.StorageMiner), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner)
+	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -231,7 +231,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 }
 
 func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.Worker)
+	addr, headers, err := GetRawAPI(ctx, repo.Worker, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -240,7 +240,7 @@ func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
 }
 
 func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
