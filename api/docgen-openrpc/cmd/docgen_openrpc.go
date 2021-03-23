@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/filecoin-project/lotus/api/docgen"
+
 	"github.com/filecoin-project/lotus/api/apistruct"
 	docgen_openrpc "github.com/filecoin-project/lotus/api/docgen-openrpc"
 )
@@ -29,7 +31,9 @@ Use:
 */
 
 func main() {
-	doc := docgen_openrpc.NewLotusOpenRPCDocument()
+	Comments, GroupDocs := docgen.ParseApiASTInfo(os.Args[1], os.Args[2], os.Args[3], os.Args[4])
+
+	doc := docgen_openrpc.NewLotusOpenRPCDocument(Comments, GroupDocs)
 
 	switch os.Args[2] {
 	case "FullNode":
