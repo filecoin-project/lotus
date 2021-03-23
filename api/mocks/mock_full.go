@@ -1066,6 +1066,21 @@ func (mr *MockFullNodeMockRecorder) MpoolCheckPendingMessages(arg0, arg1 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolCheckPendingMessages", reflect.TypeOf((*MockFullNode)(nil).MpoolCheckPendingMessages), arg0, arg1)
 }
 
+// MpoolCheckReplaceMessages mocks base method
+func (m *MockFullNode) MpoolCheckReplaceMessages(arg0 context.Context, arg1 []*types.Message) ([][]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolCheckReplaceMessages", arg0, arg1)
+	ret0, _ := ret[0].([][]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolCheckReplaceMessages indicates an expected call of MpoolCheckReplaceMessages
+func (mr *MockFullNodeMockRecorder) MpoolCheckReplaceMessages(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolCheckReplaceMessages", reflect.TypeOf((*MockFullNode)(nil).MpoolCheckReplaceMessages), arg0, arg1)
+}
+
 // MpoolClear mocks base method
 func (m *MockFullNode) MpoolClear(arg0 context.Context, arg1 bool) error {
 	m.ctrl.T.Helper()
