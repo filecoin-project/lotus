@@ -20,11 +20,11 @@ If not (no, or any other args), the document will describe the Full API.
 
 Use:
 
-		go run ./api/openrpc/cmd ["api/api_full.go"|"api/api_storage.go"|"api/api_worker.go"] ["FullNode"|"StorageMiner"|"WorkerAPI"]
+		go run ./api/openrpc/cmd ["api/api_full.go"|"api/api_storage.go"|"api/api_worker.go"] ["FullNode"|"StorageMiner"|"Worker"]
 
 	With gzip compression: a '-gzip' flag is made available as an optional third argument. Note that position matters.
 
-		go run ./api/openrpc/cmd ["api/api_full.go"|"api/api_storage.go"|"api/api_worker.go"] ["FullNode"|"StorageMiner"|"WorkerAPI"] -gzip
+		go run ./api/openrpc/cmd ["api/api_full.go"|"api/api_storage.go"|"api/api_worker.go"] ["FullNode"|"StorageMiner"|"Worker"] -gzip
 
 */
 
@@ -36,7 +36,7 @@ func main() {
 		doc.RegisterReceiverName("Filecoin", &apistruct.FullNodeStruct{})
 	case "StorageMiner":
 		doc.RegisterReceiverName("Filecoin", &apistruct.StorageMinerStruct{})
-	case "WorkerAPI":
+	case "Worker":
 		doc.RegisterReceiverName("Filecoin", &apistruct.WorkerStruct{})
 	}
 

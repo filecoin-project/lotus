@@ -16,11 +16,11 @@ import (
 )
 
 type RPCStateManager struct {
-	gapi   api.GatewayAPI
+	gapi   api.Gateway
 	cstore *cbor.BasicIpldStore
 }
 
-func NewRPCStateManager(api api.GatewayAPI) *RPCStateManager {
+func NewRPCStateManager(api api.Gateway) *RPCStateManager {
 	cstore := cbor.NewCborStore(blockstore.NewAPIBlockstore(api))
 	return &RPCStateManager{gapi: api, cstore: cstore}
 }

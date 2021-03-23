@@ -305,7 +305,7 @@ var ChainNode = Options(
 	Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 	Override(new(*wallet.LocalWallet), wallet.NewWallet),
 	Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
-	Override(new(api.WalletAPI), From(new(wallet.MultiWallet))),
+	Override(new(api.Wallet), From(new(wallet.MultiWallet))),
 
 	// Service: Payment channels
 	Override(new(paychmgr.PaychAPI), From(new(modules.PaychAPI))),
@@ -334,10 +334,10 @@ var ChainNode = Options(
 	// Lite node API
 	ApplyIf(isLiteNode,
 		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
-		Override(new(full.ChainModuleAPI), From(new(api.GatewayAPI))),
-		Override(new(full.GasModuleAPI), From(new(api.GatewayAPI))),
-		Override(new(full.MpoolModuleAPI), From(new(api.GatewayAPI))),
-		Override(new(full.StateModuleAPI), From(new(api.GatewayAPI))),
+		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
+		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
+		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
+		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 	),
 

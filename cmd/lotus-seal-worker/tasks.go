@@ -41,17 +41,17 @@ var tasksEnableCmd = &cli.Command{
 	Name:      "enable",
 	Usage:     "Enable a task type",
 	ArgsUsage: "[" + settableStr + "]",
-	Action:    taskAction(api.WorkerAPI.TaskEnable),
+	Action:    taskAction(api.Worker.TaskEnable),
 }
 
 var tasksDisableCmd = &cli.Command{
 	Name:      "disable",
 	Usage:     "Disable a task type",
 	ArgsUsage: "[" + settableStr + "]",
-	Action:    taskAction(api.WorkerAPI.TaskDisable),
+	Action:    taskAction(api.Worker.TaskDisable),
 }
 
-func taskAction(tf func(a api.WorkerAPI, ctx context.Context, tt sealtasks.TaskType) error) func(cctx *cli.Context) error {
+func taskAction(tf func(a api.Worker, ctx context.Context, tt sealtasks.TaskType) error) func(cctx *cli.Context) error {
 	return func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			return xerrors.Errorf("expected 1 argument")

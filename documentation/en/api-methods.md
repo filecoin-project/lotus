@@ -530,7 +530,7 @@ Response:
 ```
 
 ### ChainGetNode
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -885,7 +885,7 @@ retrieval markets as a client
 ClientCalcCommP calculates the CommP for a specified file
 
 
-Perms: read
+Perms: write
 
 Inputs:
 ```json
@@ -922,7 +922,7 @@ Inputs:
 Response: `{}`
 
 ### ClientDataTransferUpdates
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -1113,7 +1113,7 @@ Response: `"string value"`
 ClientGetDealUpdates returns the status of updated deals
 
 
-Perms: read
+Perms: write
 
 Inputs: `null`
 
@@ -1794,7 +1794,7 @@ Response:
 
 
 ### MinerCreateBlock
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -2210,7 +2210,7 @@ Response: `null`
 MpoolSetConfig sets the mpool config to (a copy of) the supplied config
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -2229,7 +2229,7 @@ Inputs:
 Response: `{}`
 
 ### MpoolSub
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -2975,7 +2975,7 @@ The Paych methods are for interacting with and managing payment channels
 
 
 ### PaychAllocateLane
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -2989,7 +2989,7 @@ Inputs:
 Response: `42`
 
 ### PaychAvailableFunds
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3015,7 +3015,7 @@ Response:
 ```
 
 ### PaychAvailableFundsByFromTo
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3042,7 +3042,7 @@ Response:
 ```
 
 ### PaychCollect
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3085,7 +3085,7 @@ Response:
 ```
 
 ### PaychGetWaitReady
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3101,7 +3101,7 @@ Inputs:
 Response: `"f01234"`
 
 ### PaychList
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -3110,7 +3110,7 @@ Inputs: `null`
 Response: `null`
 
 ### PaychNewPayment
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3135,7 +3135,7 @@ Response:
 ```
 
 ### PaychSettle
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3154,7 +3154,7 @@ Response:
 ```
 
 ### PaychStatus
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -3174,7 +3174,7 @@ Response:
 ```
 
 ### PaychVoucherAdd
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -3210,7 +3210,7 @@ Inputs:
 Response: `"0"`
 
 ### PaychVoucherCheckSpendable
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -3246,7 +3246,7 @@ Inputs:
 Response: `true`
 
 ### PaychVoucherCheckValid
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -3280,7 +3280,7 @@ Inputs:
 Response: `{}`
 
 ### PaychVoucherCreate
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3321,7 +3321,7 @@ Response:
 ```
 
 ### PaychVoucherList
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -3335,7 +3335,7 @@ Inputs:
 Response: `null`
 
 ### PaychVoucherSubmit
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -5360,7 +5360,7 @@ Response: `"f01234"`
 WalletDelete deletes an address from the wallet.
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -5456,7 +5456,7 @@ Response: `"f01234"`
 WalletSetDefault marks the given address as as the default one.
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json

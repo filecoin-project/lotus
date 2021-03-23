@@ -289,7 +289,7 @@ var DaemonCmd = &cli.Command{
 
 		shutdownChan := make(chan struct{})
 
-		// If the daemon is started in "lite mode", provide a  GatewayAPI
+		// If the daemon is started in "lite mode", provide a  Gateway
 		// for RPC calls
 		liteModeDeps := node.Options()
 		if isLite {
@@ -299,7 +299,7 @@ var DaemonCmd = &cli.Command{
 			}
 
 			defer closer()
-			liteModeDeps = node.Override(new(api.GatewayAPI), gapi)
+			liteModeDeps = node.Override(new(api.Gateway), gapi)
 		}
 
 		// some libraries like ipfs/go-ds-measure and ipfs/go-ipfs-blockstore
