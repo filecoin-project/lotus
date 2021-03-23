@@ -46,6 +46,51 @@ func (mp *MessagePool) CheckPendingMessages(from address.Address) ([][]api.Messa
 	return mp.checkMessages(msgs, true)
 }
 
+// CheckReplaceMessages performs a set of logical checks for related messages while performing a
+// replacement.
+func (mp *MessagePool) CheckReplaceMessages(replace []*types.Message) ([][]api.MessageCheckStatus, error) {
+	msgMap := make(map[address.Address]map[uint64]*types.Message)
+	count := 0
+
+	mp.lk.Lock()
+	for _, m := range replace {
+		mmap, ok := msgMap[m.From]
+		if !ok {
+			mmap = make(map[uint64]*types.Message)
+			msgMap[m.From] = mmap
+			mset, ok := mp.pending[m.From]
+			if ok {
+				count += len(mset.msgs)
+				for _, sm := range mset.msgs {
+					mmap[sm.Message.Nonce] = &sm.Message
+				}
+			} else {
+				count++
+			}
+		}
+		mmap[m.Nonce] = m
+	}
+	mp.lk.Unlock()
+
+	msgs := make([]*types.Message, 0, count)
+	start := 0
+	for _, mmap := range msgMap {
+		end := start + len(mmap)
+
+		for _, m := range mmap {
+			msgs = append(msgs, m)
+		}
+
+		sort.Slice(msgs[start:end], func(i, j int) bool {
+			return msgs[start+i].Nonce < msgs[start+j].Nonce
+		})
+
+		start = end
+	}
+
+	return mp.checkMessages(msgs, true)
+}
+
 func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (result [][]api.MessageCheckStatus, err error) {
 	mp.curTsLk.Lock()
 	curTs := mp.curTs
