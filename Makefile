@@ -326,9 +326,9 @@ method-gen:
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
 
 api-gen:
-	go run ./gen/api > api/apistruct/struct.go
-	goimports -w api/apistruct
-	goimports -w api/apistruct
+	go run ./gen/api
+	goimports -w api/apistruct api/v0api
+	goimports -w api/apistruct api/v0api
 .PHONY: api-gen
 
 docsgen: docsgen-md docsgen-openrpc

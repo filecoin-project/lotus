@@ -25,7 +25,7 @@ import (
 
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
-	api.Common
+	Common
 
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
@@ -100,7 +100,7 @@ type FullNode interface {
 
 	// ChainTipSetWeight computes weight for the specified tipset.
 	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error) //perm:read
-	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)          //perm:read
+	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)      //perm:read
 
 	// ChainGetMessage reads a message referenced by the specified CID from the
 	// chain blockstore.
@@ -223,7 +223,7 @@ type FullNode interface {
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.
 	MpoolGetNonce(context.Context, address.Address) (uint64, error) //perm:read
-	MpoolSub(context.Context) (<-chan api.MpoolUpdate, error)           //perm:read
+	MpoolSub(context.Context) (<-chan api.MpoolUpdate, error)       //perm:read
 
 	// MpoolClear clears pending messages from the mpool
 	MpoolClear(context.Context, bool) error //perm:write
@@ -653,22 +653,22 @@ type FullNode interface {
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels
 
-	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)                     //perm:sign
-	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)                                                //perm:sign
-	PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error)                        //perm:sign
-	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error)          //perm:sign
-	PaychList(context.Context) ([]address.Address, error)                                                               //perm:read
-	PaychStatus(context.Context, address.Address) (*api.PaychStatus, error)                                                 //perm:read
-	PaychSettle(context.Context, address.Address) (cid.Cid, error)                                                      //perm:sign
-	PaychCollect(context.Context, address.Address) (cid.Cid, error)                                                     //perm:sign
-	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)                                          //perm:sign
-	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error)        //perm:sign
-	PaychVoucherCheckValid(context.Context, address.Address, *paych.SignedVoucher) error                                //perm:read
-	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)    //perm:read
-	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*api.VoucherCreateResult, error)            //perm:sign
-	PaychVoucherAdd(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error) //perm:write
-	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                  //perm:write
-	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)         //perm:sign
+	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)                  //perm:sign
+	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)                                                 //perm:sign
+	PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error)                     //perm:sign
+	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error)       //perm:sign
+	PaychList(context.Context) ([]address.Address, error)                                                                //perm:read
+	PaychStatus(context.Context, address.Address) (*api.PaychStatus, error)                                              //perm:read
+	PaychSettle(context.Context, address.Address) (cid.Cid, error)                                                       //perm:sign
+	PaychCollect(context.Context, address.Address) (cid.Cid, error)                                                      //perm:sign
+	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)                                           //perm:sign
+	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) //perm:sign
+	PaychVoucherCheckValid(context.Context, address.Address, *paych.SignedVoucher) error                                 //perm:read
+	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)     //perm:read
+	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*api.VoucherCreateResult, error)         //perm:sign
+	PaychVoucherAdd(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  //perm:write
+	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                   //perm:write
+	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)          //perm:sign
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
@@ -676,4 +676,3 @@ type FullNode interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 }
-
