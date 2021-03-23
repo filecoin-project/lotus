@@ -61,7 +61,7 @@ var CommonCommands = []*cli.Command{
 	LogCmd,
 	WaitApiCmd,
 	fetchParamCmd,
-	pprofCmd,
+	PprofCmd,
 	VersionCmd,
 }
 
@@ -80,7 +80,7 @@ var Commands = []*cli.Command{
 	WithCategory("developer", fetchParamCmd),
 	WithCategory("network", NetCmd),
 	WithCategory("network", SyncCmd),
-	pprofCmd,
+	PprofCmd,
 	VersionCmd,
 }
 
