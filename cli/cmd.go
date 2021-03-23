@@ -57,7 +57,7 @@ var GetWorkerAPI = cliutil.GetWorkerAPI
 
 var CommonCommands = []*cli.Command{
 	NetCmd,
-	authCmd,
+	AuthCmd,
 	LogCmd,
 	waitApiCmd,
 	fetchParamCmd,
@@ -71,7 +71,7 @@ var Commands = []*cli.Command{
 	WithCategory("basic", clientCmd),
 	WithCategory("basic", multisigCmd),
 	WithCategory("basic", paychCmd),
-	WithCategory("developer", authCmd),
+	WithCategory("developer", AuthCmd),
 	WithCategory("developer", mpoolCmd),
 	WithCategory("developer", StateCmd),
 	WithCategory("developer", ChainCmd),
