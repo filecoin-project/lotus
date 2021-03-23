@@ -168,6 +168,8 @@ type FullNode interface {
 	// GasEstimateMessageGas estimates gas values for unset message gas fields
 	GasEstimateMessageGas(context.Context, *types.Message, *MessageSendSpec, types.TipSetKey) (*types.Message, error) //perm:read
 
+	// GasBatchEstimateMessageGas estimates gas values for unset message gas fields
+	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error)
 	// MethodGroup: Sync
 	// The Sync method group contains methods for interacting with and
 	// observing the lotus sync service.

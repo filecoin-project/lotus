@@ -207,6 +207,8 @@ type FullNodeStruct struct {
 
 		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) `perm:"read"`
 
+		GasBatchEstimateMessageGas func(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error) `perm:"read"`
+
 		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) `perm:"sign"`
 
 		MarketGetReserved func(p0 context.Context, p1 address.Address) (types.BigInt, error) `perm:"sign"`
@@ -472,6 +474,8 @@ type GatewayStruct struct {
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
 
 		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
+
+		GasBatchEstimateMessageGas func(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error) ``
 
 		MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
 
@@ -1085,6 +1089,10 @@ func (s *FullNodeStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Mes
 	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
 }
 
+func (c *FullNodeStruct) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error) {
+	return c.Internal.GasBatchEstimateMessageGas(ctx, estimateMessages, selectCount, tsk)
+}
+
 func (s *FullNodeStruct) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
 	return s.Internal.MarketAddBalance(p0, p1, p2, p3)
 }
@@ -1607,6 +1615,10 @@ func (s *GatewayStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, er
 
 func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
 	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
+}
+
+func (s *GatewayStruct) GasBatchEstimateMessageGas(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 types.TipSetKey) ([]*types.Message, error) {
+	return s.Internal.GasBatchEstimateMessageGas(p0, p1, p2, p3)
 }
 
 func (s *GatewayStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {

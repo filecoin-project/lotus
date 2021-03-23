@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/types"
 	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -45,6 +46,11 @@ type ObjStat struct {
 type PubsubScore struct {
 	ID    peer.ID
 	Score *pubsub.PeerScoreSnapshot
+}
+
+type EstimateMessage struct {
+	Msg  *types.Message
+	Spec *MessageSendSpec
 }
 
 type MessageSendSpec struct {

@@ -853,6 +853,14 @@ func (m *MockFullNode) GasEstimateMessageGas(arg0 context.Context, arg1 *types.M
 	return ret0, ret1
 }
 
+func (m *MockFullNode) GasBatchEstimateMessageGas(arg0 context.Context, arg1 []*api.EstimateMessage, arg2 int, arg3 types.TipSetKey) ([]*types.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GasBatchEstimateMessageGas", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]*types.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
 // GasEstimateMessageGas indicates an expected call of GasEstimateMessageGas
 func (mr *MockFullNodeMockRecorder) GasEstimateMessageGas(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
