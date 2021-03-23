@@ -223,11 +223,11 @@ func (a *MpoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Mess
 	return smsgs, nil
 }
 
-func (a *MpoolAPI) MpoolCheckMessages(ctx context.Context, msgs []*types.Message) ([]api.MessageCheckStatus, error) {
+func (a *MpoolAPI) MpoolCheckMessages(ctx context.Context, msgs []*types.Message) ([][]api.MessageCheckStatus, error) {
 	return a.Mpool.CheckMessages(msgs)
 }
 
-func (a *MpoolAPI) MpoolCheckPendingMessages(ctx context.Context, from address.Address) ([]api.MessageCheckStatus, error) {
+func (a *MpoolAPI) MpoolCheckPendingMessages(ctx context.Context, from address.Address) ([][]api.MessageCheckStatus, error) {
 	return a.Mpool.CheckPendingMessages(from)
 }
 

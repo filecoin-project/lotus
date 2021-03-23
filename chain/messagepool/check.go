@@ -18,15 +18,13 @@ import (
 
 var baseFeeUpperBoundFactor = types.NewInt(10)
 
-type CheckStatus = api.MessageCheckStatus
-
 // CheckMessages performs a set of logic checks for a list of messages, prior to submitting it to the mpool
-func (mp *MessagePool) CheckMessages(msgs []*types.Message) (result []CheckStatus, err error) {
+func (mp *MessagePool) CheckMessages(msgs []*types.Message) ([][]api.MessageCheckStatus, error) {
 	return mp.checkMessages(msgs, false)
 }
 
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
-func (mp *MessagePool) CheckPendingMessages(from address.Address) (result []CheckStatus, err error) {
+func (mp *MessagePool) CheckPendingMessages(from address.Address) ([][]api.MessageCheckStatus, error) {
 	var msgs []*types.Message
 	mp.lk.Lock()
 	mset, ok := mp.pending[from]
@@ -48,7 +46,7 @@ func (mp *MessagePool) CheckPendingMessages(from address.Address) (result []Chec
 	return mp.checkMessages(msgs, true)
 }
 
-func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (result []CheckStatus, err error) {
+func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (result [][]api.MessageCheckStatus, err error) {
 	mp.curTsLk.Lock()
 	curTs := mp.curTs
 	mp.curTsLk.Unlock()
@@ -76,81 +74,17 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 	state := make(map[address.Address]*actorState)
 	balances := make(map[address.Address]big.Int)
 
-	for _, m := range msgs {
-		// basic syntactic checks
-		bytes, err := m.Serialize()
-		if err != nil {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrSerialize,
-				ErrorMsg:  err.Error(),
-			})
+	result = make([][]api.MessageCheckStatus, len(msgs))
+
+	for i, m := range msgs {
+		// pre-check: actor nonce
+		check := api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageGetStateNonce,
+			},
 		}
 
-		if len(bytes) > 32*1024-128 { // 128 bytes to account for signature size
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrTooBig,
-				ErrorMsg:  "message too big",
-			})
-		}
-
-		if err := m.ValidForBlockInclusion(0, build.NewestNetworkVersion); err != nil {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrInvalid,
-				ErrorMsg:  fmt.Sprintf("syntactically invalid message: %s", err.Error()),
-			})
-			// skip the remaining checks if it's syntactically invalid
-			continue
-		}
-
-		// gas checks
-		minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
-		if m.GasLimit < minGas.Total() {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrMinGas,
-				ErrorMsg:  "GasLimit less than epoch minimum gas",
-			})
-		}
-
-		if m.GasFeeCap.LessThan(minimumBaseFee) {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrMinBaseFee,
-				ErrorMsg:  "GasFeeCap less than minimum base fee",
-			})
-			goto checkState
-		}
-
-		if m.GasFeeCap.LessThan(baseFee) {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrBaseFee,
-				ErrorMsg:  "GasFeeCap less than current base fee",
-			})
-		}
-
-		if m.GasFeeCap.LessThan(baseFeeLowerBound) {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrBaseFeeLowerBound,
-				ErrorMsg:  "GasFeeCap less than base fee lower bound for inclusion in next 20 epochs",
-			})
-			goto checkState
-		}
-
-		if m.GasFeeCap.LessThan(baseFeeUpperBound) {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrBaseFeeUpperBound,
-				ErrorMsg:  "GasFeeCap less than base fee upper bound for inclusion in next 20 epochs",
-			})
-		}
-
-		// stateful checks
-	checkState:
 		st, ok := state[m.From]
 		if !ok {
 			mp.lk.Lock()
@@ -162,18 +96,23 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 				}
 				state[m.From] = st
 				mp.lk.Unlock()
+
+				check.OK = true
+				check.Hint = map[string]interface{}{
+					"nonce": st.nextNonce,
+				}
 			} else {
 				mp.lk.Unlock()
 
 				stateNonce, err := mp.getStateNonce(m.From, curTs)
 				if err != nil {
-					result = append(result, CheckStatus{
-						Cid:       m.Cid(),
-						ErrorCode: api.CheckStatusErrGetStateNonce,
-						ErrorMsg:  fmt.Sprintf("error retrieving state nonce: %s", err.Error()),
-					})
-
-					continue
+					check.OK = false
+					check.Err = fmt.Sprintf("error retrieving state nonce: %s", err.Error())
+				} else {
+					check.OK = true
+					check.Hint = map[string]interface{}{
+						"nonce": stateNonce,
+					}
 				}
 
 				st = &actorState{nextNonce: stateNonce, requiredFunds: new(stdbig.Int)}
@@ -181,40 +120,254 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			}
 		}
 
-		if st.nextNonce != m.Nonce {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrBadNonce,
-				ErrorMsg:  fmt.Sprintf("message nonce doesn't match next nonce (%d)", st.nextNonce),
-			})
-		} else {
-			st.nextNonce++
+		result[i] = append(result[i], check)
+		if !check.OK {
+			continue
 		}
 
-		st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.RequiredFunds().Int)
-		st.requiredFunds.Add(st.requiredFunds, m.Value.Int)
+		// pre-check: actor balance
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageGetStateBalance,
+			},
+		}
 
 		balance, ok := balances[m.From]
 		if !ok {
 			balance, err = mp.getStateBalance(m.From, curTs)
 			if err != nil {
-				result = append(result, CheckStatus{
-					Cid:       m.Cid(),
-					ErrorCode: api.CheckStatusErrGetStateBalance,
-					ErrorMsg:  fmt.Sprintf("error retrieving state balance: %s", err),
-				})
-				continue
+				check.OK = false
+				check.Err = fmt.Sprintf("error retrieving state balance: %s", err)
+			} else {
+				check.OK = true
+				check.Hint = map[string]interface{}{
+					"balance": balance,
+				}
 			}
+
 			balances[m.From] = balance
+		} else {
+			check.OK = true
+			check.Hint = map[string]interface{}{
+				"balance": balance,
+			}
+		}
+
+		result[i] = append(result[i], check)
+		if !check.OK {
+			continue
+		}
+
+		// 1. Serialization
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageSerialize,
+			},
+		}
+
+		bytes, err := m.Serialize()
+		if err != nil {
+			check.OK = false
+			check.Err = err.Error()
+		} else {
+			check.OK = true
+		}
+
+		result[i] = append(result[i], check)
+
+		// 2. Message size
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageSize,
+			},
+		}
+
+		if len(bytes) > 32*1024-128 { // 128 bytes to account for signature size
+			check.OK = false
+			check.Err = "message too big"
+		} else {
+			check.OK = true
+		}
+
+		result[i] = append(result[i], check)
+
+		// 3. Syntactic validation
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageValidity,
+			},
+		}
+
+		if err := m.ValidForBlockInclusion(0, build.NewestNetworkVersion); err != nil {
+			check.OK = false
+			check.Err = fmt.Sprintf("syntactically invalid message: %s", err.Error())
+		} else {
+			check.OK = true
+		}
+
+		result[i] = append(result[i], check)
+		if !check.OK {
+			// skip remaining checks if it is a syntatically invalid message
+			continue
+		}
+
+		// gas checks
+
+		// 4. Min Gas
+		minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
+
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageMinGas,
+				Hint: map[string]interface{}{
+					"minGas": minGas,
+				},
+			},
+		}
+
+		if m.GasLimit < minGas.Total() {
+			check.OK = false
+			check.Err = "GasLimit less than epoch minimum gas"
+		} else {
+			check.OK = true
+		}
+
+		result[i] = append(result[i], check)
+
+		// 5. Min Base Fee
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageMinBaseFee,
+			},
+		}
+
+		if m.GasFeeCap.LessThan(minimumBaseFee) {
+			check.OK = false
+			check.Err = "GasFeeCap less than minimum base fee"
+		} else {
+			check.OK = true
+		}
+
+		result[i] = append(result[i], check)
+		if !check.OK {
+			goto checkState
+		}
+
+		// 6. Base Fee
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageBaseFee,
+				Hint: map[string]interface{}{
+					"baseFee": baseFee,
+				},
+			},
+		}
+
+		if m.GasFeeCap.LessThan(baseFee) {
+			check.OK = false
+			check.Err = "GasFeeCap less than current base fee"
+		} else {
+			check.OK = true
+		}
+
+		result[i] = append(result[i], check)
+
+		// 7. Base Fee lower bound
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageBaseFeeLowerBound,
+				Hint: map[string]interface{}{
+					"baseFeeLowerBound": baseFeeLowerBound,
+				},
+			},
+		}
+
+		if m.GasFeeCap.LessThan(baseFeeLowerBound) {
+			check.OK = false
+			check.Err = "GasFeeCap less than base fee lower bound for inclusion in next 20 epochs"
+		} else {
+			check.OK = true
+		}
+
+		result[i] = append(result[i], check)
+		if !check.OK {
+			goto checkState
+		}
+
+		// 8. Base Fee upper bound
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageBaseFeeUpperBound,
+				Hint: map[string]interface{}{
+					"baseFeeUpperBound": baseFeeUpperBound,
+				},
+			},
+		}
+
+		if m.GasFeeCap.LessThan(baseFeeUpperBound) {
+			check.OK = false
+			check.Err = "GasFeeCap less than base fee upper bound for inclusion in next 20 epochs"
+		} else {
+			check.OK = true
+		}
+
+		result[i] = append(result[i], check)
+
+		// stateful checks
+	checkState:
+		// 9. Message Nonce
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageNonce,
+				Hint: map[string]interface{}{
+					"nextNonce": st.nextNonce,
+				},
+			},
+		}
+
+		if st.nextNonce != m.Nonce {
+			check.OK = false
+			check.Err = fmt.Sprintf("message nonce doesn't match next nonce (%d)", st.nextNonce)
+		} else {
+			check.OK = true
+			st.nextNonce++
+		}
+
+		result[i] = append(result[i], check)
+
+		// check required funds -vs- balance
+		st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.RequiredFunds().Int)
+		st.requiredFunds.Add(st.requiredFunds, m.Value.Int)
+
+		// 10. Balance
+		check = api.MessageCheckStatus{
+			Cid: m.Cid(),
+			CheckStatus: api.CheckStatus{
+				Code: api.CheckStatusMessageBalance,
+				Hint: map[string]interface{}{
+					"requiredFunds": big.Int{Int: stdbig.NewInt(0).Set(st.requiredFunds)},
+				},
+			},
 		}
 
 		if balance.Int.Cmp(st.requiredFunds) < 0 {
-			result = append(result, CheckStatus{
-				Cid:       m.Cid(),
-				ErrorCode: api.CheckStatusErrInsufficientBalance,
-				ErrorMsg:  "insufficient balance",
-			})
+			check.OK = false
+			check.Err = "insufficient balance"
+		} else {
+			check.OK = true
 		}
+
+		result[i] = append(result[i], check)
 	}
 
 	return result, nil
