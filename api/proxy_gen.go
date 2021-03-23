@@ -239,6 +239,8 @@ type FullNodeStruct struct {
 
 		MpoolCheckPendingMessages func(p0 context.Context, p1 address.Address) ([][]MessageCheckStatus, error) `perm:"read"`
 
+		MpoolCheckReplaceMessages func(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) `perm:"read"`
+
 		MpoolClear func(p0 context.Context, p1 bool) error `perm:"write"`
 
 		MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) `perm:"read"`
@@ -1526,6 +1528,14 @@ func (s *FullNodeStruct) MpoolCheckPendingMessages(p0 context.Context, p1 addres
 }
 
 func (s *FullNodeStub) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]MessageCheckStatus, error) {
+	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
+	return s.Internal.MpoolCheckReplaceMessages(p0, p1)
+}
+
+func (s *FullNodeStub) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
 	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
 }
 
