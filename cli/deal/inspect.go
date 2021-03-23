@@ -11,8 +11,6 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 )
 
-var mockDealInfos []lapi.DealInfo
-
 func InspectDealCmd(ctx context.Context, api lapi.FullNode, proposalCid string, dealId int) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -69,10 +67,9 @@ func renderDeal(di lapi.DealInfo) {
 		}
 
 		if stg.Name == "StorageDealStartDataTransfer" {
-			for _, dt_stg := range di.DataTransfer.Stages.Stages {
-
-				fmt.Printf("        %s %s %s\n", color.YellowString(dt_stg.CreatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), color.BlueString("Data transfer stage:"), color.BlueString(dt_stg.Name))
-				for _, l := range dt_stg.Logs {
+			for _, dtStg := range di.DataTransfer.Stages.Stages {
+				fmt.Printf("        %s %s %s\n", color.YellowString(dtStg.CreatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), color.BlueString("Data transfer stage:"), color.BlueString(dtStg.Name))
+				for _, l := range dtStg.Logs {
 					fmt.Printf("              %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
 				}
 			}
