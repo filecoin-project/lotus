@@ -34,7 +34,7 @@ var (
 // gatewayDepsAPI defines the API methods that the GatewayAPI depends on
 // (to make it easy to mock for tests)
 type gatewayDepsAPI interface {
-	Version(context.Context) (api.Version, error)
+	Version(context.Context) (api.APIVersion, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)
@@ -130,7 +130,7 @@ func (a *GatewayAPI) checkTimestamp(at time.Time) error {
 	return nil
 }
 
-func (a *GatewayAPI) Version(ctx context.Context) (api.Version, error) {
+func (a *GatewayAPI) Version(ctx context.Context) (api.APIVersion, error) {
 	return a.api.Version(ctx)
 }
 

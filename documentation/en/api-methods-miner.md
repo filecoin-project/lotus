@@ -1,6 +1,7 @@
 # Groups
 * [](#)
   * [Closing](#Closing)
+  * [Discover](#Discover)
   * [Session](#Session)
   * [Shutdown](#Shutdown)
   * [Version](#Version)
@@ -69,6 +70,7 @@
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
+  * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
   * [NetPubsubScores](#NetPubsubScores)
 * [Pieces](#Pieces)
@@ -141,6 +143,25 @@ Inputs: `null`
 
 Response: `{}`
 
+### Discover
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "info": {
+    "title": "Lotus RPC API",
+    "version": "1.2.1/generated=2020-11-22T08:22:42-06:00"
+  },
+  "methods": [],
+  "openrpc": "1.2.6"
+}
+```
+
 ### Session
 
 
@@ -199,7 +220,9 @@ Response:
 {
   "PreCommitControl": null,
   "CommitControl": null,
-  "TerminateControl": null
+  "TerminateControl": null,
+  "DisableOwnerFallback": true,
+  "DisableWorkerFallback": true
 }
 ```
 
@@ -1045,6 +1068,38 @@ Response:
 }
 ```
 
+### NetPeerInfo
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response:
+```json
+{
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Agent": "string value",
+  "Addrs": null,
+  "Protocols": null,
+  "ConnMgrMeta": {
+    "FirstSeen": "0001-01-01T00:00:00Z",
+    "Value": 123,
+    "Tags": {
+      "name": 42
+    },
+    "Conns": {
+      "name": "2021-03-08T22:52:18Z"
+    }
+  }
+}
+```
+
 ### NetPeers
 
 
@@ -1779,13 +1834,17 @@ Inputs:
     "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
     "URLs": null,
     "Weight": 42,
+    "MaxStorage": 42,
     "CanSeal": true,
     "CanStore": true
   },
   {
     "Capacity": 9,
     "Available": 9,
-    "Reserved": 9
+    "FSAvailable": 9,
+    "Reserved": 9,
+    "Max": 9,
+    "Used": 9
   }
 ]
 ```
@@ -1885,6 +1944,7 @@ Response:
   "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
   "URLs": null,
   "Weight": 42,
+  "MaxStorage": 42,
   "CanSeal": true,
   "CanStore": true
 }
@@ -1956,7 +2016,10 @@ Inputs:
     "Stat": {
       "Capacity": 9,
       "Available": 9,
-      "Reserved": 9
+      "FSAvailable": 9,
+      "Reserved": 9,
+      "Max": 9,
+      "Used": 9
     },
     "Err": "string value"
   }
@@ -1982,7 +2045,10 @@ Response:
 {
   "Capacity": 9,
   "Available": 9,
-  "Reserved": 9
+  "FSAvailable": 9,
+  "Reserved": 9,
+  "Max": 9,
+  "Used": 9
 }
 ```
 

@@ -22,7 +22,8 @@ func Statfs(volumePath string) (FsStat, error) {
 		uintptr(unsafe.Pointer(&availBytes)))
 
 	return FsStat{
-		Capacity:  totalBytes,
-		Available: availBytes,
+		Capacity:    totalBytes,
+		Available:   availBytes,
+		FSAvailable: availBytes,
 	}, nil
 }

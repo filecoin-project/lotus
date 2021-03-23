@@ -6,6 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
@@ -16,7 +17,7 @@ import (
 var AdvanceBlockCmd *cli.Command
 
 func main() {
-	build.RunningNodeType = build.NodeFull
+	api.RunningNodeType = api.NodeFull
 
 	lotuslog.SetupLogLevels()
 

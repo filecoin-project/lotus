@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/filecoin-project/lotus/build"
+	apitypes "github.com/filecoin-project/lotus/api/types"
 )
 
 type Common interface {
@@ -33,6 +33,7 @@ type Common interface {
 	NetPubsubScores(context.Context) ([]PubsubScore, error)
 	NetAutoNatStatus(context.Context) (NatInfo, error)
 	NetAgentVersion(ctx context.Context, p peer.ID) (string, error)
+	NetPeerInfo(context.Context, peer.ID) (*ExtendedPeerInfo, error)
 
 	// NetBandwidthStats returns statistics about the nodes total bandwidth
 	// usage and current rate across all peers and protocols.
@@ -53,11 +54,14 @@ type Common interface {
 
 	// MethodGroup: Common
 
+	// Discover returns an OpenRPC document describing an RPC API.
+	Discover(ctx context.Context) (apitypes.OpenRPCDocument, error)
+
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)
 
 	// Version provides information about API provider
-	Version(context.Context) (Version, error)
+	Version(context.Context) (APIVersion, error)
 
 	LogList(context.Context) ([]string, error)
 	LogSetLevel(context.Context, string, string) error
@@ -71,15 +75,15 @@ type Common interface {
 	Closing(context.Context) (<-chan struct{}, error)
 }
 
-// Version provides various build-time information
-type Version struct {
+// APIVersion provides various build-time information
+type APIVersion struct {
 	Version string
 
 	// APIVersion is a binary encoded semver version of the remote implementing
 	// this api
 	//
 	// See APIVersion in build/version.go
-	APIVersion build.Version
+	APIVersion Version
 
 	// TODO: git commit / os / genesis cid?
 
@@ -87,7 +91,7 @@ type Version struct {
 	BlockDelay uint64
 }
 
-func (v Version) String() string {
+func (v APIVersion) String() string {
 	return fmt.Sprintf("%s+api%s", v.Version, v.APIVersion.String())
 }
 

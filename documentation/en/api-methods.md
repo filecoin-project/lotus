@@ -1,6 +1,7 @@
 # Groups
 * [](#)
   * [Closing](#Closing)
+  * [Discover](#Discover)
   * [Session](#Session)
   * [Shutdown](#Shutdown)
   * [Version](#Version)
@@ -121,6 +122,7 @@
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
+  * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
   * [NetPubsubScores](#NetPubsubScores)
 * [Paych](#Paych)
@@ -224,6 +226,25 @@ Perms: read
 Inputs: `null`
 
 Response: `{}`
+
+### Discover
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "info": {
+    "title": "Lotus RPC API",
+    "version": "1.2.1/generated=2020-11-22T08:22:42-06:00"
+  },
+  "methods": [],
+  "openrpc": "1.2.6"
+}
+```
 
 ### Session
 
@@ -424,6 +445,17 @@ Response:
 ### ChainGetBlockMessages
 ChainGetBlockMessages returns messages stored in the specified block.
 
+Note: If there are multiple blocks in a tipset, it's likely that some
+messages will be duplicated. It's also possible for blocks in a tipset to have
+different messages from the same sender at the same nonce. When that happens,
+only the first message (in a block with lowest ticket) will be considered
+for execution
+
+NOTE: THIS METHOD SHOULD ONLY BE USED FOR GETTING MESSAGES IN A SPECIFIC BLOCK
+
+DO NOT USE THIS METHOD TO GET MESSAGES INCLUDED IN A TIPSET
+Use ChainGetParentMessages, which will perform correct message deduplication
+
 
 Perms: read
 
@@ -539,7 +571,8 @@ Response: `null`
 
 ### ChainGetParentReceipts
 ChainGetParentReceipts returns receipts for messages in parent tipset of
-the specified block.
+the specified block. The receipts in the list returned is one-to-one with the
+messages returned by a call to ChainGetParentMessages with the same blockCid.
 
 
 Perms: read
@@ -2887,6 +2920,38 @@ Response:
 }
 ```
 
+### NetPeerInfo
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response:
+```json
+{
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Agent": "string value",
+  "Addrs": null,
+  "Protocols": null,
+  "ConnMgrMeta": {
+    "FirstSeen": "0001-01-01T00:00:00Z",
+    "Value": 123,
+    "Tags": {
+      "name": 42
+    },
+    "Conns": {
+      "name": "2021-03-08T22:52:18Z"
+    }
+  }
+}
+```
+
 ### NetPeers
 
 
@@ -3532,6 +3597,36 @@ Response: `"0"`
 StateCompute is a flexible command that applies the given messages on the given tipset.
 The messages are run as though the VM were at the provided height.
 
+When called, StateCompute will:
+- Load the provided tipset, or use the current chain head if not provided
+- Compute the tipset state of the provided tipset on top of the parent state
+  - (note that this step runs before vmheight is applied to the execution)
+  - Execute state upgrade if any were scheduled at the epoch, or in null
+    blocks preceding the tipset
+  - Call the cron actor on null blocks preceding the tipset
+  - For each block in the tipset
+    - Apply messages in blocks in the specified
+    - Award block reward by calling the reward actor
+  - Call the cron actor for the current epoch
+- If the specified vmheight is higher than the current epoch, apply any
+  needed state upgrades to the state
+- Apply the specified messages to the state
+
+The vmheight parameter sets VM execution epoch, and can be used to simulate
+message execution in different network versions. If the specified vmheight
+epoch is higher than the epoch of the specified tipset, any state upgrades
+until the vmheight will be executed on the state before applying messages
+specified by the user.
+
+Note that the initial tipset state computation is not affected by the
+vmheight parameter - only the messages in the `apply` set are
+
+If the caller wants to simply compute the state, vmheight should be set to
+the epoch of the specified tipset.
+
+Messages in the `apply` parameter must have the correct nonces, and gas
+values set.
+
 
 Perms: read
 
@@ -3653,7 +3748,15 @@ Response:
 ```
 
 ### StateGetReceipt
-StateGetReceipt returns the message receipt for the given message
+StateGetReceipt returns the message receipt for the given message or for a
+matching gas-repriced replacing message
+
+NOTE: If the requested message was replaced, this method will return the receipt
+for the replacing message - if the caller needs the receipt for exactly the
+requested message, use StateSearchMsg().Receipt, and check that MsgLookup.Message
+is matching the requested CID
+
+DEPRECATED: Use StateSearchMsg, this method won't be supported in v1 API
 
 
 Perms: read
@@ -4417,7 +4520,22 @@ Response:
 
 ### StateReplay
 StateReplay replays a given message, assuming it was included in a block in the specified tipset.
-If no tipset key is provided, the appropriate tipset is looked up.
+
+If a tipset key is provided, and a replacing message is found on chain,
+the method will return an error saying that the message wasn't found
+
+If no tipset key is provided, the appropriate tipset is looked up, and if
+the message was gas-repriced, the on-chain message will be replayed - in
+that case the returned InvocResult.MsgCid will not match the Cid param
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that InvocResult.MsgCid is equal to the provided Cid.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4511,6 +4629,20 @@ Response:
 ### StateSearchMsg
 StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
+
 
 Perms: read
 
@@ -4549,6 +4681,20 @@ Response:
 
 ### StateSearchMsgLimited
 StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4844,6 +4990,20 @@ Response: `"0"`
 StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 message arrives on chain, and gets to the indicated confidence depth.
 
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
+
 
 Perms: read
 
@@ -4885,6 +5045,20 @@ Response:
 StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
 If not found, it blocks until the message arrives on chain, and gets to the
 indicated confidence depth.
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that MsgLookup.Message is equal to the provided 'cid'.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read

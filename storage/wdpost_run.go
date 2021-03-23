@@ -481,7 +481,12 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
-	rand, err := s.api.ChainGetRandomnessFromBeacon(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+	headTs, err := s.api.ChainHead(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("getting current head: %w", err)
+	}
+
+	rand, err := s.api.ChainGetRandomnessFromBeacon(ctx, headTs.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
@@ -589,7 +594,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 				return nil, err
 			}
 
-			postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
+			postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, append(abi.PoStRandomness{}, rand...))
 			elapsed := time.Since(tsStart)
 
 			log.Infow("computing window post", "batch", batchIdx, "elapsed", elapsed)
@@ -600,9 +605,24 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 					return nil, xerrors.Errorf("received no proofs back from generate window post")
 				}
 
+				headTs, err := s.api.ChainHead(ctx)
+				if err != nil {
+					return nil, xerrors.Errorf("getting current head: %w", err)
+				}
+
+				checkRand, err := s.api.ChainGetRandomnessFromBeacon(ctx, headTs.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
+				if err != nil {
+					return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+				}
+
+				if !bytes.Equal(checkRand, rand) {
+					log.Warnw("windowpost randomness changed", "old", rand, "new", checkRand, "ts-height", ts.Height(), "challenge-height", di.Challenge, "tsk", ts.Key())
+					continue
+				}
+
 				// If we generated an incorrect proof, try again.
 				if correct, err := s.verifier.VerifyWindowPoSt(ctx, proof.WindowPoStVerifyInfo{
-					Randomness:        abi.PoStRandomness(rand),
+					Randomness:        abi.PoStRandomness(checkRand),
 					Proofs:            postOut,
 					ChallengedSectors: sinfos,
 					Prover:            abi.ActorID(mid),

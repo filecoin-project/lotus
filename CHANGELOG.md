@@ -1,5 +1,92 @@
 # Lotus changelog
 
+# 1.5.2 / 2021-03-11
+
+This is an hotfix release of Lotus that fixes a critical bug introduced in v1.5.1 in the miner windowPoSt logic. This upgrade is only affecting miner nodes.
+
+## Changes
+- fix window post rand check (https://github.com/filecoin-project/lotus/pull/5773)
+- wdpost: Always use head tipset to get randomness (https://github.com/filecoin-project/lotus/pull/5774)
+
+# 1.5.1 / 2021-03-10
+
+This is an optional release of Lotus that introduces an important fix to the WindowPoSt computation process. The change is to wait for some confidence before drawing beacon randomness for the proof. Without this, invalid proofs might be generated as the result of a null tipset. 
+
+## Splitstore
+
+This release also introduces the splitstore, a new optional blockstore that segregates the monolithic blockstore into cold and hot regions. The hot region contains objects from the last 4-5 finalities plus all reachable objects from two finalities away. All other objects are moved to the cold region using a compaction process that executes every finality, once 5 finalities have elapsed.
+
+The splitstore allows us to separate the two regions quite effectively, using two separate badger blockstores. The separation
+means that the live working set is much smaller, which results in potentially significant performance improvements. In addition, it means that the coldstore can be moved to a separate (bigger, slower, cheaper) disk without loss of performance.
+
+The design also allows us to use different implementations for the two blockstores; for example, an append-only blockstore could be used for coldstore and a faster memory mapped blockstore could be used for the hotstore (eg LMDB). We plan to experiment with these options in the future.
+
+Once the splitstore has been enabled, the existing monolithic blockstore becomes the coldstore. On the first head change notification, the splitstore will warm up the hotstore by copying all reachable objects from the current tipset into the hotstore.  All new writes go into the hotstore, with the splitstore tracking the write epoch. Once 5 finalities have elapsed, and every finality thereafter, the splitstore compacts by moving cold objects into the coldstore. There is also experimental support for garbage collection, whereby nunreachable objects are simply discarded.
+
+To enable the splitstore, add the following to config.toml:
+
+```
+[Chainstore]
+  EnableSplitstore = true
+```
+
+## Highlights
+
+Other highlights include:
+
+- Improved deal data handling - now multiple deals can be adding to sectors in parallel
+- Rewriten sector pledging - it now actually cares about max sealing sector limits
+- Better handling for sectors stuck in the RecoverDealIDs state
+- lotus-miner sectors extend command
+- Optional configurable storage path size limit
+- Config to disable owner/worker fallback from control addresses (useful when owner is a key on a hardware wallet)
+- A write log for node metadata, which can be restored as a backup when the metadata leveldb becomes corrupted (e.g. when you run out of disk space / system crashes in some bad way)
+
+## Changes
+
+- avoid use mp.cfg directly to avoid race (https://github.com/filecoin-project/lotus/pull/5350)
+- Show replacing message CID is state search-msg cli (https://github.com/filecoin-project/lotus/pull/5656)
+- Fix riceing by importing the main package (https://github.com/filecoin-project/lotus/pull/5675)
+- Remove sectors with all deals expired in RecoverDealIDs (https://github.com/filecoin-project/lotus/pull/5658)
+- storagefsm: Rewrite input handling (https://github.com/filecoin-project/lotus/pull/5375)
+- reintroduce Refactor send command for better testability (https://github.com/filecoin-project/lotus/pull/5668)
+- Improve error message with importing a chain (https://github.com/filecoin-project/lotus/pull/5669)
+- storagefsm: Cleanup CC sector creation (https://github.com/filecoin-project/lotus/pull/5612)
+- chain list --gas-stats display capacity (https://github.com/filecoin-project/lotus/pull/5676)
+- Correct some logs (https://github.com/filecoin-project/lotus/pull/5694)
+- refactor blockstores (https://github.com/filecoin-project/lotus/pull/5484)
+- Add idle to sync stage's String() (https://github.com/filecoin-project/lotus/pull/5702)
+- packer provisioner (https://github.com/filecoin-project/lotus/pull/5604)
+- add DeleteMany to Blockstore interface (https://github.com/filecoin-project/lotus/pull/5703)
+- segregate chain and state blockstores (https://github.com/filecoin-project/lotus/pull/5695)
+- fix(multisig): The format of the amount is not correct in msigLockApp (https://github.com/filecoin-project/lotus/pull/5718)
+- Update butterfly network (https://github.com/filecoin-project/lotus/pull/5627)
+- Collect worker task metrics (https://github.com/filecoin-project/lotus/pull/5648)
+- Correctly format disputer log (https://github.com/filecoin-project/lotus/pull/5716)
+- Log block CID in the large delay warning (https://github.com/filecoin-project/lotus/pull/5704)
+- Move api client builders to a cliutil package (https://github.com/filecoin-project/lotus/pull/5728)
+- Implement net peers --extended (https://github.com/filecoin-project/lotus/pull/5734)
+- Command to extend sector expiration (https://github.com/filecoin-project/lotus/pull/5666)
+- garbage collect hotstore after compaction (https://github.com/filecoin-project/lotus/pull/5744)
+- tune badger gc to repeatedly gc the value log until there is no rewrite (https://github.com/filecoin-project/lotus/pull/5745)
+- Add configuration option for pubsub IPColocationWhitelist subnets (https://github.com/filecoin-project/lotus/pull/5735)
+- hot/cold blockstore segregation (aka. splitstore) (https://github.com/filecoin-project/lotus/pull/4992)
+- Customize verifreg root key and remainder account when making genesis (https://github.com/filecoin-project/lotus/pull/5730)
+- chore: update go-graphsync to 0.6.0 (https://github.com/filecoin-project/lotus/pull/5746)
+- Add connmgr metadata to NetPeerInfo (https://github.com/filecoin-project/lotus/pull/5749)
+- test: attempt to make the splitstore test deterministic (https://github.com/filecoin-project/lotus/pull/5750)
+- Feat/api no dep build (https://github.com/filecoin-project/lotus/pull/5729)
+- Fix bootstrapper profile setting (https://github.com/filecoin-project/lotus/pull/5756)
+- Check liveness of sectors when processing termination batches (https://github.com/filecoin-project/lotus/pull/5759)
+- Configurable storage path storage limit (https://github.com/filecoin-project/lotus/pull/5624)
+- miner: Config to disable owner/worker address fallback (https://github.com/filecoin-project/lotus/pull/5620)
+- Fix TestUnpadReader on Go 1.16 (https://github.com/filecoin-project/lotus/pull/5761)
+- Metadata datastore log (https://github.com/filecoin-project/lotus/pull/5755)
+- Remove the SR2 stats, leave just the network totals (https://github.com/filecoin-project/lotus/pull/5757)
+- fix: wait a bit before starting to compute window post proofs (https://github.com/filecoin-project/lotus/pull/5764)
+- fix: retry proof when randomness changes (https://github.com/filecoin-project/lotus/pull/5768)
+
+
 # 1.5.0 / 2021-02-23
 
 This is a mandatory release of Lotus that introduces the fifth upgrade to the Filecoin network. The network upgrade occurs at height 550321, before which time all nodes must have updated to this release (or later). At this height, [v3 specs-actors](https://github.com/filecoin-project/specs-actors/releases/tag/v3.0.0) will take effect, which in turn implements the following two FIPs:

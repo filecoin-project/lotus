@@ -191,15 +191,16 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FailedUnrecoverable: final,
 }
 
-func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, uint64, error) {
-	/////
-	// First process all events
-
+func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
 	for _, event := range events {
 		e, err := json.Marshal(event)
 		if err != nil {
 			log.Errorf("marshaling event for logging: %+v", err)
 			continue
+		}
+
+		if event.User == (SectorRestart{}) {
+			continue // don't log on every fsm restart
 		}
 
 		l := Log{
@@ -225,6 +226,13 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 		state.Log = append(state.Log, l)
 	}
+}
+
+func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, uint64, error) {
+	/////
+	// First process all events
+
+	m.logEvents(events, state)
 
 	if m.notifee != nil {
 		defer func(before SectorInfo) {
@@ -292,7 +300,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	*/
 
-	m.stats.updateSector(m.minerSectorID(state.SectorNumber), state.State)
+	if err := m.onUpdateSector(context.TODO(), state); err != nil {
+		log.Errorw("update sector stats", "error", err)
+	}
 
 	switch state.State {
 	// Happy path
@@ -381,6 +391,37 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	}
 
 	return nil, processed, nil
+}
+
+func (m *Sealing) onUpdateSector(ctx context.Context, state *SectorInfo) error {
+	if m.getConfig == nil {
+		return nil // tests
+	}
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+	sp, err := m.currentSealProof(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting seal proof type: %w", err)
+	}
+
+	shouldUpdateInput := m.stats.updateSector(cfg, m.minerSectorID(state.SectorNumber), state.State)
+
+	// trigger more input processing when we've dipped below max sealing limits
+	if shouldUpdateInput {
+		go func() {
+			m.inputLk.Lock()
+			defer m.inputLk.Unlock()
+
+			if err := m.updateInput(ctx, sp); err != nil {
+				log.Errorf("%+v", err)
+			}
+		}()
+	}
+
+	return nil
 }
 
 func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, error) {

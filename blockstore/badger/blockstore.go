@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
@@ -129,6 +130,39 @@ func (b *Blockstore) Close() error {
 
 	defer atomic.StoreInt64(&b.state, stateClosed)
 	return b.DB.Close()
+}
+
+// CollectGarbage runs garbage collection on the value log
+func (b *Blockstore) CollectGarbage() error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	var err error
+	for err == nil {
+		err = b.DB.RunValueLogGC(0.125)
+	}
+
+	if err == badger.ErrNoRewrite {
+		// not really an error in this case
+		return nil
+	}
+
+	return err
+}
+
+// Compact runs a synchronous compaction
+func (b *Blockstore) Compact() error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	nworkers := runtime.NumCPU() / 2
+	if nworkers < 2 {
+		nworkers = 2
+	}
+
+	return b.DB.Flatten(nworkers)
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
@@ -269,9 +303,6 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 		return ErrBlockstoreClosed
 	}
 
-	batch := b.DB.NewWriteBatch()
-	defer batch.Cancel()
-
 	// toReturn tracks the byte slices to return to the pool, if we're using key
 	// prefixing. we can't return each slice to the pool after each Set, because
 	// badger holds on to the slice.
@@ -284,6 +315,9 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 			}
 		}()
 	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
 
 	for _, block := range blocks {
 		k, pooled := b.PooledStorageKey(block.Cid())
@@ -316,6 +350,44 @@ func (b *Blockstore) DeleteBlock(cid cid.Cid) error {
 	return b.DB.Update(func(txn *badger.Txn) error {
 		return txn.Delete(k)
 	})
+}
+
+func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	// toReturn tracks the byte slices to return to the pool, if we're using key
+	// prefixing. we can't return each slice to the pool after each Set, because
+	// badger holds on to the slice.
+	var toReturn [][]byte
+	if b.prefixing {
+		toReturn = make([][]byte, 0, len(cids))
+		defer func() {
+			for _, b := range toReturn {
+				KeyPool.Put(b)
+			}
+		}()
+	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
+
+	for _, cid := range cids {
+		k, pooled := b.PooledStorageKey(cid)
+		if pooled {
+			toReturn = append(toReturn, k)
+		}
+		if err := batch.Delete(k); err != nil {
+			return err
+		}
+	}
+
+	err := batch.Flush()
+	if err != nil {
+		err = fmt.Errorf("failed to delete blocks from badger blockstore: %w", err)
+	}
+	return err
 }
 
 // AllKeysChan implements Blockstore.AllKeysChan.

@@ -24,21 +24,21 @@ const UpgradeSmokeHeight = -1
 const UpgradeIgnitionHeight = -2
 const UpgradeRefuelHeight = -3
 
-const UpgradeTapeHeight = -4
-
 const UpgradeLiftoffHeight = -5
-const UpgradeActorsV2Height = 120 // critical: the network can bootstrap from v1 only
 
-const UpgradeKumquatHeight = -6
+const UpgradeActorsV2Height = 30 // critical: the network can bootstrap from v1 only
+const UpgradeTapeHeight = 60
 
-const UpgradeCalicoHeight = 306000
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 12)
+const UpgradeKumquatHeight = 90
 
-const UpgradeOrangeHeight = 307500
+const UpgradeCalicoHeight = 100
+const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
 
-const UpgradeClausHeight = 307600
+const UpgradeClausHeight = 250
 
-const UpgradeActorsV3Height = 308000
+const UpgradeOrangeHeight = 300
+
+const UpgradeActorsV3Height = 600
 
 func init() {
 	// Minimum block production power is set to 4 TiB

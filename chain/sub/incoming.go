@@ -101,7 +101,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 					[]tag.Mutator{tag.Insert(metrics.MinerID, blk.Header.Miner.String())},
 					metrics.BlockDelay.M(delay),
 				)
-				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
+				log.Warnw("received block with large delay from miner", "block", blk.Cid(), "delay", delay, "miner", blk.Header.Miner)
 			}
 
 			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{

@@ -20,6 +20,13 @@ func (m MemBlockstore) DeleteBlock(k cid.Cid) error {
 	return nil
 }
 
+func (m MemBlockstore) DeleteMany(ks []cid.Cid) error {
+	for _, k := range ks {
+		delete(m, k)
+	}
+	return nil
+}
+
 func (m MemBlockstore) Has(k cid.Cid) (bool, error) {
 	_, ok := m[k]
 	return ok, nil
