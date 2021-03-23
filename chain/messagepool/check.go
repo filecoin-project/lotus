@@ -65,7 +65,7 @@ func (mp *MessagePool) CheckReplaceMessages(replace []*types.Message) ([][]api.M
 					mmap[sm.Message.Nonce] = &sm.Message
 				}
 			} else {
-				count += 1
+				count++
 			}
 		}
 		mmap[m.Nonce] = m
