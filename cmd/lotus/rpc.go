@@ -51,7 +51,7 @@ func serveRPC(a v1api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, sh
 	pma := apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a))
 
 	serveRpc("/rpc/v1", pma)
-	serveRpc("/rpc/v0", &v0api.WrapperV1{FullNode: pma})
+	serveRpc("/rpc/v0", &v0api.WrapperV1Full{FullNode: pma})
 
 	importAH := &auth.Handler{
 		Verify: a.AuthVerify,

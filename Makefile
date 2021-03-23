@@ -341,20 +341,21 @@ docsgen-openrpc-bin:
 docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
 
 docsgen-md-full: docsgen-md-bin
-	./docgen-md "api/api_full.go" "FullNode" > documentation/en/api-methods.md
+	./docgen-md "api/api_full.go" "FullNode" "api" "./api" > documentation/en/api-v1-unstable-methods.md
+	./docgen-md "api/v0api/full.go" "FullNode" "v0api" "./api/v0api" > documentation/en/api-v0-methods.md
 docsgen-md-storage: docsgen-md-bin
-	./docgen-md "api/api_storage.go" "StorageMiner" > documentation/en/api-methods-miner.md
+	./docgen-md "api/api_storage.go" "StorageMiner" "api" "./api" > documentation/en/api-v0-methods-miner.md
 docsgen-md-worker: docsgen-md-bin
-	./docgen-md "api/api_worker.go" "Worker" > documentation/en/api-methods-worker.md
+	./docgen-md "api/api_worker.go" "Worker" "api" "./api" > documentation/en/api-v0-methods-worker.md
 
 docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker
 
 docsgen-openrpc-full: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_full.go" "FullNode" -gzip > build/openrpc/full.json.gz
+	./docgen-openrpc "api/api_full.go" "FullNode" "api" "./api" -gzip > build/openrpc/full.json.gz
 docsgen-openrpc-storage: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_storage.go" "StorageMiner" -gzip > build/openrpc/miner.json.gz
+	./docgen-openrpc "api/api_storage.go" "StorageMiner" "api" "./api" -gzip > build/openrpc/miner.json.gz
 docsgen-openrpc-worker: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_worker.go" "Worker" -gzip > build/openrpc/worker.json.gz
+	./docgen-openrpc "api/api_worker.go" "Worker" "api" "./api" -gzip > build/openrpc/worker.json.gz
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 

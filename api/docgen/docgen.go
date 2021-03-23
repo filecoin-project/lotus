@@ -342,9 +342,9 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 
 const NoComment = "There are not yet any comments for this method."
 
-func ParseApiASTInfo(apiFile, iface string) (comments map[string]string, groupDocs map[string]string) { //nolint:golint
+func ParseApiASTInfo(apiFile, iface, pkg, dir string) (comments map[string]string, groupDocs map[string]string) { //nolint:golint
 	fset := token.NewFileSet()
-	apiDir, err := filepath.Abs("./api")
+	apiDir, err := filepath.Abs(dir)
 	if err != nil {
 		fmt.Println("./api filepath absolute error: ", err)
 		return
@@ -360,14 +360,14 @@ func ParseApiASTInfo(apiFile, iface string) (comments map[string]string, groupDo
 		return
 	}
 
-	ap := pkgs["api"]
+	ap := pkgs[pkg]
 
 	f := ap.Files[apiFile]
 
 	cmap := ast.NewCommentMap(fset, f, f.Comments)
 
 	v := &Visitor{iface, make(map[string]ast.Node)}
-	ast.Walk(v, pkgs["api"])
+	ast.Walk(v, ap)
 
 	comments = make(map[string]string)
 	groupDocs = make(map[string]string)

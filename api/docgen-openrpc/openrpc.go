@@ -22,7 +22,7 @@ var Comments map[string]string
 var GroupDocs map[string]string
 
 func init() {
-	Comments, GroupDocs = docgen.ParseApiASTInfo(os.Args[1], os.Args[2])
+	Comments, GroupDocs = docgen.ParseApiASTInfo(os.Args[1], os.Args[2], os.Args[3], os.Args[4])
 }
 
 // schemaDictEntry represents a type association passed to the jsonschema reflector.

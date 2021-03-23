@@ -52,7 +52,7 @@ func main() {
 	// Could use flags package to handle this more cleanly, but that requires changes elsewhere
 	// the scope of which just isn't warranted by this one use case which will usually be run
 	// programmatically anyways.
-	if len(os.Args) > 3 && os.Args[3] == "-gzip" {
+	if len(os.Args) > 5 && os.Args[5] == "-gzip" {
 		jsonOut, err = json.Marshal(out)
 		if err != nil {
 			log.Fatalln(err)
