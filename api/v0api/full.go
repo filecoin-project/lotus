@@ -23,6 +23,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+//go:generate go run github.com/golang/mock/mockgen -destination=v0mocks/mock_full.go -package=v0mocks . FullNode
+
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common
