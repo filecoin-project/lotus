@@ -7,14 +7,14 @@ jobs:
     steps:
     - name: Run baseline-docker-1-1
       id: baseline-docker-1-1
-      uses: coryschwartz/testground-github-action@v0.5.1.2
+      uses: coryschwartz/testground-github-action@v0.5.1.3
       with:
         backend: https://ci.testground.ipfs.team
         plan_directory: testplans/lotus-soup/_compositions
         composition_file: testplans/lotus-soup/_compositions/baseline-docker-1-1.toml
     - name: Run baseline-docker-5-1
       id: baseline-docker-5-1
-      uses: coryschwartz/testground-github-action@v0.5.1.2
+      uses: coryschwartz/testground-github-action@v0.5.1.3
       with:
         backend: https://ci.testground.ipfs.team
         plan_directory: testplans/lotus-soup/_compositions
