@@ -231,6 +231,10 @@ func (a *MpoolAPI) MpoolCheckPendingMessages(ctx context.Context, from address.A
 	return a.Mpool.CheckPendingMessages(from)
 }
 
+func (a *MpoolAPI) MpoolCheckReplaceMessages(ctx context.Context, msgs []*types.Message) ([][]api.MessageCheckStatus, error) {
+	return a.Mpool.CheckReplaceMessages(msgs)
+}
+
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	return a.Mpool.GetNonce(addr)
 }

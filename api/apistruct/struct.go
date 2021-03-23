@@ -141,6 +141,7 @@ type FullNodeStruct struct {
 
 		MpoolCheckMessages        func(context.Context, []*types.Message) ([][]api.MessageCheckStatus, error) `perm:"read"`
 		MpoolCheckPendingMessages func(context.Context, address.Address) ([][]api.MessageCheckStatus, error)  `perm:"read"`
+		MpoolCheckReplaceMessages func(context.Context, []*types.Message) ([][]api.MessageCheckStatus, error) `perm:"read"`
 
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
@@ -738,6 +739,10 @@ func (c *FullNodeStruct) MpoolCheckMessages(ctx context.Context, msgs []*types.M
 
 func (c *FullNodeStruct) MpoolCheckPendingMessages(ctx context.Context, from address.Address) ([][]api.MessageCheckStatus, error) {
 	return c.Internal.MpoolCheckPendingMessages(ctx, from)
+}
+
+func (c *FullNodeStruct) MpoolCheckReplaceMessages(ctx context.Context, msgs []*types.Message) ([][]api.MessageCheckStatus, error) {
+	return c.Internal.MpoolCheckReplaceMessages(ctx, msgs)
 }
 
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
