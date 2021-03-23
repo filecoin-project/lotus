@@ -100,7 +100,7 @@ var runCmd = &cli.Command{
 		rpcServer := jsonrpc.NewServer(serverOptions...)
 		rpcServer.Register("Filecoin", metrics.MetricedGatewayAPI(NewGatewayAPI(api)))
 
-		mux.Handle("/rpc/v0", rpcServer)
+		mux.Handle("/rpc/v0", rpcServer) // todo: v1 support
 
 		registry := promclient.DefaultRegisterer.(*promclient.Registry)
 		exporter, err := prometheus.NewExporter(prometheus.Options{
