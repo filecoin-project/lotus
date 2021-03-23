@@ -1,0 +1,25 @@
+on: [push]
+
+jobs:
+  testground:
+    runs-on: ubuntu-latest
+    name: A job to say hello
+    steps:
+    - name: Run baseline-docker-1-1
+      id: baseline-docker-1-1
+      uses: coryschwartz/testground@actionv0
+      with:
+        backend: https://ci.testground.ipfs.team
+        plan_directory: testplans/lotus-soup/_compositions
+        composition_file: testplans/lotus-soup/_compositions/baseline-docker-1-1.toml
+    - name: Run baseline-docker-5-1
+      id: baseline-docker-5-1
+      uses: coryschwartz/testground@actionv0
+      with:
+        backend: https://ci.testground.ipfs.team
+        plan_directory: testplans/lotus-soup/_compositions
+        composition_file: testplans/lotus-soup/_compositions/baseline-docker-1-1.toml
+    - name: Get status for baseline-docker-1-1
+      run: echo "The time was ${{ steps.baseline-docker-1-1.outputs.status }}"
+    - name: Get status for baseline-docker-5-1
+      run: echo "The time was ${{ steps.baseline-docker-5-1.outputs.status }}"
