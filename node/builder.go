@@ -729,3 +729,19 @@ func Test() Option {
 		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
 	)
 }
+
+// For 3rd party dep injection.
+
+func WithRepoType(repoType repo.RepoType) func(s *Settings) error {
+	return func(s *Settings) error {
+		s.nodeType = repoType
+		return nil
+	}
+}
+
+func WithInvokesKey(i invoke, resApi interface{}) func(s *Settings) error {
+	return func(s *Settings) error {
+		s.invokes[i] = fx.Populate(resApi)
+		return nil
+	}
+}
