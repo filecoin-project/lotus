@@ -233,6 +233,8 @@ type FullNodeStruct struct {
 
 		MpoolCheckPendingMessages func(p0 context.Context, p1 address.Address) ([][]api.MessageCheckStatus, error) `perm:"read"`
 
+		MpoolCheckReplaceMessages func(p0 context.Context, p1 []*types.Message) ([][]api.MessageCheckStatus, error) `perm:"read"`
+
 		MpoolClear func(p0 context.Context, p1 bool) error `perm:"write"`
 
 		MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) `perm:"read"`
@@ -1143,6 +1145,10 @@ func (s *FullNodeStruct) MpoolCheckMessages(p0 context.Context, p1 []*types.Mess
 
 func (s *FullNodeStruct) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]api.MessageCheckStatus, error) {
 	return s.Internal.MpoolCheckPendingMessages(p0, p1)
+}
+
+func (s *FullNodeStruct) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]api.MessageCheckStatus, error) {
+	return s.Internal.MpoolCheckReplaceMessages(p0, p1)
 }
 
 func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) error {

@@ -84,6 +84,7 @@
   * [MpoolBatchPushUntrusted](#MpoolBatchPushUntrusted)
   * [MpoolCheckMessages](#MpoolCheckMessages)
   * [MpoolCheckPendingMessages](#MpoolCheckPendingMessages)
+  * [MpoolCheckReplaceMessages](#MpoolCheckReplaceMessages)
   * [MpoolClear](#MpoolClear)
   * [MpoolGetConfig](#MpoolGetConfig)
   * [MpoolGetNonce](#MpoolGetNonce)
@@ -2006,6 +2007,21 @@ Inputs:
 ```json
 [
   "f01234"
+]
+```
+
+Response: `null`
+
+### MpoolCheckReplaceMessages
+MpoolCheckMessages performs logical checks on pending messages with replacement
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  null
 ]
 ```
 

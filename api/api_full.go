@@ -240,6 +240,8 @@ type FullNode interface {
 	MpoolCheckMessages(context.Context, []*types.Message) ([][]MessageCheckStatus, error) //perm:read
 	// MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
 	MpoolCheckPendingMessages(context.Context, address.Address) ([][]MessageCheckStatus, error) //perm:read
+	// MpoolCheckReplaceMessages performs logical checks on pending messages with replacement
+	MpoolCheckReplaceMessages(context.Context, []*types.Message) ([][]MessageCheckStatus, error) //perm:read
 
 	// MpoolGetNonce gets next nonce for the specified sender.
 	// Note that this method may not be atomic. Use MpoolPushMessage instead.
