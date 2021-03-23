@@ -321,6 +321,7 @@ dist-clean:
 type-gen:
 	go run ./gen/main.go
 	go generate ./...
+	goimports -w api/
 
 method-gen:
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
