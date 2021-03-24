@@ -331,6 +331,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 				Code: api.CheckStatusMessageBaseFeeLowerBound,
 				Hint: map[string]interface{}{
 					"baseFeeLowerBound": baseFeeLowerBound,
+					"baseFee":           baseFee,
 				},
 			},
 		}
@@ -343,9 +344,6 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		}
 
 		result[i] = append(result[i], check)
-		if !check.OK {
-			goto checkState
-		}
 
 		// 8. Base Fee upper bound
 		check = api.MessageCheckStatus{
@@ -354,6 +352,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 				Code: api.CheckStatusMessageBaseFeeUpperBound,
 				Hint: map[string]interface{}{
 					"baseFeeUpperBound": baseFeeUpperBound,
+					"baseFee":           baseFee,
 				},
 			},
 		}

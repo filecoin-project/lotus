@@ -8,6 +8,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
+	github.com/Kubuxu/imtui v0.0.0-20210323145256-9fdaecfdf6b7
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
@@ -47,6 +48,7 @@ require (
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
+	github.com/gdamore/tcell/v2 v2.2.0
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/golang/mock v1.4.4
@@ -84,7 +86,7 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
-	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
+	github.com/ipfs/go-log/v2 v2.1.2
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2

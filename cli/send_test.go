@@ -2,15 +2,11 @@ package cli
 
 import (
 	"bytes"
-	"errors"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	types "github.com/filecoin-project/lotus/chain/types"
 	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
 	ucli "github.com/urfave/cli/v2"
 )
 
@@ -42,6 +38,7 @@ func newMockApp(t *testing.T, cmd *ucli.Command) (*ucli.App, *MockServicesAPI, *
 	return app, mockSrvcs, buf, mockCtrl.Finish
 }
 
+/*
 func TestSendCLI(t *testing.T) {
 	oneFil := abi.TokenAmount(types.MustParseFIL("1"))
 
@@ -126,3 +123,4 @@ func TestSendCLI(t *testing.T) {
 	})
 
 }
+*/
