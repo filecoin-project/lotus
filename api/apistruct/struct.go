@@ -154,6 +154,8 @@ type FullNodeStruct struct {
 
 		ClientCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
+		ClientCancelRetrievalDeal func(p0 context.Context, p1 retrievalmarket.DealID) error `perm:"write"`
+
 		ClientDataTransferUpdates func(p0 context.Context) (<-chan api.DataTransferChannel, error) `perm:"write"`
 
 		ClientDealPieceCID func(p0 context.Context, p1 cid.Cid) (api.DataCIDSize, error) `perm:"read"`
@@ -976,6 +978,10 @@ func (s *FullNodeStruct) ClientCalcCommP(p0 context.Context, p1 string) (*api.Co
 
 func (s *FullNodeStruct) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
 	return s.Internal.ClientCancelDataTransfer(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStruct) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
+	return s.Internal.ClientCancelRetrievalDeal(p0, p1)
 }
 
 func (s *FullNodeStruct) ClientDataTransferUpdates(p0 context.Context) (<-chan api.DataTransferChannel, error) {

@@ -475,6 +475,29 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	return out, nil
 }
 
+func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmarket.DealID) error {
+	cerr := make(chan error)
+	go func() {
+		err := a.Retrieval.CancelDeal(dealid)
+
+		select {
+		case cerr <- err:
+		case <-ctx.Done():
+		}
+	}()
+
+	select {
+	case err := <-cerr:
+		if err != nil {
+			return xerrors.Errorf("canceling retrieval deal erred: %w", err)
+		}
+
+		return nil
+	case <-ctx.Done():
+		return xerrors.Errorf("canceling retrieval deal context timeout: %w", ctx.Err())
+	}
+}
+
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
 	events := make(chan marketevents.RetrievalEvent)
 	go a.clientRetrieve(ctx, order, ref, events)
