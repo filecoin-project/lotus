@@ -380,8 +380,9 @@ func (m *GasModule) GasBatchEstimateMessageGas(ctx context.Context, estimateMess
 
 	var msgs []*types.Message
 	for _, estimateMessage := range estimateMessages {
-		if estimateMessage.Msg.GasLimit == 0 {
-			msg := *estimateMessage.Msg
+		estimateMsg := estimateMessage.Msg
+		if estimateMsg.GasLimit == 0 {
+			msg := *estimateMsg
 			msg.GasLimit = build.BlockGasLimit
 			msg.GasFeeCap = types.NewInt(uint64(build.MinimumBaseFee) + 1)
 			msg.GasPremium = types.NewInt(1)
@@ -406,7 +407,7 @@ func (m *GasModule) GasBatchEstimateMessageGas(ctx context.Context, estimateMess
 			}
 
 			deferProcessMsg := func(gasUsed int64) {
-				estimateMessage.Msg.GasLimit = gasUsed
+				estimateMsg.GasLimit = gasUsed
 				msg.GasLimit = gasUsed
 			}
 			// Special case for PaymentChannel collect, which is deleting actor
@@ -436,26 +437,26 @@ func (m *GasModule) GasBatchEstimateMessageGas(ctx context.Context, estimateMess
 			deferProcessMsg(res.MsgRct.GasUsed + 76e3)
 		}
 
-		if estimateMessage.Msg.GasPremium == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasPremium, types.NewInt(0)) == 0 {
-			gasPremium, err := m.GasEstimateGasPremium(ctx, 10, estimateMessage.Msg.From, estimateMessage.Msg.GasLimit, types.TipSetKey{})
+		if estimateMsg.GasPremium == types.EmptyInt || types.BigCmp(estimateMsg.GasPremium, types.NewInt(0)) == 0 {
+			gasPremium, err := m.GasEstimateGasPremium(ctx, 10, estimateMsg.From, estimateMsg.GasLimit, types.TipSetKey{})
 			if err != nil {
 				return msgs, xerrors.Errorf("estimating gas price: %w", err)
 			}
-			estimateMessage.Msg.GasPremium = gasPremium
+			estimateMsg.GasPremium = gasPremium
 		}
 
-		if estimateMessage.Msg.GasFeeCap == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasFeeCap, types.NewInt(0)) == 0 {
-			feeCap, err := m.GasEstimateFeeCap(ctx, estimateMessage.Msg, 20, types.EmptyTSK)
+		if estimateMsg.GasFeeCap == types.EmptyInt || types.BigCmp(estimateMsg.GasFeeCap, types.NewInt(0)) == 0 {
+			feeCap, err := m.GasEstimateFeeCap(ctx, estimateMsg, 20, types.EmptyTSK)
 			if err != nil {
 				return msgs, xerrors.Errorf("estimating fee cap: %w", err)
 			}
-			estimateMessage.Msg.GasFeeCap = feeCap
+			estimateMsg.GasFeeCap = feeCap
 		}
 
-		messagepool.CapGasFee(m.GetMaxFee, estimateMessage.Msg, estimateMessage.Spec)
+		messagepool.CapGasFee(m.GetMaxFee, estimateMsg, estimateMessage.Spec)
 
-		msgs = append(msgs, estimateMessage.Msg)
-		priorMsgs = append(priorMsgs, estimateMessage.Msg)
+		msgs = append(msgs, estimateMsg)
+		priorMsgs = append(priorMsgs, estimateMsg)
 		if len(msgs) > selectCount {
 			break
 		}
