@@ -891,12 +891,12 @@ func (s *SplitStore) walkLinks(c cid.Cid, walked *cid.Set, f func(cid.Cid) error
 		return nil
 	}
 
-	if c.Prefix().Codec != cid.DagCBOR {
-		return nil
-	}
-
 	if err := f(c); err != nil {
 		return err
+	}
+
+	if c.Prefix().Codec != cid.DagCBOR {
+		return nil
 	}
 
 	blk, err := s.Get(c)
