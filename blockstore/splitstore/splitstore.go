@@ -676,20 +676,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet, syncGapEpoch abi.ChainEpoch)
 	}
 	defer markSet.Close() //nolint:errcheck
 
-	// 0. mark genesis and its state root as reachable
-	log.Info("marking genesis")
-	err = markSet.Mark(s.genesis)
-	if err != nil {
-		return xerrors.Errorf("error marking genesis: %w", err)
-	}
-
-	err = s.walkLinks(s.genesisStateRoot, cid.NewSet(), func(c cid.Cid) error {
-		return markSet.Mark(c)
-	})
-	if err != nil {
-		return xerrors.Errorf("error marking genesis state root: %w", err)
-	}
-
 	// 1. mark reachable objects by walking the chain from the current epoch to the boundary epoch
 	log.Infow("marking reachable blocks", "currentEpoch", currentEpoch, "boundaryEpoch", boundaryEpoch)
 	startMark := time.Now()
