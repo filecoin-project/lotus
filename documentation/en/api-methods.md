@@ -34,6 +34,7 @@
 * [Client](#Client)
   * [ClientCalcCommP](#ClientCalcCommP)
   * [ClientCancelDataTransfer](#ClientCancelDataTransfer)
+  * [ClientCancelRetrievalDeal](#ClientCancelRetrievalDeal)
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
   * [ClientDealPieceCID](#ClientDealPieceCID)
   * [ClientDealSize](#ClientDealSize)
@@ -884,6 +885,21 @@ Inputs:
   3,
   "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   true
+]
+```
+
+Response: `{}`
+
+### ClientCancelRetrievalDeal
+ClientCancelRetrievalDeal cancels an ongoing retrieval deal based on DealID
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  5
 ]
 ```
 

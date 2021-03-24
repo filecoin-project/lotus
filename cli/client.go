@@ -89,6 +89,7 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
+		WithCategory("retrieval", clientCancelRetrievalDealCmd),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientBalancesCmd),
@@ -1972,6 +1973,33 @@ var clientCancelTransfer = &cli.Command{
 		timeoutCtx, cancel := context.WithTimeout(ctx, cctx.Duration("cancel-timeout"))
 		defer cancel()
 		return api.ClientCancelDataTransfer(timeoutCtx, transferID, other, initiator)
+	},
+}
+
+var clientCancelRetrievalDealCmd = &cli.Command{
+	Name:  "cancel-retrieval",
+	Usage: "Cancel a retrieval deal by deal ID; this also cancels the associated transfer",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:     "deal-id",
+			Usage:    "specify retrieval deal by deal ID",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		id := cctx.Int64("deal-id")
+		if id < 0 {
+			return errors.New("deal id cannot be negative")
+		}
+
+		return api.ClientCancelRetrievalDeal(ctx, retrievalmarket.DealID(id))
 	},
 }
 
