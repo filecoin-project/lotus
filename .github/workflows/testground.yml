@@ -5,21 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     name: Run testground compositions
     steps:
-    - name: Run baseline-docker-1-1
-      id: baseline-docker-1-1
-      uses: coryschwartz/testground-github-action@v0.5.1.3
+    - name: testground graphsync
+      id: graphsync-stress-k8s
+      uses: coryschwartz/testground-github-action@v0.5.1.4
       with:
         backend: https://ci.testground.ipfs.team
-        plan_directory: testplans/lotus-soup/_compositions
-        composition_file: testplans/lotus-soup/_compositions/baseline-docker-1-1.toml
-    - name: Run baseline-docker-5-1
-      id: baseline-docker-5-1
-      uses: coryschwartz/testground-github-action@v0.5.1.3
-      with:
-        backend: https://ci.testground.ipfs.team
-        plan_directory: testplans/lotus-soup/_compositions
-        composition_file: testplans/lotus-soup/_compositions/baseline-docker-1-1.toml
-    - name: Get status for baseline-docker-1-1
-      run: echo "The time was ${{ steps.baseline-docker-1-1.outputs.status }}"
-    - name: Get status for baseline-docker-5-1
-      run: echo "The time was ${{ steps.baseline-docker-5-1.outputs.status }}"
+        plan_directory: testplans/graphsync
+        composition_file: testplans/graphsync/_compositions/stress-k8s
+    - name: Get status for graphsync-stress-k8s
+      run: echo "The time was ${{ steps.graphsync-stress-k8s.outputs.status }}"
+    - name: Get outcome for graphsync-stress-k8s
+      run: echo "The time was ${{ steps.graphsync-stress-k8s.outputs.outcome }}"
