@@ -177,7 +177,7 @@ func (d *Datastore) openLog(p string) (*logfile, string, error) {
 		return nil, "", xerrors.Errorf("logfile %s validated %d bytes, but the file has %d bytes (%d more)", p, at, end, end-at)
 	}
 
-	compact := logvals > vals * int64(compactThresh)
+	compact := logvals > vals*int64(compactThresh)
 	if compact {
 		log.Infow("compacting log", "current", p, "openCount", openCount, "baseValues", vals, "logValues", logvals)
 		if err := f.Close(); err != nil {
