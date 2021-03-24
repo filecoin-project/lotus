@@ -2,7 +2,6 @@ package cli
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 
 	"github.com/urfave/cli/v2"
@@ -137,23 +136,30 @@ var sendCmd = &cli.Command{
 			params.Params = decparams
 		}
 
-		params.Force = cctx.Bool("force")
-
 		if cctx.IsSet("nonce") {
 			n := cctx.Uint64("nonce")
 			params.Nonce = &n
 		}
 
-		msgCid, err := srv.Send(ctx, params)
-
+		proto, err := srv.MessageForSend(ctx, params)
 		if err != nil {
-			if errors.Is(err, ErrSendBalanceTooLow) {
-				return fmt.Errorf("--force must be specified for this action to have an effect; you have been warned: %w", err)
+			return xerrors.Errorf("creating message prototype: %w", err)
+		}
+		msg, checks, err := srv.PublishMessage(ctx, proto, cctx.Bool("force"))
+		if xerrors.Is(err, ErrCheckFailed) {
+			proto, err = resolveChecks(ctx, srv, cctx.App.Writer, proto, checks, true)
+			if err != nil {
+				return xerrors.Errorf("from UI: %w", err)
 			}
-			return xerrors.Errorf("executing send: %w", err)
+
+			msg, _, err = srv.PublishMessage(ctx, proto, true)
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "%s\n", msgCid)
+		if err != nil {
+			return xerrors.Errorf("publishing message: %w", err)
+		}
+
+		fmt.Fprintf(cctx.App.Writer, "%s\n", msg.Cid())
 		return nil
 	},
 }

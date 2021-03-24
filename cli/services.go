@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	types "github.com/filecoin-project/lotus/chain/types"
@@ -22,11 +22,22 @@ import (
 //go:generate go run github.com/golang/mock/mockgen -destination=servicesmock_test.go -package=cli -self_package github.com/filecoin-project/lotus/cli . ServicesAPI
 
 type ServicesAPI interface {
-	// Sends executes a send given SendParams
-	Send(ctx context.Context, params SendParams) (cid.Cid, error)
+	GetBaseFee(ctx context.Context) (abi.TokenAmount, error)
+
+	// MessageForSend creates a prototype of a message based on SendParams
+	MessageForSend(ctx context.Context, params SendParams) (*types.Message, error)
+
 	// DecodeTypedParamsFromJSON takes in information needed to identify a method and converts JSON
 	// parameters to bytes of their CBOR encoding
 	DecodeTypedParamsFromJSON(ctx context.Context, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error)
+
+	RunChecksForPrototype(ctx context.Context, prototype *types.Message) ([][]api.MessageCheckStatus, error)
+
+	// PublishMessage takes in a message prototype and publishes it
+	// before publishing the message, it runs checks on the node, message and mpool to verify that
+	// message is valid and won't be stuck.
+	// if `force` is true, it skips the checks
+	PublishMessage(ctx context.Context, prototype *types.Message, interactive bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error)
 
 	// Close ends the session of services and disconnects from RPC, using Services after Close is called
 	// most likely will result in an error
@@ -46,6 +57,16 @@ func (s *ServicesImpl) Close() error {
 	s.closer()
 	s.closer = nil
 	return nil
+}
+
+func (s *ServicesImpl) GetBaseFee(ctx context.Context) (abi.TokenAmount, error) {
+	// not used but useful
+
+	ts, err := s.api.ChainHead(ctx)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("getting head: %w", err)
+	}
+	return ts.MinTicketBlock().ParentBaseFee, nil
 }
 
 func (s *ServicesImpl) DecodeTypedParamsFromJSON(ctx context.Context, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error) {
@@ -72,6 +93,76 @@ func (s *ServicesImpl) DecodeTypedParamsFromJSON(ctx context.Context, to address
 	return buf.Bytes(), nil
 }
 
+type CheckInfo struct {
+	MessageTie        cid.Cid
+	CurrentMessageTie bool
+
+	Check api.MessageCheckStatus
+}
+
+var ErrCheckFailed = fmt.Errorf("check has failed")
+
+func (s *ServicesImpl) RunChecksForPrototype(ctx context.Context, prototype *types.Message) ([][]api.MessageCheckStatus, error) {
+	var outChecks [][]api.MessageCheckStatus
+	checks, err := s.api.MpoolCheckMessages(ctx, []*types.Message{prototype})
+	if err != nil {
+		return nil, xerrors.Errorf("message check: %w", err)
+	}
+	outChecks = append(outChecks, checks...)
+
+	checks, err = s.api.MpoolCheckPendingMessages(ctx, prototype.From)
+	if err != nil {
+		return nil, xerrors.Errorf("pending mpool check: %w", err)
+	}
+	outChecks = append(outChecks, checks...)
+
+	return outChecks, nil
+}
+
+// PublishMessage modifies prototype to include gas estimation
+// Errors with ErrCheckFailed if any of the checks fail
+// First group of checks is related to the message prototype
+func (s *ServicesImpl) PublishMessage(ctx context.Context,
+	prototype *types.Message, force bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
+
+	gasedMsg, err := s.api.GasEstimateMessageGas(ctx, prototype, nil, types.EmptyTSK)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("estimating gas: %w", err)
+	}
+	*prototype = *gasedMsg
+
+	if !force {
+		checks, err := s.RunChecksForPrototype(ctx, prototype)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("running checks: %w", err)
+		}
+		if len(checks) != 0 {
+			return nil, checks, ErrCheckFailed
+		}
+	}
+
+	//TODO: message prototype needs to have "IsNonceSet"
+	if prototype.Nonce != 0 {
+		sm, err := s.api.WalletSignMessage(ctx, prototype.From, prototype)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		_, err = s.api.MpoolPush(ctx, sm)
+		if err != nil {
+			return nil, nil, err
+		}
+		return sm, nil, nil
+	}
+
+	sm, err := s.api.MpoolPushMessage(ctx, prototype, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sm, nil, nil
+}
+
 type SendParams struct {
 	To   address.Address
 	From address.Address
@@ -84,21 +175,13 @@ type SendParams struct {
 	Nonce  *uint64
 	Method abi.MethodNum
 	Params []byte
-
-	Force bool
 }
 
-// This is specialised Send for Send command
-// There might be room for generic Send that other commands can use to send their messages
-// We will see
-
-var ErrSendBalanceTooLow = errors.New("balance too low")
-
-func (s *ServicesImpl) Send(ctx context.Context, params SendParams) (cid.Cid, error) {
+func (s *ServicesImpl) MessageForSend(ctx context.Context, params SendParams) (*types.Message, error) {
 	if params.From == address.Undef {
 		defaddr, err := s.api.WalletDefaultAddress(ctx)
 		if err != nil {
-			return cid.Undef, err
+			return nil, err
 		}
 		params.From = defaddr
 	}
@@ -127,40 +210,9 @@ func (s *ServicesImpl) Send(ctx context.Context, params SendParams) (cid.Cid, er
 	} else {
 		msg.GasLimit = 0
 	}
-
-	if !params.Force {
-		// Funds insufficient check
-		fromBalance, err := s.api.WalletBalance(ctx, msg.From)
-		if err != nil {
-			return cid.Undef, err
-		}
-		totalCost := types.BigAdd(types.BigMul(msg.GasFeeCap, types.NewInt(uint64(msg.GasLimit))), msg.Value)
-
-		if fromBalance.LessThan(totalCost) {
-			return cid.Undef, xerrors.Errorf("From balance %s less than total cost %s: %w", types.FIL(fromBalance), types.FIL(totalCost), ErrSendBalanceTooLow)
-
-		}
-	}
-
 	if params.Nonce != nil {
 		msg.Nonce = *params.Nonce
-		sm, err := s.api.WalletSignMessage(ctx, params.From, msg)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		_, err = s.api.MpoolPush(ctx, sm)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		return sm.Cid(), nil
 	}
 
-	sm, err := s.api.MpoolPushMessage(ctx, msg, nil)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return sm.Cid(), nil
+	return msg, nil
 }
