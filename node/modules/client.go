@@ -135,6 +135,12 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 
 	// data-transfer push / pull channel restart configuration:
 	dtRestartConfig := dtimpl.ChannelRestartConfig(channelmonitor.Config{
+		// For now only monitor push channels (for storage deals)
+		MonitorPushChannels: true,
+		// TODO: Enable pull channel monitoring (for retrievals) when the
+		//  following issue has been fixed:
+		// https://github.com/filecoin-project/go-data-transfer/issues/172
+		MonitorPullChannels: false,
 		// Wait up to 30s for the other side to respond to an Open channel message
 		AcceptTimeout: 30 * time.Second,
 		// Send a restart message if the data rate falls below 1024 bytes / minute
