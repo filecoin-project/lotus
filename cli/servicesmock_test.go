@@ -8,8 +8,10 @@ import (
 	context "context"
 	go_address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
+	big "github.com/filecoin-project/go-state-types/big"
+	api "github.com/filecoin-project/lotus/api"
+	types "github.com/filecoin-project/lotus/chain/types"
 	gomock "github.com/golang/mock/gomock"
-	go_cid "github.com/ipfs/go-cid"
 	reflect "reflect"
 )
 
@@ -65,17 +67,63 @@ func (mr *MockServicesAPIMockRecorder) DecodeTypedParamsFromJSON(arg0, arg1, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodeTypedParamsFromJSON", reflect.TypeOf((*MockServicesAPI)(nil).DecodeTypedParamsFromJSON), arg0, arg1, arg2, arg3)
 }
 
-// Send mocks base method
-func (m *MockServicesAPI) Send(arg0 context.Context, arg1 SendParams) (go_cid.Cid, error) {
+// GetBaseFee mocks base method
+func (m *MockServicesAPI) GetBaseFee(arg0 context.Context) (big.Int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Send", arg0, arg1)
-	ret0, _ := ret[0].(go_cid.Cid)
+	ret := m.ctrl.Call(m, "GetBaseFee", arg0)
+	ret0, _ := ret[0].(big.Int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Send indicates an expected call of Send
-func (mr *MockServicesAPIMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
+// GetBaseFee indicates an expected call of GetBaseFee
+func (mr *MockServicesAPIMockRecorder) GetBaseFee(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockServicesAPI)(nil).Send), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBaseFee", reflect.TypeOf((*MockServicesAPI)(nil).GetBaseFee), arg0)
+}
+
+// MessageForSend mocks base method
+func (m *MockServicesAPI) MessageForSend(arg0 context.Context, arg1 SendParams) (*types.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MessageForSend", arg0, arg1)
+	ret0, _ := ret[0].(*types.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MessageForSend indicates an expected call of MessageForSend
+func (mr *MockServicesAPIMockRecorder) MessageForSend(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MessageForSend", reflect.TypeOf((*MockServicesAPI)(nil).MessageForSend), arg0, arg1)
+}
+
+// PublishMessage mocks base method
+func (m *MockServicesAPI) PublishMessage(arg0 context.Context, arg1 *types.Message, arg2 bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishMessage", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types.SignedMessage)
+	ret1, _ := ret[1].([][]api.MessageCheckStatus)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// PublishMessage indicates an expected call of PublishMessage
+func (mr *MockServicesAPIMockRecorder) PublishMessage(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishMessage", reflect.TypeOf((*MockServicesAPI)(nil).PublishMessage), arg0, arg1, arg2)
+}
+
+// RunChecksForPrototype mocks base method
+func (m *MockServicesAPI) RunChecksForPrototype(arg0 context.Context, arg1 *types.Message) ([][]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunChecksForPrototype", arg0, arg1)
+	ret0, _ := ret[0].([][]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunChecksForPrototype indicates an expected call of RunChecksForPrototype
+func (mr *MockServicesAPIMockRecorder) RunChecksForPrototype(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunChecksForPrototype", reflect.TypeOf((*MockServicesAPI)(nil).RunChecksForPrototype), arg0, arg1)
 }
