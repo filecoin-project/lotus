@@ -367,12 +367,16 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		if !has {
 			blk, err := s.cold.Get(c)
 			if err != nil {
-				return xerrors.Errorf("error retrieving genesis state root from coldstore: %w", err)
+				if err == bstore.ErrNotFound {
+					return nil
+				}
+
+				return xerrors.Errorf("error retrieving genesis state linked object from coldstore: %w", err)
 			}
 
 			err = s.hot.Put(blk)
 			if err != nil {
-				return xerrors.Errorf("error putting genesis state root to hotstore: %w", err)
+				return xerrors.Errorf("error putting genesis state linked object to hotstore: %w", err)
 			}
 		}
 
