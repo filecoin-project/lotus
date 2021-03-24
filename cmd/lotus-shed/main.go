@@ -53,6 +53,7 @@ func main() {
 		rpcCmd,
 		cidCmd,
 		blockmsgidCmd,
+		signaturesCmd,
 	}
 
 	app := &cli.App{
