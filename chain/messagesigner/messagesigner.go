@@ -29,13 +29,13 @@ type MpoolNonceAPI interface {
 // MessageSigner keeps track of nonces per address, and increments the nonce
 // when signing a message
 type MessageSigner struct {
-	wallet api.WalletAPI
+	wallet api.Wallet
 	lk     sync.Mutex
 	mpool  MpoolNonceAPI
 	ds     datastore.Batching
 }
 
-func NewMessageSigner(wallet api.WalletAPI, mpool MpoolNonceAPI, ds dtypes.MetadataDS) *MessageSigner {
+func NewMessageSigner(wallet api.Wallet, mpool MpoolNonceAPI, ds dtypes.MetadataDS) *MessageSigner {
 	ds = namespace.Wrap(ds, datastore.NewKey("/message-signer/"))
 	return &MessageSigner{
 		wallet: wallet,

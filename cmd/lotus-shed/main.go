@@ -37,6 +37,7 @@ func main() {
 		mpoolCmd,
 		genesisVerifyCmd,
 		mathCmd,
+		minerCmd,
 		mpoolStatsCmd,
 		exportChainCmd,
 		consensusCmd,

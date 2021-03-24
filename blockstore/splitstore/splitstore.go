@@ -798,15 +798,26 @@ func (s *SplitStore) purgeTracking(cids []cid.Cid) error {
 }
 
 func (s *SplitStore) gcHotstore() {
+	if compact, ok := s.hot.(interface{ Compact() error }); ok {
+		log.Infof("compacting hotstore")
+		startCompact := time.Now()
+		err := compact.Compact()
+		if err != nil {
+			log.Warnf("error compacting hotstore: %s", err)
+			return
+		}
+		log.Infow("hotstore compaction done", "took", time.Since(startCompact))
+	}
+
 	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
 		log.Infof("garbage collecting hotstore")
 		startGC := time.Now()
 		err := gc.CollectGarbage()
 		if err != nil {
 			log.Warnf("error garbage collecting hotstore: %s", err)
-		} else {
-			log.Infow("garbage collection done", "took", time.Since(startGC))
+			return
 		}
+		log.Infow("hotstore garbage collection done", "took", time.Since(startGC))
 	}
 }
 

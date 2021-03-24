@@ -16,7 +16,7 @@ import (
 )
 
 type remoteWorker struct {
-	api.WorkerAPI
+	api.Worker
 	closer jsonrpc.ClientCloser
 }
 
