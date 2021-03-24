@@ -9,6 +9,7 @@ import (
 	go_address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
+	api "github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
@@ -97,11 +98,11 @@ func (mr *MockServicesAPIMockRecorder) MessageForSend(arg0, arg1 interface{}) *g
 }
 
 // PublishMessage mocks base method
-func (m *MockServicesAPI) PublishMessage(arg0 context.Context, arg1 *types.Message, arg2 bool) (*types.SignedMessage, []CheckInfo, error) {
+func (m *MockServicesAPI) PublishMessage(arg0 context.Context, arg1 *types.Message, arg2 bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PublishMessage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*types.SignedMessage)
-	ret1, _ := ret[1].([]CheckInfo)
+	ret1, _ := ret[1].([][]api.MessageCheckStatus)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -110,4 +111,19 @@ func (m *MockServicesAPI) PublishMessage(arg0 context.Context, arg1 *types.Messa
 func (mr *MockServicesAPIMockRecorder) PublishMessage(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishMessage", reflect.TypeOf((*MockServicesAPI)(nil).PublishMessage), arg0, arg1, arg2)
+}
+
+// RunChecksForPrototype mocks base method
+func (m *MockServicesAPI) RunChecksForPrototype(arg0 context.Context, arg1 *types.Message) ([][]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunChecksForPrototype", arg0, arg1)
+	ret0, _ := ret[0].([][]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunChecksForPrototype indicates an expected call of RunChecksForPrototype
+func (mr *MockServicesAPIMockRecorder) RunChecksForPrototype(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunChecksForPrototype", reflect.TypeOf((*MockServicesAPI)(nil).RunChecksForPrototype), arg0, arg1)
 }
