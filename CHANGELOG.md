@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.5.3-rc2 / 2021-03-17
+# 1.5.3 / 2021-03-24
 
-This is the second release candidate for Lotus 1.5.3, which introduces small fixes to the Storage FSM.
+This is a patch release of Lotus that introduces small fixes to the Storage FSM.
 
 ## Changes 
 
