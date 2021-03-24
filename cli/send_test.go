@@ -1,14 +1,6 @@
 package cli
 
-import (
-	"bytes"
-	"testing"
-
-	"github.com/filecoin-project/go-address"
-	types "github.com/filecoin-project/lotus/chain/types"
-	gomock "github.com/golang/mock/gomock"
-	ucli "github.com/urfave/cli/v2"
-)
+/*
 
 var arbtCid = (&types.Message{
 	From:  mustAddr(address.NewIDAddress(2)),
@@ -38,7 +30,6 @@ func newMockApp(t *testing.T, cmd *ucli.Command) (*ucli.App, *MockServicesAPI, *
 	return app, mockSrvcs, buf, mockCtrl.Finish
 }
 
-/*
 func TestSendCLI(t *testing.T) {
 	oneFil := abi.TokenAmount(types.MustParseFIL("1"))
 

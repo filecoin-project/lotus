@@ -77,26 +77,25 @@ func resolveChecks(ctx context.Context, s ServicesAPI, printer io.Writer,
 
 var ErrAbortedByUser = errors.New("aborted by user")
 
-func printChecks(printer io.Writer, checkGroups [][]api.MessageCheckStatus, protoCid cid.Cid) error {
+func printChecks(printer io.Writer, checkGroups [][]api.MessageCheckStatus, protoCid cid.Cid) {
 	for _, checks := range checkGroups {
 		for _, c := range checks {
 			if c.OK {
 				continue
 			}
 			aboutProto := c.Cid.Equals(protoCid)
-			msgName := "curent"
+			msgName := "current"
 			if !aboutProto {
 				msgName = c.Cid.String()
 			}
 			fmt.Fprintf(printer, "%s message failed a check: %s\n", msgName, c.Err)
 		}
 	}
-	return nil
 }
 
 func askUser(printer io.Writer, q string, def bool) bool {
 	var resp string
-	fmt.Fprintf(printer, q)
+	fmt.Fprint(printer, q)
 	fmt.Scanln(&resp)
 	resp = strings.ToLower(resp)
 	if len(resp) == 0 {
@@ -166,13 +165,13 @@ func ui(baseFee abi.TokenAmount, gasLimit int64, maxFee *abi.TokenAmount, send *
 				case '+':
 					if err == nil {
 						p := big.Mul(big.Int(pF), types.NewInt(11))
-						p = big.Div(big.Int(p), types.NewInt(10))
+						p = big.Div(p, types.NewInt(10))
 						price = fmt.Sprintf("%s", types.FIL(p).Unitless())
 					}
 				case '-':
 					if err == nil {
 						p := big.Mul(big.Int(pF), types.NewInt(10))
-						p = big.Div(big.Int(p), types.NewInt(11))
+						p = big.Div(p, types.NewInt(11))
 						price = fmt.Sprintf("%s", types.FIL(p).Unitless())
 					}
 				default:
