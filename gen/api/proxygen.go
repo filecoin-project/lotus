@@ -54,12 +54,12 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 }
 func main() {
 	// latest (v1)
-	if err := generate("./api", "api", "api", "./api/struct.go"); err != nil {
+	if err := generate("./api", "api", "api", "./api/proxy_gen.go"); err != nil {
 		fmt.Println("error: ", err)
 	}
 
 	// v0
-	if err := generate("./api/v0api", "v0api", "v0api", "./api/v0api/struct.go"); err != nil {
+	if err := generate("./api/v0api", "v0api", "v0api", "./api/v0api/proxy_gen.go"); err != nil {
 		fmt.Println("error: ", err)
 	}
 }
