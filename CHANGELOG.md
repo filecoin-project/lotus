@@ -1,5 +1,15 @@
 # Lotus changelog
 
+# 1.5.3 / 2021-03-24
+
+This is a patch release of Lotus that introduces small fixes to the Storage FSM.
+
+## Changes 
+
+- storagefsm: Fix double unlock with ready WaitDeals sectors (https://github.com/filecoin-project/lotus/pull/5783)
+- backupds: Allow larger values in write log (https://github.com/filecoin-project/lotus/pull/5776)
+- storagefsm: Don't log the SectorRestart event (https://github.com/filecoin-project/lotus/pull/5779)
+
 # 1.5.2 / 2021-03-11
 
 This is an hotfix release of Lotus that fixes a critical bug introduced in v1.5.1 in the miner windowPoSt logic. This upgrade is only affecting miner nodes.

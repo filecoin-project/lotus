@@ -105,6 +105,10 @@ func (s *state0) VerifyDealsForActivation(
 	return market0.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
 }
 
+func (s *state0) NextID() (abi.DealID, error) {
+	return s.State.NextID, nil
+}
+
 type balanceTable0 struct {
 	*adt0.BalanceTable
 }

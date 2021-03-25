@@ -498,9 +498,10 @@ func interactiveDeal(cctx *cli.Context) error {
 	var ds lapi.DataCIDSize
 
 	// find
-	var candidateAsks []*storagemarket.StorageAsk
+	var candidateAsks []QueriedAsk
 	var budget types.FIL
 	var dealCount int64
+	var medianPing, maxAcceptablePing time.Duration
 
 	var a address.Address
 	if from := cctx.String("from"); from != "" {
@@ -660,6 +661,18 @@ uiLoop:
 				return err
 			}
 
+			if len(asks) == 0 {
+				printErr(xerrors.Errorf("no asks found"))
+				continue uiLoop
+			}
+
+			medianPing = asks[len(asks)/2].Ping
+			var avgPing time.Duration
+			for _, ask := range asks {
+				avgPing += ask.Ping
+			}
+			avgPing /= time.Duration(len(asks))
+
 			for _, ask := range asks {
 				if ask.Ask.MinPieceSize > ds.PieceSize {
 					continue
@@ -667,10 +680,48 @@ uiLoop:
 				if ask.Ask.MaxPieceSize < ds.PieceSize {
 					continue
 				}
-				candidateAsks = append(candidateAsks, ask.Ask)
+				candidateAsks = append(candidateAsks, ask)
 			}
 
 			afmt.Printf("Found %d candidate asks\n", len(candidateAsks))
+			afmt.Printf("Average network latency: %s; Median latency: %s\n", avgPing.Truncate(time.Millisecond), medianPing.Truncate(time.Millisecond))
+			state = "max-ping"
+		case "max-ping":
+			maxAcceptablePing = medianPing
+
+			afmt.Printf("Maximum network latency (default: %s) (ms): ", maxAcceptablePing.Truncate(time.Millisecond))
+			_latStr, _, err := rl.ReadLine()
+			latStr := string(_latStr)
+			if err != nil {
+				printErr(xerrors.Errorf("reading maximum latency: %w", err))
+				continue
+			}
+
+			if latStr != "" {
+				maxMs, err := strconv.ParseInt(latStr, 10, 64)
+				if err != nil {
+					printErr(xerrors.Errorf("parsing FIL: %w", err))
+					continue uiLoop
+				}
+
+				maxAcceptablePing = time.Millisecond * time.Duration(maxMs)
+			}
+
+			var goodAsks []QueriedAsk
+			for _, candidateAsk := range candidateAsks {
+				if candidateAsk.Ping < maxAcceptablePing {
+					goodAsks = append(goodAsks, candidateAsk)
+				}
+			}
+
+			if len(goodAsks) == 0 {
+				afmt.Printf("no asks left after filtering for network latency\n")
+				continue uiLoop
+			}
+
+			afmt.Printf("%d asks left after filtering for network latency\n", len(goodAsks))
+			candidateAsks = goodAsks
+
 			state = "find-budget"
 		case "find-budget":
 			afmt.Printf("Proposing from %s, Current Balance: %s\n", a, types.FIL(fromBal))
@@ -689,11 +740,11 @@ uiLoop:
 				continue uiLoop
 			}
 
-			var goodAsks []*storagemarket.StorageAsk
+			var goodAsks []QueriedAsk
 			for _, ask := range candidateAsks {
-				p := ask.Price
+				p := ask.Ask.Price
 				if verified {
-					p = ask.VerifiedPrice
+					p = ask.Ask.VerifiedPrice
 				}
 
 				epochPrice := types.BigDiv(types.BigMul(p, types.NewInt(uint64(ds.PieceSize))), gib)
@@ -733,9 +784,9 @@ uiLoop:
 				pickedAsks = []*storagemarket.StorageAsk{}
 
 				for _, ask := range candidateAsks {
-					p := ask.Price
+					p := ask.Ask.Price
 					if verified {
-						p = ask.VerifiedPrice
+						p = ask.Ask.VerifiedPrice
 					}
 
 					epochPrice := types.BigDiv(types.BigMul(p, types.NewInt(uint64(ds.PieceSize))), gib)
@@ -745,7 +796,7 @@ uiLoop:
 						continue
 					}
 
-					pickedAsks = append(pickedAsks, ask)
+					pickedAsks = append(pickedAsks, ask.Ask)
 					remainingBudget = big.Sub(remainingBudget, totalPrice)
 
 					if len(pickedAsks) == int(dealCount) {

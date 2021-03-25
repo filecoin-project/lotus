@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 )
 
-var fetchParamCmd = &cli.Command{
+var FetchParamCmd = &cli.Command{
 	Name:      "fetch-params",
 	Usage:     "Fetch proving parameters",
 	ArgsUsage: "[sectorSize]",
