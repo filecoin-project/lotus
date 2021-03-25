@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 )
 
-// NewCommonRPC creates a new http jsonrpc client.
-func NewCommonRPC(ctx context.Context, addr string, requestHeader http.Header) (api.Common, jsonrpc.ClientCloser, error) {
+// NewCommonRPCV0 creates a new http jsonrpc client.
+func NewCommonRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.Common, jsonrpc.ClientCloser, error) {
 	var res v0api.CommonStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
@@ -28,8 +28,20 @@ func NewCommonRPC(ctx context.Context, addr string, requestHeader http.Header) (
 	return &res, closer, err
 }
 
-// NewFullNodeRPC creates a new http jsonrpc client.
-func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header) (api.FullNode, jsonrpc.ClientCloser, error) {
+// NewFullNodeRPCV0 creates a new http jsonrpc client.
+func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.FullNode, jsonrpc.ClientCloser, error) {
+	var res v0api.FullNodeStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
+		[]interface{}{
+			&res.CommonStruct.Internal,
+			&res.Internal,
+		}, requestHeader)
+
+	return &res, closer, err
+}
+
+// NewFullNodeRPCV1 creates a new http jsonrpc client.
+func NewFullNodeRPCV1(ctx context.Context, addr string, requestHeader http.Header) (api.FullNode, jsonrpc.ClientCloser, error) {
 	var res v1api.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
@@ -40,8 +52,8 @@ func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header)
 	return &res, closer, err
 }
 
-// NewStorageMinerRPC creates a new http jsonrpc client for miner
-func NewStorageMinerRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (v0api.StorageMiner, jsonrpc.ClientCloser, error) {
+// NewStorageMinerRPCV0 creates a new http jsonrpc client for miner
+func NewStorageMinerRPCV0(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (v0api.StorageMiner, jsonrpc.ClientCloser, error) {
 	var res v0api.StorageMinerStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
@@ -55,7 +67,7 @@ func NewStorageMinerRPC(ctx context.Context, addr string, requestHeader http.Hea
 	return &res, closer, err
 }
 
-func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (api.Worker, jsonrpc.ClientCloser, error) {
+func NewWorkerRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.Worker, jsonrpc.ClientCloser, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, nil, err
@@ -84,8 +96,8 @@ func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (
 	return &res, closer, err
 }
 
-// NewGatewayRPC creates a new http jsonrpc client for a gateway node.
-func NewGatewayRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.Gateway, jsonrpc.ClientCloser, error) {
+// NewGatewayRPCV0 creates a new http jsonrpc client for a gateway node.
+func NewGatewayRPCV0(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.Gateway, jsonrpc.ClientCloser, error) {
 	var res api.GatewayStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
@@ -98,7 +110,7 @@ func NewGatewayRPC(ctx context.Context, addr string, requestHeader http.Header, 
 	return &res, closer, err
 }
 
-func NewWalletRPC(ctx context.Context, addr string, requestHeader http.Header) (api.Wallet, jsonrpc.ClientCloser, error) {
+func NewWalletRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.Wallet, jsonrpc.ClientCloser, error) {
 	var res api.WalletStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{

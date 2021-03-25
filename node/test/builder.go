@@ -505,7 +505,7 @@ func fullRpc(t *testing.T, nd test.TestNode) test.TestNode {
 
 	var stop func()
 	var full test.TestNode
-	full.FullNode, stop, err = client.NewFullNodeRPC(context.Background(), listenAddr, nil)
+	full.FullNode, stop, err = client.NewFullNodeRPCV1(context.Background(), listenAddr, nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
 
@@ -519,7 +519,7 @@ func storerRpc(t *testing.T, nd test.TestStorageNode) test.TestStorageNode {
 
 	var stop func()
 	var storer test.TestStorageNode
-	storer.StorageMiner, stop, err = client.NewStorageMinerRPC(context.Background(), listenAddr, nil)
+	storer.StorageMiner, stop, err = client.NewStorageMinerRPCV0(context.Background(), listenAddr, nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
 

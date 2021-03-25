@@ -170,7 +170,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		return nil, nil, err
 	}
 
-	return client.NewCommonRPC(ctx.Context, addr, headers)
+	return client.NewCommonRPCV0(ctx.Context, addr, headers)
 }
 
 func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
@@ -183,7 +183,7 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(ctx.Context, addr, headers)
+	return client.NewFullNodeRPCV1(ctx.Context, addr, headers)
 }
 
 type GetStorageMinerOptions struct {
@@ -227,7 +227,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		addr = u.String()
 	}
 
-	return client.NewStorageMinerRPC(ctx.Context, addr, headers)
+	return client.NewStorageMinerRPCV0(ctx.Context, addr, headers)
 }
 
 func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
@@ -236,7 +236,7 @@ func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
 		return nil, nil, err
 	}
 
-	return client.NewWorkerRPC(ctx.Context, addr, headers)
+	return client.NewWorkerRPCV0(ctx.Context, addr, headers)
 }
 
 func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
@@ -245,7 +245,7 @@ func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) 
 		return nil, nil, err
 	}
 
-	return client.NewGatewayRPC(ctx.Context, addr, headers)
+	return client.NewGatewayRPCV0(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {

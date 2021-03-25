@@ -220,5 +220,5 @@ func GetFullNodeAPI(ctx context.Context, repo string) (api.FullNode, jsonrpc.Cli
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(ctx, addr, headers)
+	return client.NewFullNodeRPCV1(ctx, addr, headers)
 }
