@@ -786,7 +786,7 @@ func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, non
 	return sv
 }
 
-func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych2.SignedVoucher {
+func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych2.SignedVoucher { //nolint:deadcode
 	sv := &paych2.SignedVoucher{
 		ChannelAddr: ch,
 		Lane:        voucherLane,
