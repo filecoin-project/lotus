@@ -39,7 +39,12 @@ type ServicesAPI interface {
 	// before publishing the message, it runs checks on the node, message and mpool to verify that
 	// message is valid and won't be stuck.
 	// if `force` is true, it skips the checks
-	PublishMessage(ctx context.Context, prototype *api.MessagePrototype, interactive bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error)
+	PublishMessage(ctx context.Context, prototype *api.MessagePrototype, force bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error)
+
+	LocalAddresses(ctx context.Context) (address.Address, []address.Address, error)
+
+	MpoolPendingFilter(ctx context.Context, filter func(*types.SignedMessage) bool, tsk types.TipSetKey) ([]*types.SignedMessage, error)
+	MpoolCheckPendingMessages(ctx context.Context, a address.Address) ([][]api.MessageCheckStatus, error)
 
 	// Close ends the session of services and disconnects from RPC, using Services after Close is called
 	// most likely will result in an error
@@ -239,4 +244,42 @@ func (s *ServicesImpl) MessageForSend(ctx context.Context, params SendParams) (*
 		ValidNonce: validNonce,
 	}
 	return prototype, nil
+}
+
+func (s *ServicesImpl) MpoolPendingFilter(ctx context.Context, filter func(*types.SignedMessage) bool,
+	tsk types.TipSetKey) ([]*types.SignedMessage, error) {
+	msgs, err := s.api.MpoolPending(ctx, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("getting pending messages: %w", err)
+	}
+	out := []*types.SignedMessage{}
+	for _, sm := range msgs {
+		if filter(sm) {
+			out = append(out, sm)
+		}
+	}
+
+	return out, nil
+}
+
+func (s *ServicesImpl) LocalAddresses(ctx context.Context) (address.Address, []address.Address, error) {
+	def, err := s.api.WalletDefaultAddress(ctx)
+	if err != nil {
+		return address.Undef, nil, xerrors.Errorf("getting default addr: %w", err)
+	}
+
+	all, err := s.api.WalletList(ctx)
+	if err != nil {
+		return address.Undef, nil, xerrors.Errorf("getting list of addrs: %w", err)
+	}
+
+	return def, all, nil
+}
+
+func (s *ServicesImpl) MpoolCheckPendingMessages(ctx context.Context, a address.Address) ([][]api.MessageCheckStatus, error) {
+	checks, err := s.api.MpoolCheckPendingMessages(ctx, a)
+	if err != nil {
+		return nil, xerrors.Errorf("pending mpool check: %w", err)
+	}
+	return checks, nil
 }

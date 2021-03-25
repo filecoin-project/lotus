@@ -360,7 +360,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 		}
 
 		if m.GasFeeCap.LessThan(baseFeeUpperBound) {
-			check.OK = false
+			check.OK = true // on purpose, the checks is more of a warning
 			check.Err = "GasFeeCap less than base fee upper bound for inclusion in next 20 epochs"
 		} else {
 			check.OK = true
