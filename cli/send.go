@@ -58,10 +58,14 @@ var sendCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "force",
-			Usage: "must be specified for the action to take effect if maybe SysErrInsufficientFunds etc",
+			Usage: "Deprecated: use global 'force-send'",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("force") {
+			fmt.Println("'force' flag is deprecated, use global flag 'force-send'")
+		}
+
 		if cctx.Args().Len() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("'send' expects two arguments, target and amount"))
 		}
@@ -145,21 +149,13 @@ var sendCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("creating message prototype: %w", err)
 		}
-		msg, checks, err := srv.PublishMessage(ctx, proto, cctx.Bool("force"))
-		if xerrors.Is(err, ErrCheckFailed) {
-			proto, err := resolveChecks(ctx, srv, cctx.App.Writer, proto, checks, true)
-			if err != nil {
-				return xerrors.Errorf("from UI: %w", err)
-			}
 
-			msg, _, err = srv.PublishMessage(ctx, proto, true) //nolint
-		}
-
+		c, err := InteractiveSend(ctx, cctx, srv, proto)
 		if err != nil {
-			return xerrors.Errorf("publishing message: %w", err)
+			return err
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "%s\n", msg.Cid())
+		fmt.Fprintf(cctx.App.Writer, "%s\n", c)
 		return nil
 	},
 }

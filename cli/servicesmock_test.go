@@ -96,6 +96,22 @@ func (mr *MockServicesAPIMockRecorder) GetBaseFee(arg0 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBaseFee", reflect.TypeOf((*MockServicesAPI)(nil).GetBaseFee), arg0)
 }
 
+// LocalAddresses mocks base method
+func (m *MockServicesAPI) LocalAddresses(arg0 context.Context) (go_address.Address, []go_address.Address, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LocalAddresses", arg0)
+	ret0, _ := ret[0].(go_address.Address)
+	ret1, _ := ret[1].([]go_address.Address)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// LocalAddresses indicates an expected call of LocalAddresses
+func (mr *MockServicesAPIMockRecorder) LocalAddresses(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LocalAddresses", reflect.TypeOf((*MockServicesAPI)(nil).LocalAddresses), arg0)
+}
+
 // MessageForSend mocks base method
 func (m *MockServicesAPI) MessageForSend(arg0 context.Context, arg1 SendParams) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
@@ -109,6 +125,36 @@ func (m *MockServicesAPI) MessageForSend(arg0 context.Context, arg1 SendParams) 
 func (mr *MockServicesAPIMockRecorder) MessageForSend(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MessageForSend", reflect.TypeOf((*MockServicesAPI)(nil).MessageForSend), arg0, arg1)
+}
+
+// MpoolCheckPendingMessages mocks base method
+func (m *MockServicesAPI) MpoolCheckPendingMessages(arg0 context.Context, arg1 go_address.Address) ([][]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolCheckPendingMessages", arg0, arg1)
+	ret0, _ := ret[0].([][]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolCheckPendingMessages indicates an expected call of MpoolCheckPendingMessages
+func (mr *MockServicesAPIMockRecorder) MpoolCheckPendingMessages(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolCheckPendingMessages", reflect.TypeOf((*MockServicesAPI)(nil).MpoolCheckPendingMessages), arg0, arg1)
+}
+
+// MpoolPendingFilter mocks base method
+func (m *MockServicesAPI) MpoolPendingFilter(arg0 context.Context, arg1 func(*types.SignedMessage) bool, arg2 types.TipSetKey) ([]*types.SignedMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolPendingFilter", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*types.SignedMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolPendingFilter indicates an expected call of MpoolPendingFilter
+func (mr *MockServicesAPIMockRecorder) MpoolPendingFilter(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolPendingFilter", reflect.TypeOf((*MockServicesAPI)(nil).MpoolPendingFilter), arg0, arg1, arg2)
 }
 
 // PublishMessage mocks base method
