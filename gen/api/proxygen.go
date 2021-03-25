@@ -54,7 +54,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 }
 func main() {
 	// latest (v1)
-	if err := generate("./api", "api", "apistruct", "./api/apistruct/struct.go"); err != nil {
+	if err := generate("./api", "api", "api", "./api/struct.go"); err != nil {
 		fmt.Println("error: ", err)
 	}
 
@@ -64,34 +64,34 @@ func main() {
 	}
 }
 
-func typeName(e ast.Expr) (string, error) {
+func typeName(e ast.Expr, pkg string) (string, error) {
 	switch t := e.(type) {
 	case *ast.SelectorExpr:
 		return t.X.(*ast.Ident).Name + "." + t.Sel.Name, nil
 	case *ast.Ident:
 		pstr := t.Name
-		if !unicode.IsLower(rune(pstr[0])) {
+		if !unicode.IsLower(rune(pstr[0])) && pkg != "api" {
 			pstr = "api." + pstr // todo src pkg name
 		}
 		return pstr, nil
 	case *ast.ArrayType:
-		subt, err := typeName(t.Elt)
+		subt, err := typeName(t.Elt, pkg)
 		if err != nil {
 			return "", err
 		}
 		return "[]" + subt, nil
 	case *ast.StarExpr:
-		subt, err := typeName(t.X)
+		subt, err := typeName(t.X, pkg)
 		if err != nil {
 			return "", err
 		}
 		return "*" + subt, nil
 	case *ast.MapType:
-		k, err := typeName(t.Key)
+		k, err := typeName(t.Key, pkg)
 		if err != nil {
 			return "", err
 		}
-		v, err := typeName(t.Value)
+		v, err := typeName(t.Value, pkg)
 		if err != nil {
 			return "", err
 		}
@@ -107,7 +107,7 @@ func typeName(e ast.Expr) (string, error) {
 		}
 		return "interface{}", nil
 	case *ast.ChanType:
-		subt, err := typeName(t.Value)
+		subt, err := typeName(t.Value, pkg)
 		if err != nil {
 			return "", err
 		}
@@ -197,7 +197,7 @@ func generate(path, pkg, outpkg, outfile string) error {
 				if _, ok := info.Methods[mname]; !ok {
 					var params, pnames []string
 					for _, param := range node.ftype.Params.List {
-						pstr, err := typeName(param.Type)
+						pstr, err := typeName(param.Type, outpkg)
 						if err != nil {
 							return err
 						}
@@ -216,7 +216,7 @@ func generate(path, pkg, outpkg, outfile string) error {
 
 					var results []string
 					for _, result := range node.ftype.Results.List {
-						rs, err := typeName(result.Type)
+						rs, err := typeName(result.Type, outpkg)
 						if err != nil {
 							return err
 						}

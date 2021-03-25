@@ -1,8 +1,7 @@
-package apistruct
+package api
 
 import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/lotus/api"
 )
 
 const (
@@ -17,27 +16,27 @@ const (
 var AllPermissions = []auth.Permission{PermRead, PermWrite, PermSign, PermAdmin}
 var DefaultPerms = []auth.Permission{PermRead}
 
-func PermissionedStorMinerAPI(a api.StorageMiner) api.StorageMiner {
+func PermissionedStorMinerAPI(a StorageMiner) StorageMiner {
 	var out StorageMinerStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
 	return &out
 }
 
-func PermissionedFullAPI(a api.FullNode) api.FullNode {
+func PermissionedFullAPI(a FullNode) FullNode {
 	var out FullNodeStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
 	return &out
 }
 
-func PermissionedWorkerAPI(a api.Worker) api.Worker {
+func PermissionedWorkerAPI(a Worker) Worker {
 	var out WorkerStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	return &out
 }
 
-func PermissionedWalletAPI(a api.Wallet) api.Wallet {
+func PermissionedWalletAPI(a Wallet) Wallet {
 	var out WalletStruct
 	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
 	return &out

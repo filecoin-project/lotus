@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -21,69 +20,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
 )
-
-type CommonStruct struct {
-	Internal struct {
-		AuthNew func(p0 context.Context, p1 []auth.Permission) ([]byte, error) `perm:"admin"`
-
-		AuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"read"`
-
-		Closing func(p0 context.Context) (<-chan struct{}, error) `perm:"read"`
-
-		Discover func(p0 context.Context) (apitypes.OpenRPCDocument, error) `perm:"read"`
-
-		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
-
-		LogList func(p0 context.Context) ([]string, error) `perm:"write"`
-
-		LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"write"`
-
-		NetAddrsListen func(p0 context.Context) (peer.AddrInfo, error) `perm:"read"`
-
-		NetAgentVersion func(p0 context.Context, p1 peer.ID) (string, error) `perm:"read"`
-
-		NetAutoNatStatus func(p0 context.Context) (api.NatInfo, error) `perm:"read"`
-
-		NetBandwidthStats func(p0 context.Context) (metrics.Stats, error) `perm:"read"`
-
-		NetBandwidthStatsByPeer func(p0 context.Context) (map[string]metrics.Stats, error) `perm:"read"`
-
-		NetBandwidthStatsByProtocol func(p0 context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
-
-		NetBlockAdd func(p0 context.Context, p1 api.NetBlockList) error `perm:"admin"`
-
-		NetBlockList func(p0 context.Context) (api.NetBlockList, error) `perm:"read"`
-
-		NetBlockRemove func(p0 context.Context, p1 api.NetBlockList) error `perm:"admin"`
-
-		NetConnect func(p0 context.Context, p1 peer.AddrInfo) error `perm:"write"`
-
-		NetConnectedness func(p0 context.Context, p1 peer.ID) (network.Connectedness, error) `perm:"read"`
-
-		NetDisconnect func(p0 context.Context, p1 peer.ID) error `perm:"write"`
-
-		NetFindPeer func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) `perm:"read"`
-
-		NetPeerInfo func(p0 context.Context, p1 peer.ID) (*api.ExtendedPeerInfo, error) `perm:"read"`
-
-		NetPeers func(p0 context.Context) ([]peer.AddrInfo, error) `perm:"read"`
-
-		NetPubsubScores func(p0 context.Context) ([]api.PubsubScore, error) `perm:"read"`
-
-		Session func(p0 context.Context) (uuid.UUID, error) `perm:"read"`
-
-		Shutdown func(p0 context.Context) error `perm:"admin"`
-
-		Version func(p0 context.Context) (api.APIVersion, error) `perm:"read"`
-	}
-}
 
 type FullNodeStruct struct {
 	CommonStruct
@@ -433,110 +372,6 @@ type FullNodeStruct struct {
 
 		WalletVerify func(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) `perm:"read"`
 	}
-}
-
-func (s *CommonStruct) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
-	return s.Internal.AuthNew(p0, p1)
-}
-
-func (s *CommonStruct) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
-	return s.Internal.AuthVerify(p0, p1)
-}
-
-func (s *CommonStruct) Closing(p0 context.Context) (<-chan struct{}, error) {
-	return s.Internal.Closing(p0)
-}
-
-func (s *CommonStruct) Discover(p0 context.Context) (apitypes.OpenRPCDocument, error) {
-	return s.Internal.Discover(p0)
-}
-
-func (s *CommonStruct) ID(p0 context.Context) (peer.ID, error) {
-	return s.Internal.ID(p0)
-}
-
-func (s *CommonStruct) LogList(p0 context.Context) ([]string, error) {
-	return s.Internal.LogList(p0)
-}
-
-func (s *CommonStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
-	return s.Internal.LogSetLevel(p0, p1, p2)
-}
-
-func (s *CommonStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
-	return s.Internal.NetAddrsListen(p0)
-}
-
-func (s *CommonStruct) NetAgentVersion(p0 context.Context, p1 peer.ID) (string, error) {
-	return s.Internal.NetAgentVersion(p0, p1)
-}
-
-func (s *CommonStruct) NetAutoNatStatus(p0 context.Context) (api.NatInfo, error) {
-	return s.Internal.NetAutoNatStatus(p0)
-}
-
-func (s *CommonStruct) NetBandwidthStats(p0 context.Context) (metrics.Stats, error) {
-	return s.Internal.NetBandwidthStats(p0)
-}
-
-func (s *CommonStruct) NetBandwidthStatsByPeer(p0 context.Context) (map[string]metrics.Stats, error) {
-	return s.Internal.NetBandwidthStatsByPeer(p0)
-}
-
-func (s *CommonStruct) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.ID]metrics.Stats, error) {
-	return s.Internal.NetBandwidthStatsByProtocol(p0)
-}
-
-func (s *CommonStruct) NetBlockAdd(p0 context.Context, p1 api.NetBlockList) error {
-	return s.Internal.NetBlockAdd(p0, p1)
-}
-
-func (s *CommonStruct) NetBlockList(p0 context.Context) (api.NetBlockList, error) {
-	return s.Internal.NetBlockList(p0)
-}
-
-func (s *CommonStruct) NetBlockRemove(p0 context.Context, p1 api.NetBlockList) error {
-	return s.Internal.NetBlockRemove(p0, p1)
-}
-
-func (s *CommonStruct) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
-	return s.Internal.NetConnect(p0, p1)
-}
-
-func (s *CommonStruct) NetConnectedness(p0 context.Context, p1 peer.ID) (network.Connectedness, error) {
-	return s.Internal.NetConnectedness(p0, p1)
-}
-
-func (s *CommonStruct) NetDisconnect(p0 context.Context, p1 peer.ID) error {
-	return s.Internal.NetDisconnect(p0, p1)
-}
-
-func (s *CommonStruct) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
-	return s.Internal.NetFindPeer(p0, p1)
-}
-
-func (s *CommonStruct) NetPeerInfo(p0 context.Context, p1 peer.ID) (*api.ExtendedPeerInfo, error) {
-	return s.Internal.NetPeerInfo(p0, p1)
-}
-
-func (s *CommonStruct) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
-	return s.Internal.NetPeers(p0)
-}
-
-func (s *CommonStruct) NetPubsubScores(p0 context.Context) ([]api.PubsubScore, error) {
-	return s.Internal.NetPubsubScores(p0)
-}
-
-func (s *CommonStruct) Session(p0 context.Context) (uuid.UUID, error) {
-	return s.Internal.Session(p0)
-}
-
-func (s *CommonStruct) Shutdown(p0 context.Context) error {
-	return s.Internal.Shutdown(p0)
-}
-
-func (s *CommonStruct) Version(p0 context.Context) (api.APIVersion, error) {
-	return s.Internal.Version(p0)
 }
 
 func (s *FullNodeStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
@@ -1227,5 +1062,4 @@ func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2
 	return s.Internal.WalletVerify(p0, p1, p2, p3)
 }
 
-var _ Common = new(CommonStruct)
 var _ FullNode = new(FullNodeStruct)

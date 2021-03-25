@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
-	"github.com/filecoin-project/lotus/api/apistruct"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/metrics"
@@ -48,7 +48,7 @@ func serveRPC(a v1api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, sh
 		http.Handle(path, ah)
 	}
 
-	pma := apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a))
+	pma := api.PermissionedFullAPI(metrics.MetricedFullAPI(a))
 
 	serveRpc("/rpc/v1", pma)
 	serveRpc("/rpc/v0", &v0api.WrapperV1Full{FullNode: pma})
@@ -116,7 +116,7 @@ func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(404)
 			return
 		}
-		if !auth.HasPerm(r.Context(), nil, apistruct.PermWrite) {
+		if !auth.HasPerm(r.Context(), nil, api.PermWrite) {
 			w.WriteHeader(401)
 			_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 			return

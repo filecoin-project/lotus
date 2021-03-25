@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api/docgen"
 
-	"github.com/filecoin-project/lotus/api/apistruct"
 	docgen_openrpc "github.com/filecoin-project/lotus/api/docgen-openrpc"
 )
 
@@ -35,14 +34,8 @@ func main() {
 
 	doc := docgen_openrpc.NewLotusOpenRPCDocument(Comments, GroupDocs)
 
-	switch os.Args[2] {
-	case "FullNode":
-		doc.RegisterReceiverName("Filecoin", &apistruct.FullNodeStruct{})
-	case "StorageMiner":
-		doc.RegisterReceiverName("Filecoin", &apistruct.StorageMinerStruct{})
-	case "Worker":
-		doc.RegisterReceiverName("Filecoin", &apistruct.WorkerStruct{})
-	}
+	i, _, _, _ := docgen.GetAPIType(os.Args[2], os.Args[3])
+	doc.RegisterReceiverName("Filecoin", i)
 
 	out, err := doc.Discover()
 	if err != nil {

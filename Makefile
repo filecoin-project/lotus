@@ -320,7 +320,7 @@ dist-clean:
 
 type-gen:
 	go run ./gen/main.go
-	go generate ./...
+	go generate -x ./...
 	goimports -w api/
 
 method-gen:
@@ -328,8 +328,8 @@ method-gen:
 
 api-gen:
 	go run ./gen/api
-	goimports -w api/apistruct api/v0api
-	goimports -w api/apistruct api/v0api
+	goimports -w api
+	goimports -w api
 .PHONY: api-gen
 
 docsgen: docsgen-md docsgen-openrpc

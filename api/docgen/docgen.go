@@ -35,6 +35,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -260,6 +261,42 @@ func init() {
 		},
 		"methods": []interface{}{}},
 	)
+}
+
+func GetAPIType(name, pkg string) (i interface{}, t, permStruct, commonPermStruct reflect.Type) {
+	switch pkg {
+	case "api": // latest
+		switch name {
+		case "FullNode":
+			i = &api.FullNodeStruct{}
+			t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
+			permStruct = reflect.TypeOf(api.FullNodeStruct{}.Internal)
+			commonPermStruct = reflect.TypeOf(api.CommonStruct{}.Internal)
+		case "StorageMiner":
+			i = &api.StorageMinerStruct{}
+			t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
+			permStruct = reflect.TypeOf(api.StorageMinerStruct{}.Internal)
+			commonPermStruct = reflect.TypeOf(api.CommonStruct{}.Internal)
+		case "Worker":
+			i = &api.WorkerStruct{}
+			t = reflect.TypeOf(new(struct{ api.Worker })).Elem()
+			permStruct = reflect.TypeOf(api.WorkerStruct{}.Internal)
+			commonPermStruct = reflect.TypeOf(api.WorkerStruct{}.Internal)
+		default:
+			panic("unknown type")
+		}
+	case "v0api":
+		switch name {
+		case "FullNode":
+			i = v0api.FullNodeStruct{}
+			t = reflect.TypeOf(new(struct{ v0api.FullNode })).Elem()
+			permStruct = reflect.TypeOf(v0api.FullNodeStruct{}.Internal)
+			commonPermStruct = reflect.TypeOf(v0api.CommonStruct{}.Internal)
+		default:
+			panic("unknown type")
+		}
+	}
+	return
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

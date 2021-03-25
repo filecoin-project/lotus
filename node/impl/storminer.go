@@ -31,7 +31,6 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -86,7 +85,7 @@ type StorageMinerAPI struct {
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
-	if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
+	if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 		w.WriteHeader(401)
 		_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 		return

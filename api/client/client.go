@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
@@ -71,7 +70,7 @@ func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (
 
 	u.Path = path.Join(u.Path, "../streams/v0/push")
 
-	var res apistruct.WorkerStruct
+	var res api.WorkerStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
@@ -87,7 +86,7 @@ func NewWorkerRPC(ctx context.Context, addr string, requestHeader http.Header) (
 
 // NewGatewayRPC creates a new http jsonrpc client for a gateway node.
 func NewGatewayRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.Gateway, jsonrpc.ClientCloser, error) {
-	var res apistruct.GatewayStruct
+	var res api.GatewayStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
@@ -100,7 +99,7 @@ func NewGatewayRPC(ctx context.Context, addr string, requestHeader http.Header, 
 }
 
 func NewWalletRPC(ctx context.Context, addr string, requestHeader http.Header) (api.Wallet, jsonrpc.ClientCloser, error) {
-	var res apistruct.WalletStruct
+	var res api.WalletStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
 			&res.Internal,
