@@ -318,12 +318,12 @@ dist-clean:
 	git submodule deinit --all -f
 .PHONY: dist-clean
 
-type-gen:
+type-gen: api-gen
 	go run ./gen/main.go
 	go generate -x ./...
 	goimports -w api/
 
-method-gen:
+method-gen: api-gen
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
 
 api-gen:
@@ -334,9 +334,9 @@ api-gen:
 
 docsgen: docsgen-md docsgen-openrpc
 
-docsgen-md-bin:
+docsgen-md-bin: api-gen
 	go build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
-docsgen-openrpc-bin:
+docsgen-openrpc-bin: api-gen
 	go build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
 docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
