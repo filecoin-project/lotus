@@ -45,10 +45,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
-const (
-	storageClientDealPollingInterval = 5 * time.Second
-)
-
 func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full.WalletAPI, fundMgr *market.FundManager) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -189,7 +185,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
 	net := smnet.NewFromLibp2pHost(h, marketsRetryParams)
 
-	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(storageClientDealPollingInterval))
+	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(1*time.Second))
 	if err != nil {
 		return nil, err
 	}
