@@ -106,6 +106,10 @@ func (s *state2) VerifyDealsForActivation(
 	return w, vw, err
 }
 
+func (s *state2) NextID() (abi.DealID, error) {
+	return s.State.NextID, nil
+}
+
 type balanceTable2 struct {
 	*adt2.BalanceTable
 }
