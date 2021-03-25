@@ -85,10 +85,10 @@ const (
 // operation calls after Close() has returned, but it may not happen for
 // operations in progress. Those are likely to fail with a different error.
 type Blockstore struct {
-	DB *badger.DB
-
-	// state is guarded by atomic.
+	// state is accessed atomically
 	state int64
+
+	DB *badger.DB
 
 	prefixing bool
 	prefix    []byte
