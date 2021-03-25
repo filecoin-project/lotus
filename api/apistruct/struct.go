@@ -176,7 +176,7 @@ type FullNodeStruct struct {
 
 		ClientListDataTransfers func(p0 context.Context) ([]api.DataTransferChannel, error) `perm:"write"`
 
-		ClientListDeals func(p0 context.Context) ([]api.DealInfo, error) `perm:"write"`
+		ClientListDeals func(p0 context.Context, filter ...storagemarket.ListDealsPageParams) ([]api.DealInfo, error) `perm:"write"`
 
 		ClientListImports func(p0 context.Context) ([]api.Import, error) `perm:"write"`
 
@@ -1022,8 +1022,8 @@ func (s *FullNodeStruct) ClientListDataTransfers(p0 context.Context) ([]api.Data
 	return s.Internal.ClientListDataTransfers(p0)
 }
 
-func (s *FullNodeStruct) ClientListDeals(p0 context.Context) ([]api.DealInfo, error) {
-	return s.Internal.ClientListDeals(p0)
+func (s *FullNodeStruct) ClientListDeals(p0 context.Context, filter ...storagemarket.ListDealsPageParams) ([]api.DealInfo, error) {
+	return s.Internal.ClientListDeals(p0, filter...)
 }
 
 func (s *FullNodeStruct) ClientListImports(p0 context.Context) ([]api.Import, error) {

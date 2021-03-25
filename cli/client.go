@@ -1524,8 +1524,9 @@ var clientQueryAskCmd = &cli.Command{
 }
 
 var clientListDeals = &cli.Command{
-	Name:  "list-deals",
-	Usage: "List storage market deals",
+	Name:      "list-deals",
+	Usage:     "List storage market deals",
+	UsageText: "also supports pagination, please see supported options for more details",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "verbose",
@@ -1538,12 +1539,32 @@ var clientListDeals = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
-			Name:  "show-failed",
-			Usage: "show failed/failing deals",
-		},
-		&cli.BoolFlag{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
+		&cli.BoolFlag{
+			Name:  "hide-failed",
+			Usage: "hide failed/failing deals",
+		},
+		&cli.Int64Flag{
+			Name:        "creation-time-offset",
+			Usage:       "unix epoch seconds specifying the minimum creation time offset of the deals to include in the deal list page",
+			DefaultText: "no-op",
+		},
+		&cli.IntFlag{
+			Name:        "deals-per-page",
+			Usage:       "number of deals to show in the deal list page",
+			DefaultText: "defaults to all deals that match the given criteria",
+		},
+		&cli.Int64Flag{
+			Name:        "min-start-epoch",
+			Usage:       "minimum start epoch of the deals to include in the deal list page",
+			DefaultText: "no-op",
+		},
+		&cli.Int64Flag{
+			Name:        "max-end-epoch",
+			Usage:       "maximum end epoch of the deals to include in the deal list page",
+			DefaultText: "no-op",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1557,9 +1578,22 @@ var clientListDeals = &cli.Command{
 		verbose := cctx.Bool("verbose")
 		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
-		showFailed := cctx.Bool("show-failed")
 
-		localDeals, err := api.ClientListDeals(ctx)
+		ctOffset := cctx.Int64("creation-time-offset")
+		nDeals := cctx.Int("deals-per-page")
+		minStart := cctx.Int64("min-start-epoch")
+		maxEnd := cctx.Int64("max-end-epoch")
+		hideFailed := cctx.Bool("hide-failed")
+
+		filter := storagemarket.ListDealsPageParams{
+			CreationTimePageOffset: time.Unix(ctOffset, 0),
+			DealsPerPage:           nDeals,
+			MinStartEpoch:          abi.ChainEpoch(minStart),
+			MaxEndEpoch:            abi.ChainEpoch(maxEnd),
+			HideDealsInErrorState:  hideFailed,
+		}
+
+		localDeals, err := api.ClientListDeals(ctx, filter)
 		if err != nil {
 			return err
 		}
@@ -1635,9 +1669,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, 
 
 	var deals []deal
 	for _, localDeal := range localDeals {
-		if showFailed || localDeal.State != storagemarket.StorageDealError {
-			deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
-		}
+		deals = append(deals, dealFromDealInfo(ctx, full, head, localDeal))
 	}
 
 	if verbose {

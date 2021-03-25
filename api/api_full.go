@@ -303,7 +303,7 @@ type FullNode interface {
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error) //perm:read
 	// ClientListDeals returns information about the deals made by the local client.
-	ClientListDeals(ctx context.Context) ([]DealInfo, error) //perm:write
+	ClientListDeals(ctx context.Context, filter ...storagemarket.ListDealsPageParams) ([]DealInfo, error) //perm:write
 	// ClientGetDealUpdates returns the status of updated deals
 	ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error) //perm:write
 	// ClientGetDealStatus returns status given a code
