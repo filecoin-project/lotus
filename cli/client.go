@@ -95,7 +95,6 @@ var clientCmd = &cli.Command{
 		WithCategory("util", clientListTransfers),
 		WithCategory("util", clientRestartTransfer),
 		WithCategory("util", clientCancelTransfer),
-		WithCategory("util", clientCancelRetrievalDeal),
 	},
 }
 
@@ -952,6 +951,9 @@ var clientRetrieveCmd = &cli.Command{
 	Name:      "retrieve",
 	Usage:     "Retrieve data from network",
 	ArgsUsage: "[dataCid outputPath]",
+	Subcommands: []*cli.Command{
+		clientCancelRetrievalDeal,
+	},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -1977,7 +1979,7 @@ var clientCancelTransfer = &cli.Command{
 }
 
 var clientCancelRetrievalDeal = &cli.Command{
-	Name:  "cancel-retrieval-deal",
+	Name:  "cancel",
 	Usage: "Cancel a retrieval deal by DealID",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
@@ -1994,8 +1996,8 @@ var clientCancelRetrievalDeal = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Int64("dealid") == 0 {
-			return errors.New("deal id cannot be 0")
+		if cctx.Int64("dealid") <= 0 {
+			return errors.New("deal id cannot be negative")
 		}
 
 		return api.ClientCancelRetrievalDeal(ctx, retrievalmarket.DealID(cctx.Int64("dealid")))
