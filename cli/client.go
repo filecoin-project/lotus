@@ -1552,9 +1552,9 @@ var clientListDeals = &cli.Command{
 			DefaultText: "no-op",
 		},
 		&cli.IntFlag{
-			Name:        "deals-per-page",
-			Usage:       "number of deals to show in the deal list page",
-			DefaultText: "defaults to all deals that match the given criteria",
+			Name:  "limit",
+			Usage: "number of deals to show in the deal list page",
+			Value: 50,
 		},
 		&cli.Int64Flag{
 			Name:        "min-start-epoch",
@@ -1580,7 +1580,7 @@ var clientListDeals = &cli.Command{
 		watch := cctx.Bool("watch")
 
 		ctOffset := cctx.Int64("creation-time-offset")
-		nDeals := cctx.Int("deals-per-page")
+		nDeals := cctx.Int("limit")
 		minStart := cctx.Int64("min-start-epoch")
 		maxEnd := cctx.Int64("max-end-epoch")
 		hideFailed := cctx.Bool("hide-failed")
@@ -1608,7 +1608,7 @@ var clientListDeals = &cli.Command{
 				tm.Clear()
 				tm.MoveCursor(1, 1)
 
-				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color, showFailed)
+				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color, !hideFailed)
 				if err != nil {
 					return err
 				}
@@ -1634,7 +1634,7 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
-		return outputStorageDeals(ctx, cctx.App.Writer, api, localDeals, verbose, color, showFailed)
+		return outputStorageDeals(ctx, cctx.App.Writer, api, localDeals, verbose, color, !hideFailed)
 	},
 }
 
