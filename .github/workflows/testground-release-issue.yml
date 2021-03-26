@@ -1,0 +1,115 @@
+---
+
+name: Testground Issue Checker
+
+on:
+  issues:
+    types:
+      - opened
+      - reopened
+
+jobs:
+  initial-comment:
+    if: contains(github.event.issue.labels.*.name, 'RELEASE')
+    runs-on: ubuntu-latest
+    steps:
+      - name: initial-comment
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            hey there!
+
+            To prepare for this release, I'm kicking off a few testground jobs.
+            Once they finish, I'll post an update in this comment.
+
+            __finished tests below this line__
+            
+            |composition|testground id|status|outcome|
+            |-----------|-------------|------|-------
+
+  testground-run:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/graphsync
+            composition_file: testplans/graphsync/_compositions/stress-k8s.toml 
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/baseline-k8s-10-3.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/baseline-k8s-1-1.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/baseline-k8s-2-1.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/baseline-k8s-3-1.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/baseline-k8s-3-2.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/baseline-k8s-3-3.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/drand-outage-k8s.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/deals-stress-concurrent-natural-k8s.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/fast-k8s-3-1.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/paych-stress-k8s.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/recovery-k8s.toml
+    steps:
+      - uses: actions/checkout@v2
+      - name: Start Testground ${{ matrix.composition_file }}
+        uses: coryschwartz/testground-github-action@v1.0
+        id: tg
+        with:
+          backend_addr: ${{ matrix.backend_addr }}
+          backend_proto: ${{ matrix.backend_proto }}
+          plan_directory: ${{ matrix.plan_directory }}
+          composition_file: ${{ matrix.composition_file }}
+      - name: Find comment
+        id: fc
+        if: ${{ always() }}
+        uses: peter-evans/find-comment@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: finished tests below this line
+          direction: last
+      - name: Update Comment
+        if: ${{ always() }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          edit-mode: append
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          body: |
+            ${{ matrix.composition_file }} | ${{ steps.tg.outputs.testground_id }} | ${{ steps.tg.outputs.status }} | ${{ steps.tg.outputs.outcome }}
+
+
