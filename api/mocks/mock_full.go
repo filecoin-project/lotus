@@ -610,18 +610,18 @@ func (mr *MockFullNodeMockRecorder) ClientListDataTransfers(arg0 interface{}) *g
 }
 
 // ClientListDeals mocks base method
-func (m *MockFullNode) ClientListDeals(arg0 context.Context) ([]api.DealInfo, error) {
+func (m *MockFullNode) ClientListDeals(arg0 context.Context, arg1 storagemarket.ListDealsPageParams) ([]api.DealInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClientListDeals", arg0)
+	ret := m.ctrl.Call(m, "ClientListDeals", arg0, arg1)
 	ret0, _ := ret[0].([]api.DealInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ClientListDeals indicates an expected call of ClientListDeals
-func (mr *MockFullNodeMockRecorder) ClientListDeals(arg0 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) ClientListDeals(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientListDeals", reflect.TypeOf((*MockFullNode)(nil).ClientListDeals), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientListDeals", reflect.TypeOf((*MockFullNode)(nil).ClientListDeals), arg0, arg1)
 }
 
 // ClientListImports mocks base method
