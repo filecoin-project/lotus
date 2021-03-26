@@ -475,10 +475,10 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	return out, nil
 }
 
-func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmarket.DealID) error {
+func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmarket.DealID) error {
 	cerr := make(chan error)
 	go func() {
-		err := a.Retrieval.CancelDeal(dealid)
+		err := a.Retrieval.CancelDeal(dealID)
 
 		select {
 		case cerr <- err:

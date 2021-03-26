@@ -89,7 +89,7 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
-		WithCategory("retrieval", clientCancelRetrievalDeal),
+		WithCategory("retrieval", clientCancelRetrievalDealCmd),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientBalancesCmd),
@@ -1976,13 +1976,13 @@ var clientCancelTransfer = &cli.Command{
 	},
 }
 
-var clientCancelRetrievalDeal = &cli.Command{
-	Name:  "retrieve-cancel",
-	Usage: "Cancel a retrieval deal by DealID",
+var clientCancelRetrievalDealCmd = &cli.Command{
+	Name:  "cancel-retrieval",
+	Usage: "Cancel a retrieval deal by deal ID; this also cancels the associated transfer",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
-			Name:     "dealid",
-			Usage:    "specify retrieval deal by DealID",
+			Name:     "deal-id",
+			Usage:    "specify retrieval deal by deal ID",
 			Required: true,
 		},
 	},
@@ -1994,11 +1994,12 @@ var clientCancelRetrievalDeal = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Int64("dealid") < 0 {
+		id := cctx.Int64("deal-id")
+		if id < 0 {
 			return errors.New("deal id cannot be negative")
 		}
 
-		return api.ClientCancelRetrievalDeal(ctx, retrievalmarket.DealID(cctx.Int64("dealid")))
+		return api.ClientCancelRetrievalDeal(ctx, retrievalmarket.DealID(id))
 	},
 }
 
