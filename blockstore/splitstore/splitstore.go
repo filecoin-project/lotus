@@ -1075,7 +1075,7 @@ func (s *SplitStore) gcHotstore() {
 		reclaimed := size - newSize
 		log.Infof("gc reclaimed %d bytes", reclaimed)
 
-		if reclaimed < continueAggressiveGCThreshold {
+		if reclaimed >= 0 && reclaimed < continueAggressiveGCThreshold {
 			return
 		}
 
