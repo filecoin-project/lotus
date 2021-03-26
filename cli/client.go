@@ -1181,7 +1181,7 @@ var clientDealStatsCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		localDeals, err := api.ClientListDeals(ctx)
+		localDeals, err := api.ClientListDeals(ctx, storagemarket.ListDealsPageParams{})
 		if err != nil {
 			return err
 		}
