@@ -199,7 +199,7 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		GasBatchEstimateMessageGas func(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 types.TipSetKey) ([]*types.Message, error) ``
+		GasBatchEstimateMessageGas func(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 types.TipSetKey) ([]*types.Message, error) `perm:"read"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 

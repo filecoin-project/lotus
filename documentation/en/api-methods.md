@@ -1497,7 +1497,7 @@ Response: `{}`
 GasBatchEstimateMessageGas estimates gas values for unset message gas fields
 
 
-Perms: 
+Perms: read
 
 Inputs:
 ```json
