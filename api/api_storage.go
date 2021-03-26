@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"time"
 
 	"github.com/google/uuid"
@@ -165,6 +166,8 @@ type StorageMiner interface {
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
+
+	ComputeProof(ctx context.Context, ssi []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) //perm:read
 }
 
 var _ storiface.WorkerReturn = *new(StorageMiner)
