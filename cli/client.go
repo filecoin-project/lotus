@@ -1563,7 +1563,7 @@ var clientListDeals = &cli.Command{
 				tm.Clear()
 				tm.MoveCursor(1, 1)
 
-				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color, !hideFailed)
+				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color)
 				if err != nil {
 					return err
 				}
@@ -1589,7 +1589,7 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
-		return outputStorageDeals(ctx, cctx.App.Writer, api, localDeals, verbose, color, !hideFailed)
+		return outputStorageDeals(ctx, cctx.App.Writer, api, localDeals, verbose, color)
 	},
 }
 
@@ -1612,7 +1612,7 @@ func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet
 	}
 }
 
-func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
+func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool) error {
 	sort.Slice(localDeals, func(i, j int) bool {
 		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
 	})
