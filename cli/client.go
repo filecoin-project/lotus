@@ -1549,7 +1549,7 @@ var clientListDeals = &cli.Command{
 		&cli.TimestampFlag{
 			Name:        "creation-time-offset",
 			Layout:      time.RFC3339,
-			Usage:       "minimum creation time offset of the deals to include in the deal list page",
+			Usage:       "only show deals with a creation time greater than this value",
 			DefaultText: "no-op",
 		},
 		&cli.IntFlag{
