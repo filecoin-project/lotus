@@ -199,6 +199,8 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
+		GasBatchEstimateMessageGas func(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 types.TipSetKey) ([]*types.Message, error) ``
+
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		GasEstimateGasLimit func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) `perm:"read"`
@@ -206,8 +208,6 @@ type FullNodeStruct struct {
 		GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) `perm:"read"`
-
-		GasBatchEstimateMessageGas func(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error) `perm:"read"`
 
 		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) `perm:"sign"`
 
@@ -473,9 +473,9 @@ type GatewayStruct struct {
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
 
-		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
+		GasBatchEstimateMessageGas func(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 types.TipSetKey) ([]*types.Message, error) ``
 
-		GasBatchEstimateMessageGas func(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error) ``
+		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
 
 		MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
 
@@ -1073,6 +1073,10 @@ func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
 	return s.Internal.CreateBackup(p0, p1)
 }
 
+func (s *FullNodeStruct) GasBatchEstimateMessageGas(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 types.TipSetKey) ([]*types.Message, error) {
+	return s.Internal.GasBatchEstimateMessageGas(p0, p1, p2, p3)
+}
+
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
 	return s.Internal.GasEstimateFeeCap(p0, p1, p2, p3)
 }
@@ -1087,10 +1091,6 @@ func (s *FullNodeStruct) GasEstimateGasPremium(p0 context.Context, p1 uint64, p2
 
 func (s *FullNodeStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
 	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
-}
-
-func (c *FullNodeStruct) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error) {
-	return c.Internal.GasBatchEstimateMessageGas(ctx, estimateMessages, selectCount, tsk)
 }
 
 func (s *FullNodeStruct) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
@@ -1613,12 +1613,12 @@ func (s *GatewayStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, er
 	return s.Internal.ChainReadObj(p0, p1)
 }
 
-func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
-	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
-}
-
 func (s *GatewayStruct) GasBatchEstimateMessageGas(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 types.TipSetKey) ([]*types.Message, error) {
 	return s.Internal.GasBatchEstimateMessageGas(p0, p1, p2, p3)
+}
+
+func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
+	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
 }
 
 func (s *GatewayStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
