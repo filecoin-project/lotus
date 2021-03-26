@@ -167,7 +167,7 @@ type FullNodeStruct struct {
 		ClientStartDeal                           func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                                          `perm:"admin"`
 		ClientGetDealInfo                         func(context.Context, cid.Cid) (*api.DealInfo, error)                                                             `perm:"read"`
 		ClientGetDealStatus                       func(context.Context, uint64) (string, error)                                                                     `perm:"read"`
-		ClientListDeals                           func(ctx context.Context) ([]api.DealInfo, error)                                                                 `perm:"write"`
+		ClientListDeals                           func(ctx context.Context, filter storagemarket.ListDealsPageParams) ([]api.DealInfo, error)                       `perm:"write"`
 		ClientGetDealUpdates                      func(ctx context.Context) (<-chan api.DealInfo, error)                                                            `perm:"read"`
 		ClientRetrieve                            func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error                                       `perm:"admin"`
 		ClientRetrieveWithEvents                  func(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
@@ -622,8 +622,8 @@ func (c *FullNodeStruct) ClientGetDealStatus(ctx context.Context, statusCode uin
 	return c.Internal.ClientGetDealStatus(ctx, statusCode)
 }
 
-func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
-	return c.Internal.ClientListDeals(ctx)
+func (c *FullNodeStruct) ClientListDeals(ctx context.Context, filter storagemarket.ListDealsPageParams) ([]api.DealInfo, error) {
+	return c.Internal.ClientListDeals(ctx, filter)
 }
 
 func (c *FullNodeStruct) ClientGetDealUpdates(ctx context.Context) (<-chan api.DealInfo, error) {

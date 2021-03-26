@@ -190,8 +190,8 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 	return &result.ProposalCid, nil
 }
 
-func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
-	deals, err := a.SMDealClient.ListLocalDeals(ctx)
+func (a *API) ClientListDeals(ctx context.Context, filter storagemarket.ListDealsPageParams) ([]api.DealInfo, error) {
+	deals, err := a.SMDealClient.ListLocalDeals(ctx, filter)
 	if err != nil {
 		return nil, err
 	}

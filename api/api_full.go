@@ -293,7 +293,7 @@ type FullNode interface {
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
 	// ClientListDeals returns information about the deals made by the local client.
-	ClientListDeals(ctx context.Context) ([]DealInfo, error)
+	ClientListDeals(ctx context.Context, filter storagemarket.ListDealsPageParams) ([]DealInfo, error)
 	// ClientGetDealUpdates returns the status of updated deals
 	ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error)
 	// ClientGetDealStatus returns status given a code
