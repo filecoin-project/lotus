@@ -1546,9 +1546,10 @@ var clientListDeals = &cli.Command{
 			Name:  "hide-failed",
 			Usage: "hide failed/failing deals",
 		},
-		&cli.Int64Flag{
+		&cli.TimestampFlag{
 			Name:        "creation-time-offset",
-			Usage:       "unix epoch seconds specifying the minimum creation time offset of the deals to include in the deal list page",
+			Layout:      time.RFC3339,
+			Usage:       "minimum creation time offset of the deals to include in the deal list page",
 			DefaultText: "no-op",
 		},
 		&cli.IntFlag{
@@ -1579,14 +1580,19 @@ var clientListDeals = &cli.Command{
 		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
 
-		ctOffset := cctx.Int64("creation-time-offset")
+		ctOffset := cctx.Timestamp("creation-time-offset")
 		nDeals := cctx.Int("limit")
 		minStart := cctx.Int64("min-start-epoch")
 		maxEnd := cctx.Int64("max-end-epoch")
 		hideFailed := cctx.Bool("hide-failed")
 
+		var timeOffset time.Time
+		if ctOffset != nil {
+			timeOffset = *ctOffset
+		}
+
 		filter := storagemarket.ListDealsPageParams{
-			CreationTimePageOffset: time.Unix(ctOffset, 0),
+			CreationTimePageOffset: timeOffset,
 			DealsPerPage:           nDeals,
 			MinStartEpoch:          abi.ChainEpoch(minStart),
 			MaxEndEpoch:            abi.ChainEpoch(maxEnd),
@@ -1702,8 +1708,9 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, 
 				//	transferPct = fmt.Sprintf("%d%%", pct)
 				//}
 			}
+
 			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
-				d.LocalDeal.CreationTime.Format(time.Stamp),
+				d.LocalDeal.CreationTime.Format(time.RFC3339),
 				d.LocalDeal.ProposalCid,
 				d.LocalDeal.DealID,
 				d.LocalDeal.Provider,
