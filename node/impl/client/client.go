@@ -489,12 +489,12 @@ func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmar
 	select {
 	case err := <-cerr:
 		if err != nil {
-			return xerrors.Errorf("canceling retrieval deal erred: %w", err)
+			return xerrors.Errorf("failed to cancel retrieval deal: %w", err)
 		}
 
 		return nil
 	case <-ctx.Done():
-		return xerrors.Errorf("canceling retrieval deal context timeout: %w", ctx.Err())
+		return xerrors.Errorf("context timeout while canceling retrieval deal: %w", ctx.Err())
 	}
 }
 

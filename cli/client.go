@@ -1996,7 +1996,7 @@ var clientCancelRetrievalDeal = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Int64("dealid") <= 0 {
+		if cctx.Int64("dealid") < 0 {
 			return errors.New("deal id cannot be negative")
 		}
 
