@@ -89,6 +89,7 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
+		WithCategory("retrieval", clientCancelRetrievalDeal),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientBalancesCmd),
@@ -951,9 +952,6 @@ var clientRetrieveCmd = &cli.Command{
 	Name:      "retrieve",
 	Usage:     "Retrieve data from network",
 	ArgsUsage: "[dataCid outputPath]",
-	Subcommands: []*cli.Command{
-		clientCancelRetrievalDeal,
-	},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -1979,7 +1977,7 @@ var clientCancelTransfer = &cli.Command{
 }
 
 var clientCancelRetrievalDeal = &cli.Command{
-	Name:  "cancel",
+	Name:  "retrieve-cancel",
 	Usage: "Cancel a retrieval deal by DealID",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
