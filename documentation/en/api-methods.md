@@ -1213,7 +1213,18 @@ ClientListDeals returns information about the deals made by the local client.
 
 Perms: write
 
-Inputs: `null`
+Inputs:
+```json
+[
+  {
+    "CreationTimePageOffset": "0001-01-01T00:00:00Z",
+    "DealsPerPage": 123,
+    "MinStartEpoch": 10101,
+    "MaxEndEpoch": 10101,
+    "HideDealsInErrorState": true
+  }
+]
+```
 
 Response: `null`
 
