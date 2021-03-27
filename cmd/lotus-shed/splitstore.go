@@ -98,12 +98,14 @@ var splitstoreGCCmd = &cli.Command{
 		log.Infof("hotstore size is %d bytes", size)
 		for {
 			// gc more aggressively than CollectGarbage
-			for err == nil {
-				err = bs.DB.RunValueLogGC(0.025)
-			}
+			for i := 0; i < 3; i++ {
+				for err == nil {
+					err = bs.DB.RunValueLogGC(0.025)
+				}
 
-			if err != badger.ErrNoRewrite {
-				return err
+				if err != badger.ErrNoRewrite {
+					return err
+				}
 			}
 
 			err = bs.Compact()
