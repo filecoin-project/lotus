@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -102,7 +104,28 @@ func TestWalletMsig(t *testing.T) {
 	// Create an msig with three of the addresses and threshold of two sigs
 	msigAddrs := walletAddrs[:3]
 	amt := types.NewInt(1000)
-	addProposal, err := lite.MsigCreate(ctx, 2, msigAddrs, abi.ChainEpoch(50), amt, liteWalletAddr, types.NewInt(0))
+	proto, err := lite.MsigCreate(ctx, 2, msigAddrs, abi.ChainEpoch(50), amt, liteWalletAddr, types.NewInt(0))
+	require.NoError(t, err)
+
+	doSend := func(proto *api.MessagePrototype) (cid.Cid, error) {
+		if proto.ValidNonce {
+			sm, err := lite.WalletSignMessage(ctx, proto.Message.From, &proto.Message)
+			if err != nil {
+				return cid.Undef, err
+			}
+
+			return lite.MpoolPush(ctx, sm)
+		}
+
+		sm, err := lite.MpoolPushMessage(ctx, &proto.Message, nil)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		return sm.Cid(), nil
+	}
+
+	addProposal, err := doSend(proto)
 	require.NoError(t, err)
 
 	res, err := lite.StateWaitMsg(ctx, addProposal, 1, api.LookbackNoLimit, true)
@@ -122,7 +145,10 @@ func TestWalletMsig(t *testing.T) {
 	require.Less(t, msigBalance.Int64(), amt.Int64())
 
 	// Propose to add a new address to the msig
-	addProposal, err = lite.MsigAddPropose(ctx, msig, walletAddrs[0], walletAddrs[3], false)
+	proto, err = lite.MsigAddPropose(ctx, msig, walletAddrs[0], walletAddrs[3], false)
+	require.NoError(t, err)
+
+	addProposal, err = doSend(proto)
 	require.NoError(t, err)
 
 	res, err = lite.StateWaitMsg(ctx, addProposal, 1, api.LookbackNoLimit, true)
@@ -136,7 +162,10 @@ func TestWalletMsig(t *testing.T) {
 	// Approve proposal (proposer is first (implicit) signer, approver is
 	// second signer
 	txnID := uint64(proposeReturn.TxnID)
-	approval1, err := lite.MsigAddApprove(ctx, msig, walletAddrs[1], txnID, walletAddrs[0], walletAddrs[3], false)
+	proto, err = lite.MsigAddApprove(ctx, msig, walletAddrs[1], txnID, walletAddrs[0], walletAddrs[3], false)
+	require.NoError(t, err)
+
+	approval1, err := doSend(proto)
 	require.NoError(t, err)
 
 	res, err = lite.StateWaitMsg(ctx, approval1, 1, api.LookbackNoLimit, true)

@@ -1262,10 +1262,10 @@ func (mr *MockFullNodeMockRecorder) MpoolSub(arg0 interface{}) *gomock.Call {
 }
 
 // MsigAddApprove mocks base method
-func (m *MockFullNode) MsigAddApprove(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5 address.Address, arg6 bool) (cid.Cid, error) {
+func (m *MockFullNode) MsigAddApprove(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5 address.Address, arg6 bool) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigAddApprove", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1277,10 +1277,10 @@ func (mr *MockFullNodeMockRecorder) MsigAddApprove(arg0, arg1, arg2, arg3, arg4,
 }
 
 // MsigAddCancel mocks base method
-func (m *MockFullNode) MsigAddCancel(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4 address.Address, arg5 bool) (cid.Cid, error) {
+func (m *MockFullNode) MsigAddCancel(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4 address.Address, arg5 bool) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigAddCancel", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1292,10 +1292,10 @@ func (mr *MockFullNodeMockRecorder) MsigAddCancel(arg0, arg1, arg2, arg3, arg4, 
 }
 
 // MsigAddPropose mocks base method
-func (m *MockFullNode) MsigAddPropose(arg0 context.Context, arg1, arg2, arg3 address.Address, arg4 bool) (cid.Cid, error) {
+func (m *MockFullNode) MsigAddPropose(arg0 context.Context, arg1, arg2, arg3 address.Address, arg4 bool) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigAddPropose", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1307,10 +1307,10 @@ func (mr *MockFullNodeMockRecorder) MsigAddPropose(arg0, arg1, arg2, arg3, arg4 
 }
 
 // MsigApprove mocks base method
-func (m *MockFullNode) MsigApprove(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address) (cid.Cid, error) {
+func (m *MockFullNode) MsigApprove(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigApprove", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1322,10 +1322,10 @@ func (mr *MockFullNodeMockRecorder) MsigApprove(arg0, arg1, arg2, arg3 interface
 }
 
 // MsigApproveTxnHash mocks base method
-func (m *MockFullNode) MsigApproveTxnHash(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3, arg4 address.Address, arg5 big.Int, arg6 address.Address, arg7 uint64, arg8 []byte) (cid.Cid, error) {
+func (m *MockFullNode) MsigApproveTxnHash(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3, arg4 address.Address, arg5 big.Int, arg6 address.Address, arg7 uint64, arg8 []byte) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigApproveTxnHash", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1337,10 +1337,10 @@ func (mr *MockFullNodeMockRecorder) MsigApproveTxnHash(arg0, arg1, arg2, arg3, a
 }
 
 // MsigCancel mocks base method
-func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (cid.Cid, error) {
+func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigCancel", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1352,10 +1352,10 @@ func (mr *MockFullNodeMockRecorder) MsigCancel(arg0, arg1, arg2, arg3, arg4, arg
 }
 
 // MsigCreate mocks base method
-func (m *MockFullNode) MsigCreate(arg0 context.Context, arg1 uint64, arg2 []address.Address, arg3 abi.ChainEpoch, arg4 big.Int, arg5 address.Address, arg6 big.Int) (cid.Cid, error) {
+func (m *MockFullNode) MsigCreate(arg0 context.Context, arg1 uint64, arg2 []address.Address, arg3 abi.ChainEpoch, arg4 big.Int, arg5 address.Address, arg6 big.Int) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigCreate", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1427,10 +1427,10 @@ func (mr *MockFullNodeMockRecorder) MsigGetVestingSchedule(arg0, arg1, arg2 inte
 }
 
 // MsigPropose mocks base method
-func (m *MockFullNode) MsigPropose(arg0 context.Context, arg1, arg2 address.Address, arg3 big.Int, arg4 address.Address, arg5 uint64, arg6 []byte) (cid.Cid, error) {
+func (m *MockFullNode) MsigPropose(arg0 context.Context, arg1, arg2 address.Address, arg3 big.Int, arg4 address.Address, arg5 uint64, arg6 []byte) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigPropose", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1442,10 +1442,10 @@ func (mr *MockFullNodeMockRecorder) MsigPropose(arg0, arg1, arg2, arg3, arg4, ar
 }
 
 // MsigRemoveSigner mocks base method
-func (m *MockFullNode) MsigRemoveSigner(arg0 context.Context, arg1, arg2, arg3 address.Address, arg4 bool) (cid.Cid, error) {
+func (m *MockFullNode) MsigRemoveSigner(arg0 context.Context, arg1, arg2, arg3 address.Address, arg4 bool) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigRemoveSigner", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1457,10 +1457,10 @@ func (mr *MockFullNodeMockRecorder) MsigRemoveSigner(arg0, arg1, arg2, arg3, arg
 }
 
 // MsigSwapApprove mocks base method
-func (m *MockFullNode) MsigSwapApprove(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5, arg6 address.Address) (cid.Cid, error) {
+func (m *MockFullNode) MsigSwapApprove(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5, arg6 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigSwapApprove", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1472,10 +1472,10 @@ func (mr *MockFullNodeMockRecorder) MsigSwapApprove(arg0, arg1, arg2, arg3, arg4
 }
 
 // MsigSwapCancel mocks base method
-func (m *MockFullNode) MsigSwapCancel(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5 address.Address) (cid.Cid, error) {
+func (m *MockFullNode) MsigSwapCancel(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigSwapCancel", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1487,10 +1487,10 @@ func (mr *MockFullNodeMockRecorder) MsigSwapCancel(arg0, arg1, arg2, arg3, arg4,
 }
 
 // MsigSwapPropose mocks base method
-func (m *MockFullNode) MsigSwapPropose(arg0 context.Context, arg1, arg2, arg3, arg4 address.Address) (cid.Cid, error) {
+func (m *MockFullNode) MsigSwapPropose(arg0 context.Context, arg1, arg2, arg3, arg4 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigSwapPropose", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

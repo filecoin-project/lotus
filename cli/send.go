@@ -147,12 +147,12 @@ var sendCmd = &cli.Command{
 		}
 		msg, checks, err := srv.PublishMessage(ctx, proto, cctx.Bool("force"))
 		if xerrors.Is(err, ErrCheckFailed) {
-			proto, err = resolveChecks(ctx, srv, cctx.App.Writer, proto, checks, true)
+			proto, err := resolveChecks(ctx, srv, cctx.App.Writer, proto, checks, true)
 			if err != nil {
 				return xerrors.Errorf("from UI: %w", err)
 			}
 
-			msg, _, err = srv.PublishMessage(ctx, proto, true)
+			msg, _, err = srv.PublishMessage(ctx, proto, true) //nolint
 		}
 
 		if err != nil {

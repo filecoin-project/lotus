@@ -67,6 +67,20 @@ func (mr *MockServicesAPIMockRecorder) DecodeTypedParamsFromJSON(arg0, arg1, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodeTypedParamsFromJSON", reflect.TypeOf((*MockServicesAPI)(nil).DecodeTypedParamsFromJSON), arg0, arg1, arg2, arg3)
 }
 
+// FullNodeAPI mocks base method
+func (m *MockServicesAPI) FullNodeAPI() api.FullNode {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FullNodeAPI")
+	ret0, _ := ret[0].(api.FullNode)
+	return ret0
+}
+
+// FullNodeAPI indicates an expected call of FullNodeAPI
+func (mr *MockServicesAPIMockRecorder) FullNodeAPI() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FullNodeAPI", reflect.TypeOf((*MockServicesAPI)(nil).FullNodeAPI))
+}
+
 // GetBaseFee mocks base method
 func (m *MockServicesAPI) GetBaseFee(arg0 context.Context) (big.Int, error) {
 	m.ctrl.T.Helper()
@@ -83,10 +97,10 @@ func (mr *MockServicesAPIMockRecorder) GetBaseFee(arg0 interface{}) *gomock.Call
 }
 
 // MessageForSend mocks base method
-func (m *MockServicesAPI) MessageForSend(arg0 context.Context, arg1 SendParams) (*types.Message, error) {
+func (m *MockServicesAPI) MessageForSend(arg0 context.Context, arg1 SendParams) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MessageForSend", arg0, arg1)
-	ret0, _ := ret[0].(*types.Message)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -98,7 +112,7 @@ func (mr *MockServicesAPIMockRecorder) MessageForSend(arg0, arg1 interface{}) *g
 }
 
 // PublishMessage mocks base method
-func (m *MockServicesAPI) PublishMessage(arg0 context.Context, arg1 *types.Message, arg2 bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
+func (m *MockServicesAPI) PublishMessage(arg0 context.Context, arg1 *api.MessagePrototype, arg2 bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PublishMessage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*types.SignedMessage)
@@ -114,7 +128,7 @@ func (mr *MockServicesAPIMockRecorder) PublishMessage(arg0, arg1, arg2 interface
 }
 
 // RunChecksForPrototype mocks base method
-func (m *MockServicesAPI) RunChecksForPrototype(arg0 context.Context, arg1 *types.Message) ([][]api.MessageCheckStatus, error) {
+func (m *MockServicesAPI) RunChecksForPrototype(arg0 context.Context, arg1 *api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunChecksForPrototype", arg0, arg1)
 	ret0, _ := ret[0].([][]api.MessageCheckStatus)
