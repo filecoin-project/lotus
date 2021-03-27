@@ -85,8 +85,8 @@ const (
 
 	defaultColdPurgeSize = 12_000_000
 
-	aggressiveGCThreshold         = 64 << 30 // 64GiB
-	continueAggressiveGCThreshold = 64 << 20 // 64MiB
+	aggressiveGCThreshold         = 128 << 30 // 128GiB
+	continueAggressiveGCThreshold = 64 << 20  // 64MiB
 )
 
 type Config struct {
