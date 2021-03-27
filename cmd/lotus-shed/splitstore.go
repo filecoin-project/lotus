@@ -97,9 +97,9 @@ var splitstoreGCCmd = &cli.Command{
 
 		log.Infof("hotstore size is %d bytes", size)
 		for {
-			// gc more aggressively than CollectGarbage
-			for i := 0; i < 3; i++ {
+			for i := 0; i < 10; i++ {
 				for err == nil {
+					// gc more aggressively than CollectGarbage
 					err = bs.DB.RunValueLogGC(0.025)
 				}
 
