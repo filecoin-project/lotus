@@ -22,22 +22,24 @@ import (
 //go:generate go run github.com/golang/mock/mockgen -destination=servicesmock_test.go -package=cli -self_package github.com/filecoin-project/lotus/cli . ServicesAPI
 
 type ServicesAPI interface {
+	FullNodeAPI() api.FullNode
+
 	GetBaseFee(ctx context.Context) (abi.TokenAmount, error)
 
 	// MessageForSend creates a prototype of a message based on SendParams
-	MessageForSend(ctx context.Context, params SendParams) (*types.Message, error)
+	MessageForSend(ctx context.Context, params SendParams) (*api.MessagePrototype, error)
 
 	// DecodeTypedParamsFromJSON takes in information needed to identify a method and converts JSON
 	// parameters to bytes of their CBOR encoding
 	DecodeTypedParamsFromJSON(ctx context.Context, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error)
 
-	RunChecksForPrototype(ctx context.Context, prototype *types.Message) ([][]api.MessageCheckStatus, error)
+	RunChecksForPrototype(ctx context.Context, prototype *api.MessagePrototype) ([][]api.MessageCheckStatus, error)
 
 	// PublishMessage takes in a message prototype and publishes it
 	// before publishing the message, it runs checks on the node, message and mpool to verify that
 	// message is valid and won't be stuck.
 	// if `force` is true, it skips the checks
-	PublishMessage(ctx context.Context, prototype *types.Message, interactive bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error)
+	PublishMessage(ctx context.Context, prototype *api.MessagePrototype, interactive bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error)
 
 	// Close ends the session of services and disconnects from RPC, using Services after Close is called
 	// most likely will result in an error
@@ -48,6 +50,10 @@ type ServicesAPI interface {
 type ServicesImpl struct {
 	api    api.FullNode
 	closer jsonrpc.ClientCloser
+}
+
+func (s *ServicesImpl) FullNodeAPI() api.FullNode {
+	return s.api
 }
 
 func (s *ServicesImpl) Close() error {
@@ -102,15 +108,24 @@ type CheckInfo struct {
 
 var ErrCheckFailed = fmt.Errorf("check has failed")
 
-func (s *ServicesImpl) RunChecksForPrototype(ctx context.Context, prototype *types.Message) ([][]api.MessageCheckStatus, error) {
+func (s *ServicesImpl) RunChecksForPrototype(ctx context.Context, prototype *api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
+	if !prototype.ValidNonce {
+		nonce, err := s.api.MpoolGetNonce(ctx, prototype.Message.From)
+		if err != nil {
+			return nil, xerrors.Errorf("mpool get nonce: %w", err)
+		}
+		prototype.Message.Nonce = nonce
+		prototype.ValidNonce = true
+	}
+
 	var outChecks [][]api.MessageCheckStatus
-	checks, err := s.api.MpoolCheckMessages(ctx, []*types.Message{prototype})
+	checks, err := s.api.MpoolCheckMessages(ctx, []*types.Message{&prototype.Message})
 	if err != nil {
 		return nil, xerrors.Errorf("message check: %w", err)
 	}
 	outChecks = append(outChecks, checks...)
 
-	checks, err = s.api.MpoolCheckPendingMessages(ctx, prototype.From)
+	checks, err = s.api.MpoolCheckPendingMessages(ctx, prototype.Message.From)
 	if err != nil {
 		return nil, xerrors.Errorf("pending mpool check: %w", err)
 	}
@@ -123,27 +138,30 @@ func (s *ServicesImpl) RunChecksForPrototype(ctx context.Context, prototype *typ
 // Errors with ErrCheckFailed if any of the checks fail
 // First group of checks is related to the message prototype
 func (s *ServicesImpl) PublishMessage(ctx context.Context,
-	prototype *types.Message, force bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
+	prototype *api.MessagePrototype, force bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
 
-	gasedMsg, err := s.api.GasEstimateMessageGas(ctx, prototype, nil, types.EmptyTSK)
+	gasedMsg, err := s.api.GasEstimateMessageGas(ctx, &prototype.Message, nil, types.EmptyTSK)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("estimating gas: %w", err)
 	}
-	*prototype = *gasedMsg
+	prototype.Message = *gasedMsg
 
 	if !force {
 		checks, err := s.RunChecksForPrototype(ctx, prototype)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("running checks: %w", err)
 		}
-		if len(checks) != 0 {
-			return nil, checks, ErrCheckFailed
+		for _, chks := range checks {
+			for _, c := range chks {
+				if !c.OK {
+					return nil, checks, ErrCheckFailed
+				}
+			}
 		}
 	}
 
-	//TODO: message prototype needs to have "IsNonceSet"
-	if prototype.Nonce != 0 {
-		sm, err := s.api.WalletSignMessage(ctx, prototype.From, prototype)
+	if prototype.ValidNonce {
+		sm, err := s.api.WalletSignMessage(ctx, prototype.Message.From, &prototype.Message)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -155,7 +173,7 @@ func (s *ServicesImpl) PublishMessage(ctx context.Context,
 		return sm, nil, nil
 	}
 
-	sm, err := s.api.MpoolPushMessage(ctx, prototype, nil)
+	sm, err := s.api.MpoolPushMessage(ctx, &prototype.Message, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,7 +195,7 @@ type SendParams struct {
 	Params []byte
 }
 
-func (s *ServicesImpl) MessageForSend(ctx context.Context, params SendParams) (*types.Message, error) {
+func (s *ServicesImpl) MessageForSend(ctx context.Context, params SendParams) (*api.MessagePrototype, error) {
 	if params.From == address.Undef {
 		defaddr, err := s.api.WalletDefaultAddress(ctx)
 		if err != nil {
@@ -186,7 +204,7 @@ func (s *ServicesImpl) MessageForSend(ctx context.Context, params SendParams) (*
 		params.From = defaddr
 	}
 
-	msg := &types.Message{
+	msg := types.Message{
 		From:  params.From,
 		To:    params.To,
 		Value: params.Val,
@@ -210,9 +228,15 @@ func (s *ServicesImpl) MessageForSend(ctx context.Context, params SendParams) (*
 	} else {
 		msg.GasLimit = 0
 	}
+	validNonce := false
 	if params.Nonce != nil {
 		msg.Nonce = *params.Nonce
+		validNonce = true
 	}
 
-	return msg, nil
+	prototype := &api.MessagePrototype{
+		Message:    msg,
+		ValidNonce: validNonce,
+	}
+	return prototype, nil
 }
