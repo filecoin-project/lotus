@@ -153,7 +153,7 @@ var msigCreateCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -442,7 +442,7 @@ var msigProposeCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -540,7 +540,7 @@ var msigApproveCmd = &cli.Command{
 				return err
 			}
 
-			sm, _, err := srv.PublishMessage(ctx, proto, false)
+			sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 			if err != nil {
 				return err
 			}
@@ -590,7 +590,7 @@ var msigApproveCmd = &cli.Command{
 				return err
 			}
 
-			sm, _, err := srv.PublishMessage(ctx, proto, false)
+			sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 			if err != nil {
 				return err
 			}
@@ -671,7 +671,7 @@ var msigRemoveProposeCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -758,7 +758,7 @@ var msigAddProposeCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -849,7 +849,7 @@ var msigAddApproveCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -935,7 +935,7 @@ var msigAddCancelCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -1016,7 +1016,7 @@ var msigSwapProposeCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -1107,7 +1107,7 @@ var msigSwapApproveCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -1193,7 +1193,7 @@ var msigSwapCancelCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -1289,7 +1289,7 @@ var msigLockProposeCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -1395,7 +1395,7 @@ var msigLockApproveCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -1496,7 +1496,7 @@ var msigLockCancelCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
@@ -1642,7 +1642,7 @@ var msigProposeThresholdCmd = &cli.Command{
 			return fmt.Errorf("failed to propose change of threshold: %w", err)
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, _, err := srv.PublishMessage(ctx, proto, true) // TODO checks, interactive ui
 		if err != nil {
 			return err
 		}
