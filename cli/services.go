@@ -151,8 +151,12 @@ func (s *ServicesImpl) PublishMessage(ctx context.Context,
 		if err != nil {
 			return nil, nil, xerrors.Errorf("running checks: %w", err)
 		}
-		if len(checks) != 0 {
-			return nil, checks, ErrCheckFailed
+		for _, chks := range checks {
+			for _, c := range chks {
+				if !c.OK {
+					return nil, checks, ErrCheckFailed
+				}
+			}
 		}
 	}
 
