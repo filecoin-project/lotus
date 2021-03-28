@@ -90,7 +90,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
-	maddr, err := getActorAddress(ctx, nodeApi, cctx.String("actor"))
+	maddr, err := getActorAddress(ctx, cctx)
 	if err != nil {
 		return err
 	}

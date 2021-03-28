@@ -434,11 +434,6 @@ var sectorsExtendCmd = &cli.Command{
 		&cli.StringFlag{},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
 		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -447,9 +442,10 @@ var sectorsExtendCmd = &cli.Command{
 		defer nCloser()
 
 		ctx := lcli.ReqContext(cctx)
-		maddr, err := nodeApi.ActorAddress(ctx)
+
+		maddr, err := getActorAddress(ctx, cctx)
 		if err != nil {
-			return xerrors.Errorf("getting miner actor address: %w", err)
+			return err
 		}
 
 		var params []miner0.ExtendSectorExpirationParams
@@ -512,7 +508,6 @@ var sectorsExtendCmd = &cli.Command{
 					}
 				}
 
-				// TODO: Count added sectors, if it exceeds 10k, split messages
 				p := &miner0.ExtendSectorExpirationParams{}
 				scount := 0
 				for l, exts := range sectors {
@@ -578,8 +573,8 @@ var sectorsExtendCmd = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		for _, p := range params {
-			sp, aerr := actors.SerializeParams(&p)
+		for i := range params {
+			sp, aerr := actors.SerializeParams(&params[i])
 			if aerr != nil {
 				return xerrors.Errorf("serializing params: %w", err)
 			}
@@ -836,12 +831,6 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 
-		mApi, mCloser, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer mCloser()
-
 		nApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -850,7 +839,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := mApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, cctx)
 		if err != nil {
 			return err
 		}
