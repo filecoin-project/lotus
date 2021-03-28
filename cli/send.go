@@ -152,7 +152,7 @@ var sendCmd = &cli.Command{
 				return xerrors.Errorf("from UI: %w", err)
 			}
 
-			msg, _, err = srv.PublishMessage(ctx, proto, true)
+			msg, _, err = srv.PublishMessage(ctx, proto, true) //nolint
 		}
 
 		if err != nil {

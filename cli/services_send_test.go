@@ -7,12 +7,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/mocks"
 	types "github.com/filecoin-project/lotus/chain/types"
 	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,22 +59,23 @@ func setupMockSrvcs(t *testing.T) (*ServicesImpl, *mocks.MockFullNode) {
 	return srvcs, mockApi
 }
 
-func fakeSign(msg *types.Message) *types.SignedMessage {
-	return &types.SignedMessage{
-		Message:   *msg,
-		Signature: crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: make([]byte, 32)},
-	}
-}
+// linter doesn't like dead code, so these are commented out.
+// func fakeSign(msg *types.Message) *types.SignedMessage {
+// 	return &types.SignedMessage{
+// 		Message:   *msg,
+// 		Signature: crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: make([]byte, 32)},
+// 	}
+// }
 
-func makeMessageSigner() (*cid.Cid, interface{}) {
-	smCid := cid.Undef
-	return &smCid,
-		func(_ context.Context, msg *types.Message, _ *api.MessageSendSpec) (*types.SignedMessage, error) {
-			sm := fakeSign(msg)
-			smCid = sm.Cid()
-			return sm, nil
-		}
-}
+// func makeMessageSigner() (*cid.Cid, interface{}) {
+// 	smCid := cid.Undef
+// 	return &smCid,
+// 		func(_ context.Context, msg *types.Message, _ *api.MessageSendSpec) (*types.SignedMessage, error) {
+// 			sm := fakeSign(msg)
+// 			smCid = sm.Cid()
+// 			return sm, nil
+// 		}
+// }
 
 type MessageMatcher SendParams
 
@@ -84,10 +83,12 @@ var _ gomock.Matcher = MessageMatcher{}
 
 // Matches returns whether x is a match.
 func (mm MessageMatcher) Matches(x interface{}) bool {
-	m, ok := x.(*types.Message)
+	proto, ok := x.(*api.MessagePrototype)
 	if !ok {
 		return false
 	}
+
+	m := &proto.Message
 
 	if mm.From != address.Undef && mm.From != m.From {
 		return false
