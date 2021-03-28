@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -422,7 +424,12 @@ var sectorsExtendCmd = &cli.Command{
 		&cli.Int64Flag{
 			Name:     "new-expiration",
 			Usage:    "new expiration epoch",
-			Required: true,
+			Required: false,
+		},
+		&cli.BoolFlag{
+			Name:     "v1-sectors",
+			Usage:    "renews all v1 sectors up to the maximum possible lifetime",
+			Required: false,
 		},
 		&cli.StringFlag{},
 	},
@@ -440,49 +447,130 @@ var sectorsExtendCmd = &cli.Command{
 		defer nCloser()
 
 		ctx := lcli.ReqContext(cctx)
-		if !cctx.Args().Present() {
-			return xerrors.Errorf("must pass at least one sector number")
-		}
-
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting miner actor address: %w", err)
 		}
 
-		sectors := map[miner.SectorLocation][]uint64{}
+		var params []miner0.ExtendSectorExpirationParams
 
-		for i, s := range cctx.Args().Slice() {
-			id, err := strconv.ParseUint(s, 10, 64)
+		if cctx.Bool("v1-sectors") {
+			sectors := map[miner.SectorLocation]map[abi.ChainEpoch][]uint64{}
+			// are given durations within a week?
+			closeEnough := func(a, b abi.ChainEpoch) bool {
+				diff := a - b
+				if diff < 0 {
+					diff = b - a
+				}
+
+				return diff <= 7*builtin.EpochsInDay
+			}
+
+			sis, err := api.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
 			if err != nil {
-				return xerrors.Errorf("could not parse sector %d: %w", i, err)
+				return xerrors.Errorf("getting miner sector infos: %w", err)
 			}
 
-			p, err := api.StateSectorPartition(ctx, maddr, abi.SectorNumber(id), types.EmptyTSK)
-			if err != nil {
-				return xerrors.Errorf("getting sector location for sector %d: %w", id, err)
+			for _, si := range sis {
+				if si.SealProof < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+					// if the sector's missing less than a week of its maximum possible lifetimne, don't bother extending it
+					if closeEnough(si.Expiration-si.Activation, miner0.MaxSectorExpirationExtension) {
+						continue
+					}
+
+					newExp := miner0.MaxSectorExpirationExtension - (miner0.WPoStProvingPeriod * 2) + si.Activation
+					p, err := api.StateSectorPartition(ctx, maddr, si.SectorNumber, types.EmptyTSK)
+					if err != nil {
+						return xerrors.Errorf("getting sector location for sector %d: %w", si.SectorNumber, err)
+					}
+
+					if p == nil {
+						return xerrors.Errorf("sector %d not found in any partition", si.SectorNumber)
+					}
+
+					es, found := sectors[*p]
+					if !found {
+						ne := make(map[abi.ChainEpoch][]uint64)
+						ne[newExp] = []uint64{uint64(si.SectorNumber)}
+						sectors[*p] = ne
+					} else {
+						added := false
+						for exp, secs := range es {
+							if closeEnough(exp, newExp) {
+								secs = append(secs, uint64(si.SectorNumber))
+								//es[exp] = secs
+								//sectors[*p] = es
+								added = true
+								break
+							}
+						}
+
+						if !added {
+							es[newExp] = []uint64{uint64(si.SectorNumber)}
+							//sectors[*p] = es
+						}
+					}
+				}
+
+				// TODO: Count added sectors, if it exceeds 10k, split messages
+				p := &miner0.ExtendSectorExpirationParams{}
+				scount := 0
+				for l, exts := range sectors {
+					for newExp, numbers := range exts {
+						scount += len(numbers)
+						if scount > miner.AddressedSectorsMax {
+							params = append(params, *p)
+							p = &miner0.ExtendSectorExpirationParams{}
+							scount = len(numbers)
+						}
+
+						p.Extensions = append(p.Extensions, miner0.ExpirationExtension{
+							Deadline:      l.Deadline,
+							Partition:     l.Partition,
+							Sectors:       bitfield.NewFromSet(numbers),
+							NewExpiration: newExp,
+						})
+					}
+				}
+				params = append(params, *p)
 			}
 
-			if p == nil {
-				return xerrors.Errorf("sector %d not found in any partition", id)
+		} else {
+			if !cctx.Args().Present() || !cctx.IsSet("new-expiration") {
+				return xerrors.Errorf("must pass at least one sector number and new expiration")
+			}
+			sectors := map[miner.SectorLocation][]uint64{}
+
+			for i, s := range cctx.Args().Slice() {
+				id, err := strconv.ParseUint(s, 10, 64)
+				if err != nil {
+					return xerrors.Errorf("could not parse sector %d: %w", i, err)
+				}
+
+				p, err := api.StateSectorPartition(ctx, maddr, abi.SectorNumber(id), types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("getting sector location for sector %d: %w", id, err)
+				}
+
+				if p == nil {
+					return xerrors.Errorf("sector %d not found in any partition", id)
+				}
+
+				sectors[*p] = append(sectors[*p], id)
 			}
 
-			sectors[*p] = append(sectors[*p], id)
-		}
+			p := &miner0.ExtendSectorExpirationParams{}
+			for l, numbers := range sectors {
 
-		params := &miner0.ExtendSectorExpirationParams{}
-		for l, numbers := range sectors {
+				p.Extensions = append(p.Extensions, miner0.ExpirationExtension{
+					Deadline:      l.Deadline,
+					Partition:     l.Partition,
+					Sectors:       bitfield.NewFromSet(numbers),
+					NewExpiration: abi.ChainEpoch(cctx.Int64("new-expiration")),
+				})
+			}
 
-			params.Extensions = append(params.Extensions, miner0.ExpirationExtension{
-				Deadline:      l.Deadline,
-				Partition:     l.Partition,
-				Sectors:       bitfield.NewFromSet(numbers),
-				NewExpiration: abi.ChainEpoch(cctx.Int64("new-expiration")),
-			})
-		}
-
-		sp, err := actors.SerializeParams(params)
-		if err != nil {
-			return xerrors.Errorf("serializing params: %w", err)
+			params = append(params, *p)
 		}
 
 		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
@@ -490,19 +578,26 @@ var sectorsExtendCmd = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			From:   mi.Worker,
-			To:     maddr,
-			Method: miner.Methods.ExtendSectorExpiration,
+		for _, p := range params {
+			sp, aerr := actors.SerializeParams(&p)
+			if aerr != nil {
+				return xerrors.Errorf("serializing params: %w", err)
+			}
 
-			Value:  big.Zero(),
-			Params: sp,
-		}, nil)
-		if err != nil {
-			return xerrors.Errorf("mpool push message: %w", err)
+			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+				From:   mi.Worker,
+				To:     maddr,
+				Method: miner.Methods.ExtendSectorExpiration,
+
+				Value:  big.Zero(),
+				Params: sp,
+			}, nil)
+			if err != nil {
+				return xerrors.Errorf("mpool push message: %w", err)
+			}
+
+			fmt.Println(smsg.Cid())
 		}
-
-		fmt.Println(smsg.Cid())
 
 		return nil
 	},
