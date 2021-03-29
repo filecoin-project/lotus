@@ -55,6 +55,11 @@ func renderDeal(di lapi.DealInfo) {
 	color.Blue("Deal ID:      %d\n", int(di.DealID))
 	color.Blue("Proposal CID: %s\n\n", di.ProposalCid.String())
 
+	if di.DealStages == nil {
+		color.Yellow("Deal was made with an older version of Lotus and Lotus did not collect detailed information about its stages")
+		return
+	}
+
 	for _, stg := range di.DealStages.Stages {
 		msg := fmt.Sprintf("%s %s: %s (%s)", color.BlueString("Stage:"), color.BlueString(strings.TrimPrefix(stg.Name, "StorageDeal")), stg.Description, color.GreenString(stg.ExpectedDuration))
 		if stg.UpdatedTime.Time().IsZero() {
