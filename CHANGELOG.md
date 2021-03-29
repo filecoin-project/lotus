@@ -1,5 +1,13 @@
 # Lotus changelog
 
+# 1.6.0-rc1 / 2021-03-29
+
+This is the first release candidate for Lotus v1.6.0. The only change included in this release is introducing network version 11, which implements [FIP-0014](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0014.md).
+
+## Changes 
+
+- Introduce the v11 network upgrade (https://github.com/filecoin-project/lotus/pull/5904)
+
 # 1.5.3 / 2021-03-24
 
 This is a patch release of Lotus that introduces small fixes to the Storage FSM.
