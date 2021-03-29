@@ -585,7 +585,10 @@ Response:
   "Voucher": "string value",
   "Message": "string value",
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Transferred": 42
+  "Transferred": 42,
+  "Stages": {
+    "Stages": null
+  }
 }
 ```
 

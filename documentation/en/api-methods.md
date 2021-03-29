@@ -941,7 +941,10 @@ Response:
   "Voucher": "string value",
   "Message": "string value",
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Transferred": 42
+  "Transferred": 42,
+  "Stages": {
+    "Stages": null
+  }
 }
 ```
 
@@ -1054,6 +1057,9 @@ Response:
   },
   "State": 42,
   "Message": "string value",
+  "DealStages": {
+    "Stages": null
+  },
   "Provider": "f01234",
   "DataRef": {
     "TransferType": "string value",
@@ -1089,7 +1095,10 @@ Response:
     "Voucher": "string value",
     "Message": "string value",
     "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
   }
 }
 ```
@@ -1125,6 +1134,9 @@ Response:
   },
   "State": 42,
   "Message": "string value",
+  "DealStages": {
+    "Stages": null
+  },
   "Provider": "f01234",
   "DataRef": {
     "TransferType": "string value",
@@ -1160,7 +1172,10 @@ Response:
     "Voucher": "string value",
     "Message": "string value",
     "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
   }
 }
 ```
