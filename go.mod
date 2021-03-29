@@ -32,9 +32,9 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-commp-utils v0.0.0-20201119054358-b88f7a96a434
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v1.2.9
+	github.com/filecoin-project/go-data-transfer v1.4.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
-	github.com/filecoin-project/go-fil-markets v1.0.8-0.20210323120140-dfc792490922
+	github.com/filecoin-project/go-fil-markets v1.0.8-0.20210325184546-c7ea9187ef63
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
@@ -116,7 +116,6 @@ require (
 	github.com/libp2p/go-libp2p-yamux v0.4.1
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mattn/go-colorable v0.1.6 // indirect
-	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.3
@@ -164,6 +163,6 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
-replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+replace github.com/filecoin-project/go-data-transfer => github.com/nonsense/go-data-transfer v0.0.3
 
-replace github.com/filecoin-project/go-data-transfer => github.com/nonsense/go-data-transfer v0.0.2
+replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
