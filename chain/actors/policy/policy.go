@@ -136,6 +136,10 @@ func DealProviderCollateralBounds(
 	}
 }
 
+func DealDurationBounds(pieceSize abi.PaddedPieceSize) (min, max abi.ChainEpoch) {
+	return market2.DealDurationBounds(pieceSize)
+}
+
 // Sets the challenge window and scales the proving period to match (such that
 // there are always 48 challenge windows in a proving period).
 func SetWPoStChallengeWindow(period abi.ChainEpoch) {
