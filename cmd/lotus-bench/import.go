@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,21 +12,25 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"sort"
 	"time"
 
-	ocprom "contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	"github.com/ipfs/go-cid"
+	levelds "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
+	"go.opencensus.io/stats/view"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -33,6 +38,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -103,6 +109,11 @@ var importBenchCmd = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
+			Name:  "full-traces",
+			Usage: "should we export full traces or only abbreviated ones (tipset, duration)",
+			Value: true,
+		},
+		&cli.BoolFlag{
 			Name:  "no-import",
 			Usage: "should we import the chain? if set to true chain has to be previously imported",
 		},
@@ -118,6 +129,13 @@ var importBenchCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name: "use-native-badger",
+		},
+		&cli.BoolFlag{
+			Name: "use-splitstore",
+		},
+		&cli.StringFlag{
+			Name:  "metadata-store",
+			Usage: "path to metadata store (required with --use-splitstore)",
 		},
 		&cli.StringFlag{
 			Name: "car",
@@ -136,27 +154,15 @@ var importBenchCmd = &cli.Command{
 		metricsprometheus.Inject() //nolint:errcheck
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
 
+		// Register all metric views
+		if err := view.Register(metrics.DefaultViews...); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
+
+		http.Handle("/debug/metrics", metrics.Exporter())
+
 		go func() {
-			// Prometheus globals are exposed as interfaces, but the prometheus
-			// OpenCensus exporter expects a concrete *Registry. The concrete type of
-			// the globals are actually *Registry, so we downcast them, staying
-			// defensive in case things change under the hood.
-			registry, ok := prometheus.DefaultRegisterer.(*prometheus.Registry)
-			if !ok {
-				log.Warnf("failed to export default prometheus registry; some metrics will be unavailable; unexpected type: %T", prometheus.DefaultRegisterer)
-				return
-			}
-			exporter, err := ocprom.NewExporter(ocprom.Options{
-				Registry:  registry,
-				Namespace: "lotus",
-			})
-			if err != nil {
-				log.Fatalf("could not create the prometheus stats exporter: %v", err)
-			}
-
-			http.Handle("/debug/metrics", exporter)
-
-			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
+			_ = http.ListenAndServe("localhost:6060", nil)
 		}()
 
 		var tdir string
@@ -174,6 +180,8 @@ var importBenchCmd = &cli.Command{
 			ds  datastore.Batching
 			bs  blockstore.Blockstore
 			err error
+
+			baseEpoch abi.ChainEpoch
 		)
 
 		switch {
@@ -208,6 +216,53 @@ var importBenchCmd = &cli.Command{
 			}
 			opts.SyncWrites = false
 			bs, err = badgerbs.Open(opts)
+
+		case cctx.Bool("use-splitstore"):
+			log.Info("using splitstore")
+
+			metadataPath := cctx.String("metadata-store")
+			if metadataPath == "" {
+				return fmt.Errorf("use-splitstore requires metadata-path flag")
+			}
+
+			// tdir is the splitstore path
+			//  cold will be in <splistore_path>/../chain
+			//  hot will be in <splitstore_path>/hot.badger
+			var (
+				coldPath    = filepath.Join(tdir, "../chain")
+				coldOpts, _ = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false)
+			)
+			coldBs, err := badgerbs.Open(coldOpts)
+			if err != nil {
+				return err
+			}
+
+			var (
+				hotPath    = filepath.Join(tdir, "./hot.badger")
+				hotOpts, _ = repo.BadgerBlockstoreOptions(repo.HotBlockstore, hotPath, false)
+			)
+			hotBs, err := badgerbs.Open(hotOpts)
+			if err != nil {
+				return err
+			}
+
+			metadataDs, err := levelds.NewDatastore(metadataPath, &levelds.Options{
+				Compression: ldbopts.NoCompression,
+				NoSync:      false,
+				Strict:      ldbopts.StrictAll,
+				ReadOnly:    true, // splitstore will not attempt to write.
+			})
+
+			baseEpochKey := datastore.NewKey("/splitstore/baseEpoch")
+			baseEpochBytes, err := metadataDs.Get(baseEpochKey)
+			if err != nil {
+				return err
+			}
+			i, _ := binary.Uvarint(baseEpochBytes)
+			baseEpoch = abi.ChainEpoch(i)
+
+			cfg := new(splitstore.Config) // default
+			bs, err = splitstore.Open(tdir, metadataDs, hotBs, coldBs, cfg)
 
 		default: // legacy badger via datastore.
 			log.Info("using legacy badger")
@@ -426,6 +481,9 @@ var importBenchCmd = &cli.Command{
 			log.Infof("getting start tipset at height %d...", h)
 			// lookback from the end tipset (which falls back to head if not supplied).
 			start, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), end, true)
+		} else if baseEpoch > 0 {
+			log.Infof("getting start tipset at baseEpoch height %d...", baseEpoch)
+			start, err = cs.GetTipsetByHeight(context.TODO(), baseEpoch, end, true)
 		}
 
 		if err != nil {
@@ -477,6 +535,8 @@ var importBenchCmd = &cli.Command{
 			}
 		}
 
+		fullTraces := cctx.Bool("full-traces")
+
 		for i := len(inverseChain) - 1; i >= 1; i-- {
 			cur := inverseChain[i]
 			start := time.Now()
@@ -487,8 +547,10 @@ var importBenchCmd = &cli.Command{
 			}
 			tse := &TipSetExec{
 				TipSet:   cur.Key(),
-				Trace:    trace,
 				Duration: time.Since(start),
+			}
+			if fullTraces {
+				tse.Trace = trace
 			}
 			if enc != nil {
 				stripCallers(tse.Trace)
