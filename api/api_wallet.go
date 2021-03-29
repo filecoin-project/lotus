@@ -34,7 +34,7 @@ type MsgMeta struct {
 	Extra []byte
 }
 
-type WalletAPI interface {
+type Wallet interface {
 	WalletNew(context.Context, types.KeyType) (address.Address, error)
 	WalletHas(context.Context, address.Address) (bool, error)
 	WalletList(context.Context) ([]address.Address, error)

@@ -249,12 +249,12 @@ func startNodes(
 				require.NoError(t, err)
 
 				// Create a gateway client API that connects to the gateway server
-				var gapi api.GatewayAPI
+				var gapi api.Gateway
 				gapi, closer, err = client.NewGatewayRPC(ctx, addr, nil)
 				require.NoError(t, err)
 
 				// Provide the gateway API to dependency injection
-				return node.Override(new(api.GatewayAPI), gapi)
+				return node.Override(new(api.Gateway), gapi)
 			},
 		},
 	)

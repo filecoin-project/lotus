@@ -23,16 +23,16 @@ import (
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )
 
-var netCmd = &cli.Command{
+var NetCmd = &cli.Command{
 	Name:  "net",
 	Usage: "Manage P2P Network",
 	Subcommands: []*cli.Command{
 		NetPeers,
-		netConnect,
+		NetConnect,
 		NetListen,
 		NetId,
-		netFindPeer,
-		netScores,
+		NetFindPeer,
+		NetScores,
 		NetReachability,
 		NetBandwidthCmd,
 		NetBlockCmd,
@@ -112,7 +112,7 @@ var NetPeers = &cli.Command{
 	},
 }
 
-var netScores = &cli.Command{
+var NetScores = &cli.Command{
 	Name:  "scores",
 	Usage: "Print peers' pubsub scores",
 	Flags: []cli.Flag{
@@ -175,7 +175,7 @@ var NetListen = &cli.Command{
 	},
 }
 
-var netConnect = &cli.Command{
+var NetConnect = &cli.Command{
 	Name:      "connect",
 	Usage:     "Connect to a peer",
 	ArgsUsage: "[peerMultiaddr|minerActorAddress]",
@@ -264,7 +264,7 @@ var NetId = &cli.Command{
 	},
 }
 
-var netFindPeer = &cli.Command{
+var NetFindPeer = &cli.Command{
 	Name:      "findpeer",
 	Usage:     "Find the addresses of a given peerID",
 	ArgsUsage: "[peerId]",

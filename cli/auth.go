@@ -13,16 +13,16 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-var authCmd = &cli.Command{
+var AuthCmd = &cli.Command{
 	Name:  "auth",
 	Usage: "Manage RPC permissions",
 	Subcommands: []*cli.Command{
-		authCreateAdminToken,
-		authApiInfoToken,
+		AuthCreateAdminToken,
+		AuthApiInfoToken,
 	},
 }
 
-var authCreateAdminToken = &cli.Command{
+var AuthCreateAdminToken = &cli.Command{
 	Name:  "create-token",
 	Usage: "Create token",
 	Flags: []cli.Flag{
@@ -70,7 +70,7 @@ var authCreateAdminToken = &cli.Command{
 	},
 }
 
-var authApiInfoToken = &cli.Command{
+var AuthApiInfoToken = &cli.Command{
 	Name:  "api-info",
 	Usage: "Get token with API info required to connect to this node",
 	Flags: []cli.Flag{
@@ -90,7 +90,7 @@ var authApiInfoToken = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if !cctx.IsSet("perm") {
-			return xerrors.New("--perm flag not set")
+			return xerrors.New("--perm flag not set, use with one of: read, write, sign, admin")
 		}
 
 		perm := cctx.String("perm")

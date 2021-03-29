@@ -30,8 +30,8 @@ func main() {
 		t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
 		permStruct = reflect.TypeOf(apistruct.StorageMinerStruct{}.Internal)
 		commonPermStruct = reflect.TypeOf(apistruct.CommonStruct{}.Internal)
-	case "WorkerAPI":
-		t = reflect.TypeOf(new(struct{ api.WorkerAPI })).Elem()
+	case "Worker":
+		t = reflect.TypeOf(new(struct{ api.Worker })).Elem()
 		permStruct = reflect.TypeOf(apistruct.WorkerStruct{}.Internal)
 		commonPermStruct = reflect.TypeOf(apistruct.WorkerStruct{}.Internal)
 	default:
