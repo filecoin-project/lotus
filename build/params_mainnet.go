@@ -56,6 +56,9 @@ const UpgradeClausHeight = 343200
 // 2021-03-04T00:00:30Z
 var UpgradeActorsV3Height = abi.ChainEpoch(550321)
 
+// 2021-04-12T22:00:00Z
+const UpgradeNorwegianHeight = 665280
+
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 

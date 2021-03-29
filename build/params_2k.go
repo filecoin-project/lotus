@@ -28,6 +28,7 @@ const UpgradeOrangeHeight = 27
 const UpgradeClausHeight = 30
 
 const UpgradeActorsV3Height = 35
+const UpgradeNorwegianHeight = 40
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
