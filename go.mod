@@ -163,6 +163,6 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
-replace github.com/filecoin-project/go-data-transfer => github.com/nonsense/go-data-transfer v0.0.3
+replace github.com/filecoin-project/go-data-transfer => github.com/nonsense/go-data-transfer v0.0.4
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
