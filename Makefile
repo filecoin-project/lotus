@@ -321,44 +321,59 @@ dist-clean:
 type-gen:
 	go run ./gen/main.go
 	go generate ./...
+.PHONY: type-gen
 
 method-gen:
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
+.PHONY: method-gen
 
-api-gen:
+api/apistruct/struct.go: $(wildcard api/*)
 	go run ./gen/api > api/apistruct/struct.go
 	goimports -w api/apistruct
 	goimports -w api/apistruct
+
+api-gen: api/apistruct/struct.go
 .PHONY: api-gen
 
-docsgen: docsgen-md docsgen-openrpc
+DOCSGEN:=
 
-docsgen-md-bin:
+
+docsgen-md:
 	go build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
-docsgen-openrpc-bin:
+docsgen-openrpc:
 	go build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
-docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
 
-docsgen-md-full: docsgen-md-bin
+docsgen-md-full: docsgen-md
 	./docgen-md "api/api_full.go" "FullNode" > documentation/en/api-methods.md
-docsgen-md-storage: docsgen-md-bin
+DOCSGEN+=docsgen-md-full
+
+docsgen-md-storage: docsgen-md
 	./docgen-md "api/api_storage.go" "StorageMiner" > documentation/en/api-methods-miner.md
-docsgen-md-worker: docsgen-md-bin
+DOCSGEN+=docsgen-md-storage
+
+docsgen-md-worker: docsgen-md
 	./docgen-md "api/api_worker.go" "Worker" > documentation/en/api-methods-worker.md
+DOCSGEN+=docsgen-md-worker
 
-docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker
-
-docsgen-openrpc-full: docsgen-openrpc-bin
+docsgen-openrpc-full: docsgen-openrpc
 	./docgen-openrpc "api/api_full.go" "FullNode" -gzip > build/openrpc/full.json.gz
-docsgen-openrpc-storage: docsgen-openrpc-bin
+DOCSGEN+=docsgen-openrpc-full
+
+docsgen-openrpc-storage: docsgen-openrpc
 	./docgen-openrpc "api/api_storage.go" "StorageMiner" -gzip > build/openrpc/miner.json.gz
-docsgen-openrpc-worker: docsgen-openrpc-bin
+DOCSGEN+=docsgen-openrpc-storage
+
+docsgen-openrpc-worker: docsgen-openrpc
 	./docgen-openrpc "api/api_worker.go" "Worker" -gzip > build/openrpc/worker.json.gz
+DOCSGEN+=docsgen-openrpc-worker
 
-.PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
+$(DOCSGEN): api/apistruct/struct.go
 
-gen: type-gen method-gen docsgen api-gen
+docsgen: $(DOCSGEN)
+.PHONY: docsgen $(DOCSGEN)
+
+gen: type-gen method-gen docsgen
 .PHONY: gen
 
 print-%:
