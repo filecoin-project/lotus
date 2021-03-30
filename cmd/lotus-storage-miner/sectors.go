@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/docker/go-units"
@@ -18,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -448,10 +450,10 @@ var sectorsExtendCmd = &cli.Command{
 			return err
 		}
 
-		var params []miner0.ExtendSectorExpirationParams
+		var params []miner3.ExtendSectorExpirationParams
 
 		if cctx.Bool("v1-sectors") {
-			sectors := map[miner.SectorLocation]map[abi.ChainEpoch][]uint64{}
+			extensions := map[miner.SectorLocation]map[abi.ChainEpoch][]uint64{}
 			// are given durations within a week?
 			closeEnough := func(a, b abi.ChainEpoch) bool {
 				diff := a - b
@@ -462,19 +464,21 @@ var sectorsExtendCmd = &cli.Command{
 				return diff <= 7*builtin.EpochsInDay
 			}
 
-			sis, err := api.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
+			sis, err := api.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("getting miner sector infos: %w", err)
 			}
 
 			for _, si := range sis {
 				if si.SealProof < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
-					// if the sector's missing less than a week of its maximum possible lifetimne, don't bother extending it
-					if closeEnough(si.Expiration-si.Activation, miner0.MaxSectorExpirationExtension) {
+
+					ml := builtin3.SealProofPoliciesV11[si.SealProof].SectorMaxLifetime
+					// if the sector's missing less than a week of its maximum possible lifetime, don't bother extending it
+					if closeEnough(si.Expiration-si.Activation, ml) {
 						continue
 					}
 
-					newExp := miner0.MaxSectorExpirationExtension - (miner0.WPoStProvingPeriod * 2) + si.Activation
+					newExp := ml - (miner3.WPoStProvingPeriod * 2) + si.Activation
 					p, err := api.StateSectorPartition(ctx, maddr, si.SectorNumber, types.EmptyTSK)
 					if err != nil {
 						return xerrors.Errorf("getting sector location for sector %d: %w", si.SectorNumber, err)
@@ -484,18 +488,16 @@ var sectorsExtendCmd = &cli.Command{
 						return xerrors.Errorf("sector %d not found in any partition", si.SectorNumber)
 					}
 
-					es, found := sectors[*p]
+					es, found := extensions[*p]
 					if !found {
 						ne := make(map[abi.ChainEpoch][]uint64)
 						ne[newExp] = []uint64{uint64(si.SectorNumber)}
-						sectors[*p] = ne
+						extensions[*p] = ne
 					} else {
 						added := false
-						for exp, secs := range es {
+						for exp := range es {
 							if closeEnough(exp, newExp) {
-								secs = append(secs, uint64(si.SectorNumber))
-								//es[exp] = secs
-								//sectors[*p] = es
+								es[exp] = append(es[exp], uint64(si.SectorNumber))
 								added = true
 								break
 							}
@@ -503,32 +505,30 @@ var sectorsExtendCmd = &cli.Command{
 
 						if !added {
 							es[newExp] = []uint64{uint64(si.SectorNumber)}
-							//sectors[*p] = es
 						}
 					}
 				}
-
-				p := &miner0.ExtendSectorExpirationParams{}
-				scount := 0
-				for l, exts := range sectors {
-					for newExp, numbers := range exts {
-						scount += len(numbers)
-						if scount > miner.AddressedSectorsMax {
-							params = append(params, *p)
-							p = &miner0.ExtendSectorExpirationParams{}
-							scount = len(numbers)
-						}
-
-						p.Extensions = append(p.Extensions, miner0.ExpirationExtension{
-							Deadline:      l.Deadline,
-							Partition:     l.Partition,
-							Sectors:       bitfield.NewFromSet(numbers),
-							NewExpiration: newExp,
-						})
-					}
-				}
-				params = append(params, *p)
 			}
+			p := &miner3.ExtendSectorExpirationParams{}
+			scount := 0
+			for l, exts := range extensions {
+				for newExp, numbers := range exts {
+					scount += len(numbers)
+					if scount > miner.AddressedSectorsMax || len(p.Extensions) == miner3.DeclarationsMax {
+						params = append(params, *p)
+						p = &miner3.ExtendSectorExpirationParams{}
+						scount = len(numbers)
+					}
+
+					p.Extensions = append(p.Extensions, miner3.ExpirationExtension{
+						Deadline:      l.Deadline,
+						Partition:     l.Partition,
+						Sectors:       bitfield.NewFromSet(numbers),
+						NewExpiration: newExp,
+					})
+				}
+			}
+			params = append(params, *p)
 
 		} else {
 			if !cctx.Args().Present() || !cctx.IsSet("new-expiration") {
@@ -554,10 +554,10 @@ var sectorsExtendCmd = &cli.Command{
 				sectors[*p] = append(sectors[*p], id)
 			}
 
-			p := &miner0.ExtendSectorExpirationParams{}
+			p := &miner3.ExtendSectorExpirationParams{}
 			for l, numbers := range sectors {
 
-				p.Extensions = append(p.Extensions, miner0.ExpirationExtension{
+				p.Extensions = append(p.Extensions, miner3.ExpirationExtension{
 					Deadline:      l.Deadline,
 					Partition:     l.Partition,
 					Sectors:       bitfield.NewFromSet(numbers),
