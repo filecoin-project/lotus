@@ -233,7 +233,12 @@ func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
 		panic(err)
 	}
 
-	err = paramfetch.GetParams(context.TODO(), dat, uint64(s))
+	datSrs, err := ioutil.ReadFile("../../../build/proof-params/srs-inner-product.json")
+	if err != nil {
+		panic(err)
+	}
+
+	err = paramfetch.GetParams(context.TODO(), dat, datSrs, uint64(s))
 	if err != nil {
 		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
 	}
@@ -539,6 +544,11 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 
 	aggDone := time.Now()
 
+	_, err = ProofVerifier.AggregateSealProofs(sealProofType, toAggregate)
+	require.NoError(t, err)
+
+	aggHot := time.Now()
+
 	ok, err := ProofVerifier.VerifyAggregateSeals(avi)
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -546,7 +556,8 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 	verifDone := time.Now()
 
 	fmt.Printf("Aggregate: %s\n", aggDone.Sub(aggStart).String())
-	fmt.Printf("Verify: %s\n", verifDone.Sub(aggDone).String())
+	fmt.Printf("Hot: %s\n", aggHot.Sub(aggDone).String())
+	fmt.Printf("Verify: %s\n", verifDone.Sub(aggHot).String())
 }
 
 func BenchmarkWriteWithAlignment(b *testing.B) {
