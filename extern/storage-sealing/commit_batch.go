@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"sync"
 	"time"
 
@@ -36,12 +37,13 @@ type AggregateInput struct {
 }
 
 type CommitBatcher struct {
-	api     CommitBatcherApi
-	maddr   address.Address
-	mctx    context.Context
-	addrSel AddrSel
-	feeCfg  FeeConfig
+	api       CommitBatcherApi
+	maddr     address.Address
+	mctx      context.Context
+	addrSel   AddrSel
+	feeCfg    FeeConfig
 	getConfig GetSealingConfigFunc
+	verif     ffiwrapper.Verifier
 
 	todo    map[abi.SectorNumber]AggregateInput
 	waiting map[abi.SectorNumber][]chan cid.Cid
@@ -51,14 +53,15 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg FeeConfig, getConfig GetSealingConfigFunc) *CommitBatcher {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg FeeConfig, getConfig GetSealingConfigFunc, verif ffiwrapper.Verifier) *CommitBatcher {
 	b := &CommitBatcher{
-		api:     api,
-		maddr:   maddr,
-		mctx:    mctx,
-		addrSel: addrSel,
-		feeCfg:  feeCfg,
+		api:       api,
+		maddr:     maddr,
+		mctx:      mctx,
+		addrSel:   addrSel,
+		feeCfg:    feeCfg,
 		getConfig: getConfig,
+		verif:     verif,
 
 		todo:    map[abi.SectorNumber]AggregateInput{},
 		waiting: map[abi.SectorNumber][]chan cid.Cid{},
@@ -129,14 +132,23 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, nil
 	}
 
-	for id := range b.todo {
+	spt := b.todo[0].info.SealProof
+	proofs := make([][]byte, total)
+
+	for id, p := range b.todo {
+		if p.info.SealProof != spt {
+			// todo: handle when we'll have proof upgrade
+			return nil, xerrors.Errorf("different seal proof types in commit batch: %w", err)
+		}
+
 		params.SectorNumbers.Set(uint64(id))
+		proofs[id] = p.proof
 	}
 
-	b.
-
-	// todo: Aggregate here
-	params.AggregateProof = []byte("this is a valid aggregated proof for some sectors")
+	params.AggregateProof, err = b.verif.AggregateSealProofs(spt, proofs)
+	if err != nil {
+		return nil, xerrors.Errorf("aggregating proofs: %w", err)
+	}
 
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
