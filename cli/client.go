@@ -1172,7 +1172,7 @@ var clientRetrieveCmd = &cli.Command{
 
 var clientInspectDealCmd = &cli.Command{
 	Name:  "inspect-deal",
-	Usage: "Inspect storage deal",
+	Usage: "Inspect detailed information about deal's lifecycle and the various stages it goes through",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name: "deal-id",
