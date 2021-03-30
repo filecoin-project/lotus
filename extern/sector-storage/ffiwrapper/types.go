@@ -40,6 +40,9 @@ type Verifier interface {
 	VerifyWindowPoSt(ctx context.Context, info proof3.WindowPoStVerifyInfo) (bool, error)
 
 	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
+
+	// cheap, makes no sense to put this on the storage interface
+	AggregateSealProofs(proofType abi.RegisteredSealProof, proofs [][]byte) ([]byte, error)
 }
 
 type SectorProvider interface {

@@ -133,6 +133,8 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		params.SectorNumbers.Set(uint64(id))
 	}
 
+	b.
+
 	// todo: Aggregate here
 	params.AggregateProof = []byte("this is a valid aggregated proof for some sectors")
 
