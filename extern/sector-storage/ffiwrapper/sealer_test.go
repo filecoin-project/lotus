@@ -519,7 +519,7 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 	toAggregate := make([][]byte, numAgg)
 	for i := 0; i < numAgg; i++ {
 		si := storage.SectorRef{
-			ID:        abi.SectorID{Miner: miner, Number: abi.SectorNumber(i+1)},
+			ID:        abi.SectorID{Miner: miner, Number: abi.SectorNumber(i + 1)},
 			ProofType: sealProofType,
 		}
 
