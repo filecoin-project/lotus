@@ -14,6 +14,8 @@
   * [AuthVerify](#AuthVerify)
 * [Check](#Check)
   * [CheckProvable](#CheckProvable)
+* [Compute](#Compute)
+  * [ComputeProof](#ComputeProof)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Deals](#Deals)
@@ -294,6 +296,24 @@ Response:
   "123": "can't acquire read lock"
 }
 ```
+
+## Compute
+
+
+### ComputeProof
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  null,
+  null
+]
+```
+
+Response: `null`
 
 ## Create
 
