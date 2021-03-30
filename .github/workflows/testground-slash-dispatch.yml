@@ -1,0 +1,21 @@
+---
+name: Testground slash-command dispatch
+
+on:
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  slashtestground:
+    runs-on: ubuntu-latest
+    steps:
+      - name: slash testground dispatch
+        uses: peter-evans/slash-command-dispatch@v2
+        with:
+          token: ${{ secrets.DISPATCHER_PAT }}
+          commands: |
+            testground
+          static-args: |
+            backend_addr=ci.testground.ipfs.team
+            backend_proto=https
