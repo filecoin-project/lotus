@@ -83,8 +83,8 @@ type SealingConfig struct {
 	AlwaysKeepUnsealedCopy bool
 
 	AggregateCommits bool
-	MinCommitBatch   uint64
-	MaxCommitBatch   uint64
+	MinCommitBatch   int
+	MaxCommitBatch   int
 
 	// Keep this many sectors in sealing pipeline, start CC if needed
 	// todo TargetSealingSectors uint64
