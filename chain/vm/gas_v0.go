@@ -91,6 +91,7 @@ type pricelistV0 struct {
 
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
+	verifyAggregateSealBase      int64
 	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
 	verifyPostDiscount           bool
 	verifyConsensusFault         int64
@@ -183,6 +184,12 @@ func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
 	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
+}
+
+// OnVerifyAggregateSeals
+func (pl *pricelistV0) OnVerifyAggregateSeals() GasCharge {
+	// TODO: this needs more cost tunning
+	return newGasCharge("OnVerifyAggregateSeals", pl.verifyAggregateSealBase, 0)
 }
 
 // OnVerifyPost
