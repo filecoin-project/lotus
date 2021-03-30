@@ -41,17 +41,17 @@ func baseFeeFromHints(hint map[string]interface{}) big.Int {
 }
 
 func resolveChecks(ctx context.Context, s ServicesAPI, printer io.Writer,
-	proto *types.Message, checkGroups [][]api.MessageCheckStatus,
-	interactive bool) (*types.Message, error) {
+	proto *api.MessagePrototype, checkGroups [][]api.MessageCheckStatus,
+	interactive bool) (*api.MessagePrototype, error) {
 
 	fmt.Fprintf(printer, "Following checks have failed:\n")
-	printChecks(printer, checkGroups, proto.Cid())
+	printChecks(printer, checkGroups, proto.Message.Cid())
 	if !interactive {
 		return nil, ErrCheckFailed
 	}
 
 	if interactive {
-		if feeCapBad, baseFee := isFeeCapProblem(checkGroups, proto.Cid()); feeCapBad {
+		if feeCapBad, baseFee := isFeeCapProblem(checkGroups, proto.Message.Cid()); feeCapBad {
 			fmt.Fprintf(printer, "Fee of the message can be adjusted\n")
 			if askUser(printer, "Do you wish to do that? [Yes/no]: ", true) {
 				var err error
@@ -65,7 +65,7 @@ func resolveChecks(ctx context.Context, s ServicesAPI, printer io.Writer,
 				return nil, err
 			}
 			fmt.Fprintf(printer, "Following checks still failed:\n")
-			printChecks(printer, checks, proto.Cid())
+			printChecks(printer, checks, proto.Message.Cid())
 		}
 
 		if !askUser(printer, "Do you wish to send this message? [yes/No]: ", false) {
@@ -125,15 +125,15 @@ func isFeeCapProblem(checkGroups [][]api.MessageCheckStatus, protoCid cid.Cid) (
 	return yes, baseFee
 }
 
-func runFeeCapAdjustmentUI(proto *types.Message, baseFee abi.TokenAmount) (*types.Message, error) {
+func runFeeCapAdjustmentUI(proto *api.MessagePrototype, baseFee abi.TokenAmount) (*api.MessagePrototype, error) {
 	t, err := imtui.NewTui()
 	if err != nil {
 		return nil, err
 	}
 
-	maxFee := big.Mul(proto.GasFeeCap, big.NewInt(proto.GasLimit))
+	maxFee := big.Mul(proto.Message.GasFeeCap, big.NewInt(proto.Message.GasLimit))
 	send := false
-	t.SetScene(ui(baseFee, proto.GasLimit, &maxFee, &send))
+	t.SetScene(ui(baseFee, proto.Message.GasLimit, &maxFee, &send))
 
 	err = t.Run()
 	if err != nil {
@@ -143,7 +143,7 @@ func runFeeCapAdjustmentUI(proto *types.Message, baseFee abi.TokenAmount) (*type
 		return nil, fmt.Errorf("aborted by user")
 	}
 
-	proto.GasFeeCap = big.Div(maxFee, big.NewInt(proto.GasLimit))
+	proto.Message.GasFeeCap = big.Div(maxFee, big.NewInt(proto.Message.GasLimit))
 
 	return proto, nil
 }

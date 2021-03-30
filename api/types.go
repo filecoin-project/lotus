@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/types"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -167,4 +169,9 @@ type CheckStatus struct {
 type MessageCheckStatus struct {
 	Cid cid.Cid
 	CheckStatus
+}
+
+type MessagePrototype struct {
+	Message    types.Message
+	ValidNonce bool
 }
