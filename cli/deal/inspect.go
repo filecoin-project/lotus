@@ -20,23 +20,20 @@ func InspectDealCmd(ctx context.Context, api lapi.FullNode, proposalCid string, 
 		return err
 	}
 
-	var di lapi.DealInfo
-	found := false
-	for _, cdi := range deals {
+	var di *lapi.DealInfo
+	for i, cdi := range deals {
 		if proposalCid != "" && cdi.ProposalCid.String() == proposalCid {
-			di = cdi
-			found = true
+			di = &deals[i]
 			break
 		}
 
 		if dealId != 0 && int(cdi.DealID) == dealId {
-			di = cdi
-			found = true
+			di = &deals[i]
 			break
 		}
 	}
 
-	if !found {
+	if di == nil {
 		if proposalCid != "" {
 			return fmt.Errorf("cannot find deal with proposal cid: %s", proposalCid)
 		}
@@ -51,7 +48,7 @@ func InspectDealCmd(ctx context.Context, api lapi.FullNode, proposalCid string, 
 	return nil
 }
 
-func renderDeal(di lapi.DealInfo) {
+func renderDeal(di *lapi.DealInfo) {
 	color.Blue("Deal ID:      %d\n", int(di.DealID))
 	color.Blue("Proposal CID: %s\n\n", di.ProposalCid.String())
 
