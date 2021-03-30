@@ -3,7 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"sort"
 	"sync"
 	"time"
 
@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
 
 var (
@@ -230,7 +231,28 @@ func (b *CommitBatcher) Pending(ctx context.Context) ([]abi.SectorID, error) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 
-	panic("todo")
+	mid, err := address.IDFromAddress(b.maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]abi.SectorID, 0)
+	for _, s := range b.todo {
+		res = append(res, abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: s.info.Number,
+		})
+	}
+
+	sort.Slice(res, func(i, j int) bool {
+		if res[i].Miner != res[j].Miner {
+			return res[i].Miner < res[j].Miner
+		}
+
+		return res[i].Number < res[j].Number
+	})
+
+	return res, nil
 }
 
 func (b *CommitBatcher) Stop(ctx context.Context) error {

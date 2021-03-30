@@ -204,6 +204,14 @@ func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) 
 	return m.terminator.Pending(ctx)
 }
 
+func (m *Sealing) CommitFlush(ctx context.Context) (*cid.Cid, error) {
+	return m.commiter.Flush(ctx)
+}
+
+func (m *Sealing) CommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.commiter.Pending(ctx)
+}
+
 func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof, error) {
 	mi, err := m.api.StateMinerInfo(ctx, m.maddr, nil)
 	if err != nil {

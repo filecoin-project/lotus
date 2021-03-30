@@ -98,6 +98,8 @@
   * [SealingAbort](#SealingAbort)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
+  * [SectorCommitFlush](#SectorCommitFlush)
+  * [SectorCommitPending](#SectorCommitPending)
   * [SectorGetExpectedSealDuration](#SectorGetExpectedSealDuration)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
@@ -1552,6 +1554,24 @@ Response: `{}`
 
 ## Sector
 
+
+### SectorCommitFlush
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
+### SectorCommitPending
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
 
 ### SectorGetExpectedSealDuration
 SectorGetExpectedSealDuration gets the expected time for a sector to seal

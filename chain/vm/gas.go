@@ -161,7 +161,7 @@ var prices = map[abi.ChainEpoch]Pricelist{
 
 		hashingBase:                  31355,
 		computeUnsealedSectorCidBase: 98647,
-		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+		verifySealBase:               2000,        // TODO gas , it VerifySeal syscall is not used
 		verifyAggregateSealBase:      400_000_000, // TODO (~40ms, I think)
 		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
 			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
