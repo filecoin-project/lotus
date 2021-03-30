@@ -482,6 +482,7 @@ func (m mockVerif) VerifySeal(svi proof3.SealVerifyInfo) (bool, error) {
 
 	// only the first 32 bytes, the rest are 0.
 	for i, b := range svi.Proof[:32] {
+		// unsealed+sealed-seed*ticket
 		if b != svi.UnsealedCID.Bytes()[i]+svi.SealedCID.Bytes()[31-i]-svi.InteractiveRandomness[i]*svi.Randomness[i] {
 			return false, nil
 		}
@@ -491,7 +492,26 @@ func (m mockVerif) VerifySeal(svi proof3.SealVerifyInfo) (bool, error) {
 }
 
 func (m mockVerif) VerifyAggregateSeals(aggregate proof3.AggregateSealVerifyProofAndInfos) (bool, error) {
-	panic("implement me")
+	out := make([]byte, 200)
+	for pi, svi := range aggregate.Infos {
+		for i := 0; i < 32; i++ {
+			b := svi.UnsealedCID.Bytes()[i] + svi.SealedCID.Bytes()[31-i] - svi.InteractiveRandomness[i]*svi.Randomness[i] // raw proof byte
+			b *= uint8(pi)                                                                                                 // with aggregate index
+			out[i] += b
+		}
+	}
+
+	return bytes.Equal(aggregate.Proof, out), nil
+}
+
+func (m mockVerif) AggregateSealProofs(proofType abi.RegisteredSealProof, proofs [][]byte) ([]byte, error) {
+	out := make([]byte, 200) // todo: figure out more real length
+	for pi, proof := range proofs {
+		for i := range proof[:32] {
+			out[i] += proof[i] * uint8(pi)
+		}
+	}
+	return out, nil
 }
 
 func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof3.WinningPoStVerifyInfo) (bool, error) {

@@ -681,6 +681,10 @@ func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof3.AggregateSealVeri
 	panic("not supported")
 }
 
+func (m genFakeVerifier) AggregateSealProofs(proofType abi.RegisteredSealProof, proofs [][]byte) ([]byte, error) {
+	panic("not supported")
+}
+
 func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof3.WinningPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
