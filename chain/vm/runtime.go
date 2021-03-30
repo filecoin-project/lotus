@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
-	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
@@ -54,8 +54,8 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 var EnableGasTracing = false
 
 type Runtime struct {
-	rt2.Message
-	rt2.Syscalls
+	rt3.Message
+	rt3.Syscalls
 
 	ctx context.Context
 
@@ -136,7 +136,7 @@ func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 }
 
 var _ rt0.Runtime = (*Runtime)(nil)
-var _ rt2.Runtime = (*Runtime)(nil)
+var _ rt3.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {

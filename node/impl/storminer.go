@@ -379,11 +379,11 @@ func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.Sect
 }
 
 func (sm *StorageMinerAPI) SectorCommitFlush(ctx context.Context) (*cid.Cid, error) {
-	return sm.Miner.TerminateFlush(ctx)
+	return sm.Miner.CommitFlush(ctx)
 }
 
 func (sm *StorageMinerAPI) SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) {
-	return sm.Miner.TerminatePending(ctx)
+	return sm.Miner.CommitPending(ctx)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {

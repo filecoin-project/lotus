@@ -11,6 +11,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
@@ -113,7 +114,9 @@ func (b *CommitBatcher) run() {
 func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
-	params := miner3.ProveCommitAggregateParams{}
+	params := miner3.ProveCommitAggregateParams{
+		SectorNumbers: bitfield.New(),
+	}
 
 	total := len(b.todo)
 	if total == 0 {

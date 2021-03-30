@@ -886,6 +886,7 @@ var sectorsPendingCommit = &cli.Command{
 			for _, sector := range pending {
 				fmt.Println(sector.Number)
 			}
+			return nil
 		}
 
 		fmt.Println("No sectors queued to be committed")
