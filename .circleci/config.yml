@@ -710,13 +710,14 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all:
-          requires:
-            - test-short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+      - build-all
+      # - build-all:
+      #     requires:
+      #       - test-short
+      #     filters:
+      #       tags:
+      #         only:
+      #           - /^v\d+\.\d+\.\d+$/
       - build-macos:
           requires:
             - test-short
