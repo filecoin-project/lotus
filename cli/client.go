@@ -1204,10 +1204,10 @@ var clientRetrieveCmd = &cli.Command{
 				if !ok {
 					if evt.Status == retrievalmarket.DealStatusCompleted {
 						afmt.Println("Success")
-						return nil
+					} else {
+						afmt.Printf("saw final deal state %s instead of expected success state DealStatusCompleted", retrievalmarket.DealStatuses[evt.Status])
 					}
-
-					return xerrors.Errorf("saw final deal state %s instead of expected state DealStatusCompleted", retrievalmarket.DealStatuses[evt.Status])
+					return nil
 				}
 
 			case <-ctx.Done():
