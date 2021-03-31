@@ -701,6 +701,8 @@ workflows:
           packages: "./conformance"
           vectors-branch: master
       - build-ntwk-calibration
+      - build-ntwk-butterfly
+      - build-ntwk-nerpa
       - build-lotus-soup
       - trigger-testplans:
           filters:
