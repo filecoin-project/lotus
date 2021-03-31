@@ -41,5 +41,3 @@ require (
 // On docker:go and exec:go, it maps to /extra/filecoin-ffi, as it's picked up
 // as an "extra source" in the manifest.
 replace github.com/filecoin-project/filecoin-ffi => ../../extern/filecoin-ffi
-
-replace github.com/filecoin-project/go-data-transfer => github.com/nonsense/go-data-transfer v0.0.2
