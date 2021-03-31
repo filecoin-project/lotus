@@ -199,6 +199,8 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
+		GasBatchEstimateMessageGas func(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 uint64, p4 types.TipSetKey) ([]*api.EstimateResult, error) `perm:"read"`
+
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		GasEstimateGasLimit func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) `perm:"read"`
@@ -470,6 +472,8 @@ type GatewayStruct struct {
 		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) ``
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
+
+		GasBatchEstimateMessageGas func(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 uint64, p4 types.TipSetKey) ([]*api.EstimateResult, error) ``
 
 		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
 
@@ -1069,6 +1073,10 @@ func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
 	return s.Internal.CreateBackup(p0, p1)
 }
 
+func (s *FullNodeStruct) GasBatchEstimateMessageGas(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 uint64, p4 types.TipSetKey) ([]*api.EstimateResult, error) {
+	return s.Internal.GasBatchEstimateMessageGas(p0, p1, p2, p3, p4)
+}
+
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
 	return s.Internal.GasEstimateFeeCap(p0, p1, p2, p3)
 }
@@ -1603,6 +1611,10 @@ func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChang
 
 func (s *GatewayStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
 	return s.Internal.ChainReadObj(p0, p1)
+}
+
+func (s *GatewayStruct) GasBatchEstimateMessageGas(p0 context.Context, p1 []*api.EstimateMessage, p2 int, p3 uint64, p4 types.TipSetKey) ([]*api.EstimateResult, error) {
+	return s.Internal.GasBatchEstimateMessageGas(p0, p1, p2, p3, p4)
 }
 
 func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {

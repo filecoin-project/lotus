@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/types"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -45,6 +47,16 @@ type ObjStat struct {
 type PubsubScore struct {
 	ID    peer.ID
 	Score *pubsub.PeerScoreSnapshot
+}
+
+type EstimateMessage struct {
+	Msg  *types.Message
+	Spec *MessageSendSpec
+}
+
+type EstimateResult struct {
+	Msg *types.Message
+	Err string
 }
 
 type MessageSendSpec struct {
