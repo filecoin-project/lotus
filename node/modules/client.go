@@ -7,11 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/go-state-types/abi"
-	"golang.org/x/xerrors"
-
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-data-transfer/channelmonitor"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
@@ -26,6 +23,8 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -134,17 +133,30 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 		return nil, err
 	}
 
-	// data-transfer push channel restart configuration
-	dtRestartConf := dtimpl.ChannelRestartConfig(channelmonitor.Config{
-		AcceptTimeout:          30 * time.Second,
-		Interval:               1 * time.Minute,
-		MinBytesTransferred:    1024,
-		ChecksPerInterval:      10,
-		RestartBackoff:         10 * time.Minute,
+	// data-transfer push / pull channel restart configuration:
+	dtRestartConfig := dtimpl.ChannelRestartConfig(channelmonitor.Config{
+		// For now only monitor push channels (for storage deals)
+		MonitorPushChannels: true,
+		// TODO: Enable pull channel monitoring (for retrievals) when the
+		//  following issue has been fixed:
+		// https://github.com/filecoin-project/go-data-transfer/issues/172
+		MonitorPullChannels: false,
+		// Wait up to 30s for the other side to respond to an Open channel message
+		AcceptTimeout: 30 * time.Second,
+		// Send a restart message if the data rate falls below 1024 bytes / minute
+		Interval:            time.Minute,
+		MinBytesTransferred: 1024,
+		// Perform check 10 times / minute
+		ChecksPerInterval: 10,
+		// After sending a restart, wait for at least 1 minute before sending another
+		RestartBackoff: time.Minute,
+		// After trying to restart 3 times, give up and fail the transfer
 		MaxConsecutiveRestarts: 3,
-		CompleteTimeout:        30 * time.Second,
+		// Wait up to 30s for the other side to send a Complete message once all
+		// data has been sent / received
+		CompleteTimeout: 30 * time.Second,
 	})
-	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, dtRestartConf)
+	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, dtRestartConfig)
 	if err != nil {
 		return nil, err
 	}
