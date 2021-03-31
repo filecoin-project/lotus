@@ -1195,14 +1195,21 @@ var clientRetrieveCmd = &cli.Command{
 						retrievalmarket.ClientEvents[evt.Event],
 						retrievalmarket.DealStatuses[evt.Status],
 					)
-				} else {
-					afmt.Println("Success")
-					return nil
 				}
 
 				if evt.Err != "" {
 					return xerrors.Errorf("retrieval failed: %s", evt.Err)
 				}
+
+				if !ok {
+					if evt.Status == retrievalmarket.DealStatusCompleted {
+						afmt.Println("Success")
+						return nil
+					}
+
+					return xerrors.Errorf("saw final deal state %s instead of expected state DealStatusCompleted", retrievalmarket.DealStatuses[evt.Status])
+				}
+
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")
 			}
