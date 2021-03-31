@@ -1,12 +1,13 @@
 # Lotus changelog
 
-# 1.6.0-rc1 / 2021-03-29
+# 1.6.0-rc2 / 2021-03-30
 
-This is the first release candidate for Lotus v1.6.0. The only change included in this release is introducing network version 11, which implements [FIP-0014](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0014.md).
+This is the second release candidate for Lotus v1.6.0. The primary change included in this release is introducing network version 11, which implements [FIP-0014](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0014.md).
 
 ## Changes 
 
 - Introduce the v11 network upgrade (https://github.com/filecoin-project/lotus/pull/5904)
+- Debug mode: Make upgrade heights controllable by an envvar (https://github.com/filecoin-project/lotus/pull/5919)
 
 # 1.5.3 / 2021-03-24
 
