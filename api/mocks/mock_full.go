@@ -800,18 +800,18 @@ func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
 }
 
 // GasBatchEstimateMessageGas mocks base method
-func (m *MockFullNode) GasBatchEstimateMessageGas(arg0 context.Context, arg1 []*api.EstimateMessage, arg2 int, arg3 types.TipSetKey) ([]*types.Message, error) {
+func (m *MockFullNode) GasBatchEstimateMessageGas(arg0 context.Context, arg1 []*api.EstimateMessage, arg2 int, arg3 uint64, arg4 types.TipSetKey) ([]*api.EstimateResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GasBatchEstimateMessageGas", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].([]*types.Message)
+	ret := m.ctrl.Call(m, "GasBatchEstimateMessageGas", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].([]*api.EstimateResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GasBatchEstimateMessageGas indicates an expected call of GasBatchEstimateMessageGas
-func (mr *MockFullNodeMockRecorder) GasBatchEstimateMessageGas(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) GasBatchEstimateMessageGas(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GasBatchEstimateMessageGas", reflect.TypeOf((*MockFullNode)(nil).GasBatchEstimateMessageGas), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GasBatchEstimateMessageGas", reflect.TypeOf((*MockFullNode)(nil).GasBatchEstimateMessageGas), arg0, arg1, arg2, arg3, arg4)
 }
 
 // GasEstimateFeeCap mocks base method

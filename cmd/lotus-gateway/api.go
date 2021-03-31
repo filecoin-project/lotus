@@ -45,7 +45,7 @@ type gatewayDepsAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
-	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error)
+	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, fromNonce uint64, tsk types.TipSetKey) ([]*api.EstimateResult, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
@@ -206,12 +206,12 @@ func (a *GatewayAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Messa
 	return a.api.GasEstimateMessageGas(ctx, msg, spec, tsk)
 }
 
-func (a *GatewayAPI) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error) {
+func (a *GatewayAPI) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*api.EstimateMessage, selectCount int, fromNonce uint64, tsk types.TipSetKey) ([]*api.EstimateResult, error) {
 	if err := a.checkTipsetKey(ctx, tsk); err != nil {
 		return nil, err
 	}
 
-	return a.api.GasBatchEstimateMessageGas(ctx, estimateMessages, selectCount, tsk)
+	return a.api.GasBatchEstimateMessageGas(ctx, estimateMessages, selectCount, fromNonce, tsk)
 }
 
 func (a *GatewayAPI) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {

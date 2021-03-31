@@ -23,7 +23,7 @@ type Gateway interface {
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
-	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*EstimateMessage, selectCount int, tsk types.TipSetKey) ([]*types.Message, error)
+	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*EstimateMessage, selectCount int, fromNonce uint64, tsk types.TipSetKey) ([]*EstimateResult, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)

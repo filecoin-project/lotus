@@ -169,7 +169,7 @@ type FullNode interface {
 	GasEstimateMessageGas(context.Context, *types.Message, *MessageSendSpec, types.TipSetKey) (*types.Message, error) //perm:read
 
 	// GasBatchEstimateMessageGas estimates gas values for unset message gas fields
-	GasBatchEstimateMessageGas(context.Context, []*EstimateMessage, int, types.TipSetKey) ([]*types.Message, error) //perm:read
+	GasBatchEstimateMessageGas(context.Context, []*EstimateMessage, int, uint64, types.TipSetKey) ([]*EstimateResult, error) //perm:read
 
 	// MethodGroup: Sync
 	// The Sync method group contains methods for interacting with and

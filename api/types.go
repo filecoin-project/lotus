@@ -54,6 +54,11 @@ type EstimateMessage struct {
 	Spec *MessageSendSpec
 }
 
+type EstimateResult struct {
+	Msg *types.Message
+	Err string
+}
+
 type MessageSendSpec struct {
 	MaxFee abi.TokenAmount
 }
