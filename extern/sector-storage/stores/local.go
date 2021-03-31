@@ -392,8 +392,10 @@ func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 		}
 
 		p.reserved += overhead
+		p.reservations[sid.ID] |= fileType
 
 		prevDone := done
+		saveFileType := fileType
 		done = func() {
 			prevDone()
 
@@ -401,6 +403,10 @@ func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 			defer st.localLk.Unlock()
 
 			p.reserved -= overhead
+			p.reservations[sid.ID] ^= saveFileType
+			if p.reservations[sid.ID] == storiface.FTNone {
+				delete(p.reservations, sid.ID)
+			}
 		}
 	}
 
