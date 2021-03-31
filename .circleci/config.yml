@@ -747,11 +747,11 @@ workflows:
             - build-ntwk-calibration
             - build-ntwk-butterfly
             - build-ntwk-nerpa
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
          
