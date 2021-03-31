@@ -594,7 +594,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		store, err := a.RetrievalStoreMgr.NewStore()
+		store, err = a.RetrievalStoreMgr.NewStore()
 		if err != nil {
 			finish(xerrors.Errorf("Error setting up new store: %w", err))
 			return
