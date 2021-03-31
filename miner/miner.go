@@ -334,6 +334,20 @@ minerLoop:
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
+
+			// Wait the propagation delay, so a new tipset has enough time to form,
+			// otherwise lastbase==base staying in the previous cycle
+			nextRound := time.Unix(int64(b.Header.Timestamp)+int64(build.PropagationDelaySecs), 0)
+
+			select {
+			case <-build.Clock.After(build.Clock.Until(nextRound)):
+			case <-m.stop:
+				stopping := m.stopping
+				m.stop = nil
+				m.stopping = nil
+				close(stopping)
+				return
+			}
 		} else {
 			base.NullRounds++
 
