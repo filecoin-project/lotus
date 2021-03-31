@@ -72,8 +72,8 @@ var (
 	}()
 
 	// Actor consts
-	// TODO: Pull from actors when its made not private
-	MinDealDuration = abi.ChainEpoch(180 * builtin2.EpochsInDay)
+	// TODO: pieceSize unused from actors
+	MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5

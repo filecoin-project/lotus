@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/gen"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -63,7 +66,8 @@ type StorageMinerAPI struct {
 	AddrSel       *storage.AddressSelector
 	DealPublisher *storageadapter.DealPublisher
 
-	DS dtypes.MetadataDS
+	Epp gen.WinningPoStProver
+	DS  dtypes.MetadataDS
 
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc
@@ -694,6 +698,10 @@ func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressC
 
 func (sm *StorageMinerAPI) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
 	return build.OpenRPCDiscoverJSON_Miner(), nil
+}
+
+func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) {
+	return sm.Epp.ComputeProof(ctx, ssi, rand)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
