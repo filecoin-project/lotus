@@ -283,6 +283,36 @@ jobs:
           root: "."
           paths:
             - linux-calibnet
+  build-ntwk-butterfly:
+    description: |
+      Compile lotus binaries for the butterfly network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make butterflynet
+      - run: mkdir linux-butterflynet && mv lotus lotus-miner lotus-worker linux-butterflynet
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux-butterflynet
+  build-ntwk-nerpa:
+    description: |
+      Compile lotus binaries for the nerpa network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make nerpanet
+      - run: mkdir linux-nerpanet && mv lotus lotus-miner lotus-worker linux-nerpanet
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux-nerpanet
   build-lotus-soup:
     description: |
       Compile `lotus-soup` Testground test plan
@@ -604,6 +634,12 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-calibnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux-nerpanet -var lotus_network=nerpanet -var git_tag=$CIRCLE_TAG"
 
 workflows:
   version: 2.1
@@ -709,6 +745,8 @@ workflows:
           requires:
             - build-all
             - build-ntwk-calibration
+            - build-ntwk-butterfly
+            - build-ntwk-nerpa
           filters:
             branches:
               ignore:
