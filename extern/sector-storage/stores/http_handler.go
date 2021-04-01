@@ -117,7 +117,11 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if !stat.IsDir() {
-		defer rd.(*os.File).Close()
+		defer func() {
+			if err := rd.(*os.File).Close(); err != nil {
+				log.Errorf("closing source file: %+v", err)
+			}
+		}()
 	}
 
 	w.WriteHeader(200)
