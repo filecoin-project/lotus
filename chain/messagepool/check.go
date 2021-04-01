@@ -163,6 +163,8 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 				st = &actorState{nextNonce: stateNonce, requiredFunds: new(stdbig.Int)}
 				state[m.From] = st
 			}
+		} else {
+			check.OK = true
 		}
 
 		result[i] = append(result[i], check)
