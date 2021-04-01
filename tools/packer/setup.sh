@@ -29,8 +29,9 @@ MANAGED_FILES=(
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 sleep 5
-apt-get -y install libhwloc15 ocl-icd-libopencl1 ufw
 apt-get -y upgrade -q -y -u -o Dpkg::Options::="--force-confold"
+sleep 5
+apt-get -y install libhwloc15 ocl-icd-libopencl1 ufw
 ln -s /usr/lib/x86_64-linux-gnu/libhwloc.so.15 /usr/lib/x86_64-linux-gnu/libhwloc.so.5
 
 # Create lotus user
