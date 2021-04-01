@@ -734,33 +734,33 @@ workflows:
                 - master
       - build-debug
       - build-all:
-          requires:
-            - test-short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # requires:
+          #   - test-short
+          # filters:
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
       - build-ntwk-calibration:
-          requires:
-            - test-short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # requires:
+          #   - test-short
+          # filters:
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
       - build-ntwk-butterfly:
-          requires:
-            - test-short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # requires:
+          #   - test-short
+          # filters:
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
       - build-ntwk-nerpa:
-          requires:
-            - test-short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # requires:
+          #   - test-short
+          # filters:
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
       - build-lotus-soup
       - build-macos:
           requires:
