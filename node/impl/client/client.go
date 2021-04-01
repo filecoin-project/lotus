@@ -267,10 +267,14 @@ func (a *API) newDealInfo(ctx context.Context, v storagemarket.ClientDeal) api.D
 		// be not found if it's no longer active
 		if err == nil {
 			ch := api.NewDataTransferChannel(a.Host.ID(), state)
+			ch.Stages = state.Stages()
 			transferCh = &ch
 		}
 	}
-	return a.newDealInfoWithTransfer(transferCh, v)
+
+	di := a.newDealInfoWithTransfer(transferCh, v)
+	di.DealStages = v.DealStages
+	return di
 }
 
 func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v storagemarket.ClientDeal) api.DealInfo {
@@ -289,7 +293,6 @@ func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v sto
 		Verified:          v.Proposal.VerifiedDeal,
 		TransferChannelID: v.TransferChannelID,
 		DataTransfer:      transferCh,
-		DealStages:        v.DealStages,
 	}
 }
 

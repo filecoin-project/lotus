@@ -2302,6 +2302,12 @@ func inspectDealCmd(ctx context.Context, api lapi.FullNode, proposalCid string, 
 		return errors.New("you must specify proposal cid or deal id in order to inspect a deal")
 	}
 
+	// populate DealInfo.DealStages and DataTransfer.Stages
+	di, err = api.ClientGetDealInfo(ctx, di.ProposalCid)
+	if err != nil {
+		return fmt.Errorf("cannot get deal info for proposal cid: %v", di.ProposalCid)
+	}
+
 	renderDeal(di)
 
 	return nil
