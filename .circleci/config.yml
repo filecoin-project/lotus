@@ -791,40 +791,40 @@ workflows:
       - publish-packer-mainnet:
           requires:
             - build-all
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
       - publish-packer-calibrationnet:
           requires:
             - build-ntwk-calibration
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
       - publish-packer-butterflynet:
           requires:
             - build-ntwk-butterfly
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
       - publish-packer-nerpanet:
           requires:
             - build-ntwk-nerpa
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
