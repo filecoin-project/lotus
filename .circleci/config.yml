@@ -733,28 +733,28 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all:
+      - build-all
           # requires:
           #   - test-short
           # filters:
           #   tags:
           #     only:
           #       - /^v\d+\.\d+\.\d+$/
-      - build-ntwk-calibration:
+      - build-ntwk-calibration
           # requires:
           #   - test-short
           # filters:
           #   tags:
           #     only:
           #       - /^v\d+\.\d+\.\d+$/
-      - build-ntwk-butterfly:
+      - build-ntwk-butterfly
           # requires:
           #   - test-short
           # filters:
           #   tags:
           #     only:
           #       - /^v\d+\.\d+\.\d+$/
-      - build-ntwk-nerpa:
+      - build-ntwk-nerpa
           # requires:
           #   - test-short
           # filters:
