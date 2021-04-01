@@ -116,9 +116,12 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(500)
 		return
 	}
+	if !stat.IsDir() {
+		defer rd.(*os.File).Close()
+	}
 
 	w.WriteHeader(200)
-	if _, err := io.Copy(w, rd); err != nil { // TODO: default 32k buf may be too small
+	if _, err := io.CopyBuffer(w, rd, make([]byte, CopyBuf)); err != nil {
 		log.Errorf("%+v", err)
 		return
 	}
