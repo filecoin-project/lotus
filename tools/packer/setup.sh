@@ -60,8 +60,10 @@ systemctl daemon-reload
 systemctl enable lotus-daemon
 
 # Setup firewall
-ufw enable
+yes | ufw enable
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
 ufw allow 5678   #libp2p
+
+curl -sL  'https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh' | bash
