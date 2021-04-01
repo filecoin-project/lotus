@@ -358,6 +358,15 @@ jobs:
           command: |
             curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
             chmod +x /usr/local/bin/jq
+      - run:
+          name: Install hwloc
+          command: |
+            mkdir ~/hwloc
+            curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
+            cd ~/hwloc
+            tar -xvzpf hwloc-2.4.1.tar.gz
+            cd hwloc-2.4.1
+            ./configure && make && sudo make install
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
