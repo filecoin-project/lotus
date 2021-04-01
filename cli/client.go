@@ -83,6 +83,7 @@ var clientCmd = &cli.Command{
 		WithCategory("storage", clientGetDealCmd),
 		WithCategory("storage", clientListAsksCmd),
 		WithCategory("storage", clientDealStatsCmd),
+		WithCategory("storage", clientInspectDealCmd),
 		WithCategory("data", clientImportCmd),
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
@@ -1169,6 +1170,29 @@ var clientRetrieveCmd = &cli.Command{
 	},
 }
 
+var clientInspectDealCmd = &cli.Command{
+	Name:  "inspect-deal",
+	Usage: "Inspect detailed information about deal's lifecycle and the various stages it goes through",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name: "deal-id",
+		},
+		&cli.StringFlag{
+			Name: "proposal-cid",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+		return inspectDealCmd(ctx, api, cctx.String("proposal-cid"), cctx.Int("deal-id"))
+	},
+}
+
 var clientDealStatsCmd = &cli.Command{
 	Name:  "deal-stats",
 	Usage: "Print statistics about local storage deals",
@@ -2244,4 +2268,78 @@ func ellipsis(s string, length int) string {
 		return "..." + s[len(s)-length:]
 	}
 	return s
+}
+
+func inspectDealCmd(ctx context.Context, api lapi.FullNode, proposalCid string, dealId int) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	deals, err := api.ClientListDeals(ctx)
+	if err != nil {
+		return err
+	}
+
+	var di *lapi.DealInfo
+	for i, cdi := range deals {
+		if proposalCid != "" && cdi.ProposalCid.String() == proposalCid {
+			di = &deals[i]
+			break
+		}
+
+		if dealId != 0 && int(cdi.DealID) == dealId {
+			di = &deals[i]
+			break
+		}
+	}
+
+	if di == nil {
+		if proposalCid != "" {
+			return fmt.Errorf("cannot find deal with proposal cid: %s", proposalCid)
+		}
+		if dealId != 0 {
+			return fmt.Errorf("cannot find deal with deal id: %v", dealId)
+		}
+		return errors.New("you must specify proposal cid or deal id in order to inspect a deal")
+	}
+
+	// populate DealInfo.DealStages and DataTransfer.Stages
+	di, err = api.ClientGetDealInfo(ctx, di.ProposalCid)
+	if err != nil {
+		return fmt.Errorf("cannot get deal info for proposal cid: %v", di.ProposalCid)
+	}
+
+	renderDeal(di)
+
+	return nil
+}
+
+func renderDeal(di *lapi.DealInfo) {
+	color.Blue("Deal ID:      %d\n", int(di.DealID))
+	color.Blue("Proposal CID: %s\n\n", di.ProposalCid.String())
+
+	if di.DealStages == nil {
+		color.Yellow("Deal was made with an older version of Lotus and Lotus did not collect detailed information about its stages")
+		return
+	}
+
+	for _, stg := range di.DealStages.Stages {
+		msg := fmt.Sprintf("%s %s: %s (%s)", color.BlueString("Stage:"), color.BlueString(strings.TrimPrefix(stg.Name, "StorageDeal")), stg.Description, color.GreenString(stg.ExpectedDuration))
+		if stg.UpdatedTime.Time().IsZero() {
+			msg = color.YellowString(msg)
+		}
+		fmt.Println(msg)
+
+		for _, l := range stg.Logs {
+			fmt.Printf("  %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
+		}
+
+		if stg.Name == "StorageDealStartDataTransfer" {
+			for _, dtStg := range di.DataTransfer.Stages.Stages {
+				fmt.Printf("        %s %s %s\n", color.YellowString(dtStg.CreatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), color.BlueString("Data transfer stage:"), color.BlueString(dtStg.Name))
+				for _, l := range dtStg.Logs {
+					fmt.Printf("              %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
+				}
+			}
+		}
+	}
 }
