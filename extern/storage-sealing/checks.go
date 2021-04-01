@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
@@ -94,14 +93,9 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
 	}
 
-	nv, err := api.StateNetworkVersion(ctx, tok)
-	if err != nil {
-		return &ErrApi{xerrors.Errorf("calling StateNetworkVersion: %w", err)}
-	}
+	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
 
-	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), si.SectorType)
-
-	if height-(si.TicketEpoch+policy.SealRandomnessLookback) > msd {
+	if si.TicketEpoch < ticketEarliest {
 		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+policy.SealRandomnessLookback, height)}
 	}
 

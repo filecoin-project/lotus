@@ -76,7 +76,7 @@ type StateAPI struct {
 
 	// TODO: the wallet here is only needed because we have the MinerCreateBlock
 	// API attached to the state API. It probably should live somewhere better
-	Wallet    api.WalletAPI
+	Wallet    api.Wallet
 	DefWallet wallet.Default
 
 	StateModuleAPI

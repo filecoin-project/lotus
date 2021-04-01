@@ -20,7 +20,23 @@ locals {
 source "amazon-ebs" "lotus" {
   ami_name      = "lotus-${var.lotus_network}-${var.git_tag}-${local.timestamp}"
   ami_regions = [
+    "ap-east-1",
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "ap-northeast-3",
+    "ap-south-1",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "ca-central-1",
+    "eu-central-1",
+    "eu-north-1",
+    "eu-west-1",
+    "eu-west-2",
+    "eu-west-3",
+    "sa-east-1",
     "us-east-1",
+    "us-east-2",
+    "us-west-1",
     "us-west-2",
   ]
   ami_groups = [
@@ -37,7 +53,7 @@ source "amazon-ebs" "lotus" {
   instance_type = "t2.micro"
   source_ami_filter {
     filters = {
-      name = "ubuntu-minimal/images/*ubuntu-focal-20.04-amd64-minimal*"
+      name = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
       root-device-type = "ebs"
       virtualization-type = "hvm"
     }
@@ -84,6 +100,10 @@ build {
   provisioner "file" {
     source = "./tools/packer/systemd/lotus-miner.service"
     destination = "lotus-miner.service"
+  }
+  provisioner "file" {
+    source = "./tools/packer/repo/config.toml"
+    destination = "config.toml"
   }
   provisioner "file" {
     source = "./tools/packer/etc/motd"

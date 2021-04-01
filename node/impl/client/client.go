@@ -267,10 +267,14 @@ func (a *API) newDealInfo(ctx context.Context, v storagemarket.ClientDeal) api.D
 		// be not found if it's no longer active
 		if err == nil {
 			ch := api.NewDataTransferChannel(a.Host.ID(), state)
+			ch.Stages = state.Stages()
 			transferCh = &ch
 		}
 	}
-	return a.newDealInfoWithTransfer(transferCh, v)
+
+	di := a.newDealInfoWithTransfer(transferCh, v)
+	di.DealStages = v.DealStages
+	return di
 }
 
 func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v storagemarket.ClientDeal) api.DealInfo {
@@ -473,6 +477,29 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	}
 
 	return out, nil
+}
+
+func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmarket.DealID) error {
+	cerr := make(chan error)
+	go func() {
+		err := a.Retrieval.CancelDeal(dealID)
+
+		select {
+		case cerr <- err:
+		case <-ctx.Done():
+		}
+	}()
+
+	select {
+	case err := <-cerr:
+		if err != nil {
+			return xerrors.Errorf("failed to cancel retrieval deal: %w", err)
+		}
+
+		return nil
+	case <-ctx.Done():
+		return xerrors.Errorf("context timeout while canceling retrieval deal: %w", ctx.Err())
+	}
 }
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {

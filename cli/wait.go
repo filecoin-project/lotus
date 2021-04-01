@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var waitApiCmd = &cli.Command{
+var WaitApiCmd = &cli.Command{
 	Name:  "wait-api",
 	Usage: "Wait for lotus api to come online",
 	Action: func(cctx *cli.Context) error {

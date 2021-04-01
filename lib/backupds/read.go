@@ -11,7 +11,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func ReadBackup(r io.Reader, cb func(key datastore.Key, value []byte) error) error {
+func ReadBackup(r io.Reader, cb func(key datastore.Key, value []byte, log bool) error) error {
 	scratch := make([]byte, 9)
 
 	// read array[2](
@@ -61,7 +61,7 @@ func ReadBackup(r io.Reader, cb func(key datastore.Key, value []byte) error) err
 			return xerrors.Errorf("reading value: %w", err)
 		}
 
-		if err := cb(key, value); err != nil {
+		if err := cb(key, value, false); err != nil {
 			return err
 		}
 	}
@@ -110,7 +110,7 @@ func ReadBackup(r io.Reader, cb func(key datastore.Key, value []byte) error) err
 
 		key := datastore.NewKey(string(ent.Key))
 
-		if err := cb(key, ent.Value); err != nil {
+		if err := cb(key, ent.Value, true); err != nil {
 			return err
 		}
 	}
@@ -122,7 +122,7 @@ func RestoreInto(r io.Reader, dest datastore.Batching) error {
 		return xerrors.Errorf("creating batch: %w", err)
 	}
 
-	err = ReadBackup(r, func(key datastore.Key, value []byte) error {
+	err = ReadBackup(r, func(key datastore.Key, value []byte, _ bool) error {
 		if err := batch.Put(key, value); err != nil {
 			return xerrors.Errorf("put key: %w", err)
 		}

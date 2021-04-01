@@ -67,7 +67,7 @@ func (s *state2) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 		if n <= 0 {
 			return xerrors.Errorf("invalid pending transaction key: %v", key)
 		}
-		return cb(txid, (Transaction)(out))
+		return cb(txid, (Transaction)(out)) //nolint:unconvert
 	})
 }
 

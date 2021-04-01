@@ -1,6 +1,7 @@
 # Groups
 * [](#)
   * [Closing](#Closing)
+  * [Discover](#Discover)
   * [Session](#Session)
   * [Shutdown](#Shutdown)
   * [Version](#Version)
@@ -13,6 +14,8 @@
   * [AuthVerify](#AuthVerify)
 * [Check](#Check)
   * [CheckProvable](#CheckProvable)
+* [Compute](#Compute)
+  * [ComputeProof](#ComputeProof)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Deals](#Deals)
@@ -142,6 +145,25 @@ Inputs: `null`
 
 Response: `{}`
 
+### Discover
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "info": {
+    "title": "Lotus RPC API",
+    "version": "1.2.1/generated=2020-11-22T08:22:42-06:00"
+  },
+  "methods": [],
+  "openrpc": "1.2.6"
+}
+```
+
 ### Session
 
 
@@ -180,7 +202,7 @@ Response:
 
 
 ### ActorAddress
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -189,7 +211,7 @@ Inputs: `null`
 Response: `"f01234"`
 
 ### ActorAddressConfig
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -207,7 +229,7 @@ Response:
 ```
 
 ### ActorSectorSize
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -255,7 +277,7 @@ Response: `null`
 
 
 ### CheckProvable
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -274,6 +296,24 @@ Response:
   "123": "can't acquire read lock"
 }
 ```
+
+## Compute
+
+
+### ComputeProof
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  null,
+  null
+]
+```
+
+Response: `null`
 
 ## Create
 
@@ -300,63 +340,63 @@ Response: `{}`
 
 
 ### DealsConsiderOfflineRetrievalDeals
-There are not yet any comments for this method.
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderOfflineStorageDeals
-There are not yet any comments for this method.
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderOnlineRetrievalDeals
-There are not yet any comments for this method.
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderOnlineStorageDeals
-There are not yet any comments for this method.
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderUnverifiedStorageDeals
-There are not yet any comments for this method.
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsConsiderVerifiedStorageDeals
-There are not yet any comments for this method.
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `true`
 
 ### DealsImportData
-There are not yet any comments for this method.
 
-Perms: write
+
+Perms: admin
 
 Inputs:
 ```json
@@ -371,25 +411,25 @@ Inputs:
 Response: `{}`
 
 ### DealsList
-There are not yet any comments for this method.
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `null`
 
 ### DealsPieceCidBlocklist
-There are not yet any comments for this method.
 
-Perms: read
+
+Perms: admin
 
 Inputs: `null`
 
 Response: `null`
 
 ### DealsSetConsiderOfflineRetrievalDeals
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -403,7 +443,7 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOfflineStorageDeals
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -417,7 +457,7 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineRetrievalDeals
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -431,7 +471,7 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderOnlineStorageDeals
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -445,7 +485,7 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderUnverifiedStorageDeals
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -459,7 +499,7 @@ Inputs:
 Response: `{}`
 
 ### DealsSetConsiderVerifiedStorageDeals
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -473,7 +513,7 @@ Inputs:
 Response: `{}`
 
 ### DealsSetPieceCidBlocklist
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -546,7 +586,7 @@ Inputs:
 Response: `{}`
 
 ### MarketDataTransferUpdates
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -565,12 +605,15 @@ Response:
   "Voucher": "string value",
   "Message": "string value",
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Transferred": 42
+  "Transferred": 42,
+  "Stages": {
+    "Stages": null
+  }
 }
 ```
 
 ### MarketGetAsk
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -597,7 +640,7 @@ Response:
 ```
 
 ### MarketGetDealUpdates
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -662,7 +705,7 @@ Response:
 ```
 
 ### MarketGetRetrievalAsk
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -679,7 +722,7 @@ Response:
 ```
 
 ### MarketImportDealData
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -696,7 +739,7 @@ Inputs:
 Response: `{}`
 
 ### MarketListDataTransfers
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -705,7 +748,7 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListDeals
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -714,7 +757,7 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListIncompleteDeals
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -723,7 +766,7 @@ Inputs: `null`
 Response: `null`
 
 ### MarketListRetrievalDeals
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -732,7 +775,7 @@ Inputs: `null`
 Response: `null`
 
 ### MarketPendingDeals
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -748,7 +791,7 @@ Response:
 ```
 
 ### MarketPublishPendingDeals
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -774,7 +817,7 @@ Inputs:
 Response: `{}`
 
 ### MarketSetAsk
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -792,7 +835,7 @@ Inputs:
 Response: `{}`
 
 ### MarketSetRetrievalAsk
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -814,7 +857,7 @@ Response: `{}`
 
 
 ### MiningBase
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -1102,7 +1145,7 @@ Response: `null`
 
 
 ### PiecesGetCIDInfo
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -1126,7 +1169,7 @@ Response:
 ```
 
 ### PiecesGetPieceInfo
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -1150,7 +1193,7 @@ Response:
 ```
 
 ### PiecesListCidInfos
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -1159,7 +1202,7 @@ Inputs: `null`
 Response: `null`
 
 ### PiecesListPieces
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -1190,6 +1233,7 @@ Response:
 
 
 ### ReturnAddPiece
+storiface.WorkerReturn
 
 
 Perms: admin
@@ -1475,7 +1519,7 @@ Response: `{}`
 
 
 ### SealingAbort
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -1534,7 +1578,7 @@ Inputs: `null`
 Response: `60000000000`
 
 ### SectorMarkForUpgrade
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -1688,7 +1732,7 @@ Response:
 ```
 
 ### SectorsRefs
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -1771,7 +1815,7 @@ Response:
 ```
 
 ### SectorsUpdate
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -1789,7 +1833,7 @@ Response: `{}`
 
 
 ### StorageAddLocal
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -1803,6 +1847,7 @@ Inputs:
 Response: `{}`
 
 ### StorageAttach
+stores.SectorIndex
 
 
 Perms: admin
@@ -1931,7 +1976,7 @@ Response:
 ```
 
 ### StorageList
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -1951,7 +1996,7 @@ Response:
 ```
 
 ### StorageLocal
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -2009,7 +2054,7 @@ Inputs:
 Response: `{}`
 
 ### StorageStat
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -2070,7 +2115,7 @@ Inputs:
 Response: `{}`
 
 ### WorkerJobs
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -2102,7 +2147,7 @@ Response:
 ```
 
 ### WorkerStats
-There are not yet any comments for this method.
+
 
 Perms: admin
 
