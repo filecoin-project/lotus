@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -173,7 +174,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 	return client.NewCommonRPCV0(ctx.Context, addr, headers)
 }
 
-func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
 		return tn.(api.FullNode), func() {}, nil
 	}
@@ -183,7 +184,7 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPCV1(ctx.Context, addr, headers)
+	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
 }
 
 type GetStorageMinerOptions struct {

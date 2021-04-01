@@ -29,7 +29,7 @@ func NewCommonRPCV0(ctx context.Context, addr string, requestHeader http.Header)
 }
 
 // NewFullNodeRPCV0 creates a new http jsonrpc client.
-func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Header) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	var res v0api.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
