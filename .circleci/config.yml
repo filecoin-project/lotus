@@ -631,6 +631,7 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
+          no_output_timeout: 60m
   publish-packer-calibrationnet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
@@ -643,6 +644,7 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
+          no_output_timeout: 60m
   publish-packer-butterflynet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
@@ -655,6 +657,7 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+          no_output_timeout: 60m
   publish-packer-nerpanet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
@@ -667,6 +670,7 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-nerpanet -var lotus_network=nerpanet -var git_tag=$CIRCLE_TAG"
+          no_output_timeout: 60m
 
 workflows:
   version: 2.1
