@@ -884,7 +884,7 @@ func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 		Client:                  client,
 
 		Miner:     o.Miner,
-		MinerPeer: o.MinerPeer,
+		MinerPeer: &o.MinerPeer,
 	}
 }
 
@@ -903,6 +903,8 @@ type RetrievalOrder struct {
 	Root  cid.Cid
 	Piece *cid.Cid
 	Size  uint64
+
+	LocalStore *multistore.StoreID // if specified, get data from local store
 	// TODO: support offset
 	Total                   types.BigInt
 	UnsealPrice             types.BigInt
@@ -910,7 +912,7 @@ type RetrievalOrder struct {
 	PaymentIntervalIncrease uint64
 	Client                  address.Address
 	Miner                   address.Address
-	MinerPeer               retrievalmarket.RetrievalPeer
+	MinerPeer               *retrievalmarket.RetrievalPeer
 }
 
 type InvocResult struct {
