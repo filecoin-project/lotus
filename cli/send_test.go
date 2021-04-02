@@ -13,12 +13,6 @@ import (
 	ucli "github.com/urfave/cli/v2"
 )
 
-var arbtCid = (&types.Message{
-	From:  mustAddr(address.NewIDAddress(2)),
-	To:    mustAddr(address.NewIDAddress(1)),
-	Value: types.NewInt(1000),
-}).Cid()
-
 func mustAddr(a address.Address, err error) address.Address {
 	if err != nil {
 		panic(err)
