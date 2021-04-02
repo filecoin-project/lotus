@@ -145,7 +145,7 @@ func (d *Datastore) openLog(p string) (*logfile, string, error) {
 	var lastLogHead string
 	var openCount, vals, logvals int64
 	// check file integrity
-	err = ReadBackup(f, func(k datastore.Key, v []byte, log bool) error {
+	clean, err := ReadBackup(f, func(k datastore.Key, v []byte, log bool) error {
 		if log {
 			logvals++
 		} else {
@@ -160,7 +160,7 @@ func (d *Datastore) openLog(p string) (*logfile, string, error) {
 	if err != nil {
 		return nil, "", xerrors.Errorf("reading backup part of the logfile: %w", err)
 	}
-	if string(lh) != lastLogHead {
+	if string(lh) != lastLogHead && clean { // if not clean, user has opted in to ignore truncated logs, this will almost certainly happen
 		return nil, "", xerrors.Errorf("loghead didn't match, expected '%s', last in logfile '%s'", string(lh), lastLogHead)
 	}
 
@@ -178,8 +178,8 @@ func (d *Datastore) openLog(p string) (*logfile, string, error) {
 	}
 
 	compact := logvals > vals*int64(compactThresh)
-	if compact {
-		log.Infow("compacting log", "current", p, "openCount", openCount, "baseValues", vals, "logValues", logvals)
+	if compact || !clean {
+		log.Infow("compacting log", "current", p, "openCount", openCount, "baseValues", vals, "logValues", logvals, "truncated", !clean)
 		if err := f.Close(); err != nil {
 			return nil, "", xerrors.Errorf("closing current log: %w", err)
 		}
@@ -189,10 +189,14 @@ func (d *Datastore) openLog(p string) (*logfile, string, error) {
 			return nil, "", xerrors.Errorf("creating compacted log: %w", err)
 		}
 
-		log.Infow("compacted log created, cleaning up old", "old", p, "new", latest)
-		if err := os.Remove(p); err != nil {
-			l.Close() // nolint
-			return nil, "", xerrors.Errorf("cleaning up old logfile: %w", err)
+		if clean {
+			log.Infow("compacted log created, cleaning up old", "old", p, "new", latest)
+			if err := os.Remove(p); err != nil {
+				l.Close() // nolint
+				return nil, "", xerrors.Errorf("cleaning up old logfile: %w", err)
+			}
+		} else {
+			log.Errorw("LOG FILE WAS TRUNCATED, KEEPING THE FILE", "old", p, "new", latest)
 		}
 
 		return l, latest, nil

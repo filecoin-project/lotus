@@ -181,7 +181,7 @@ var datastoreBackupStatCmd = &cli.Command{
 		defer f.Close() // nolint:errcheck
 
 		var keys, logs, kbytes, vbytes uint64
-		err = backupds.ReadBackup(f, func(key datastore.Key, value []byte, log bool) error {
+		clean, err := backupds.ReadBackup(f, func(key datastore.Key, value []byte, log bool) error {
 			if log {
 				logs++
 			}
@@ -194,6 +194,7 @@ var datastoreBackupStatCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("Truncated:   ", !clean)
 		fmt.Println("Keys:        ", keys)
 		fmt.Println("Log values:  ", log)
 		fmt.Println("Key bytes:   ", units.BytesSize(float64(kbytes)))
@@ -229,7 +230,7 @@ var datastoreBackupListCmd = &cli.Command{
 		defer f.Close() // nolint:errcheck
 
 		printKv := kvPrinter(cctx.Bool("top-level"), cctx.String("get-enc"))
-		err = backupds.ReadBackup(f, func(key datastore.Key, value []byte, _ bool) error {
+		_, err = backupds.ReadBackup(f, func(key datastore.Key, value []byte, _ bool) error {
 			return printKv(key.String(), value)
 		})
 		if err != nil {

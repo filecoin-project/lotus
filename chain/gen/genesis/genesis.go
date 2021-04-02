@@ -330,24 +330,18 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		if err := json.Unmarshal(template.RemainderAccount.Meta, &ainfo); err != nil {
 			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
-		st, err := cst.Put(ctx, &account0.State{Address: ainfo.Owner})
-		if err != nil {
-			return nil, nil, err
-		}
 
 		_, ok := keyIDs[ainfo.Owner]
 		if ok {
 			return nil, nil, fmt.Errorf("remainder account has already been declared, cannot be assigned 90: %s", ainfo.Owner)
 		}
 
-		err = state.SetActor(builtin.ReserveAddress, &types.Actor{
-			Code:    builtin0.AccountActorCodeID,
-			Balance: template.RemainderAccount.Balance,
-			Head:    st,
-		})
+		keyIDs[ainfo.Owner] = builtin.ReserveAddress
+		err = createAccountActor(ctx, cst, state, template.RemainderAccount, keyIDs)
 		if err != nil {
-			return nil, nil, xerrors.Errorf("setting remainder account: %w", err)
+			return nil, nil, xerrors.Errorf("creating remainder acct: %w", err)
 		}
+
 	case genesis.TMultisig:
 		if err = createMultisigAccount(ctx, bs, cst, state, builtin.ReserveAddress, template.RemainderAccount, keyIDs); err != nil {
 			return nil, nil, xerrors.Errorf("failed to set up remainder: %w", err)
