@@ -55,6 +55,11 @@ var actorSetAddrsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		args := cctx.Args().Slice()
+		if len(args) == 0 {
+			return cli.ShowSubcommandHelp(cctx)
+		}
+
 		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -70,7 +75,10 @@ var actorSetAddrsCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		var addrs []abi.Multiaddrs
-		for _, a := range cctx.Args().Slice() {
+		for _, a := range args {
+			if a == "nil" {
+				continue
+			}
 			maddr, err := ma.NewMultiaddr(a)
 			if err != nil {
 				return fmt.Errorf("failed to parse %q as a multiaddr: %w", a, err)
