@@ -1121,7 +1121,8 @@ var SlashConsensusFault = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer srv.Close()
+		defer srv.Close() //nolint:errcheck
+
 		a := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
