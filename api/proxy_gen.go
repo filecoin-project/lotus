@@ -330,8 +330,6 @@ type FullNodeStruct struct {
 
 		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) `perm:"read"`
 
-		StateGetReceipt func(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) `perm:"read"`
-
 		StateListActors func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) `perm:"read"`
 
 		StateListMessages func(p0 context.Context, p1 *MessageMatch, p2 types.TipSetKey, p3 abi.ChainEpoch) ([]cid.Cid, error) `perm:"read"`
@@ -384,9 +382,7 @@ type FullNodeStruct struct {
 
 		StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*InvocResult, error) `perm:"read"`
 
-		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*MsgLookup, error) `perm:"read"`
-
-		StateSearchMsgLimited func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*MsgLookup, error) `perm:"read"`
+		StateSearchMsg func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) `perm:"read"`
 
 		StateSectorExpiration func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorExpiration, error) `perm:"read"`
 
@@ -404,9 +400,7 @@ type FullNodeStruct struct {
 
 		StateVerifierStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) `perm:"read"`
 
-		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*MsgLookup, error) `perm:"read"`
-
-		StateWaitMsgLimited func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*MsgLookup, error) `perm:"read"`
+		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) `perm:"read"`
 
 		SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
@@ -1334,10 +1328,6 @@ func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p
 	return s.Internal.StateGetActor(p0, p1, p2)
 }
 
-func (s *FullNodeStruct) StateGetReceipt(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) {
-	return s.Internal.StateGetReceipt(p0, p1, p2)
-}
-
 func (s *FullNodeStruct) StateListActors(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
 	return s.Internal.StateListActors(p0, p1)
 }
@@ -1442,12 +1432,8 @@ func (s *FullNodeStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 
 	return s.Internal.StateReplay(p0, p1, p2)
 }
 
-func (s *FullNodeStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*MsgLookup, error) {
-	return s.Internal.StateSearchMsg(p0, p1)
-}
-
-func (s *FullNodeStruct) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*MsgLookup, error) {
-	return s.Internal.StateSearchMsgLimited(p0, p1, p2)
+func (s *FullNodeStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	return s.Internal.StateSearchMsg(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStruct) StateSectorExpiration(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorExpiration, error) {
@@ -1482,12 +1468,8 @@ func (s *FullNodeStruct) StateVerifierStatus(p0 context.Context, p1 address.Addr
 	return s.Internal.StateVerifierStatus(p0, p1, p2)
 }
 
-func (s *FullNodeStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*MsgLookup, error) {
-	return s.Internal.StateWaitMsg(p0, p1, p2)
-}
-
-func (s *FullNodeStruct) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*MsgLookup, error) {
-	return s.Internal.StateWaitMsgLimited(p0, p1, p2, p3)
+func (s *FullNodeStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	return s.Internal.StateWaitMsg(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStruct) SyncCheckBad(p0 context.Context, p1 cid.Cid) (string, error) {

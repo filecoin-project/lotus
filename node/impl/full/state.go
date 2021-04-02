@@ -520,28 +520,22 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 	return &out, nil
 }
 
-func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	return stateWaitMsgLimited(ctx, m.StateManager, m.Chain, msg, confidence, stmgr.LookbackNoLimit)
-}
-func (a *StateAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
-	return stateWaitMsgLimited(ctx, a.StateManager, a.Chain, msg, confidence, lookbackLimit)
-}
-func stateWaitMsgLimited(ctx context.Context, smgr *stmgr.StateManager, cstore *store.ChainStore, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
-	ts, recpt, found, err := smgr.WaitForMessage(ctx, msg, confidence, lookbackLimit)
+func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
+	ts, recpt, found, err := m.StateManager.WaitForMessage(ctx, msg, confidence, lookbackLimit)
 	if err != nil {
 		return nil, err
 	}
 
 	var returndec interface{}
 	if recpt.ExitCode == 0 && len(recpt.Return) > 0 {
-		cmsg, err := cstore.GetCMessage(msg)
+		cmsg, err := m.Chain.GetCMessage(msg)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load message after successful receipt search: %w", err)
 		}
 
 		vmsg := cmsg.VMMessage()
 
-		t, err := stmgr.GetReturnType(ctx, smgr, vmsg.To, vmsg.Method, ts)
+		t, err := stmgr.GetReturnType(ctx, m.StateManager, vmsg.To, vmsg.Method, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get return type: %w", err)
 		}
@@ -562,14 +556,13 @@ func stateWaitMsgLimited(ctx context.Context, smgr *stmgr.StateManager, cstore *
 	}, nil
 }
 
-func (m *StateModule) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
-	return stateSearchMsgLimited(ctx, m.StateManager, msg, stmgr.LookbackNoLimit)
-}
-func (a *StateAPI) StateSearchMsgLimited(ctx context.Context, msg cid.Cid, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
-	return stateSearchMsgLimited(ctx, a.StateManager, msg, lookbackLimit)
-}
-func stateSearchMsgLimited(ctx context.Context, smgr *stmgr.StateManager, msg cid.Cid, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error) {
-	ts, recpt, found, err := smgr.SearchForMessage(ctx, msg, lookbackLimit)
+func (m *StateModule) StateSearchMsg(ctx context.Context, tsk types.TipSetKey, msg cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+	fromTs, err := m.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	ts, recpt, found, err := m.StateManager.SearchForMessage(ctx, fromTs, msg, lookbackLimit, allowReplaced)
 	if err != nil {
 		return nil, err
 	}
@@ -583,14 +576,6 @@ func stateSearchMsgLimited(ctx context.Context, smgr *stmgr.StateManager, msg ci
 		}, nil
 	}
 	return nil, nil
-}
-
-func (m *StateModule) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
-	ts, err := m.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	return m.StateManager.GetReceipt(ctx, msg, ts)
 }
 
 func (m *StateModule) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
