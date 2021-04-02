@@ -340,6 +340,9 @@ type FullNode interface {
 	// which are stuck due to insufficient funds
 	ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error //perm:write
 
+	// ClientCancelRetrievalDeal cancels an ongoing retrieval deal based on DealID
+	ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmarket.DealID) error //perm:write
+
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
 
@@ -725,6 +728,7 @@ type DealInfo struct {
 	ProposalCid cid.Cid
 	State       storagemarket.StorageDealStatus
 	Message     string // more information about deal state, particularly errors
+	DealStages  *storagemarket.DealStages
 	Provider    address.Address
 
 	DataRef  *storagemarket.DataRef

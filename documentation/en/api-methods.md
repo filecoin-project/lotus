@@ -35,6 +35,7 @@
 * [Client](#Client)
   * [ClientCalcCommP](#ClientCalcCommP)
   * [ClientCancelDataTransfer](#ClientCancelDataTransfer)
+  * [ClientCancelRetrievalDeal](#ClientCancelRetrievalDeal)
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
   * [ClientDealPieceCID](#ClientDealPieceCID)
   * [ClientDealSize](#ClientDealSize)
@@ -921,6 +922,21 @@ Inputs:
 
 Response: `{}`
 
+### ClientCancelRetrievalDeal
+ClientCancelRetrievalDeal cancels an ongoing retrieval deal based on DealID
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  5
+]
+```
+
+Response: `{}`
+
 ### ClientDataTransferUpdates
 
 
@@ -941,7 +957,10 @@ Response:
   "Voucher": "string value",
   "Message": "string value",
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Transferred": 42
+  "Transferred": 42,
+  "Stages": {
+    "Stages": null
+  }
 }
 ```
 
@@ -1054,6 +1073,9 @@ Response:
   },
   "State": 42,
   "Message": "string value",
+  "DealStages": {
+    "Stages": null
+  },
   "Provider": "f01234",
   "DataRef": {
     "TransferType": "string value",
@@ -1089,7 +1111,10 @@ Response:
     "Voucher": "string value",
     "Message": "string value",
     "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
   }
 }
 ```
@@ -1125,6 +1150,9 @@ Response:
   },
   "State": 42,
   "Message": "string value",
+  "DealStages": {
+    "Stages": null
+  },
   "Provider": "f01234",
   "DataRef": {
     "TransferType": "string value",
@@ -1160,7 +1188,10 @@ Response:
     "Voucher": "string value",
     "Message": "string value",
     "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
   }
 }
 ```
