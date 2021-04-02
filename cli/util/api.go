@@ -176,7 +176,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 
 func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
-		return tn.(api.FullNode), func() {}, nil
+		return tn.(v0api.FullNode), func() {}, nil
 	}
 
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
