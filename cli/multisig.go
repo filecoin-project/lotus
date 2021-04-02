@@ -161,7 +161,7 @@ var msigCreateCmd = &cli.Command{
 		msgCid := sm.Cid()
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -451,7 +451,7 @@ var msigProposeCmd = &cli.Command{
 
 		fmt.Println("send proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -600,7 +600,7 @@ var msigApproveCmd = &cli.Command{
 
 		fmt.Println("sent approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -680,7 +680,7 @@ var msigRemoveProposeCmd = &cli.Command{
 
 		fmt.Println("sent remove proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -767,7 +767,7 @@ var msigAddProposeCmd = &cli.Command{
 
 		fmt.Fprintln(cctx.App.Writer, "sent add proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -858,7 +858,7 @@ var msigAddApproveCmd = &cli.Command{
 
 		fmt.Println("sent add approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -944,7 +944,7 @@ var msigAddCancelCmd = &cli.Command{
 
 		fmt.Println("sent add cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1025,7 +1025,7 @@ var msigSwapProposeCmd = &cli.Command{
 
 		fmt.Println("sent swap proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1116,7 +1116,7 @@ var msigSwapApproveCmd = &cli.Command{
 
 		fmt.Println("sent swap approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1202,7 +1202,7 @@ var msigSwapCancelCmd = &cli.Command{
 
 		fmt.Println("sent swap cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1298,7 +1298,7 @@ var msigLockProposeCmd = &cli.Command{
 
 		fmt.Println("sent lock proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1404,7 +1404,7 @@ var msigLockApproveCmd = &cli.Command{
 
 		fmt.Println("sent lock approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1505,7 +1505,7 @@ var msigLockCancelCmd = &cli.Command{
 
 		fmt.Println("sent lock cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1651,7 +1651,7 @@ var msigProposeThresholdCmd = &cli.Command{
 
 		fmt.Println("sent change threshold proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}

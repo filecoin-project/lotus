@@ -1069,7 +1069,7 @@ func (mr *MockFullNodeMockRecorder) MpoolBatchPushUntrusted(arg0, arg1 interface
 }
 
 // MpoolCheckMessages mocks base method
-func (m *MockFullNode) MpoolCheckMessages(arg0 context.Context, arg1 []*types.Message) ([][]api.MessageCheckStatus, error) {
+func (m *MockFullNode) MpoolCheckMessages(arg0 context.Context, arg1 []*api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MpoolCheckMessages", arg0, arg1)
 	ret0, _ := ret[0].([][]api.MessageCheckStatus)

@@ -19,8 +19,14 @@ import (
 var baseFeeUpperBoundFactor = types.NewInt(10)
 
 // CheckMessages performs a set of logic checks for a list of messages, prior to submitting it to the mpool
-func (mp *MessagePool) CheckMessages(msgs []*types.Message) ([][]api.MessageCheckStatus, error) {
-	return mp.checkMessages(msgs, false)
+func (mp *MessagePool) CheckMessages(protos []*api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
+	flex := make([]bool, len(protos))
+	msgs := make([]*types.Message, len(protos))
+	for i, p := range protos {
+		flex[i] = !p.ValidNonce
+		msgs[i] = &p.Message
+	}
+	return mp.checkMessages(msgs, false, flex)
 }
 
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
@@ -43,7 +49,7 @@ func (mp *MessagePool) CheckPendingMessages(from address.Address) ([][]api.Messa
 		return msgs[i].Nonce < msgs[j].Nonce
 	})
 
-	return mp.checkMessages(msgs, true)
+	return mp.checkMessages(msgs, true, nil)
 }
 
 // CheckReplaceMessages performs a set of logical checks for related messages while performing a
@@ -88,10 +94,12 @@ func (mp *MessagePool) CheckReplaceMessages(replace []*types.Message) ([][]api.M
 		start = end
 	}
 
-	return mp.checkMessages(msgs, true)
+	return mp.checkMessages(msgs, true, nil)
 }
 
-func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (result [][]api.MessageCheckStatus, err error) {
+// flexibleNonces should be either nil or of len(msgs), it signifies that message at given index
+// has non-determied nonce at this point
+func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool, flexibleNonces []bool) (result [][]api.MessageCheckStatus, err error) {
 	mp.curTsLk.Lock()
 	curTs := mp.curTs
 	mp.curTsLk.Unlock()
@@ -381,7 +389,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool) (resu
 			},
 		}
 
-		if st.nextNonce != m.Nonce {
+		if (flexibleNonces == nil || !flexibleNonces[i]) && st.nextNonce != m.Nonce {
 			check.OK = false
 			check.Err = fmt.Sprintf("message nonce doesn't match next nonce (%d)", st.nextNonce)
 		} else {

@@ -114,17 +114,8 @@ type CheckInfo struct {
 var ErrCheckFailed = fmt.Errorf("check has failed")
 
 func (s *ServicesImpl) RunChecksForPrototype(ctx context.Context, prototype *api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
-	if !prototype.ValidNonce {
-		nonce, err := s.api.MpoolGetNonce(ctx, prototype.Message.From)
-		if err != nil {
-			return nil, xerrors.Errorf("mpool get nonce: %w", err)
-		}
-		prototype.Message.Nonce = nonce
-		prototype.ValidNonce = true
-	}
-
 	var outChecks [][]api.MessageCheckStatus
-	checks, err := s.api.MpoolCheckMessages(ctx, []*types.Message{&prototype.Message})
+	checks, err := s.api.MpoolCheckMessages(ctx, []*api.MessagePrototype{prototype})
 	if err != nil {
 		return nil, xerrors.Errorf("message check: %w", err)
 	}

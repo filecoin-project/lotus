@@ -253,7 +253,7 @@ type FullNode interface {
 	MpoolBatchPushMessage(context.Context, []*types.Message, *MessageSendSpec) ([]*types.SignedMessage, error) //perm:sign
 
 	// MpoolCheckMessages performs logical checks on a batch of messages
-	MpoolCheckMessages(context.Context, []*types.Message) ([][]MessageCheckStatus, error) //perm:read
+	MpoolCheckMessages(context.Context, []*MessagePrototype) ([][]MessageCheckStatus, error) //perm:read
 	// MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
 	MpoolCheckPendingMessages(context.Context, address.Address) ([][]MessageCheckStatus, error) //perm:read
 	// MpoolCheckReplaceMessages performs logical checks on pending messages with replacement

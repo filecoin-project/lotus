@@ -235,7 +235,7 @@ type FullNodeStruct struct {
 
 		MpoolBatchPushUntrusted func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) `perm:"write"`
 
-		MpoolCheckMessages func(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) `perm:"read"`
+		MpoolCheckMessages func(p0 context.Context, p1 []*MessagePrototype) ([][]MessageCheckStatus, error) `perm:"read"`
 
 		MpoolCheckPendingMessages func(p0 context.Context, p1 address.Address) ([][]MessageCheckStatus, error) `perm:"read"`
 
@@ -1515,11 +1515,11 @@ func (s *FullNodeStub) MpoolBatchPushUntrusted(p0 context.Context, p1 []*types.S
 	return *new([]cid.Cid), xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MpoolCheckMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
+func (s *FullNodeStruct) MpoolCheckMessages(p0 context.Context, p1 []*MessagePrototype) ([][]MessageCheckStatus, error) {
 	return s.Internal.MpoolCheckMessages(p0, p1)
 }
 
-func (s *FullNodeStub) MpoolCheckMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
+func (s *FullNodeStub) MpoolCheckMessages(p0 context.Context, p1 []*MessagePrototype) ([][]MessageCheckStatus, error) {
 	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
 }
 
