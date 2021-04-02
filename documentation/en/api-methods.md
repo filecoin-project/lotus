@@ -891,7 +891,6 @@ Inputs:
 Response: `{}`
 
 ### ClientCancelRetrievalDeal
-ClientCancelRetrievalDeal cancels an ongoing retrieval deal based on DealID
 
 
 Perms: write
