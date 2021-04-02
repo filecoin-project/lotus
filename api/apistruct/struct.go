@@ -229,7 +229,7 @@ type FullNodeStruct struct {
 
 		MpoolBatchPushUntrusted func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) `perm:"write"`
 
-		MpoolCheckMessages func(p0 context.Context, p1 []*types.Message) ([][]api.MessageCheckStatus, error) `perm:"read"`
+		MpoolCheckMessages func(p0 context.Context, p1 []*api.MessagePrototype) ([][]api.MessageCheckStatus, error) `perm:"read"`
 
 		MpoolCheckPendingMessages func(p0 context.Context, p1 address.Address) ([][]api.MessageCheckStatus, error) `perm:"read"`
 
@@ -1139,7 +1139,7 @@ func (s *FullNodeStruct) MpoolBatchPushUntrusted(p0 context.Context, p1 []*types
 	return s.Internal.MpoolBatchPushUntrusted(p0, p1)
 }
 
-func (s *FullNodeStruct) MpoolCheckMessages(p0 context.Context, p1 []*types.Message) ([][]api.MessageCheckStatus, error) {
+func (s *FullNodeStruct) MpoolCheckMessages(p0 context.Context, p1 []*api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
 	return s.Internal.MpoolCheckMessages(p0, p1)
 }
 
