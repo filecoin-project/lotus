@@ -150,12 +150,12 @@ var sendCmd = &cli.Command{
 			return xerrors.Errorf("creating message prototype: %w", err)
 		}
 
-		c, err := InteractiveSend(ctx, cctx, srv, proto)
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "%s\n", c)
+		fmt.Fprintf(cctx.App.Writer, "%s\n", sm.Cid())
 		return nil
 	},
 }

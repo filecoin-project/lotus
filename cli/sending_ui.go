@@ -19,7 +19,7 @@ import (
 )
 
 func InteractiveSend(ctx context.Context, cctx *cli.Context, srv ServicesAPI,
-	proto *api.MessagePrototype) (cid.Cid, error) {
+	proto *api.MessagePrototype) (*types.SignedMessage, error) {
 
 	msg, checks, err := srv.PublishMessage(ctx, proto, cctx.Bool("force") || cctx.Bool("force-send"))
 	printer := cctx.App.Writer
@@ -30,17 +30,17 @@ func InteractiveSend(ctx context.Context, cctx *cli.Context, srv ServicesAPI,
 		} else {
 			proto, err = resolveChecks(ctx, srv, cctx.App.Writer, proto, checks)
 			if err != nil {
-				return cid.Undef, xerrors.Errorf("from UI: %w", err)
+				return nil, xerrors.Errorf("from UI: %w", err)
 			}
 
 			msg, _, err = srv.PublishMessage(ctx, proto, true)
 		}
 	}
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("publishing message: %w", err)
+		return nil, xerrors.Errorf("publishing message: %w", err)
 	}
 
-	return msg.Cid(), nil
+	return msg, nil
 }
 
 var interactiveSolves = map[api.CheckStatusCode]bool{

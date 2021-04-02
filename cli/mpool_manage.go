@@ -25,10 +25,14 @@ var mpoolManage = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer srv.Close()
+		defer srv.Close() //nolint:errcheck
+
 		ctx := ReqContext(cctx)
 
 		_, localAddr, err := srv.LocalAddresses(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting local addresses: %w", err)
+		}
 
 		msgs, err := srv.MpoolPendingFilter(ctx, func(sm *types.SignedMessage) bool {
 			if sm.Message.From.Empty() {
