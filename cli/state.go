@@ -1745,7 +1745,7 @@ var StateCircSupplyCmd = &cli.Command{
 var StateSectorCmd = &cli.Command{
 	Name:      "sector",
 	Usage:     "Get miner sector info",
-	ArgsUsage: "[miner address] [sector number]",
+	ArgsUsage: "[minerAddress] [sectorNumber]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -1756,7 +1756,7 @@ var StateSectorCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.Args().Len() != 2 {
-			return xerrors.Errorf("expected 2 params")
+			return xerrors.Errorf("expected 2 params: minerAddress and sectorNumber")
 		}
 
 		ts, err := LoadTipSet(ctx, cctx, api)
