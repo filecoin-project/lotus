@@ -8,10 +8,6 @@ import (
 	"strings"
 	"time"
 
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -433,6 +429,17 @@ var sectorsExtendCmd = &cli.Command{
 			Usage:    "renews all v1 sectors up to the maximum possible lifetime",
 			Required: false,
 		},
+		&cli.Int64Flag{
+			Name:     "tolerance",
+			Value:    20160,
+			Usage:    "when extending v1 sectors, don't try to extend sectors by fewer than this number of epochs",
+			Required: false,
+		},
+		&cli.Int64Flag{
+			Name:     "expiration-cutoff",
+			Usage:    "when extending v1 sectors, skip sectors whose current expiration is more than <cutoff> epochs from now (infinity if unspecified)",
+			Required: false,
+		},
 		&cli.StringFlag{},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -453,15 +460,27 @@ var sectorsExtendCmd = &cli.Command{
 		var params []miner3.ExtendSectorExpirationParams
 
 		if cctx.Bool("v1-sectors") {
+
+			head, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
 			extensions := map[miner.SectorLocation]map[abi.ChainEpoch][]uint64{}
-			// are given durations within a week?
-			closeEnough := func(a, b abi.ChainEpoch) bool {
+
+			// are given durations within tolerance epochs
+			withinTolerance := func(a, b abi.ChainEpoch) bool {
 				diff := a - b
 				if diff < 0 {
 					diff = b - a
 				}
 
-				return diff <= 7*builtin.EpochsInDay
+				return diff <= abi.ChainEpoch(cctx.Int64("tolerance"))
 			}
 
 			sis, err := api.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
@@ -470,53 +489,63 @@ var sectorsExtendCmd = &cli.Command{
 			}
 
 			for _, si := range sis {
-				if si.SealProof < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+				if si.SealProof >= abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+					continue
+				}
 
-					ml := builtin3.SealProofPoliciesV11[si.SealProof].SectorMaxLifetime
-					// if the sector's missing less than a week of its maximum possible lifetime, don't bother extending it
-					if closeEnough(si.Expiration-si.Activation, ml) {
+				if cctx.IsSet("expiration-cutoff") {
+					if si.Expiration > (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-cutoff"))) {
 						continue
 					}
+				}
 
-					newExp := ml - (miner3.WPoStProvingPeriod * 2) + si.Activation
-					p, err := api.StateSectorPartition(ctx, maddr, si.SectorNumber, types.EmptyTSK)
-					if err != nil {
-						return xerrors.Errorf("getting sector location for sector %d: %w", si.SectorNumber, err)
+				ml := policy.GetSectorMaxLifetime(si.SealProof, nv)
+				// if the sector's missing less than "tolerance" of its maximum possible lifetime, don't bother extending it
+				if withinTolerance(si.Expiration-si.Activation, ml) {
+					continue
+				}
+
+				// Set the new expiration to 48 hours less than the theoretical maximum lifetime
+				newExp := ml - (miner3.WPoStProvingPeriod * 2) + si.Activation
+				p, err := api.StateSectorPartition(ctx, maddr, si.SectorNumber, types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("getting sector location for sector %d: %w", si.SectorNumber, err)
+				}
+
+				if p == nil {
+					return xerrors.Errorf("sector %d not found in any partition", si.SectorNumber)
+				}
+
+				es, found := extensions[*p]
+				if !found {
+					ne := make(map[abi.ChainEpoch][]uint64)
+					ne[newExp] = []uint64{uint64(si.SectorNumber)}
+					extensions[*p] = ne
+				} else {
+					added := false
+					for exp := range es {
+						if withinTolerance(exp, newExp) {
+							es[exp] = append(es[exp], uint64(si.SectorNumber))
+							added = true
+							break
+						}
 					}
 
-					if p == nil {
-						return xerrors.Errorf("sector %d not found in any partition", si.SectorNumber)
-					}
-
-					es, found := extensions[*p]
-					if !found {
-						ne := make(map[abi.ChainEpoch][]uint64)
-						ne[newExp] = []uint64{uint64(si.SectorNumber)}
-						extensions[*p] = ne
-					} else {
-						added := false
-						for exp := range es {
-							if closeEnough(exp, newExp) {
-								es[exp] = append(es[exp], uint64(si.SectorNumber))
-								added = true
-								break
-							}
-						}
-
-						if !added {
-							es[newExp] = []uint64{uint64(si.SectorNumber)}
-						}
+					if !added {
+						es[newExp] = []uint64{uint64(si.SectorNumber)}
 					}
 				}
 			}
-			p := &miner3.ExtendSectorExpirationParams{}
+
+			p := miner3.ExtendSectorExpirationParams{}
 			scount := 0
+
 			for l, exts := range extensions {
 				for newExp, numbers := range exts {
 					scount += len(numbers)
-					if scount > miner.AddressedSectorsMax || len(p.Extensions) == miner3.DeclarationsMax {
-						params = append(params, *p)
-						p = &miner3.ExtendSectorExpirationParams{}
+					if scount > policy.GetAddressedSectorsMax(nv) || len(p.Extensions) == policy.GetDeclarationsMax(nv) {
+						params = append(params, p)
+						p = miner3.ExtendSectorExpirationParams{}
 						scount = len(numbers)
 					}
 
@@ -528,7 +557,11 @@ var sectorsExtendCmd = &cli.Command{
 					})
 				}
 			}
-			params = append(params, *p)
+
+			// if we have any sectors, then one last append is needed here
+			if scount != 0 {
+				params = append(params, p)
+			}
 
 		} else {
 			if !cctx.Args().Present() || !cctx.IsSet("new-expiration") {
@@ -554,9 +587,10 @@ var sectorsExtendCmd = &cli.Command{
 				sectors[*p] = append(sectors[*p], id)
 			}
 
-			p := &miner3.ExtendSectorExpirationParams{}
+			p := miner3.ExtendSectorExpirationParams{}
 			for l, numbers := range sectors {
 
+				// TODO: Dedup with above loop
 				p.Extensions = append(p.Extensions, miner3.ExpirationExtension{
 					Deadline:      l.Deadline,
 					Partition:     l.Partition,
@@ -565,7 +599,12 @@ var sectorsExtendCmd = &cli.Command{
 				})
 			}
 
-			params = append(params, *p)
+			params = append(params, p)
+		}
+
+		if len(params) == 0 {
+			fmt.Println("nothing to extend")
+			return nil
 		}
 
 		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
