@@ -1464,19 +1464,20 @@ func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message,
 }
 
 func printMsg(ctx context.Context, api api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
-	if mw != nil {
-		if mw.Message != msg {
-			fmt.Printf("Message was replaced: %s\n", mw.Message)
-		}
 
-		fmt.Printf("Executed in tipset: %s\n", mw.TipSet.Cids())
-		fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
-		fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
-		fmt.Printf("Return: %x\n", mw.Receipt.Return)
-	} else {
+	if mw == nil {
 		fmt.Println("message was not found on chain")
+		return nil
 	}
 
+	if mw.Message != msg {
+		fmt.Printf("Message was replaced: %s\n", mw.Message)
+	}
+
+	fmt.Printf("Executed in tipset: %s\n", mw.TipSet.Cids())
+	fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
+	fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
+	fmt.Printf("Return: %x\n", mw.Receipt.Return)
 	if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
 		return err
 	}
