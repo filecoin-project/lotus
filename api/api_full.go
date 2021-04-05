@@ -39,6 +39,8 @@ type ChainIO interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 }
 
+const LookbackNoLimit = abi.ChainEpoch(-1)
+
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common

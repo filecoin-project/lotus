@@ -16,6 +16,8 @@ type StorageMinerStruct = api.StorageMinerStruct
 type Worker = api.Worker
 type WorkerStruct = api.WorkerStruct
 
+type Wallet = api.Wallet
+
 func PermissionedStorMinerAPI(a StorageMiner) StorageMiner {
 	return api.PermissionedStorMinerAPI(a)
 }

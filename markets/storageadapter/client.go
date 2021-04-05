@@ -5,6 +5,9 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -54,7 +57,7 @@ func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi ful
 	capi := &clientApi{chain, stateapi, mpool}
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	ev := events.NewEvents(ctx, capi)
+	ev := events.NewEvents(ctx, api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), capi).(events.EventAPI))
 	a := &ClientNodeAdapter{
 		clientApi: capi,
 
@@ -62,7 +65,7 @@ func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi ful
 		ev:        ev,
 		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi))),
 	}
-	a.scMgr = NewSectorCommittedManager(ev, a, &apiWrapper{api: capi})
+	a.scMgr = NewSectorCommittedManager(ev, api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), a).(sealing.CurrentDealInfoTskAPI), &apiWrapper{api: capi})
 	return a
 }
 
@@ -196,7 +199,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence)
+	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -363,7 +366,7 @@ func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 }
 
 func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence)
+	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}

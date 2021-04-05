@@ -2,6 +2,8 @@ package settler
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"sync"
 
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -51,12 +53,12 @@ type paymentChannelSettler struct {
 
 // SettlePaymentChannels checks the chain for events related to payment channels settling and
 // submits any vouchers for inbound channels tracked for this node
-func SettlePaymentChannels(mctx helpers.MetricsCtx, lc fx.Lifecycle, api API) error {
+func SettlePaymentChannels(mctx helpers.MetricsCtx, lc fx.Lifecycle, papi API) error {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			pcs := newPaymentChannelSettler(ctx, &api)
-			ev := events.NewEvents(ctx, &api)
+			pcs := newPaymentChannelSettler(ctx, &papi)
+			ev := events.NewEvents(ctx, api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), &papi).(events.EventAPI))
 			return ev.Called(pcs.check, pcs.messageHandler, pcs.revertHandler, int(build.MessageConfidence+1), events.NoTimeout, pcs.matcher)
 		},
 	})
@@ -93,7 +95,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 		}
 		go func(voucher *paych.SignedVoucher, submitMessageCID cid.Cid) {
 			defer wg.Done()
-			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, build.MessageConfidence)
+			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, build.MessageConfidence, api.LookbackNoLimit, true)
 			if err != nil {
 				log.Errorf("submitting voucher: %s", err.Error())
 			}

@@ -229,7 +229,7 @@ func (fcs *fakeCS) notifDone() {
 	fcs.sync.Unlock()
 }
 
-var _ eventAPI = &fakeCS{}
+var _ EventAPI = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	fcs := &fakeCS{

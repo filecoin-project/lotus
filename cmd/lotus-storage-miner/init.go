@@ -37,6 +37,7 @@ import (
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -269,7 +270,7 @@ var initCmd = &cli.Command{
 	},
 }
 
-func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string, maddr address.Address, mds dtypes.MetadataDS) error {
+func migratePreSealMeta(ctx context.Context, api v0api.FullNode, metadata string, maddr address.Address, mds dtypes.MetadataDS) error {
 	metadata, err := homedir.Expand(metadata)
 	if err != nil {
 		return xerrors.Errorf("expanding preseal dir: %w", err)
@@ -379,7 +380,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 	return mds.Put(datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
-func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market2.DealProposal) (abi.DealID, error) {
+func findMarketDealID(ctx context.Context, api v0api.FullNode, deal market2.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -398,7 +399,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market2.DealP
 	return 0, xerrors.New("deal not found")
 }
 
-func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt) error {
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api v0api.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt) error {
 	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
@@ -562,7 +563,7 @@ func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
 	return pk, nil
 }
 
-func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.Address, peerid peer.ID, gasPrice types.BigInt) error {
+func configureStorageMiner(ctx context.Context, api v0api.FullNode, addr address.Address, peerid peer.ID, gasPrice types.BigInt) error {
 	mi, err := api.StateMinerInfo(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getWorkerAddr returned bad address: %w", err)
@@ -600,7 +601,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	return nil
 }
 
-func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, gasPrice types.BigInt, cctx *cli.Context) (address.Address, error) {
+func createStorageMiner(ctx context.Context, api v0api.FullNode, peerid peer.ID, gasPrice types.BigInt, cctx *cli.Context) (address.Address, error) {
 	var err error
 	var owner address.Address
 	if cctx.String("owner") != "" {

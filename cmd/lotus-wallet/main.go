@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"net"
 	"net/http"
 	"os"
@@ -149,10 +150,10 @@ var runCmd = &cli.Command{
 		log.Info("Setting up API endpoint at " + address)
 
 		if cctx.Bool("interactive") {
-			var ag func() (api.FullNode, jsonrpc.ClientCloser, error)
+			var ag func() (v0api.FullNode, jsonrpc.ClientCloser, error)
 
 			if !cctx.Bool("offline") {
-				ag = func() (api.FullNode, jsonrpc.ClientCloser, error) {
+				ag = func() (v0api.FullNode, jsonrpc.ClientCloser, error) {
 					return lcli.GetFullNodeAPI(cctx)
 				}
 			}

@@ -45,7 +45,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-const LookbackNoLimit = abi.ChainEpoch(-1)
+const LookbackNoLimit = api.LookbackNoLimit
 const ReceiptAmtBitwidth = 3
 
 var log = logging.Logger("statemgr")

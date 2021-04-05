@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -133,7 +134,7 @@ var runCmd = &cli.Command{
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("miner-api"))
 				})),
-			node.Override(new(api.FullNode), nodeApi),
+			node.Override(new(v0api.FullNode), nodeApi),
 		)
 		if err != nil {
 			return xerrors.Errorf("creating node: %w", err)
