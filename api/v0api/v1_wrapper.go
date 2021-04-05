@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 )
 
 type WrapperV1Full struct {
@@ -19,7 +18,7 @@ type WrapperV1Full struct {
 }
 
 func (w *WrapperV1Full) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
-	return w.FullNode.StateSearchMsg(ctx, types.EmptyTSK, msg, stmgr.LookbackNoLimit, true)
+	return w.FullNode.StateSearchMsg(ctx, types.EmptyTSK, msg, api.LookbackNoLimit, true)
 }
 
 func (w *WrapperV1Full) StateSearchMsgLimited(ctx context.Context, msg cid.Cid, limit abi.ChainEpoch) (*api.MsgLookup, error) {
@@ -27,7 +26,7 @@ func (w *WrapperV1Full) StateSearchMsgLimited(ctx context.Context, msg cid.Cid, 
 }
 
 func (w *WrapperV1Full) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	return w.FullNode.StateWaitMsg(ctx, msg, confidence, stmgr.LookbackNoLimit, true)
+	return w.FullNode.StateWaitMsg(ctx, msg, confidence, api.LookbackNoLimit, true)
 }
 
 func (w *WrapperV1Full) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch) (*api.MsgLookup, error) {
@@ -35,7 +34,7 @@ func (w *WrapperV1Full) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, co
 }
 
 func (w *WrapperV1Full) StateGetReceipt(ctx context.Context, msg cid.Cid, from types.TipSetKey) (*types.MessageReceipt, error) {
-	ml, err := w.FullNode.StateSearchMsg(ctx, from, msg, stmgr.LookbackNoLimit, true)
+	ml, err := w.FullNode.StateSearchMsg(ctx, from, msg, api.LookbackNoLimit, true)
 	if err != nil {
 		return nil, err
 	}

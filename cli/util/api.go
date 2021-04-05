@@ -177,7 +177,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 
 func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
-		return tn.(v0api.FullNode), func() {}, nil
+		return &v0api.WrapperV1Full{FullNode: tn.(v1api.FullNode)}, func() {}, nil
 	}
 
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
@@ -260,7 +260,7 @@ func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) 
 		return nil, nil, err
 	}
 
-	return client.NewGatewayRPCV0(ctx.Context, addr, headers)
+	return client.NewGatewayRPCV1(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {

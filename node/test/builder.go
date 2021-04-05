@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/mux"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -501,12 +503,15 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 }
 
 func fullRpc(t *testing.T, nd test.TestNode) test.TestNode {
-	ma, listenAddr, err := CreateRPCServer(t, nd)
+	ma, listenAddr, err := CreateRPCServer(t, map[string]interface{}{
+		"/rpc/v1": nd,
+		"/rpc/v0": &v0api.WrapperV1Full{FullNode: nd},
+	})
 	require.NoError(t, err)
 
 	var stop func()
 	var full test.TestNode
-	full.FullNode, stop, err = client.NewFullNodeRPCV1(context.Background(), listenAddr, nil)
+	full.FullNode, stop, err = client.NewFullNodeRPCV1(context.Background(), listenAddr+"/rpc/v1", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
 
@@ -515,12 +520,14 @@ func fullRpc(t *testing.T, nd test.TestNode) test.TestNode {
 }
 
 func storerRpc(t *testing.T, nd test.TestStorageNode) test.TestStorageNode {
-	ma, listenAddr, err := CreateRPCServer(t, nd)
+	ma, listenAddr, err := CreateRPCServer(t, map[string]interface{}{
+		"/rpc/v0": nd,
+	})
 	require.NoError(t, err)
 
 	var stop func()
 	var storer test.TestStorageNode
-	storer.StorageMiner, stop, err = client.NewStorageMinerRPCV0(context.Background(), listenAddr, nil)
+	storer.StorageMiner, stop, err = client.NewStorageMinerRPCV0(context.Background(), listenAddr+"/rpc/v0", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
 
@@ -529,10 +536,14 @@ func storerRpc(t *testing.T, nd test.TestStorageNode) test.TestStorageNode {
 	return storer
 }
 
-func CreateRPCServer(t *testing.T, handler interface{}) (multiaddr.Multiaddr, string, error) {
-	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Filecoin", handler)
-	testServ := httptest.NewServer(rpcServer) //  todo: close
+func CreateRPCServer(t *testing.T, handlers map[string]interface{}) (multiaddr.Multiaddr, string, error) {
+	m := mux.NewRouter()
+	for path, handler := range handlers {
+		rpcServer := jsonrpc.NewServer()
+		rpcServer.Register("Filecoin", handler)
+		m.Handle(path, rpcServer)
+	}
+	testServ := httptest.NewServer(m) //  todo: close
 	t.Cleanup(testServ.Close)
 	t.Cleanup(testServ.CloseClientConnections)
 

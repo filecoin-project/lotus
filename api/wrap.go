@@ -14,7 +14,7 @@ func Wrap(proxyT, wrapperT, impl interface{}) interface{} {
 
 	for i := 0; i < ri.NumMethod(); i++ {
 		mt := ri.Type().Method(i)
-		if proxyMethods.FieldByName(mt.Name).IsZero() {
+		if proxyMethods.FieldByName(mt.Name).Kind() == reflect.Invalid {
 			continue
 		}
 

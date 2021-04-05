@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
@@ -44,7 +44,7 @@ type TestNode struct {
 }
 
 type TestStorageNode struct {
-	api.StorageMiner
+	lapi.StorageMiner
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node
 	ListenAddr multiaddr.Multiaddr
@@ -156,7 +156,7 @@ var MineNext = miner.MineReq{
 }
 
 func (ts *testSuite) testVersion(t *testing.T) {
-	api.RunningNodeType = api.NodeFull
+	lapi.RunningNodeType = lapi.NodeFull
 
 	ctx := context.Background()
 	apis, _ := ts.makeNodes(t, OneFull, OneMiner)
@@ -197,7 +197,7 @@ func (ts *testSuite) testSearchMsg(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1)
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func (ts *testSuite) testSearchMsg(t *testing.T) {
 		t.Fatal("did not successfully send message")
 	}
 
-	searchRes, err := api.StateSearchMsg(ctx, sm.Cid())
+	searchRes, err := api.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
 	if err != nil {
 		t.Fatal(err)
 	}
