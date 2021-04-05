@@ -1464,19 +1464,20 @@ func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message,
 }
 
 func printMsg(ctx context.Context, api api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
-	if mw != nil {
-		if mw.Message != msg {
-			fmt.Printf("Message was replaced: %s\n", mw.Message)
-		}
 
-		fmt.Printf("Executed in tipset: %s\n", mw.TipSet.Cids())
-		fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
-		fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
-		fmt.Printf("Return: %x\n", mw.Receipt.Return)
-	} else {
+	if mw == nil {
 		fmt.Println("message was not found on chain")
+		return nil
 	}
 
+	if mw.Message != msg {
+		fmt.Printf("Message was replaced: %s\n", mw.Message)
+	}
+
+	fmt.Printf("Executed in tipset: %s\n", mw.TipSet.Cids())
+	fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
+	fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
+	fmt.Printf("Return: %x\n", mw.Receipt.Return)
 	if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
 		return err
 	}
@@ -1744,7 +1745,7 @@ var StateCircSupplyCmd = &cli.Command{
 var StateSectorCmd = &cli.Command{
 	Name:      "sector",
 	Usage:     "Get miner sector info",
-	ArgsUsage: "[miner address] [sector number]",
+	ArgsUsage: "[minerAddress] [sectorNumber]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -1755,7 +1756,7 @@ var StateSectorCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.Args().Len() != 2 {
-			return xerrors.Errorf("expected 2 params")
+			return xerrors.Errorf("expected 2 params: minerAddress and sectorNumber")
 		}
 
 		ts, err := LoadTipSet(ctx, cctx, api)
