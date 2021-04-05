@@ -2,8 +2,6 @@ package settler
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"sync"
 
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -58,7 +56,7 @@ func SettlePaymentChannels(mctx helpers.MetricsCtx, lc fx.Lifecycle, papi API) e
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			pcs := newPaymentChannelSettler(ctx, &papi)
-			ev := events.NewEvents(ctx, api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), &papi).(events.EventAPI))
+			ev := events.NewEvents(ctx, papi)
 			return ev.Called(pcs.check, pcs.messageHandler, pcs.revertHandler, int(build.MessageConfidence+1), events.NoTimeout, pcs.matcher)
 		},
 	})

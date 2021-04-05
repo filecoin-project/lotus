@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -122,7 +123,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 
 		node.MockHost(mn),
 
-		node.Override(new(api.FullNode), tnd),
+		node.Override(new(v1api.FullNode), tnd),
 		node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, act)),
 
 		opts,

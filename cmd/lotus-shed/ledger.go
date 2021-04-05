@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/api/v0api"
 	"strconv"
 	"strings"
+
+	"github.com/filecoin-project/lotus/api/v0api"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"

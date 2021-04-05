@@ -5,9 +5,6 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/api/v1api"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -57,7 +54,7 @@ func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi ful
 	capi := &clientApi{chain, stateapi, mpool}
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	ev := events.NewEvents(ctx, api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), capi).(events.EventAPI))
+	ev := events.NewEvents(ctx, capi)
 	a := &ClientNodeAdapter{
 		clientApi: capi,
 
@@ -65,7 +62,7 @@ func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi ful
 		ev:        ev,
 		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi))),
 	}
-	a.scMgr = NewSectorCommittedManager(ev, api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), a).(sealing.CurrentDealInfoTskAPI), &apiWrapper{api: capi})
+	a.scMgr = NewSectorCommittedManager(ev, a, &apiWrapper{api: capi})
 	return a
 }
 

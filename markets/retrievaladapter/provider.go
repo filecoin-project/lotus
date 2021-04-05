@@ -4,10 +4,11 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/lotus/api/v1api"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
@@ -26,12 +27,12 @@ var log = logging.Logger("retrievaladapter")
 type retrievalProviderNode struct {
 	miner  *storage.Miner
 	sealer sectorstorage.SectorManager
-	full   v0api.FullNode
+	full   v1api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(miner *storage.Miner, sealer sectorstorage.SectorManager, full v0api.FullNode) retrievalmarket.RetrievalProviderNode {
+func NewRetrievalProviderNode(miner *storage.Miner, sealer sectorstorage.SectorManager, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{miner, sealer, full}
 }
 

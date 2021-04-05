@@ -5,6 +5,8 @@ import (
 	"math"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -583,12 +585,16 @@ func (me *messageEvents) Called(check CheckFunc, msgHnd MsgHandler, rev RevertHa
 			panic("expected msg")
 		}
 
-		rec, err := me.cs.StateGetReceipt(me.ctx, msg.Cid(), ts.Key())
+		ml, err := me.cs.StateSearchMsg(me.ctx, ts.Key(), msg.Cid(), stmgr.LookbackNoLimit, true)
 		if err != nil {
 			return false, err
 		}
 
-		return msgHnd(msg, rec, ts, height)
+		if ml == nil {
+			return msgHnd(msg, nil, ts, height)
+		}
+
+		return msgHnd(msg, &ml.Receipt, ts, height)
 	}
 
 	id, err := me.hcAPI.onHeadChanged(check, hnd, rev, confidence, timeout)
