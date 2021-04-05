@@ -3,6 +3,7 @@ package cliutil
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"net/http"
 	"net/url"
 	"os"
@@ -185,6 +186,19 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 	}
 
 	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
+}
+
+func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(v1api.FullNode), func() {}, nil
+	}
+
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewFullNodeRPCV1(ctx.Context, addr, headers)
 }
 
 type GetStorageMinerOptions struct {

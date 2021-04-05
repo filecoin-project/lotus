@@ -6,12 +6,11 @@ package cli
 
 import (
 	context "context"
-	reflect "reflect"
-
 	go_address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	gomock "github.com/golang/mock/gomock"
 	go_cid "github.com/ipfs/go-cid"
+	reflect "reflect"
 )
 
 // MockServicesAPI is a mock of ServicesAPI interface

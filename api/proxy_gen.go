@@ -493,8 +493,6 @@ type GatewayStruct struct {
 
 		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) ``
 
-		StateGetReceipt func(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) ``
-
 		StateListMiners func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) ``
 
 		StateLookupID func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
@@ -511,13 +509,13 @@ type GatewayStruct struct {
 
 		StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) ``
 
-		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*MsgLookup, error) ``
+		StateSearchMsg func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
 
 		StateSectorGetInfo func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) ``
 
 		StateVerifiedClientStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
 
-		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*MsgLookup, error) ``
+		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
 	}
 }
 
@@ -2507,14 +2505,6 @@ func (s *GatewayStub) StateGetActor(p0 context.Context, p1 address.Address, p2 t
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *GatewayStruct) StateGetReceipt(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) {
-	return s.Internal.StateGetReceipt(p0, p1, p2)
-}
-
-func (s *GatewayStub) StateGetReceipt(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) {
-	return nil, xerrors.New("method not supported")
-}
-
 func (s *GatewayStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
 	return s.Internal.StateListMiners(p0, p1)
 }
@@ -2579,11 +2569,11 @@ func (s *GatewayStub) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey
 	return *new(apitypes.NetworkVersion), xerrors.New("method not supported")
 }
 
-func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*MsgLookup, error) {
-	return s.Internal.StateSearchMsg(p0, p1)
+func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	return s.Internal.StateSearchMsg(p0, p1, p2, p3, p4)
 }
 
-func (s *GatewayStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*MsgLookup, error) {
+func (s *GatewayStub) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
 	return nil, xerrors.New("method not supported")
 }
 
@@ -2603,11 +2593,11 @@ func (s *GatewayStub) StateVerifiedClientStatus(p0 context.Context, p1 address.A
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*MsgLookup, error) {
-	return s.Internal.StateWaitMsg(p0, p1, p2)
+func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	return s.Internal.StateWaitMsg(p0, p1, p2, p3, p4)
 }
 
-func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*MsgLookup, error) {
+func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
 	return nil, xerrors.New("method not supported")
 }
 
