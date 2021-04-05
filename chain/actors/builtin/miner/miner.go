@@ -50,6 +50,7 @@ var FaultDeclarationCutoff = miner0.FaultDeclarationCutoff
 const MinSectorExpiration = miner0.MinSectorExpiration
 
 // Not used / checked in v0
+// TODO: Abstract over network versions
 var DeclarationsMax = miner2.DeclarationsMax
 var AddressedSectorsMax = miner2.AddressedSectorsMax
 
