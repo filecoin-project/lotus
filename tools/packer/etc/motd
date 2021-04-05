@@ -52,6 +52,13 @@ You only need to do this once, after which, you can enable and start the miner.
 
 
 
+Do you want to access your lotus daemon remotely? Learn how to setup token authentication
+and use client libraries from lotus docs.
+
+https://docs.filecoin.io/build/lotus/enable-remote-api-access/
+
+
+
 For more information, see             https://docs.filecoin.io/
 Found a bug? let us know!             https://github.com/filecoin-project/lotus
 Chat with us on slack!                https://filecoinproject.slack.com/archives/CEGN061C5

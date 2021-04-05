@@ -358,6 +358,15 @@ jobs:
           command: |
             curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
             chmod +x /usr/local/bin/jq
+      - run:
+          name: Install hwloc
+          command: |
+            mkdir ~/hwloc
+            curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
+            cd ~/hwloc
+            tar -xvzpf hwloc-2.4.1.tar.gz
+            cd hwloc-2.4.1
+            ./configure && make && sudo make install
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
@@ -408,9 +417,18 @@ jobs:
     steps:
       - install-deps
       - prepare
+      - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
+      - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
+      - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker
       - run: make deps
       - run: make docsgen
+      - run: zcat build/openrpc/full.json.gz | jq > ../post-openrpc-full
+      - run: zcat build/openrpc/miner.json.gz | jq > ../post-openrpc-miner
+      - run: zcat build/openrpc/worker.json.gz | jq > ../post-openrpc-worker
       - run: git --no-pager diff
+      - run: diff ../pre-openrpc-full ../post-openrpc-full
+      - run: diff ../pre-openrpc-miner ../post-openrpc-miner
+      - run: diff ../pre-openrpc-worker ../post-openrpc-worker
       - run: git --no-pager diff --quiet
 
   lint: &lint

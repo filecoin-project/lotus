@@ -7,16 +7,16 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var logCmd = &cli.Command{
+var LogCmd = &cli.Command{
 	Name:  "log",
 	Usage: "Manage logging",
 	Subcommands: []*cli.Command{
-		logList,
-		logSetLevel,
+		LogList,
+		LogSetLevel,
 	},
 }
 
-var logList = &cli.Command{
+var LogList = &cli.Command{
 	Name:  "list",
 	Usage: "List log systems",
 	Action: func(cctx *cli.Context) error {
@@ -41,7 +41,7 @@ var logList = &cli.Command{
 	},
 }
 
-var logSetLevel = &cli.Command{
+var LogSetLevel = &cli.Command{
 	Name:      "set-level",
 	Usage:     "Set log level",
 	ArgsUsage: "[level]",

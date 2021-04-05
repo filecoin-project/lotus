@@ -24,19 +24,19 @@ func MetricedFullAPI(a api.FullNode) api.FullNode {
 	return &out
 }
 
-func MetricedWorkerAPI(a api.WorkerAPI) api.WorkerAPI {
+func MetricedWorkerAPI(a api.Worker) api.Worker {
 	var out apistruct.WorkerStruct
 	proxy(a, &out.Internal)
 	return &out
 }
 
-func MetricedWalletAPI(a api.WalletAPI) api.WalletAPI {
+func MetricedWalletAPI(a api.Wallet) api.Wallet {
 	var out apistruct.WalletStruct
 	proxy(a, &out.Internal)
 	return &out
 }
 
-func MetricedGatewayAPI(a api.GatewayAPI) api.GatewayAPI {
+func MetricedGatewayAPI(a api.Gateway) api.Gateway {
 	var out apistruct.GatewayStruct
 	proxy(a, &out.Internal)
 	return &out

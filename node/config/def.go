@@ -236,6 +236,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
 			WaitDealsDelay:            Duration(time.Hour * 6),
+			AlwaysKeepUnsealedCopy:    true,
 		},
 
 		Storage: sectorstorage.SealerConfig{

@@ -25,9 +25,10 @@ import (
 )
 
 const (
-	ChainFinality          = miner3.ChainFinality
-	SealRandomnessLookback = ChainFinality
-	PaychSettleDelay       = paych3.SettleDelay
+	ChainFinality                  = miner3.ChainFinality
+	SealRandomnessLookback         = ChainFinality
+	PaychSettleDelay               = paych3.SettleDelay
+	MaxPreCommitRandomnessLookback = builtin3.EpochsInDay + SealRandomnessLookback
 )
 
 // SetSupportedProofTypes sets supported proof types, across all actor versions.
@@ -134,6 +135,10 @@ func DealProviderCollateralBounds(
 	default:
 		panic("unsupported network version")
 	}
+}
+
+func DealDurationBounds(pieceSize abi.PaddedPieceSize) (min, max abi.ChainEpoch) {
+	return market2.DealDurationBounds(pieceSize)
 }
 
 // Sets the challenge window and scales the proving period to match (such that

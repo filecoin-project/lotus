@@ -56,12 +56,12 @@ var GetStorageMinerAPI = cliutil.GetStorageMinerAPI
 var GetWorkerAPI = cliutil.GetWorkerAPI
 
 var CommonCommands = []*cli.Command{
-	netCmd,
-	authCmd,
-	logCmd,
-	waitApiCmd,
-	fetchParamCmd,
-	pprofCmd,
+	NetCmd,
+	AuthCmd,
+	LogCmd,
+	WaitApiCmd,
+	FetchParamCmd,
+	PprofCmd,
 	VersionCmd,
 }
 
@@ -71,16 +71,16 @@ var Commands = []*cli.Command{
 	WithCategory("basic", clientCmd),
 	WithCategory("basic", multisigCmd),
 	WithCategory("basic", paychCmd),
-	WithCategory("developer", authCmd),
-	WithCategory("developer", mpoolCmd),
-	WithCategory("developer", stateCmd),
-	WithCategory("developer", chainCmd),
-	WithCategory("developer", logCmd),
-	WithCategory("developer", waitApiCmd),
-	WithCategory("developer", fetchParamCmd),
-	WithCategory("network", netCmd),
-	WithCategory("network", syncCmd),
-	pprofCmd,
+	WithCategory("developer", AuthCmd),
+	WithCategory("developer", MpoolCmd),
+	WithCategory("developer", StateCmd),
+	WithCategory("developer", ChainCmd),
+	WithCategory("developer", LogCmd),
+	WithCategory("developer", WaitApiCmd),
+	WithCategory("developer", FetchParamCmd),
+	WithCategory("network", NetCmd),
+	WithCategory("network", SyncCmd),
+	PprofCmd,
 	VersionCmd,
 }
 

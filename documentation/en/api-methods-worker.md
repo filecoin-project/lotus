@@ -40,7 +40,7 @@
 
 
 ### Enabled
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -81,7 +81,7 @@ Response:
 ```
 
 ### Info
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -102,7 +102,7 @@ Response:
 ```
 
 ### Paths
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -139,7 +139,6 @@ Inputs: `null`
 Response: `"07070707-0707-0707-0707-070707070707"`
 
 ### Version
-TODO: Info() (name, ...) ?
 
 
 Perms: admin
@@ -152,6 +151,7 @@ Response: `65792`
 
 
 ### AddPiece
+storiface.WorkerCalls
 
 
 Perms: admin
@@ -488,7 +488,7 @@ Response: `{}`
 
 
 ### StorageAddLocal
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -505,7 +505,7 @@ Response: `{}`
 
 
 ### TaskDisable
-There are not yet any comments for this method.
+
 
 Perms: admin
 
@@ -519,7 +519,7 @@ Inputs:
 Response: `{}`
 
 ### TaskEnable
-There are not yet any comments for this method.
+
 
 Perms: admin
 

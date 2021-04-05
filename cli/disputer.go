@@ -35,7 +35,7 @@ type minerDeadline struct {
 	index uint64
 }
 
-var chainDisputeSetCmd = &cli.Command{
+var ChainDisputeSetCmd = &cli.Command{
 	Name:  "disputer",
 	Usage: "interact with the window post disputer",
 	Flags: []cli.Flag{

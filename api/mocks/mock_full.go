@@ -9,6 +9,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	multistore "github.com/filecoin-project/go-multistore"
@@ -18,6 +19,7 @@ import (
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
 	api "github.com/filecoin-project/lotus/api"
+	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
@@ -444,6 +446,20 @@ func (mr *MockFullNodeMockRecorder) ClientCancelDataTransfer(arg0, arg1, arg2, a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCancelDataTransfer", reflect.TypeOf((*MockFullNode)(nil).ClientCancelDataTransfer), arg0, arg1, arg2, arg3)
 }
 
+// ClientCancelRetrievalDeal mocks base method
+func (m *MockFullNode) ClientCancelRetrievalDeal(arg0 context.Context, arg1 retrievalmarket.DealID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientCancelRetrievalDeal", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClientCancelRetrievalDeal indicates an expected call of ClientCancelRetrievalDeal
+func (mr *MockFullNodeMockRecorder) ClientCancelRetrievalDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCancelRetrievalDeal", reflect.TypeOf((*MockFullNode)(nil).ClientCancelRetrievalDeal), arg0, arg1)
+}
+
 // ClientDataTransferUpdates mocks base method
 func (m *MockFullNode) ClientDataTransferUpdates(arg0 context.Context) (<-chan api.DataTransferChannel, error) {
 	m.ctrl.T.Helper()
@@ -754,6 +770,21 @@ func (mr *MockFullNodeMockRecorder) ClientStartDeal(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientStartDeal", reflect.TypeOf((*MockFullNode)(nil).ClientStartDeal), arg0, arg1)
 }
 
+// ClientStatelessDeal mocks base method
+func (m *MockFullNode) ClientStatelessDeal(arg0 context.Context, arg1 *api.StartDealParams) (*cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientStatelessDeal", arg0, arg1)
+	ret0, _ := ret[0].(*cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientStatelessDeal indicates an expected call of ClientStatelessDeal
+func (mr *MockFullNodeMockRecorder) ClientStatelessDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientStatelessDeal", reflect.TypeOf((*MockFullNode)(nil).ClientStatelessDeal), arg0, arg1)
+}
+
 // Closing mocks base method
 func (m *MockFullNode) Closing(arg0 context.Context) (<-chan struct{}, error) {
 	m.ctrl.T.Helper()
@@ -781,6 +812,21 @@ func (m *MockFullNode) CreateBackup(arg0 context.Context, arg1 string) error {
 func (mr *MockFullNodeMockRecorder) CreateBackup(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBackup", reflect.TypeOf((*MockFullNode)(nil).CreateBackup), arg0, arg1)
+}
+
+// Discover mocks base method
+func (m *MockFullNode) Discover(arg0 context.Context) (apitypes.OpenRPCDocument, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Discover", arg0)
+	ret0, _ := ret[0].(apitypes.OpenRPCDocument)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Discover indicates an expected call of Discover
+func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discover", reflect.TypeOf((*MockFullNode)(nil).Discover), arg0)
 }
 
 // GasEstimateFeeCap mocks base method

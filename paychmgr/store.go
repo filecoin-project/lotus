@@ -14,14 +14,12 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	dsq "github.com/ipfs/go-datastore/query"
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")
@@ -30,8 +28,7 @@ type Store struct {
 	ds datastore.Batching
 }
 
-func NewStore(ds dtypes.MetadataDS) *Store {
-	ds = namespace.Wrap(ds, datastore.NewKey("/paych/"))
+func NewStore(ds datastore.Batching) *Store {
 	return &Store{
 		ds: ds,
 	}
