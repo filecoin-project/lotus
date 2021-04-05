@@ -2,7 +2,7 @@
 
 # 1.6.0 / 2021-04-05
 
-This is the second release candidate for Lotus v1.6.0. The primary change included in this release is introducing network version 11, which implements [FIP-0014](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0014.md).
+This is a mandatory release of Lotus that upgrades the network to version 11, which implements [FIP-0014](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0014.md). The network will upgrade at height 665280, which is 2021-04-12T22:00:00Z.
 
 ## v1 sector extension CLI
 
