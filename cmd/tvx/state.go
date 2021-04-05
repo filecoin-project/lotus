@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"io"
 	"log"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/ipld/go-car"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/lotus/api"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -23,13 +23,13 @@ import (
 // StateSurgeon is an object used to fetch and manipulate state.
 type StateSurgeon struct {
 	ctx    context.Context
-	api    api.FullNode
+	api    v0api.FullNode
 	stores *Stores
 }
 
 // NewSurgeon returns a state surgeon, an object used to fetch and manipulate
 // state.
-func NewSurgeon(ctx context.Context, api api.FullNode, stores *Stores) *StateSurgeon {
+func NewSurgeon(ctx context.Context, api v0api.FullNode, stores *Stores) *StateSurgeon {
 	return &StateSurgeon{
 		ctx:    ctx,
 		api:    api,
@@ -85,7 +85,7 @@ func (sg *StateSurgeon) GetMaskedStateTree(previousRoot cid.Cid, retain []addres
 
 // GetAccessedActors identifies the actors that were accessed during the
 // execution of a message.
-func (sg *StateSurgeon) GetAccessedActors(ctx context.Context, a api.FullNode, mid cid.Cid) ([]address.Address, error) {
+func (sg *StateSurgeon) GetAccessedActors(ctx context.Context, a v0api.FullNode, mid cid.Cid) ([]address.Address, error) {
 	log.Printf("calculating accessed actors during execution of message: %s", mid)
 	msgInfo, err := a.StateSearchMsg(ctx, mid)
 	if err != nil {

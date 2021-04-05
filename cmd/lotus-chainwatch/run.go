@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/processor"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/scheduler"
@@ -44,7 +44,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		var api api.FullNode
+		var api v0api.FullNode
 		var closer jsonrpc.ClientCloser
 		var err error
 		if tokenMaddr := cctx.String("api"); tokenMaddr != "" {
