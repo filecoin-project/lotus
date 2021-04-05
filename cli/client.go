@@ -311,6 +311,10 @@ var clientDealCmd = &cli.Command{
 			Name:  "manual-piece-size",
 			Usage: "if manually specifying piece cid, used to specify size (dataCid must be to a car file)",
 		},
+		&cli.BoolFlag{
+			Name:  "manual-stateless-deal",
+			Usage: "instructs the node to send an offline deal without registering it with the deallist/fsm",
+		},
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "specify address to fund the deal with",
@@ -447,7 +451,7 @@ var clientDealCmd = &cli.Command{
 			isVerified = verifiedDealParam
 		}
 
-		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
+		sdParams := &lapi.StartDealParams{
 			Data:               ref,
 			Wallet:             a,
 			Miner:              miner,
@@ -457,7 +461,18 @@ var clientDealCmd = &cli.Command{
 			FastRetrieval:      cctx.Bool("fast-retrieval"),
 			VerifiedDeal:       isVerified,
 			ProviderCollateral: provCol,
-		})
+		}
+
+		var proposal *cid.Cid
+		if cctx.Bool("manual-stateless-deal") {
+			if ref.TransferType != storagemarket.TTManual {
+				return xerrors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
+			}
+			proposal, err = api.ClientStatelessDeal(ctx, sdParams)
+		} else {
+			proposal, err = api.ClientStartDeal(ctx, sdParams)
+		}
+
 		if err != nil {
 			return err
 		}

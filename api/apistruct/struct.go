@@ -163,6 +163,7 @@ type FullNodeStruct struct {
 		ClientFindData                            func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error)                                 `perm:"read"`
 		ClientMinerQueryOffer                     func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error)            `perm:"read"`
 		ClientStartDeal                           func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                                          `perm:"admin"`
+		ClientStatelessDeal                       func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                                          `perm:"write"`
 		ClientGetDealInfo                         func(context.Context, cid.Cid) (*api.DealInfo, error)                                                             `perm:"read"`
 		ClientGetDealStatus                       func(context.Context, uint64) (string, error)                                                                     `perm:"read"`
 		ClientListDeals                           func(ctx context.Context) ([]api.DealInfo, error)                                                                 `perm:"write"`
@@ -602,6 +603,10 @@ func (c *FullNodeStruct) ClientMinerQueryOffer(ctx context.Context, miner addres
 
 func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
 	return c.Internal.ClientStartDeal(ctx, params)
+}
+
+func (c *FullNodeStruct) ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
+	return c.Internal.ClientStatelessDeal(ctx, params)
 }
 
 func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*api.DealInfo, error) {

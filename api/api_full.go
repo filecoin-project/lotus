@@ -289,6 +289,8 @@ type FullNode interface {
 	ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error
 	// ClientStartDeal proposes a deal with a miner.
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)
+	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
+	ClientStatelessDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
 	// ClientListDeals returns information about the deals made by the local client.
