@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
 // ctx context.Context, api lapi.FullNode, addr address.Address, peerid peer.ID
 func restore(ctx context.Context, cctx *cli.Context, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi miner.MinerInfo) error) error {
 	if cctx.Args().Len() != 1 {
@@ -244,7 +245,6 @@ func restore(ctx context.Context, cctx *cli.Context, manageConfig func(*config.S
 
 	return after(api, maddr, peerid, mi)
 }
-
 
 var initRestoreCmd = &cli.Command{
 	Name:  "restore",

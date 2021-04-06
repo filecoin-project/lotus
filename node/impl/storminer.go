@@ -50,45 +50,45 @@ type StorageMinerAPI struct {
 	common.CommonAPI
 
 	// Markets
-	PieceStore        dtypes.ProviderPieceStore `optional:"true"`
-	StorageProvider   storagemarket.StorageProvider `optional:"true"`
+	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
+	StorageProvider   storagemarket.StorageProvider     `optional:"true"`
 	RetrievalProvider retrievalmarket.RetrievalProvider `optional:"true"`
-	DataTransfer  dtypes.ProviderDataTransfer `optional:"true"`
-	DealPublisher *storageadapter.DealPublisher `optional:"true"`
-	SectorBlocks *sectorblocks.SectorBlocks `optional:"true"`
+	DataTransfer      dtypes.ProviderDataTransfer       `optional:"true"`
+	DealPublisher     *storageadapter.DealPublisher     `optional:"true"`
+	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
 
 	// Miner / storage
-	Miner             *storage.Miner
-	BlockMiner        *miner.Miner
-	Full              api.FullNode
-	StorageMgr        *sectorstorage.Manager `optional:"true"`
-	IStorageMgr       sectorstorage.SectorManager
+	Miner       *storage.Miner
+	BlockMiner  *miner.Miner
+	Full        api.FullNode
+	StorageMgr  *sectorstorage.Manager `optional:"true"`
+	IStorageMgr sectorstorage.SectorManager
 	*stores.Index
 	storiface.WorkerReturn
-	Host          host.Host
-	AddrSel       *storage.AddressSelector
+	Host    host.Host
+	AddrSel *storage.AddressSelector
 
 	Epp gen.WinningPoStProver
 	DS  dtypes.MetadataDS
 
-	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc `optional:"true"`
-	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc `optional:"true"`
-	ConsiderOnlineRetrievalDealsConfigFunc      dtypes.ConsiderOnlineRetrievalDealsConfigFunc `optional:"true"`
-	SetConsiderOnlineRetrievalDealsConfigFunc   dtypes.SetConsiderOnlineRetrievalDealsConfigFunc `optional:"true"`
-	StorageDealPieceCidBlocklistConfigFunc      dtypes.StorageDealPieceCidBlocklistConfigFunc `optional:"true"`
-	SetStorageDealPieceCidBlocklistConfigFunc   dtypes.SetStorageDealPieceCidBlocklistConfigFunc `optional:"true"`
-	ConsiderOfflineStorageDealsConfigFunc       dtypes.ConsiderOfflineStorageDealsConfigFunc `optional:"true"`
-	SetConsiderOfflineStorageDealsConfigFunc    dtypes.SetConsiderOfflineStorageDealsConfigFunc `optional:"true"`
-	ConsiderOfflineRetrievalDealsConfigFunc     dtypes.ConsiderOfflineRetrievalDealsConfigFunc `optional:"true"`
-	SetConsiderOfflineRetrievalDealsConfigFunc  dtypes.SetConsiderOfflineRetrievalDealsConfigFunc `optional:"true"`
-	ConsiderVerifiedStorageDealsConfigFunc      dtypes.ConsiderVerifiedStorageDealsConfigFunc `optional:"true"`
-	SetConsiderVerifiedStorageDealsConfigFunc   dtypes.SetConsiderVerifiedStorageDealsConfigFunc `optional:"true"`
-	ConsiderUnverifiedStorageDealsConfigFunc    dtypes.ConsiderUnverifiedStorageDealsConfigFunc `optional:"true"`
+	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
+	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc     `optional:"true"`
+	ConsiderOnlineRetrievalDealsConfigFunc      dtypes.ConsiderOnlineRetrievalDealsConfigFunc      `optional:"true"`
+	SetConsiderOnlineRetrievalDealsConfigFunc   dtypes.SetConsiderOnlineRetrievalDealsConfigFunc   `optional:"true"`
+	StorageDealPieceCidBlocklistConfigFunc      dtypes.StorageDealPieceCidBlocklistConfigFunc      `optional:"true"`
+	SetStorageDealPieceCidBlocklistConfigFunc   dtypes.SetStorageDealPieceCidBlocklistConfigFunc   `optional:"true"`
+	ConsiderOfflineStorageDealsConfigFunc       dtypes.ConsiderOfflineStorageDealsConfigFunc       `optional:"true"`
+	SetConsiderOfflineStorageDealsConfigFunc    dtypes.SetConsiderOfflineStorageDealsConfigFunc    `optional:"true"`
+	ConsiderOfflineRetrievalDealsConfigFunc     dtypes.ConsiderOfflineRetrievalDealsConfigFunc     `optional:"true"`
+	SetConsiderOfflineRetrievalDealsConfigFunc  dtypes.SetConsiderOfflineRetrievalDealsConfigFunc  `optional:"true"`
+	ConsiderVerifiedStorageDealsConfigFunc      dtypes.ConsiderVerifiedStorageDealsConfigFunc      `optional:"true"`
+	SetConsiderVerifiedStorageDealsConfigFunc   dtypes.SetConsiderVerifiedStorageDealsConfigFunc   `optional:"true"`
+	ConsiderUnverifiedStorageDealsConfigFunc    dtypes.ConsiderUnverifiedStorageDealsConfigFunc    `optional:"true"`
 	SetConsiderUnverifiedStorageDealsConfigFunc dtypes.SetConsiderUnverifiedStorageDealsConfigFunc `optional:"true"`
-	SetSealingConfigFunc                        dtypes.SetSealingConfigFunc `optional:"true"`
-	GetSealingConfigFunc                        dtypes.GetSealingConfigFunc `optional:"true"`
-	GetExpectedSealDurationFunc                 dtypes.GetExpectedSealDurationFunc `optional:"true"`
-	SetExpectedSealDurationFunc                 dtypes.SetExpectedSealDurationFunc `optional:"true"`
+	SetSealingConfigFunc                        dtypes.SetSealingConfigFunc                        `optional:"true"`
+	GetSealingConfigFunc                        dtypes.GetSealingConfigFunc                        `optional:"true"`
+	GetExpectedSealDurationFunc                 dtypes.GetExpectedSealDurationFunc                 `optional:"true"`
+	SetExpectedSealDurationFunc                 dtypes.SetExpectedSealDurationFunc                 `optional:"true"`
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {

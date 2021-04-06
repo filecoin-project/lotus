@@ -47,12 +47,12 @@ type StorageMiner struct {
 }
 
 type MinerSubsystemConfig struct {
-	EnableMining bool
-	EnableSealing bool
+	EnableMining        bool
+	EnableSealing       bool
 	EnableSectorStorage bool
 	EnableStorageMarket bool
 
-	SealerApiInfo string // if EnableSealing == false
+	SealerApiInfo      string // if EnableSealing == false
 	SectorIndexApiInfo string // if EnableSectorStorage == false
 }
 

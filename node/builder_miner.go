@@ -34,7 +34,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
-
 var MinerNode = Options(
 	// API dependencies
 	Override(new(api.Common), From(new(common.CommonAPI))),
@@ -49,7 +48,6 @@ var MinerNode = Options(
 	// Mining / proving
 	Override(new(*storage.AddressSelector), modules.AddressSelector(nil)),
 )
-
 
 func ConfigStorageMiner(c interface{}) Option {
 	cfg, ok := c.(*config.StorageMiner)
@@ -179,4 +177,3 @@ func StorageMiner(out *api.StorageMiner) Option {
 		},
 	)
 }
-

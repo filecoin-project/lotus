@@ -49,13 +49,13 @@ var initServiceCmd = &cli.Command{
 	Usage: "Initialize a lotus miner sub-service",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "config",
-			Usage: "config file (config.toml)",
+			Name:     "config",
+			Usage:    "config file (config.toml)",
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "storage-config",
-			Usage: "storage paths config (storage.json)",
+			Name:     "storage-config",
+			Usage:    "storage paths config (storage.json)",
 			Required: true,
 		},
 		&cli.BoolFlag{
@@ -64,16 +64,16 @@ var initServiceCmd = &cli.Command{
 		},
 
 		&cli.BoolFlag{
-			Name: "enable-market",
+			Name:  "enable-market",
 			Usage: "enable market module",
 		},
 
 		&cli.StringFlag{
-			Name: "api-sealer",
+			Name:  "api-sealer",
 			Usage: "sealer API info (lotus-miner auth api-info --perm=admin)",
 		},
 		&cli.StringFlag{
-			Name: "api-sector-index",
+			Name:  "api-sector-index",
 			Usage: "sector Index API info (lotus-miner auth api-info --perm=admin)",
 		},
 	},
