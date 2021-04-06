@@ -3,11 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/filecoin-project/lotus/api/v0api"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"strings"
+
+	"github.com/filecoin-project/lotus/api/v0api"
 
 	_ "github.com/lib/pq"
 

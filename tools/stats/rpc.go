@@ -2,7 +2,6 @@ package stats
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api/v0api"
 	"net/http"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"

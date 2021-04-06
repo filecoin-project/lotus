@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -26,6 +25,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"

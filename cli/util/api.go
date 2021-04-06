@@ -3,7 +3,6 @@ package cliutil
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 

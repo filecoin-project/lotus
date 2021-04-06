@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/api/v0api"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/filecoin-project/lotus/api/v0api"
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"

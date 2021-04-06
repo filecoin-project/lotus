@@ -5,9 +5,10 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/api/v0api"
 	"io"
 	"log"
+
+	"github.com/filecoin-project/lotus/api/v0api"
 
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-address"

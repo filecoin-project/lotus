@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/filecoin-project/lotus/api/v1api"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 

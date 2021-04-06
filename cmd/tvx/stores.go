@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api/v0api"
 	"log"
 	"sync"
+
+	"github.com/filecoin-project/lotus/api/v0api"
 
 	"github.com/fatih/color"
 	dssync "github.com/ipfs/go-datastore/sync"
