@@ -208,6 +208,18 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 	return cs
 }
 
+// NoteTipSetVisit is an extra indirection centralising the visit-notice
+// calls to a single spot where we can proxy these notices to a chainstore
+// capable of recording/tracking such information.
+//
+// FIXME - ideally this should be replaced by something like the internal
+// SubscribeHeadChanges(), but it needs to be way more granular ( we care
+// about *visits*, not only changes) and must be _completely_ lossless and
+// therefore blocking for SQLotus to work sensibly.
+func (cs *ChainStore) NoteTipSetVisit(ctx context.Context, ts *types.TipSet, isHeadChange bool) error {
+	return nil
+}
+
 func (cs *ChainStore) Close() error {
 	cs.cancelFn()
 	cs.wg.Wait()
@@ -564,6 +576,10 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) error {
 	_, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
 	defer span.End()
+
+	if err := cs.NoteTipSetVisit(ctx, ts, true); err != nil {
+		return err
+	}
 
 	if cs.heaviest != nil { // buf
 		if len(cs.reorgCh) > 0 {
