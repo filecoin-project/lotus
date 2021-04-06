@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 )

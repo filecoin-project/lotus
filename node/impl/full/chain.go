@@ -18,7 +18,7 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"

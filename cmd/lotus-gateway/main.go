@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats/view"
 
 	"github.com/gorilla/mux"

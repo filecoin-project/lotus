@@ -13,7 +13,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/polydawn/refmt/cbor"
 	"github.com/urfave/cli/v2"

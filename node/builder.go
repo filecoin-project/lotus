@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/system"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"

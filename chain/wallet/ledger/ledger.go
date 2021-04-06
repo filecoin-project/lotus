@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
 	"golang.org/x/xerrors"
 
