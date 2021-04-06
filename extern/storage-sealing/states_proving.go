@@ -11,6 +11,25 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
+func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInfo) error {
+	// TODO: track sector health / expiration
+	log.Infof("Proving sector %d", sector.SectorNumber)
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting sealing config: %w", err)
+	}
+
+	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+		log.Error(err)
+	}
+
+	// TODO: Watch termination
+	// TODO: Auto-extend if set
+
+	return nil
+}
+
 func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: noop because this is now handled by the PoSt scheduler. We can reuse
 	//  this state for tracking faulty sectors, or remove it when that won't be

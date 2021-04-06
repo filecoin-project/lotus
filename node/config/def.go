@@ -38,11 +38,22 @@ type Backup struct {
 type StorageMiner struct {
 	Common
 
+	Subsystems MinerSubsystemConfig
 	Dealmaking DealmakingConfig
 	Sealing    SealingConfig
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
 	Addresses  MinerAddressConfig
+}
+
+type MinerSubsystemConfig struct {
+	EnableMining bool
+	EnableSealing bool
+	EnableSectorStorage bool
+	EnableStorageMarket bool
+
+	SealerApiInfo string // if EnableSealing == false
+	SectorIndexApiInfo string // if EnableSectorStorage == false
 }
 
 type DealmakingConfig struct {
@@ -230,6 +241,13 @@ func DefaultFullNode() *FullNode {
 func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),
+
+		Subsystems: MinerSubsystemConfig{
+			EnableMining:        true,
+			EnableSealing:       true,
+			EnableSectorStorage: true,
+			EnableStorageMarket: true,
+		},
 
 		Sealing: SealingConfig{
 			MaxWaitDealsSectors:       2, // 64G with 32G sectors
