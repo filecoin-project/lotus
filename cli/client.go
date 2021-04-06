@@ -1296,7 +1296,8 @@ var clientListAsksCmd = &cli.Command{
 	Usage: "List asks for top miners",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "by-ping",
+			Name:  "by-ping",
+			Usage: "sort by ping",
 		},
 		&cli.StringFlag{
 			Name:  "output-format",
@@ -1445,23 +1446,18 @@ loop:
 					return
 				}
 
+				rt := time.Now()
 				ask, err := api.ClientQueryAsk(ctx, *mi.PeerId, miner)
 				if err != nil {
 					return
 				}
-
-				rt := time.Now()
-
-				_, err = api.ClientQueryAsk(ctx, *mi.PeerId, miner)
-				if err != nil {
-					return
-				}
+				pingDuration := time.Now().Sub(rt)
 
 				atomic.AddInt64(&got, 1)
 				lk.Lock()
 				asks = append(asks, QueriedAsk{
 					Ask:  ask,
-					Ping: time.Now().Sub(rt),
+					Ping: pingDuration,
 				})
 				lk.Unlock()
 			}(miner)
