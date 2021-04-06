@@ -133,7 +133,7 @@ func DealProviderCollateralBounds(
 	case actors.Version3:
 		return market3.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
 	default:
-		panic("unsupported network version")
+		panic("unsupported actors version")
 	}
 }
 
@@ -195,4 +195,39 @@ func GetDefaultSectorSize() abi.SectorSize {
 	})
 
 	return szs[0]
+}
+
+func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) abi.ChainEpoch {
+	if nwVer <= network.Version10 {
+		return builtin3.SealProofPoliciesV0[proof].SectorMaxLifetime
+	}
+
+	return builtin3.SealProofPoliciesV11[proof].SectorMaxLifetime
+}
+
+func GetAddressedSectorsMax(nwVer network.Version) int {
+	switch actors.VersionForNetwork(nwVer) {
+	case actors.Version0:
+		return miner0.AddressedSectorsMax
+	case actors.Version2:
+		return miner2.AddressedSectorsMax
+	case actors.Version3:
+		return miner3.AddressedSectorsMax
+	default:
+		panic("unsupported network version")
+	}
+}
+
+func GetDeclarationsMax(nwVer network.Version) int {
+	switch actors.VersionForNetwork(nwVer) {
+	case actors.Version0:
+		// TODO: Should we instead panic here since the concept doesn't exist yet?
+		return miner0.AddressedPartitionsMax
+	case actors.Version2:
+		return miner2.DeclarationsMax
+	case actors.Version3:
+		return miner3.DeclarationsMax
+	default:
+		panic("unsupported network version")
+	}
 }

@@ -39,6 +39,7 @@ const UpgradeClausHeight = 250
 const UpgradeOrangeHeight = 300
 
 const UpgradeActorsV3Height = 600
+const UpgradeNorwegianHeight = 999999
 
 func init() {
 	// Minimum block production power is set to 4 TiB
