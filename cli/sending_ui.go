@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	types "github.com/filecoin-project/lotus/chain/types"
 	"github.com/gdamore/tcell/v2"
 	cid "github.com/ipfs/go-cid"
@@ -44,6 +45,7 @@ func InteractiveSend(ctx context.Context, cctx *cli.Context, srv ServicesAPI,
 }
 
 var interactiveSolves = map[api.CheckStatusCode]bool{
+	api.CheckStatusMessageMinBaseFee:        true,
 	api.CheckStatusMessageBaseFee:           true,
 	api.CheckStatusMessageBaseFeeLowerBound: true,
 	api.CheckStatusMessageBaseFeeUpperBound: true,
@@ -142,6 +144,10 @@ func isFeeCapProblem(checkGroups [][]api.MessageCheckStatus, protoCid cid.Cid) (
 				}
 			}
 		}
+	}
+	if baseFee.IsZero() {
+		// this will only be the case if failing check is: MessageMinBaseFee
+		baseFee = big.NewInt(build.MinimumBaseFee)
 	}
 
 	return yes, baseFee
@@ -246,10 +252,10 @@ func feeUI(baseFee abi.TokenAmount, gasLimit int64, maxFee *abi.TokenAmount, sen
 		}
 		row += 2
 
-		t.Label(0, row, fmt.Sprintf("Current Base Fee is: %s", types.FIL(baseFee)), defS)
+		t.Label(0, row, fmt.Sprintf("Current Base Fee is: %s", types.FIL(baseFee).Nano()), defS)
 		row++
 		t.Label(0, row, fmt.Sprintf("Resulting FeeCap is: %s",
-			types.FIL(big.Div(*maxFee, big.NewInt(gasLimit)))), defS)
+			types.FIL(big.Div(*maxFee, big.NewInt(gasLimit))).Nano()), defS)
 		row++
 		t.Label(0, row, "You can use '+' and '-' to adjust the fee.", defS)
 
