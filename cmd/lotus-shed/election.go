@@ -142,7 +142,7 @@ var electionBacktest = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "count",
-			Usage: "blockchain count",
+			Usage: "number of won elections to look for",
 			Value: 120,
 		},
 	},
@@ -222,8 +222,5 @@ func backTestWinner(ctx context.Context, miner address.Address, round abi.ChainE
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
 
-	if winner == nil {
-		return nil, nil
-	}
 	return winner, nil
 }
