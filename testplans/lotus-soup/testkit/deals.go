@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 
@@ -45,7 +46,7 @@ func WaitDealSealed(t *TestEnvironment, ctx context.Context, client api.FullNode
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	tipsetsCh, err := tstats.GetTips(cctx, client, abi.ChainEpoch(height), headlag)
+	tipsetsCh, err := tstats.GetTips(cctx, &v0api.WrapperV1Full{FullNode: client}, abi.ChainEpoch(height), headlag)
 	if err != nil {
 		panic(err)
 	}

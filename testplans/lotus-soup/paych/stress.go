@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
@@ -136,7 +137,7 @@ func runSender(ctx context.Context, t *testkit.TestEnvironment, clients []*testk
 	t.RecordMessage("waiting for payment channel message to appear on chain")
 
 	// wait for the channel creation message to appear on chain.
-	_, err = cl.FullApi.StateWaitMsg(ctx, channel.WaitSentinel, 2)
+	_, err = cl.FullApi.StateWaitMsg(ctx, channel.WaitSentinel, 2, api.LookbackNoLimit, true)
 	if err != nil {
 		return fmt.Errorf("failed while waiting for payment channel creation msg to appear on chain: %w", err)
 	}
@@ -285,7 +286,7 @@ func runReceiver(t *testkit.TestEnvironment, ctx context.Context, cl *testkit.Lo
 	time.Sleep(5 * time.Second)
 
 	t.RecordMessage("waiting for confirmation of settle message on chain: %s", settleMsgCid)
-	_, err = cl.FullApi.StateWaitMsg(ctx, settleMsgCid, 10)
+	_, err = cl.FullApi.StateWaitMsg(ctx, settleMsgCid, 10, api.LookbackNoLimit, true)
 	if err != nil {
 		return fmt.Errorf("failed to wait for settle message: %w", err)
 	}
