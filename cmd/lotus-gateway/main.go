@@ -104,7 +104,7 @@ var runCmd = &cli.Command{
 			rpcServer := jsonrpc.NewServer(serverOptions...)
 			rpcServer.Register("Filecoin", hnd)
 
-			mux.Handle("/rpc/v1", rpcServer)
+			mux.Handle(path, rpcServer)
 		}
 
 		ma := metrics.MetricedGatewayAPI(NewGatewayAPI(api))
