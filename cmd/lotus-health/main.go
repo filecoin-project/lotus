@@ -9,7 +9,7 @@ import (
 	"time"
 
 	cid "github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-jsonrpc"
