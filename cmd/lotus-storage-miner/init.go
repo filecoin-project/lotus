@@ -316,10 +316,10 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
-					DealInfo: &sealing.DealInfo{
+					DealInfo: &lapi.PieceDealInfo{
 						DealID:       dealID,
 						DealProposal: &sector.Deal,
-						DealSchedule: sealing.DealSchedule{
+						DealSchedule: lapi.DealSchedule{
 							StartEpoch: sector.Deal.StartEpoch,
 							EndEpoch:   sector.Deal.EndEpoch,
 						},
@@ -453,14 +453,22 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
-			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), sectorstorage.SealerConfig{
+			si := stores.NewIndex()
+
+			lstor, err := stores.NewLocal(ctx, lr, si, nil)
+			if err != nil {
+				return err
+			}
+			stor := stores.NewRemote(lstor, si, nil, 10)
+
+			smgr, err := sectorstorage.New(ctx, lstor, stor, lr, si, sectorstorage.SealerConfig{
 				ParallelFetchLimit: 10,
 				AllowAddPiece:      true,
 				AllowPreCommit1:    true,
 				AllowPreCommit2:    true,
 				AllowCommit:        true,
 				AllowUnseal:        true,
-			}, nil, sa, wsts, smsts)
+			}, sa, wsts, smsts)
 			if err != nil {
 				return err
 			}

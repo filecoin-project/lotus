@@ -25,8 +25,6 @@ import (
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -135,12 +133,12 @@ func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) (abi.SectorID, erro
 	// wait for the sector to enter the Packing state
 	// TODO: instead of polling implement some pubsub-type thing in storagefsm
 	for {
-		info, err := sm.Miner.GetSectorInfo(sr.ID.Number)
+		info, err := sm.Miner.SectorsStatus(ctx, sr.ID.Number, false)
 		if err != nil {
 			return abi.SectorID{}, xerrors.Errorf("getting pledged sector info: %w", err)
 		}
 
-		if info.State != sealing.UndefinedSectorState {
+		if info.State != api.SectorState(sealing.UndefinedSectorState) {
 			return sr.ID, nil
 		}
 
@@ -153,60 +151,9 @@ func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) (abi.SectorID, erro
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
-	info, err := sm.Miner.GetSectorInfo(sid)
+	sInfo, err := sm.Miner.SectorsStatus(ctx, sid, false)
 	if err != nil {
 		return api.SectorInfo{}, err
-	}
-
-	deals := make([]abi.DealID, len(info.Pieces))
-	for i, piece := range info.Pieces {
-		if piece.DealInfo == nil {
-			continue
-		}
-		deals[i] = piece.DealInfo.DealID
-	}
-
-	log := make([]api.SectorLog, len(info.Log))
-	for i, l := range info.Log {
-		log[i] = api.SectorLog{
-			Kind:      l.Kind,
-			Timestamp: l.Timestamp,
-			Trace:     l.Trace,
-			Message:   l.Message,
-		}
-	}
-
-	sInfo := api.SectorInfo{
-		SectorID: sid,
-		State:    api.SectorState(info.State),
-		CommD:    info.CommD,
-		CommR:    info.CommR,
-		Proof:    info.Proof,
-		Deals:    deals,
-		Ticket: api.SealTicket{
-			Value: info.TicketValue,
-			Epoch: info.TicketEpoch,
-		},
-		Seed: api.SealSeed{
-			Value: info.SeedValue,
-			Epoch: info.SeedEpoch,
-		},
-		PreCommitMsg: info.PreCommitMessage,
-		CommitMsg:    info.CommitMessage,
-		Retries:      info.InvalidProofs,
-		ToUpgrade:    sm.Miner.IsMarkedForUpgrade(sid),
-
-		LastErr: info.LastErr,
-		Log:     log,
-		// on chain info
-		SealProof:          0,
-		Activation:         0,
-		Expiration:         0,
-		DealWeight:         big.Zero(),
-		VerifiedDealWeight: big.Zero(),
-		InitialPledge:      big.Zero(),
-		OnTime:             0,
-		Early:              0,
 	}
 
 	if !showOnChainInfo {
@@ -235,6 +182,10 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 	sInfo.Early = ex.Early
 
 	return sInfo, nil
+}
+
+func (sm *StorageMinerAPI) SectorsUnsealPiece(ctx context.Context, sector sto.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
+	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, offset, size, randomness, commd)
 }
 
 // List all staged sectors
@@ -666,7 +617,7 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 	var rg storiface.RGetter
 	if expensive {
 		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, error) {
-			si, err := sm.Miner.GetSectorInfo(id.Number)
+			si, err := sm.Miner.SectorsStatus(ctx, id.Number, false)
 			if err != nil {
 				return cid.Undef, err
 			}

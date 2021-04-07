@@ -679,6 +679,8 @@ type StorageMinerStruct struct {
 
 		SectorsSummary func(p0 context.Context) (map[SectorState]int, error) `perm:"read"`
 
+		SectorsUnsealPiece func(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error `perm:"admin"`
+
 		SectorsUpdate func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error `perm:"admin"`
 
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
@@ -3185,6 +3187,14 @@ func (s *StorageMinerStruct) SectorsSummary(p0 context.Context) (map[SectorState
 
 func (s *StorageMinerStub) SectorsSummary(p0 context.Context) (map[SectorState]int, error) {
 	return *new(map[SectorState]int), xerrors.New("method not supported")
+}
+
+func (s *StorageMinerStruct) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5)
+}
+
+func (s *StorageMinerStub) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+	return xerrors.New("method not supported")
 }
 
 func (s *StorageMinerStruct) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error {

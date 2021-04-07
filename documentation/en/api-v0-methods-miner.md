@@ -114,6 +114,7 @@
   * [SectorsRefs](#SectorsRefs)
   * [SectorsStatus](#SectorsStatus)
   * [SectorsSummary](#SectorsSummary)
+  * [SectorsUnsealPiece](#SectorsUnsealPiece)
   * [SectorsUpdate](#SectorsUpdate)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
@@ -1813,6 +1814,30 @@ Response:
   "Proving": 120
 }
 ```
+
+### SectorsUnsealPiece
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  1040384,
+  1024,
+  null,
+  null
+]
+```
+
+Response: `{}`
 
 ### SectorsUpdate
 

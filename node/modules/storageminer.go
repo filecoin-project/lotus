@@ -67,7 +67,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -632,42 +631,45 @@ func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dt
 	}
 }
 
+func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
+	return rmnet.NewFromLibp2pHost(h)
+}
+
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host,
-	miner *storage.Miner,
-	sealer sectorstorage.SectorManager,
-	full v1api.FullNode,
+func RetrievalProvider(
+	maddr dtypes.MinerAddress,
+	adapter retrievalmarket.RetrievalProviderNode,
+	netwk rmnet.RetrievalMarketNetwork,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
 	mds dtypes.StagingMultiDstore,
 	dt dtypes.ProviderDataTransfer,
-	onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
 	userFilter dtypes.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
-	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
-
-	maddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
-	}
-
-	netwk := rmnet.NewFromLibp2pHost(h)
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-
-	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
+	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
 }
 
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
 var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
+
+func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, urls stores.URLs) (*stores.Local, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	return stores.NewLocal(ctx, ls, si, urls)
+}
+
+func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.StorageAuth, sc sectorstorage.SealerConfig) *stores.Remote {
+	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit)
+}
+
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
 	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sectorstorage.New(ctx, ls, si, sc, urls, sa, wsts, smsts)
+	sst, err := sectorstorage.New(ctx, lstor, stor, ls, si, sc, sa, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}
