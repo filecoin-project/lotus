@@ -8,9 +8,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -58,6 +60,10 @@ func ConfigStorageMiner(c interface{}) Option {
 	return Options(
 		ConfigCommon(&cfg.Common),
 
+		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+		Override(new(*stores.Local), modules.LocalStorage),
+		Override(new(*stores.Remote), modules.RemoteStorage),
+
 		If(!cfg.Subsystems.EnableMining,
 			If(cfg.Subsystems.EnableSealing, Error(xerrors.Errorf("sealing can only be enabled on a mining node"))),
 			If(cfg.Subsystems.EnableSectorStorage, Error(xerrors.Errorf("sealing can only be enabled on a mining node"))),
@@ -90,18 +96,21 @@ func ConfigStorageMiner(c interface{}) Option {
 			// Sector storage
 			Override(new(*stores.Index), stores.NewIndex),
 			Override(new(stores.SectorIndex), From(new(*stores.Index))),
-			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
+			Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 			Override(new(storiface.WorkerReturn), From(new(sectorstorage.SectorManager))),
 		),
 
 		If(!cfg.Subsystems.EnableSectorStorage,
 			Override(new(modules.MinerStorageService), modules.ConnectStorageService(cfg.Subsystems.SectorIndexApiInfo)),
+			Override(new(sectorstorage.Unsealer), From(new(modules.MinerStorageService))),
+			Override(new(sectorblocks.SectorBuilder), From(new(modules.MinerStorageService))),
 		),
 		If(!cfg.Subsystems.EnableSealing,
 			Override(new(modules.MinerSealingService), modules.ConnectSealingService(cfg.Subsystems.SealerApiInfo)),
-			Override(new(sectorblocks.SectorBuilder), From(new(modules.MinerSealingService))),
+			Override(new(stores.SectorIndex), From(new(modules.MinerSealingService))),
+
 		),
 
 		If(cfg.Subsystems.EnableStorageMarket,
@@ -113,7 +122,13 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
+			// Markets (retrieval deps)
+			Override(new(*sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
+
 			// Markets (retrieval)
+
+			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
+			Override(new(rmnet.RetrievalMarketNetwork), modules.RetrievalNetwork),
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),

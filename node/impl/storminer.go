@@ -191,6 +191,10 @@ func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.Unp
 	return sm.Miner.SectorAddPieceToAny(ctx, size, r, d)
 }
 
+func (sm *StorageMinerAPI) SectorsUnsealPiece(ctx context.Context, sector sto.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
+	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, offset, size, randomness, commd)
+}
+
 // List all staged sectors
 func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, error) {
 	sectors, err := sm.Miner.ListSectors()
