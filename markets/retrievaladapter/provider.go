@@ -46,7 +46,7 @@ func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, min
 }
 
 func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
-	si, err := rpn.miner.GetSectorInfo(sectorID)
+	si, err := rpn.miner.SectorsStatus(ctx, sectorID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
 		},
-		ProofType: si.SectorType,
+		ProofType: si.SealProof,
 	}
 
 	// Set up a pipe so that data can be written from the unsealing process
@@ -73,7 +73,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 			commD = *si.CommD
 		}
 		// Read the piece into the pipe's writer, unsealing the piece if necessary
-		err := rpn.sealer.ReadPiece(ctx, w, ref, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
+		err := rpn.sealer.ReadPiece(ctx, w, ref, storiface.UnpaddedByteIndex(offset), length, si.Ticket.Value, commD)
 		if err != nil {
 			log.Errorf("failed to unseal piece from sector %d: %s", sectorID, err)
 		}

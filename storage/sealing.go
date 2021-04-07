@@ -2,9 +2,11 @@ package storage
 
 import (
 	"context"
-	"io"
-
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -19,8 +21,72 @@ func (m *Miner) Address() address.Address {
 	return m.sealing.Address()
 }
 
-func (m *Miner) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d sealing.DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
-	return m.sealing.AddPieceToAnySector(ctx, size, r, d)
+func (m *Miner) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storage.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
+	return m.sealing.SectorAddPieceToAny(ctx, size, r, d)
+}
+
+func (m *Miner) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
+	if showOnChainInfo {
+		return api.SectorInfo{}, xerrors.Errorf("on-chain info not supported")
+	}
+
+	info, err := m.sealing.GetSectorInfo(sid)
+	if err != nil {
+		return api.SectorInfo{}, err
+	}
+
+	deals := make([]abi.DealID, len(info.Pieces))
+	for i, piece := range info.Pieces {
+		if piece.DealInfo == nil {
+			continue
+		}
+		deals[i] = piece.DealInfo.DealID
+	}
+
+	log := make([]api.SectorLog, len(info.Log))
+	for i, l := range info.Log {
+		log[i] = api.SectorLog{
+			Kind:      l.Kind,
+			Timestamp: l.Timestamp,
+			Trace:     l.Trace,
+			Message:   l.Message,
+		}
+	}
+
+	sInfo := api.SectorInfo{
+		SectorID: sid,
+		State:    api.SectorState(info.State),
+		CommD:    info.CommD,
+		CommR:    info.CommR,
+		Proof:    info.Proof,
+		Deals:    deals,
+		Ticket: api.SealTicket{
+			Value: info.TicketValue,
+			Epoch: info.TicketEpoch,
+		},
+		Seed: api.SealSeed{
+			Value: info.SeedValue,
+			Epoch: info.SeedEpoch,
+		},
+		PreCommitMsg: info.PreCommitMessage,
+		CommitMsg:    info.CommitMessage,
+		Retries:      info.InvalidProofs,
+		ToUpgrade:    m.IsMarkedForUpgrade(sid),
+
+		LastErr: info.LastErr,
+		Log:     log,
+		// on chain info
+		SealProof:          0,
+		Activation:         0,
+		Expiration:         0,
+		DealWeight:         big.Zero(),
+		VerifiedDealWeight: big.Zero(),
+		InitialPledge:      big.Zero(),
+		OnTime:             0,
+		Early:              0,
+	}
+
+	return sInfo, nil
 }
 
 func (m *Miner) StartPackingSector(sectorNum abi.SectorNumber) error {
@@ -29,10 +95,6 @@ func (m *Miner) StartPackingSector(sectorNum abi.SectorNumber) error {
 
 func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {
 	return m.sealing.ListSectors()
-}
-
-func (m *Miner) GetSectorInfo(sid abi.SectorNumber) (sealing.SectorInfo, error) {
-	return m.sealing.GetSectorInfo(sid)
 }
 
 func (m *Miner) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
@@ -66,3 +128,5 @@ func (m *Miner) MarkForUpgrade(id abi.SectorNumber) error {
 func (m *Miner) IsMarkedForUpgrade(id abi.SectorNumber) bool {
 	return m.sealing.IsMarkedForUpgrade(id)
 }
+
+var _ sectorblocks.SectorBuilder = &Miner{}

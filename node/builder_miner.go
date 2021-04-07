@@ -83,6 +83,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
+			Override(new(sectorblocks.SectorBuilder), From(new(*storage.Miner))),
 		),
 
 		If(cfg.Subsystems.EnableSectorStorage,
@@ -93,6 +94,14 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 			Override(new(storiface.WorkerReturn), From(new(sectorstorage.SectorManager))),
+		),
+
+		If(!cfg.Subsystems.EnableSectorStorage,
+			Override(new(modules.MinerStorageService), modules.ConnectStorageService(cfg.Subsystems.SectorIndexApiInfo)),
+		),
+		If(!cfg.Subsystems.EnableSealing,
+			Override(new(modules.MinerSealingService), modules.ConnectSealingService(cfg.Subsystems.SealerApiInfo)),
+			Override(new(sectorblocks.SectorBuilder), From(new(modules.MinerSealingService))),
 		),
 
 		If(cfg.Subsystems.EnableStorageMarket,

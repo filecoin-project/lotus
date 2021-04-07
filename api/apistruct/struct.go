@@ -639,6 +639,8 @@ type StorageMinerStruct struct {
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
+		SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 api.PieceDealInfo) (api.SectorOffset, error) `perm:"admin"`
+
 		SectorGetExpectedSealDuration func(p0 context.Context) (time.Duration, error) `perm:"read"`
 
 		SectorGetSealDelay func(p0 context.Context) (time.Duration, error) `perm:"read"`
@@ -1921,6 +1923,10 @@ func (s *StorageMinerStruct) SealingAbort(p0 context.Context, p1 storiface.CallI
 
 func (s *StorageMinerStruct) SealingSchedDiag(p0 context.Context, p1 bool) (interface{}, error) {
 	return s.Internal.SealingSchedDiag(p0, p1)
+}
+
+func (s *StorageMinerStruct) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 api.PieceDealInfo) (api.SectorOffset, error) {
+	return s.Internal.SectorAddPieceToAny(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStruct) SectorGetExpectedSealDuration(p0 context.Context) (time.Duration, error) {

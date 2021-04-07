@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/api"
 	"sort"
 	"time"
 
@@ -224,34 +225,34 @@ func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorIn
 	return nil
 }
 
-func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal DealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
+func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
 	log.Infof("Adding piece for deal %d (publish msg: %s)", deal.DealID, deal.PublishCid)
 	if (padreader.PaddedSize(uint64(size))) != size {
-		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
+		return api.SectorOffset{}, xerrors.Errorf("cannot allocate unpadded piece")
 	}
 
 	sp, err := m.currentSealProof(ctx)
 	if err != nil {
-		return 0, 0, xerrors.Errorf("getting current seal proof type: %w", err)
+		return api.SectorOffset{}, xerrors.Errorf("getting current seal proof type: %w", err)
 	}
 
 	ssize, err := sp.SectorSize()
 	if err != nil {
-		return 0, 0, err
+		return api.SectorOffset{}, err
 	}
 
 	if size > abi.PaddedPieceSize(ssize).Unpadded() {
-		return 0, 0, xerrors.Errorf("piece cannot fit into a sector")
+		return api.SectorOffset{}, xerrors.Errorf("piece cannot fit into a sector")
 	}
 
 	if _, err := deal.DealProposal.Cid(); err != nil {
-		return 0, 0, xerrors.Errorf("getting proposal CID: %w", err)
+		return api.SectorOffset{}, xerrors.Errorf("getting proposal CID: %w", err)
 	}
 
 	m.inputLk.Lock()
 	if _, exist := m.pendingPieces[proposalCID(deal)]; exist {
 		m.inputLk.Unlock()
-		return 0, 0, xerrors.Errorf("piece for deal %s already pending", proposalCID(deal))
+		return api.SectorOffset{}, xerrors.Errorf("piece for deal %s already pending", proposalCID(deal))
 	}
 
 	resCh := make(chan struct {
@@ -283,7 +284,7 @@ func (m *Sealing) AddPieceToAnySector(ctx context.Context, size abi.UnpaddedPiec
 
 	res := <-resCh
 
-	return res.sn, res.offset.Padded(), res.err
+	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 
 // called with m.inputLk
@@ -425,7 +426,7 @@ func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sid), SectorStartPacking{})
 }
 
-func proposalCID(deal DealInfo) cid.Cid {
+func proposalCID(deal api.PieceDealInfo) cid.Cid {
 	pc, err := deal.DealProposal.Cid()
 	if err != nil {
 		log.Errorf("DealProposal.Cid error: %+v", err)

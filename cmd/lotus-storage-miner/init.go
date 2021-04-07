@@ -311,10 +311,10 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
-					DealInfo: &sealing.DealInfo{
+					DealInfo: &lapi.PieceDealInfo{
 						DealID:       dealID,
 						DealProposal: &sector.Deal,
-						DealSchedule: sealing.DealSchedule{
+						DealSchedule: lapi.DealSchedule{
 							StartEpoch: sector.Deal.StartEpoch,
 							EndEpoch:   sector.Deal.EndEpoch,
 						},

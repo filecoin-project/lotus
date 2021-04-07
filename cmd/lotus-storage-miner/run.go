@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -164,10 +165,12 @@ var runCmd = &cli.Command{
 
 		mux := mux.NewRouter()
 
-		rpcServer := jsonrpc.NewServer()
+		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
+		rpcServer := jsonrpc.NewServer(readerServerOpt)
 		rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(metrics.MetricedStorMinerAPI(minerapi)))
 
 		mux.Handle("/rpc/v0", rpcServer)
+		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
 		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
 		mux.Handle("/debug/metrics", metrics.Exporter())
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof

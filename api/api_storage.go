@@ -43,6 +43,11 @@ type StorageMiner interface {
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error) //perm:read
 
+	// Add piece to an open sector. If no sectors with enough space are open,
+	// either a new sector will be created, or this call will block until more
+	// sectors can be created.
+	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storage.Data, d PieceDealInfo) (SectorOffset, error) //perm:admin
+
 	// List all staged sectors
 	SectorsList(context.Context) ([]abi.SectorNumber, error) //perm:read
 
@@ -277,4 +282,26 @@ type PendingDealInfo struct {
 	Deals              []market.ClientDealProposal
 	PublishPeriodStart time.Time
 	PublishPeriod      time.Duration
+}
+
+type SectorOffset struct {
+	Sector abi.SectorNumber
+	Offset abi.PaddedPieceSize
+}
+
+// DealInfo is a tuple of deal identity and its schedule
+type PieceDealInfo struct {
+	PublishCid   *cid.Cid
+	DealID       abi.DealID
+	DealProposal *market.DealProposal
+	DealSchedule DealSchedule
+	KeepUnsealed bool
+}
+
+// DealSchedule communicates the time interval of a storage deal. The deal must
+// appear in a sealed (proven) sector no later than StartEpoch, otherwise it
+// is invalid.
+type DealSchedule struct {
+	StartEpoch abi.ChainEpoch
+	EndEpoch   abi.ChainEpoch
 }
