@@ -607,20 +607,6 @@ func (m *Manager) ReturnFetch(ctx context.Context, callID storiface.CallID, err 
 	return m.returnResult(ctx, callID, nil, err)
 }
 
-func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
-	l, err := m.localStore.Local(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	out := map[stores.ID]string{}
-	for _, st := range l {
-		out[st.ID] = st.LocalPath
-	}
-
-	return out, nil
-}
-
 func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
 	return m.storage.FsStat(ctx, id)
 }

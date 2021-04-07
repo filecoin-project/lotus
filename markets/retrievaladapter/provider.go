@@ -2,6 +2,7 @@ package retrievaladapter
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -73,7 +74,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 	// Read the piece into the pipe's writer, unsealing the piece if necessary
 	r, unsealed, err := rpn.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.Ticket.Value, commD)
 	if err != nil {
-		log.Errorf("failed to unseal piece from sector %d: %s", sectorID, err)
+		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)
 	}
 	_ = unsealed // todo: use
 

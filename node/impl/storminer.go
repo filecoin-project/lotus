@@ -47,6 +47,10 @@ import (
 type StorageMinerAPI struct {
 	common.CommonAPI
 
+	Full        api.FullNode
+	LocalStore *stores.Local
+	ReboteStore    *stores.Remote
+
 	// Markets
 	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
 	StorageProvider   storagemarket.StorageProvider     `optional:"true"`
@@ -56,17 +60,16 @@ type StorageMinerAPI struct {
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
 
 	// Miner / storage
-	Miner       *storage.Miner
-	BlockMiner  *miner.Miner
-	Full        api.FullNode
+	Miner       *storage.Miner  `optional:"true"`
+	BlockMiner  *miner.Miner  `optional:"true"`
 	StorageMgr  *sectorstorage.Manager `optional:"true"`
-	IStorageMgr sectorstorage.SectorManager
-	*stores.Index
-	storiface.WorkerReturn
+	IStorageMgr sectorstorage.SectorManager`optional:"true"`
+	stores.SectorIndex
+	storiface.WorkerReturn`optional:"true"`
 	Host    host.Host
 	AddrSel *storage.AddressSelector
 
-	Epp gen.WinningPoStProver
+	Epp gen.WinningPoStProver`optional:"true"`
 	DS  dtypes.MetadataDS
 
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
@@ -257,7 +260,17 @@ func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorSt
 }
 
 func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
-	return sm.StorageMgr.StorageLocal(ctx)
+	l, err := sm.LocalStore.Local(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[stores.ID]string{}
+	for _, st := range l {
+		out[st.ID] = st.LocalPath
+	}
+
+	return out, nil
 }
 
 func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
@@ -277,7 +290,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 }
 
 func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
-	return sm.StorageMgr.FsStat(ctx, id)
+	return sm.ReboteStore.FsStat(ctx, id)
 }
 
 func (sm *StorageMinerAPI) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {
