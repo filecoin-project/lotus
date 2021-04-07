@@ -110,7 +110,6 @@ func ConfigStorageMiner(c interface{}) Option {
 		If(!cfg.Subsystems.EnableSealing,
 			Override(new(modules.MinerSealingService), modules.ConnectSealingService(cfg.Subsystems.SealerApiInfo)),
 			Override(new(stores.SectorIndex), From(new(modules.MinerSealingService))),
-
 		),
 
 		If(cfg.Subsystems.EnableStorageMarket,

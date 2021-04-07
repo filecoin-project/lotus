@@ -48,8 +48,8 @@ type StorageMinerAPI struct {
 	common.CommonAPI
 
 	Full        api.FullNode
-	LocalStore *stores.Local
-	ReboteStore    *stores.Remote
+	LocalStore  *stores.Local
+	ReboteStore *stores.Remote
 
 	// Markets
 	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
@@ -60,16 +60,16 @@ type StorageMinerAPI struct {
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
 
 	// Miner / storage
-	Miner       *storage.Miner  `optional:"true"`
-	BlockMiner  *miner.Miner  `optional:"true"`
-	StorageMgr  *sectorstorage.Manager `optional:"true"`
-	IStorageMgr sectorstorage.SectorManager`optional:"true"`
+	Miner       *storage.Miner              `optional:"true"`
+	BlockMiner  *miner.Miner                `optional:"true"`
+	StorageMgr  *sectorstorage.Manager      `optional:"true"`
+	IStorageMgr sectorstorage.SectorManager `optional:"true"`
 	stores.SectorIndex
-	storiface.WorkerReturn`optional:"true"`
-	Host    host.Host
-	AddrSel *storage.AddressSelector
+	storiface.WorkerReturn `optional:"true"`
+	Host                   host.Host
+	AddrSel                *storage.AddressSelector
 
-	Epp gen.WinningPoStProver`optional:"true"`
+	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
 
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
