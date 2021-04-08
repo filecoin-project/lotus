@@ -72,7 +72,8 @@ Testing an RC:
     - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
     - [ ] TODO: Other docs checks?
   - [ ] Invite the wider community through (link to the release issue):
-    - [ ] TODO: How should we announce this?
+    - [ ] Create a lotus disucssion, example [here](https://github.com/filecoin-project/lotus/discussions/5595)
+    - [ ] Link the disucssion in #fil-lotus on Filecoin slack
     
 - [ ] **Stage 4 - Release**
   - [ ] Final preparation
