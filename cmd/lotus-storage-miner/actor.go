@@ -66,7 +66,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return cli.ShowSubcommandHelp(cctx)
 		}
 		if len(args) > 0 && unset {
-			return fmt.Errorf("unset should with no arguments")
+			return fmt.Errorf("unset can only be used with no arguments")
 		}
 
 		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
