@@ -85,7 +85,8 @@ Testing an RC:
     - [ ] Cut the release on Github.
     - [ ] Final announcements
         - [ ] Update network.filecoin.io
-        - [ ] TODO: What / where else?
+        - [ ] Add a comment when the final release is tagged, example [here](https://github.com/filecoin-project/lotus/discussions/5905#discussioncomment-571752)
+        - [ ] repost in #fil-lotus in filecoin slack
 
 - [ ] **Post-Release**
   - [ ] Merge the `releases` branch back into `master`, ignoring the changes to `version.go` (keep the `-dev` version from master).
