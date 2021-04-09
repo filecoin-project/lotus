@@ -90,6 +90,7 @@ var sigsVerifyBlsMsgsCmd = &cli.Command{
 			return xerrors.New("bls aggregate signature failed to verify")
 		}
 
+		fmt.Println("BLS siggys valid!")
 		return nil
 	},
 }
