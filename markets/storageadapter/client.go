@@ -212,7 +212,13 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	return res.IDs[dealIdx], nil
 }
 
-const clientOverestimation = 2
+var clientOverestimation = struct {
+	numerator   int64
+	denominator int64
+}{
+	numerator:   12,
+	denominator: 10,
+}
 
 func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
 	bounds, err := c.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
@@ -220,7 +226,9 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	return big.Mul(bounds.Min, big.NewInt(clientOverestimation)), bounds.Max, nil
+	min := big.Mul(bounds.Min, big.NewInt(clientOverestimation.numerator))
+	min = big.Div(min, big.NewInt(clientOverestimation.denominator))
+	return min, bounds.Max, nil
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
