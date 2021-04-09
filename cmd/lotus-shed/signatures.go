@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/lib/sigs"
 
@@ -18,6 +22,75 @@ var signaturesCmd = &cli.Command{
 	Usage: "tools involving signatures",
 	Subcommands: []*cli.Command{
 		sigsVerifyVoteCmd,
+		sigsVerifyBlsMsgsCmd,
+	},
+}
+
+var sigsVerifyBlsMsgsCmd = &cli.Command{
+	Name:        "verify-bls",
+	Description: "given a block, verifies the bls signature of the messages in the block",
+	Usage:       "<blockCid>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("usage: <blockCid>")
+		}
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		bc, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		b, err := api.ChainGetBlock(ctx, bc)
+		if err != nil {
+			return err
+		}
+
+		ms, err := api.ChainGetBlockMessages(ctx, bc)
+		if err != nil {
+			return err
+		}
+
+		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
+		var pubks [][]byte
+
+		for _, m := range ms.BlsMessages {
+			sigCids = append(sigCids, m.Cid())
+
+			if m.From.Protocol() != address.BLS {
+				return xerrors.Errorf("address must be BLS address")
+			}
+
+			pubks = append(pubks, m.From.Payload())
+		}
+
+		msgsS := make([]ffi.Message, len(sigCids))
+		pubksS := make([]ffi.PublicKey, len(sigCids))
+		for i := 0; i < len(sigCids); i++ {
+			msgsS[i] = sigCids[i].Bytes()
+			copy(pubksS[i][:], pubks[i][:ffi.PublicKeyBytes])
+		}
+
+		sigS := new(ffi.Signature)
+		copy(sigS[:], b.BLSAggregate.Data[:ffi.SignatureBytes])
+
+		if len(sigCids) == 0 {
+			return nil
+		}
+
+		valid := ffi.HashVerify(sigS, msgsS, pubksS)
+		if !valid {
+			return xerrors.New("bls aggregate signature failed to verify")
+		}
+
+		return nil
 	},
 }
 
