@@ -53,8 +53,22 @@ var actorSetAddrsCmd = &cli.Command{
 			Usage: "set gas limit",
 			Value: 0,
 		},
+		&cli.BoolFlag{
+			Name:  "unset",
+			Usage: "unset address",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		args := cctx.Args().Slice()
+		unset := cctx.Bool("unset")
+		if len(args) == 0 && !unset {
+			return cli.ShowSubcommandHelp(cctx)
+		}
+		if len(args) > 0 && unset {
+			return fmt.Errorf("unset can only be used with no arguments")
+		}
+
 		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -70,7 +84,7 @@ var actorSetAddrsCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		var addrs []abi.Multiaddrs
-		for _, a := range cctx.Args().Slice() {
+		for _, a := range args {
 			maddr, err := ma.NewMultiaddr(a)
 			if err != nil {
 				return fmt.Errorf("failed to parse %q as a multiaddr: %w", a, err)
