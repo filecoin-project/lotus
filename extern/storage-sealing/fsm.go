@@ -242,7 +242,15 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	p := fsmPlanners[state.State]
 	if p == nil {
-		return nil, 0, xerrors.Errorf("planner for state %s not found", state.State)
+		if len(events) == 1 {
+			if _, ok := events[0].User.(globalMutator); ok {
+				p = planOne() // in case we're in a really weird state, allow restart / update state / remove
+			}
+		}
+
+		if p == nil {
+			return nil, 0, xerrors.Errorf("planner for state %s not found", state.State)
+		}
 	}
 
 	processed, err := p(events, state)
