@@ -52,6 +52,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 
 	return v
 }
+
 func main() {
 	// latest (v1)
 	if err := generate("./api", "api", "api", "./api/proxy_gen.go"); err != nil {
@@ -143,10 +144,10 @@ func generate(path, pkg, outpkg, outfile string) error {
 	ast.Walk(v, ap)
 
 	type methodInfo struct {
-		Name                             string
-		node                             ast.Node
-		Tags                             map[string][]string
-		NamedParams, ParamNames, Results string
+		Name                                     string
+		node                                     ast.Node
+		Tags                                     map[string][]string
+		NamedParams, ParamNames, Results, DefRes string
 	}
 
 	type strinfo struct {
@@ -214,13 +215,31 @@ func generate(path, pkg, outpkg, outfile string) error {
 						}
 					}
 
-					var results []string
+					results := []string{}
 					for _, result := range node.ftype.Results.List {
 						rs, err := typeName(result.Type, outpkg)
 						if err != nil {
 							return err
 						}
 						results = append(results, rs)
+					}
+
+					defRes := ""
+					if len(results) > 1 {
+						defRes = results[0]
+						switch {
+						case defRes[0] == '*' || defRes[0] == '<', defRes == "interface{}":
+							defRes = "nil"
+						case defRes == "bool":
+							defRes = "false"
+						case defRes == "string":
+							defRes = `""`
+						case defRes == "int", defRes == "int64", defRes == "uint64", defRes == "uint":
+							defRes = "0"
+						default:
+							defRes = "*new(" + defRes + ")"
+						}
+						defRes += ", "
 					}
 
 					info.Methods[mname] = &methodInfo{
@@ -230,6 +249,7 @@ func generate(path, pkg, outpkg, outfile string) error {
 						NamedParams: strings.Join(params, ", "),
 						ParamNames:  strings.Join(pnames, ", "),
 						Results:     strings.Join(results, ", "),
+						DefRes:      defRes,
 					}
 				}
 
@@ -289,6 +309,12 @@ type {{.Name}}Struct struct {
 {{end}}
 	}
 }
+
+type {{.Name}}Stub struct {
+{{range .Include}}
+	{{.}}Stub
+{{end}}
+}
 {{end}}
 
 {{range .Infos}}
@@ -296,6 +322,10 @@ type {{.Name}}Struct struct {
 {{range .Methods}}
 func (s *{{$name}}Struct) {{.Name}}({{.NamedParams}}) ({{.Results}}) {
 	return s.Internal.{{.Name}}({{.ParamNames}})
+}
+
+func (s *{{$name}}Stub) {{.Name}}({{.NamedParams}}) ({{.Results}}) {
+	return {{.DefRes}}xerrors.New("method not supported")
 }
 {{end}}
 {{end}}

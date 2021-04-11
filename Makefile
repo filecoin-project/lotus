@@ -233,6 +233,13 @@ testground:
 .PHONY: testground
 BINS+=testground
 
+
+tvx:
+	rm -f tvx
+	go build -o tvx ./cmd/tvx
+.PHONY: tvx
+BINS+=tvx
+
 install-chainwatch: lotus-chainwatch
 	install -C ./lotus-chainwatch /usr/local/bin/lotus-chainwatch
 

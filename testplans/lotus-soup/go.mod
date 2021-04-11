@@ -8,7 +8,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drand/drand v1.2.1
 	github.com/filecoin-project/go-address v0.0.5
-	github.com/filecoin-project/go-fil-markets v1.1.9
+	github.com/filecoin-project/go-fil-markets v1.2.4
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b

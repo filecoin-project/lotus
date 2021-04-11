@@ -9,6 +9,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/filecoin-project/lotus/api/v1api"
+
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -63,7 +67,7 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
+		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return xerrors.Errorf("getting full node api: %w", err)
 		}
@@ -101,7 +105,7 @@ var runCmd = &cli.Command{
 		log.Info("Checking full node sync status")
 
 		if !cctx.Bool("nosync") {
-			if err := lcli.SyncWait(ctx, nodeApi, false); err != nil {
+			if err := lcli.SyncWait(ctx, &v0api.WrapperV1Full{FullNode: nodeApi}, false); err != nil {
 				return xerrors.Errorf("sync wait: %w", err)
 			}
 		}
@@ -133,7 +137,7 @@ var runCmd = &cli.Command{
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("miner-api"))
 				})),
-			node.Override(new(api.FullNode), nodeApi),
+			node.Override(new(v1api.FullNode), nodeApi),
 		)
 		if err != nil {
 			return xerrors.Errorf("creating node: %w", err)

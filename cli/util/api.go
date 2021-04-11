@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -176,7 +177,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 
 func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
-		return tn.(v0api.FullNode), func() {}, nil
+		return &v0api.WrapperV1Full{FullNode: tn.(v1api.FullNode)}, func() {}, nil
 	}
 
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
@@ -185,6 +186,19 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 	}
 
 	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
+}
+
+func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(v1api.FullNode), func() {}, nil
+	}
+
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewFullNodeRPCV1(ctx.Context, addr, headers)
 }
 
 type GetStorageMinerOptions struct {
@@ -246,7 +260,7 @@ func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) 
 		return nil, nil, err
 	}
 
-	return client.NewGatewayRPCV0(ctx.Context, addr, headers)
+	return client.NewGatewayRPCV1(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {

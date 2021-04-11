@@ -20,6 +20,8 @@ type MpoolModuleAPI interface {
 	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 }
 
+var _ MpoolModuleAPI = *new(api.FullNode)
+
 // MpoolModule provides a default implementation of MpoolModuleAPI.
 // It can be swapped out with another implementation through Dependency
 // Injection (for example with a thin RPC client).

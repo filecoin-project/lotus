@@ -51,6 +51,8 @@ type ChainModuleAPI interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
+var _ ChainModuleAPI = *new(api.FullNode)
+
 // ChainModule provides a default implementation of ChainModuleAPI.
 // It can be swapped out with another implementation through Dependency
 // Injection (for example with a thin RPC client).
