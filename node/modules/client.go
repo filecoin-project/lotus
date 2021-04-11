@@ -178,7 +178,7 @@ func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey("/deals/client"))
 }
 
-func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, j journal.Journal) (storagemarket.StorageClient, error) {
+func StorageClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, j journal.Journal) (storagemarket.StorageClient, error) {
 	// go-fil-markets protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
@@ -188,14 +188,17 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 	if err != nil {
 		return nil, err
 	}
+
+	ctx := helpers.LifecycleCtx(mctx, lc)
 	c.OnReady(marketevents.ReadyLogger("storage client"))
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+		OnStart: func(context.Context) error {
 			c.SubscribeToEvents(marketevents.StorageClientLogger)
 
 			evtType := j.RegisterEventType("markets/storage/client", "state_change")
 			c.SubscribeToEvents(markets.StorageClientJournaler(j, evtType))
 
+			// start keeps the context in a goroutine.
 			return c.Start(ctx)
 		},
 		OnStop: func(context.Context) error {

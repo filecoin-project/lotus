@@ -40,7 +40,8 @@ func TestPaymentChannels(t *testing.T) {
 	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	paymentReceiver := nodes[1]
@@ -92,7 +93,8 @@ func TestPaymentChannelStatus(t *testing.T) {
 	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	creatorAddr := addrs[0]
@@ -171,7 +173,8 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	paymentReceiver := nodes[1]
@@ -303,7 +306,8 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	clitest.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	creatorAddr := addrs[0]

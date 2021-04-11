@@ -27,7 +27,8 @@ import (
 )
 
 func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	n, sn := b(t, TwoFull, OneMiner)
 
 	paymentCreator := n[0]

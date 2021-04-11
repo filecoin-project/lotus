@@ -218,10 +218,14 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 		tu.t.Fatal("source node already exists")
 	}
 
+	// explicitly cancel this context when done so we catch bugs where we use the wrong context.
+	ctx, cancel := context.WithCancel(tu.ctx)
+	defer cancel()
+
 	sourceRepo, genesis, blocks := tu.repoWithChain(tu.t, gen)
 	var out api.FullNode
 
-	stop, err := node.New(tu.ctx,
+	stop, err := node.New(ctx,
 		node.FullAPI(&out),
 		node.Online(),
 		node.Repo(sourceRepo),
@@ -237,7 +241,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	for _, lastB := range lastTs {
 		cs := out.(*impl.FullNodeAPI).ChainAPI.Chain
 		require.NoError(tu.t, cs.AddToTipSetTracker(lastB.Header))
-		err = cs.AddBlock(tu.ctx, lastB.Header)
+		err = cs.AddBlock(ctx, lastB.Header)
 		require.NoError(tu.t, err)
 	}
 
@@ -253,7 +257,11 @@ func (tu *syncTestUtil) addClientNode() int {
 
 	var out api.FullNode
 
-	stop, err := node.New(tu.ctx,
+	// explicitly cancel this context when done so we catch bugs where we use the wrong context.
+	ctx, cancel := context.WithCancel(tu.ctx)
+	defer cancel()
+
+	stop, err := node.New(ctx,
 		node.FullAPI(&out),
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
