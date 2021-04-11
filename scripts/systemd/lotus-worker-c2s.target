@@ -1,0 +1,6 @@
+[Unit]
+Description=Lotus Worker C2S
+Requires=lotus-worker-c2@0.service lotus-worker-c2@1.service lotus-worker-c2@2.service lotus-worker-c2@3.service lotus-worker-c2@4.service lotus-worker-c2@5.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+[Unit]
+Description=Lotus Worker P2S
+Requires=lotus-worker-p2@0.service lotus-worker-p2@1.service
+
+[Install]
+WantedBy=multi-user.target

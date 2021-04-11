@@ -1,0 +1,23 @@
+[Unit]
+Description=Lotus Daemon
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+Environment=GOLOG_FILE="/var/log/lotus/daemon.log"
+Environment=GOLOG_LOG_FMT="json"
+Environment=FIL_PROOFS_PARENT_CACHE="/data-param/mainnet/filecoin-parents"
+Environment=FIL_PROOFS_PARAMETER_CACHE="/data-param/mainnet/filecoin-proof-parameters"
+Environment=IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs"
+Environment=LOTUS_PATH="/data-u2/mainnet/chain/master"
+Environment=BIN_DIR="/data-u2/mainnet/bin"
+ExecStart=${BIN_DIR}/lotus daemon
+Restart=on-failure
+RestartSec=10
+
+## !!! CHANGE IT !!!
+User=lts
+Group=lts
+
+[Install]
+WantedBy=multi-user.target
