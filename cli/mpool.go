@@ -132,9 +132,11 @@ var MpoolPending = &cli.Command{
 	},
 }
 
+// Deprecated: MpoolClear is now available at `lotus-shed mpool clear`
 var MpoolClear = &cli.Command{
-	Name:  "clear",
-	Usage: "Clear all pending messages from the mpool (USE WITH CARE)",
+	Name:   "clear",
+	Usage:  "Clear all pending messages from the mpool (USE WITH CARE) (DEPRECATED)",
+	Hidden: true,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "local",
@@ -146,6 +148,7 @@ var MpoolClear = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus-shed mpool clear`")
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err

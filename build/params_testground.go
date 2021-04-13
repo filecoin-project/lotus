@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -81,29 +82,31 @@ var (
 	UpgradeBreezeHeight      abi.ChainEpoch = -1
 	BreezeGasTampingDuration abi.ChainEpoch = 0
 
-	UpgradeSmokeHeight    abi.ChainEpoch = -1
-	UpgradeIgnitionHeight abi.ChainEpoch = -2
-	UpgradeRefuelHeight   abi.ChainEpoch = -3
-	UpgradeTapeHeight     abi.ChainEpoch = -4
-	UpgradeActorsV2Height abi.ChainEpoch = 10
-	UpgradeLiftoffHeight  abi.ChainEpoch = -5
-	UpgradeKumquatHeight  abi.ChainEpoch = -6
-	UpgradeCalicoHeight   abi.ChainEpoch = -7
-	UpgradePersianHeight  abi.ChainEpoch = -8
-	UpgradeOrangeHeight   abi.ChainEpoch = -9
-	UpgradeClausHeight    abi.ChainEpoch = -10
-	UpgradeActorsV3Height abi.ChainEpoch = -11
+	UpgradeSmokeHeight     abi.ChainEpoch = -1
+	UpgradeIgnitionHeight  abi.ChainEpoch = -2
+	UpgradeRefuelHeight    abi.ChainEpoch = -3
+	UpgradeTapeHeight      abi.ChainEpoch = -4
+	UpgradeActorsV2Height  abi.ChainEpoch = 10
+	UpgradeLiftoffHeight   abi.ChainEpoch = -5
+	UpgradeKumquatHeight   abi.ChainEpoch = -6
+	UpgradeCalicoHeight    abi.ChainEpoch = -7
+	UpgradePersianHeight   abi.ChainEpoch = -8
+	UpgradeOrangeHeight    abi.ChainEpoch = -9
+	UpgradeClausHeight     abi.ChainEpoch = -10
+	UpgradeActorsV3Height  abi.ChainEpoch = -11
+	UpgradeNorwegianHeight abi.ChainEpoch = -12
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
 	}
 
-	NewestNetworkVersion       = network.Version9
+	NewestNetworkVersion       = network.Version11
 	ActorUpgradeNetworkVersion = network.Version4
 
 	Devnet      = true
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
+	WhitelistedBlock  = cid.Undef
 	BootstrappersFile = ""
 	GenesisFile       = ""
 )

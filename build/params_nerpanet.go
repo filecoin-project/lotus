@@ -5,6 +5,7 @@ package build
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/ipfs/go-cid"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
@@ -39,6 +40,7 @@ const UpgradeClausHeight = 250
 const UpgradeOrangeHeight = 300
 
 const UpgradeActorsV3Height = 600
+const UpgradeNorwegianHeight = 999999
 
 func init() {
 	// Minimum block production power is set to 4 TiB
@@ -70,3 +72,5 @@ const PropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4
+
+var WhitelistedBlock = cid.Undef
