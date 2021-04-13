@@ -19,14 +19,14 @@ import (
 func checkApiInfo(ctx context.Context, ai string) (string, error) {
 	ai = strings.TrimPrefix(strings.TrimSpace(ai), "MINER_API_INFO=")
 	info := cliutil.ParseApiInfo(ai)
-	addr, err := info.DialArgs()
+	addr, err := info.DialArgs("v0")
 	if err != nil {
 		return "", xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
 	log.Infof("Checking api version of %s", addr)
 
-	api, closer, err := client.NewStorageMinerRPC(ctx, addr, info.AuthHeader())
+	api, closer, err := client.NewStorageMinerRPCV0(ctx, addr, info.AuthHeader())
 	if err != nil {
 		return "", err
 	}
