@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/fatih/color"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
@@ -178,7 +180,7 @@ func ParseTipSetString(ts string) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func LoadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*types.TipSet, error) {
+func LoadTipSet(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*types.TipSet, error) {
 	tss := cctx.String("tipset")
 	if tss == "" {
 		return nil, nil
@@ -187,7 +189,7 @@ func LoadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*type
 	return ParseTipSetRef(ctx, api, tss)
 }
 
-func ParseTipSetRef(ctx context.Context, api api.FullNode, tss string) (*types.TipSet, error) {
+func ParseTipSetRef(ctx context.Context, api v0api.FullNode, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
 		if tss == "@head" {
 			return api.ChainHead(ctx)
@@ -574,7 +576,7 @@ var StateListMinersCmd = &cli.Command{
 	},
 }
 
-func getDealsCounts(ctx context.Context, lapi api.FullNode) (map[address.Address]int, error) {
+func getDealsCounts(ctx context.Context, lapi v0api.FullNode) (map[address.Address]int, error) {
 	allDeals, err := lapi.StateMarketDeals(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -1443,7 +1445,7 @@ var StateSearchMsgCmd = &cli.Command{
 	},
 }
 
-func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message, r types.MessageReceipt) error {
+func printReceiptReturn(ctx context.Context, api v0api.FullNode, m *types.Message, r types.MessageReceipt) error {
 	if len(r.Return) == 0 {
 		return nil
 	}
@@ -1463,8 +1465,7 @@ func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message,
 	return nil
 }
 
-func printMsg(ctx context.Context, api api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
-
+func printMsg(ctx context.Context, api v0api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
 	if mw == nil {
 		fmt.Println("message was not found on chain")
 		return nil

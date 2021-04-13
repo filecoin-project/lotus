@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -45,7 +46,7 @@ func getAPI(path string) (string, http.Header, error) {
 	return "ws://" + addr + "/rpc/v0", headers, nil
 }
 
-func WaitForSyncComplete(ctx context.Context, napi api.FullNode) error {
+func WaitForSyncComplete(ctx context.Context, napi v0api.FullNode) error {
 sync_complete:
 	for {
 		select {
@@ -120,7 +121,7 @@ sync_complete:
 	}
 }
 
-func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, headlag int) (<-chan *types.TipSet, error) {
+func GetTips(ctx context.Context, api v0api.FullNode, lastHeight abi.ChainEpoch, headlag int) (<-chan *types.TipSet, error) {
 	chmain := make(chan *types.TipSet)
 
 	hb := newHeadBuffer(headlag)
@@ -184,7 +185,7 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, h
 	return chmain, nil
 }
 
-func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowestHeight abi.ChainEpoch) ([]*types.TipSet, error) {
+func loadTipsets(ctx context.Context, api v0api.FullNode, curr *types.TipSet, lowestHeight abi.ChainEpoch) ([]*types.TipSet, error) {
 	tipsets := []*types.TipSet{}
 	for {
 		if curr.Height() == 0 {
@@ -214,11 +215,11 @@ func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowe
 	return tipsets, nil
 }
 
-func GetFullNodeAPI(ctx context.Context, repo string) (api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPI(ctx context.Context, repo string) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getAPI(repo)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(ctx, addr, headers)
+	return client.NewFullNodeRPCV0(ctx, addr, headers)
 }

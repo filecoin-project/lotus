@@ -52,14 +52,13 @@ type gatewayDepsAPI interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
-	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
 	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
 	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
-	StateSearchMsgLimited(ctx context.Context, msg cid.Cid, lookbackLimit abi.ChainEpoch) (*api.MsgLookup, error)
-	StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
@@ -73,6 +72,8 @@ type gatewayDepsAPI interface {
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error)
 }
+
+var _ gatewayDepsAPI = *new(api.FullNode) // gateway depends on latest
 
 type GatewayAPI struct {
 	api                    gatewayDepsAPI
@@ -261,14 +262,6 @@ func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, t
 	return a.api.StateGetActor(ctx, actor, tsk)
 }
 
-func (a *GatewayAPI) StateGetReceipt(ctx context.Context, c cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
-	if err := a.checkTipsetKey(ctx, tsk); err != nil {
-		return nil, err
-	}
-
-	return a.api.StateGetReceipt(ctx, c, tsk)
-}
-
 func (a *GatewayAPI) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
 	if err := a.checkTipsetKey(ctx, tsk); err != nil {
 		return nil, err
@@ -309,12 +302,29 @@ func (a *GatewayAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKe
 	return a.api.StateNetworkVersion(ctx, tsk)
 }
 
-func (a *GatewayAPI) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
-	return a.api.StateSearchMsgLimited(ctx, msg, a.stateWaitLookbackLimit)
+func (a *GatewayAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+	if limit == api.LookbackNoLimit {
+		limit = a.stateWaitLookbackLimit
+	}
+	if a.stateWaitLookbackLimit != api.LookbackNoLimit && limit > a.stateWaitLookbackLimit {
+		limit = a.stateWaitLookbackLimit
+	}
+	if err := a.checkTipsetKey(ctx, from); err != nil {
+		return nil, err
+	}
+
+	return a.api.StateSearchMsg(ctx, from, msg, limit, allowReplaced)
 }
 
-func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
-	return a.api.StateWaitMsgLimited(ctx, msg, confidence, a.stateWaitLookbackLimit)
+func (a *GatewayAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+	if limit == api.LookbackNoLimit {
+		limit = a.stateWaitLookbackLimit
+	}
+	if a.stateWaitLookbackLimit != api.LookbackNoLimit && limit > a.stateWaitLookbackLimit {
+		limit = a.stateWaitLookbackLimit
+	}
+
+	return a.api.StateWaitMsg(ctx, msg, confidence, limit, allowReplaced)
 }
 
 func (a *GatewayAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
