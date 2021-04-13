@@ -230,7 +230,7 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 	var outMu sync.Mutex
 
 	// map of addresses to changed actors
-	var changes map[string]types.Actor
+	var changedActors *api.ChangedActors
 	actorsSeen := map[cid.Cid]struct{}{}
 
 	var nullRounds []types.TipSetKey
@@ -259,7 +259,7 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 		// collect all actors that had state changes between the blockheader parent-state and its grandparent-state.
 		// TODO: changes will contain deleted actors, this causes needless processing further down the pipeline, consider
 		// a separate strategy for deleted actors
-		changes, err = p.node.StateChangedActors(ctx, pts.ParentState(), bh.ParentStateRoot)
+		changedActors, err = p.node.StateChangedActors(ctx, pts.ParentState(), bh.ParentStateRoot)
 		if err != nil {
 			log.Error(err)
 			log.Debugw("StateChangedActors", "grandparent_state", pts.ParentState(), "parent_state", bh.ParentStateRoot)
@@ -267,61 +267,64 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 		}
 
 		// record the state of all actors that have changed
-		for a, act := range changes {
-			act := act
-			a := a
+		// TODO need to process deleted actors - dels
+		for _, actors := range []map[string]types.Actor{changedActors.Adds, changedActors.Changes} {
+			for a, act := range actors {
+				act := act
+				a := a
 
-			// ignore actors that were deleted.
-			has, err := p.node.ChainHasObj(ctx, act.Head)
-			if err != nil {
-				log.Error(err)
-				log.Debugw("ChanHasObj", "actor_head", act.Head)
-				return
-			}
-			if !has {
-				continue
-			}
-
-			addr, err := address.NewFromString(a)
-			if err != nil {
-				log.Error(err)
-				log.Debugw("NewFromString", "address_string", a)
-				return
-			}
-
-			ast, err := p.node.StateReadState(ctx, addr, pts.Key())
-			if err != nil {
-				log.Error(err)
-				log.Debugw("StateReadState", "address_string", a, "parent_tipset_key", pts.Key())
-				return
-			}
-
-			// TODO look here for an empty state, maybe thats a sign the actor was deleted?
-
-			state, err := json.Marshal(ast.State)
-			if err != nil {
-				log.Error(err)
-				return
-			}
-
-			outMu.Lock()
-			if _, ok := actorsSeen[act.Head]; !ok {
-				_, ok := out[act.Code]
-				if !ok {
-					out[act.Code] = map[types.TipSetKey][]actorInfo{}
+				// ignore actors that were deleted.
+				has, err := p.node.ChainHasObj(ctx, act.Head)
+				if err != nil {
+					log.Error(err)
+					log.Debugw("ChanHasObj", "actor_head", act.Head)
+					return
 				}
-				out[act.Code][pts.Key()] = append(out[act.Code][pts.Key()], actorInfo{
-					act:         act,
-					stateroot:   bh.ParentStateRoot,
-					height:      bh.Height,
-					tsKey:       pts.Key(),
-					parentTsKey: pts.Parents(),
-					addr:        addr,
-					state:       string(state),
-				})
+				if !has {
+					continue
+				}
+
+				addr, err := address.NewFromString(a)
+				if err != nil {
+					log.Error(err)
+					log.Debugw("NewFromString", "address_string", a)
+					return
+				}
+
+				ast, err := p.node.StateReadState(ctx, addr, pts.Key())
+				if err != nil {
+					log.Error(err)
+					log.Debugw("StateReadState", "address_string", a, "parent_tipset_key", pts.Key())
+					return
+				}
+
+				// TODO look here for an empty state, maybe thats a sign the actor was deleted?
+
+				state, err := json.Marshal(ast.State)
+				if err != nil {
+					log.Error(err)
+					return
+				}
+
+				outMu.Lock()
+				if _, ok := actorsSeen[act.Head]; !ok {
+					_, ok := out[act.Code]
+					if !ok {
+						out[act.Code] = map[types.TipSetKey][]actorInfo{}
+					}
+					out[act.Code][pts.Key()] = append(out[act.Code][pts.Key()], actorInfo{
+						act:         act,
+						stateroot:   bh.ParentStateRoot,
+						height:      bh.Height,
+						tsKey:       pts.Key(),
+						parentTsKey: pts.Parents(),
+						addr:        addr,
+						state:       string(state),
+					})
+				}
+				actorsSeen[act.Head] = struct{}{}
+				outMu.Unlock()
 			}
-			actorsSeen[act.Head] = struct{}{}
-			outMu.Unlock()
 		}
 	})
 	return out, nullRounds, nil

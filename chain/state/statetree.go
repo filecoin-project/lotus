@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -486,8 +487,10 @@ func (st *StateTree) Version() types.StateTreeVersion {
 	return st.version
 }
 
-func Diff(oldTree, newTree *StateTree) (map[string]types.Actor, error) {
-	out := map[string]types.Actor{}
+func Diff(oldTree, newTree *StateTree) (*api.ChangedActors, error) {
+	adds := make(map[string]types.Actor)
+	deletes := make(map[string]types.Actor)
+	changes := make(map[string]types.Actor)
 
 	var (
 		ncval, ocval cbg.Deferred
@@ -518,11 +521,49 @@ func Diff(oldTree, newTree *StateTree) (map[string]types.Actor, error) {
 			return err
 		}
 
-		out[addr.String()] = act
+		if found {
+			changes[addr.String()] = act
+		} else {
+			adds[addr.String()] = act
+		}
 
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-	return out, nil
+
+	if err := oldTree.root.ForEach(&ocval, func(k string) error {
+		var act types.Actor
+
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("address in state tree was not valid: %w", err)
+		}
+
+		found, err := newTree.root.Get(abi.AddrKey(addr), &ncval)
+		if err != nil {
+			return err
+		}
+
+		if found {
+			return nil // not changed
+		}
+
+		buf.Reset(ocval.Raw)
+		err = act.UnmarshalCBOR(buf)
+		buf.Reset(nil)
+		if err != nil {
+			return err
+		}
+
+		deletes[addr.String()] = act
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return &api.ChangedActors{
+		Adds:    adds,
+		Deletes: deletes,
+		Changes: changes,
+	}, nil
 }

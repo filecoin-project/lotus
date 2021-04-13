@@ -515,7 +515,7 @@ type FullNode interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
 	// StateChangedActors returns all the actors whose states change between the two given state CIDs
 	// TODO: Should this take tipset keys instead?
-	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error) //perm:read
+	StateChangedActors(context.Context, cid.Cid, cid.Cid) (*ChangedActors, error) //perm:read
 	// StateGetReceipt returns the message receipt for the given message or for a
 	// matching gas-repriced replacing message
 	//
@@ -1138,4 +1138,10 @@ type MsigTransaction struct {
 	Params []byte
 
 	Approved []address.Address
+}
+
+type ChangedActors struct {
+	Adds    map[string]types.Actor
+	Deletes map[string]types.Actor
+	Changes map[string]types.Actor
 }

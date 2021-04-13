@@ -319,7 +319,7 @@ type FullNodeStruct struct {
 
 		StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*api.InvocResult, error) `perm:"read"`
 
-		StateChangedActors func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) `perm:"read"`
+		StateChangedActors func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (*api.ChangedActors, error) `perm:"read"`
 
 		StateCirculatingSupply func(p0 context.Context, p1 types.TipSetKey) (abi.TokenAmount, error) `perm:"read"`
 
@@ -1311,7 +1311,7 @@ func (s *FullNodeStruct) StateCall(p0 context.Context, p1 *types.Message, p2 typ
 	return s.Internal.StateCall(p0, p1, p2)
 }
 
-func (s *FullNodeStruct) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) {
+func (s *FullNodeStruct) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (*api.ChangedActors, error) {
 	return s.Internal.StateChangedActors(p0, p1, p2)
 }
 
