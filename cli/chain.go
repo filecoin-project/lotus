@@ -32,6 +32,7 @@ import (
 	"golang.org/x/xerrors"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -806,7 +807,7 @@ var ChainGetCmd = &cli.Command{
 
 type apiIpldStore struct {
 	ctx context.Context
-	api lapi.FullNode
+	api v0api.FullNode
 }
 
 func (ht *apiIpldStore) Context() context.Context {
@@ -834,7 +835,7 @@ func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error)
 	panic("No mutations allowed")
 }
 
-func handleAmt(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
+func handleAmt(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsArray(s, r)
 	if err != nil {
@@ -847,7 +848,7 @@ func handleAmt(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
 	})
 }
 
-func handleHamtEpoch(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
+func handleHamtEpoch(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsMap(s, r)
 	if err != nil {
@@ -865,7 +866,7 @@ func handleHamtEpoch(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
 	})
 }
 
-func handleHamtAddress(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
+func handleHamtAddress(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsMap(s, r)
 	if err != nil {

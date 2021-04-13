@@ -196,7 +196,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence)
+	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -363,7 +363,7 @@ func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 }
 
 func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence)
+	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}

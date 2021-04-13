@@ -36,11 +36,19 @@ type (
 	// BaseBlockstore is something, coz DI
 	BaseBlockstore blockstore.Blockstore
 
+	// BasicChainBlockstore is like ChainBlockstore, but without the optional
+	// network fallback support
+	BasicChainBlockstore blockstore.Blockstore
+
 	// ChainBlockstore is a blockstore to store chain data (tipsets, blocks,
 	// messages). It is physically backed by the BareMonolithBlockstore, but it
 	// has a cache on top that is specially tuned for chain data access
 	// patterns.
 	ChainBlockstore blockstore.Blockstore
+
+	// BasicStateBlockstore is like StateBlockstore, but without the optional
+	// network fallback support
+	BasicStateBlockstore blockstore.Blockstore
 
 	// StateBlockstore is a blockstore to store state data (state tree). It is
 	// physically backed by the BareMonolithBlockstore, but it has a cache on

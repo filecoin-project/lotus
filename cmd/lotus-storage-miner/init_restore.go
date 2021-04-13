@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -37,7 +39,7 @@ func restore(ctx context.Context, cctx *cli.Context, manageConfig func(*config.S
 
 	log.Info("Trying to connect to full node RPC")
 
-	api, closer, err := lcli.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
+	api, closer, err := lcli.GetFullNodeAPIV1(cctx) // TODO: consider storing full node address in config
 	if err != nil {
 		return err
 	}
@@ -55,7 +57,7 @@ func restore(ctx context.Context, cctx *cli.Context, manageConfig func(*config.S
 	}
 
 	if !cctx.Bool("nosync") {
-		if err := lcli.SyncWait(ctx, api, false); err != nil {
+		if err := lcli.SyncWait(ctx, &v0api.WrapperV1Full{FullNode: api}, false); err != nil {
 			return xerrors.Errorf("sync wait: %w", err)
 		}
 	}

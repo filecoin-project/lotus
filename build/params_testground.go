@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -99,12 +100,13 @@ var (
 		0: DrandMainnet,
 	}
 
-	NewestNetworkVersion       = network.Version9
+	NewestNetworkVersion       = network.Version11
 	ActorUpgradeNetworkVersion = network.Version4
 
 	Devnet      = true
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
+	WhitelistedBlock  = cid.Undef
 	BootstrappersFile = ""
 	GenesisFile       = ""
 )

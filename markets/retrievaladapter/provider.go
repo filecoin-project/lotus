@@ -5,6 +5,8 @@ import (
 	"golang.org/x/xerrors"
 	"io"
 
+	"github.com/filecoin-project/lotus/api/v1api"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -28,12 +30,12 @@ type retrievalProviderNode struct {
 	maddr address.Address
 	secb  sectorblocks.SectorBuilder
 	pp    *sectorstorage.PieceProvider
-	full  api.FullNode
+	full  v1api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp *sectorstorage.PieceProvider, full api.FullNode) retrievalmarket.RetrievalProviderNode {
+func NewRetrievalProviderNode(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp *sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{address.Address(maddr), secb, pp, full}
 }
 
