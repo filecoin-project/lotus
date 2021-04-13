@@ -1,5 +1,5 @@
 #!/bin/zsh
-#set -x
+set -x
 set -euo pipefail
 export GO111MODULE=on
 export GOPATH="$(go env GOPATH)"
@@ -139,6 +139,7 @@ indent() {
 }
 
 mod_deps() {
+    go mod download
     go list -json -m all | jq 'select(.Version != null)'
 }
 
@@ -178,8 +179,12 @@ recursive_release_log() {
     (
         local result=0
         local workspace="$(mktemp -d)"
-        trap "$(printf 'rm -rf "%q"' "$workspace")" INT TERM EXIT
+        #trap "$(printf 'rm -rf "%q"' "$workspace")" INT TERM EXIT
         cd "$workspace"
+
+        mkdir extern
+        ln -s "$repo_root"/extern/filecoin-ffi extern/filecoin-ffi
+        ln -s "$repo_root"/extern/test-vectors extern/test-vectors
 
         echo "Computing old deps..." >&2
         git -C "$repo_root" show "$start:go.mod" >go.mod
