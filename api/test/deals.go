@@ -51,7 +51,7 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, sta
 }
 
 func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	res, data, err := CreateClientFile(ctx, client, rseed)
+	res, data, err := CreateClientFile(ctx, client, rseed, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,8 +72,11 @@ func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode,
 	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
 }
 
-func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
-	data := make([]byte, 1600)
+func CreateClientFile(ctx context.Context, client api.FullNode, rseed, size int) (*api.ImportRes, []byte, error) {
+	if size == 0 {
+		size = 1600
+	}
+	data := make([]byte, size)
 	rand.New(rand.NewSource(int64(rseed))).Read(data)
 
 	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
@@ -119,7 +122,7 @@ func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duratio
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
+		res, _, err := CreateClientFile(s.ctx, s.client, rseed, 0)
 		require.NoError(t, err)
 
 		upds, err := client.ClientGetDealUpdates(s.ctx)
@@ -186,68 +189,76 @@ func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duratio
 }
 
 func TestBatchDealInput(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-	publishPeriod := 10 * time.Second
-	maxDealsPerMsg := uint64(4)
+	run := func(piece, deals, expectSectors int) func(t *testing.T) {
+		return func(t *testing.T) {
+			publishPeriod := 10 * time.Second
+			maxDealsPerMsg := uint64(deals)
 
-	// Set max deals per publish deals message to maxDealsPerMsg
-	minerDef := []StorageMiner{{
-		Full: 0,
-		Opts: node.Options(
-			node.Override(
-				new(*storageadapter.DealPublisher),
-				storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
-					Period:         publishPeriod,
-					MaxDealsPerMsg: maxDealsPerMsg,
-				})),
-			node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
-				return func() (sealiface.Config, error) {
-					return sealiface.Config{
-						MaxWaitDealsSectors:       1,
-						MaxSealingSectors:         1,
-						MaxSealingSectorsForDeals: 2,
-						AlwaysKeepUnsealedCopy:    true,
-					}, nil
-				}, nil
-			}),
-		),
-		Preseal: PresealGenesis,
-	}}
+			// Set max deals per publish deals message to maxDealsPerMsg
+			minerDef := []StorageMiner{{
+				Full: 0,
+				Opts: node.Options(
+					node.Override(
+						new(*storageadapter.DealPublisher),
+						storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
+							Period:         publishPeriod,
+							MaxDealsPerMsg: maxDealsPerMsg,
+						})),
+					node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
+						return func() (sealiface.Config, error) {
+							return sealiface.Config{
+								MaxWaitDealsSectors:       1,
+								MaxSealingSectors:         1,
+								MaxSealingSectorsForDeals: 2,
+								AlwaysKeepUnsealedCopy:    true,
+							}, nil
+						}, nil
+					}),
+				),
+				Preseal: PresealGenesis,
+			}}
 
-	// Create a connect client and miner node
-	n, sn := b(t, OneFull, minerDef)
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-	s := connectAndStartMining(t, b, blocktime, client, miner)
-	defer s.blockMiner.Stop()
+			// Create a connect client and miner node
+			n, sn := b(t, OneFull, minerDef)
+			client := n[0].FullNode.(*impl.FullNodeAPI)
+			miner := sn[0]
+			s := connectAndStartMining(t, b, blocktime, client, miner)
+			defer s.blockMiner.Stop()
 
-	// Starts a deal and waits until it's published
-	runDealTillSeal := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
-		require.NoError(t, err)
+			// Starts a deal and waits until it's published
+			runDealTillSeal := func(rseed int) {
+				res, _, err := CreateClientFile(s.ctx, s.client, rseed, piece)
+				require.NoError(t, err)
 
-		dc := startDeal(t, s.ctx, s.miner, s.client, res.Root, false, startEpoch)
-		waitDealSealed(t, s.ctx, s.miner, s.client, dc, false)
+				dc := startDeal(t, s.ctx, s.miner, s.client, res.Root, false, startEpoch)
+				waitDealSealed(t, s.ctx, s.miner, s.client, dc, false)
+			}
+
+			// Run maxDealsPerMsg+1 deals in parallel
+			done := make(chan struct{}, maxDealsPerMsg+1)
+			for rseed := 1; rseed <= int(maxDealsPerMsg+1); rseed++ {
+				rseed := rseed
+				go func() {
+					runDealTillSeal(rseed)
+					done <- struct{}{}
+				}()
+			}
+
+			// Wait for maxDealsPerMsg of the deals to be published
+			for i := 0; i < int(maxDealsPerMsg); i++ {
+				<-done
+			}
+
+			sl, err := sn[0].SectorsList(s.ctx)
+			require.NoError(t, err)
+			require.GreaterOrEqual(t, len(sl), expectSectors)
+			require.LessOrEqual(t, len(sl), expectSectors+1)
+		}
 	}
 
-	// Run maxDealsPerMsg+1 deals in parallel
-	done := make(chan struct{}, maxDealsPerMsg+1)
-	for rseed := 1; rseed <= int(maxDealsPerMsg+1); rseed++ {
-		rseed := rseed
-		go func() {
-			runDealTillSeal(rseed)
-			done <- struct{}{}
-		}()
-	}
-
-	// Wait for maxDealsPerMsg of the deals to be published
-	for i := 0; i < int(maxDealsPerMsg); i++ {
-		<-done
-	}
-
-	sl, err := sn[0].SectorsList(s.ctx)
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(sl), 4)
-	require.LessOrEqual(t, len(sl), 5)
+	t.Run("4-p1600B", run(1600, 4, 4))
+	t.Run("4-p513B", run(513, 4, 2))
+	t.Run("32-p257B", run(257, 32, 8))
 }
 
 func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
@@ -430,7 +441,7 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 		si, err := miner.SectorsStatus(ctx, snum, false)
 		require.NoError(t, err)
 
-		t.Logf("Sector state: %s", si.State)
+		t.Logf("Sector %d state: %s", snum, si.State)
 		if si.State == api.SectorState(sealing.WaitDeals) {
 			require.NoError(t, miner.SectorStartSealing(ctx, snum))
 		}

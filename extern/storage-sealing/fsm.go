@@ -51,6 +51,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	AddPiece: planOne(
 		on(SectorPieceAdded{}, WaitDeals),
 		apply(SectorStartPacking{}),
+		apply(SectorAddPiece{}),
 		on(SectorAddPieceFailed{}, AddPieceFailed),
 	),
 	Packing: planOne(on(SectorPacked{}, GetTicket)),
@@ -582,6 +583,7 @@ func onReturning(mut mutator) func() (mutator, func(*SectorInfo) (bool, error)) 
 
 func planOne(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err error))) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	return func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+	eloop:
 		for i, event := range events {
 			if gm, ok := event.User.(globalMutator); ok {
 				gm.applyGlobal(state)
@@ -604,6 +606,8 @@ func planOne(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err e
 				if err != nil || !more {
 					return uint64(i + 1), err
 				}
+
+				continue eloop
 			}
 
 			_, ok := event.User.(Ignorable)

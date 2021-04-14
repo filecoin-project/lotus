@@ -44,7 +44,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 
 	// Create a deal (non-interactive)
 	// client deal --start-epoch=<start epoch> <cid> <miner addr> 1000000attofil <duration>
-	res, _, err := test.CreateClientFile(ctx, clientNode, 1)
+	res, _, err := test.CreateClientFile(ctx, clientNode, 1, 0)
 	require.NoError(t, err)
 	startEpoch := fmt.Sprintf("--start-epoch=%d", 2<<12)
 	dataCid := res.Root
@@ -60,7 +60,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	// <miner addr>
 	// "no" (verified client)
 	// "yes" (confirm deal)
-	res, _, err = test.CreateClientFile(ctx, clientNode, 2)
+	res, _, err = test.CreateClientFile(ctx, clientNode, 2, 0)
 	require.NoError(t, err)
 	dataCid2 := res.Root
 	duration = fmt.Sprintf("%d", build.MinDealDuration/builtin.EpochsInDay)
