@@ -43,6 +43,7 @@ var log = logging.Logger("fullnode")
 type ChainModuleAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
+	ChainGetParentMessages(context.Context, cid.Cid) ([]api.Message, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
@@ -149,8 +150,8 @@ func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to ty
 	return a.Chain.GetPath(ctx, from, to)
 }
 
-func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]api.Message, error) {
-	b, err := a.Chain.GetBlock(bcid)
+func (m *ChainModule) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]api.Message, error) {
+	b, err := m.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
 	}
@@ -161,12 +162,12 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := a.Chain.LoadTipSet(types.NewTipSetKey(b.Parents...))
+	pts, err := m.Chain.LoadTipSet(types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}
 
-	cm, err := a.Chain.MessagesForTipset(pts)
+	cm, err := m.Chain.MessagesForTipset(pts)
 	if err != nil {
 		return nil, err
 	}
