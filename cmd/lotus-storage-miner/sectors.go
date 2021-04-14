@@ -524,7 +524,8 @@ var sectorsExtendCmd = &cli.Command{
 				} else {
 					added := false
 					for exp := range es {
-						if withinTolerance(exp, newExp) {
+						// newExp < exp, can't extend
+						if withinTolerance(exp, newExp) && newExp >= exp {
 							es[exp] = append(es[exp], uint64(si.SectorNumber))
 							added = true
 							break
