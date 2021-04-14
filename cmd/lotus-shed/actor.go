@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api"
 
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
@@ -109,7 +110,7 @@ var actorWithdrawCmd = &cli.Command{
 			Value:  types.NewInt(0),
 			Method: miner.Methods.WithdrawBalance,
 			Params: params,
-		}, nil)
+		}, &api.MessageSendSpec{MaxFee: abi.TokenAmount(types.MustParseFIL("0.1"))})
 		if err != nil {
 			return err
 		}
