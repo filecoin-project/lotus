@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -18,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
 var actorCmd = &cli.Command{
@@ -245,7 +248,115 @@ var actorControl = &cli.Command{
 	Name:  "control",
 	Usage: "Manage control addresses",
 	Subcommands: []*cli.Command{
+		actorControlList,
 		actorControlSet,
+	},
+}
+
+var actorControlList = &cli.Command{
+	Name:  "list",
+	Usage: "Get currently set control addresses",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "actor",
+			Usage: "specify the address of miner actor",
+		},
+		&cli.BoolFlag{
+			Name: "verbose",
+		},
+		&cli.BoolFlag{
+			Name:  "color",
+			Value: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		color.NoColor = !cctx.Bool("color")
+
+		var maddr address.Address
+		if act := cctx.String("actor"); act != "" {
+			var err error
+			maddr, err = address.NewFromString(act)
+			if err != nil {
+				return fmt.Errorf("parsing address %s: %w", act, err)
+			}
+		}
+
+		nodeAPI, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		if maddr.Empty() {
+			minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+			if err != nil {
+				return err
+			}
+			defer closer()
+
+			maddr, err = minerAPI.ActorAddress(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		mi, err := nodeAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		tw := tablewriter.New(
+			tablewriter.Col("name"),
+			tablewriter.Col("ID"),
+			tablewriter.Col("key"),
+			tablewriter.Col("balance"),
+		)
+
+		printKey := func(name string, a address.Address) {
+			b, err := nodeAPI.WalletBalance(ctx, a)
+			if err != nil {
+				fmt.Printf("%s\t%s: error getting balance: %s\n", name, a, err)
+				return
+			}
+
+			k, err := nodeAPI.StateAccountKey(ctx, a, types.EmptyTSK)
+			if err != nil {
+				fmt.Printf("%s\t%s: error getting account key: %s\n", name, a, err)
+				return
+			}
+
+			kstr := k.String()
+			if !cctx.Bool("verbose") {
+				kstr = kstr[:9] + "..."
+			}
+
+			bstr := types.FIL(b).String()
+			switch {
+			case b.LessThan(types.FromFil(10)):
+				bstr = color.RedString(bstr)
+			case b.LessThan(types.FromFil(50)):
+				bstr = color.YellowString(bstr)
+			default:
+				bstr = color.GreenString(bstr)
+			}
+
+			tw.Write(map[string]interface{}{
+				"name":    name,
+				"ID":      a,
+				"key":     kstr,
+				"balance": bstr,
+			})
+		}
+
+		printKey("owner", mi.Owner)
+		printKey("worker", mi.Worker)
+		for i, ca := range mi.ControlAddresses {
+			printKey(fmt.Sprintf("control-%d", i), ca)
+		}
+
+		return tw.Flush(os.Stdout)
 	},
 }
 
