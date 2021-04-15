@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+	"sync"
+	"sync/atomic"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -43,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 const LookbackNoLimit = abi.ChainEpoch(-1)
@@ -280,6 +282,11 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
 func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []store.BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+	done := metrics.Timer(ctx, metrics.VMApplyBlocksTotal)
+	defer done()
+
+	partDone := metrics.Timer(ctx, metrics.VMApplyEarly)
+	defer partDone()
 
 	makeVmWithBaseState := func(base cid.Cid) (*vm.VM, error) {
 		vmopt := &vm.VMOpts{
@@ -303,7 +310,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	}
 
 	runCron := func(epoch abi.ChainEpoch) error {
-
 		cronMsg := &types.Message{
 			To:         cron.Address,
 			From:       builtin.SystemActorAddr,
@@ -361,6 +367,12 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		vmi.SetBlockHeight(i + 1)
 		pstate = newState
 	}
+
+	partDone()
+	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
+
+	earlyDone := metrics.Timer(ctx, metrics.VMApplyEarly)
+	defer earlyDone()
 
 	var receipts []cbg.CBORMarshaler
 	processedMsgs := make(map[cid.Cid]struct{})
@@ -426,9 +438,15 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 	}
 
+	partDone()
+	partDone = metrics.Timer(ctx, metrics.VMApplyCron)
+
 	if err := runCron(epoch); err != nil {
 		return cid.Cid{}, cid.Cid{}, err
 	}
+
+	partDone()
+	partDone = metrics.Timer(ctx, metrics.VMApplyFlush)
 
 	rectarr := blockadt.MakeEmptyArray(sm.cs.ActorStore(ctx))
 	for i, receipt := range receipts {
@@ -445,6 +463,9 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("vm flush failed: %w", err)
 	}
+
+	stats.Record(ctx, metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
+		metrics.VMApplied.M(int64(atomic.LoadUint64(&vm.StatApplied))))
 
 	return st, rectroot, nil
 }
