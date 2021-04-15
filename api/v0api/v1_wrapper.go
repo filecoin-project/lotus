@@ -46,4 +46,15 @@ func (w *WrapperV1Full) StateGetReceipt(ctx context.Context, msg cid.Cid, from t
 	return &ml.Receipt, nil
 }
 
+func (w *WrapperV1Full) Version(ctx context.Context) (api.APIVersion, error) {
+	ver, err := w.FullNode.Version(ctx)
+	if err != nil {
+		return api.APIVersion{}, err
+	}
+
+	ver.APIVersion = api.FullAPIVersion0
+
+	return ver, nil
+}
+
 var _ FullNode = &WrapperV1Full{}
