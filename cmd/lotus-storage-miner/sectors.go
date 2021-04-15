@@ -507,6 +507,9 @@ var sectorsExtendCmd = &cli.Command{
 
 				// Set the new expiration to 48 hours less than the theoretical maximum lifetime
 				newExp := ml - (miner3.WPoStProvingPeriod * 2) + si.Activation
+				if withinTolerance(si.Expiration, newExp) {
+					continue
+				}
 				p, err := api.StateSectorPartition(ctx, maddr, si.SectorNumber, types.EmptyTSK)
 				if err != nil {
 					return xerrors.Errorf("getting sector location for sector %d: %w", si.SectorNumber, err)
