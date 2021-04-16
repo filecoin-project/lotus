@@ -51,7 +51,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 	defer ms.lk.Unlock()
 
 	// Get the next message nonce
-	nonce, err := ms.nextNonce(msg.From)
+	nonce, err := ms.nextNonce(ctx, msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create nonce: %w", err)
 	}
@@ -92,12 +92,12 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 
 // nextNonce gets the next nonce for the given address.
 // If there is no nonce in the datastore, gets the nonce from the message pool.
-func (ms *MessageSigner) nextNonce(addr address.Address) (uint64, error) {
+func (ms *MessageSigner) nextNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	// Nonces used to be created by the mempool and we need to support nodes
 	// that have mempool nonces, so first check the mempool for a nonce for
 	// this address. Note that the mempool returns the actor state's nonce
 	// by default.
-	nonce, err := ms.mpool.GetNonce(context.TODO(), addr, types.EmptyTSK)
+	nonce, err := ms.mpool.GetNonce(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to get nonce from mempool: %w", err)
 	}
