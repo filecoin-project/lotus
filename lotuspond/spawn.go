@@ -142,11 +142,6 @@ func (api *api) Spawn() (nodeInfo, error) {
 			api.runningLk.Lock()
 			api.running[id].meta.State = NodeStopped
 			api.runningLk.Unlock()
-
-			//logfile.Close()
-			//errlogfile.Close()
-
-			//close(mux.stop)
 		},
 	}
 	api.runningLk.Unlock()
@@ -221,11 +216,6 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 			api.runningLk.Lock()
 			api.running[id].meta.State = NodeStopped
 			api.runningLk.Unlock()
-
-			//logfile.Close()
-			//errlogfile.Close()
-
-			//close(mux.stop)
 		},
 	}
 	api.runningLk.Unlock()
@@ -272,11 +262,6 @@ func (api *api) RestartNode(id int32) (nodeInfo, error) {
 		api.runningLk.Lock()
 		api.running[id].meta.State = NodeStopped
 		api.runningLk.Unlock()
-
-		//logfile.Close()
-		//errlogfile.Close()
-
-		//close(mux.stop)
 	}
 
 	nd.meta.State = NodeRunning
