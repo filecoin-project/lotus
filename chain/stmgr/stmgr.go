@@ -371,9 +371,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 	partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
 
-	earlyDone := metrics.Timer(ctx, metrics.VMApplyEarly)
-	defer earlyDone()
-
 	var receipts []cbg.CBORMarshaler
 	processedMsgs := make(map[cid.Cid]struct{})
 	for _, b := range bms {
