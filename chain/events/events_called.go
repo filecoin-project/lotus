@@ -475,18 +475,12 @@ func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs EventAPI) mes
 
 // Check if there are any new actor calls
 func (me *messageEvents) checkNewCalls(ts *types.TipSet) (map[triggerID]eventData, error) {
-	pts, err := me.cs.ChainGetTipSet(me.ctx, ts.Parents()) // we actually care about messages in the parent tipset here
-	if err != nil {
-		log.Errorf("getting parent tipset in checkNewCalls: %s", err)
-		return nil, err
-	}
-
 	me.lk.RLock()
 	defer me.lk.RUnlock()
 
 	// For each message in the tipset
 	res := make(map[triggerID]eventData)
-	me.messagesForTs(pts, func(msg *types.Message) {
+	me.messagesForParentTs(ts, func(msg *types.Message) {
 		// TODO: provide receipts
 
 		// Run each trigger's matcher against the message
@@ -509,37 +503,24 @@ func (me *messageEvents) checkNewCalls(ts *types.TipSet) (map[triggerID]eventDat
 }
 
 // Get the messages in a tipset
-func (me *messageEvents) messagesForTs(ts *types.TipSet, consume func(*types.Message)) {
+func (me *messageEvents) messagesForParentTs(ts *types.TipSet, consume func(*types.Message)) {
 	seen := map[cid.Cid]struct{}{}
 
-	for _, tsb := range ts.Blocks() {
+	c := ts.MinTicketBlock().Cid()
+	msgs, err := me.cs.ChainGetParentMessages(context.TODO(), c)
+	if err != nil {
+		log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.Height(), c, ts.MinTicketBlock().Messages, err)
+		// this is quite bad, but probably better than missing all the other updates
+	}
 
-		msgs, err := me.cs.ChainGetBlockMessages(context.TODO(), tsb.Cid())
-		if err != nil {
-			log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.Height(), tsb.Cid(), tsb.Messages, err)
-			// this is quite bad, but probably better than missing all the other updates
+	for _, m := range msgs {
+		_, ok := seen[m.Cid]
+		if ok {
 			continue
 		}
+		seen[m.Cid] = struct{}{}
 
-		for _, m := range msgs.BlsMessages {
-			_, ok := seen[m.Cid()]
-			if ok {
-				continue
-			}
-			seen[m.Cid()] = struct{}{}
-
-			consume(m)
-		}
-
-		for _, m := range msgs.SecpkMessages {
-			_, ok := seen[m.Message.Cid()]
-			if ok {
-				continue
-			}
-			seen[m.Message.Cid()] = struct{}{}
-
-			consume(&m.Message)
-		}
+		consume(m.Message)
 	}
 }
 

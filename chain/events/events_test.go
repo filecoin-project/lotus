@@ -37,11 +37,12 @@ type fakeCS struct {
 	tsc *tipSetCache
 
 	msgs    map[cid.Cid]fakeMsg
-	blkMsgs map[cid.Cid]cid.Cid
+	blkMsgs map[types.TipSetKey]cid.Cid
 
 	sync sync.Mutex
 
-	tipsets map[types.TipSetKey]*types.TipSet
+	tipsets       map[types.TipSetKey]*types.TipSet
+	parentTipsets map[cid.Cid]types.TipSetKey
 
 	sub func(rev, app []*types.TipSet)
 }
@@ -104,8 +105,12 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 
 	if fcs.tipsets == nil {
 		fcs.tipsets = map[types.TipSetKey]*types.TipSet{}
+		fcs.parentTipsets = make(map[cid.Cid]types.TipSetKey)
 	}
 	fcs.tipsets[ts.Key()] = ts
+	for _, b := range ts.Blocks() {
+		fcs.parentTipsets[b.Cid()] = types.NewTipSetKey(b.Parents...)
+	}
 
 	require.NoError(t, err)
 
@@ -142,17 +147,30 @@ func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*api.HeadChange, error
 	return out, nil
 }
 
-func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api.BlockMessages, error) {
-	messages, ok := fcs.blkMsgs[blk]
+func (fcs *fakeCS) ChainGetParentMessages(ctx context.Context, blk cid.Cid) ([]api.Message, error) {
+	messages, ok := fcs.blkMsgs[fcs.parentTipsets[blk]]
 	if !ok {
-		return &api.BlockMessages{}, nil
+		return nil, nil
 	}
 
 	ms, ok := fcs.msgs[messages]
 	if !ok {
-		return &api.BlockMessages{}, nil
+		return nil, nil
 	}
-	return &api.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
+	msgOut := make([]api.Message, 0)
+	for _, m := range ms.bmsgs {
+		msgOut = append(msgOut, api.Message{
+			Message: m.VMMessage(),
+			Cid:     m.Cid(),
+		})
+	}
+	for _, m := range ms.smsgs {
+		msgOut = append(msgOut, api.Message{
+			Message: m.VMMessage(),
+			Cid:     m.Cid(),
+		})
+	}
+	return msgOut, nil
 
 }
 
@@ -211,7 +229,7 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 		require.NoError(fcs.t, fcs.tsc.add(ts))
 
 		if hasMsgs {
-			fcs.blkMsgs[ts.Blocks()[0].Cid()] = mc
+			fcs.blkMsgs[ts.Key()] = mc
 		}
 
 		apps = append(apps, ts)
@@ -584,7 +602,7 @@ func TestCalled(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -796,7 +814,7 @@ func TestCalledTimeout(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -836,7 +854,7 @@ func TestCalledTimeout(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -870,7 +888,7 @@ func TestCalledOrder(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -933,7 +951,7 @@ func TestCalledNull(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -998,7 +1016,7 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -1088,7 +1106,7 @@ func TestStateChanged(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -1176,7 +1194,7 @@ func TestStateChangedRevert(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -1254,7 +1272,7 @@ func TestStateChangedTimeout(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
@@ -1294,7 +1312,7 @@ func TestStateChangedTimeout(t *testing.T) {
 		h: 1,
 
 		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
+		blkMsgs: map[types.TipSetKey]cid.Cid{},
 		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))

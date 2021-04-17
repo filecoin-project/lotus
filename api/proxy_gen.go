@@ -465,6 +465,8 @@ type GatewayStruct struct {
 
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
 
+		ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]Message, error) ``
+
 		ChainGetTipSet func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) ``
 
 		ChainGetTipSetByHeight func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) ``
@@ -2391,6 +2393,14 @@ func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.
 
 func (s *GatewayStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
+	return s.Internal.ChainGetParentMessages(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
+	return *new([]Message), xerrors.New("method not supported")
 }
 
 func (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
