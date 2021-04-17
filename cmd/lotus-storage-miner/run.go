@@ -67,25 +67,29 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx)
-		if err != nil {
-			return xerrors.Errorf("getting full node api: %w", err)
-		}
-		defer ncloser()
-
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.BuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),
 		)
 		// Register all metric views
-		if err = view.Register(
+		if err := view.Register(
 			metrics.MinerNodeViews...,
 		); err != nil {
 			log.Fatalf("Cannot register the view: %v", err)
 		}
 		// Set the metric to one so it is published to the exporter
 		stats.Record(ctx, metrics.LotusInfo.M(1))
+
+		if err := checkV1ApiSupport(ctx, cctx); err != nil {
+			return err
+		}
+
+		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting full node api: %w", err)
+		}
+		defer ncloser()
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
@@ -98,8 +102,8 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		if v.APIVersion != api.FullAPIVersion {
-			return xerrors.Errorf("lotus-daemon API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.FullAPIVersion})
+		if v.APIVersion != api.FullAPIVersion1 {
+			return xerrors.Errorf("lotus-daemon API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.FullAPIVersion1})
 		}
 
 		log.Info("Checking full node sync status")

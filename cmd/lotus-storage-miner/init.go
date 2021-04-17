@@ -151,6 +151,10 @@ var initCmd = &cli.Command{
 
 		log.Info("Trying to connect to full node RPC")
 
+		if err := checkV1ApiSupport(ctx, cctx); err != nil {
+			return err
+		}
+
 		api, closer, err := lcli.GetFullNodeAPIV1(cctx) // TODO: consider storing full node address in config
 		if err != nil {
 			return err
@@ -188,8 +192,8 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion) {
-			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion1) {
+			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion1, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")
@@ -718,4 +722,25 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID,
 
 	log.Infof("New miners address is: %s (%s)", retval.IDAddress, retval.RobustAddress)
 	return retval.IDAddress, nil
+}
+
+func checkV1ApiSupport(ctx context.Context, cctx *cli.Context) error {
+	// check v0 api version to make sure it supports v1 api
+	api0, closer, err := lcli.GetFullNodeAPI(cctx)
+	if err != nil {
+		return err
+	}
+
+	v, err := api0.Version(ctx)
+	closer()
+
+	if err != nil {
+		return err
+	}
+
+	if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion0) {
+		return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion0, v.APIVersion)
+	}
+
+	return nil
 }

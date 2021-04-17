@@ -54,7 +54,13 @@ var initRestoreCmd = &cli.Command{
 			return xerrors.Errorf("expected 1 argument")
 		}
 
+		ctx := lcli.ReqContext(cctx)
+
 		log.Info("Trying to connect to full node RPC")
+
+		if err := checkV1ApiSupport(ctx, cctx); err != nil {
+			return err
+		}
 
 		api, closer, err := lcli.GetFullNodeAPIV1(cctx) // TODO: consider storing full node address in config
 		if err != nil {
@@ -64,15 +70,13 @@ var initRestoreCmd = &cli.Command{
 
 		log.Info("Checking full node version")
 
-		ctx := lcli.ReqContext(cctx)
-
 		v, err := api.Version(ctx)
 		if err != nil {
 			return err
 		}
 
-		if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion) {
-			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion1) {
+			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion1, v.APIVersion)
 		}
 
 		if !cctx.Bool("nosync") {
