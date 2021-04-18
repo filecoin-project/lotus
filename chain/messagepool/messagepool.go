@@ -795,7 +795,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 	return nil
 }
 
-func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
+func (mp *MessagePool) GetNonce(_ context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
