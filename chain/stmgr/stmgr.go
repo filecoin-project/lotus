@@ -1279,11 +1279,12 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 	}
 
 	return api.CirculatingSupply{
-		FilVested:      filVested,
-		FilMined:       filMined,
-		FilBurnt:       filBurnt,
-		FilLocked:      filLocked,
-		FilCirculating: ret,
+		FilVested:           filVested,
+		FilMined:            filMined,
+		FilBurnt:            filBurnt,
+		FilLocked:           filLocked,
+		FilCirculating:      ret,
+		FilReserveDisbursed: filReserveDisbursed,
 	}, nil
 }
 

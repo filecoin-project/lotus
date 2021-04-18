@@ -999,11 +999,12 @@ type DealCollateralBounds struct {
 }
 
 type CirculatingSupply struct {
-	FilVested      abi.TokenAmount
-	FilMined       abi.TokenAmount
-	FilBurnt       abi.TokenAmount
-	FilLocked      abi.TokenAmount
-	FilCirculating abi.TokenAmount
+	FilVested           abi.TokenAmount
+	FilMined            abi.TokenAmount
+	FilBurnt            abi.TokenAmount
+	FilLocked           abi.TokenAmount
+	FilCirculating      abi.TokenAmount
+	FilReserveDisbursed abi.TokenAmount
 }
 
 type MiningBaseInfo struct {

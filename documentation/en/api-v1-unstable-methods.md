@@ -4857,7 +4857,8 @@ Response:
   "FilMined": "0",
   "FilBurnt": "0",
   "FilLocked": "0",
-  "FilCirculating": "0"
+  "FilCirculating": "0",
+  "FilReserveDisbursed": "0"
 }
 ```
 
