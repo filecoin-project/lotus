@@ -27,6 +27,18 @@ type AdtArrayDiff interface {
 // - All values that exist in preArr and in curArr are passed to AdtArrayDiff.Modify()
 //  - It is the responsibility of AdtArrayDiff.Modify() to determine if the values it was passed have been modified.
 func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
+	preRoot, err := preArr.Root()
+	if err != nil {
+		return err
+	}
+	curRoot, err := curArr.Root()
+	if err != nil {
+		return err
+	}
+	if curRoot.Equals(preRoot) {
+		return nil
+	}
+
 	notNew := make(map[int64]struct{}, curArr.Length())
 	prevVal := new(typegen.Deferred)
 	if err := preArr.ForEach(prevVal, func(i int64) error {
@@ -80,6 +92,18 @@ type AdtMapDiff interface {
 }
 
 func DiffAdtMap(preMap, curMap Map, out AdtMapDiff) error {
+	preRoot, err := preMap.Root()
+	if err != nil {
+		return err
+	}
+	curRoot, err := curMap.Root()
+	if err != nil {
+		return err
+	}
+	if curRoot.Equals(preRoot) {
+		return nil
+	}
+
 	notNew := make(map[string]struct{})
 	prevVal := new(typegen.Deferred)
 	if err := preMap.ForEach(prevVal, func(key string) error {
