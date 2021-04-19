@@ -116,19 +116,26 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.Wallet,
 	}
 	next.ParentBaseFee = baseFee
 
-	nosigbytes, err := next.SigningBytes()
+	bHas, err := w.WalletHas(ctx, worker)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get signing bytes for block: %w", err)
+		return nil, xerrors.Errorf("find wallet: %v", err)
 	}
 
-	sig, err := w.WalletSign(ctx, worker, nosigbytes, api.MsgMeta{
-		Type: api.MTBlock,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("failed to sign new block: %w", err)
-	}
+	if bHas {
+		nosigbytes, err := next.SigningBytes()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get signing bytes for block: %w", err)
+		}
 
-	next.BlockSig = sig
+		sig, err := w.WalletSign(ctx, worker, nosigbytes, api.MsgMeta{
+			Type: api.MTBlock,
+		})
+		if err != nil {
+			return nil, xerrors.Errorf("failed to sign new block: %w", err)
+		}
+
+		next.BlockSig = sig
+	}
 
 	fullBlock := &types.FullBlock{
 		Header:        next,
