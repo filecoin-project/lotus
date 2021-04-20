@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -380,6 +381,71 @@ type FullNodeStruct struct {
 
 type FullNodeStub struct {
 	CommonStub
+}
+
+type GatewayStruct struct {
+	Internal struct {
+		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) ``
+
+		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
+
+		ChainGetTipSet func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) ``
+
+		ChainGetTipSetByHeight func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) ``
+
+		ChainHasObj func(p0 context.Context, p1 cid.Cid) (bool, error) ``
+
+		ChainHead func(p0 context.Context) (*types.TipSet, error) ``
+
+		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) ``
+
+		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
+
+		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
+
+		MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
+
+		MsigGetAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) ``
+
+		MsigGetPending func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*api.MsigTransaction, error) ``
+
+		MsigGetVested func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) ``
+
+		StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
+
+		StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (api.DealCollateralBounds, error) ``
+
+		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) ``
+
+		StateGetReceipt func(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) ``
+
+		StateListMiners func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) ``
+
+		StateLookupID func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
+
+		StateMarketBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) ``
+
+		StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) ``
+
+		StateMinerInfo func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) ``
+
+		StateMinerPower func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*api.MinerPower, error) ``
+
+		StateMinerProvingDeadline func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) ``
+
+		StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (network.Version, error) ``
+
+		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) ``
+
+		StateSectorGetInfo func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) ``
+
+		StateVerifiedClientStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
+
+		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) ``
+	}
+}
+
+type GatewayStub struct {
 }
 
 func (s *FullNodeStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
@@ -1766,4 +1832,237 @@ func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 [
 	return false, xerrors.New("method not supported")
 }
 
+func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) {
+	return s.Internal.ChainGetBlockMessages(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
+	return s.Internal.ChainGetMessage(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
+	return s.Internal.ChainGetTipSet(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) ChainGetTipSetByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
+	return s.Internal.ChainGetTipSetByHeight(p0, p1, p2)
+}
+
+func (s *GatewayStub) ChainGetTipSetByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
+	return s.Internal.ChainHasObj(p0, p1)
+}
+
+func (s *GatewayStub) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
+	return false, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) ChainHead(p0 context.Context) (*types.TipSet, error) {
+	return s.Internal.ChainHead(p0)
+}
+
+func (s *GatewayStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+	return s.Internal.ChainNotify(p0)
+}
+
+func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
+	return s.Internal.ChainReadObj(p0, p1)
+}
+
+func (s *GatewayStub) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
+	return *new([]byte), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
+	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
+}
+
+func (s *GatewayStub) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *api.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
+	return s.Internal.MpoolPush(p0, p1)
+}
+
+func (s *GatewayStub) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	return s.Internal.MsigGetAvailableBalance(p0, p1, p2)
+}
+
+func (s *GatewayStub) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	return *new(types.BigInt), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*api.MsigTransaction, error) {
+	return s.Internal.MsigGetPending(p0, p1, p2)
+}
+
+func (s *GatewayStub) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*api.MsigTransaction, error) {
+	return *new([]*api.MsigTransaction), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
+	return s.Internal.MsigGetVested(p0, p1, p2, p3)
+}
+
+func (s *GatewayStub) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
+	return *new(types.BigInt), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	return s.Internal.StateAccountKey(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	return *new(address.Address), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (api.DealCollateralBounds, error) {
+	return s.Internal.StateDealProviderCollateralBounds(p0, p1, p2, p3)
+}
+
+func (s *GatewayStub) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (api.DealCollateralBounds, error) {
+	return *new(api.DealCollateralBounds), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
+	return s.Internal.StateGetActor(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateGetReceipt(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) {
+	return s.Internal.StateGetReceipt(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateGetReceipt(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
+	return s.Internal.StateListMiners(p0, p1)
+}
+
+func (s *GatewayStub) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
+	return *new([]address.Address), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	return s.Internal.StateLookupID(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	return *new(address.Address), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) {
+	return s.Internal.StateMarketBalance(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) {
+	return *new(api.MarketBalance), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) {
+	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) {
+	return s.Internal.StateMinerInfo(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) {
+	return *new(miner.MinerInfo), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*api.MinerPower, error) {
+	return s.Internal.StateMinerPower(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*api.MinerPower, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
+	return s.Internal.StateMinerProvingDeadline(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (network.Version, error) {
+	return s.Internal.StateNetworkVersion(p0, p1)
+}
+
+func (s *GatewayStub) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (network.Version, error) {
+	return *new(network.Version), xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+	return s.Internal.StateSearchMsg(p0, p1)
+}
+
+func (s *GatewayStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	return s.Internal.StateSectorGetInfo(p0, p1, p2, p3)
+}
+
+func (s *GatewayStub) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+	return s.Internal.StateVerifiedClientStatus(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+	return s.Internal.StateWaitMsg(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+	return nil, xerrors.New("method not supported")
+}
+
 var _ FullNode = new(FullNodeStruct)
+var _ Gateway = new(GatewayStruct)

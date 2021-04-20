@@ -110,6 +110,20 @@ func NewGatewayRPCV1(ctx context.Context, addr string, requestHeader http.Header
 	return &res, closer, err
 }
 
+// NewGatewayRPCV0 creates a new http jsonrpc client for a gateway node.
+func NewGatewayRPCV0(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (v0api.Gateway, jsonrpc.ClientCloser, error) {
+	var res v0api.GatewayStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
+		[]interface{}{
+			&res.Internal,
+		},
+		requestHeader,
+		opts...,
+	)
+
+	return &res, closer, err
+}
+
 func NewWalletRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.Wallet, jsonrpc.ClientCloser, error) {
 	var res api.WalletStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
