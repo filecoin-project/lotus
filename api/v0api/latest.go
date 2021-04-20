@@ -8,8 +8,6 @@ type Common = api.Common
 type CommonStruct = api.CommonStruct
 type CommonStub = api.CommonStub
 
-type Gateway = api.Gateway
-
 type StorageMiner = api.StorageMiner
 type StorageMinerStruct = api.StorageMinerStruct
 
