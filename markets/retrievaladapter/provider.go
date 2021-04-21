@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -21,8 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	specstorage "github.com/filecoin-project/specs-storage/storage"
 )
-
-var log = logging.Logger("retrievaladapter")
 
 type retrievalProviderNode struct {
 	maddr address.Address
