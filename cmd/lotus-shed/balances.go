@@ -10,17 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/gen/genesis"
-
-	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-
 	"github.com/docker/go-units"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -32,7 +22,13 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	ainit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -72,14 +68,20 @@ var auditsCmd = &cli.Command{
 
 var chainBalanceCmd = &cli.Command{
 	Name:        "chain-balances",
+	Usage:       "Produces all account balances",
 	Description: "Produces a csv file of all account balances",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tipset",
 			Usage: "specify tipset to start from",
 		},
+		&cli.BoolFlag{
+			Name:  "miner-info",
+			Usage: "print miner info",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		minerInfo := cctx.Bool("miner-info")
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -109,10 +111,10 @@ var chainBalanceCmd = &cli.Command{
 			ai := accountInfo{
 				Address: addr,
 				Balance: types.FIL(act.Balance),
-				Type:    string(act.Code.Hash()[2:]),
+				Type:    builtin.ActorNameByCode(act.Code),
 			}
 
-			if builtin.IsStorageMinerActor(act.Code) {
+			if minerInfo && builtin.IsStorageMinerActor(act.Code) {
 				pow, err := api.StateMinerPower(ctx, addr, tsk)
 				if err != nil {
 					return xerrors.Errorf("failed to get power: %w", err)
@@ -125,6 +127,8 @@ var chainBalanceCmd = &cli.Command{
 				}
 				ai.Worker = info.Worker
 				ai.Owner = info.Owner
+				fmt.Printf("miner:%s, owner:%s, worker:%s, power:%s(%s)\n", ai.Address, ai.Owner,
+					ai.Worker, ai.Power.String(), types.SizeStr(ai.Power))
 
 			}
 			infos = append(infos, ai)
@@ -210,12 +214,12 @@ var chainBalanceStateCmd = &cli.Command{
 
 		robustMap := make(map[address.Address]address.Address)
 		if cctx.Bool("robust-addresses") {
-			iact, err := tree.GetActor(_init.Address)
+			iact, err := tree.GetActor(ainit.Address)
 			if err != nil {
 				return xerrors.Errorf("failed to load init actor: %w", err)
 			}
 
-			ist, err := _init.Load(store, iact)
+			ist, err := ainit.Load(store, iact)
 			if err != nil {
 				return xerrors.Errorf("failed to load init actor state: %w", err)
 			}
