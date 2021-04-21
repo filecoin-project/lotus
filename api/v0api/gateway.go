@@ -45,6 +45,7 @@ type Gateway interface {
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 }
 
 var _ Gateway = *new(FullNode)
