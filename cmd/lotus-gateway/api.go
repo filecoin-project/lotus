@@ -71,6 +71,7 @@ type gatewayDepsAPI interface {
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error)
+	WalletBalance(context.Context, address.Address) (types.BigInt, error) //perm:read
 }
 
 var _ gatewayDepsAPI = *new(api.FullNode) // gateway depends on latest
@@ -412,6 +413,10 @@ func (a *GatewayAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk t
 
 func (a *GatewayAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
 	return sigs.Verify(sig, k, msg) == nil, nil
+}
+
+func (a *GatewayAPI) WalletBalance(ctx context.Context, k address.Address) (types.BigInt, error) {
+	return a.api.WalletBalance(ctx, k)
 }
 
 var _ api.Gateway = (*GatewayAPI)(nil)
