@@ -19,6 +19,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -162,6 +164,10 @@ var runCmd = &cli.Command{
 		}
 
 		log.Info("setting up API endpoint at " + address)
+		ma := metrics.MetricedGatewayAPI(NewGatewayAPI(api))
+
+		serveRpc("/rpc/v1", ma)
+		serveRpc("/rpc/v0", lapi.Wrap(new(v1api.GatewayStruct), new(v0api.WrapperV1Gateway), ma))
 
 		addr, err := net.ResolveTCPAddr("tcp", address)
 		if err != nil {
