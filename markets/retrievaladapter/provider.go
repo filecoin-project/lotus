@@ -46,6 +46,28 @@ func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, min
 	return mi.Worker, err
 }
 
+func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
+	si, err := rpn.secb.SectorsStatus(ctx, sectorID, false)
+	if err != nil {
+		return false, err
+	}
+
+	mid, err := address.IDFromAddress(rpn.maddr)
+	if err != nil {
+		return false, err
+	}
+
+	ref := specstorage.SectorRef{
+		ID: abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: sectorID,
+		},
+		ProofType: si.SealProof,
+	}
+
+	return rpn.pp.IsUnsealed(ctx, ref, storiface.UnpaddedByteIndex(offset), length)
+}
+
 func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	si, err := rpn.secb.SectorsStatus(ctx, sectorID, false)
 	if err != nil {

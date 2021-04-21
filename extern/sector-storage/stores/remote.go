@@ -357,6 +357,67 @@ func (r *Remote) readRemote(ctx context.Context, url string, spt abi.RegisteredS
 	return resp.Body, nil
 }
 
+func (r *Remote) CheckAllocated(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize, ft storiface.SectorFileType) (bool, error) {
+	if ft != storiface.FTUnsealed {
+		return false, xerrors.Errorf("CheckAllocated only supports unsealed files")
+	}
+
+	paths, _, err := r.local.AcquireSector(ctx, s, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+	if err != nil {
+		return false, xerrors.Errorf("acquire local: %w", err)
+	}
+
+	path := storiface.PathByType(paths, ft)
+	if path == "" {
+		si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
+		if err != nil {
+			return false, err
+		}
+
+		if len(si) == 0 {
+			return false, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
+		}
+
+		sort.Slice(si, func(i, j int) bool {
+			return si[i].Weight < si[j].Weight
+		})
+
+		for _, info := range si {
+			for _, url := range info.URLs {
+				ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
+				if err != nil {
+					log.Warnw("check if remote has piece", "url", url, "error", err)
+					continue
+				}
+				if !ok {
+					continue
+				}
+
+				return true, nil
+			}
+		}
+	} else {
+		log.Infof("CheckAllocated local %s (+%d,%d)", path, offset, size)
+		ssize, err := s.ProofType.SectorSize()
+		if err != nil {
+			return false, err
+		}
+
+		pf, err := ffiwrapper.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+		if err != nil {
+			return false, xerrors.Errorf("opening partial file: %w", err)
+		}
+
+		has, err := pf.HasAllocated(storiface.UnpaddedByteIndex(offset.Unpadded()), size.Unpadded())
+		if err != nil {
+			return false, xerrors.Errorf("has allocated: %w", err)
+		}
+		return has, nil
+	}
+
+	return false, nil
+}
+
 // Reated gets a reader for unsealed file range. Can return nil in case the requested range isn't allocated in the file
 func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize, ft storiface.SectorFileType) (io.ReadCloser, error) {
 	if ft != storiface.FTUnsealed {

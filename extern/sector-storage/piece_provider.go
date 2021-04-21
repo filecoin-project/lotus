@@ -53,6 +53,18 @@ func (p *PieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage
 	return r, cancel, nil
 }
 
+func (p *PieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+	if err := offset.Valid(); err != nil {
+		return false, xerrors.Errorf("offset is not valid: %w", err)
+	}
+	if err := size.Validate(); err != nil {
+		return false, xerrors.Errorf("size is not a valid piece size: %w", err)
+	}
+
+	// TODO Do we need to acquire the Index lock for checking allocation ?
+	return p.storage.CheckAllocated(ctx, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded(), storiface.FTUnsealed)
+}
+
 func (p *PieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error) {
 	if err := offset.Valid(); err != nil {
 		return nil, false, xerrors.Errorf("offset is not valid: %w", err)
