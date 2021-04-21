@@ -184,6 +184,8 @@ func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthRep
 	ent.fsi = report.Stat
 	if report.Err != "" {
 		ent.heartbeatErr = errors.New(report.Err)
+	} else {
+		ent.heartbeatErr = nil
 	}
 	ent.lastHeartbeat = time.Now()
 

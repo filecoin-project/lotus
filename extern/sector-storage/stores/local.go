@@ -114,7 +114,7 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 				used, err = ls.DiskUsage(p)
 			}
 			if err != nil {
-				log.Errorf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
+				log.Debugf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
 				continue
 			}
 
@@ -158,7 +158,9 @@ func (p *path) sectorPath(sid abi.SectorID, fileType storiface.SectorFileType) s
 	return filepath.Join(p.local, fileType.String(), storiface.SectorName(sid))
 }
 
-func NewLocal(ctx context.Context, ls LocalStorage, index SectorIndex, urls []string) (*Local, error) {
+type URLs []string
+
+func NewLocal(ctx context.Context, ls LocalStorage, index SectorIndex, urls URLs) (*Local, error) {
 	l := &Local{
 		localStorage: ls,
 		index:        index,

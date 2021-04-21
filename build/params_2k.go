@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -91,3 +93,5 @@ const SlashablePowerDelay = 20
 const InteractivePoRepConfidence = 6
 
 const BootstrapPeerThreshold = 1
+
+var WhitelistedBlock = cid.Undef

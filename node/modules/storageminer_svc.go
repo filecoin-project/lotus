@@ -22,14 +22,14 @@ func connectMinerService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lif
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (api.StorageMiner, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 		info := cliutil.ParseApiInfo(apiInfo)
-		addr, err := info.DialArgs()
+		addr, err := info.DialArgs("v0")
 		if err != nil {
 			return nil, xerrors.Errorf("could not get DialArgs: %w", err)
 		}
 
 		log.Infof("Checking api version of %s", addr)
 
-		mapi, closer, err := client.NewStorageMinerRPC(ctx, addr, info.AuthHeader())
+		mapi, closer, err := client.NewStorageMinerRPCV0(ctx, addr, info.AuthHeader())
 		if err != nil {
 			return nil, err
 		}
@@ -40,8 +40,8 @@ func connectMinerService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lif
 					return xerrors.Errorf("checking version: %w", err)
 				}
 
-				if !v.APIVersion.EqMajorMinor(api.MinerAPIVersion) {
-					return xerrors.Errorf("remote service API version didn't match (expected %s, remote %s)", api.MinerAPIVersion, v.APIVersion)
+				if !v.APIVersion.EqMajorMinor(api.MinerAPIVersion0) {
+					return xerrors.Errorf("remote service API version didn't match (expected %s, remote %s)", api.MinerAPIVersion0, v.APIVersion)
 				}
 
 				return nil
