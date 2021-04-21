@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/ipfs/go-cid"
 
 	"gotest.tools/assert"
@@ -22,9 +23,9 @@ func TestSectorInfoSerialization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dealInfo := DealInfo{
+	dealInfo := api.PieceDealInfo{
 		DealID: d,
-		DealSchedule: DealSchedule{
+		DealSchedule: api.DealSchedule{
 			StartEpoch: 0,
 			EndEpoch:   100,
 		},
