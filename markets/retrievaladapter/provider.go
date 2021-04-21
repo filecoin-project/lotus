@@ -6,6 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -95,7 +96,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 	// Read the piece into the pipe's writer, unsealing the piece if necessary
 	r, unsealed, err := rpn.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.Ticket.Value, commD)
 	if err != nil {
-		log.Errorf("failed to unseal piece from sector %d: %s", sectorID, err)
+		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)
 	}
 	_ = unsealed // todo: use
 

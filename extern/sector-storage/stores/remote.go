@@ -341,7 +341,7 @@ func (r *Remote) readRemote(ctx context.Context, url string, spt abi.RegisteredS
 		return nil, xerrors.Errorf("request: %w", err)
 	}
 	req.Header = r.auth.Clone()
-	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+size))
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+size-1))
 	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -349,7 +349,7 @@ func (r *Remote) readRemote(ctx context.Context, url string, spt abi.RegisteredS
 		return nil, xerrors.Errorf("do request: %w", err)
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		resp.Body.Close() // nolint
 		return nil, xerrors.Errorf("non-200 code: %d", resp.StatusCode)
 	}

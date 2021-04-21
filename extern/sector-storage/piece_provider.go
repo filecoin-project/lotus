@@ -1,6 +1,7 @@
 package sectorstorage
 
 import (
+	"bufio"
 	"context"
 	"io"
 
@@ -104,7 +105,7 @@ func (p *PieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 	}
 
 	return &funcCloser{
-		Reader: upr,
+		Reader: bufio.NewReaderSize(upr, 127),
 		close: func() error {
 			err = r.Close()
 			unlock()
