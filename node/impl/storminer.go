@@ -55,17 +55,17 @@ type StorageMinerAPI struct {
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
 
 	// Miner / storage
-	Miner       *storage.Miner
-	BlockMiner  *miner.Miner
-	Full        api.FullNode
-	StorageMgr  *sectorstorage.Manager `optional:"true"`
-	IStorageMgr sectorstorage.SectorManager
+	Miner       *storage.Miner              `optional:"true"`
+	BlockMiner  *miner.Miner                `optional:"true"`
+	Full        api.FullNode                `optional:"true"`
+	StorageMgr  *sectorstorage.Manager      `optional:"true"`
+	IStorageMgr sectorstorage.SectorManager `optional:"true"`
 	*stores.Index
-	storiface.WorkerReturn
-	Host    host.Host
-	AddrSel *storage.AddressSelector
+	storiface.WorkerReturn `optional:"true"`
+	Host                   host.Host
+	AddrSel                *storage.AddressSelector
 
-	Epp gen.WinningPoStProver
+	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
 
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
