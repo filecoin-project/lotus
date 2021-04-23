@@ -442,6 +442,8 @@ type GatewayStruct struct {
 		StateVerifiedClientStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
 
 		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) ``
+
+		WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
 	}
 }
 
@@ -2062,6 +2064,14 @@ func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) 
 
 func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
+	return s.Internal.WalletBalance(p0, p1)
+}
+
+func (s *GatewayStub) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
+	return *new(types.BigInt), xerrors.New("method not supported")
 }
 
 var _ FullNode = new(FullNodeStruct)
