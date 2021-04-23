@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -38,6 +39,7 @@ var sectorsCmd = &cli.Command{
 		sectorsRefsCmd,
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
+		sectorsCheckExpireCmd,
 		sectorsExtendCmd,
 		sectorsTerminateCmd,
 		sectorsRemoveCmd,
@@ -415,6 +417,97 @@ var sectorsRefsCmd = &cli.Command{
 			}
 		}
 		return nil
+	},
+}
+
+var sectorsCheckExpireCmd = &cli.Command{
+	Name:  "check-expire",
+	Usage: "Inspect expiring sectors",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "cutoff",
+			Usage: "skip sectors whose current expiration is more than <cutoff> epochs from now",
+			Value: 86400,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+
+		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := getActorAddress(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+		currEpoch := head.Height()
+
+		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		sectors, err := api.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+
+		n := 0
+		for _, s := range sectors {
+			if s.Expiration-currEpoch <= abi.ChainEpoch(cctx.Int64("cutoff")) {
+				sectors[n] = s
+				n++
+			}
+		}
+		sectors = sectors[:n]
+
+		sort.Slice(sectors, func(i, j int) bool {
+			if sectors[i].Expiration == sectors[j].Expiration {
+				return sectors[i].SectorNumber < sectors[j].SectorNumber
+			}
+			return sectors[i].Expiration < sectors[j].Expiration
+		})
+
+		tw := tablewriter.New(
+			tablewriter.Col("ID"),
+			tablewriter.Col("SealProof"),
+			tablewriter.Col("InitialPledge"),
+			tablewriter.Col("Activation"),
+			tablewriter.Col("Expiration"),
+			tablewriter.Col("MaxExpiration"),
+			tablewriter.Col("MaxExtendNow"))
+
+		for _, sector := range sectors {
+			maxLifetime, err := builtin3.SealProofSectorMaximumLifetime(sector.SealProof, nv)
+			if err != nil {
+				return err
+			}
+			MaxExpiration := sector.Activation + maxLifetime
+
+			MaxExtendNow := currEpoch + miner3.MaxSectorExpirationExtension
+
+			if MaxExtendNow > MaxExpiration {
+				MaxExtendNow = MaxExpiration
+			}
+
+			tw.Write(map[string]interface{}{
+				"ID":            sector.SectorNumber,
+				"SealProof":     sector.SealProof,
+				"InitialPledge": types.FIL(sector.InitialPledge).Short(),
+				"Activation":    lcli.EpochTime(currEpoch, sector.Activation),
+				"Expiration":    lcli.EpochTime(currEpoch, sector.Expiration),
+				"MaxExpiration": lcli.EpochTime(currEpoch, MaxExpiration),
+				"MaxExtendNow":  lcli.EpochTime(currEpoch, MaxExtendNow),
+			})
+		}
+
+		return tw.Flush(os.Stdout)
 	},
 }
 
