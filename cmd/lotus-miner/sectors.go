@@ -517,6 +517,65 @@ var sectorsCheckExpireCmd = &cli.Command{
 	},
 }
 
+type PseudoExpirationExtension struct {
+	Deadline      uint64
+	Partition     uint64
+	Sectors       string
+	NewExpiration abi.ChainEpoch
+}
+
+type PseudoExtendSectorExpirationParams struct {
+	Extensions []PseudoExpirationExtension
+}
+
+func NewPseudoExtendParams(p *miner3.ExtendSectorExpirationParams) (*PseudoExtendSectorExpirationParams, error) {
+	res := PseudoExtendSectorExpirationParams{}
+	for _, ext := range p.Extensions {
+		scount, err := ext.Sectors.Count()
+		if err != nil {
+			return nil, err
+		}
+
+		sectors, err := ext.Sectors.All(scount)
+		if err != nil {
+			return nil, err
+		}
+
+		res.Extensions = append(res.Extensions, PseudoExpirationExtension{
+			Deadline:      ext.Deadline,
+			Partition:     ext.Partition,
+			Sectors:       ArrayToString(sectors),
+			NewExpiration: ext.NewExpiration,
+		})
+	}
+	return &res, nil
+}
+
+// Example: {1,3,4,5,8,9} -> "1,3-5,8-9"
+func ArrayToString(array []uint64) string {
+	var sarray []string
+	s := ""
+
+	for i, elm := range array {
+		if i == 0 {
+			s = strconv.FormatUint(elm, 10)
+			continue
+		}
+		if elm == array[i-1]+1 {
+			s = strings.Split(s, "-")[0] + "-" + strconv.FormatUint(elm, 10)
+		} else {
+			sarray = append(sarray, s)
+			s = strconv.FormatUint(elm, 10)
+		}
+	}
+
+	if s != "" {
+		sarray = append(sarray, s)
+	}
+
+	return strings.Join(sarray, ",")
+}
+
 var sectorsRenewCmd = &cli.Command{
 	Name:  "renew",
 	Usage: "Renew expiring sectors while not exceeding each sector's max life",
@@ -769,7 +828,12 @@ var sectorsRenewCmd = &cli.Command{
 			stotal += scount
 
 			if !cctx.Bool("really-do-it") {
-				data, err := json.MarshalIndent(&p, "", "  ")
+				pp, err := NewPseudoExtendParams(&p)
+				if err != nil {
+					return err
+				}
+
+				data, err := json.MarshalIndent(pp, "", "  ")
 				if err != nil {
 					return err
 				}
