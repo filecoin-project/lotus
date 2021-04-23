@@ -304,8 +304,6 @@ func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (
 		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
 	}
 
-	// Sectors must last _at least_ MinSectorExpiration + MaxSealDuration.
-	// TODO: The "+10" allows the pre-commit to take 10 blocks to be accepted.
 	nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
 	if err != nil {
 		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
@@ -313,10 +311,15 @@ func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (
 
 	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
 
-	if minExpiration := sector.TicketEpoch + policy.MaxPreCommitRandomnessLookback + msd + miner.MinSectorExpiration; expiration < minExpiration {
-		expiration = minExpiration
+	// Assume: both precommit msg & commit msg land on chain as late as possible
+	minExpiration := sector.TicketEpoch + policy.MaxPreCommitRandomnessLookback + msd + miner.MinSectorExpiration
+	if expiration < minExpiration {
+
+	// Assume: both precommit msg & commit msg land on chain as early as possible
+	maxExpiration := height + policy.GetPreCommitChallengeDelay() + policy.GetMaxSectorExpirationExtension()
+	if expiration > maxExpiration {
+		expiration = maxExpiration
 	}
-	// TODO: enforce a reasonable _maximum_ sector lifetime?
 
 	params := &miner.SectorPreCommitInfo{
 		Expiration:   expiration,
