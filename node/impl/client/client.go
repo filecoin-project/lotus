@@ -604,7 +604,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			finish(xerrors.Errorf("cannot make retrieval deal for null total"))
 			return
 		}
-		
+
 		if order.Size == 0 {
 			finish(xerrors.Errorf("cannot make retrieval deal for zero bytes"))
 			return
