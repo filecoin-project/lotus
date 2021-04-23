@@ -300,12 +300,12 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})
 	}
 
-	collateral, err := m.api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, tok)
+	collateral, err := m.api.StatePledgeCollateral(ctx.Context(), m.maddr, *params, tok)
 	if err != nil {
 		return xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
-	deposit := big.Max(depositMinimum, collateral)
+	deposit := big.Max(depositMinimum, collateral.Deposit)
 	goodFunds := big.Add(deposit, m.feeCfg.MaxPreCommitGasFee)
 
 	from, _, err := m.addrSel(ctx.Context(), mi, api.PreCommitAddr, goodFunds, deposit)
@@ -486,25 +486,26 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 		return ctx.Send(SectorCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
 	}
 
-	collateral, err := m.api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, pci.Info, tok)
+	collateral, err := m.api.StatePledgeCollateral(ctx.Context(), m.maddr, pci.Info, tok)
 	if err != nil {
 		return xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
-	collateral = big.Sub(collateral, pci.PreCommitDeposit)
-	if collateral.LessThan(big.Zero()) {
-		collateral = big.Zero()
+	initialPledge := collateral.InitialPledge
+	initialPledge = big.Sub(initialPledge, pci.PreCommitDeposit)
+	if initialPledge.LessThan(big.Zero()) {
+		initialPledge = big.Zero()
 	}
 
-	goodFunds := big.Add(collateral, m.feeCfg.MaxCommitGasFee)
+	goodFunds := big.Add(initialPledge, m.feeCfg.MaxCommitGasFee)
 
-	from, _, err := m.addrSel(ctx.Context(), mi, api.CommitAddr, goodFunds, collateral)
+	from, _, err := m.addrSel(ctx.Context(), mi, api.CommitAddr, goodFunds, initialPledge)
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("no good address to send commit message from: %w", err)})
 	}
 
 	// TODO: check seed / ticket / deals are up to date
-	mcid, err := m.api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.ProveCommitSector, collateral, m.feeCfg.MaxCommitGasFee, enc.Bytes())
+	mcid, err := m.api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.ProveCommitSector, initialPledge, m.feeCfg.MaxCommitGasFee, enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}

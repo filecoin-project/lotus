@@ -363,13 +363,9 @@ type FullNodeStruct struct {
 
 		StateMinerInfo func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) `perm:"read"`
 
-		StateMinerInitialPledgeCollateral func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
-
 		StateMinerPartitions func(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]Partition, error) `perm:"read"`
 
 		StateMinerPower func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) `perm:"read"`
-
-		StateMinerPreCommitDepositForPower func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		StateMinerProvingDeadline func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) `perm:"read"`
 
@@ -384,6 +380,8 @@ type FullNodeStruct struct {
 		StateNetworkName func(p0 context.Context) (dtypes.NetworkName, error) `perm:"read"`
 
 		StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) `perm:"read"`
+
+		StatePledgeCollateral func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (*PledgeCollateral, error) ``
 
 		StateReadState func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) `perm:"read"`
 
@@ -2017,14 +2015,6 @@ func (s *FullNodeStub) StateMinerInfo(p0 context.Context, p1 address.Address, p2
 	return *new(miner.MinerInfo), xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	return s.Internal.StateMinerInitialPledgeCollateral(p0, p1, p2, p3)
-}
-
-func (s *FullNodeStub) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
-}
-
 func (s *FullNodeStruct) StateMinerPartitions(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]Partition, error) {
 	return s.Internal.StateMinerPartitions(p0, p1, p2, p3)
 }
@@ -2039,14 +2029,6 @@ func (s *FullNodeStruct) StateMinerPower(p0 context.Context, p1 address.Address,
 
 func (s *FullNodeStub) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) {
 	return nil, xerrors.New("method not supported")
-}
-
-func (s *FullNodeStruct) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	return s.Internal.StateMinerPreCommitDepositForPower(p0, p1, p2, p3)
-}
-
-func (s *FullNodeStub) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
@@ -2103,6 +2085,14 @@ func (s *FullNodeStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSet
 
 func (s *FullNodeStub) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
 	return *new(apitypes.NetworkVersion), xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) StatePledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (*PledgeCollateral, error) {
+	return s.Internal.StatePledgeCollateral(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStub) StatePledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (*PledgeCollateral, error) {
+	return nil, xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) {
