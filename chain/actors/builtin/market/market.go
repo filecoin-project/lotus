@@ -70,6 +70,7 @@ type BalanceTable interface {
 }
 
 type DealStates interface {
+	Root() (cid.Cid, error)
 	ForEach(cb func(id abi.DealID, ds DealState) error) error
 	Get(id abi.DealID) (*DealState, bool, error)
 
@@ -78,6 +79,7 @@ type DealStates interface {
 }
 
 type DealProposals interface {
+	Root() (cid.Cid, error)
 	ForEach(cb func(id abi.DealID, dp DealProposal) error) error
 	Get(id abi.DealID) (*DealProposal, bool, error)
 

@@ -130,6 +130,10 @@ type dealStates2 struct {
 	adt.Array
 }
 
+func (s *dealStates2) Root() (cid.Cid, error) {
+	return s.Array.Root()
+}
+
 func (s *dealStates2) Get(dealID abi.DealID) (*DealState, bool, error) {
 	var deal2 market2.DealState
 	found, err := s.Array.Get(uint64(dealID), &deal2)
@@ -169,6 +173,10 @@ func fromV2DealState(v1 market2.DealState) DealState {
 
 type dealProposals2 struct {
 	adt.Array
+}
+
+func (s *dealProposals2) Root() (cid.Cid, error) {
+	return s.Array.Root()
 }
 
 func (s *dealProposals2) Get(dealID abi.DealID) (*DealProposal, bool, error) {
