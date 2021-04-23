@@ -592,7 +592,7 @@ var sectorsRenewCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "sector-file",
-			Usage: "Provide a file containing one sector number in each line, ignoring above selecting criteria",
+			Usage: "provide a file containing one sector number in each line, ignoring above selecting criteria",
 		},
 		&cli.Int64Flag{
 			Name:  "extension",
@@ -612,8 +612,18 @@ var sectorsRenewCmd = &cli.Command{
 			Name:  "really-do-it",
 			Usage: "pass this flag to really renew sectors, otherwise will only print out json representation of parameters",
 		},
+		&cli.StringFlag{
+			Name:  "gas-feecap",
+			Usage: "pass this flag to avoid message congestion",
+			Value: "0",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		gfc, err := types.BigFromString(cctx.String("gas-feecap"))
+		if err != nil {
+			return err
+		}
+
 		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -849,11 +859,12 @@ var sectorsRenewCmd = &cli.Command{
 			}
 
 			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-				From:   mi.Worker,
-				To:     maddr,
-				Method: miner.Methods.ExtendSectorExpiration,
-				Value:  big.Zero(),
-				Params: sp,
+				From:      mi.Worker,
+				To:        maddr,
+				Method:    miner.Methods.ExtendSectorExpiration,
+				Value:     big.Zero(),
+				GasFeeCap: gfc,
+				Params:    sp,
 			}, nil)
 			if err != nil {
 				return xerrors.Errorf("mpool push message: %w", err)
