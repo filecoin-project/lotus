@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -22,7 +23,9 @@ import (
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -586,6 +589,38 @@ var sectorsRenewCmd = &cli.Command{
 			activeSectorsInfo[info.SectorNumber] = info
 		}
 
+		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(api), blockstore.NewMemory())
+		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+		if err != nil {
+			return err
+		}
+
+		activeSectorsLocation := make(map[abi.SectorNumber]*miner.SectorLocation, len(activeSet))
+
+		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+				pas, err := part.ActiveSectors()
+				if err != nil {
+					return err
+				}
+
+				return pas.ForEach(func(i uint64) error {
+					activeSectorsLocation[abi.SectorNumber(i)] = &miner.SectorLocation{
+						Deadline:  dlIdx,
+						Partition: partIdx,
+					}
+					return nil
+				})
+			})
+		}); err != nil {
+			return err
+		}
+
 		var sis []*miner.SectorOnChainInfo
 
 		if cctx.IsSet("sector-file") {
@@ -655,13 +690,9 @@ var sectorsRenewCmd = &cli.Command{
 				continue
 			}
 
-			l, err := api.StateSectorPartition(ctx, maddr, si.SectorNumber, types.EmptyTSK)
-			if err != nil {
-				return xerrors.Errorf("getting sector location for sector %d: %w", si.SectorNumber, err)
-			}
-
-			if l == nil {
-				return xerrors.Errorf("sector %d not found in any partition", si.SectorNumber)
+			l, found := activeSectorsLocation[si.SectorNumber]
+			if !found {
+				return xerrors.Errorf("location for sector %d not found", si.SectorNumber)
 			}
 
 			es, found := extensions[*l]
