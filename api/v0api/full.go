@@ -98,6 +98,12 @@ type FullNode interface {
 	// ChainSetHead forcefully sets current chain head. Use with caution.
 	ChainSetHead(context.Context, types.TipSetKey) error //perm:admin
 
+	// ChainPinHead forcefully sets current chain head, pinning it preventing forks before this
+	// point. Use with caution.
+	//
+	// Note: Pins do not persist across restarts.
+	ChainPinHead(context.Context, types.TipSetKey) error //perm:admin
+
 	// ChainGetGenesis returns the genesis tipset.
 	ChainGetGenesis(context.Context) (*types.TipSet, error) //perm:read
 

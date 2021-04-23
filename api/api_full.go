@@ -110,6 +110,9 @@ type FullNode interface {
 	// between the two objects.
 	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (ObjStat, error) //perm:read
 
+	// ChainPinHead forcefully sets current chain head, forbidding forks passed the new head. Use with caution.
+	ChainPinHead(context.Context, types.TipSetKey) error //perm:admin
+
 	// ChainSetHead forcefully sets current chain head. Use with caution.
 	ChainSetHead(context.Context, types.TipSetKey) error //perm:admin
 

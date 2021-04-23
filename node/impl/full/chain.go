@@ -289,7 +289,15 @@ func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) 
 	return stats, nil
 }
 
+func (a *ChainAPI) ChainPinHead(ctx context.Context, tsk types.TipSetKey) error {
+	return a.setHead(ctx, tsk, true)
+}
+
 func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {
+	return a.setHead(ctx, tsk, false)
+}
+
+func (a *ChainAPI) setHead(ctx context.Context, tsk types.TipSetKey, pin bool) error {
 	newHeadTs, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -314,7 +322,7 @@ func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error 
 		}
 	}
 
-	return a.Chain.SetHead(newHeadTs)
+	return a.Chain.SetHead(newHeadTs, pin)
 }
 
 func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {

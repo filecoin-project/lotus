@@ -359,6 +359,20 @@ func (mr *MockFullNodeMockRecorder) ChainNotify(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainNotify", reflect.TypeOf((*MockFullNode)(nil).ChainNotify), arg0)
 }
 
+// ChainPinHead mocks base method
+func (m *MockFullNode) ChainPinHead(arg0 context.Context, arg1 types.TipSetKey) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainPinHead", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChainPinHead indicates an expected call of ChainPinHead
+func (mr *MockFullNodeMockRecorder) ChainPinHead(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainPinHead", reflect.TypeOf((*MockFullNode)(nil).ChainPinHead), arg0, arg1)
+}
+
 // ChainReadObj mocks base method
 func (m *MockFullNode) ChainReadObj(arg0 context.Context, arg1 cid.Cid) ([]byte, error) {
 	m.ctrl.T.Helper()

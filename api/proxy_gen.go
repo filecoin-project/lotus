@@ -149,6 +149,8 @@ type FullNodeStruct struct {
 
 		ChainNotify func(p0 context.Context) (<-chan []*HeadChange, error) `perm:"read"`
 
+		ChainPinHead func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
+
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) `perm:"read"`
 
 		ChainSetHead func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
@@ -1159,6 +1161,14 @@ func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*HeadChange, 
 
 func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ChainPinHead(p0 context.Context, p1 types.TipSetKey) error {
+	return s.Internal.ChainPinHead(p0, p1)
+}
+
+func (s *FullNodeStub) ChainPinHead(p0 context.Context, p1 types.TipSetKey) error {
+	return xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {

@@ -148,7 +148,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cs.SetHead(last)
+	err = cs.SetHead(last, false)
 	if err != nil {
 		t.Fatal(err)
 	}
