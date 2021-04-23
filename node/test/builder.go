@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
@@ -26,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -44,6 +46,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -149,6 +152,49 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	}
 
 	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne, Stop: stop}
+}
+
+func storageBuilder(parentNode test.TestNode, mn mocknet.Mocknet, opts node.Option) test.StorageBuilder {
+	return func(ctx context.Context, t *testing.T, spt abi.RegisteredSealProof, owner address.Address) test.TestStorageNode {
+		pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		require.NoError(t, err)
+
+		minerPid, err := peer.IDFromPrivateKey(pk)
+		require.NoError(t, err)
+
+		params, serr := actors.SerializeParams(&power2.CreateMinerParams{
+			Owner:         owner,
+			Worker:        owner,
+			SealProofType: spt,
+			Peer:          abi.PeerID(minerPid),
+		})
+		require.NoError(t, serr)
+
+		createStorageMinerMsg := &types.Message{
+			To:    power.Address,
+			From:  owner,
+			Value: big.Zero(),
+
+			Method: power.Methods.CreateMiner,
+			Params: params,
+
+			GasLimit:   0,
+			GasPremium: big.NewInt(5252),
+		}
+
+		signed, err := parentNode.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
+		require.NoError(t, err)
+
+		mw, err := parentNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence)
+		require.NoError(t, err)
+		require.Equal(t, exitcode.Ok, mw.Receipt.ExitCode)
+
+		var retval power2.CreateMinerReturn
+		err = retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return))
+		require.NoError(t, err)
+
+		return CreateTestStorageNode(ctx, t, owner, retval.IDAddress, pk, parentNode, mn, opts)
+	}
 }
 
 func Builder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
@@ -266,6 +312,8 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		if rpc {
 			fulls[i] = fullRpc(t, fulls[i])
 		}
+
+		fulls[i].Stb = storageBuilder(fulls[i], mn, node.Options())
 	}
 
 	for i, def := range storage {
@@ -432,6 +480,14 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		if rpc {
 			fulls[i] = fullRpc(t, fulls[i])
 		}
+
+		fulls[i].Stb = storageBuilder(fulls[i], mn, node.Options(
+			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
+				return mock.NewMockSectorMgr(nil), nil
+			}),
+			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
+			node.Unset(new(*sectorstorage.Manager)),
+		))
 	}
 
 	for i, def := range storage {
