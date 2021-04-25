@@ -438,7 +438,7 @@ var sectorsCheckExpireCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 
-		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -451,18 +451,18 @@ var sectorsCheckExpireCmd = &cli.Command{
 			return err
 		}
 
-		head, err := api.ChainHead(ctx)
+		head, err := fullApi.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
 		currEpoch := head.Height()
 
-		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+		nv, err := fullApi.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		sectors, err := api.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		sectors, err := fullApi.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
 
 		n := 0
 		for _, s := range sectors {
@@ -613,18 +613,20 @@ var sectorsRenewCmd = &cli.Command{
 			Usage: "pass this flag to really renew sectors, otherwise will only print out json representation of parameters",
 		},
 		&cli.StringFlag{
-			Name:  "gas-feecap",
-			Usage: "pass this flag to avoid message congestion",
+			Name:  "max-fee",
+			Usage: "use up to this amount of attoFIL for one message. pass this flag to avoid message congestion.",
 			Value: "0",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		gfc, err := types.BigFromString(cctx.String("gas-feecap"))
+		mf, err := types.BigFromString(cctx.String("max-fee"))
 		if err != nil {
 			return err
 		}
 
-		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		spec := &api.MessageSendSpec{MaxFee: mf}
+
+		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -637,18 +639,18 @@ var sectorsRenewCmd = &cli.Command{
 			return err
 		}
 
-		head, err := api.ChainHead(ctx)
+		head, err := fullApi.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
 		currEpoch := head.Height()
 
-		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+		nv, err := fullApi.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		activeSet, err := api.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -658,12 +660,12 @@ var sectorsRenewCmd = &cli.Command{
 			activeSectorsInfo[info.SectorNumber] = info
 		}
 
-		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+		mact, err := fullApi.StateGetActor(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(api), blockstore.NewMemory())
+		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
 		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 		if err != nil {
 			return err
@@ -818,7 +820,7 @@ var sectorsRenewCmd = &cli.Command{
 			return nil
 		}
 
-		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		mi, err := fullApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
@@ -858,14 +860,13 @@ var sectorsRenewCmd = &cli.Command{
 				return xerrors.Errorf("serializing params: %w", err)
 			}
 
-			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			smsg, err := fullApi.MpoolPushMessage(ctx, &types.Message{
 				From:      mi.Worker,
 				To:        maddr,
 				Method:    miner.Methods.ExtendSectorExpiration,
 				Value:     big.Zero(),
-				GasFeeCap: gfc,
 				Params:    sp,
-			}, nil)
+			}, spec)
 			if err != nil {
 				return xerrors.Errorf("mpool push message: %w", err)
 			}
