@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -36,17 +37,20 @@ func loadCheckpoint(ds dtypes.MetadataDS) (types.TipSetKey, error) {
 	return tsk, err
 }
 
-func (syncer *Syncer) SetCheckpoint(tsk types.TipSetKey) error {
+func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
 	if tsk == types.EmptyTSK {
 		return xerrors.Errorf("called with empty tsk")
 	}
 
-	syncer.checkptLk.Lock()
-	defer syncer.checkptLk.Unlock()
-
 	ts, err := syncer.ChainStore().LoadTipSet(tsk)
 	if err != nil {
-		return xerrors.Errorf("cannot find tipset: %w", err)
+		tss, err := syncer.Exchange.GetBlocks(ctx, tsk, 1)
+		if err != nil {
+			return xerrors.Errorf("failed to fetch tipset: %w", err)
+		} else if len(tss) != 1 {
+			return xerrors.Errorf("expected 1 tipset, got %d", len(tss))
+		}
+		ts = tss[0]
 	}
 
 	hts := syncer.ChainStore().GetHeaviestTipSet()
@@ -54,10 +58,17 @@ func (syncer *Syncer) SetCheckpoint(tsk types.TipSetKey) error {
 	if err != nil {
 		return xerrors.Errorf("cannot determine whether checkpoint tipset is in main-chain: %w", err)
 	}
-
 	if !hts.Equals(ts) && !anc {
-		return xerrors.Errorf("cannot mark tipset as checkpoint, since it isn't in the main-chain: %w", err)
+		if err := syncer.collectChain(ctx, ts, hts); err != nil {
+			return xerrors.Errorf("failed to collect chain for checkpoint: %w", err)
+		}
+		if err := syncer.ChainStore().SetHead(ts); err != nil {
+			return xerrors.Errorf("failed to set the chain head: %w", err)
+		}
 	}
+
+	syncer.checkptLk.Lock()
+	defer syncer.checkptLk.Unlock()
 
 	tskBytes, err := json.Marshal(tsk)
 	if err != nil {
@@ -69,6 +80,8 @@ func (syncer *Syncer) SetCheckpoint(tsk types.TipSetKey) error {
 		return err
 	}
 
+	// TODO: This is racy. as there may be a concurrent sync in progress.
+	// The only real solution is to checkpoint inside the chainstore, not here.
 	syncer.checkpt = tsk
 
 	return nil
