@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli"
 	"os"
 	"reflect"
 	"runtime"
@@ -365,17 +366,39 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		return cid.Undef, nil, err
 	}
 
-	for i, msg := range msgs {
-		// TODO: Use the signed message length for secp messages
-		ret, err := vmi.ApplyMessage(ctx, msg)
-		if err != nil {
-			return cid.Undef, nil, xerrors.Errorf("applying message %s: %w", msg.Cid(), err)
-		}
-		if ret.ExitCode != 0 {
-			log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.ExitCode, ret.ActorErr)
+	//apply the whole tipset messages
+	var totalMsgs []*types.Message
+	if 0 == len(msgs) {
+		for _, v := range ts.Blocks() {
+			blk := v
+			message, err := sm.cs.GetMessage(blk.Messages)
+			if nil != err {
+				return cid.Undef, nil, xerrors.Errorf("get block message failed: %w", err)
+			}
+			totalMsgs = append(totalMsgs, message)
 		}
 	}
 
+	apply := func(msgs, totalMsgs []*types.Message) error {
+		messages := totalMsgs
+		if 0 != len(msgs) {
+			messages = msgs
+		}
+		for i, msg := range messages {
+			ret, err := vmi.ApplyMessage(ctx, msg)
+			if err != nil {
+				return xerrors.Errorf("applying message %s: %w", msg.Cid(), err)
+			}
+			if ret.ExitCode != 0 {
+				log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.ExitCode, ret.ActorErr)
+			}
+		}
+		return nil
+	}
+	err = apply(msgs, totalMsgs)
+	if nil != err {
+		return cid.Undef, nil, err
+	}
 	root, err := vmi.Flush(ctx)
 	if err != nil {
 		return cid.Undef, nil, err
