@@ -325,6 +325,10 @@ type-gen:
 method-gen:
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
 
+actors-gen:
+	go run ./chain/actors/agen
+	go fmt ./...
+
 api-gen:
 	go run ./gen/api > api/apistruct/struct.go
 	goimports -w api/apistruct
@@ -333,9 +337,9 @@ api-gen:
 
 docsgen: docsgen-md docsgen-openrpc
 
-docsgen-md-bin:
+docsgen-md-bin: actors-gen
 	go build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
-docsgen-openrpc-bin:
+docsgen-openrpc-bin: actors-gen
 	go build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
 docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
@@ -358,7 +362,7 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: type-gen method-gen docsgen api-gen
+gen: actors-gen type-gen method-gen docsgen api-gen
 .PHONY: gen
 
 print-%:
