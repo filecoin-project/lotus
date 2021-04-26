@@ -14,6 +14,20 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+//                       MODIFYING THE API INTERFACE
+//
+// NOTE: This is the V1 (Unstable) API - to add methods to the V0 (Stable) API
+// you'll have to add those methods to interfaces in `api/v0api`
+//
+// When adding / changing methods in this file:
+// * Do the change here
+// * Adjust implementation in `node/impl/`
+// * Run `make gen` - this will:
+//  * Generate proxy structs
+//  * Generate mocks
+//  * Generate markdown docs
+//  * Generate openrpc blobs
+
 type Gateway interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
