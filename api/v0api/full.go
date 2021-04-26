@@ -26,6 +26,23 @@ import (
 
 //go:generate go run github.com/golang/mock/mockgen -destination=v0mocks/mock_full.go -package=v0mocks . FullNode
 
+//                       MODIFYING THE API INTERFACE
+//
+// NOTE: This is the V0 (Stable) API - when adding methods to this interface,
+// you'll need to make sure they are also present on the V1 (Unstable) API
+//
+// This API is implemented in `v1_wrapper.go` as a compatibility layer backed
+// by the V1 api
+//
+// When adding / changing methods in this file:
+// * Do the change here
+// * Adjust implementation in `node/impl/`
+// * Run `make gen` - this will:
+//  * Generate proxy structs
+//  * Generate mocks
+//  * Generate markdown docs
+//  * Generate openrpc blobs
+
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common
