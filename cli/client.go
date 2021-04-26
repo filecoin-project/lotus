@@ -2347,7 +2347,7 @@ func renderDeal(di *lapi.DealInfo) {
 	}
 
 	for _, stg := range di.DealStages.Stages {
-		msg := fmt.Sprintf("%s %s: %s (%s)", color.BlueString("Stage:"), color.BlueString(strings.TrimPrefix(stg.Name, "StorageDeal")), stg.Description, color.GreenString(stg.ExpectedDuration))
+		msg := fmt.Sprintf("%s %s: %s (expected duration: %s)", color.BlueString("Stage:"), color.BlueString(strings.TrimPrefix(stg.Name, "StorageDeal")), stg.Description, color.GreenString(stg.ExpectedDuration))
 		if stg.UpdatedTime.Time().IsZero() {
 			msg = color.YellowString(msg)
 		}
