@@ -208,9 +208,9 @@ func (s *state4) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 	// If no sector numbers are specified, load all.
 	if snos == nil {
 		infos := make([]*SectorOnChainInfo, 0, sectors.Length())
-		var info2 miner4.SectorOnChainInfo
-		if err := sectors.ForEach(&info2, func(_ int64) error {
-			info := fromV4SectorOnChainInfo(info2)
+		var info4 miner4.SectorOnChainInfo
+		if err := sectors.ForEach(&info4, func(_ int64) error {
+			info := fromV4SectorOnChainInfo(info4)
 			infos = append(infos, &info)
 			return nil
 		}); err != nil {
@@ -220,13 +220,13 @@ func (s *state4) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 	}
 
 	// Otherwise, load selected.
-	infos2, err := sectors.Load(*snos)
+	infos4, err := sectors.Load(*snos)
 	if err != nil {
 		return nil, err
 	}
-	infos := make([]*SectorOnChainInfo, len(infos2))
-	for i, info2 := range infos2 {
-		info := fromV4SectorOnChainInfo(*info2)
+	infos := make([]*SectorOnChainInfo, len(infos4))
+	for i, info4 := range infos4 {
+		info := fromV4SectorOnChainInfo(*info4)
 		infos[i] = &info
 	}
 	return infos, nil
@@ -268,13 +268,13 @@ func (s *state4) NumDeadlines() (uint64, error) {
 }
 
 func (s *state4) DeadlinesChanged(other State) (bool, error) {
-	other2, ok := other.(*state4)
+	other4, ok := other.(*state4)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
 
-	return !s.State.Deadlines.Equals(other2.Deadlines), nil
+	return !s.State.Deadlines.Equals(other4.Deadlines), nil
 }
 
 func (s *state4) MinerInfoChanged(other State) (bool, error) {
@@ -377,13 +377,13 @@ func (d *deadline4) ForEachPartition(cb func(uint64, Partition) error) error {
 }
 
 func (d *deadline4) PartitionsChanged(other Deadline) (bool, error) {
-	other2, ok := other.(*deadline4)
+	other4, ok := other.(*deadline4)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
 
-	return !d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
+	return !d.Deadline.Partitions.Equals(other4.Deadline.Partitions), nil
 }
 
 func (d *deadline4) PartitionsPoSted() (bitfield.BitField, error) {

@@ -5,9 +5,34 @@ import (
 	"fmt"
 	"golang.org/x/xerrors"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"text/template"
 )
+
+var latestVersion = 4
+
+var versions = []int{0, 2, 3, latestVersion}
+
+var versionImports = map[int]string{
+	0:             "/",
+	2:             "/v2/",
+	3:             "/v3/",
+	latestVersion: "/v4/",
+}
+
+var actors = map[string][]int{
+	"account":  versions,
+	"cron":     versions,
+	"init":     versions,
+	"market":   versions,
+	"miner":    versions,
+	"multisig": versions,
+	"paych":    versions,
+	"power":    versions,
+	"reward":   versions,
+	"verifreg": versions,
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -17,45 +42,15 @@ func main() {
 }
 
 func run() error {
-	versions := []int{0, 2, 3, 4}
-
-	versionImports := map[int]string{
-		0: "/",
-		2: "/v2/",
-		3: "/v3/",
-		4: "/v4/",
-	}
-
-	actors := map[string][]int{
-		"account": versions,
-	}
-
 	for act, versions := range actors {
 		actDir := filepath.Join("chain/actors/builtin", act)
 
-		{
-			af, err := ioutil.ReadFile(filepath.Join(actDir, "state.go.template"))
-			if err != nil {
-				return xerrors.Errorf("loading state adapter template: %w", err)
-			}
+		if err := generateState(actDir); err != nil {
+			return err
+		}
 
-			for _, version := range versions {
-				tpl := template.Must(template.New("").Funcs(template.FuncMap{}).Parse(string(af)))
-
-				var b bytes.Buffer
-
-				err := tpl.Execute(&b, map[string]interface{}{
-					"v": version,
-					"import": versionImports[version],
-				})
-				if err != nil {
-					return err
-				}
-
-				if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("v%d.go", version)), b.Bytes(), 0666); err != nil {
-					return err
-				}
-			}
+		if err := generateMessages(actDir); err != nil {
+			return err
 		}
 
 		{
@@ -71,7 +66,8 @@ func run() error {
 			var b bytes.Buffer
 
 			err = tpl.Execute(&b, map[string]interface{}{
-				"versions": versions,
+				"versions":      versions,
+				"latestVersion": latestVersion,
 			})
 			if err != nil {
 				return err
@@ -80,6 +76,68 @@ func run() error {
 			if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("%s.go", act)), b.Bytes(), 0666); err != nil {
 				return err
 			}
+		}
+	}
+
+	return nil
+}
+
+func generateState(actDir string) error {
+	af, err := ioutil.ReadFile(filepath.Join(actDir, "state.go.template"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // skip
+		}
+
+		return xerrors.Errorf("loading state adapter template: %w", err)
+	}
+
+	for _, version := range versions {
+		tpl := template.Must(template.New("").Funcs(template.FuncMap{}).Parse(string(af)))
+
+		var b bytes.Buffer
+
+		err := tpl.Execute(&b, map[string]interface{}{
+			"v":      version,
+			"import": versionImports[version],
+		})
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("v%d.go", version)), b.Bytes(), 0666); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func generateMessages(actDir string) error {
+	af, err := ioutil.ReadFile(filepath.Join(actDir, "message.go.template"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // skip
+		}
+
+		return xerrors.Errorf("loading state adapter template: %w", err)
+	}
+
+	for _, version := range versions {
+		tpl := template.Must(template.New("").Funcs(template.FuncMap{}).Parse(string(af)))
+
+		var b bytes.Buffer
+
+		err := tpl.Execute(&b, map[string]interface{}{
+			"v":      version,
+			"import": versionImports[version],
+		})
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("message%d.go", version)), b.Bytes(), 0666); err != nil {
+			return err
 		}
 	}
 

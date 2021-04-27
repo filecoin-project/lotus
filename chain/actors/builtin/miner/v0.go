@@ -196,6 +196,7 @@ func (s *state0) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 	}
 
 	ret := fromV0SectorPreCommitOnChainInfo(*info)
+
 	return &ret, nil
 }
 

@@ -2,6 +2,7 @@ package paych
 
 import (
 	"encoding/base64"
+	"fmt"
 
 	"golang.org/x/xerrors"
 
@@ -12,12 +13,14 @@ import (
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -97,4 +100,28 @@ func DecodeSignedVoucher(s string) (*SignedVoucher, error) {
 	}
 
 	return &sv, nil
+}
+
+var Methods = builtin4.MethodsPaych
+
+func Message(version actors.Version, from address.Address) MessageBuilder {
+	switch version {
+	case actors.Version0:
+		return message0{from}
+	case actors.Version2:
+		return message2{from}
+	case actors.Version3:
+		return message3{from}
+	case actors.Version4:
+		return message4{from}
+	default:
+		panic(fmt.Sprintf("unsupported actors version: %d", version))
+	}
+}
+
+type MessageBuilder interface {
+	Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error)
+	Update(paych address.Address, voucher *SignedVoucher, secret []byte) (*types.Message, error)
+	Settle(paych address.Address) (*types.Message, error)
+	Collect(paych address.Address) (*types.Message, error)
 }
