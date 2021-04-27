@@ -859,10 +859,10 @@ workflows:
       - create-canary:
           requires:
             - build-all
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
