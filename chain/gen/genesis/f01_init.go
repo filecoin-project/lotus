@@ -133,9 +133,22 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		}
 	}
 
-	err := setupMsig(remainder.Meta)
-	if err != nil {
-		return 0, nil, nil, xerrors.Errorf("setting up remainder msig: %w", err)
+	if remainder.Type == genesis.TAccount {
+		var ainfo genesis.AccountMeta
+		if err := json.Unmarshal(remainder.Meta, &ainfo); err != nil {
+			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+
+		// TODO: Use builtin.ReserveAddress...
+		value := cbg.CborInt(90)
+		if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
+			return 0, nil, nil, err
+		}
+	} else if remainder.Type == genesis.TMultisig {
+		err := setupMsig(remainder.Meta)
+		if err != nil {
+			return 0, nil, nil, xerrors.Errorf("setting up remainder msig: %w", err)
+		}
 	}
 
 	amapaddr, err := amap.Root()

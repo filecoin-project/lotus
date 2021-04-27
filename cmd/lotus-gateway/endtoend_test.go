@@ -24,6 +24,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -103,7 +105,7 @@ func TestWalletMsig(t *testing.T) {
 	addProposal, err := lite.MsigCreate(ctx, 2, msigAddrs, abi.ChainEpoch(50), amt, liteWalletAddr, types.NewInt(0))
 	require.NoError(t, err)
 
-	res, err := lite.StateWaitMsg(ctx, addProposal, 1)
+	res, err := lite.StateWaitMsg(ctx, addProposal, 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -123,7 +125,7 @@ func TestWalletMsig(t *testing.T) {
 	addProposal, err = lite.MsigAddPropose(ctx, msig, walletAddrs[0], walletAddrs[3], false)
 	require.NoError(t, err)
 
-	res, err = lite.StateWaitMsg(ctx, addProposal, 1)
+	res, err = lite.StateWaitMsg(ctx, addProposal, 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -137,7 +139,7 @@ func TestWalletMsig(t *testing.T) {
 	approval1, err := lite.MsigAddApprove(ctx, msig, walletAddrs[1], txnID, walletAddrs[0], walletAddrs[3], false)
 	require.NoError(t, err)
 
-	res, err = lite.StateWaitMsg(ctx, approval1, 1)
+	res, err = lite.StateWaitMsg(ctx, approval1, 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -245,16 +247,19 @@ func startNodes(
 
 				// Create a gateway server in front of the full node
 				gapiImpl := newGatewayAPI(fullNode, lookbackCap, stateWaitLookbackLimit)
-				_, addr, err := builder.CreateRPCServer(t, gapiImpl)
+				_, addr, err := builder.CreateRPCServer(t, map[string]interface{}{
+					"/rpc/v1": gapiImpl,
+					"/rpc/v0": api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), gapiImpl),
+				})
 				require.NoError(t, err)
 
 				// Create a gateway client API that connects to the gateway server
-				var gapi api.GatewayAPI
-				gapi, closer, err = client.NewGatewayRPC(ctx, addr, nil)
+				var gapi api.Gateway
+				gapi, closer, err = client.NewGatewayRPCV1(ctx, addr+"/rpc/v1", nil)
 				require.NoError(t, err)
 
 				// Provide the gateway API to dependency injection
-				return node.Override(new(api.GatewayAPI), gapi)
+				return node.Override(new(api.Gateway), gapi)
 			},
 		},
 	)
@@ -299,7 +304,7 @@ func sendFunds(ctx context.Context, fromNode test.TestNode, fromAddr address.Add
 		return err
 	}
 
-	res, err := fromNode.StateWaitMsg(ctx, sm.Cid(), 1)
+	res, err := fromNode.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 	if err != nil {
 		return err
 	}

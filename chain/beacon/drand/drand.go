@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/xerrors"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-state-types/abi"

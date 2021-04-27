@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
+
 	"github.com/filecoin-project/lotus/chain/gen/genesis"
 
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -64,9 +66,61 @@ var auditsCmd = &cli.Command{
 	Description: "a collection of utilities for auditing the filecoin chain",
 	Subcommands: []*cli.Command{
 		chainBalanceCmd,
+		chainBalanceSanityCheckCmd,
 		chainBalanceStateCmd,
 		chainPledgeCmd,
 		fillBalancesCmd,
+	},
+}
+
+var chainBalanceSanityCheckCmd = &cli.Command{
+	Name:        "chain-balance-sanity",
+	Description: "Confirms that the total balance of every actor in state is still 2 billion",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset to start from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		tsk := ts.Key()
+		actors, err := api.StateListActors(ctx, tsk)
+		if err != nil {
+			return err
+		}
+
+		bal := big.Zero()
+		for _, addr := range actors {
+			act, err := api.StateGetActor(ctx, addr, tsk)
+			if err != nil {
+				return err
+			}
+
+			bal = big.Add(bal, act.Balance)
+		}
+
+		attoBase := big.Mul(big.NewInt(int64(build.FilBase)), big.NewInt(int64(build.FilecoinPrecision)))
+
+		if big.Cmp(attoBase, bal) != 0 {
+			return xerrors.Errorf("sanity check failed (expected %s, actual %s)", attoBase, bal)
+		}
+
+		fmt.Println("sanity check successful")
+
+		return nil
 	},
 }
 

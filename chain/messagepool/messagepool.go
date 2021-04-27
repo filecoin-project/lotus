@@ -195,16 +195,6 @@ func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSepc *api.M
 		maxFee = mf
 	}
 
-	if maxFee.Equals(big.Zero()) {
-		mf, err := mff()
-		if err != nil {
-			log.Errorf("failed to get default max gas fee: %+v", err)
-			mf = big.Zero()
-		}
-
-		maxFee = mf
-	}
-
 	gl := types.NewInt(uint64(msg.GasLimit))
 	totalFee := types.BigMul(msg.GasFeeCap, gl)
 
@@ -805,7 +795,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 	return nil
 }
 
-func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
+func (mp *MessagePool) GetNonce(_ context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 

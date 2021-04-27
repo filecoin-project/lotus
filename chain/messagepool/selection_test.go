@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -1333,7 +1333,7 @@ readLoop:
 	}
 
 	actorMap := make(map[address.Address]address.Address)
-	actorWallets := make(map[address.Address]api.WalletAPI)
+	actorWallets := make(map[address.Address]api.Wallet)
 
 	for _, m := range msgs {
 		baseNonce := baseNonces[m.Message.From]

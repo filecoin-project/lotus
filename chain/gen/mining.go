@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletAPI, bt *api.BlockTemplate) (*types.FullBlock, error) {
+func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
 
 	pts, err := sm.ChainStore().LoadTipSet(bt.Parents)
 	if err != nil {

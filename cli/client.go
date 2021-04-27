@@ -40,6 +40,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -83,12 +84,14 @@ var clientCmd = &cli.Command{
 		WithCategory("storage", clientGetDealCmd),
 		WithCategory("storage", clientListAsksCmd),
 		WithCategory("storage", clientDealStatsCmd),
+		WithCategory("storage", clientInspectDealCmd),
 		WithCategory("data", clientImportCmd),
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
 		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
+		WithCategory("retrieval", clientCancelRetrievalDealCmd),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientBalancesCmd),
@@ -299,8 +302,16 @@ var clientLocalCmd = &cli.Command{
 }
 
 var clientDealCmd = &cli.Command{
-	Name:      "deal",
-	Usage:     "Initialize storage deal with a miner",
+	Name:  "deal",
+	Usage: "Initialize storage deal with a miner",
+	Description: `Make a deal with a miner.
+dataCid comes from running 'lotus client import'.
+miner is the address of the miner you wish to make a deal with.
+price is measured in FIL/GB/Epoch. Miners usually don't accept a bid
+lower than their advertised ask. You can check a miners listed price
+with 'lotus client query-ask <miner address>'.
+duration is how long the miner should store the data for, in blocks.
+The minimum value is 518400 (6 months).`,
 	ArgsUsage: "[dataCid miner price duration]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -386,6 +397,9 @@ var clientDealCmd = &cli.Command{
 
 		if abi.ChainEpoch(dur) < build.MinDealDuration {
 			return xerrors.Errorf("minimum deal duration is %d blocks", build.MinDealDuration)
+		}
+		if abi.ChainEpoch(dur) > build.MaxDealDuration {
+			return xerrors.Errorf("maximum deal duration is %d blocks", build.MaxDealDuration)
 		}
 
 		var a address.Address
@@ -498,9 +512,10 @@ func interactiveDeal(cctx *cli.Context) error {
 	var ds lapi.DataCIDSize
 
 	// find
-	var candidateAsks []*storagemarket.StorageAsk
+	var candidateAsks []QueriedAsk
 	var budget types.FIL
 	var dealCount int64
+	var medianPing, maxAcceptablePing time.Duration
 
 	var a address.Address
 	if from := cctx.String("from"); from != "" {
@@ -660,6 +675,18 @@ uiLoop:
 				return err
 			}
 
+			if len(asks) == 0 {
+				printErr(xerrors.Errorf("no asks found"))
+				continue uiLoop
+			}
+
+			medianPing = asks[len(asks)/2].Ping
+			var avgPing time.Duration
+			for _, ask := range asks {
+				avgPing += ask.Ping
+			}
+			avgPing /= time.Duration(len(asks))
+
 			for _, ask := range asks {
 				if ask.Ask.MinPieceSize > ds.PieceSize {
 					continue
@@ -667,10 +694,48 @@ uiLoop:
 				if ask.Ask.MaxPieceSize < ds.PieceSize {
 					continue
 				}
-				candidateAsks = append(candidateAsks, ask.Ask)
+				candidateAsks = append(candidateAsks, ask)
 			}
 
 			afmt.Printf("Found %d candidate asks\n", len(candidateAsks))
+			afmt.Printf("Average network latency: %s; Median latency: %s\n", avgPing.Truncate(time.Millisecond), medianPing.Truncate(time.Millisecond))
+			state = "max-ping"
+		case "max-ping":
+			maxAcceptablePing = medianPing
+
+			afmt.Printf("Maximum network latency (default: %s) (ms): ", maxAcceptablePing.Truncate(time.Millisecond))
+			_latStr, _, err := rl.ReadLine()
+			latStr := string(_latStr)
+			if err != nil {
+				printErr(xerrors.Errorf("reading maximum latency: %w", err))
+				continue
+			}
+
+			if latStr != "" {
+				maxMs, err := strconv.ParseInt(latStr, 10, 64)
+				if err != nil {
+					printErr(xerrors.Errorf("parsing FIL: %w", err))
+					continue uiLoop
+				}
+
+				maxAcceptablePing = time.Millisecond * time.Duration(maxMs)
+			}
+
+			var goodAsks []QueriedAsk
+			for _, candidateAsk := range candidateAsks {
+				if candidateAsk.Ping < maxAcceptablePing {
+					goodAsks = append(goodAsks, candidateAsk)
+				}
+			}
+
+			if len(goodAsks) == 0 {
+				afmt.Printf("no asks left after filtering for network latency\n")
+				continue uiLoop
+			}
+
+			afmt.Printf("%d asks left after filtering for network latency\n", len(goodAsks))
+			candidateAsks = goodAsks
+
 			state = "find-budget"
 		case "find-budget":
 			afmt.Printf("Proposing from %s, Current Balance: %s\n", a, types.FIL(fromBal))
@@ -689,11 +754,11 @@ uiLoop:
 				continue uiLoop
 			}
 
-			var goodAsks []*storagemarket.StorageAsk
+			var goodAsks []QueriedAsk
 			for _, ask := range candidateAsks {
-				p := ask.Price
+				p := ask.Ask.Price
 				if verified {
-					p = ask.VerifiedPrice
+					p = ask.Ask.VerifiedPrice
 				}
 
 				epochPrice := types.BigDiv(types.BigMul(p, types.NewInt(uint64(ds.PieceSize))), gib)
@@ -733,9 +798,9 @@ uiLoop:
 				pickedAsks = []*storagemarket.StorageAsk{}
 
 				for _, ask := range candidateAsks {
-					p := ask.Price
+					p := ask.Ask.Price
 					if verified {
-						p = ask.VerifiedPrice
+						p = ask.Ask.VerifiedPrice
 					}
 
 					epochPrice := types.BigDiv(types.BigMul(p, types.NewInt(uint64(ds.PieceSize))), gib)
@@ -745,7 +810,7 @@ uiLoop:
 						continue
 					}
 
-					pickedAsks = append(pickedAsks, ask)
+					pickedAsks = append(pickedAsks, ask.Ask)
 					remainingBudget = big.Sub(remainingBudget, totalPrice)
 
 					if len(pickedAsks) == int(dealCount) {
@@ -945,7 +1010,7 @@ var clientFindCmd = &cli.Command{
 	},
 }
 
-const DefaultMaxRetrievePrice = 1
+const DefaultMaxRetrievePrice = "0.01"
 
 var clientRetrieveCmd = &cli.Command{
 	Name:      "retrieve",
@@ -966,11 +1031,14 @@ var clientRetrieveCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "maxPrice",
-			Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %d FIL)", DefaultMaxRetrievePrice),
+			Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %s FIL)", DefaultMaxRetrievePrice),
 		},
 		&cli.StringFlag{
 			Name:  "pieceCid",
 			Usage: "require data to be retrieved from a specific Piece CID",
+		},
+		&cli.BoolFlag{
+			Name: "allow-local",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1001,18 +1069,6 @@ var clientRetrieveCmd = &cli.Command{
 			return err
 		}
 
-		// Check if we already have this data locally
-
-		/*has, err := api.ClientHasLocal(ctx, file)
-		if err != nil {
-			return err
-		}
-
-		if has {
-			fmt.Println("Success: Already in local storage")
-			return nil
-		}*/ // TODO: fix
-
 		var pieceCid *cid.Cid
 		if cctx.String("pieceCid") != "" {
 			parsed, err := cid.Parse(cctx.String("pieceCid"))
@@ -1022,69 +1078,93 @@ var clientRetrieveCmd = &cli.Command{
 			pieceCid = &parsed
 		}
 
-		var offer api.QueryOffer
-		minerStrAddr := cctx.String("miner")
-		if minerStrAddr == "" { // Local discovery
-			offers, err := fapi.ClientFindData(ctx, file, pieceCid)
+		var order *lapi.RetrievalOrder
+		if cctx.Bool("allow-local") {
+			imports, err := fapi.ClientListImports(ctx)
+			if err != nil {
+				return err
+			}
 
-			var cleaned []api.QueryOffer
-			// filter out offers that errored
-			for _, o := range offers {
-				if o.Err == "" {
-					cleaned = append(cleaned, o)
+			for _, i := range imports {
+				if i.Root != nil && i.Root.Equals(file) {
+					order = &lapi.RetrievalOrder{
+						Root:       file,
+						LocalStore: &i.Key,
+
+						Total:       big.Zero(),
+						UnsealPrice: big.Zero(),
+					}
+					break
+				}
+			}
+		}
+
+		if order == nil {
+			var offer api.QueryOffer
+			minerStrAddr := cctx.String("miner")
+			if minerStrAddr == "" { // Local discovery
+				offers, err := fapi.ClientFindData(ctx, file, pieceCid)
+
+				var cleaned []api.QueryOffer
+				// filter out offers that errored
+				for _, o := range offers {
+					if o.Err == "" {
+						cleaned = append(cleaned, o)
+					}
+				}
+
+				offers = cleaned
+
+				// sort by price low to high
+				sort.Slice(offers, func(i, j int) bool {
+					return offers[i].MinPrice.LessThan(offers[j].MinPrice)
+				})
+				if err != nil {
+					return err
+				}
+
+				// TODO: parse offer strings from `client find`, make this smarter
+				if len(offers) < 1 {
+					fmt.Println("Failed to find file")
+					return nil
+				}
+				offer = offers[0]
+			} else { // Directed retrieval
+				minerAddr, err := address.NewFromString(minerStrAddr)
+				if err != nil {
+					return err
+				}
+				offer, err = fapi.ClientMinerQueryOffer(ctx, minerAddr, file, pieceCid)
+				if err != nil {
+					return err
+				}
+			}
+			if offer.Err != "" {
+				return fmt.Errorf("The received offer errored: %s", offer.Err)
+			}
+
+			maxPrice := types.MustParseFIL(DefaultMaxRetrievePrice)
+
+			if cctx.String("maxPrice") != "" {
+				maxPrice, err = types.ParseFIL(cctx.String("maxPrice"))
+				if err != nil {
+					return xerrors.Errorf("parsing maxPrice: %w", err)
 				}
 			}
 
-			offers = cleaned
-
-			// sort by price low to high
-			sort.Slice(offers, func(i, j int) bool {
-				return offers[i].MinPrice.LessThan(offers[j].MinPrice)
-			})
-			if err != nil {
-				return err
+			if offer.MinPrice.GreaterThan(big.Int(maxPrice)) {
+				return xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
 			}
 
-			// TODO: parse offer strings from `client find`, make this smarter
-			if len(offers) < 1 {
-				fmt.Println("Failed to find file")
-				return nil
-			}
-			offer = offers[0]
-		} else { // Directed retrieval
-			minerAddr, err := address.NewFromString(minerStrAddr)
-			if err != nil {
-				return err
-			}
-			offer, err = fapi.ClientMinerQueryOffer(ctx, minerAddr, file, pieceCid)
-			if err != nil {
-				return err
-			}
+			o := offer.Order(payer)
+			order = &o
 		}
-		if offer.Err != "" {
-			return fmt.Errorf("The received offer errored: %s", offer.Err)
-		}
-
-		maxPrice := types.FromFil(DefaultMaxRetrievePrice)
-
-		if cctx.String("maxPrice") != "" {
-			maxPriceFil, err := types.ParseFIL(cctx.String("maxPrice"))
-			if err != nil {
-				return xerrors.Errorf("parsing maxPrice: %w", err)
-			}
-
-			maxPrice = types.BigInt(maxPriceFil)
-		}
-
-		if offer.MinPrice.GreaterThan(maxPrice) {
-			return xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
-		}
-
 		ref := &lapi.FileRef{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
 		}
-		updates, err := fapi.ClientRetrieveWithEvents(ctx, offer.Order(payer), ref)
+
+		updates, err := fapi.ClientRetrieveWithEvents(ctx, *order, ref)
 		if err != nil {
 			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
@@ -1111,6 +1191,29 @@ var clientRetrieveCmd = &cli.Command{
 				return xerrors.Errorf("retrieval timed out")
 			}
 		}
+	},
+}
+
+var clientInspectDealCmd = &cli.Command{
+	Name:  "inspect-deal",
+	Usage: "Inspect detailed information about deal's lifecycle and the various stages it goes through",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name: "deal-id",
+		},
+		&cli.StringFlag{
+			Name: "proposal-cid",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+		return inspectDealCmd(ctx, api, cctx.String("proposal-cid"), cctx.Int("deal-id"))
 	},
 }
 
@@ -1246,7 +1349,7 @@ type QueriedAsk struct {
 	Ping time.Duration
 }
 
-func GetAsks(ctx context.Context, api lapi.FullNode) ([]QueriedAsk, error) {
+func GetAsks(ctx context.Context, api v0api.FullNode) ([]QueriedAsk, error) {
 	isTTY := true
 	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
 		isTTY = false
@@ -1553,7 +1656,7 @@ var clientListDeals = &cli.Command{
 	},
 }
 
-func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet, v api.DealInfo) deal {
+func dealFromDealInfo(ctx context.Context, full v0api.FullNode, head *types.TipSet, v api.DealInfo) deal {
 	if v.DealID == 0 {
 		return deal{
 			LocalDeal:        v,
@@ -1572,7 +1675,7 @@ func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet
 	}
 }
 
-func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
+func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
 	sort.Slice(localDeals, func(i, j int) bool {
 		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
 	})
@@ -1975,6 +2078,33 @@ var clientCancelTransfer = &cli.Command{
 	},
 }
 
+var clientCancelRetrievalDealCmd = &cli.Command{
+	Name:  "cancel-retrieval",
+	Usage: "Cancel a retrieval deal by deal ID; this also cancels the associated transfer",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:     "deal-id",
+			Usage:    "specify retrieval deal by deal ID",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		id := cctx.Int64("deal-id")
+		if id < 0 {
+			return errors.New("deal id cannot be negative")
+		}
+
+		return api.ClientCancelRetrievalDeal(ctx, retrievalmarket.DealID(id))
+	},
+}
+
 var clientListTransfers = &cli.Command{
 	Name:  "list-transfers",
 	Usage: "List ongoing data transfers for deals",
@@ -2162,4 +2292,78 @@ func ellipsis(s string, length int) string {
 		return "..." + s[len(s)-length:]
 	}
 	return s
+}
+
+func inspectDealCmd(ctx context.Context, api v0api.FullNode, proposalCid string, dealId int) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	deals, err := api.ClientListDeals(ctx)
+	if err != nil {
+		return err
+	}
+
+	var di *lapi.DealInfo
+	for i, cdi := range deals {
+		if proposalCid != "" && cdi.ProposalCid.String() == proposalCid {
+			di = &deals[i]
+			break
+		}
+
+		if dealId != 0 && int(cdi.DealID) == dealId {
+			di = &deals[i]
+			break
+		}
+	}
+
+	if di == nil {
+		if proposalCid != "" {
+			return fmt.Errorf("cannot find deal with proposal cid: %s", proposalCid)
+		}
+		if dealId != 0 {
+			return fmt.Errorf("cannot find deal with deal id: %v", dealId)
+		}
+		return errors.New("you must specify proposal cid or deal id in order to inspect a deal")
+	}
+
+	// populate DealInfo.DealStages and DataTransfer.Stages
+	di, err = api.ClientGetDealInfo(ctx, di.ProposalCid)
+	if err != nil {
+		return fmt.Errorf("cannot get deal info for proposal cid: %v", di.ProposalCid)
+	}
+
+	renderDeal(di)
+
+	return nil
+}
+
+func renderDeal(di *lapi.DealInfo) {
+	color.Blue("Deal ID:      %d\n", int(di.DealID))
+	color.Blue("Proposal CID: %s\n\n", di.ProposalCid.String())
+
+	if di.DealStages == nil {
+		color.Yellow("Deal was made with an older version of Lotus and Lotus did not collect detailed information about its stages")
+		return
+	}
+
+	for _, stg := range di.DealStages.Stages {
+		msg := fmt.Sprintf("%s %s: %s (expected duration: %s)", color.BlueString("Stage:"), color.BlueString(strings.TrimPrefix(stg.Name, "StorageDeal")), stg.Description, color.GreenString(stg.ExpectedDuration))
+		if stg.UpdatedTime.Time().IsZero() {
+			msg = color.YellowString(msg)
+		}
+		fmt.Println(msg)
+
+		for _, l := range stg.Logs {
+			fmt.Printf("  %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
+		}
+
+		if stg.Name == "StorageDealStartDataTransfer" {
+			for _, dtStg := range di.DataTransfer.Stages.Stages {
+				fmt.Printf("        %s %s %s\n", color.YellowString(dtStg.CreatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), color.BlueString("Data transfer stage:"), color.BlueString(dtStg.Name))
+				for _, l := range dtStg.Logs {
+					fmt.Printf("              %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
+				}
+			}
+		}
+	}
 }

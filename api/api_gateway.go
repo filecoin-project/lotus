@@ -8,13 +8,27 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/go-state-types/network"
 
+	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type GatewayAPI interface {
+//                       MODIFYING THE API INTERFACE
+//
+// NOTE: This is the V1 (Unstable) API - to add methods to the V0 (Stable) API
+// you'll have to add those methods to interfaces in `api/v0api`
+//
+// When adding / changing methods in this file:
+// * Do the change here
+// * Adjust implementation in `node/impl/`
+// * Run `make gen` - this will:
+//  * Generate proxy structs
+//  * Generate mocks
+//  * Generate markdown docs
+//  * Generate openrpc blobs
+
+type Gateway interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
@@ -31,7 +45,6 @@ type GatewayAPI interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (DealCollateralBounds, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
-	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (MarketBalance, error)
@@ -39,9 +52,10 @@ type GatewayAPI interface {
 	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error)
 	StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
-	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
-	StateSearchMsg(ctx context.Context, msg cid.Cid) (*MsgLookup, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
-	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*MsgLookup, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error)
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 }

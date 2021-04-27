@@ -58,6 +58,9 @@ func TestAPIDealFlow(t *testing.T) {
 	t.Run("TestPublishDealsBatching", func(t *testing.T) {
 		test.TestPublishDealsBatching(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
 	})
+	t.Run("TestBatchDealInput", func(t *testing.T) {
+		test.TestBatchDealInput(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
+	})
 }
 
 func TestAPIDealFlowReal(t *testing.T) {

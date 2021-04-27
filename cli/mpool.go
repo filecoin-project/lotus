@@ -22,22 +22,22 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 )
 
-var mpoolCmd = &cli.Command{
+var MpoolCmd = &cli.Command{
 	Name:  "mpool",
 	Usage: "Manage message pool",
 	Subcommands: []*cli.Command{
-		mpoolPending,
-		mpoolClear,
-		mpoolSub,
-		mpoolStat,
-		mpoolReplaceCmd,
-		mpoolFindCmd,
-		mpoolConfig,
-		mpoolGasPerfCmd,
+		MpoolPending,
+		MpoolClear,
+		MpoolSub,
+		MpoolStat,
+		MpoolReplaceCmd,
+		MpoolFindCmd,
+		MpoolConfig,
+		MpoolGasPerfCmd,
 	},
 }
 
-var mpoolPending = &cli.Command{
+var MpoolPending = &cli.Command{
 	Name:  "pending",
 	Usage: "Get pending messages",
 	Flags: []cli.Flag{
@@ -132,9 +132,11 @@ var mpoolPending = &cli.Command{
 	},
 }
 
-var mpoolClear = &cli.Command{
-	Name:  "clear",
-	Usage: "Clear all pending messages from the mpool (USE WITH CARE)",
+// Deprecated: MpoolClear is now available at `lotus-shed mpool clear`
+var MpoolClear = &cli.Command{
+	Name:   "clear",
+	Usage:  "Clear all pending messages from the mpool (USE WITH CARE) (DEPRECATED)",
+	Hidden: true,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "local",
@@ -146,6 +148,7 @@ var mpoolClear = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus-shed mpool clear`")
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -165,7 +168,7 @@ var mpoolClear = &cli.Command{
 	},
 }
 
-var mpoolSub = &cli.Command{
+var MpoolSub = &cli.Command{
 	Name:  "sub",
 	Usage: "Subscribe to mpool changes",
 	Action: func(cctx *cli.Context) error {
@@ -197,7 +200,7 @@ var mpoolSub = &cli.Command{
 	},
 }
 
-var mpoolStat = &cli.Command{
+var MpoolStat = &cli.Command{
 	Name:  "stat",
 	Usage: "print mempool stats",
 	Flags: []cli.Flag{
@@ -356,7 +359,7 @@ var mpoolStat = &cli.Command{
 	},
 }
 
-var mpoolReplaceCmd = &cli.Command{
+var MpoolReplaceCmd = &cli.Command{
 	Name:  "replace",
 	Usage: "replace a message in the mempool",
 	Flags: []cli.Flag{
@@ -509,7 +512,7 @@ var mpoolReplaceCmd = &cli.Command{
 	},
 }
 
-var mpoolFindCmd = &cli.Command{
+var MpoolFindCmd = &cli.Command{
 	Name:  "find",
 	Usage: "find a message in the mempool",
 	Flags: []cli.Flag{
@@ -592,7 +595,7 @@ var mpoolFindCmd = &cli.Command{
 	},
 }
 
-var mpoolConfig = &cli.Command{
+var MpoolConfig = &cli.Command{
 	Name:      "config",
 	Usage:     "get or set current mpool configuration",
 	ArgsUsage: "[new-config]",
@@ -637,7 +640,7 @@ var mpoolConfig = &cli.Command{
 	},
 }
 
-var mpoolGasPerfCmd = &cli.Command{
+var MpoolGasPerfCmd = &cli.Command{
 	Name:  "gas-perf",
 	Usage: "Check gas performance of messages in mempool",
 	Flags: []cli.Flag{

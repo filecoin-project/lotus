@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/api"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -240,7 +242,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		}, nil)
 		require.NoError(t, err)
 
-		r, err := client.StateWaitMsg(ctx, m.Cid(), 2)
+		r, err := client.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 	}
@@ -323,7 +325,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 		fmt.Println("sent termination message:", smsg.Cid())
 
-		r, err := client.StateWaitMsg(ctx, smsg.Cid(), 2)
+		r, err := client.StateWaitMsg(ctx, smsg.Cid(), 2, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 

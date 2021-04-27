@@ -37,6 +37,18 @@ func TestDoesntDependOnFFI(t *testing.T) {
 	}
 }
 
+func TestDoesntDependOnBuild(t *testing.T) {
+	deps, err := exec.Command(goCmd(), "list", "-deps", "github.com/filecoin-project/lotus/api").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pkg := range strings.Fields(string(deps)) {
+		if pkg == "github.com/filecoin-project/build" {
+			t.Fatal("api depends on filecoin-ffi")
+		}
+	}
+}
+
 func TestReturnTypes(t *testing.T) {
 	errType := reflect.TypeOf(new(error)).Elem()
 	bareIface := reflect.TypeOf(new(interface{})).Elem()
@@ -99,5 +111,11 @@ func TestReturnTypes(t *testing.T) {
 	t.Run("common", tst(new(Common)))
 	t.Run("full", tst(new(FullNode)))
 	t.Run("miner", tst(new(StorageMiner)))
-	t.Run("worker", tst(new(WorkerAPI)))
+	t.Run("worker", tst(new(Worker)))
+}
+
+func TestPermTags(t *testing.T) {
+	_ = PermissionedFullAPI(&FullNodeStruct{})
+	_ = PermissionedStorMinerAPI(&StorageMinerStruct{})
+	_ = PermissionedWorkerAPI(&WorkerStruct{})
 }

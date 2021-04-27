@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# 1.8.0 / 2021-04-05
+# 1.8.0 / 2021-04-27
 
 This is a mandatory release of Lotus that upgrades the network to version 12, which introduces various performance improvements to the cron processing of the power actor. The network will upgrade at height 712320, which is 2021-04-29T06:00:00Z.
 

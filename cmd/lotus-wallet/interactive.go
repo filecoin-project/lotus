@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -30,8 +31,8 @@ import (
 type InteractiveWallet struct {
 	lk sync.Mutex
 
-	apiGetter func() (api.FullNode, jsonrpc.ClientCloser, error)
-	under     api.WalletAPI
+	apiGetter func() (v0api.FullNode, jsonrpc.ClientCloser, error)
+	under     v0api.Wallet
 }
 
 func (c *InteractiveWallet) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {

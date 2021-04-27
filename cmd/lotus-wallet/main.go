@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -130,7 +132,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		var w api.WalletAPI = lw
+		var w api.Wallet = lw
 		if cctx.Bool("ledger") {
 			ds, err := lr.Datastore(context.Background(), "/metadata")
 			if err != nil {
@@ -149,10 +151,10 @@ var runCmd = &cli.Command{
 		log.Info("Setting up API endpoint at " + address)
 
 		if cctx.Bool("interactive") {
-			var ag func() (api.FullNode, jsonrpc.ClientCloser, error)
+			var ag func() (v0api.FullNode, jsonrpc.ClientCloser, error)
 
 			if !cctx.Bool("offline") {
-				ag = func() (api.FullNode, jsonrpc.ClientCloser, error) {
+				ag = func() (v0api.FullNode, jsonrpc.ClientCloser, error) {
 					return lcli.GetFullNodeAPI(cctx)
 				}
 			}

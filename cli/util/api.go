@@ -18,6 +18,8 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -133,13 +135,13 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	}, nil
 }
 
-func GetRawAPI(ctx *cli.Context, t repo.RepoType) (string, http.Header, error) {
+func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get API info: %w", err)
 	}
 
-	addr, err := ainfo.DialArgs()
+	addr, err := ainfo.DialArgs(version)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
@@ -165,25 +167,38 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		return tn.(api.FullNode), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, t)
+	addr, headers, err := GetRawAPI(ctx, t, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewCommonRPC(ctx.Context, addr, headers)
+	return client.NewCommonRPCV0(ctx.Context, addr, headers)
 }
 
-func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
-		return tn.(api.FullNode), func() {}, nil
+		return &v0api.WrapperV1Full{FullNode: tn.(v1api.FullNode)}, func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewFullNodeRPC(ctx.Context, addr, headers)
+	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
+}
+
+func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(v1api.FullNode), func() {}, nil
+	}
+
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewFullNodeRPCV1(ctx.Context, addr, headers)
 }
 
 type GetStorageMinerOptions struct {
@@ -206,7 +221,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		return tn.(api.StorageMiner), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner)
+	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -227,25 +242,34 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		addr = u.String()
 	}
 
-	return client.NewStorageMinerRPC(ctx.Context, addr, headers)
+	return client.NewStorageMinerRPCV0(ctx.Context, addr, headers)
 }
 
-func GetWorkerAPI(ctx *cli.Context) (api.WorkerAPI, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.Worker)
+func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.Worker, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewWorkerRPC(ctx.Context, addr, headers)
+	return client.NewWorkerRPCV0(ctx.Context, addr, headers)
 }
 
-func GetGatewayAPI(ctx *cli.Context) (api.GatewayAPI, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode)
+func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return client.NewGatewayRPC(ctx.Context, addr, headers)
+	return client.NewGatewayRPCV1(ctx.Context, addr, headers)
+}
+
+func GetGatewayAPIV0(ctx *cli.Context) (v0api.Gateway, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.NewGatewayRPCV0(ctx.Context, addr, headers)
 }
 
 func DaemonContext(cctx *cli.Context) context.Context {

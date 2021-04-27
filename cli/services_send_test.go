@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/mocks"
+	mocks "github.com/filecoin-project/lotus/api/v0api/v0mocks"
 	types "github.com/filecoin-project/lotus/chain/types"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"

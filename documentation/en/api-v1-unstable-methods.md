@@ -1,6 +1,7 @@
 # Groups
 * [](#)
   * [Closing](#Closing)
+  * [Discover](#Discover)
   * [Session](#Session)
   * [Shutdown](#Shutdown)
   * [Version](#Version)
@@ -34,6 +35,7 @@
 * [Client](#Client)
   * [ClientCalcCommP](#ClientCalcCommP)
   * [ClientCancelDataTransfer](#ClientCancelDataTransfer)
+  * [ClientCancelRetrievalDeal](#ClientCancelRetrievalDeal)
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
   * [ClientDealPieceCID](#ClientDealPieceCID)
   * [ClientDealSize](#ClientDealSize)
@@ -151,7 +153,6 @@
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
-  * [StateGetReceipt](#StateGetReceipt)
   * [StateListActors](#StateListActors)
   * [StateListMessages](#StateListMessages)
   * [StateListMiners](#StateListMiners)
@@ -179,7 +180,6 @@
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)
   * [StateSearchMsg](#StateSearchMsg)
-  * [StateSearchMsgLimited](#StateSearchMsgLimited)
   * [StateSectorExpiration](#StateSectorExpiration)
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
@@ -189,7 +189,6 @@
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
-  * [StateWaitMsgLimited](#StateWaitMsgLimited)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
@@ -226,6 +225,25 @@ Inputs: `null`
 
 Response: `{}`
 
+### Discover
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "info": {
+    "title": "Lotus RPC API",
+    "version": "1.2.1/generated=2020-11-22T08:22:42-06:00"
+  },
+  "methods": [],
+  "openrpc": "1.2.6"
+}
+```
+
 ### Session
 
 
@@ -255,7 +273,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 66048,
+  "APIVersion": 131328,
   "BlockDelay": 42
 }
 ```
@@ -425,6 +443,17 @@ Response:
 ### ChainGetBlockMessages
 ChainGetBlockMessages returns messages stored in the specified block.
 
+Note: If there are multiple blocks in a tipset, it's likely that some
+messages will be duplicated. It's also possible for blocks in a tipset to have
+different messages from the same sender at the same nonce. When that happens,
+only the first message (in a block with lowest ticket) will be considered
+for execution
+
+NOTE: THIS METHOD SHOULD ONLY BE USED FOR GETTING MESSAGES IN A SPECIFIC BLOCK
+
+DO NOT USE THIS METHOD TO GET MESSAGES INCLUDED IN A TIPSET
+Use ChainGetParentMessages, which will perform correct message deduplication
+
 
 Perms: read
 
@@ -499,7 +528,7 @@ Response:
 ```
 
 ### ChainGetNode
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -540,7 +569,8 @@ Response: `null`
 
 ### ChainGetParentReceipts
 ChainGetParentReceipts returns receipts for messages in parent tipset of
-the specified block.
+the specified block. The receipts in the list returned is one-to-one with the
+messages returned by a call to ChainGetParentMessages with the same blockCid.
 
 
 Perms: read
@@ -853,7 +883,7 @@ retrieval markets as a client
 ClientCalcCommP calculates the CommP for a specified file
 
 
-Perms: read
+Perms: write
 
 Inputs:
 ```json
@@ -889,8 +919,23 @@ Inputs:
 
 Response: `{}`
 
+### ClientCancelRetrievalDeal
+ClientCancelRetrievalDeal cancels an ongoing retrieval deal based on DealID
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  5
+]
+```
+
+Response: `{}`
+
 ### ClientDataTransferUpdates
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -909,7 +954,10 @@ Response:
   "Voucher": "string value",
   "Message": "string value",
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Transferred": 42
+  "Transferred": 42,
+  "Stages": {
+    "Stages": null
+  }
 }
 ```
 
@@ -1022,6 +1070,9 @@ Response:
   },
   "State": 42,
   "Message": "string value",
+  "DealStages": {
+    "Stages": null
+  },
   "Provider": "f01234",
   "DataRef": {
     "TransferType": "string value",
@@ -1057,7 +1108,10 @@ Response:
     "Voucher": "string value",
     "Message": "string value",
     "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
   }
 }
 ```
@@ -1081,7 +1135,7 @@ Response: `"string value"`
 ClientGetDealUpdates returns the status of updated deals
 
 
-Perms: read
+Perms: write
 
 Inputs: `null`
 
@@ -1093,6 +1147,9 @@ Response:
   },
   "State": 42,
   "Message": "string value",
+  "DealStages": {
+    "Stages": null
+  },
   "Provider": "f01234",
   "DataRef": {
     "TransferType": "string value",
@@ -1128,7 +1185,10 @@ Response:
     "Voucher": "string value",
     "Message": "string value",
     "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
   }
 }
 ```
@@ -1320,6 +1380,7 @@ Inputs:
     },
     "Piece": null,
     "Size": 42,
+    "LocalStore": 12,
     "Total": "0",
     "UnsealPrice": "0",
     "PaymentInterval": 42,
@@ -1373,6 +1434,7 @@ Inputs:
     },
     "Piece": null,
     "Size": 42,
+    "LocalStore": 12,
     "Total": "0",
     "UnsealPrice": "0",
     "PaymentInterval": 42,
@@ -1762,7 +1824,7 @@ Response:
 
 
 ### MinerCreateBlock
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -2178,7 +2240,7 @@ Response: `null`
 MpoolSetConfig sets the mpool config to (a copy of) the supplied config
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -2197,7 +2259,7 @@ Inputs:
 Response: `{}`
 
 ### MpoolSub
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -2943,7 +3005,7 @@ The Paych methods are for interacting with and managing payment channels
 
 
 ### PaychAllocateLane
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -2957,7 +3019,7 @@ Inputs:
 Response: `42`
 
 ### PaychAvailableFunds
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -2983,7 +3045,7 @@ Response:
 ```
 
 ### PaychAvailableFundsByFromTo
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3010,7 +3072,7 @@ Response:
 ```
 
 ### PaychCollect
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3053,7 +3115,7 @@ Response:
 ```
 
 ### PaychGetWaitReady
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3069,7 +3131,7 @@ Inputs:
 Response: `"f01234"`
 
 ### PaychList
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -3078,7 +3140,7 @@ Inputs: `null`
 Response: `null`
 
 ### PaychNewPayment
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3103,7 +3165,7 @@ Response:
 ```
 
 ### PaychSettle
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3122,7 +3184,7 @@ Response:
 ```
 
 ### PaychStatus
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -3142,7 +3204,7 @@ Response:
 ```
 
 ### PaychVoucherAdd
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -3178,7 +3240,7 @@ Inputs:
 Response: `"0"`
 
 ### PaychVoucherCheckSpendable
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -3214,7 +3276,7 @@ Inputs:
 Response: `true`
 
 ### PaychVoucherCheckValid
-There are not yet any comments for this method.
+
 
 Perms: read
 
@@ -3248,7 +3310,7 @@ Inputs:
 Response: `{}`
 
 ### PaychVoucherCreate
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3289,7 +3351,7 @@ Response:
 ```
 
 ### PaychVoucherList
-There are not yet any comments for this method.
+
 
 Perms: write
 
@@ -3303,7 +3365,7 @@ Inputs:
 Response: `null`
 
 ### PaychVoucherSubmit
-There are not yet any comments for this method.
+
 
 Perms: sign
 
@@ -3565,6 +3627,36 @@ Response: `"0"`
 StateCompute is a flexible command that applies the given messages on the given tipset.
 The messages are run as though the VM were at the provided height.
 
+When called, StateCompute will:
+- Load the provided tipset, or use the current chain head if not provided
+- Compute the tipset state of the provided tipset on top of the parent state
+  - (note that this step runs before vmheight is applied to the execution)
+  - Execute state upgrade if any were scheduled at the epoch, or in null
+    blocks preceding the tipset
+  - Call the cron actor on null blocks preceding the tipset
+  - For each block in the tipset
+    - Apply messages in blocks in the specified
+    - Award block reward by calling the reward actor
+  - Call the cron actor for the current epoch
+- If the specified vmheight is higher than the current epoch, apply any
+  needed state upgrades to the state
+- Apply the specified messages to the state
+
+The vmheight parameter sets VM execution epoch, and can be used to simulate
+message execution in different network versions. If the specified vmheight
+epoch is higher than the epoch of the specified tipset, any state upgrades
+until the vmheight will be executed on the state before applying messages
+specified by the user.
+
+Note that the initial tipset state computation is not affected by the
+vmheight parameter - only the messages in the `apply` set are
+
+If the caller wants to simply compute the state, vmheight should be set to
+the epoch of the specified tipset.
+
+Messages in the `apply` parameter must have the correct nonces, and gas
+values set.
+
 
 Perms: read
 
@@ -3682,38 +3774,6 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0"
-}
-```
-
-### StateGetReceipt
-StateGetReceipt returns the message receipt for the given message
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-{
-  "ExitCode": 0,
-  "Return": "Ynl0ZSBhcnJheQ==",
-  "GasUsed": 9
 }
 ```
 
@@ -4414,7 +4474,7 @@ Inputs:
 ]
 ```
 
-Response: `9`
+Response: `11`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4450,7 +4510,22 @@ Response:
 
 ### StateReplay
 StateReplay replays a given message, assuming it was included in a block in the specified tipset.
-If no tipset key is provided, the appropriate tipset is looked up.
+
+If a tipset key is provided, and a replacing message is found on chain,
+the method will return an error saying that the message wasn't found
+
+If no tipset key is provided, the appropriate tipset is looked up, and if
+the message was gas-repriced, the on-chain message will be replayed - in
+that case the returned InvocResult.MsgCid will not match the Cid param
+
+If the caller wants to ensure that exactly the requested message was executed,
+they MUST check that InvocResult.MsgCid is equal to the provided Cid.
+Without this check both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4542,7 +4617,22 @@ Response:
 ```
 
 ### StateSearchMsg
-StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
+StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they must check that MsgLookup.Message is equal to the provided 'cid', or set the
+`allowReplaced` parameter to false. Without this check, and with `allowReplaced`
+set to true, both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4550,25 +4640,7 @@ Perms: read
 Inputs:
 ```json
 [
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "Receipt": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
-  "ReturnDec": {},
-  "TipSet": [
+  [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -4576,23 +4648,11 @@ Response:
       "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
     }
   ],
-  "Height": 10101
-}
-```
-
-### StateSearchMsgLimited
-StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
-
-
-Perms: read
-
-Inputs:
-```json
-[
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  10101
+  10101,
+  true
 ]
 ```
 
@@ -4797,7 +4857,8 @@ Response:
   "FilMined": "0",
   "FilBurnt": "0",
   "FilLocked": "0",
-  "FilCirculating": "0"
+  "FilCirculating": "0",
+  "FilReserveDisbursed": "0"
 }
 ```
 
@@ -4874,50 +4935,24 @@ Inputs:
 Response: `"0"`
 
 ### StateWaitMsg
-StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
-message arrives on chain, and gets to the indicated confidence depth.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  42
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "Receipt": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
-  "ReturnDec": {},
-  "TipSet": [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
-  "Height": 10101
-}
-```
-
-### StateWaitMsgLimited
-StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
+StateWaitMsg looks back up to limit epochs in the chain for a message.
 If not found, it blocks until the message arrives on chain, and gets to the
 indicated confidence depth.
+
+NOTE: If a replacing message is found on chain, this method will return
+a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+result of the execution of the replacing message.
+
+If the caller wants to ensure that exactly the requested message was executed,
+they must check that MsgLookup.Message is equal to the provided 'cid', or set the
+`allowReplaced` parameter to false. Without this check, and with `allowReplaced`
+set to true, both the requested and original message may appear as
+successfully executed on-chain, which may look like a double-spend.
+
+A replacing message is a message with a different CID, any of Gas values, and
+different signature, but with all other parameters matching (source/destination,
+nonce, params, etc.)
 
 
 Perms: read
@@ -4929,7 +4964,8 @@ Inputs:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   42,
-  10101
+  10101,
+  true
 ]
 ```
 
@@ -5219,7 +5255,7 @@ Response: `"f01234"`
 WalletDelete deletes an address from the wallet.
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -5315,7 +5351,7 @@ Response: `"f01234"`
 WalletSetDefault marks the given address as as the default one.
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json

@@ -114,7 +114,7 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 				used, err = ls.DiskUsage(p)
 			}
 			if err != nil {
-				log.Errorf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
+				log.Debugf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
 				continue
 			}
 
@@ -392,8 +392,10 @@ func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 		}
 
 		p.reserved += overhead
+		p.reservations[sid.ID] |= fileType
 
 		prevDone := done
+		saveFileType := fileType
 		done = func() {
 			prevDone()
 
@@ -401,6 +403,10 @@ func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 			defer st.localLk.Unlock()
 
 			p.reserved -= overhead
+			p.reservations[sid.ID] ^= saveFileType
+			if p.reservations[sid.ID] == storiface.FTNone {
+				delete(p.reservations, sid.ID)
+			}
 		}
 	}
 

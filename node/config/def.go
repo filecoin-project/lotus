@@ -205,7 +205,7 @@ func defCommon() Common {
 
 }
 
-var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+var DefaultDefaultMaxFee = types.MustParseFIL("0.07")
 var DefaultSimultaneousTransfers = uint64(20)
 
 // DefaultFullNode returns the default config
@@ -236,6 +236,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
 			WaitDealsDelay:            Duration(time.Hour * 6),
+			AlwaysKeepUnsealedCopy:    true,
 		},
 
 		Storage: sectorstorage.SealerConfig{

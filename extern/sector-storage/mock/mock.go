@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -344,6 +344,8 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 }
 
 func generateFakePoStProof(sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) []byte {
+	randomness[31] &= 0x3f
+
 	hasher := sha256.New()
 	_, _ = hasher.Write(randomness)
 	for _, info := range sectorInfo {
@@ -508,6 +510,7 @@ func (m mockVerif) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 }
 
 func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
+	info.Randomness[31] &= 0x3f
 	return true, nil
 }
 

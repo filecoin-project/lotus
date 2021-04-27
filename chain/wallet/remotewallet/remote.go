@@ -13,19 +13,19 @@ import (
 )
 
 type RemoteWallet struct {
-	api.WalletAPI
+	api.Wallet
 }
 
 func SetupRemoteWallet(info string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
 		ai := cliutil.ParseApiInfo(info)
 
-		url, err := ai.DialArgs()
+		url, err := ai.DialArgs("v0")
 		if err != nil {
 			return nil, err
 		}
 
-		wapi, closer, err := client.NewWalletRPC(mctx, url, ai.AuthHeader())
+		wapi, closer, err := client.NewWalletRPCV0(mctx, url, ai.AuthHeader())
 		if err != nil {
 			return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
 		}
@@ -41,7 +41,7 @@ func SetupRemoteWallet(info string) func(mctx helpers.MetricsCtx, lc fx.Lifecycl
 	}
 }
 
-func (w *RemoteWallet) Get() api.WalletAPI {
+func (w *RemoteWallet) Get() api.Wallet {
 	if w == nil {
 		return nil
 	}

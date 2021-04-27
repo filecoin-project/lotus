@@ -88,3 +88,6 @@ const PropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4
+
+// we skip checks on message validity in this block to sidestep the zero-bls signature
+var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")

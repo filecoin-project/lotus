@@ -242,7 +242,15 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	p := fsmPlanners[state.State]
 	if p == nil {
-		return nil, 0, xerrors.Errorf("planner for state %s not found", state.State)
+		if len(events) == 1 {
+			if _, ok := events[0].User.(globalMutator); ok {
+				p = planOne() // in case we're in a really weird state, allow restart / update state / remove
+			}
+		}
+
+		if p == nil {
+			return nil, 0, xerrors.Errorf("planner for state %s not found", state.State)
+		}
 	}
 
 	processed, err := p(events, state)
@@ -300,7 +308,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	*/
 
-	m.stats.updateSector(m.minerSectorID(state.SectorNumber), state.State)
+	if err := m.onUpdateSector(context.TODO(), state); err != nil {
+		log.Errorw("update sector stats", "error", err)
+	}
 
 	switch state.State {
 	// Happy path
@@ -389,6 +399,37 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	}
 
 	return nil, processed, nil
+}
+
+func (m *Sealing) onUpdateSector(ctx context.Context, state *SectorInfo) error {
+	if m.getConfig == nil {
+		return nil // tests
+	}
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+	sp, err := m.currentSealProof(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting seal proof type: %w", err)
+	}
+
+	shouldUpdateInput := m.stats.updateSector(cfg, m.minerSectorID(state.SectorNumber), state.State)
+
+	// trigger more input processing when we've dipped below max sealing limits
+	if shouldUpdateInput {
+		go func() {
+			m.inputLk.Lock()
+			defer m.inputLk.Unlock()
+
+			if err := m.updateInput(ctx, sp); err != nil {
+				log.Errorf("%+v", err)
+			}
+		}()
+	}
+
+	return nil
 }
 
 func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, error) {

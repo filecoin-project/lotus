@@ -284,11 +284,41 @@ jobs:
       - install-deps
       - prepare
       - run: make calibnet
-      - run: mkdir linux-calibnet && mv lotus lotus-miner lotus-worker linux-calibnet
+      - run: mkdir linux-calibrationnet && mv lotus lotus-miner lotus-worker linux-calibrationnet
       - persist_to_workspace:
           root: "."
           paths:
-            - linux-calibnet
+            - linux-calibrationnet
+  build-ntwk-butterfly:
+    description: |
+      Compile lotus binaries for the butterfly network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make butterflynet
+      - run: mkdir linux-butterflynet && mv lotus lotus-miner lotus-worker linux-butterflynet
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux-butterflynet
+  build-ntwk-nerpa:
+    description: |
+      Compile lotus binaries for the nerpa network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make nerpanet
+      - run: mkdir linux-nerpanet && mv lotus lotus-miner lotus-worker linux-nerpanet
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux-nerpanet
   build-lotus-soup:
     description: |
       Compile `lotus-soup` Testground test plan
@@ -364,6 +394,15 @@ jobs:
           command: |
             curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
             chmod +x /usr/local/bin/jq
+      - run:
+          name: Install hwloc
+          command: |
+            mkdir ~/hwloc
+            curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
+            cd ~/hwloc
+            tar -xvzpf hwloc-2.4.1.tar.gz
+            cd hwloc-2.4.1
+            ./configure && make && sudo make install
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
@@ -405,7 +444,7 @@ jobs:
       - run: make deps
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
-      - run: go generate ./...
+      - run: make type-gen
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet
 
@@ -414,9 +453,19 @@ jobs:
     steps:
       - install-deps
       - prepare
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
+      - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
+      - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker
       - run: make deps
       - run: make docsgen
+      - run: zcat build/openrpc/full.json.gz | jq > ../post-openrpc-full
+      - run: zcat build/openrpc/miner.json.gz | jq > ../post-openrpc-miner
+      - run: zcat build/openrpc/worker.json.gz | jq > ../post-openrpc-worker
       - run: git --no-pager diff
+      - run: diff ../pre-openrpc-full ../post-openrpc-full
+      - run: diff ../pre-openrpc-miner ../post-openrpc-miner
+      - run: diff ../pre-openrpc-worker ../post-openrpc-worker
       - run: git --no-pager diff --quiet
 
   lint: &lint
@@ -595,7 +644,7 @@ jobs:
               docker push $<<parameters.account-url>>/<<parameters.repo>>:${tag}
             done
 
-  publish-packer:
+  publish-packer-mainnet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
       name: packer/default
@@ -607,9 +656,42 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
+  publish-packer-calibrationnet:
+    description: build and push AWS IAM and DigitalOcean droplet.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux-calibnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
+          args: "-var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
+  publish-packer-butterflynet:
+    description: build and push AWS IAM and DigitalOcean droplet.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+  publish-packer-nerpanet:
+    description: build and push AWS IAM and DigitalOcean droplet.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux-nerpanet -var lotus_network=nerpanet -var git_tag=$CIRCLE_TAG"
 
 workflows:
   version: 2.1
@@ -675,8 +757,6 @@ workflows:
           test-suite-name: conformance-bleeding-edge
           packages: "./conformance"
           vectors-branch: master
-      - build-ntwk-calibration
-      - build-lotus-soup
       - trigger-testplans:
           filters:
             branches:
@@ -690,6 +770,28 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
+      - build-ntwk-calibration:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-ntwk-butterfly:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-ntwk-nerpa:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-lotus-soup
       - build-macos:
           requires:
             - test-short
@@ -716,9 +818,18 @@ workflows:
           path: .
           repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
-      - publish-packer:
+      - publish-packer-mainnet:
           requires:
             - build-all
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - publish-packer-calibrationnet:
+          requires:
             - build-ntwk-calibration
           filters:
             branches:
@@ -727,4 +838,23 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
-         
+      - publish-packer-butterflynet:
+          requires:
+            - build-ntwk-butterfly
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - publish-packer-nerpanet:
+          requires:
+            - build-ntwk-nerpa
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"sync/atomic"
 
 	"github.com/dgraph-io/badger/v2"
@@ -84,10 +85,10 @@ const (
 // operation calls after Close() has returned, but it may not happen for
 // operations in progress. Those are likely to fail with a different error.
 type Blockstore struct {
-	DB *badger.DB
-
-	// state is guarded by atomic.
+	// state is accessed atomically
 	state int64
+
+	DB *badger.DB
 
 	prefixing bool
 	prefix    []byte
@@ -148,6 +149,20 @@ func (b *Blockstore) CollectGarbage() error {
 	}
 
 	return err
+}
+
+// Compact runs a synchronous compaction
+func (b *Blockstore) Compact() error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	nworkers := runtime.NumCPU() / 2
+	if nworkers < 2 {
+		nworkers = 2
+	}
+
+	return b.DB.Flatten(nworkers)
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
@@ -288,9 +303,6 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 		return ErrBlockstoreClosed
 	}
 
-	batch := b.DB.NewWriteBatch()
-	defer batch.Cancel()
-
 	// toReturn tracks the byte slices to return to the pool, if we're using key
 	// prefixing. we can't return each slice to the pool after each Set, because
 	// badger holds on to the slice.
@@ -303,6 +315,9 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 			}
 		}()
 	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
 
 	for _, block := range blocks {
 		k, pooled := b.PooledStorageKey(block.Cid())
@@ -342,9 +357,6 @@ func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
 		return ErrBlockstoreClosed
 	}
 
-	batch := b.DB.NewWriteBatch()
-	defer batch.Cancel()
-
 	// toReturn tracks the byte slices to return to the pool, if we're using key
 	// prefixing. we can't return each slice to the pool after each Set, because
 	// badger holds on to the slice.
@@ -357,6 +369,9 @@ func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
 			}
 		}()
 	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
 
 	for _, cid := range cids {
 		k, pooled := b.PooledStorageKey(cid)

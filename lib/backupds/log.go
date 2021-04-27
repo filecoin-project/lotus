@@ -55,7 +55,7 @@ func (d *Datastore) startLog(logdir string) error {
 			return xerrors.Errorf("creating log: %w", err)
 		}
 	} else {
-		l, err = d.openLog(filepath.Join(logdir, latest))
+		l, latest, err = d.openLog(filepath.Join(logdir, latest))
 		if err != nil {
 			return xerrors.Errorf("opening log: %w", err)
 		}
@@ -97,6 +97,8 @@ type logfile struct {
 	file *os.File
 }
 
+var compactThresh = 2
+
 func (d *Datastore) createLog(logdir string) (*logfile, string, error) {
 	p := filepath.Join(logdir, strconv.FormatInt(time.Now().Unix(), 10)+".log.cbor")
 	log.Infow("creating log", "file", p)
@@ -119,32 +121,36 @@ func (d *Datastore) createLog(logdir string) (*logfile, string, error) {
 	}, filepath.Base(p), nil
 }
 
-func (d *Datastore) openLog(p string) (*logfile, error) {
+func (d *Datastore) openLog(p string) (*logfile, string, error) {
 	log.Infow("opening log", "file", p)
 	lh, err := d.child.Get(loghead)
 	if err != nil {
-		return nil, xerrors.Errorf("checking log head (logfile '%s'): %w", p, err)
+		return nil, "", xerrors.Errorf("checking log head (logfile '%s'): %w", p, err)
 	}
 
 	lhp := strings.Split(string(lh), ";")
 	if len(lhp) != 3 {
-		return nil, xerrors.Errorf("expected loghead to have 3 parts")
+		return nil, "", xerrors.Errorf("expected loghead to have 3 parts")
 	}
 
 	if lhp[0] != filepath.Base(p) {
-		return nil, xerrors.Errorf("loghead log file doesn't match, opening %s, expected %s", p, lhp[0])
+		return nil, "", xerrors.Errorf("loghead log file doesn't match, opening %s, expected %s", p, lhp[0])
 	}
 
 	f, err := os.OpenFile(p, os.O_RDWR, 0644)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var lastLogHead string
-	var openCount, logvals int64
+	var openCount, vals, logvals int64
 	// check file integrity
-	err = ReadBackup(f, func(k datastore.Key, v []byte) error {
-		logvals++
+	clean, err := ReadBackup(f, func(k datastore.Key, v []byte, log bool) error {
+		if log {
+			logvals++
+		} else {
+			vals++
+		}
 		if k == loghead {
 			lastLogHead = string(v)
 			openCount++
@@ -152,32 +158,57 @@ func (d *Datastore) openLog(p string) (*logfile, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("reading backup part of the logfile: %w", err)
+		return nil, "", xerrors.Errorf("reading backup part of the logfile: %w", err)
 	}
-	if string(lh) != lastLogHead {
-		return nil, xerrors.Errorf("loghead didn't match, expected '%s', last in logfile '%s'", string(lh), lastLogHead)
+	if string(lh) != lastLogHead && clean { // if not clean, user has opted in to ignore truncated logs, this will almost certainly happen
+		return nil, "", xerrors.Errorf("loghead didn't match, expected '%s', last in logfile '%s'", string(lh), lastLogHead)
 	}
 
 	// make sure we're at the end of the file
 	at, err := f.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return nil, xerrors.Errorf("get current logfile offset: %w", err)
+		return nil, "", xerrors.Errorf("get current logfile offset: %w", err)
 	}
 	end, err := f.Seek(0, io.SeekEnd)
 	if err != nil {
-		return nil, xerrors.Errorf("get current logfile offset: %w", err)
+		return nil, "", xerrors.Errorf("get current logfile offset: %w", err)
 	}
 	if at != end {
-		return nil, xerrors.Errorf("logfile %s validated %d bytes, but the file has %d bytes (%d more)", p, at, end, end-at)
+		return nil, "", xerrors.Errorf("logfile %s validated %d bytes, but the file has %d bytes (%d more)", p, at, end, end-at)
 	}
 
-	log.Infow("log opened", "file", p, "openCount", openCount, "logValues", logvals)
+	compact := logvals > vals*int64(compactThresh)
+	if compact || !clean {
+		log.Infow("compacting log", "current", p, "openCount", openCount, "baseValues", vals, "logValues", logvals, "truncated", !clean)
+		if err := f.Close(); err != nil {
+			return nil, "", xerrors.Errorf("closing current log: %w", err)
+		}
+
+		l, latest, err := d.createLog(filepath.Dir(p))
+		if err != nil {
+			return nil, "", xerrors.Errorf("creating compacted log: %w", err)
+		}
+
+		if clean {
+			log.Infow("compacted log created, cleaning up old", "old", p, "new", latest)
+			if err := os.Remove(p); err != nil {
+				l.Close() // nolint
+				return nil, "", xerrors.Errorf("cleaning up old logfile: %w", err)
+			}
+		} else {
+			log.Errorw("LOG FILE WAS TRUNCATED, KEEPING THE FILE", "old", p, "new", latest)
+		}
+
+		return l, latest, nil
+	}
+
+	log.Infow("log opened", "file", p, "openCount", openCount, "baseValues", vals, "logValues", logvals)
 
 	// todo: maybe write a magic 'opened at' entry; pad the log to filesystem page to prevent more exotic types of corruption
 
 	return &logfile{
 		file: f,
-	}, nil
+	}, filepath.Base(p), nil
 }
 
 func (l *logfile) writeLogHead(logname string, ds datastore.Batching) error {

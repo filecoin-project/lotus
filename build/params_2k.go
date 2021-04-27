@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -45,6 +47,7 @@ func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
+	policy.SetPreCommitChallengeDelay(abi.ChainEpoch(10))
 
 	getUpgradeHeight := func(ev string, def abi.ChainEpoch) abi.ChainEpoch {
 		hs, found := os.LookupEnv(ev)
@@ -93,3 +96,5 @@ const SlashablePowerDelay = 20
 const InteractivePoRepConfidence = 6
 
 const BootstrapPeerThreshold = 1
+
+var WhitelistedBlock = cid.Undef

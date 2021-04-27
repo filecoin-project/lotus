@@ -54,7 +54,7 @@ type PoStProof = proof0.PoStProof
 type FilterEstimate = smoothing0.FilterEstimate
 
 func FromV0FilterEstimate(v0 smoothing0.FilterEstimate) FilterEstimate {
-	return (FilterEstimate)(v0)
+	return (FilterEstimate)(v0) //nolint:unconvert
 }
 
 // Doesn't change between actors v0, v2, and v3.

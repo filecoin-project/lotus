@@ -22,6 +22,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/urfave/cli/v2"
 )
@@ -35,7 +36,7 @@ type minerDeadline struct {
 	index uint64
 }
 
-var chainDisputeSetCmd = &cli.Command{
+var ChainDisputeSetCmd = &cli.Command{
 	Name:  "disputer",
 	Usage: "interact with the window post disputer",
 	Flags: []cli.Flag{
@@ -356,7 +357,7 @@ var disputerStartCmd = &cli.Command{
 
 // for a given miner, index, and maxPostIndex, tries to dispute posts from 0...postsSnapshotted-1
 // returns a list of DisputeWindowedPoSt msgs that are expected to succeed if sent
-func makeDisputeWindowedPosts(ctx context.Context, api lapi.FullNode, dl minerDeadline, postsSnapshotted uint64, sender address.Address) ([]*types.Message, error) {
+func makeDisputeWindowedPosts(ctx context.Context, api v0api.FullNode, dl minerDeadline, postsSnapshotted uint64, sender address.Address) ([]*types.Message, error) {
 	disputes := make([]*types.Message, 0)
 
 	for i := uint64(0); i < postsSnapshotted; i++ {
@@ -388,7 +389,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api lapi.FullNode, dl minerDe
 	return disputes, nil
 }
 
-func makeMinerDeadline(ctx context.Context, api lapi.FullNode, mAddr address.Address) (abi.ChainEpoch, *minerDeadline, error) {
+func makeMinerDeadline(ctx context.Context, api v0api.FullNode, mAddr address.Address) (abi.ChainEpoch, *minerDeadline, error) {
 	dl, err := api.StateMinerProvingDeadline(ctx, mAddr, types.EmptyTSK)
 	if err != nil {
 		return -1, nil, xerrors.Errorf("getting proving index list: %w", err)
@@ -400,7 +401,7 @@ func makeMinerDeadline(ctx context.Context, api lapi.FullNode, mAddr address.Add
 	}, nil
 }
 
-func getSender(ctx context.Context, api lapi.FullNode, fromStr string) (address.Address, error) {
+func getSender(ctx context.Context, api v0api.FullNode, fromStr string) (address.Address, error) {
 	if fromStr == "" {
 		return api.WalletDefaultAddress(ctx)
 	}

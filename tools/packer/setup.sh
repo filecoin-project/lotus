@@ -22,11 +22,14 @@ MANAGED_FILES=(
   /lib/systemd/system/lotus-daemon.service
 	/lib/systemd/system/lotus-miner.service
 	/etc/motd
+	/var/lib/lotus/config.toml
 )
 
 # install libs.
-apt update
-apt -y install libhwloc15 ocl-icd-libopencl1
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get -y install libhwloc15 ocl-icd-libopencl1 ufw
+apt-get -y upgrade -q -y -u -o Dpkg::Options::="--force-confold"
 ln -s /usr/lib/x86_64-linux-gnu/libhwloc.so.15 /usr/lib/x86_64-linux-gnu/libhwloc.so.5
 
 # Create lotus user
@@ -55,3 +58,10 @@ done
 # Enable services
 systemctl daemon-reload
 systemctl enable lotus-daemon
+
+# Setup firewall
+yes | ufw enable
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow 5678   #libp2p

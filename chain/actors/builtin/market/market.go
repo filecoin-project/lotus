@@ -67,6 +67,7 @@ type State interface {
 	VerifyDealsForActivation(
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
 	) (weight, verifiedWeight abi.DealWeight, err error)
+	NextID() (abi.DealID, error)
 }
 
 type BalanceTable interface {

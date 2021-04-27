@@ -113,7 +113,7 @@ type ChainStore struct {
 
 	chainLocalBlockstore bstore.Blockstore
 
-	heaviestLk sync.Mutex
+	heaviestLk sync.RWMutex
 	heaviest   *types.TipSet
 
 	bestTips *pubsub.PubSub
@@ -775,10 +775,11 @@ func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipS
 }
 
 // GetHeaviestTipSet returns the current heaviest tipset known (i.e. our head).
-func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
-	cs.heaviestLk.Lock()
-	defer cs.heaviestLk.Unlock()
-	return cs.heaviest
+func (cs *ChainStore) GetHeaviestTipSet() (ts *types.TipSet) {
+	cs.heaviestLk.RLock()
+	ts = cs.heaviest
+	cs.heaviestLk.RUnlock()
+	return
 }
 
 func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
