@@ -24,6 +24,7 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 )
 
 func init() {
@@ -36,11 +37,14 @@ func init() {
 	builtin.RegisterActorState(builtin3.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
+	builtin.RegisterActorState(builtin4.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load4(store, root)
+	})
 }
 
-var Methods = builtin3.MethodsMiner
+var Methods = builtin4.MethodsMiner
 
-// Unchanged between v0, v2, and v3 actors
+// Unchanged between v0, v2, v3, and v4 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
 var WPoStChallengeWindow = miner0.WPoStChallengeWindow
@@ -62,6 +66,8 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 		return load2(store, act.Head)
 	case builtin3.StorageMinerActorCodeID:
 		return load3(store, act.Head)
+	case builtin4.StorageMinerActorCodeID:
+		return load4(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
@@ -94,6 +100,7 @@ type State interface {
 	MinerInfoChanged(State) (bool, error)
 
 	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
+	DeadlineCronActive() (bool, error)
 
 	// Diff helpers. Used by Diff* functions internally.
 	sectors() (adt.Array, error)

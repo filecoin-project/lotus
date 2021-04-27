@@ -26,6 +26,7 @@ import (
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
+	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -548,6 +549,7 @@ func init() {
 	actors = append(actors, exported0.BuiltinActors()...)
 	actors = append(actors, exported2.BuiltinActors()...)
 	actors = append(actors, exported3.BuiltinActors()...)
+	actors = append(actors, exported4.BuiltinActors()...)
 
 	for _, actor := range actors {
 		exports := actor.Exports()

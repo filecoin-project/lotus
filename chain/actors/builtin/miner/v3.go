@@ -325,6 +325,10 @@ func (s *state3) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
 }
 
+func (s *state3) DeadlineCronActive() (bool, error) {
+	return true, nil // always active in this version
+}
+
 func (s *state3) sectors() (adt.Array, error) {
 	return adt3.AsArray(s.store, s.Sectors, miner3.SectorsAmtBitwidth)
 }
