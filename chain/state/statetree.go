@@ -24,6 +24,7 @@ import (
 	states0 "github.com/filecoin-project/specs-actors/actors/states"
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	states3 "github.com/filecoin-project/specs-actors/v3/actors/states"
+	states4 "github.com/filecoin-project/specs-actors/v4/actors/states"
 )
 
 var log = logging.Logger("statetree")
@@ -184,6 +185,12 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 			return nil, xerrors.Errorf("failed to create state tree: %w", err)
 		}
 		hamt = tree.Map
+	case types.StateTreeVersion3:
+		tree, err := states4.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", ver)
 	}
@@ -230,6 +237,12 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 	case types.StateTreeVersion2:
 		var tree *states3.Tree
 		tree, err = states3.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
+		}
+	case types.StateTreeVersion3:
+		var tree *states4.Tree
+		tree, err = states4.LoadTree(store, root.Actors)
 		if tree != nil {
 			hamt = tree.Map
 		}

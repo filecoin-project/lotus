@@ -130,6 +130,9 @@ jobs:
       winpost-test:
         type: string
         default: "0"
+      deadline-test:
+        type: string
+        default: "0"
       test-suite-name:
         type: string
         default: unit
@@ -163,6 +166,7 @@ jobs:
           name: go test
           environment:
             LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
+            LOTUS_TEST_DEADLINE_TOGGLING: << parameters.deadline-test >>
             SKIP_CONFORMANCE: "1"
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
@@ -203,6 +207,8 @@ jobs:
   test-window-post:
     <<: *test
   test-window-post-dispute:
+    <<: *test
+  test-deadline-toggling:
     <<: *test
   test-terminate:
     <<: *test
@@ -649,6 +655,11 @@ workflows:
           go-test-flags: "-run=TestTerminate"
           winpost-test: "1"
           test-suite-name: terminate
+      - test-deadline-toggling:
+          codecov-upload: true
+          go-test-flags: "-run=TestDeadlineToggling"
+          deadline-test: "1"
+          test-suite-name: deadline-toggling
       - test-short:
           go-test-flags: "--timeout 10m --short"
           test-suite-name: short

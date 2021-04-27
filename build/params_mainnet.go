@@ -59,6 +59,9 @@ var UpgradeActorsV3Height = abi.ChainEpoch(550321)
 // 2021-04-12T22:00:00Z
 const UpgradeNorwegianHeight = 665280
 
+// 2021-04-29T06:00:00Z
+var UpgradeActorsV4Height = abi.ChainEpoch(712320)
+
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 
@@ -68,6 +71,10 @@ func init() {
 
 	if os.Getenv("LOTUS_DISABLE_V3_ACTOR_MIGRATION") == "1" {
 		UpgradeActorsV3Height = math.MaxInt64
+	}
+
+	if os.Getenv("LOTUS_DISABLE_V4_ACTOR_MIGRATION") == "1" {
+		UpgradeActorsV4Height = math.MaxInt64
 	}
 
 	Devnet = false

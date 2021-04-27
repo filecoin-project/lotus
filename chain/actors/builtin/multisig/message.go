@@ -9,14 +9,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-	multisig3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/multisig"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+	multisig4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var Methods = builtin3.MethodsMultisig
+var Methods = builtin4.MethodsMultisig
 
 func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
@@ -26,6 +26,8 @@ func Message(version actors.Version, from address.Address) MessageBuilder {
 		return message2{message0{from}}
 	case actors.Version3:
 		return message3{message0{from}}
+	case actors.Version4:
+		return message4{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -49,12 +51,12 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = multisig3.ProposalHashData
-type ProposeReturn = multisig3.ProposeReturn
-type ProposeParams = multisig3.ProposeParams
+type ProposalHashData = multisig4.ProposalHashData
+type ProposeReturn = multisig4.ProposeReturn
+type ProposeParams = multisig4.ProposeParams
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := multisig3.TxnIDParams{ID: multisig3.TxnID(id)}
+	params := multisig4.TxnIDParams{ID: multisig4.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
