@@ -30,9 +30,9 @@ import (
 )
 
 const (
-	ChainFinality          = miner4.ChainFinality
-	SealRandomnessLookback = ChainFinality
-	PaychSettleDelay       = paych4.SettleDelay
+	ChainFinality                  = miner4.ChainFinality
+	SealRandomnessLookback         = ChainFinality
+	PaychSettleDelay               = paych4.SettleDelay
 	MaxPreCommitRandomnessLookback = builtin4.EpochsInDay + SealRandomnessLookback
 )
 
