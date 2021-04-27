@@ -17,6 +17,7 @@ import (
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 )
 
 func init() {
@@ -29,11 +30,14 @@ func init() {
 	builtin.RegisterActorState(builtin3.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
+	builtin.RegisterActorState(builtin4.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load4(store, root)
+	})
 }
 
 var (
-	Address = builtin3.StoragePowerActorAddr
-	Methods = builtin3.MethodsPower
+	Address = builtin4.StoragePowerActorAddr
+	Methods = builtin4.MethodsPower
 )
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
@@ -44,6 +48,8 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 		return load2(store, act.Head)
 	case builtin3.StoragePowerActorCodeID:
 		return load3(store, act.Head)
+	case builtin4.StoragePowerActorCodeID:
+		return load4(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }

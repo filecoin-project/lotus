@@ -8,21 +8,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/types"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 )
@@ -36,11 +37,15 @@ func init() {
 	build.InsecurePoStValidation = true
 }
 
+type StorageBuilder func(context.Context, *testing.T, abi.RegisteredSealProof, address.Address) TestStorageNode
+
 type TestNode struct {
 	v1api.FullNode
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node
 	ListenAddr multiaddr.Multiaddr
+
+	Stb StorageBuilder
 }
 
 type TestStorageNode struct {
@@ -56,6 +61,8 @@ type TestStorageNode struct {
 var PresealGenesis = -1
 
 const GenesisPreseals = 2
+
+const TestSpt = abi.RegisteredSealProof_StackedDrg2KiBV1_1
 
 // Options for setting up a mock storage miner
 type StorageMiner struct {
@@ -95,6 +102,7 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("testMining", ts.testMining)
 	t.Run("testMiningReal", ts.testMiningReal)
 	t.Run("testSearchMsg", ts.testSearchMsg)
+	t.Run("testNonGenesisMiner", ts.testNonGenesisMiner)
 }
 
 func DefaultFullOpts(nFull int) []FullNodeOpts {
@@ -113,7 +121,11 @@ var OneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
 var OneFull = DefaultFullOpts(1)
 var TwoFull = DefaultFullOpts(2)
 
-var FullNodeWithActorsV3At = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
+var FullNodeWithActorsV4At = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
+	if upgradeHeight == -1 {
+		upgradeHeight = 3
+	}
+
 	return FullNodeOpts{
 		Opts: func(nodes []TestNode) node.Option {
 			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
@@ -122,10 +134,13 @@ var FullNodeWithActorsV3At = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 				Height:    1,
 				Migration: stmgr.UpgradeActorsV2,
 			}, {
-				// Skip directly to tape height so precommits work.
 				Network:   network.Version10,
-				Height:    upgradeHeight,
+				Height:    2,
 				Migration: stmgr.UpgradeActorsV3,
+			}, {
+				Network:   network.Version12,
+				Height:    upgradeHeight,
+				Migration: stmgr.UpgradeActorsV4,
 			}})
 		},
 	}
@@ -157,6 +172,9 @@ var MineNext = miner.MineReq{
 
 func (ts *testSuite) testVersion(t *testing.T) {
 	lapi.RunningNodeType = lapi.NodeFull
+	t.Cleanup(func() {
+		lapi.RunningNodeType = lapi.NodeUnknown
+	})
 
 	ctx := context.Background()
 	apis, _ := ts.makeNodes(t, OneFull, OneMiner)
