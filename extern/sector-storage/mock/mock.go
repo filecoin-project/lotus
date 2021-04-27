@@ -27,6 +27,7 @@ var log = logging.Logger("sbmock")
 
 type SectorMgr struct {
 	sectors      map[abi.SectorID]*sectorState
+	failPoSt     bool
 	pieces       map[cid.Cid][]byte
 	nextSectorID abi.SectorNumber
 
@@ -263,6 +264,14 @@ func (mgr *SectorMgr) MarkFailed(sid storage.SectorRef, failed bool) error {
 	return nil
 }
 
+func (mgr *SectorMgr) Fail() {
+	mgr.lk.Lock()
+	defer mgr.lk.Unlock()
+	mgr.failPoSt = true
+
+	return
+}
+
 func (mgr *SectorMgr) MarkCorrupted(sid storage.SectorRef, corrupted bool) error {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
@@ -292,10 +301,20 @@ func AddOpFinish(ctx context.Context) (context.Context, func()) {
 }
 
 func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) ([]proof2.PoStProof, error) {
+	mgr.lk.Lock()
+	defer mgr.lk.Unlock()
+
 	return generateFakePoSt(sectorInfo, abi.RegisteredSealProof.RegisteredWinningPoStProof, randomness), nil
 }
 
 func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) ([]proof2.PoStProof, []abi.SectorID, error) {
+	mgr.lk.Lock()
+	defer mgr.lk.Unlock()
+
+	if mgr.failPoSt {
+		return nil, nil, xerrors.Errorf("failed to post (mock)")
+	}
+
 	si := make([]proof2.SectorInfo, 0, len(sectorInfo))
 	var skipped []abi.SectorID
 

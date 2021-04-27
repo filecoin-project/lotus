@@ -18,6 +18,7 @@ import (
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	vmr "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
+	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -64,6 +65,7 @@ func NewActorRegistry() *ActorRegistry {
 	inv.Register(ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
 	inv.Register(ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
 	inv.Register(ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
+	inv.Register(ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
 
 	return inv
 }
