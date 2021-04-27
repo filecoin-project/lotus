@@ -693,7 +693,7 @@ jobs:
       - run: wget https://github.com/filecoin-project/tweety/releases/download/v0.0.1/tweety
       - run: |
           chmod +x tweety
-          ./tweety --daemon <tweety host standin> --httphost example.com client create --release "canary-${CIRCLE_TAG}-${CIRCLE_SHA1}"
+          ./tweety --daemon 'https://lb.mainnet-us-east-2-dev.fildevops.net/tweety' client create --release "canary-${CIRCLE_TAG}-${CIRCLE_SHA1}"
 
 
 workflows:
