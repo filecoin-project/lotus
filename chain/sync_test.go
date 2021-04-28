@@ -793,6 +793,11 @@ func TestSyncCheckpointHead(t *testing.T) {
 	p1Head := tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
+
+	// Should be able to switch forks.
+	tu.checkpointTs(p1, b.TipSet().Key())
+	p1Head = tu.getHead(p1)
+	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }
 
 func TestSyncCheckpointEarlierThanHead(t *testing.T) {
@@ -835,4 +840,9 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	p1Head := tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
+
+	// Should be able to switch forks.
+	tu.checkpointTs(p1, b.TipSet().Key())
+	p1Head = tu.getHead(p1)
+	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }
