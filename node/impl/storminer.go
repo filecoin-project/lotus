@@ -334,6 +334,15 @@ func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error 
 		return xerrors.Errorf("connecting remote storage failed: %w", err)
 	}
 
+	vw, err := w.Version(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker version: %w", err)
+	}
+
+	if !vw.EqMajorMinor(api.WorkerAPIVersion0) {
+		return xerrors.Errorf("remote API version didn't match (expected %s, remote %s)", api.WorkerAPIVersion0, vw)
+	}
+
 	log.Infof("Connected to a remote worker at %s", url)
 
 	return sm.StorageMgr.AddWorker(ctx, w)
