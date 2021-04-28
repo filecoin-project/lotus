@@ -485,7 +485,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		}
 
 		fulls[i].Stb = storageBuilder(fulls[i], mn, node.Options(
-			node.Override(new(*mock.SectorMgr), func() (sectorstorage.SectorManager, error) {
+			node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
 				return mock.NewMockSectorMgr(nil), nil
 			}),
 			node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
