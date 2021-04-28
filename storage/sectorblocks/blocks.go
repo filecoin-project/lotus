@@ -62,7 +62,7 @@ type SectorBuilder interface {
 func NewSectorBlocks(sb SectorBuilder, ds dtypes.MetadataDS) *SectorBlocks {
 	sbc := &SectorBlocks{
 		SectorBuilder: sb,
-		keys:  namespace.Wrap(ds, dsPrefix),
+		keys:          namespace.Wrap(ds, dsPrefix),
 	}
 
 	return sbc

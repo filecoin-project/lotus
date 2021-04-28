@@ -26,10 +26,10 @@ import (
 var log = logging.Logger("retrievaladapter")
 
 type retrievalProviderNode struct {
-	maddr  address.Address
-	secb   sectorblocks.SectorBuilder
-	pp     sectorstorage.PieceProvider
-	full   v1api.FullNode
+	maddr address.Address
+	secb  sectorblocks.SectorBuilder
+	pp    sectorstorage.PieceProvider
+	full  v1api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the

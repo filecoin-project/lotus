@@ -653,7 +653,6 @@ func RetrievalProvider(
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
 var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
-
 func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, urls stores.URLs) (*stores.Local, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	return stores.NewLocal(ctx, ls, si, urls)
