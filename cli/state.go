@@ -75,6 +75,50 @@ var StateCmd = &cli.Command{
 		StateMarketCmd,
 		StateExecTraceCmd,
 		StateNtwkVersionCmd,
+		StateMinerProvingDeadlineCmd,
+	},
+}
+
+var StateMinerProvingDeadlineCmd = &cli.Command{
+	Name:      "miner-proving-deadline",
+	Usage:     "Retrieve information about a given miner's proving deadline",
+	ArgsUsage: "[minerAddress]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify miner to get information for")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		cd, err := api.StateMinerProvingDeadline(ctx, addr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		fmt.Printf("Period Start:\t%s\n", cd.PeriodStart)
+		fmt.Printf("Index:\t\t%d\n", cd.Index)
+		fmt.Printf("Open:\t\t%s\n", cd.Open)
+		fmt.Printf("Close:\t\t%s\n", cd.Close)
+		fmt.Printf("Challenge:\t%s\n", cd.Challenge)
+		fmt.Printf("FaultCutoff:\t%s\n", cd.FaultCutoff)
+
+		return nil
 	},
 }
 
