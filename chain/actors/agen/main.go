@@ -120,7 +120,7 @@ func generateMessages(actDir string) error {
 			return nil // skip
 		}
 
-		return xerrors.Errorf("loading state adapter template: %w", err)
+		return xerrors.Errorf("loading message adapter template: %w", err)
 	}
 
 	for _, version := range versions {
