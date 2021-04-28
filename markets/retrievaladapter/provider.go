@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -27,13 +28,13 @@ var log = logging.Logger("retrievaladapter")
 type retrievalProviderNode struct {
 	maddr  address.Address
 	secb   sectorblocks.SectorBuilder
-	pp     *sectorstorage.PieceProvider
+	pp     sectorstorage.PieceProvider
 	full   v1api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp *sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
+func NewRetrievalProviderNode(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{address.Address(maddr), secb, pp, full}
 }
 
@@ -77,7 +78,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 	log.Debugf("read piece in sector %d, offset %d, length %d from miner %d", sectorID, offset, length, mid)
 	r, unsealed, err := rpn.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.Ticket.Value, commD)
 	if err != nil {
-		log.Errorf("failed to unseal piece from sector %d: %s", sectorID, err)
+		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)
 	}
 	_ = unsealed // todo: use
 

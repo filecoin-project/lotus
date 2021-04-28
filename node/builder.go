@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 
@@ -63,6 +64,7 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/markets/dealfilter"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
@@ -373,9 +375,12 @@ var MinerNode = Options(
 	Override(new(*stores.Index), stores.NewIndex),
 	Override(new(stores.SectorIndex), From(new(*stores.Index))),
 	Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+	Override(new(*stores.Local), modules.LocalStorage),
+	Override(new(*stores.Remote), modules.RemoteStorage),
 	Override(new(*sectorstorage.Manager), modules.SectorStorage),
 	Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 	Override(new(storiface.WorkerReturn), From(new(sectorstorage.SectorManager))),
+	Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 
 	// Sector storage: Proofs
 	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
@@ -403,6 +408,9 @@ var MinerNode = Options(
 	Override(new(sectorblocks.SectorBuilder), From(new(*storage.Miner))),
 
 	// Markets (retrieval)
+	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
+	Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
+	Override(new(rmnet.RetrievalMarketNetwork), modules.RetrievalNetwork),
 	Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 	Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 	Override(HandleRetrievalKey, modules.HandleRetrieval),
