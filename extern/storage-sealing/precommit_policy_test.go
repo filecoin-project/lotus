@@ -2,7 +2,6 @@ package sealing_test
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -15,6 +14,7 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 

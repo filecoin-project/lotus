@@ -2,7 +2,6 @@ package sealing
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api"
 	"sort"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
