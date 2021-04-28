@@ -493,6 +493,10 @@ func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, exist
 				continue
 			}
 
+			if (pathType == storiface.PathStoragePrefer) && !si.CanStore && !si.CanSeal {
+				continue
+			}
+
 			// TODO: Check free space
 
 			best = p.sectorPath(sid.ID, fileType)

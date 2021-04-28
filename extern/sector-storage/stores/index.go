@@ -395,6 +395,9 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorF
 		if (pathType == storiface.PathStorage) && !p.info.CanStore {
 			continue
 		}
+		if (pathType == storiface.PathStoragePrefer) && !p.info.CanStore && !p.info.CanSeal {
+			continue
+		}
 
 		if spaceReq > uint64(p.fsi.Available) {
 			log.Debugf("not allocating on %s, out of space (available: %d, need: %d)", p.info.ID, p.fsi.Available, spaceReq)

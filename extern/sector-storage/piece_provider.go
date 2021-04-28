@@ -67,6 +67,9 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 	}
 
 	r, unlock, err := p.tryReadUnsealedPiece(ctx, sector, offset, size)
+	if xerrors.Is(err, storiface.ErrSectorNotFound) {
+		err = nil
+	}
 	if err != nil {
 		return nil, false, err
 	}

@@ -244,12 +244,12 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storage.SectorRef, off
 	maxPieceSize := abi.PaddedPieceSize(ssize)
 
 	// try finding existing
-	unsealedPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed, storiface.FTNone, storiface.PathStorage)
+	unsealedPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed, storiface.FTNone, storiface.PathStoragePrefer)
 	var pf *partialfile.PartialFile
 
 	switch {
 	case xerrors.Is(err, storiface.ErrSectorNotFound):
-		unsealedPath, done, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTUnsealed, storiface.PathStorage)
+		unsealedPath, done, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTUnsealed, storiface.PathStoragePrefer)
 		if err != nil {
 			return xerrors.Errorf("acquire unsealed sector path (allocate): %w", err)
 		}
@@ -286,7 +286,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storage.SectorRef, off
 		return nil
 	}
 
-	srcPaths, srcDone, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathStorage)
+	srcPaths, srcDone, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathStoragePrefer)
 	if err != nil {
 		return xerrors.Errorf("acquire sealed sector paths: %w", err)
 	}

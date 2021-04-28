@@ -237,7 +237,7 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 		return xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTSealed|storiface.FTCache, false)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTSealed|storiface.FTCache, true)
 
 	log.Debugf("schedule unseal for sector %d", sector.ID)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {

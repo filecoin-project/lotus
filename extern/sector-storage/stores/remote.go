@@ -117,7 +117,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s storage.SectorRef, existin
 	}
 
 	odt := storiface.FSOverheadSeal
-	if pathType == storiface.PathStorage {
+	if pathType == storiface.PathStorage || pathType == storiface.PathStoragePrefer {
 		odt = storiface.FsOverheadFinalized
 	}
 
