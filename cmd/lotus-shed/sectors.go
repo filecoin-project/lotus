@@ -254,7 +254,7 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 
 		//TODO: 4667 add an option to give a more precise estimation with pending termination penalty excluded
 
-		invocResult, err := nodeApi.StateCall(ctx, msg, types.TipSetKey{})
+		invocResult, err := nodeApi.StateCall(ctx, msg, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("fail to state call: %w", err)
 		}
