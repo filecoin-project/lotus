@@ -539,8 +539,24 @@ func (syncer *Syncer) tryLoadFullTipSet(tsk types.TipSetKey) (*store.FullTipSet,
 // if our current head is heavier than the requested tipset, or if we're already
 // at the requested head, or if the head is the genesis.
 //
-// Most of the heavy-lifting logic happens in syncer#collectChain. Refer to the
-// godocs on that method for a more detailed view.
+// It goes through various stages:
+//
+//  1. StageHeaders: we proceed in the sync process by requesting block headers
+//     from our peers, moving back from their heads, until we reach a tipset
+//     that we have in common (such a common tipset must exist, thought it may
+//     simply be the genesis block).
+//
+//     If the common tipset is our head, we treat the sync as a "fast-forward",
+//     else we must drop part of our chain to connect to the peer's head
+//     (referred to as "forking").
+//
+//	   Now that we've collected the missing headers,
+//     augmented by those on the other side of a fork, we persist them to the
+//     BlockStore.
+//
+//  2. StageMessages: having acquired the headers and found a common tipset,
+//     we then move forward, requesting the full blocks, including the messages
+//     and validate those.
 func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "chain.Sync")
 	defer span.End()
@@ -561,14 +577,39 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 		return nil
 	}
 
-	if err := syncer.collectChain(ctx, maybeHead, hts); err != nil {
+	ss := extractSyncState(ctx)
+	ss.Init(hts, maybeHead) // State `StageHeaders`.
+
+	subChain, err := syncer.collectChain(ctx, maybeHead, hts)
+	if err != nil {
 		span.AddAttributes(trace.StringAttribute("col_error", err.Error()))
 		span.SetStatus(trace.Status{
 			Code:    13,
 			Message: err.Error(),
 		})
+		ss.Error(err)
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
+
+	ss.SetStage(api.StageMessages)
+
+	// FIXME: `StageFetchingMessages` is buried inside this function (in
+	//  `iterFullTipsets`). We should extract it out and probably request
+	//  *both* block headers and messages together through the corresponding
+	//  chain exchange interface. We can do very little validation without the
+	//  messages so it shouldn't have much impact.
+	if err := syncer.syncMessagesAndCheckState(ctx, subChain); err != nil {
+		span.AddAttributes(trace.StringAttribute("col_error", err.Error()))
+		span.SetStatus(trace.Status{
+			Code:    13,
+			Message: err.Error(),
+		})
+		ss.Error(err)
+		return xerrors.Errorf("syncMessagesAndCheckState failed: %w", err)
+	}
+
+	ss.SetStage(api.StageSyncComplete)
+	log.Debugw("new tipset", "height", maybeHead.Height(), "tipset", types.LogCids(maybeHead.Cids()))
 
 	// At this point we have accepted and synced to the new `maybeHead`
 	// (`StageSyncComplete`).
@@ -1502,6 +1543,8 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 	return nil, ErrForkTooLong
 }
 
+// FIXME: Rename. Emphasis on block (and message) validation. Secondarily
+//  state computation. But we don't *sync* to anything yet.
 func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*types.TipSet) error {
 	ss := extractSyncState(ctx)
 	ss.SetHeight(headers[len(headers)-1].Height())
@@ -1680,36 +1723,13 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 	return nil
 }
 
-// collectChain tries to advance our view of the chain to the purported head.
-//
-// It goes through various stages:
-//
-//  1. StageHeaders: we proceed in the sync process by requesting block headers
-//     from our peers, moving back from their heads, until we reach a tipset
-//     that we have in common (such a common tipset must exist, thought it may
-//     simply be the genesis block).
-//
-//     If the common tipset is our head, we treat the sync as a "fast-forward",
-//     else we must drop part of our chain to connect to the peer's head
-//     (referred to as "forking").
-//
-//	2. StagePersistHeaders: now that we've collected the missing headers,
-//     augmented by those on the other side of a fork, we persist them to the
-//     BlockStore.
-//
-//  3. StageMessages: having acquired the headers and found a common tipset,
-//     we then move forward, requesting the full blocks, including the messages.
-func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *types.TipSet) error {
+func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *types.TipSet) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "collectChain")
 	defer span.End()
-	ss := extractSyncState(ctx)
-
-	ss.Init(hts, ts)
 
 	headers, err := syncer.collectHeaders(ctx, ts, hts)
 	if err != nil {
-		ss.Error(err)
-		return err
+		return nil, err
 	}
 
 	span.AddAttributes(trace.Int64Attribute("syncChainLength", int64(len(headers))))
@@ -1718,31 +1738,16 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())
 	}
 
-	ss.SetStage(api.StagePersistHeaders)
-
 	toPersist := make([]*types.BlockHeader, 0, len(headers)*int(build.BlocksPerEpoch))
 	for _, ts := range headers {
 		toPersist = append(toPersist, ts.Blocks()...)
 	}
 	if err := syncer.store.PersistBlockHeaders(toPersist...); err != nil {
 		err = xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
-		ss.Error(err)
-		return err
-	}
-	toPersist = nil
-
-	ss.SetStage(api.StageMessages)
-
-	if err := syncer.syncMessagesAndCheckState(ctx, headers); err != nil {
-		err = xerrors.Errorf("collectChain syncMessages: %w", err)
-		ss.Error(err)
-		return err
+		return nil, err
 	}
 
-	ss.SetStage(api.StageSyncComplete)
-	log.Debugw("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
-
-	return nil
+	return headers, nil
 }
 
 func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []byte, evrf []byte) error {

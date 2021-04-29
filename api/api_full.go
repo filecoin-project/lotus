@@ -959,10 +959,13 @@ type SyncState struct {
 
 type SyncStateStage int
 
+// FIXME: Review names. Tipset instead of headers. Describe the action
+//  not the object (fetch and validate instead of headers and messages).
 const (
 	StageIdle = SyncStateStage(iota)
+	// Fetch tipsets.
 	StageHeaders
-	StagePersistHeaders
+	// Validate blocks in tipsets (and messages in those blocks).
 	StageMessages
 	StageSyncComplete
 	StageSyncErrored
@@ -975,8 +978,6 @@ func (v SyncStateStage) String() string {
 		return "idle"
 	case StageHeaders:
 		return "header sync"
-	case StagePersistHeaders:
-		return "persisting headers"
 	case StageMessages:
 		return "message sync"
 	case StageSyncComplete:
