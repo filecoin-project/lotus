@@ -5,21 +5,20 @@
 import os
 
 
-def generate_lotus_cli():
-    output_folder = '../documentation/en'
-    txt_file = open('%s/lotus-cli.txt' % output_folder, 'w')  # set the name of txt output
-    md_file = open('%s/lotus-cli.md' % output_folder, 'w')  # set the name of md output
+def generate_lotus_cli(prog):
+    output_folder = 'documentation/en'
+    md_file = open('%s/cli-%s.md' % (output_folder, prog), 'w')  # set the name of md output
 
     def get_cmd_recursively(cur_cmd):
-        txt_file.writelines('\n\n%s\n' % cur_cmd[2:])
-        md_file.writelines('#' * cur_cmd.count(' ') + '# ' + cur_cmd[2:] + '\n')
+        depth = cur_cmd.count(' ')
+        md_file.writelines(('\n' * min(depth, 1)) + ('#' * depth) + '# ' + cur_cmd[2:] + '\n')
 
         cmd_flag = False
 
-        cmd_help_output = os.popen('cd ..' + ' && ' + cur_cmd + ' -h')
+        print('> ' + cur_cmd)
+        cmd_help_output = os.popen(cur_cmd + ' -h')
         cmd_help_output_lines = cmd_help_output.readlines()
 
-        txt_file.writelines(cmd_help_output_lines)
         md_file.writelines('```\n')
         md_file.writelines(cmd_help_output_lines)
         md_file.writelines('```\n')
@@ -42,10 +41,11 @@ def generate_lotus_cli():
             except Exception as e:
                 print('Fail to deal with "%s" with error:\n%s' % (line, e))
 
-    get_cmd_recursively('./lotus')
-    txt_file.close()
+    get_cmd_recursively('./' + prog)
     md_file.close()
 
 
 if __name__ == "__main__":
-    generate_lotus_cli()
+    generate_lotus_cli('lotus')
+    generate_lotus_cli('lotus-miner')
+    generate_lotus_cli('lotus-worker')
