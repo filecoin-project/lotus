@@ -34,6 +34,7 @@ func main() {
 		postFindCmd,
 		proofsCmd,
 		verifRegCmd,
+		marketCmd,
 		miscCmd,
 		mpoolCmd,
 		genesisVerifyCmd,
