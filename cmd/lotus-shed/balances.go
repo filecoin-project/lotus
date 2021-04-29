@@ -205,6 +205,9 @@ every day of chain processed.
 		}
 
 		target := abi.ChainEpoch(cctx.Int("start"))
+		if target < 0 || target > head.Height() {
+			return fmt.Errorf("start height must be greater than 0 and less than the end height")
+		}
 		totalEpochs := head.Height() - target
 
 		for target <= head.Height() {
