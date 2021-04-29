@@ -180,10 +180,13 @@ func ParseTipSetString(ts string) ([]cid.Cid, error) {
 	return cids, nil
 }
 
+// LoadTipSet gets the tipset from the context, or the head from the API.
+//
+// It always gets the head from the API so commands use a consistent tipset even if time pases.
 func LoadTipSet(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*types.TipSet, error) {
 	tss := cctx.String("tipset")
 	if tss == "" {
-		return nil, nil
+		return api.ChainHead(ctx)
 	}
 
 	return ParseTipSetRef(ctx, api, tss)
@@ -850,14 +853,6 @@ var StateListMessagesCmd = &cli.Command{
 			return err
 		}
 
-		if ts == nil {
-			head, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-			ts = head
-		}
-
 		windowSize := abi.ChainEpoch(100)
 
 		cur := ts
@@ -957,13 +952,6 @@ var StateComputeStateCmd = &cli.Command{
 		}
 
 		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
-		if ts == nil {
-			head, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-			ts = head
-		}
 		if h == 0 {
 			h = ts.Height()
 		}
@@ -1763,13 +1751,6 @@ var StateSectorCmd = &cli.Command{
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
-		}
-
-		if ts == nil {
-			ts, err = api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
 		}
 
 		maddr, err := address.NewFromString(cctx.Args().Get(0))

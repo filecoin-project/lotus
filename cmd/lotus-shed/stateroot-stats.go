@@ -56,13 +56,6 @@ var staterootDiffsCmd = &cli.Command{
 			return err
 		}
 
-		if ts == nil {
-			ts, err = api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-		}
-
 		fn := func(ts *types.TipSet) (cid.Cid, []cid.Cid) {
 			blk := ts.Blocks()[0]
 			strt := blk.ParentStateRoot
@@ -132,13 +125,6 @@ var staterootStatCmd = &cli.Command{
 		ts, err := lcli.LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
-		}
-
-		if ts == nil {
-			ts, err = api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
 		}
 
 		var addrs []address.Address
