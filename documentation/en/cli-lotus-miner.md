@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.0-dev+mainnet+git.12867a567.dirty
+   1.11.0-dev+mainnet
 
 COMMANDS:
    init     Initialize a lotus miner repo

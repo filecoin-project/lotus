@@ -1,7 +1,15 @@
 package build
 
+import "os"
+
 var CurrentCommit string
 var BuildType int
+
+func init() {
+	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
+		CurrentCommit = ""
+	}
+}
 
 const (
 	BuildDefault  = 0

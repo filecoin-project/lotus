@@ -46,6 +46,7 @@ def generate_lotus_cli(prog):
 
 
 if __name__ == "__main__":
+    os.putenv("LOTUS_VERSION_IGNORE_COMMIT", "1")
     generate_lotus_cli('lotus')
     generate_lotus_cli('lotus-miner')
     generate_lotus_cli('lotus-worker')

@@ -368,7 +368,13 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
 gen: type-gen method-gen docsgen api-gen
+	@echo ">>> IF YOU'VE MODIFIED THE CLI, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
+
+# separate from gen because it needs binaries
+docsgen-cli: lotus lotus-miner lotus-worker
+	python ./scripts/generate-lotus-cli.py
+.PHONY: docsgen-cli
 
 print-%:
 	@echo $*=$($*)

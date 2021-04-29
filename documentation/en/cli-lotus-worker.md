@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.0-dev+2k+git.ac39417f4.dirty
+   1.11.0-dev+mainnet
 
 COMMANDS:
    run         Start lotus worker
