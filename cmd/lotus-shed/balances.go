@@ -107,8 +107,26 @@ every day of chain processed.
 		},
 		&cli.IntSliceFlag{
 			Name:        "method",
-			Usage:       "Filter results by method number.",
+			Usage:       "filter results by method number",
 			DefaultText: "all methods",
+		},
+		&cli.StringSliceFlag{
+			Name:        "include-to",
+			Usage:       "include only messages to the given address (does not perform address resolution)",
+			DefaultText: "all recipients",
+		},
+		&cli.StringSliceFlag{
+			Name:        "include-from",
+			Usage:       "include only messages from the given address (does not perform address resolution)",
+			DefaultText: "all senders",
+		},
+		&cli.StringSliceFlag{
+			Name:  "exclude-to",
+			Usage: "exclude messages to the given address (does not perform address resolution)",
+		},
+		&cli.StringSliceFlag{
+			Name:  "exclude-from",
+			Usage: "exclude messages from the given address (does not perform address resolution)",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -145,12 +163,45 @@ every day of chain processed.
 
 		throttle := make(chan struct{}, threads)
 
-		methods := make(map[abi.MethodNum]bool)
+		methods := map[abi.MethodNum]bool{}
 		for _, m := range cctx.IntSlice("method") {
 			if m < 0 {
 				return fmt.Errorf("expected method numbers to be non-negative")
 			}
 			methods[abi.MethodNum(m)] = true
+		}
+
+		addressSet := func(flag string) (map[address.Address]bool, error) {
+			if !cctx.IsSet(flag) {
+				return nil, nil
+			}
+			addrs := cctx.StringSlice(flag)
+			set := make(map[address.Address]bool, len(addrs))
+			for _, addrStr := range addrs {
+				addr, err := address.NewFromString(addrStr)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse address %s: %w", addrStr, err)
+				}
+				set[addr] = true
+			}
+			return set, nil
+		}
+
+		onlyFrom, err := addressSet("include-from")
+		if err != nil {
+			return err
+		}
+		onlyTo, err := addressSet("include-to")
+		if err != nil {
+			return err
+		}
+		excludeFrom, err := addressSet("exclude-from")
+		if err != nil {
+			return err
+		}
+		excludeTo, err := addressSet("exclude-to")
+		if err != nil {
+			return err
 		}
 
 		target := abi.ChainEpoch(cctx.Int("start"))
@@ -181,6 +232,30 @@ every day of chain processed.
 
 				msgs := map[addrNonce]map[cid.Cid]*types.Message{}
 
+				processMessage := func(c cid.Cid, m *types.Message) {
+					// Filter
+					if len(methods) > 0 && !methods[m.Method] {
+						return
+					}
+					if len(onlyFrom) > 0 && !onlyFrom[m.From] {
+						return
+					}
+					if len(onlyTo) > 0 && !onlyTo[m.To] {
+						return
+					}
+					if excludeFrom[m.From] || excludeTo[m.To] {
+						return
+					}
+
+					// Record
+					msgSet, ok := msgs[anonce(m)]
+					if !ok {
+						msgSet = make(map[cid.Cid]*types.Message, 1)
+						msgs[anonce(m)] = msgSet
+					}
+					msgSet[c] = m
+				}
+
 				encoder := json.NewEncoder(os.Stdout)
 
 				for _, bh := range ts.Blocks() {
@@ -191,27 +266,11 @@ every day of chain processed.
 					}
 
 					for i, m := range bms.BlsMessages {
-						if len(methods) > 0 && !methods[m.Method] {
-							continue
-						}
-						c, ok := msgs[anonce(m)]
-						if !ok {
-							c = make(map[cid.Cid]*types.Message, 1)
-							msgs[anonce(m)] = c
-						}
-						c[bms.Cids[i]] = m
+						processMessage(bms.Cids[i], m)
 					}
 
 					for i, m := range bms.SecpkMessages {
-						if len(methods) > 0 && !methods[m.Message.Method] {
-							continue
-						}
-						c, ok := msgs[anonce(&m.Message)]
-						if !ok {
-							c = make(map[cid.Cid]*types.Message, 1)
-							msgs[anonce(&m.Message)] = c
-						}
-						c[bms.Cids[len(bms.BlsMessages)+i]] = &m.Message
+						processMessage(bms.Cids[len(bms.BlsMessages)+i], &m.Message)
 					}
 				}
 				for _, ms := range msgs {
