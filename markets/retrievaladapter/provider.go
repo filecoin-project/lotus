@@ -74,7 +74,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 		commD = *si.CommD
 	}
 
-	// Read the piece into the pipe's writer, unsealing the piece if necessary
+	// Get a reader for the piece, unsealing the piece if necessary
 	log.Debugf("read piece in sector %d, offset %d, length %d from miner %d", sectorID, offset, length, mid)
 	r, unsealed, err := rpn.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.Ticket.Value, commD)
 	if err != nil {
