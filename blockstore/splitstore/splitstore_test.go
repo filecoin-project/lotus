@@ -170,7 +170,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		}
 	}
 
-	// Make sure we can revert without panicing.
+	// Make sure we can revert without panicking.
 	chain.revert(2)
 }
 
