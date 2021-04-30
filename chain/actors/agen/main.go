@@ -3,11 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/xerrors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/template"
+
+	"golang.org/x/xerrors"
 )
 
 var latestVersion = 4
