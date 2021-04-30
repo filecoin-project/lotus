@@ -58,6 +58,9 @@ instances = { min = 1, max = 100, default = 5 }
   # Fast retrieval
   fast_retrieval = { type = "bool", default = false }
 
+  # Bounce connection during push and pull data transfers
+  bounce_conn_data_transfers = { type = "bool", default = false }
+
 
 [[testcases]]
 name = "drand-halting"
