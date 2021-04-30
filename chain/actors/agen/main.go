@@ -36,13 +36,13 @@ var actors = map[string][]int{
 }
 
 func main() {
-	if err := run(); err != nil {
+	if err := generateAdapters(); err != nil {
 		fmt.Println(err)
 		return
 	}
 }
 
-func run() error {
+func generateAdapters() error {
 	for act, versions := range actors {
 		actDir := filepath.Join("chain/actors/builtin", act)
 
