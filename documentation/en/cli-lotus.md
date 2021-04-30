@@ -616,7 +616,7 @@ CATEGORY:
    STORAGE
 
 OPTIONS:
-   --by-ping              (default: false)
+   --by-ping              sort by ping (default: false)
    --output-format value  Either 'text' or 'csv' (default: "text")
    --help, -h             show help (default: false)
    
@@ -1422,29 +1422,30 @@ USAGE:
    lotus state command [command options] [arguments...]
 
 COMMANDS:
-   power               Query network or miner power
-   sectors             Query the sector set of a miner
-   active-sectors      Query the active sector set of a miner
-   list-actors         list all actors in the network
-   list-miners         list all miners in the network
-   circulating-supply  Get the exact current circulating supply of Filecoin
-   sector              Get miner sector info
-   get-actor           Print actor information
-   lookup              Find corresponding ID address
-   replay              Replay a particular message
-   sector-size         Look up miners sector size
-   read-state          View a json representation of an actors state
-   list-messages       list messages on chain matching given criteria
-   compute-state       Perform state computations
-   call                Invoke a method on an actor locally
-   get-deal            View on-chain deal info
-   wait-msg            Wait for a message to appear on chain
-   search-msg          Search to see whether a message has appeared on chain
-   miner-info          Retrieve miner information
-   market              Inspect the storage market actor
-   exec-trace          Get the execution trace of a given message
-   network-version     Returns the network version
-   help, h             Shows a list of commands or help for one command
+   power                   Query network or miner power
+   sectors                 Query the sector set of a miner
+   active-sectors          Query the active sector set of a miner
+   list-actors             list all actors in the network
+   list-miners             list all miners in the network
+   circulating-supply      Get the exact current circulating supply of Filecoin
+   sector                  Get miner sector info
+   get-actor               Print actor information
+   lookup                  Find corresponding ID address
+   replay                  Replay a particular message
+   sector-size             Look up miners sector size
+   read-state              View a json representation of an actors state
+   list-messages           list messages on chain matching given criteria
+   compute-state           Perform state computations
+   call                    Invoke a method on an actor locally
+   get-deal                View on-chain deal info
+   wait-msg                Wait for a message to appear on chain
+   search-msg              Search to see whether a message has appeared on chain
+   miner-info              Retrieve miner information
+   market                  Inspect the storage market actor
+   exec-trace              Get the execution trace of a given message
+   network-version         Returns the network version
+   miner-proving-deadline  Retrieve information about a given miner's proving deadline
+   help, h                 Shows a list of commands or help for one command
 
 OPTIONS:
    --tipset value  specify tipset to call method on (pass comma separated array of cids)
@@ -1771,6 +1772,19 @@ NAME:
 
 USAGE:
    lotus state network-version [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus state miner-proving-deadline
+```
+NAME:
+   lotus state miner-proving-deadline - Retrieve information about a given miner's proving deadline
+
+USAGE:
+   lotus state miner-proving-deadline [command options] [minerAddress]
 
 OPTIONS:
    --help, -h  show help (default: false)
