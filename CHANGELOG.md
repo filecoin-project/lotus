@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# 1.9.0-rc2 / 2021-04-27
+# 1.9.0-rc2 / 2021-04-30
 
 This is an optional Lotus release that introduces various improvements to the sealing, mining, and deal-making processes.
 
