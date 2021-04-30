@@ -11,8 +11,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
-{{if (ge .v 3)}}	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-{{end}}	power{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/power"
+{{if (ge .v 3)}}
+	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+{{end}}
+	power{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/power"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 )
 

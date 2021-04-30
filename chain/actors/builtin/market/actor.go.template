@@ -5,13 +5,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 {{range .versions}}
-	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"{{end}}
+	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+{{end}}
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -19,7 +21,8 @@ import (
 )
 
 func init() {
-{{range .versions}}	builtin.RegisterActorState(builtin{{.}}.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+{{range .versions}}
+	builtin.RegisterActorState(builtin{{.}}.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
 {{end}}}
@@ -31,9 +34,11 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
-{{range .versions}}	case builtin{{.}}.StorageMarketActorCodeID:
+{{range .versions}}
+	case builtin{{.}}.StorageMarketActorCodeID:
 		return load{{.}}(store, act.Head)
-{{end}}	}
+{{end}}
+	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -135,4 +140,20 @@ func EmptyDealState() *DealState {
 		SlashEpoch:       -1,
 		LastUpdatedEpoch: -1,
 	}
+}
+
+// returns the earned fees and pending fees for a given deal
+func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
+       tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
+
+       ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
+       if ef.LessThan(big.Zero()) {
+               ef = big.Zero()
+       }
+
+       if ef.GreaterThan(tf) {
+               ef = tf
+       }
+
+       return ef, big.Sub(tf, ef)
 }

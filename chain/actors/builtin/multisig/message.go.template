@@ -72,7 +72,9 @@ func (m message{{.v}}) Create(
 		Params: enc,
 		Value:  initialAmount,
 	}, nil
-}{{if (le .v 1)}}
+}
+
+{{if (le .v 1)}}
 
 func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 	method abi.MethodNum, params []byte) (*types.Message, error) {
@@ -140,4 +142,5 @@ func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHa
 		Method: builtin0.MethodsMultisig.Cancel,
 		Params: enc,
 	}, nil
-}{{end}}
+}
+{{end}}

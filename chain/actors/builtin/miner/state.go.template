@@ -17,8 +17,10 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
-{{if (ge .v 3)}}	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-{{end}}	miner{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/miner"
+{{if (ge .v 3)}}
+	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+{{end}}
+	miner{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/miner"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 )
 
@@ -398,13 +400,17 @@ func (d *deadline{{.v}}) PartitionsPoSted() (bitfield.BitField, error) {
 }
 
 func (d *deadline{{.v}}) DisputableProofCount() (uint64, error) {
-{{if (ge .v 3)}}	ops, err := d.OptimisticProofsSnapshotArray(d.store)
+{{if (ge .v 3)}}
+	ops, err := d.OptimisticProofsSnapshotArray(d.store)
 	if err != nil {
 		return 0, err
 	}
 
-	return ops.Length(), nil{{else}}	// field doesn't exist until v3
-	return 0, nil{{end}}
+	return ops.Length(), nil
+{{else}}
+	// field doesn't exist until v3
+	return 0, nil
+{{end}}
 }
 
 func (p *partition{{.v}}) AllSectors() (bitfield.BitField, error) {
@@ -420,7 +426,8 @@ func (p *partition{{.v}}) RecoveringSectors() (bitfield.BitField, error) {
 }
 
 func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorOnChainInfo {
-	{{if (ge .v 2)}}return SectorOnChainInfo{
+{{if (ge .v 2)}}
+	return SectorOnChainInfo{
 		SectorNumber:          v{{.v}}.SectorNumber,
 		SealProof:             v{{.v}}.SealProof,
 		SealedCID:             v{{.v}}.SealedCID,
@@ -432,15 +439,22 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		InitialPledge:         v{{.v}}.InitialPledge,
 		ExpectedDayReward:     v{{.v}}.ExpectedDayReward,
 		ExpectedStoragePledge: v{{.v}}.ExpectedStoragePledge,
-	}{{else}}return (SectorOnChainInfo)(v0){{end}}
+	}
+{{else}}
+	return (SectorOnChainInfo)(v0)
+{{end}}
 }
 
 func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
-	{{if (ge .v 2)}}return SectorPreCommitOnChainInfo{
+{{if (ge .v 2)}}
+	return SectorPreCommitOnChainInfo{
 		Info:               (SectorPreCommitInfo)(v{{.v}}.Info),
 		PreCommitDeposit:   v{{.v}}.PreCommitDeposit,
 		PreCommitEpoch:     v{{.v}}.PreCommitEpoch,
 		DealWeight:         v{{.v}}.DealWeight,
 		VerifiedDealWeight: v{{.v}}.VerifiedDealWeight,
-	}{{else}}return (SectorPreCommitOnChainInfo)(v0){{end}}
+	}
+{{else}}
+	return (SectorPreCommitOnChainInfo)(v0)
+{{end}}
 }

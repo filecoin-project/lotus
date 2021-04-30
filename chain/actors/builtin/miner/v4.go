@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 )
@@ -391,12 +392,14 @@ func (d *deadline4) PartitionsPoSted() (bitfield.BitField, error) {
 }
 
 func (d *deadline4) DisputableProofCount() (uint64, error) {
+
 	ops, err := d.OptimisticProofsSnapshotArray(d.store)
 	if err != nil {
 		return 0, err
 	}
 
 	return ops.Length(), nil
+
 }
 
 func (p *partition4) AllSectors() (bitfield.BitField, error) {
@@ -412,6 +415,7 @@ func (p *partition4) RecoveringSectors() (bitfield.BitField, error) {
 }
 
 func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {
+
 	return SectorOnChainInfo{
 		SectorNumber:          v4.SectorNumber,
 		SealProof:             v4.SealProof,
@@ -425,9 +429,11 @@ func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {
 		ExpectedDayReward:     v4.ExpectedDayReward,
 		ExpectedStoragePledge: v4.ExpectedStoragePledge,
 	}
+
 }
 
 func fromV4SectorPreCommitOnChainInfo(v4 miner4.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+
 	return SectorPreCommitOnChainInfo{
 		Info:               (SectorPreCommitInfo)(v4.Info),
 		PreCommitDeposit:   v4.PreCommitDeposit,
@@ -435,4 +441,5 @@ func fromV4SectorPreCommitOnChainInfo(v4 miner4.SectorPreCommitOnChainInfo) Sect
 		DealWeight:         v4.DealWeight,
 		VerifiedDealWeight: v4.VerifiedDealWeight,
 	}
+
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	msig3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/multisig"
 )
 

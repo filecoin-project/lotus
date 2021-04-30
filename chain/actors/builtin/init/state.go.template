@@ -3,13 +3,16 @@ package init
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-{{if (ge .v 3)}}	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-{{end}}	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
+{{if (ge .v 3)}}
+	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+{{end}}
 
 	init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"

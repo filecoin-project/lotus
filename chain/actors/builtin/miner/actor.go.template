@@ -22,14 +22,17 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 {{range .versions}}
-	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"{{end}}
+	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+{{end}}
 )
 
 func init() {
-{{range .versions}}	builtin.RegisterActorState(builtin{{.}}.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+{{range .versions}}
+	builtin.RegisterActorState(builtin{{.}}.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
-{{end}}}
+{{end}}
+}
 
 var Methods = builtin{{.latestVersion}}.MethodsMiner
 
@@ -49,9 +52,11 @@ var AddressedSectorsMax = miner2.AddressedSectorsMax
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
-{{range .versions}}	case builtin{{.}}.StorageMinerActorCodeID:
+{{range .versions}}
+	case builtin{{.}}.StorageMinerActorCodeID:
 		return load{{.}}(store, act.Head)
-{{end}}	}
+{{end}}
+}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 

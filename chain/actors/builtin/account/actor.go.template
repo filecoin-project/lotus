@@ -11,11 +11,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 {{range .versions}}
-	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"{{end}}
+	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+{{end}}
 )
 
 func init() {
-{{range .versions}}	builtin.RegisterActorState(builtin{{.}}.AccountActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+{{range .versions}}
+	builtin.RegisterActorState(builtin{{.}}.AccountActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
 {{end}}}
@@ -24,9 +26,11 @@ var Methods = builtin4.MethodsAccount
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
-{{range .versions}}	case builtin{{.}}.AccountActorCodeID:
+{{range .versions}}
+	case builtin{{.}}.AccountActorCodeID:
 		return load{{.}}(store, act.Head)
-{{end}}	}
+{{end}}
+	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
