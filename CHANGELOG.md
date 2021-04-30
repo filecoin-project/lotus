@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# 1.9.0-rc1 / 2021-04-27
+# 1.9.0-rc2 / 2021-04-27
 
 This is an optional Lotus release that introduces various improvements to the sealing, mining, and deal-making processes.
 
@@ -14,7 +14,7 @@ This is an optional Lotus release that introduces various improvements to the se
 - Local retrieval support (https://github.com/filecoin-project/lotus/pull/5917)
 - go-fil-markets v1.1.9 -> v1.2.5
   - For a detailed changelog see https://github.com/filecoin-project/go-fil-markets/blob/master/CHANGELOG.md
-- rust-fil-proofs v5.4.1 -> v6.1.0
+- rust-fil-proofs v5.4.1 -> v7
   - For a detailed changelog see https://github.com/filecoin-project/rust-fil-proofs/blob/master/CHANGELOG.md
 
 ## Changes
