@@ -1,5 +1,7 @@
 package build
 
+import "os"
+
 var CurrentCommit string
 var BuildType int
 
@@ -32,5 +34,9 @@ func buildType() string {
 const BuildVersion = "1.11.0-dev"
 
 func UserVersion() string {
+	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
+		return BuildVersion
+	}
+
 	return BuildVersion + buildType() + CurrentCommit
 }
