@@ -7,6 +7,14 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors"
 
+	/* TEMPLATE START
+	{{range .versions}}
+		market{{.v}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/market"
+		miner{{.v}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/miner"
+		power{{.v}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/power"
+		verifreg{{.v}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/verifreg"
+	{{end}}
+	* GENERATED WITH make gen */
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -27,7 +35,7 @@ import (
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
 	paych4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/paych"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
-)
+	/* GENERATED END */)
 
 const (
 	ChainFinality                  = miner4.ChainFinality
