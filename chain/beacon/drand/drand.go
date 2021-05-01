@@ -168,8 +168,8 @@ func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
 	if !ok {
 		return nil
 	}
-	e, _ := v.(*types.BeaconEntry)
-	return e
+	e, _ := v.(types.BeaconEntry)
+	return &e
 }
 
 func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntry) error {
@@ -178,6 +178,9 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		return nil
 	}
 	if be := db.getCachedValue(curr.Round); be != nil {
+		if !bytes.Equal(curr.Data, be.Data) {
+			return xerrors.New("invalid beacon value, does not match cached good value")
+		}
 		// return no error if the value is in the cache already
 		return nil
 	}
