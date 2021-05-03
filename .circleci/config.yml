@@ -690,10 +690,12 @@ jobs:
     description: "push canary to tweety"
     executor: ubuntu
     steps:
-      - run: wget https://github.com/filecoin-project/tweety/releases/download/v0.0.1/tweety
+      - run: wget https://github.com/filecoin-project/tweety/releases/download/v0.0.2/tweety
       - run: |
+          export BASIC_AUTH_USERNAME=TWEETY_BASIC_AUTH_USERNAME
+          export BASIC_AUTH_PASSWORD=TWEETY_BASIC_AUTH_PASSWORD
           chmod +x tweety
-          ./tweety --daemon 'https://lb.mainnet-us-east-2-dev.fildevops.net/tweety' client create --release "canary-${CIRCLE_TAG}-${CIRCLE_SHA1}"
+          ./tweety client --daemon 'https://lb.mainnet-us-east-2-dev.fildevops.net/tweety' create --release "canary-${CIRCLE_TAG}-${CIRCLE_SHA1}" --var persistence.datastore.size=1000Gi
 
 
 workflows:
