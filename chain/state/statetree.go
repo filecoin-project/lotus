@@ -154,7 +154,7 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 	switch ver {
 	case types.StateTreeVersion0:
 		// info is undefined
-	case types.StateTreeVersion1, types.StateTreeVersion2:
+	case types.StateTreeVersion1, types.StateTreeVersion2, types.StateTreeVersion3:
 		var err error
 		info, err = cst.Put(context.TODO(), new(types.StateInfo0))
 		if err != nil {
