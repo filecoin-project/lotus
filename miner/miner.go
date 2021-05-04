@@ -13,6 +13,7 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
 	"github.com/filecoin-project/go-address"
@@ -425,8 +426,37 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
 	}
 	if mbi == nil {
+		log.Warnf("mineOne: unexpectedly nil MiningBaseInfo for round %d, off tipset %d/%s", round, base.TipSet.Height(), base.TipSet.Key().String())
 		return nil, nil
 	}
+
+	// always write out a log from this point out
+	var winner *types.ElectionProof
+	lookBack := make(chan int64)
+
+	// figure this out in the background, instead of slowing down the main loop
+	go func() {
+		lb := int64(-1)
+		if netVer, err := m.api.StateNetworkVersion(ctx, base.TipSet.Key()); err == nil {
+			lb = int64(policy.GetWinningPoStSectorSetLookback(netVer))
+		}
+		lookBack <- lb
+	}()
+
+	defer func() {
+
+		log.Infow(
+			"completed mineOne",
+			"forRound", int64(round),
+			"baseEpoch", int64(base.TipSet.Height()),
+			"lookbackEpochs", <-lookBack,
+			"networkPowerAtLookback", mbi.NetworkPower.String(),
+			"minerPowerAtLookback", mbi.MinerPower.String(),
+			"isEligible", mbi.EligibleForMining,
+			"isWinner", (winner != nil),
+		)
+	}()
+
 	if !mbi.EligibleForMining {
 		// slashed or just have no power yet
 		return nil, nil
@@ -453,7 +483,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
-	winner, err := gen.IsRoundWinner(ctx, base.TipSet, round, m.address, rbase, mbi, m.api)
+	winner, err = gen.IsRoundWinner(ctx, base.TipSet, round, m.address, rbase, mbi, m.api)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
@@ -505,7 +535,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg,
 	for i, header := range base.TipSet.Blocks() {
 		parentMiners[i] = header.Miner
 	}
-	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "miner", b.Header.Miner, "parents", parentMiners, "took", dur)
+	log.Infow("mined new block", "cid", b.Cid(), "height", int64(b.Header.Height), "miner", b.Header.Miner, "parents", parentMiners, "parentTipset", base.TipSet.Key().String(), "took", dur)
 	if dur > time.Second*time.Duration(build.BlockDelaySecs) {
 		log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
 			"tMinerBaseInfo ", tMBI.Sub(start),
