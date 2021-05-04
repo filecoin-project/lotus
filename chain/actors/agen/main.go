@@ -40,6 +40,11 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+
+	if err := generatePolicy("chain/actors/policy/policy.go"); err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 func generateAdapters() error {
@@ -140,6 +145,37 @@ func generateMessages(actDir string) error {
 		if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("message%d.go", version)), b.Bytes(), 0666); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func generatePolicy(policyPath string) error {
+
+	pf, err := ioutil.ReadFile(policyPath + ".template")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // skip
+		}
+
+		return xerrors.Errorf("loading policy file: %w", err)
+	}
+
+	tpl := template.Must(template.New("").Funcs(template.FuncMap{
+		"import": func(v int) string { return versionImports[v] },
+	}).Parse(string(pf)))
+	var b bytes.Buffer
+
+	err = tpl.Execute(&b, map[string]interface{}{
+		"versions":      versions,
+		"latestVersion": latestVersion,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(policyPath, b.Bytes(), 0666); err != nil {
+		return err
 	}
 
 	return nil
