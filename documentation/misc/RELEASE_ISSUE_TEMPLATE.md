@@ -4,7 +4,9 @@
 
 We're happy to announce Lotus X.Y.Z...
 
-## 🗺 What's left for release
+## 🗺 Must-dos for the release
+
+## 🌟 Nice-to-haves for the release
 
 <List of items with PRs and/or Issues to be considered for this release>
 
