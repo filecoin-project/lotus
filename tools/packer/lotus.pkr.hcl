@@ -72,10 +72,22 @@ source "digitalocean" "lotus" {
   ssh_username = "root"
 }
 
+source "jdcloud" "lotus" {
+  # img-6hh045617d is ubuntu 18.04
+  image_id = "img-6hh045617d"
+  region_id = "cn-north-1"
+  az = "cn-nort-h1c"
+  instance_name = "lotus-builder"
+  instance_type = "g.s2.micro"
+  image_name = "lotus-${var.lotus_network}-${var.git_tag}-${local.timestamp}"
+  communicator = "ssh"
+}
+
 build {
   sources = [
     "source.amazon-ebs.lotus",
     "source.digitalocean.lotus",
+    # "source.jdcloud.lotus",
   ]
 
   # Lotus software (from CI workspace)
