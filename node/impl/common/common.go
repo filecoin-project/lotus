@@ -156,7 +156,7 @@ func (a *CommonAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, 
 }
 
 func (a *CommonAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
-	autonat := a.RawHost.(*basichost.BasicHost).AutoNat
+	autonat := a.RawHost.(*basichost.BasicHost).GetAutoNat()
 
 	if autonat == nil {
 		return api.NatInfo{
