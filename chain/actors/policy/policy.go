@@ -187,6 +187,7 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 		return 10
 	}
 
+	// NOTE: if this ever changes, adjust it in a (*Miner).mineOne() logline as well
 	return ChainFinality
 }
 
