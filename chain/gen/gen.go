@@ -636,7 +636,10 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	ep.WinCount = j
 
 	log.Infow("completed winAttemptVRF",
-		"VRFb64", b64.EncodeToString(vrfout),
+		"beaconRound", brand.Round,
+		"beaconDataB64", b64.EncodeToString(brand.Data),
+		"electionRandB64", b64.EncodeToString(electionRand),
+		"vrfB64", b64.EncodeToString(vrfout),
 		"winCount", j,
 	)
 
