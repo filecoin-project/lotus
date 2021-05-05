@@ -85,9 +85,9 @@ source "jdcloud" "lotus" {
 
 build {
   sources = [
-    "source.amazon-ebs.lotus",
-    "source.digitalocean.lotus",
-    # "source.jdcloud.lotus",
+    /* "source.amazon-ebs.lotus", */
+    /* "source.digitalocean.lotus", */
+    "source.jdcloud.lotus",
   ]
 
   # Lotus software (from CI workspace)

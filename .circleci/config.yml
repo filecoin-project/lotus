@@ -787,13 +787,13 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
-      - build-ntwk-nerpa:
-          requires:
-            - test-short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+      - build-ntwk-nerpa
+          # requires:
+          #   - test-short
+          # filters:
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
       - build-lotus-soup
       - build-macos:
           requires:
@@ -854,10 +854,10 @@ workflows:
       - publish-packer-nerpanet:
           requires:
             - build-ntwk-nerpa
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
