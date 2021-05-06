@@ -758,6 +758,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		if balance.Cmp(required) < 0 {
 			break
 		}
+
 		balance = new(big.Int).Sub(balance, required)
 
 		value := m.Message.Value.Int

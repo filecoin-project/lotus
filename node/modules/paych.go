@@ -32,6 +32,8 @@ type PaychAPI struct {
 	full.StateAPI
 }
 
+var _ paychmgr.PaychAPI = &PaychAPI{}
+
 // HandlePaychManager is called by dependency injection to set up hooks
 func HandlePaychManager(lc fx.Lifecycle, pm *paychmgr.Manager) {
 	lc.Append(fx.Hook{

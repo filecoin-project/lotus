@@ -4,39 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"sort"
 	"strings"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/api/docgen"
 )
 
 func main() {
-	comments, groupComments := docgen.ParseApiASTInfo(os.Args[1], os.Args[2])
+	comments, groupComments := docgen.ParseApiASTInfo(os.Args[1], os.Args[2], os.Args[3], os.Args[4])
 
 	groups := make(map[string]*docgen.MethodGroup)
 
-	var t reflect.Type
-	var permStruct, commonPermStruct reflect.Type
-
-	switch os.Args[2] {
-	case "FullNode":
-		t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
-		permStruct = reflect.TypeOf(apistruct.FullNodeStruct{}.Internal)
-		commonPermStruct = reflect.TypeOf(apistruct.CommonStruct{}.Internal)
-	case "StorageMiner":
-		t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
-		permStruct = reflect.TypeOf(apistruct.StorageMinerStruct{}.Internal)
-		commonPermStruct = reflect.TypeOf(apistruct.CommonStruct{}.Internal)
-	case "Worker":
-		t = reflect.TypeOf(new(struct{ api.Worker })).Elem()
-		permStruct = reflect.TypeOf(apistruct.WorkerStruct{}.Internal)
-		commonPermStruct = reflect.TypeOf(apistruct.WorkerStruct{}.Internal)
-	default:
-		panic("unknown type")
-	}
+	_, t, permStruct, commonPermStruct := docgen.GetAPIType(os.Args[2], os.Args[3])
 
 	for i := 0; i < t.NumMethod(); i++ {
 		m := t.Method(i)

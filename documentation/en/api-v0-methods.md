@@ -277,7 +277,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 65792,
+  "APIVersion": 131328,
   "BlockDelay": 42
 }
 ```
@@ -4551,7 +4551,7 @@ Inputs:
 ]
 ```
 
-Response: `9`
+Response: `11`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -4977,7 +4977,8 @@ Response:
   "FilMined": "0",
   "FilBurnt": "0",
   "FilLocked": "0",
-  "FilCirculating": "0"
+  "FilCirculating": "0",
+  "FilReserveDisbursed": "0"
 }
 ```
 

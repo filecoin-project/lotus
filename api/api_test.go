@@ -113,3 +113,9 @@ func TestReturnTypes(t *testing.T) {
 	t.Run("miner", tst(new(StorageMiner)))
 	t.Run("worker", tst(new(Worker)))
 }
+
+func TestPermTags(t *testing.T) {
+	_ = PermissionedFullAPI(&FullNodeStruct{})
+	_ = PermissionedStorMinerAPI(&StorageMinerStruct{})
+	_ = PermissionedWorkerAPI(&WorkerStruct{})
+}

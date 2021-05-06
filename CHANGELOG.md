@@ -1,5 +1,32 @@
 # Lotus changelog
 
+# 1.8.0 / 2021-04-27
+
+This is a mandatory release of Lotus that upgrades the network to version 12, which introduces various performance improvements to the cron processing of the power actor. The network will upgrade at height 712320, which is 2021-04-29T06:00:00Z.
+
+## Changes 
+
+- v4 specs-actors integration, nv12 migration (https://github.com/filecoin-project/lotus/pull/6116)
+
+# 1.6.0 / 2021-04-05
+
+This is a mandatory release of Lotus that upgrades the network to version 11, which implements [FIP-0014](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0014.md). The network will upgrade at height 665280, which is 2021-04-12T22:00:00Z.
+
+## v1 sector extension CLI
+
+This release also expands the `lotus-miner sectors extend` CLI, with a new option that automatically extends all extensible v1 sectors. The option can be run using `lotus-miner sectors extend --v1-sectors`.
+
+- The `tolerance` flag can be passed to indicate what durations aren't "worth" extending. It defaults to one week, which means that sectors whose current lifetime's are within one week of the maximum possible lifetime will not be extended.
+
+- The `expiration-cutoff` flag can be passed to skip sectors whose expiration is past a certain point from the current head. It defaults to infinity (no cutoff), but if, say, 28800 was specified, then only sectors expiring in the next 10 days would be extended (2880 epochs in 1 day).
+
+## Changes 
+
+- Util for miners to extend all v1 sectors (https://github.com/filecoin-project/lotus/pull/5924)
+- Upgrade the butterfly network (https://github.com/filecoin-project/lotus/pull/5929)
+- Introduce the v11 network upgrade (https://github.com/filecoin-project/lotus/pull/5904)
+- Debug mode: Make upgrade heights controllable by an envvar (https://github.com/filecoin-project/lotus/pull/5919)
+
 # 1.5.3 / 2021-03-24
 
 This is a patch release of Lotus that introduces small fixes to the Storage FSM.

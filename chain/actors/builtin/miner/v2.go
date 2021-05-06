@@ -329,6 +329,10 @@ func (s *state2) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
 }
 
+func (s *state2) DeadlineCronActive() (bool, error) {
+	return true, nil // always active in this version
+}
+
 func (s *state2) sectors() (adt.Array, error) {
 	return adt2.AsArray(s.store, s.Sectors)
 }

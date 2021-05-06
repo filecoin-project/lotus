@@ -11,12 +11,15 @@ import (
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/tag"
 
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats/view"
 
 	"github.com/gorilla/mux"
@@ -82,7 +85,7 @@ var runCmd = &cli.Command{
 			log.Fatalf("Cannot register the view: %v", err)
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -93,14 +96,21 @@ var runCmd = &cli.Command{
 
 		log.Info("Setting up API endpoint at " + address)
 
-		serverOptions := make([]jsonrpc.ServerOption, 0)
-		if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
-			serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
-		}
-		rpcServer := jsonrpc.NewServer(serverOptions...)
-		rpcServer.Register("Filecoin", metrics.MetricedGatewayAPI(NewGatewayAPI(api)))
+		serveRpc := func(path string, hnd interface{}) {
+			serverOptions := make([]jsonrpc.ServerOption, 0)
+			if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
+				serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
+			}
+			rpcServer := jsonrpc.NewServer(serverOptions...)
+			rpcServer.Register("Filecoin", hnd)
 
-		mux.Handle("/rpc/v0", rpcServer)
+			mux.Handle(path, rpcServer)
+		}
+
+		ma := metrics.MetricedGatewayAPI(NewGatewayAPI(api))
+
+		serveRpc("/rpc/v1", ma)
+		serveRpc("/rpc/v0", lapi.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))
 
 		registry := promclient.DefaultRegisterer.(*promclient.Registry)
 		exporter, err := prometheus.NewExporter(prometheus.Options{

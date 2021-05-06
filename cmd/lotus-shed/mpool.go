@@ -15,6 +15,7 @@ var mpoolCmd = &cli.Command{
 	Flags: []cli.Flag{},
 	Subcommands: []*cli.Command{
 		minerSelectMsgsCmd,
+		mpoolClear,
 	},
 }
 
@@ -64,5 +65,38 @@ var minerSelectMsgsCmd = &cli.Command{
 		fmt.Println("selected messages: ", len(msgs))
 		fmt.Printf("total gas limit of selected messages: %d / %d (%0.2f%%)\n", totalGas, build.BlockGasLimit, 100*float64(totalGas)/float64(build.BlockGasLimit))
 		return nil
+	},
+}
+
+var mpoolClear = &cli.Command{
+	Name:  "clear",
+	Usage: "Clear all pending messages from the mpool (USE WITH CARE)",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "local",
+			Usage: "also clear local messages",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "must be specified for the action to take effect",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		really := cctx.Bool("really-do-it")
+		if !really {
+			//nolint:golint
+			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned")
+		}
+
+		local := cctx.Bool("local")
+
+		ctx := lcli.ReqContext(cctx)
+		return api.MpoolClear(ctx, local)
 	},
 }

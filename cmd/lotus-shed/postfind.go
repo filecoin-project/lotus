@@ -49,12 +49,6 @@ var postFindCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if startTs == nil {
-			startTs, err = api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-		}
 		stopEpoch := startTs.Height() - abi.ChainEpoch(c.Int("lookback"))
 		if verbose {
 			fmt.Printf("Collecting messages between %d and %d\n", startTs.Height(), stopEpoch)
