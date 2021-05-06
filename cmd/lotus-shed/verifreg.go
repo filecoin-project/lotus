@@ -95,7 +95,7 @@ var verifRegAddVerifierCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", msgCid)
 
-		mwait, err := api.StateWaitMsg(ctx, msgCid, build.MessageConfidence)
+		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
