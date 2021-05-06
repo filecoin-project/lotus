@@ -45,6 +45,11 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+
+	if err := generateBuiltin("chain/actors/builtin/builtin.go"); err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 func generateAdapters() error {
@@ -158,7 +163,7 @@ func generatePolicy(policyPath string) error {
 			return nil // skip
 		}
 
-		return xerrors.Errorf("loading policy file: %w", err)
+		return xerrors.Errorf("loading policy template file: %w", err)
 	}
 
 	tpl := template.Must(template.New("").Funcs(template.FuncMap{
@@ -175,6 +180,37 @@ func generatePolicy(policyPath string) error {
 	}
 
 	if err := ioutil.WriteFile(policyPath, b.Bytes(), 0666); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateBuiltin(builtinPath string) error {
+
+	bf, err := ioutil.ReadFile(builtinPath + ".template")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // skip
+		}
+
+		return xerrors.Errorf("loading builtin template file: %w", err)
+	}
+
+	tpl := template.Must(template.New("").Funcs(template.FuncMap{
+		"import": func(v int) string { return versionImports[v] },
+	}).Parse(string(bf)))
+	var b bytes.Buffer
+
+	err = tpl.Execute(&b, map[string]interface{}{
+		"versions":      versions,
+		"latestVersion": latestVersion,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(builtinPath, b.Bytes(), 0666); err != nil {
 		return err
 	}
 

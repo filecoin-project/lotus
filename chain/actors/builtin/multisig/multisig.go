@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	msig4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/multisig"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -84,7 +83,7 @@ type State interface {
 	decodeTransaction(val *cbg.Deferred) (Transaction, error)
 }
 
-type Transaction = msig0.Transaction
+type Transaction = msig4.Transaction
 
 var Methods = builtin4.MethodsMultisig
 
