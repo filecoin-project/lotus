@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	msig4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/multisig"
+	msig{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/multisig"
 {{range .versions}}
 	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
 {{end}}
@@ -95,7 +95,7 @@ type ProposeReturn = msig{{.latestVersion}}.ProposeReturn
 type ProposeParams = msig{{.latestVersion}}.ProposeParams
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig{{.latestVersion}}.TxnIDParams{ID: msig4.TxnID(id)}
+	params := msig{{.latestVersion}}.TxnIDParams{ID: msig{{.latestVersion}}.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)

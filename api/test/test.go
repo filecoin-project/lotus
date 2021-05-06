@@ -122,7 +122,8 @@ var TwoFull = DefaultFullOpts(2)
 
 var FullNodeWithLatestActorsAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 	if upgradeHeight == -1 {
-		upgradeHeight = 3
+		// Attention: Update this when introducing new actor versions or your tests will be sad
+		upgradeHeight = 4
 	}
 
 	return FullNodeOpts{
@@ -138,8 +139,12 @@ var FullNodeWithLatestActorsAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts
 				Migration: stmgr.UpgradeActorsV3,
 			}, {
 				Network:   network.Version12,
-				Height:    upgradeHeight,
+				Height:    3,
 				Migration: stmgr.UpgradeActorsV4,
+			}, {
+				Network:   network.Version13,
+				Height:    upgradeHeight,
+				Migration: stmgr.UpgradeActorsV5,
 			}})
 		},
 	}

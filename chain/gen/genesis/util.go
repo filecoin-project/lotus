@@ -63,7 +63,7 @@ var GenesisNetworkVersion = func() network.Version {
 	if build.UpgradeIgnitionHeight >= 0 {
 		return network.Version2
 	}
-	if build.UpgradeActorsV2Height >= 0 {
+	if build.UpgradeAssemblyHeight >= 0 {
 		return network.Version3
 	}
 	if build.UpgradeLiftoffHeight >= 0 {

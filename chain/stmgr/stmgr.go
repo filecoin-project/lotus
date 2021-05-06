@@ -1139,8 +1139,8 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch,
 		}
 	}
 
-	// After UpgradeActorsV2Height these funds are accounted for in GetFilReserveDisbursed
-	if height <= build.UpgradeActorsV2Height {
+	// After UpgradeAssemblyHeight these funds are accounted for in GetFilReserveDisbursed
+	if height <= build.UpgradeAssemblyHeight {
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
 		vf = big.Add(vf, sm.genesisPledge)
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
@@ -1263,7 +1263,7 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 	}
 
 	filReserveDisbursed := big.Zero()
-	if height > build.UpgradeActorsV2Height {
+	if height > build.UpgradeAssemblyHeight {
 		filReserveDisbursed, err = GetFilReserveDisbursed(ctx, st)
 		if err != nil {
 			return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)
