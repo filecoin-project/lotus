@@ -651,7 +651,7 @@ jobs:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
       name: packer/default
-      packer-version: 1.6.6
+      packer-version: 1.7.2
     steps:
       - checkout
       - attach_workspace:
@@ -663,7 +663,7 @@ jobs:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
       name: packer/default
-      packer-version: 1.6.6
+      packer-version: 1.7.2
     steps:
       - checkout
       - attach_workspace:
@@ -675,7 +675,7 @@ jobs:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
       name: packer/default
-      packer-version: 1.6.6
+      packer-version: 1.7.2
     steps:
       - checkout
       - attach_workspace:
@@ -687,7 +687,7 @@ jobs:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
       name: packer/default
-      packer-version: 1.6.6
+      packer-version: 1.7.2
     steps:
       - checkout
       - attach_workspace:
