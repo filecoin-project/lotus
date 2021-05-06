@@ -1,5 +1,5 @@
 name: lotus
-base: core20
+base: core18
 version: '1.8.0'
 summary: filecoin daemon/client
 description: |
@@ -17,7 +17,8 @@ parts:
       'lotus-*' : bin/
     stage-packages:
       - ocl-icd-libopencl1
-      - libhwloc15
+      - libhwloc1
+      - libgcc1
 apps:
   lotus:
     command: bin/lotus
