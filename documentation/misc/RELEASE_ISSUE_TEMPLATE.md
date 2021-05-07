@@ -93,7 +93,7 @@ Testing an RC:
     - [ ] Tag this merge commit (on the `releases` branch) with `vX.Y.Z`.
     - [ ] Cut the release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true&target=releases).
     - [ ] Final announcements
-        - [ ] Update network.filecoin.io
+        - [ ] Update network.filecoin.io for mainnet, calib and nerpa.
         - [ ] Add a comment when the final release is tagged, example [here](https://github.com/filecoin-project/lotus/discussions/5905#discussioncomment-571752)
         - [ ] repost in #fil-lotus in filecoin slack
 
