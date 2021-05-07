@@ -96,4 +96,13 @@ func (a *MpoolNonceAPI) GetNonce(ctx context.Context, addr address.Address, tsk 
 	return highestNonce, nil
 }
 
+func (a *MpoolNonceAPI) GetActor(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+	act, err := a.StateModule.StateGetActor(ctx, addr, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("calling StateGetActor: %w", err)
+	}
+
+	return act, nil
+}
+
 var _ messagesigner.MpoolNonceAPI = (*MpoolNonceAPI)(nil)

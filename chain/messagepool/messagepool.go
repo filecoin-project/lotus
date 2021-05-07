@@ -805,6 +805,13 @@ func (mp *MessagePool) GetNonce(_ context.Context, addr address.Address, _ types
 	return mp.getNonceLocked(addr, mp.curTs)
 }
 
+// GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
+func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+	return mp.api.GetActorAfter(addr, mp.curTs)
+}
+
 func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *types.TipSet) (uint64, error) {
 	stateNonce, err := mp.getStateNonce(addr, curTs) // sanity check
 	if err != nil {
