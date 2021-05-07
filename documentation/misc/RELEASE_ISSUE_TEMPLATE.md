@@ -63,7 +63,7 @@ Testing an RC:
     - [ ] Submit a PoSt
     - [ ] (optional) let a sector go faulty, and see it be recovered
     
-- [ ] **Stage 2 - Community Dev Testing**
+- [ ] **Stage 2 - Community Testing**
   - [ ] Inform beta miners (@lotus-early-testers-miner in Filecoin Slack #fil-lotus)
   - [ ] Ask close ecosystem partners to test their projects (@lotus-early-testers-eco-dev in Filecoin slack #fil-lotus)
     - [ ] Powergate
