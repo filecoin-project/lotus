@@ -63,7 +63,7 @@ func (a *MpoolNonceAPI) GetNonce(ctx context.Context, addr address.Address, tsk 
 	act, err := a.StateModule.StateGetActor(ctx, keyAddr, ts.Key())
 	if err != nil {
 		if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
-			return 0, types.ErrActorNotFound
+			return 0, xerrors.Errorf("getting actor converted: %w", types.ErrActorNotFound)
 		}
 		return 0, xerrors.Errorf("getting actor: %w", err)
 	}

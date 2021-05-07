@@ -29,7 +29,7 @@ func SendFunds(ctx context.Context, t *testing.T, sender TestNode, addr address.
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := sender.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	res, err := sender.StateWaitMsg(ctx, sm.Cid(), 3, lapi.LookbackNoLimit, true)
 	if err != nil {
 		t.Fatal(err)
 	}

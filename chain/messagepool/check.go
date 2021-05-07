@@ -100,6 +100,9 @@ func (mp *MessagePool) CheckReplaceMessages(replace []*types.Message) ([][]api.M
 // flexibleNonces should be either nil or of len(msgs), it signifies that message at given index
 // has non-determied nonce at this point
 func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool, flexibleNonces []bool) (result [][]api.MessageCheckStatus, err error) {
+	if mp.api.IsLite() {
+		return nil, nil
+	}
 	mp.curTsLk.Lock()
 	curTs := mp.curTs
 	mp.curTsLk.Unlock()

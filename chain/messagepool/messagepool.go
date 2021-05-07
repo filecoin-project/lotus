@@ -832,8 +832,8 @@ func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *types.TipSet)
 	return stateNonce, nil
 }
 
-func (mp *MessagePool) getStateNonce(addr address.Address, curTs *types.TipSet) (uint64, error) {
-	act, err := mp.api.GetActorAfter(addr, curTs)
+func (mp *MessagePool) getStateNonce(addr address.Address, ts *types.TipSet) (uint64, error) {
+	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return 0, err
 	}

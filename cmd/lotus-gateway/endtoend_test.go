@@ -333,7 +333,7 @@ func sendFunds(ctx context.Context, fromNode test.TestNode, fromAddr address.Add
 		return err
 	}
 
-	res, err := fromNode.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
+	res, err := fromNode.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
 	if err != nil {
 		return err
 	}

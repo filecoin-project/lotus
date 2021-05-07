@@ -31,6 +31,7 @@ type Provider interface {
 	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
 	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
 	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error)
+	IsLite() bool
 }
 
 type mpoolProvider struct {
@@ -46,6 +47,10 @@ func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
 
 func NewProviderLite(sm *stmgr.StateManager, ps *pubsub.PubSub, noncer messagesigner.MpoolNonceAPI) Provider {
 	return &mpoolProvider{sm: sm, ps: ps, lite: noncer}
+}
+
+func (mpp *mpoolProvider) IsLite() bool {
+	return mpp.lite != nil
 }
 
 func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
@@ -68,7 +73,7 @@ func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
 }
 
 func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
-	if mpp.lite != nil {
+	if mpp.IsLite() {
 		n, err := mpp.lite.GetNonce(context.TODO(), addr, ts.Key())
 		if err != nil {
 			return nil, xerrors.Errorf("getting nonce over lite: %w", err)
