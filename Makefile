@@ -336,6 +336,18 @@ api-gen:
 	goimports -w api
 .PHONY: api-gen
 
+appimage: lotus
+	command -v appimage-builder || echo you must install appimage-builder && exit 1
+	command -v appimagetool || echo you must install appimagetool && exit 1
+	grep "Ubuntu 18.04" /etc/lsb-release || echo you are not running ubuntu 18.04, so this might not work. Try `appimage-builder --generate` if you run into problems.
+	rm -rf appimage-builder-cache
+	rm AppDir/io.filecoin.lotus.desktop
+	rm AppDir/icon.svg
+	rm Appdir/AppRun
+	mkdir -p AppDir/usr/bin
+	cp ./lotus AppDir/usr/bin/
+	appimage-builder
+
 docsgen: docsgen-md docsgen-openrpc
 
 docsgen-md-bin: api-gen actors-gen
