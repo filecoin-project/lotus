@@ -126,8 +126,10 @@ type MessagePool struct {
 
 	republished map[cid.Cid]struct{}
 
+	// only pubkey addresses
 	localAddrs map[address.Address]struct{}
 
+	// only pubkey addresses
 	pending map[address.Address]*msgSet
 
 	curTsLk sync.Mutex // DO NOT LOCK INSIDE lk
@@ -443,7 +445,14 @@ func (mp *MessagePool) runLoop() {
 }
 
 func (mp *MessagePool) addLocal(m *types.SignedMessage) error {
-	mp.localAddrs[m.Message.From] = struct{}{}
+	// TODO: Is context.TODO() safe here? Idk how Go works.
+	sk, err := mp.api.StateAccountKey(context.TODO(), m.Message.From, mp.curTs)
+	if err != nil {
+		log.Debugf("mpooladdlocal failed to resolve sender: %s", err)
+		return err
+	}
+
+	mp.localAddrs[sk] = struct{}{}
 
 	msgb, err := m.Serialize()
 	if err != nil {
@@ -475,7 +484,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 		return false, xerrors.Errorf("message will not be included in a block: %w", err)
 	}
 
-	// this checks if the GasFeeCap is suffisciently high for inclusion in the next 20 blocks
+	// this checks if the GasFeeCap is sufficiently high for inclusion in the next 20 blocks
 	// if the GasFeeCap is too low, we soft reject the message (Ignore in pubsub) and rely
 	// on republish to push it through later, if the baseFee has fallen.
 	// this is a defensive check that stops minimum baseFee spam attacks from overloading validation
@@ -645,7 +654,14 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 	// add Value for soft failure check
 	//requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
 
-	mset, ok := mp.pending[m.Message.From]
+	// TODO: Is context.TODO() safe here? Idk how Go works.
+	sk, err := mp.api.StateAccountKey(context.TODO(), m.Message.From, mp.curTs)
+	if err != nil {
+		log.Debugf("mpoolcheckbalance failed to resolve sender: %s", err)
+		return err
+	}
+
+	mset, ok := mp.pending[sk]
 	if ok {
 		requiredFunds = types.BigAdd(requiredFunds, mset.getRequiredFunds(m.Message.Nonce))
 	}
@@ -752,15 +768,22 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 		return err
 	}
 
-	mset, ok := mp.pending[m.Message.From]
+	// TODO: Is context.TODO() safe here? Idk how Go works.
+	sk, err := mp.api.StateAccountKey(context.TODO(), m.Message.From, mp.curTs)
+	if err != nil {
+		log.Debugf("mpooladd failed to resolve sender: %s", err)
+		return err
+	}
+
+	mset, ok := mp.pending[sk]
 	if !ok {
-		nonce, err := mp.getStateNonce(m.Message.From, mp.curTs)
+		nonce, err := mp.getStateNonce(sk, mp.curTs)
 		if err != nil {
 			return xerrors.Errorf("failed to get initial actor nonce: %w", err)
 		}
 
 		mset = newMsgSet(nonce)
-		mp.pending[m.Message.From] = mset
+		mp.pending[sk] = mset
 	}
 
 	incr, err := mset.add(m, mp, strict, untrusted)
@@ -811,7 +834,14 @@ func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *types.TipSet)
 		return 0, err
 	}
 
-	mset, ok := mp.pending[addr]
+	// TODO: Is context.TODO() safe here? Idk how Go works.
+	sk, err := mp.api.StateAccountKey(context.TODO(), addr, mp.curTs)
+	if err != nil {
+		log.Debugf("mpoolgetnonce failed to resolve sender: %s", err)
+		return 0, err
+	}
+
+	mset, ok := mp.pending[sk]
 	if ok {
 		if stateNonce > mset.nextNonce {
 			log.Errorf("state nonce was larger than mset.nextNonce (%d > %d)", stateNonce, mset.nextNonce)
@@ -891,7 +921,14 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64, applied bool) 
 }
 
 func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) {
-	mset, ok := mp.pending[from]
+	// TODO: Is context.TODO() safe here? Idk how Go works.
+	sk, err := mp.api.StateAccountKey(context.TODO(), from, mp.curTs)
+	if err != nil {
+		log.Debugf("mpoolremove failed to resolve sender: %s", err)
+		return
+	}
+
+	mset, ok := mp.pending[sk]
 	if !ok {
 		return
 	}
@@ -949,7 +986,14 @@ func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *t
 }
 
 func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
-	mset := mp.pending[a]
+	// TODO: Is context.TODO() safe here? Idk how Go works.
+	sk, err := mp.api.StateAccountKey(context.TODO(), a, mp.curTs)
+	if err != nil {
+		log.Debugf("mpoolpendingfor failed to resolve sender: %s", err)
+		return nil
+	}
+
+	mset := mp.pending[sk]
 	if mset == nil || len(mset.msgs) == 0 {
 		return nil
 	}
@@ -1303,7 +1347,14 @@ func (mp *MessagePool) loadLocal() error {
 			log.Errorf("adding local message: %+v", err)
 		}
 
-		mp.localAddrs[sm.Message.From] = struct{}{}
+		// TODO: Is context.TODO() safe here? Idk how Go works.
+		sk, err := mp.api.StateAccountKey(context.TODO(), sm.Message.From, mp.curTs)
+		if err != nil {
+			log.Debugf("mpoolloadLocal failed to resolve sender: %s", err)
+			return err
+		}
+
+		mp.localAddrs[sk] = struct{}{}
 	}
 
 	return nil

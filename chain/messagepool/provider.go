@@ -37,6 +37,8 @@ type mpoolProvider struct {
 	ps *pubsub.PubSub
 }
 
+var _ Provider = (*mpoolProvider)(nil)
+
 func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
 	return &mpoolProvider{sm: sm, ps: ps}
 }

@@ -543,10 +543,16 @@ func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[ui
 	var chains []*msgChain
 	priority := mpCfg.PriorityAddrs
 	for _, actor := range priority {
-		mset, ok := pending[actor]
+		pk, err := mp.api.StateAccountKey(context.TODO(), actor, mp.curTs)
+		if err != nil {
+			log.Debugf("mpooladdlocal failed to resolve sender: %s", err)
+			return nil, gasLimit
+		}
+
+		mset, ok := pending[pk]
 		if ok {
 			// remove actor from pending set as we are already processed these messages
-			delete(pending, actor)
+			delete(pending, pk)
 			// create chains for the priority actor
 			next := mp.createMessageChains(actor, mset, baseFee, ts)
 			chains = append(chains, next...)
