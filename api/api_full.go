@@ -243,10 +243,10 @@ type FullNode interface {
 	// based on current chain conditions
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *MessageSendSpec) (*types.SignedMessage, error) //perm:sign
 
-	//MpoolPublishMessage publish a message in mpool to p2p netowrk
+	//MpoolPublishMessage publish a message in mpool to p2p network
 	MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error //perm:write
 
-	//MpoolPublishByAddr publish messages of address in mpool to p2p netowrk
+	//MpoolPublishByAddr publish messages of address in mpool to p2p network
 	MpoolPublishByAddr(context.Context, address.Address) error //perm:write
 
 	// MpoolBatchPush batch pushes a signed message to mempool.
