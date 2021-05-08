@@ -89,6 +89,8 @@
   * [MpoolGetConfig](#MpoolGetConfig)
   * [MpoolGetNonce](#MpoolGetNonce)
   * [MpoolPending](#MpoolPending)
+  * [MpoolPublishByAddr](#MpoolPublishByAddr)
+  * [MpoolPublishMessage](#MpoolPublishMessage)
   * [MpoolPush](#MpoolPush)
   * [MpoolPushMessage](#MpoolPushMessage)
   * [MpoolPushUntrusted](#MpoolPushUntrusted)
@@ -2113,6 +2115,59 @@ Inputs:
 ```
 
 Response: `null`
+
+### MpoolPublishByAddr
+MpoolPublishByAddr publish messages of address in mpool to p2p netowrk
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `{}`
+
+### MpoolPublishMessage
+MpoolPublishMessage publish a message in mpool to p2p netowrk
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "Message": {
+      "Version": 42,
+      "To": "f01234",
+      "From": "f01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
+    },
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  }
+]
+```
+
+Response: `{}`
 
 ### MpoolPush
 MpoolPush pushes a signed message to mempool.

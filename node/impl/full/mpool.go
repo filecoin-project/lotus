@@ -189,6 +189,14 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	})
 }
 
+func (a *MpoolAPI) MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error {
+	return a.Mpool.PublishMessage(smsg)
+}
+
+func (a *MpoolAPI) MpoolPublishByAddr(ctx context.Context, addr address.Address) error {
+	return a.Mpool.PublishByAddr(addr)
+}
+
 func (a *MpoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {

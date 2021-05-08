@@ -545,6 +545,61 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	return m.Cid(), nil
 }
 
+func (mp *MessagePool) PublishMessage(m *types.SignedMessage) error {
+	msgb, err := m.Serialize()
+	if err != nil {
+		return xerrors.Errorf("error serializing message: %w", err)
+	}
+
+	err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
+	if err != nil {
+		return xerrors.Errorf("error publishing message: %w", err)
+	}
+	return nil
+}
+
+func (mp *MessagePool) PublishByAddr(addr address.Address) error {
+	now := time.Now()
+	defer func() {
+		diff := time.Since(now).Seconds()
+		if diff > 1 {
+			log.Infof("publish msg wallet spent time:%f", diff)
+		}
+	}()
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	out := make([]*types.SignedMessage, 0)
+	for a := range mp.pending {
+		if a.String() == addr.String() {
+			out = append(out, mp.pendingFor(a)...)
+			break
+		}
+	}
+
+	log.Infof("mpool has [%v] msg for [%s], will republish ...", len(out), addr.String())
+
+	// 开始广播消息
+	for _, msg := range out {
+		msgb, err := msg.Serialize()
+		if err != nil {
+			log.Errorf("could not serialize: %s", err)
+			continue
+		}
+
+		err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
+		if err != nil {
+			log.Errorf("could not publish: %s", err)
+			continue
+		}
+	}
+
+	return nil
+}
+
 func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
 	if m.Size() > 32*1024 {

@@ -249,6 +249,10 @@ type FullNodeStruct struct {
 
 		MpoolPending func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 
+		MpoolPublishByAddr func(p0 context.Context, p1 address.Address) error `perm:"write"`
+
+		MpoolPublishMessage func(p0 context.Context, p1 *types.SignedMessage) error `perm:"write"`
+
 		MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 
 		MpoolPushMessage func(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec) (*types.SignedMessage, error) `perm:"sign"`
@@ -1569,6 +1573,22 @@ func (s *FullNodeStruct) MpoolPending(p0 context.Context, p1 types.TipSetKey) ([
 
 func (s *FullNodeStub) MpoolPending(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) {
 	return *new([]*types.SignedMessage), xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) MpoolPublishByAddr(p0 context.Context, p1 address.Address) error {
+	return s.Internal.MpoolPublishByAddr(p0, p1)
+}
+
+func (s *FullNodeStub) MpoolPublishByAddr(p0 context.Context, p1 address.Address) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) MpoolPublishMessage(p0 context.Context, p1 *types.SignedMessage) error {
+	return s.Internal.MpoolPublishMessage(p0, p1)
+}
+
+func (s *FullNodeStub) MpoolPublishMessage(p0 context.Context, p1 *types.SignedMessage) error {
+	return xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
