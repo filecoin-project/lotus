@@ -479,7 +479,7 @@ The minimum value is 518400 (6 months).`,
 
 		var proposal *cid.Cid
 		if cctx.Bool("manual-stateless-deal") {
-			if ref.TransferType != storagemarket.TTManual {
+			if ref.TransferType != storagemarket.TTManual || price.Int64() != 0 {
 				return xerrors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
 			}
 			proposal, err = api.ClientStatelessDeal(ctx, sdParams)
