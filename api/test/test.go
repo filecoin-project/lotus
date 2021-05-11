@@ -121,7 +121,7 @@ var OneMiner = []StorageMiner{{Full: 0, Preseal: PresealGenesis}}
 var OneFull = DefaultFullOpts(1)
 var TwoFull = DefaultFullOpts(2)
 
-var FullNodeWithActorsV4At = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
+var FullNodeWithLatestActorsAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 	if upgradeHeight == -1 {
 		upgradeHeight = 3
 	}

@@ -333,6 +333,10 @@ type-gen: api-gen
 method-gen: api-gen
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
 
+actors-gen:
+	go run ./chain/actors/agen
+	go fmt ./...
+
 api-gen:
 	go run ./gen/api
 	goimports -w api
@@ -341,9 +345,9 @@ api-gen:
 
 docsgen: docsgen-md docsgen-openrpc
 
-docsgen-md-bin: api-gen
+docsgen-md-bin: api-gen actors-gen
 	go build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
-docsgen-openrpc-bin: api-gen
+docsgen-openrpc-bin: api-gen actors-gen
 	go build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
 docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
@@ -367,7 +371,7 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: type-gen method-gen docsgen api-gen
+gen: actors-gen type-gen method-gen docsgen api-gen
 	@echo ">>> IF YOU'VE MODIFIED THE CLI, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 
