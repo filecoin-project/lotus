@@ -2117,7 +2117,7 @@ Inputs:
 Response: `null`
 
 ### MpoolPublishByAddr
-MpoolPublishByAddr publish messages of address in mpool to p2p netowrk
+MpoolPublishByAddr publish messages of address in mpool to p2p network
 
 
 Perms: write
@@ -2132,7 +2132,7 @@ Inputs:
 Response: `{}`
 
 ### MpoolPublishMessage
-MpoolPublishMessage publish a message in mpool to p2p netowrk
+MpoolPublishMessage publish a message in mpool to p2p network
 
 
 Perms: write
