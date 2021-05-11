@@ -1,0 +1,144 @@
+package builtin
+
+import (
+	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
+	{{range .versions}}
+        builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+        smoothing{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/util/smoothing"
+    {{end}}
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/types"
+
+	miner{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/miner"
+	proof{{.latestVersion}}  "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/runtime/proof"
+)
+
+var SystemActorAddr = builtin{{.latestVersion}}.SystemActorAddr
+var BurntFundsActorAddr = builtin{{.latestVersion}}.BurntFundsActorAddr
+var CronActorAddr = builtin{{.latestVersion}}.CronActorAddr
+var SaftAddress = makeAddress("t0122")
+var ReserveAddress = makeAddress("t090")
+var RootVerifierAddress = makeAddress("t080")
+
+var (
+	ExpectedLeadersPerEpoch = builtin{{.latestVersion}}.ExpectedLeadersPerEpoch
+)
+
+const (
+	EpochDurationSeconds = builtin{{.latestVersion}}.EpochDurationSeconds
+	EpochsInDay          = builtin{{.latestVersion}}.EpochsInDay
+	SecondsInDay         = builtin{{.latestVersion}}.SecondsInDay
+)
+
+const (
+	MethodSend        = builtin{{.latestVersion}}.MethodSend
+	MethodConstructor = builtin{{.latestVersion}}.MethodConstructor
+)
+
+// These are all just type aliases across actor versions. In the future, that might change
+// and we might need to do something fancier.
+type SectorInfo = proof{{.latestVersion}}.SectorInfo
+type PoStProof = proof{{.latestVersion}}.PoStProof
+type FilterEstimate = smoothing0.FilterEstimate
+
+func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
+	return miner{{.latestVersion}}.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+}
+
+{{range .versions}}
+    func FromV{{.}}FilterEstimate(v{{.}} smoothing{{.}}.FilterEstimate) FilterEstimate {
+	{{if (eq . 0)}}
+	    return (FilterEstimate)(v{{.}}) //nolint:unconvert
+    {{else}}
+        return (FilterEstimate)(v{{.}})
+    {{end}}
+    }
+{{end}}
+
+type ActorStateLoader func(store adt.Store, root cid.Cid) (cbor.Marshaler, error)
+
+var ActorStateLoaders = make(map[cid.Cid]ActorStateLoader)
+
+func RegisterActorState(code cid.Cid, loader ActorStateLoader) {
+	ActorStateLoaders[code] = loader
+}
+
+func Load(store adt.Store, act *types.Actor) (cbor.Marshaler, error) {
+	loader, found := ActorStateLoaders[act.Code]
+	if !found {
+		return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	}
+	return loader(store, act.Head)
+}
+
+func ActorNameByCode(c cid.Cid) string {
+	switch {
+        {{range .versions}}
+            case builtin{{.}}.IsBuiltinActor(c):
+            return builtin{{.}}.ActorNameByCode(c)
+        {{end}}
+	default:
+		return "<unknown>"
+	}
+}
+
+func IsBuiltinActor(c cid.Cid) bool {
+    {{range .versions}}
+        if builtin{{.}}.IsBuiltinActor(c) {
+            return true
+        }
+    {{end}}
+    return false
+}
+
+func IsAccountActor(c cid.Cid) bool {
+    {{range .versions}}
+        if c == builtin{{.}}.AccountActorCodeID {
+            return true
+        }
+    {{end}}
+    return false
+}
+
+func IsStorageMinerActor(c cid.Cid) bool {
+    {{range .versions}}
+        if c == builtin{{.}}.StorageMinerActorCodeID {
+            return true
+        }
+    {{end}}
+    return false
+}
+
+func IsMultisigActor(c cid.Cid) bool {
+    {{range .versions}}
+        if c == builtin{{.}}.MultisigActorCodeID {
+            return true
+        }
+    {{end}}
+    return false
+}
+
+func IsPaymentChannelActor(c cid.Cid) bool {
+    {{range .versions}}
+        if c == builtin{{.}}.PaymentChannelActorCodeID {
+            return true
+        }
+    {{end}}
+    return false
+}
+
+func makeAddress(addr string) address.Address {
+	ret, err := address.NewFromString(addr)
+	if err != nil {
+		panic(err)
+	}
+
+	return ret
+}

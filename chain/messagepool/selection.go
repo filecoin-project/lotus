@@ -701,7 +701,7 @@ func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 }
 
 func isMessageMute(m *types.Message, ts *types.TipSet) bool {
-	if api.RunningNodeType != api.NodeFull || ts.Height() > build.UpgradeActorsV4Height {
+	if api.RunningNodeType != api.NodeFull || ts.Height() > build.UpgradeTurboHeight {
 		return false
 	}
 

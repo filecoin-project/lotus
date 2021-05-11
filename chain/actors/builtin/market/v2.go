@@ -144,18 +144,18 @@ func (s *dealStates2) Get(dealID abi.DealID) (*DealState, bool, error) {
 }
 
 func (s *dealStates2) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
-	var ds1 market2.DealState
-	return s.Array.ForEach(&ds1, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV2DealState(ds1))
+	var ds2 market2.DealState
+	return s.Array.ForEach(&ds2, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV2DealState(ds2))
 	})
 }
 
 func (s *dealStates2) decode(val *cbg.Deferred) (*DealState, error) {
-	var ds1 market2.DealState
-	if err := ds1.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+	var ds2 market2.DealState
+	if err := ds2.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	ds := fromV2DealState(ds1)
+	ds := fromV2DealState(ds2)
 	return &ds, nil
 }
 
@@ -163,8 +163,8 @@ func (s *dealStates2) array() adt.Array {
 	return s.Array
 }
 
-func fromV2DealState(v1 market2.DealState) DealState {
-	return (DealState)(v1)
+func fromV2DealState(v2 market2.DealState) DealState {
+	return (DealState)(v2)
 }
 
 type dealProposals2 struct {
@@ -185,18 +185,18 @@ func (s *dealProposals2) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 }
 
 func (s *dealProposals2) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
-	var dp1 market2.DealProposal
-	return s.Array.ForEach(&dp1, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV2DealProposal(dp1))
+	var dp2 market2.DealProposal
+	return s.Array.ForEach(&dp2, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV2DealProposal(dp2))
 	})
 }
 
 func (s *dealProposals2) decode(val *cbg.Deferred) (*DealProposal, error) {
-	var dp1 market2.DealProposal
-	if err := dp1.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+	var dp2 market2.DealProposal
+	if err := dp2.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV2DealProposal(dp1)
+	dp := fromV2DealProposal(dp2)
 	return &dp, nil
 }
 
@@ -204,6 +204,6 @@ func (s *dealProposals2) array() adt.Array {
 	return s.Array
 }
 
-func fromV2DealProposal(v1 market2.DealProposal) DealProposal {
-	return (DealProposal)(v1)
+func fromV2DealProposal(v2 market2.DealProposal) DealProposal {
+	return (DealProposal)(v2)
 }

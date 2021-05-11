@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 
+	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
+
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -550,6 +552,7 @@ func init() {
 	actors = append(actors, exported2.BuiltinActors()...)
 	actors = append(actors, exported3.BuiltinActors()...)
 	actors = append(actors, exported4.BuiltinActors()...)
+	actors = append(actors, exported5.BuiltinActors()...)
 
 	for _, actor := range actors {
 		exports := actor.Exports()

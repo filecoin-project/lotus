@@ -51,7 +51,7 @@ func (s *state0) TotalCommitted() (Claim, error) {
 }
 
 func (s *state0) MinerPower(addr address.Address) (Claim, bool, error) {
-	claims, err := adt0.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return Claim{}, false, err
 	}
@@ -79,7 +79,7 @@ func (s *state0) MinerCounts() (uint64, uint64, error) {
 }
 
 func (s *state0) ListAllMiners() ([]address.Address, error) {
-	claims, err := adt0.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (s *state0) ListAllMiners() ([]address.Address, error) {
 }
 
 func (s *state0) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
-	claims, err := adt0.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return err
 	}
@@ -141,5 +141,8 @@ func (s *state0) decodeClaim(val *cbg.Deferred) (Claim, error) {
 }
 
 func fromV0Claim(v0 power0.Claim) Claim {
-	return (Claim)(v0)
+	return Claim{
+		RawBytePower:    v0.RawBytePower,
+		QualityAdjPower: v0.QualityAdjPower,
+	}
 }
