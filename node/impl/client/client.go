@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
@@ -254,7 +255,9 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		ClientSignature: *dealProposalSig,
 	}
 	dStream, err := network.NewFromLibp2pHost(a.Host,
-		network.RetryParameters(0, 0, 0, 0),
+		// params duplicated from .../node/modules/client.go
+		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
+		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
 	).NewDealStream(ctx, *mi.PeerId)
 	if err != nil {
 		return nil, xerrors.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
