@@ -3,7 +3,7 @@ package stores
 import (
 	"context"
 	"errors"
-	"math"
+	"fmt"
 	"net/url"
 	gopath "path"
 	"sort"
@@ -385,12 +385,14 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorF
 	var candidates []storageEntry
 
 	var err error
-	spaceReq := uint64(math.MaxUint64)
+	var spaceReq uint64
 	switch pathType {
 	case storiface.PathSealing:
 		spaceReq, err = allocate.SealSpaceUse(ssize)
 	case storiface.PathStorage:
 		spaceReq, err = allocate.StoreSpaceUse(ssize)
+	default:
+		panic(fmt.Sprintf("unexpected pathType: %s", pathType))
 	}
 	if err != nil {
 		return nil, xerrors.Errorf("estimating required space: %w", err)
