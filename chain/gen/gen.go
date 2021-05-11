@@ -3,6 +3,7 @@ package gen
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -610,6 +611,8 @@ func (wpp *wppProvider) ComputeProof(context.Context, []proof2.SectorInfo, abi.P
 	return ValidWpostForTesting, nil
 }
 
+var b64 = base64.URLEncoding.WithPadding(base64.NoPadding)
+
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
 
@@ -631,6 +634,15 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	ep := &types.ElectionProof{VRFProof: vrfout}
 	j := ep.ComputeWinCount(mbi.MinerPower, mbi.NetworkPower)
 	ep.WinCount = j
+
+	log.Infow("completed winAttemptVRF",
+		"beaconRound", brand.Round,
+		"beaconDataB64", b64.EncodeToString(brand.Data),
+		"electionRandB64", b64.EncodeToString(electionRand),
+		"vrfB64", b64.EncodeToString(vrfout),
+		"winCount", j,
+	)
+
 	if j < 1 {
 		return nil, nil
 	}

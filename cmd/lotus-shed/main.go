@@ -20,6 +20,7 @@ func main() {
 		base32Cmd,
 		base16Cmd,
 		bitFieldCmd,
+		cronWcCmd,
 		frozenMinersCmd,
 		keyinfoCmd,
 		jwtCmd,
@@ -55,6 +56,7 @@ func main() {
 		cidCmd,
 		blockmsgidCmd,
 		signaturesCmd,
+		minerTypesCmd,
 	}
 
 	app := &cli.App{

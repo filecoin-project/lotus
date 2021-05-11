@@ -31,8 +31,12 @@ COMMANDS:
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
+   STATUS:
+     status  Check node status
 
 GLOBAL OPTIONS:
+   --interactive  setting to false will disable interactive functionality of commands (default: false)
+   --force-send   if true, will ignore pre-send checks (default: false)
    --help, -h     show help (default: false)
    --version, -v  print the version (default: false)
 ```
@@ -136,7 +140,7 @@ OPTIONS:
    --method value       specify method to invoke (default: 0)
    --params-json value  specify invocation parameters in json
    --params-hex value   specify invocation parameters in hex
-   --force              must be specified for the action to take effect if maybe SysErrInsufficientFunds etc (default: false)
+   --force              Deprecated: use global 'force-send' (default: false)
    --help, -h           show help (default: false)
    
 ```
@@ -1300,6 +1304,7 @@ COMMANDS:
    find      find a message in the mempool
    config    get or set current mpool configuration
    gas-perf  Check gas performance of messages in mempool
+   manage    
    help, h   Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1412,6 +1417,9 @@ OPTIONS:
    --all       print gas performance for all mempool messages (default only prints for local) (default: false)
    --help, -h  show help (default: false)
    
+```
+# nage
+```
 ```
 
 ## lotus state
@@ -2670,5 +2678,22 @@ USAGE:
 OPTIONS:
    --epoch value  checkpoint the tipset at the given epoch (default: 0)
    --help, -h     show help (default: false)
+   
+```
+
+## lotus status
+```
+NAME:
+   lotus status - Check node status
+
+USAGE:
+   lotus status [command options] [arguments...]
+
+CATEGORY:
+   STATUS
+
+OPTIONS:
+   --chain     include chain health status (default: false)
+   --help, -h  show help (default: false)
    
 ```

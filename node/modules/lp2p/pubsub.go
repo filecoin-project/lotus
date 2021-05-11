@@ -36,6 +36,15 @@ func init() {
 	pubsub.GossipSubHistoryLength = 10
 	pubsub.GossipSubGossipFactor = 0.1
 }
+
+const (
+	GossipScoreThreshold             = -500
+	PublishScoreThreshold            = -1000
+	GraylistScoreThreshold           = -2500
+	AcceptPXScoreThreshold           = 1000
+	OpportunisticGraftScoreThreshold = 3.5
+)
+
 func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
 }
@@ -256,11 +265,11 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				Topics: topicParams,
 			},
 			&pubsub.PeerScoreThresholds{
-				GossipThreshold:             -500,
-				PublishThreshold:            -1000,
-				GraylistThreshold:           -2500,
-				AcceptPXThreshold:           1000,
-				OpportunisticGraftThreshold: 3.5,
+				GossipThreshold:             GossipScoreThreshold,
+				PublishThreshold:            PublishScoreThreshold,
+				GraylistThreshold:           GraylistScoreThreshold,
+				AcceptPXThreshold:           AcceptPXScoreThreshold,
+				OpportunisticGraftThreshold: OpportunisticGraftScoreThreshold,
 			},
 		),
 		pubsub.WithPeerScoreInspect(in.Sk.Update, 10*time.Second),
