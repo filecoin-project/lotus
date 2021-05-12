@@ -695,6 +695,17 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-nerpanet -var lotus_network=nerpanet -var git_tag=$CIRCLE_TAG"
+  create-canary:
+    description: "push canary to tweety"
+    executor: ubuntu
+    steps:
+      - run: wget https://github.com/filecoin-project/tweety/releases/download/v0.0.2/tweety
+      - run: |
+          export BASIC_AUTH_USERNAME=TWEETY_BASIC_AUTH_USERNAME
+          export BASIC_AUTH_PASSWORD=TWEETY_BASIC_AUTH_PASSWORD
+          chmod +x tweety
+          ./tweety client --daemon 'https://lb.mainnet-us-east-2-dev.fildevops.net/tweety' create --release "canary-${CIRCLE_TAG}-${CIRCLE_SHA1}" --var persistence.datastore.size=1000Gi
+
 
 workflows:
   version: 2.1
@@ -861,3 +872,13 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
+      - create-canary:
+          requires:
+            - build-all
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+$/
