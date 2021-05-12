@@ -1299,7 +1299,8 @@ func (cs *ChainStore) GetBeaconRandomness(ctx context.Context, blks []cid.Cid, p
 		searchHeight = 0
 	}
 
-	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
+	// This is........awful?
+	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, searchHeight > build.UpgradeHyperdriveHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -1333,7 +1334,8 @@ func (cs *ChainStore) GetChainRandomness(ctx context.Context, blks []cid.Cid, pe
 		searchHeight = 0
 	}
 
-	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
+	// This is........awful?
+	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, searchHeight > build.UpgradeHyperdriveHeight)
 	if err != nil {
 		return nil, err
 	}
