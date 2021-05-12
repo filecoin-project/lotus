@@ -196,6 +196,7 @@ func (s *state0) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 	}
 
 	ret := fromV0SectorPreCommitOnChainInfo(*info)
+
 	return &ret, nil
 }
 
@@ -330,6 +331,10 @@ func (s *state0) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
 }
 
+func (s *state0) DeadlineCronActive() (bool, error) {
+	return true, nil // always active in this version
+}
+
 func (s *state0) sectors() (adt.Array, error) {
 	return adt0.AsArray(s.store, s.Sectors)
 }
@@ -392,8 +397,10 @@ func (d *deadline0) PartitionsPoSted() (bitfield.BitField, error) {
 }
 
 func (d *deadline0) DisputableProofCount() (uint64, error) {
+
 	// field doesn't exist until v3
 	return 0, nil
+
 }
 
 func (p *partition0) AllSectors() (bitfield.BitField, error) {
@@ -409,9 +416,13 @@ func (p *partition0) RecoveringSectors() (bitfield.BitField, error) {
 }
 
 func fromV0SectorOnChainInfo(v0 miner0.SectorOnChainInfo) SectorOnChainInfo {
+
 	return (SectorOnChainInfo)(v0)
+
 }
 
 func fromV0SectorPreCommitOnChainInfo(v0 miner0.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+
 	return (SectorPreCommitOnChainInfo)(v0)
+
 }

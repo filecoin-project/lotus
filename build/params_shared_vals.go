@@ -25,7 +25,7 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version9
+const NewestNetworkVersion = network.Version11
 const ActorUpgradeNetworkVersion = network.Version4
 
 // Epochs
@@ -118,5 +118,5 @@ const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
 
 // Actor consts
-// TODO: Pull from actors when its made not private
-var MinDealDuration = abi.ChainEpoch(180 * builtin2.EpochsInDay)
+// TODO: pieceSize unused from actors
+var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)

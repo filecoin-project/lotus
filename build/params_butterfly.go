@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/ipfs/go-cid"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -32,6 +33,8 @@ const UpgradePersianHeight = 150
 const UpgradeClausHeight = 180
 const UpgradeOrangeHeight = 210
 const UpgradeActorsV3Height = 240
+const UpgradeNorwegianHeight = UpgradeActorsV3Height + (builtin2.EpochsInHour * 12)
+const UpgradeActorsV4Height = 8922
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
@@ -50,3 +53,5 @@ const PropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 2
+
+var WhitelistedBlock = cid.Undef

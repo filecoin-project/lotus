@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/gen"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -31,7 +34,6 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -63,7 +65,8 @@ type StorageMinerAPI struct {
 	AddrSel       *storage.AddressSelector
 	DealPublisher *storageadapter.DealPublisher
 
-	DS dtypes.MetadataDS
+	Epp gen.WinningPoStProver
+	DS  dtypes.MetadataDS
 
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc
@@ -86,7 +89,7 @@ type StorageMinerAPI struct {
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
-	if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
+	if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 		w.WriteHeader(401)
 		_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 		return
@@ -694,6 +697,10 @@ func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressC
 
 func (sm *StorageMinerAPI) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
 	return build.OpenRPCDiscoverJSON_Miner(), nil
+}
+
+func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) {
+	return sm.Epp.ComputeProof(ctx, ssi, rand)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

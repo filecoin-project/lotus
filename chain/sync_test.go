@@ -346,12 +346,15 @@ func (tu *syncTestUtil) checkpointTs(node int, tsk types.TipSetKey) {
 	require.NoError(tu.t, tu.nds[node].SyncCheckpoint(context.TODO(), tsk))
 }
 
+func (tu *syncTestUtil) nodeHasTs(node int, tsk types.TipSetKey) bool {
+	_, err := tu.nds[node].ChainGetTipSet(context.TODO(), tsk)
+	return err == nil
+}
+
 func (tu *syncTestUtil) waitUntilNodeHasTs(node int, tsk types.TipSetKey) {
-	for {
-		_, err := tu.nds[node].ChainGetTipSet(context.TODO(), tsk)
-		if err != nil {
-			break
-		}
+	for !tu.nodeHasTs(node, tsk) {
+		// Time to allow for syncing and validation
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	// Time to allow for syncing and validation
@@ -622,17 +625,17 @@ func TestDuplicateNonce(t *testing.T) {
 
 	var includedMsg cid.Cid
 	var skippedMsg cid.Cid
-	r0, err0 := tu.nds[0].StateGetReceipt(context.TODO(), msgs[0][0].Cid(), ts2.TipSet().Key())
-	r1, err1 := tu.nds[0].StateGetReceipt(context.TODO(), msgs[1][0].Cid(), ts2.TipSet().Key())
+	r0, err0 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[0][0].Cid(), api.LookbackNoLimit, true)
+	r1, err1 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[1][0].Cid(), api.LookbackNoLimit, true)
 
 	if err0 == nil {
 		require.Error(t, err1, "at least one of the StateGetReceipt calls should fail")
-		require.True(t, r0.ExitCode.IsSuccess())
+		require.True(t, r0.Receipt.ExitCode.IsSuccess())
 		includedMsg = msgs[0][0].Message.Cid()
 		skippedMsg = msgs[1][0].Message.Cid()
 	} else {
 		require.NoError(t, err1, "both the StateGetReceipt calls should not fail")
-		require.True(t, r1.ExitCode.IsSuccess())
+		require.True(t, r1.Receipt.ExitCode.IsSuccess())
 		includedMsg = msgs[1][0].Message.Cid()
 		skippedMsg = msgs[0][0].Message.Cid()
 	}
@@ -788,8 +791,13 @@ func TestSyncCheckpointHead(t *testing.T) {
 	tu.connect(p1, p2)
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
-	require.Equal(tu.t, p1Head, a.TipSet())
+	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
+
+	// Should be able to switch forks.
+	tu.checkpointTs(p1, b.TipSet().Key())
+	p1Head = tu.getHead(p1)
+	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }
 
 func TestSyncCheckpointEarlierThanHead(t *testing.T) {
@@ -830,6 +838,11 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	tu.connect(p1, p2)
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
-	require.Equal(tu.t, p1Head, a.TipSet())
+	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
+
+	// Should be able to switch forks.
+	tu.checkpointTs(p1, b.TipSet().Key())
+	p1Head = tu.getHead(p1)
+	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }

@@ -60,7 +60,7 @@ systemctl daemon-reload
 systemctl enable lotus-daemon
 
 # Setup firewall
-ufw enable
+yes | ufw enable
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh

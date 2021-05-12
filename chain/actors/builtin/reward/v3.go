@@ -33,10 +33,12 @@ func (s *state3) ThisEpochReward() (abi.TokenAmount, error) {
 }
 
 func (s *state3) ThisEpochRewardSmoothed() (builtin.FilterEstimate, error) {
+
 	return builtin.FilterEstimate{
 		PositionEstimate: s.State.ThisEpochRewardSmoothed.PositionEstimate,
 		VelocityEstimate: s.State.ThisEpochRewardSmoothed.VelocityEstimate,
 	}, nil
+
 }
 
 func (s *state3) ThisEpochBaselinePower() (abi.StoragePower, error) {

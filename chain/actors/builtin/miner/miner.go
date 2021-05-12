@@ -18,29 +18,42 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 )
 
 func init() {
+
 	builtin.RegisterActorState(builtin0.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load0(store, root)
 	})
+
 	builtin.RegisterActorState(builtin2.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
+
 	builtin.RegisterActorState(builtin3.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
+
+	builtin.RegisterActorState(builtin4.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load4(store, root)
+	})
+
 }
 
-var Methods = builtin3.MethodsMiner
+var Methods = builtin4.MethodsMiner
 
-// Unchanged between v0, v2, and v3 actors
+// Unchanged between v0, v2, v3, and v4 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
 var WPoStChallengeWindow = miner0.WPoStChallengeWindow
@@ -50,17 +63,25 @@ var FaultDeclarationCutoff = miner0.FaultDeclarationCutoff
 const MinSectorExpiration = miner0.MinSectorExpiration
 
 // Not used / checked in v0
+// TODO: Abstract over network versions
 var DeclarationsMax = miner2.DeclarationsMax
 var AddressedSectorsMax = miner2.AddressedSectorsMax
 
-func Load(store adt.Store, act *types.Actor) (st State, err error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
+
 	case builtin0.StorageMinerActorCodeID:
 		return load0(store, act.Head)
+
 	case builtin2.StorageMinerActorCodeID:
 		return load2(store, act.Head)
+
 	case builtin3.StorageMinerActorCodeID:
 		return load3(store, act.Head)
+
+	case builtin4.StorageMinerActorCodeID:
+		return load4(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
@@ -93,6 +114,7 @@ type State interface {
 	MinerInfoChanged(State) (bool, error)
 
 	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
+	DeadlineCronActive() (bool, error)
 
 	// Diff helpers. Used by Diff* functions internally.
 	sectors() (adt.Array, error)

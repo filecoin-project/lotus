@@ -16,6 +16,12 @@ linters:
     - deadcode
     - scopelint
 
+# We don't want to skip builtin/
+skip-dirs-use-default: false
+skip-dirs:
+  - vendor$
+  - testdata$
+  - examples$
 
 issues:
   exclude:

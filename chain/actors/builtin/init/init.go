@@ -14,35 +14,53 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 )
 
 func init() {
+
 	builtin.RegisterActorState(builtin0.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load0(store, root)
 	})
+
 	builtin.RegisterActorState(builtin2.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
+
 	builtin.RegisterActorState(builtin3.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
+	})
+
+	builtin.RegisterActorState(builtin4.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load4(store, root)
 	})
 }
 
 var (
-	Address = builtin3.InitActorAddr
-	Methods = builtin3.MethodsInit
+	Address = builtin4.InitActorAddr
+	Methods = builtin4.MethodsInit
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
+
 	case builtin0.InitActorCodeID:
 		return load0(store, act.Head)
+
 	case builtin2.InitActorCodeID:
 		return load2(store, act.Head)
+
 	case builtin3.InitActorCodeID:
 		return load3(store, act.Head)
+
+	case builtin4.InitActorCodeID:
+		return load4(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }

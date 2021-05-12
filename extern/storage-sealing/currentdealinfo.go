@@ -160,7 +160,7 @@ type CurrentDealInfoTskAPI interface {
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
-	StateSearchMsg(context.Context, cid.Cid) (*api.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 }
 
 type CurrentDealInfoAPIAdapter struct {
@@ -186,7 +186,7 @@ func (c *CurrentDealInfoAPIAdapter) StateMarketStorageDeal(ctx context.Context, 
 }
 
 func (c *CurrentDealInfoAPIAdapter) StateSearchMsg(ctx context.Context, k cid.Cid) (*MsgLookup, error) {
-	wmsg, err := c.CurrentDealInfoTskAPI.StateSearchMsg(ctx, k)
+	wmsg, err := c.CurrentDealInfoTskAPI.StateSearchMsg(ctx, types.EmptyTSK, k, api.LookbackNoLimit, true)
 	if err != nil {
 		return nil, err
 	}

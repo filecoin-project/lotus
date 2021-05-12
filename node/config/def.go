@@ -205,7 +205,7 @@ func defCommon() Common {
 
 }
 
-var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+var DefaultDefaultMaxFee = types.MustParseFIL("0.07")
 var DefaultSimultaneousTransfers = uint64(20)
 
 // DefaultFullNode returns the default config

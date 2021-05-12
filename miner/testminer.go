@@ -8,7 +8,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api"
+
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/journal"
@@ -19,8 +20,8 @@ type MineReq struct {
 	Done        func(bool, abi.ChainEpoch, error)
 }
 
-func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(api.FullNode, gen.WinningPoStProver) *Miner {
-	return func(api api.FullNode, epp gen.WinningPoStProver) *Miner {
+func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(v1api.FullNode, gen.WinningPoStProver) *Miner {
+	return func(api v1api.FullNode, epp gen.WinningPoStProver) *Miner {
 		arc, err := lru.NewARC(10000)
 		if err != nil {
 			panic(err)

@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
@@ -211,8 +210,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if v.APIVersion != api.MinerAPIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.MinerAPIVersion})
+		if v.APIVersion != api.MinerAPIVersion0 {
+			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.MinerAPIVersion0})
 		}
 		log.Infof("Remote version %s", v)
 
@@ -366,7 +365,7 @@ var runCmd = &cli.Command{
 
 		fh := &stores.FetchHandler{Local: localStore}
 		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
-			if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
+			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 				w.WriteHeader(401)
 				_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing admin permission"})
 				return
@@ -394,7 +393,7 @@ var runCmd = &cli.Command{
 
 		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 		rpcServer := jsonrpc.NewServer(readerServerOpt)
-		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(metrics.MetricedWorkerAPI(workerApi)))
+		rpcServer.Register("Filecoin", api.PermissionedWorkerAPI(metrics.MetricedWorkerAPI(workerApi)))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)

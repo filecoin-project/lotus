@@ -6,9 +6,12 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	multistore "github.com/filecoin-project/go-multistore"
@@ -32,7 +35,6 @@ import (
 	network0 "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
-	reflect "reflect"
 )
 
 // MockFullNode is a mock of FullNode interface
@@ -443,6 +445,20 @@ func (m *MockFullNode) ClientCancelDataTransfer(arg0 context.Context, arg1 datat
 func (mr *MockFullNodeMockRecorder) ClientCancelDataTransfer(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCancelDataTransfer", reflect.TypeOf((*MockFullNode)(nil).ClientCancelDataTransfer), arg0, arg1, arg2, arg3)
+}
+
+// ClientCancelRetrievalDeal mocks base method
+func (m *MockFullNode) ClientCancelRetrievalDeal(arg0 context.Context, arg1 retrievalmarket.DealID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientCancelRetrievalDeal", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClientCancelRetrievalDeal indicates an expected call of ClientCancelRetrievalDeal
+func (mr *MockFullNodeMockRecorder) ClientCancelRetrievalDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCancelRetrievalDeal", reflect.TypeOf((*MockFullNode)(nil).ClientCancelRetrievalDeal), arg0, arg1)
 }
 
 // ClientDataTransferUpdates mocks base method
@@ -1052,6 +1068,51 @@ func (mr *MockFullNodeMockRecorder) MpoolBatchPushUntrusted(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolBatchPushUntrusted", reflect.TypeOf((*MockFullNode)(nil).MpoolBatchPushUntrusted), arg0, arg1)
 }
 
+// MpoolCheckMessages mocks base method
+func (m *MockFullNode) MpoolCheckMessages(arg0 context.Context, arg1 []*api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolCheckMessages", arg0, arg1)
+	ret0, _ := ret[0].([][]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolCheckMessages indicates an expected call of MpoolCheckMessages
+func (mr *MockFullNodeMockRecorder) MpoolCheckMessages(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolCheckMessages", reflect.TypeOf((*MockFullNode)(nil).MpoolCheckMessages), arg0, arg1)
+}
+
+// MpoolCheckPendingMessages mocks base method
+func (m *MockFullNode) MpoolCheckPendingMessages(arg0 context.Context, arg1 address.Address) ([][]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolCheckPendingMessages", arg0, arg1)
+	ret0, _ := ret[0].([][]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolCheckPendingMessages indicates an expected call of MpoolCheckPendingMessages
+func (mr *MockFullNodeMockRecorder) MpoolCheckPendingMessages(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolCheckPendingMessages", reflect.TypeOf((*MockFullNode)(nil).MpoolCheckPendingMessages), arg0, arg1)
+}
+
+// MpoolCheckReplaceMessages mocks base method
+func (m *MockFullNode) MpoolCheckReplaceMessages(arg0 context.Context, arg1 []*types.Message) ([][]api.MessageCheckStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolCheckReplaceMessages", arg0, arg1)
+	ret0, _ := ret[0].([][]api.MessageCheckStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolCheckReplaceMessages indicates an expected call of MpoolCheckReplaceMessages
+func (mr *MockFullNodeMockRecorder) MpoolCheckReplaceMessages(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolCheckReplaceMessages", reflect.TypeOf((*MockFullNode)(nil).MpoolCheckReplaceMessages), arg0, arg1)
+}
+
 // MpoolClear mocks base method
 func (m *MockFullNode) MpoolClear(arg0 context.Context, arg1 bool) error {
 	m.ctrl.T.Helper()
@@ -1201,10 +1262,10 @@ func (mr *MockFullNodeMockRecorder) MpoolSub(arg0 interface{}) *gomock.Call {
 }
 
 // MsigAddApprove mocks base method
-func (m *MockFullNode) MsigAddApprove(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5 address.Address, arg6 bool) (cid.Cid, error) {
+func (m *MockFullNode) MsigAddApprove(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5 address.Address, arg6 bool) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigAddApprove", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1216,10 +1277,10 @@ func (mr *MockFullNodeMockRecorder) MsigAddApprove(arg0, arg1, arg2, arg3, arg4,
 }
 
 // MsigAddCancel mocks base method
-func (m *MockFullNode) MsigAddCancel(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4 address.Address, arg5 bool) (cid.Cid, error) {
+func (m *MockFullNode) MsigAddCancel(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4 address.Address, arg5 bool) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigAddCancel", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1231,10 +1292,10 @@ func (mr *MockFullNodeMockRecorder) MsigAddCancel(arg0, arg1, arg2, arg3, arg4, 
 }
 
 // MsigAddPropose mocks base method
-func (m *MockFullNode) MsigAddPropose(arg0 context.Context, arg1, arg2, arg3 address.Address, arg4 bool) (cid.Cid, error) {
+func (m *MockFullNode) MsigAddPropose(arg0 context.Context, arg1, arg2, arg3 address.Address, arg4 bool) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigAddPropose", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1246,10 +1307,10 @@ func (mr *MockFullNodeMockRecorder) MsigAddPropose(arg0, arg1, arg2, arg3, arg4 
 }
 
 // MsigApprove mocks base method
-func (m *MockFullNode) MsigApprove(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address) (cid.Cid, error) {
+func (m *MockFullNode) MsigApprove(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigApprove", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1261,10 +1322,10 @@ func (mr *MockFullNodeMockRecorder) MsigApprove(arg0, arg1, arg2, arg3 interface
 }
 
 // MsigApproveTxnHash mocks base method
-func (m *MockFullNode) MsigApproveTxnHash(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3, arg4 address.Address, arg5 big.Int, arg6 address.Address, arg7 uint64, arg8 []byte) (cid.Cid, error) {
+func (m *MockFullNode) MsigApproveTxnHash(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3, arg4 address.Address, arg5 big.Int, arg6 address.Address, arg7 uint64, arg8 []byte) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigApproveTxnHash", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1276,10 +1337,10 @@ func (mr *MockFullNodeMockRecorder) MsigApproveTxnHash(arg0, arg1, arg2, arg3, a
 }
 
 // MsigCancel mocks base method
-func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (cid.Cid, error) {
+func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigCancel", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1291,10 +1352,10 @@ func (mr *MockFullNodeMockRecorder) MsigCancel(arg0, arg1, arg2, arg3, arg4, arg
 }
 
 // MsigCreate mocks base method
-func (m *MockFullNode) MsigCreate(arg0 context.Context, arg1 uint64, arg2 []address.Address, arg3 abi.ChainEpoch, arg4 big.Int, arg5 address.Address, arg6 big.Int) (cid.Cid, error) {
+func (m *MockFullNode) MsigCreate(arg0 context.Context, arg1 uint64, arg2 []address.Address, arg3 abi.ChainEpoch, arg4 big.Int, arg5 address.Address, arg6 big.Int) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigCreate", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1366,10 +1427,10 @@ func (mr *MockFullNodeMockRecorder) MsigGetVestingSchedule(arg0, arg1, arg2 inte
 }
 
 // MsigPropose mocks base method
-func (m *MockFullNode) MsigPropose(arg0 context.Context, arg1, arg2 address.Address, arg3 big.Int, arg4 address.Address, arg5 uint64, arg6 []byte) (cid.Cid, error) {
+func (m *MockFullNode) MsigPropose(arg0 context.Context, arg1, arg2 address.Address, arg3 big.Int, arg4 address.Address, arg5 uint64, arg6 []byte) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigPropose", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1381,10 +1442,10 @@ func (mr *MockFullNodeMockRecorder) MsigPropose(arg0, arg1, arg2, arg3, arg4, ar
 }
 
 // MsigRemoveSigner mocks base method
-func (m *MockFullNode) MsigRemoveSigner(arg0 context.Context, arg1, arg2, arg3 address.Address, arg4 bool) (cid.Cid, error) {
+func (m *MockFullNode) MsigRemoveSigner(arg0 context.Context, arg1, arg2, arg3 address.Address, arg4 bool) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigRemoveSigner", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1396,10 +1457,10 @@ func (mr *MockFullNodeMockRecorder) MsigRemoveSigner(arg0, arg1, arg2, arg3, arg
 }
 
 // MsigSwapApprove mocks base method
-func (m *MockFullNode) MsigSwapApprove(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5, arg6 address.Address) (cid.Cid, error) {
+func (m *MockFullNode) MsigSwapApprove(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5, arg6 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigSwapApprove", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1411,10 +1472,10 @@ func (mr *MockFullNodeMockRecorder) MsigSwapApprove(arg0, arg1, arg2, arg3, arg4
 }
 
 // MsigSwapCancel mocks base method
-func (m *MockFullNode) MsigSwapCancel(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5 address.Address) (cid.Cid, error) {
+func (m *MockFullNode) MsigSwapCancel(arg0 context.Context, arg1, arg2 address.Address, arg3 uint64, arg4, arg5 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigSwapCancel", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1426,10 +1487,10 @@ func (mr *MockFullNodeMockRecorder) MsigSwapCancel(arg0, arg1, arg2, arg3, arg4,
 }
 
 // MsigSwapPropose mocks base method
-func (m *MockFullNode) MsigSwapPropose(arg0 context.Context, arg1, arg2, arg3, arg4 address.Address) (cid.Cid, error) {
+func (m *MockFullNode) MsigSwapPropose(arg0 context.Context, arg1, arg2, arg3, arg4 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigSwapPropose", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
+	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1674,6 +1735,21 @@ func (m *MockFullNode) NetPubsubScores(arg0 context.Context) ([]api.PubsubScore,
 func (mr *MockFullNodeMockRecorder) NetPubsubScores(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPubsubScores", reflect.TypeOf((*MockFullNode)(nil).NetPubsubScores), arg0)
+}
+
+// NodeStatus mocks base method
+func (m *MockFullNode) NodeStatus(arg0 context.Context, arg1 bool) (api.NodeStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NodeStatus", arg0, arg1)
+	ret0, _ := ret[0].(api.NodeStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NodeStatus indicates an expected call of NodeStatus
+func (mr *MockFullNodeMockRecorder) NodeStatus(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NodeStatus", reflect.TypeOf((*MockFullNode)(nil).NodeStatus), arg0, arg1)
 }
 
 // PaychAllocateLane mocks base method
@@ -2079,21 +2155,6 @@ func (mr *MockFullNodeMockRecorder) StateGetActor(arg0, arg1, arg2 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetActor", reflect.TypeOf((*MockFullNode)(nil).StateGetActor), arg0, arg1, arg2)
 }
 
-// StateGetReceipt mocks base method
-func (m *MockFullNode) StateGetReceipt(arg0 context.Context, arg1 cid.Cid, arg2 types.TipSetKey) (*types.MessageReceipt, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateGetReceipt", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*types.MessageReceipt)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateGetReceipt indicates an expected call of StateGetReceipt
-func (mr *MockFullNodeMockRecorder) StateGetReceipt(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetReceipt", reflect.TypeOf((*MockFullNode)(nil).StateGetReceipt), arg0, arg1, arg2)
-}
-
 // StateListActors mocks base method
 func (m *MockFullNode) StateListActors(arg0 context.Context, arg1 types.TipSetKey) ([]address.Address, error) {
 	m.ctrl.T.Helper()
@@ -2485,33 +2546,18 @@ func (mr *MockFullNodeMockRecorder) StateReplay(arg0, arg1, arg2 interface{}) *g
 }
 
 // StateSearchMsg mocks base method
-func (m *MockFullNode) StateSearchMsg(arg0 context.Context, arg1 cid.Cid) (*api.MsgLookup, error) {
+func (m *MockFullNode) StateSearchMsg(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1)
+	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(*api.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StateSearchMsg indicates an expected call of StateSearchMsg
-func (mr *MockFullNodeMockRecorder) StateSearchMsg(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) StateSearchMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSearchMsg", reflect.TypeOf((*MockFullNode)(nil).StateSearchMsg), arg0, arg1)
-}
-
-// StateSearchMsgLimited mocks base method
-func (m *MockFullNode) StateSearchMsgLimited(arg0 context.Context, arg1 cid.Cid, arg2 abi.ChainEpoch) (*api.MsgLookup, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateSearchMsgLimited", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.MsgLookup)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateSearchMsgLimited indicates an expected call of StateSearchMsgLimited
-func (mr *MockFullNodeMockRecorder) StateSearchMsgLimited(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSearchMsgLimited", reflect.TypeOf((*MockFullNode)(nil).StateSearchMsgLimited), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSearchMsg", reflect.TypeOf((*MockFullNode)(nil).StateSearchMsg), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateSectorExpiration mocks base method
@@ -2635,33 +2681,18 @@ func (mr *MockFullNodeMockRecorder) StateVerifierStatus(arg0, arg1, arg2 interfa
 }
 
 // StateWaitMsg mocks base method
-func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64) (*api.MsgLookup, error) {
+func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(*api.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StateWaitMsg indicates an expected call of StateWaitMsg
-func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsg), arg0, arg1, arg2)
-}
-
-// StateWaitMsgLimited mocks base method
-func (m *MockFullNode) StateWaitMsgLimited(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch) (*api.MsgLookup, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateWaitMsgLimited", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*api.MsgLookup)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateWaitMsgLimited indicates an expected call of StateWaitMsgLimited
-func (mr *MockFullNodeMockRecorder) StateWaitMsgLimited(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsgLimited", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsgLimited), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsg), arg0, arg1, arg2, arg3, arg4)
 }
 
 // SyncCheckBad mocks base method

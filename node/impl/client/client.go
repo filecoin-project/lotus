@@ -57,6 +57,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
+	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
@@ -77,6 +78,7 @@ type API struct {
 	Chain        *store.ChainStore
 
 	Imports dtypes.ClientImportMgr
+	Mds     dtypes.ClientMultiDstore
 
 	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
 	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
@@ -267,10 +269,14 @@ func (a *API) newDealInfo(ctx context.Context, v storagemarket.ClientDeal) api.D
 		// be not found if it's no longer active
 		if err == nil {
 			ch := api.NewDataTransferChannel(a.Host.ID(), state)
+			ch.Stages = state.Stages()
 			transferCh = &ch
 		}
 	}
-	return a.newDealInfoWithTransfer(transferCh, v)
+
+	di := a.newDealInfoWithTransfer(transferCh, v)
+	di.DealStages = v.DealStages
+	return di
 }
 
 func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v storagemarket.ClientDeal) api.DealInfo {
@@ -475,6 +481,29 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	return out, nil
 }
 
+func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmarket.DealID) error {
+	cerr := make(chan error)
+	go func() {
+		err := a.Retrieval.CancelDeal(dealID)
+
+		select {
+		case cerr <- err:
+		case <-ctx.Done():
+		}
+	}()
+
+	select {
+	case err := <-cerr:
+		if err != nil {
+			return xerrors.Errorf("failed to cancel retrieval deal: %w", err)
+		}
+
+		return nil
+	case <-ctx.Done():
+		return xerrors.Errorf("context timeout while canceling retrieval deal: %w", ctx.Err())
+	}
+}
+
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
 	events := make(chan marketevents.RetrievalEvent)
 	go a.clientRetrieve(ctx, order, ref, events)
@@ -555,86 +584,107 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 	}
 
-	if order.MinerPeer.ID == "" {
-		mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
-		if err != nil {
-			finish(err)
+	var store retrievalstoremgr.RetrievalStore
+
+	if order.LocalStore == nil {
+		if order.MinerPeer == nil || order.MinerPeer.ID == "" {
+			mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
+			if err != nil {
+				finish(err)
+				return
+			}
+
+			order.MinerPeer = &retrievalmarket.RetrievalPeer{
+				ID:      *mi.PeerId,
+				Address: order.Miner,
+			}
+		}
+
+		if order.Total.Int == nil {
+			finish(xerrors.Errorf("cannot make retrieval deal for null total"))
 			return
 		}
 
-		order.MinerPeer = retrievalmarket.RetrievalPeer{
-			ID:      *mi.PeerId,
-			Address: order.Miner,
+		if order.Size == 0 {
+			finish(xerrors.Errorf("cannot make retrieval deal for zero bytes"))
+			return
 		}
-	}
 
-	if order.Size == 0 {
-		finish(xerrors.Errorf("cannot make retrieval deal for zero bytes"))
-		return
-	}
+		/*id, st, err := a.imgr().NewStore()
+		if err != nil {
+			return err
+		}
+		if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
+			return err
+		}*/
 
-	/*id, st, err := a.imgr().NewStore()
-	if err != nil {
-		return err
-	}
-	if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
-		return err
-	}*/
+		ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
-	ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
+		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
+		if err != nil {
+			finish(xerrors.Errorf("Error in retrieval params: %s", err))
+			return
+		}
 
-	params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
-	if err != nil {
-		finish(xerrors.Errorf("Error in retrieval params: %s", err))
-		return
-	}
+		store, err = a.RetrievalStoreMgr.NewStore()
+		if err != nil {
+			finish(xerrors.Errorf("Error setting up new store: %w", err))
+			return
+		}
 
-	store, err := a.RetrievalStoreMgr.NewStore()
-	if err != nil {
-		finish(xerrors.Errorf("Error setting up new store: %w", err))
-		return
-	}
+		defer func() {
+			_ = a.RetrievalStoreMgr.ReleaseStore(store)
+		}()
 
-	defer func() {
-		_ = a.RetrievalStoreMgr.ReleaseStore(store)
-	}()
-
-	// Subscribe to events before retrieving to avoid losing events.
-	subscribeEvents := make(chan retrievalSubscribeEvent, 1)
-	subscribeCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-		// We'll check the deal IDs inside readSubscribeEvents.
-		if state.PayloadCID.Equals(order.Root) {
-			select {
-			case <-subscribeCtx.Done():
-			case subscribeEvents <- retrievalSubscribeEvent{event, state}:
+		// Subscribe to events before retrieving to avoid losing events.
+		subscribeEvents := make(chan retrievalSubscribeEvent, 1)
+		subscribeCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
+			// We'll check the deal IDs inside readSubscribeEvents.
+			if state.PayloadCID.Equals(order.Root) {
+				select {
+				case <-subscribeCtx.Done():
+				case subscribeEvents <- retrievalSubscribeEvent{event, state}:
+				}
 			}
+		})
+
+		dealID, err := a.Retrieval.Retrieve(
+			ctx,
+			order.Root,
+			params,
+			order.Total,
+			*order.MinerPeer,
+			order.Client,
+			order.Miner,
+			store.StoreID())
+
+		if err != nil {
+			unsubscribe()
+			finish(xerrors.Errorf("Retrieve failed: %w", err))
+			return
 		}
-	})
 
-	dealID, err := a.Retrieval.Retrieve(
-		ctx,
-		order.Root,
-		params,
-		order.Total,
-		order.MinerPeer,
-		order.Client,
-		order.Miner,
-		store.StoreID())
+		err = readSubscribeEvents(ctx, dealID, subscribeEvents, events)
 
-	if err != nil {
 		unsubscribe()
-		finish(xerrors.Errorf("Retrieve failed: %w", err))
-		return
-	}
+		if err != nil {
+			finish(xerrors.Errorf("Retrieve: %w", err))
+			return
+		}
+	} else {
+		// local retrieval
+		st, err := ((*multistore.MultiStore)(a.Mds)).Get(*order.LocalStore)
+		if err != nil {
+			finish(xerrors.Errorf("Retrieve: %w", err))
+			return
+		}
 
-	err = readSubscribeEvents(ctx, dealID, subscribeEvents, events)
-
-	unsubscribe()
-	if err != nil {
-		finish(xerrors.Errorf("Retrieve: %w", err))
-		return
+		store = &multiStoreRetrievalStore{
+			storeID: *order.LocalStore,
+			store:   st,
+		}
 	}
 
 	// If ref is nil, it only fetches the data into the configured blockstore.
@@ -672,6 +722,19 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	}
 	finish(files.WriteTo(file, ref.Path))
 	return
+}
+
+type multiStoreRetrievalStore struct {
+	storeID multistore.StoreID
+	store   *multistore.Store
+}
+
+func (mrs *multiStoreRetrievalStore) StoreID() *multistore.StoreID {
+	return &mrs.storeID
+}
+
+func (mrs *multiStoreRetrievalStore) DAGService() ipld.DAGService {
+	return mrs.store.DAG
 }
 
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {

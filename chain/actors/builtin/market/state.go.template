@@ -1,0 +1,209 @@
+package market
+
+import (
+	"bytes"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/types"
+
+	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
+	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	market{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) TotalLocked() (abi.TokenAmount, error) {
+	fml := types.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, s.TotalClientStorageFee)
+	return fml, nil
+}
+
+func (s *state{{.v}}) BalancesChanged(otherState State) (bool, error) {
+	otherState{{.v}}, ok := otherState.(*state{{.v}})
+	if !ok {
+		// there's no way to compare different versions of the state, so let's
+		// just say that means the state of balances has changed
+		return true, nil
+	}
+	return !s.State.EscrowTable.Equals(otherState{{.v}}.State.EscrowTable) || !s.State.LockedTable.Equals(otherState{{.v}}.State.LockedTable), nil
+}
+
+func (s *state{{.v}}) StatesChanged(otherState State) (bool, error) {
+	otherState{{.v}}, ok := otherState.(*state{{.v}})
+	if !ok {
+		// there's no way to compare different versions of the state, so let's
+		// just say that means the state of balances has changed
+		return true, nil
+	}
+	return !s.State.States.Equals(otherState{{.v}}.State.States), nil
+}
+
+func (s *state{{.v}}) States() (DealStates, error) {
+	stateArray, err := adt{{.v}}.AsArray(s.store, s.State.States{{if (ge .v 3)}}, market{{.v}}.StatesAmtBitwidth{{end}})
+	if err != nil {
+		return nil, err
+	}
+	return &dealStates{{.v}}{stateArray}, nil
+}
+
+func (s *state{{.v}}) ProposalsChanged(otherState State) (bool, error) {
+	otherState{{.v}}, ok := otherState.(*state{{.v}})
+	if !ok {
+		// there's no way to compare different versions of the state, so let's
+		// just say that means the state of balances has changed
+		return true, nil
+	}
+	return !s.State.Proposals.Equals(otherState{{.v}}.State.Proposals), nil
+}
+
+func (s *state{{.v}}) Proposals() (DealProposals, error) {
+	proposalArray, err := adt{{.v}}.AsArray(s.store, s.State.Proposals{{if (ge .v 3)}}, market{{.v}}.ProposalsAmtBitwidth{{end}})
+	if err != nil {
+		return nil, err
+	}
+	return &dealProposals{{.v}}{proposalArray}, nil
+}
+
+func (s *state{{.v}}) EscrowTable() (BalanceTable, error) {
+	bt, err := adt{{.v}}.AsBalanceTable(s.store, s.State.EscrowTable)
+	if err != nil {
+		return nil, err
+	}
+	return &balanceTable{{.v}}{bt}, nil
+}
+
+func (s *state{{.v}}) LockedTable() (BalanceTable, error) {
+	bt, err := adt{{.v}}.AsBalanceTable(s.store, s.State.LockedTable)
+	if err != nil {
+		return nil, err
+	}
+	return &balanceTable{{.v}}{bt}, nil
+}
+
+func (s *state{{.v}}) VerifyDealsForActivation(
+	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
+) (weight, verifiedWeight abi.DealWeight, err error) {
+	w, vw{{if (ge .v 2)}}, _{{end}}, err := market{{.v}}.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return w, vw, err
+}
+
+func (s *state{{.v}}) NextID() (abi.DealID, error) {
+	return s.State.NextID, nil
+}
+
+type balanceTable{{.v}} struct {
+	*adt{{.v}}.BalanceTable
+}
+
+func (bt *balanceTable{{.v}}) ForEach(cb func(address.Address, abi.TokenAmount) error) error {
+	asMap := (*adt{{.v}}.Map)(bt.BalanceTable)
+	var ta abi.TokenAmount
+	return asMap.ForEach(&ta, func(key string) error {
+		a, err := address.NewFromBytes([]byte(key))
+		if err != nil {
+			return err
+		}
+		return cb(a, ta)
+	})
+}
+
+type dealStates{{.v}} struct {
+	adt.Array
+}
+
+func (s *dealStates{{.v}}) Get(dealID abi.DealID) (*DealState, bool, error) {
+	var deal{{.v}} market{{.v}}.DealState
+	found, err := s.Array.Get(uint64(dealID), &deal{{.v}})
+	if err != nil {
+		return nil, false, err
+	}
+	if !found {
+		return nil, false, nil
+	}
+	deal := fromV{{.v}}DealState(deal{{.v}})
+	return &deal, true, nil
+}
+
+func (s *dealStates{{.v}}) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
+	var ds{{.v}} market{{.v}}.DealState
+	return s.Array.ForEach(&ds{{.v}}, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV{{.v}}DealState(ds{{.v}}))
+	})
+}
+
+func (s *dealStates{{.v}}) decode(val *cbg.Deferred) (*DealState, error) {
+	var ds{{.v}} market{{.v}}.DealState
+	if err := ds{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return nil, err
+	}
+	ds := fromV{{.v}}DealState(ds{{.v}})
+	return &ds, nil
+}
+
+func (s *dealStates{{.v}}) array() adt.Array {
+	return s.Array
+}
+
+func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
+	return (DealState)(v{{.v}})
+}
+
+type dealProposals{{.v}} struct {
+	adt.Array
+}
+
+func (s *dealProposals{{.v}}) Get(dealID abi.DealID) (*DealProposal, bool, error) {
+	var proposal{{.v}} market{{.v}}.DealProposal
+	found, err := s.Array.Get(uint64(dealID), &proposal{{.v}})
+	if err != nil {
+		return nil, false, err
+	}
+	if !found {
+		return nil, false, nil
+	}
+	proposal := fromV{{.v}}DealProposal(proposal{{.v}})
+	return &proposal, true, nil
+}
+
+func (s *dealProposals{{.v}}) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
+	var dp{{.v}} market{{.v}}.DealProposal
+	return s.Array.ForEach(&dp{{.v}}, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV{{.v}}DealProposal(dp{{.v}}))
+	})
+}
+
+func (s *dealProposals{{.v}}) decode(val *cbg.Deferred) (*DealProposal, error) {
+	var dp{{.v}} market{{.v}}.DealProposal
+	if err := dp{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return nil, err
+	}
+	dp := fromV{{.v}}DealProposal(dp{{.v}})
+	return &dp, nil
+}
+
+func (s *dealProposals{{.v}}) array() adt.Array {
+	return s.Array
+}
+
+func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) DealProposal {
+	return (DealProposal)(v{{.v}})
+}

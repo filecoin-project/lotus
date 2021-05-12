@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/system"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -333,6 +333,7 @@ var ChainNode = Options(
 
 	// Lite node API
 	ApplyIf(isLiteNode,
+		Override(new(messagepool.Provider), messagepool.NewProviderLite),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
 		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
 		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
@@ -343,6 +344,7 @@ var ChainNode = Options(
 
 	// Full node API / service startup
 	ApplyIf(isFullNode,
+		Override(new(messagepool.Provider), messagepool.NewProvider),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
@@ -612,17 +614,20 @@ func Repo(r repo.Repo) Option {
 				If(cfg.Splitstore.HotStoreType == "badger",
 					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
 				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(cfg)),
-				Override(new(dtypes.ChainBlockstore), modules.ChainSplitBlockstore),
-				Override(new(dtypes.StateBlockstore), modules.StateSplitBlockstore),
+				Override(new(dtypes.BasicChainBlockstore), modules.ChainSplitBlockstore),
+				Override(new(dtypes.BasicStateBlockstore), modules.StateSplitBlockstore),
 				Override(new(dtypes.BaseBlockstore), From(new(dtypes.SplitBlockstore))),
 				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.SplitBlockstore))),
 			),
 			If(!cfg.EnableSplitstore,
-				Override(new(dtypes.ChainBlockstore), modules.ChainFlatBlockstore),
-				Override(new(dtypes.StateBlockstore), modules.StateFlatBlockstore),
+				Override(new(dtypes.BasicChainBlockstore), modules.ChainFlatBlockstore),
+				Override(new(dtypes.BasicStateBlockstore), modules.StateFlatBlockstore),
 				Override(new(dtypes.BaseBlockstore), From(new(dtypes.UniversalBlockstore))),
 				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.UniversalBlockstore))),
 			),
+
+			Override(new(dtypes.ChainBlockstore), From(new(dtypes.BasicChainBlockstore))),
+			Override(new(dtypes.StateBlockstore), From(new(dtypes.BasicStateBlockstore))),
 
 			If(os.Getenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK") == "1",
 				Override(new(dtypes.ChainBlockstore), modules.FallbackChainBlockstore),
