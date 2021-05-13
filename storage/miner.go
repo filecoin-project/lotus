@@ -42,7 +42,7 @@ import (
 var log = logging.Logger("storageminer")
 
 type Miner struct {
-	api     storageMinerApi
+	api     fullNodeFilteredAPI
 	feeCfg  config.MinerFeeConfig
 	h       host.Host
 	sealer  sectorstorage.SectorManager
@@ -70,7 +70,9 @@ type SealingStateEvt struct {
 	Error        string
 }
 
-type storageMinerApi interface {
+// fullNodeFilteredAPI is the subset of the full node API the Miner needs from
+// a Lotus full node.
+type fullNodeFilteredAPI interface {
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
 	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
@@ -116,7 +118,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc, feeCfg config.MinerFeeConfig, journal journal.Journal, as *AddressSelector) (*Miner, error) {
+func NewMiner(api fullNodeFilteredAPI, maddr address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc, feeCfg config.MinerFeeConfig, journal journal.Journal, as *AddressSelector) (*Miner, error) {
 	m := &Miner{
 		api:     api,
 		feeCfg:  feeCfg,
