@@ -233,8 +233,25 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 	return sbf, nil
 }
 
-func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([]miner.RecoveryDeclaration, *types.SignedMessage, error) {
-	ctx, span := trace.StartSpan(ctx, "storage.checkNextRecoveries")
+// declareRecoveries identifies sectors that were previously marked as faulty
+// for our miner, but are now recovered (i.e. are now provable again) and
+// still not reported as such.
+//
+// It then reports the recovery on chain via a `DeclareFaultsRecovered`
+// message to our miner actor.
+//
+// This is always invoked ahead of time, before the deadline for the evaluated
+// sectors arrives. That way, recoveries are declared in preparation for those
+// sectors to be proven.
+//
+// If a declaration is made, it awaits for build.MessageConfidence confirmations
+// on chain before returning.
+//
+// TODO: the waiting should happen in the background. Right now this
+//  is blocking/delaying the actual generation and submission of WindowPoSts in
+//  this deadline!
+func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([]miner.RecoveryDeclaration, *types.SignedMessage, error) {
+	ctx, span := trace.StartSpan(ctx, "storage.declareRecoveries")
 	defer span.End()
 
 	faulty := uint64(0)
@@ -325,8 +342,21 @@ func (s *WindowPoStScheduler) checkNextRecoveries(ctx context.Context, dlIdx uin
 	return recoveries, sm, nil
 }
 
-func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([]miner.FaultDeclaration, *types.SignedMessage, error) {
-	ctx, span := trace.StartSpan(ctx, "storage.checkNextFaults")
+// declareFaults identifies the sectors on the specified proving deadline that
+// are faulty, and reports the faults on chain via the `DeclareFaults` message
+// to our miner actor.
+//
+// This is always invoked ahead of time, before the deadline for the evaluated
+// sectors arrives. That way, faults are declared before a penalty is accrued.
+//
+// If a declaration is made, it awaits for build.MessageConfidence confirmations
+// on chain before returning.
+//
+// TODO: the waiting should happen in the background. Right now this
+//  is blocking/delaying the actual generation and submission of WindowPoSts in
+//  this deadline!
+func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([]miner.FaultDeclaration, *types.SignedMessage, error) {
+	ctx, span := trace.StartSpan(ctx, "storage.declareFaults")
 	defer span.End()
 
 	bad := uint64(0)
@@ -443,7 +473,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 			}
 		)
 
-		if recoveries, sigmsg, err = s.checkNextRecoveries(context.TODO(), declDeadline, partitions, ts.Key()); err != nil {
+		if recoveries, sigmsg, err = s.declareRecoveries(context.TODO(), declDeadline, partitions, ts.Key()); err != nil {
 			// TODO: This is potentially quite bad, but not even trying to post when this fails is objectively worse
 			log.Errorf("checking sector recoveries: %v", err)
 		}
@@ -462,7 +492,7 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 			return // FORK: declaring faults after ignition upgrade makes no sense
 		}
 
-		if faults, sigmsg, err = s.checkNextFaults(context.TODO(), declDeadline, partitions, ts.Key()); err != nil {
+		if faults, sigmsg, err = s.declareFaults(context.TODO(), declDeadline, partitions, ts.Key()); err != nil {
 			// TODO: This is also potentially really bad, but we try to post anyways
 			log.Errorf("checking sector faults: %v", err)
 		}
