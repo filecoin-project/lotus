@@ -320,7 +320,7 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 		Value:  types.NewInt(0),
 	}
 	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
-	if err := s.setSender(ctx, msg, spec); err != nil {
+	if err := s.prepareMessage(ctx, msg, spec); err != nil {
 		return recoveries, nil, err
 	}
 
@@ -418,7 +418,7 @@ func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, p
 		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
 	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
-	if err := s.setSender(ctx, msg, spec); err != nil {
+	if err := s.prepareMessage(ctx, msg, spec); err != nil {
 		return faults, nil, err
 	}
 
@@ -813,13 +813,11 @@ func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *mine
 		Value:  types.NewInt(0),
 	}
 	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
-	if err := s.setSender(ctx, msg, spec); err != nil {
+	if err := s.prepareMessage(ctx, msg, spec); err != nil {
 		return nil, err
 	}
 
-	// TODO: consider maybe caring about the output
 	sm, err := s.api.MpoolPushMessage(ctx, msg, spec)
-
 	if err != nil {
 		return nil, xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -843,14 +841,20 @@ func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *mine
 	return sm, nil
 }
 
-func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) error {
+// prepareMessage prepares a message before sending it, setting:
+//
+// * the sender (from the AddressSelector, falling back to the worker address if none set)
+// * the right gas parameters
+func (s *WindowPoStScheduler) prepareMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) error {
 	mi, err := s.api.StateMinerInfo(ctx, s.actor, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("error getting miner info: %w", err)
 	}
-	// use the worker as a fallback
+	// set the worker as a fallback
 	msg.From = mi.Worker
 
+	// (optimal) initial estimation with some overestimation that guarantees
+	// block inclusion within the next 20 tipsets.
 	gm, err := s.api.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK)
 	if err != nil {
 		log.Errorw("estimating gas", "error", err)
