@@ -31,8 +31,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// failPost records a failure in the journal.
-func (s *WindowPoStScheduler) failPost(err error, ts *types.TipSet, deadline *dline.Info) {
+// recordPoStFailure records a failure in the journal.
+func (s *WindowPoStScheduler) recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info) {
 	s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 		c := evtCommon{Error: err}
 		if ts != nil {
@@ -100,9 +100,9 @@ func (s *WindowPoStScheduler) runGeneratePoST(
 	ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.generatePoST")
 	defer span.End()
 
-	posts, err := s.runPost(ctx, *deadline, ts)
+	posts, err := s.runPoStCycle(ctx, *deadline, ts)
 	if err != nil {
-		log.Errorf("runPost failed: %+v", err)
+		log.Errorf("runPoStCycle failed: %+v", err)
 		return nil, err
 	}
 
@@ -441,18 +441,18 @@ func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, p
 	return faults, sm, nil
 }
 
-// runPost runs a full cycle of the PoSt process:
+// runPoStCycle runs a full cycle of the PoSt process:
 //
 //  1. performs recovery declarations for the next deadline.
 //  2. performs fault declarations for the next deadline.
 //  3. computes and submits proofs, batching partitions and making sure they
 //     don't exceed message capacity.
-func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *types.TipSet) ([]miner.SubmitWindowedPoStParams, error) {
-	ctx, span := trace.StartSpan(ctx, "storage.runPost")
+func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, di dline.Info, ts *types.TipSet) ([]miner.SubmitWindowedPoStParams, error) {
+	ctx, span := trace.StartSpan(ctx, "storage.runPoStCycle")
 	defer span.End()
 
 	go func() {
-		// TODO: extract from runPost, run on fault cutoff boundaries
+		// TODO: extract from runPoStCycle, run on fault cutoff boundaries
 
 		// check faults / recoveries for the *next* deadline. It's already too
 		// late to declare them for this deadline

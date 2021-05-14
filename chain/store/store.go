@@ -1243,7 +1243,7 @@ func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 	return blscids, secpkcids, nil
 }
 
-// GetPath returns returns the sequence of atomic head change operations that
+// GetPath returns the sequence of atomic head change operations that
 // need to be applied in order to switch the head of the chain from the `from`
 // tipset to the `to` tipset.
 func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
