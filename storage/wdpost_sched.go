@@ -84,21 +84,24 @@ func NewWindowedPoStScheduler(api fullNodeFilteredAPI,
 	}, nil
 }
 
-type changeHandlerAPIImpl struct {
-	fullNodeFilteredAPI
-	*WindowPoStScheduler
-}
-
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
-	// Initialize change handler
-	chImpl := &changeHandlerAPIImpl{fullNodeFilteredAPI: s.api, WindowPoStScheduler: s}
-	s.ch = newChangeHandler(chImpl, s.actor)
+	// Initialize change handler.
+
+	// callbacks is a union of the fullNodeFilteredAPI and ourselves.
+	callbacks := struct {
+		fullNodeFilteredAPI
+		*WindowPoStScheduler
+	}{s.api, s}
+
+	s.ch = newChangeHandler(callbacks, s.actor)
 	defer s.ch.shutdown()
 	s.ch.start()
 
-	var notifs <-chan []*api.HeadChange
-	var err error
-	var gotCur bool
+	var (
+		notifs <-chan []*api.HeadChange
+		err    error
+		gotCur bool
+	)
 
 	// not fine to panic after this point
 	for {
