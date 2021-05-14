@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// failPost records a failure in the journal.
 func (s *WindowPoStScheduler) failPost(err error, ts *types.TipSet, deadline *dline.Info) {
 	s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 		c := evtCommon{Error: err}
@@ -440,6 +441,12 @@ func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, p
 	return faults, sm, nil
 }
 
+// runPost runs a full cycle of the PoSt process:
+//
+//  1. performs recovery declarations for the next deadline.
+//  2. performs fault declarations for the next deadline.
+//  3. computes and submits proofs, batching partitions and making sure they
+//     don't exceed message capacity.
 func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *types.TipSet) ([]miner.SubmitWindowedPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
@@ -848,7 +855,9 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 	}
 	*msg = *gm
 
-	// estimate
+	// calculate a more frugal estimation; premium is estimated to guarantee
+	// inclusion within 5 tipsets, and fee cap is estimated for inclusion
+	// within 4 tipsets.
 	minGasFeeMsg := *msg
 
 	minGasFeeMsg.GasPremium, err = s.api.GasEstimateGasPremium(ctx, 5, msg.From, msg.GasLimit, types.EmptyTSK)
@@ -863,6 +872,8 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 		minGasFeeMsg.GasFeeCap = msg.GasFeeCap
 	}
 
+	// goodFunds = funds needed for optimal inclusion probability.
+	// minFunds  = funds needed for more speculative inclusion probability.
 	goodFunds := big.Add(msg.RequiredFunds(), msg.Value)
 	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
 

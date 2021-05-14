@@ -41,6 +41,14 @@ import (
 
 var log = logging.Logger("storageminer")
 
+// Miner is the central miner entrypoint object inside Lotus. It is
+// instantiated in the node builder, along with the WindowPoStScheduler.
+//
+// This object is the owner of the sealing pipeline. Most of the actual logic
+// lives in the storage-sealing module (sealing.Sealing), and the Miner object
+// exposes it to the rest of the system by proxying calls.
+//
+// Miner#Run starts the sealing FSM.
 type Miner struct {
 	api     fullNodeFilteredAPI
 	feeCfg  config.MinerFeeConfig
@@ -118,7 +126,18 @@ type fullNodeFilteredAPI interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api fullNodeFilteredAPI, maddr address.Address, h host.Host, ds datastore.Batching, sealer sectorstorage.SectorManager, sc sealing.SectorIDCounter, verif ffiwrapper.Verifier, gsd dtypes.GetSealingConfigFunc, feeCfg config.MinerFeeConfig, journal journal.Journal, as *AddressSelector) (*Miner, error) {
+// NewMiner creates a new Miner object.
+func NewMiner(api fullNodeFilteredAPI,
+	maddr address.Address,
+	h host.Host,
+	ds datastore.Batching,
+	sealer sectorstorage.SectorManager,
+	sc sealing.SectorIDCounter,
+	verif ffiwrapper.Verifier,
+	gsd dtypes.GetSealingConfigFunc,
+	feeCfg config.MinerFeeConfig,
+	journal journal.Journal,
+	as *AddressSelector) (*Miner, error) {
 	m := &Miner{
 		api:     api,
 		feeCfg:  feeCfg,
@@ -138,6 +157,7 @@ func NewMiner(api fullNodeFilteredAPI, maddr address.Address, h host.Host, ds da
 	return m, nil
 }
 
+// Run starts the sealing FSM in the background, running preliminary checks first.
 func (m *Miner) Run(ctx context.Context) error {
 	if err := m.runPreflightChecks(ctx); err != nil {
 		return xerrors.Errorf("miner preflight checks failed: %w", err)
@@ -186,6 +206,7 @@ func (m *Miner) Stop(ctx context.Context) error {
 	return m.sealing.Stop(ctx)
 }
 
+// runPreflightChecks verifies that preconditions to run the miner are satisfied.
 func (m *Miner) runPreflightChecks(ctx context.Context) error {
 	mi, err := m.api.StateMinerInfo(ctx, m.maddr, types.EmptyTSK)
 	if err != nil {
