@@ -168,7 +168,7 @@ func (s *WindowPoStScheduler) runSubmitPoST(
 	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
 	if err != nil {
 		err = xerrors.Errorf("failed to get chain randomness from tickets for windowPost (ts=%d; deadline=%d): %w", ts.Height(), commEpoch, err)
-		log.Errorf("submitPost failed: %+v", err)
+		log.Errorf("submitPoStMessage failed: %+v", err)
 
 		return err
 	}
@@ -181,7 +181,7 @@ func (s *WindowPoStScheduler) runSubmitPoST(
 		post.ChainCommitRand = commRand
 
 		// Submit PoST
-		sm, submitErr := s.submitPost(ctx, post)
+		sm, submitErr := s.submitPoStMessage(ctx, post)
 		if submitErr != nil {
 			log.Errorf("submit window post failed: %+v", submitErr)
 		} else {
@@ -792,7 +792,10 @@ func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, 
 	return proofSectors, nil
 }
 
-func (s *WindowPoStScheduler) submitPost(ctx context.Context, proof *miner.SubmitWindowedPoStParams) (*types.SignedMessage, error) {
+// submitPoStMessage builds a SubmitWindowedPoSt message and submits it to
+// the mpool. It doesn't synchronously block on confirmations, but it does
+// monitor in the background simply for the purposes of logging.
+func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *miner.SubmitWindowedPoStParams) (*types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
