@@ -174,17 +174,37 @@ func (m *Miner) Run(ctx context.Context) error {
 		MaxTerminateGasFee: abi.TokenAmount(m.feeCfg.MaxTerminateGasFee),
 	}
 
-	evts := events.NewEvents(ctx, m.api)
-	adaptedAPI := NewSealingAPIAdapter(m.api)
-	// TODO: Maybe we update this policy after actor upgrades?
-	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, policy.GetMaxSectorExpirationExtension()-(md.WPoStProvingPeriod*2), md.PeriodStart%md.WPoStProvingPeriod)
+	var (
+		// consumer of chain head changes.
+		evts        = events.NewEvents(ctx, m.api)
+		evtsAdapter = NewEventsAdapter(evts)
 
-	as := func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
-		return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
-	}
+		// Create a shim to glue the API required by the sealing component
+		// with the API that Lotus is capable of providing.
+		// The shim translates between "tipset tokens" and tipset keys, and
+		// provides extra methods.
+		adaptedAPI = NewSealingAPIAdapter(m.api)
 
-	m.sealing = sealing.New(adaptedAPI, fc, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications, as)
+		// Instantiate a precommit policy.
+		defaultDuration = policy.GetMaxSectorExpirationExtension() - (md.WPoStProvingPeriod * 2)
+		provingBoundary = md.PeriodStart % md.WPoStProvingPeriod
 
+		// TODO: Maybe we update this policy after actor upgrades?
+		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, defaultDuration, provingBoundary)
+
+		// address selector.
+		as = func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+			return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
+		}
+
+		// sealing configuration.
+		cfg = sealing.GetSealingConfigFunc(m.getSealConfig)
+	)
+
+	// Instantiate the sealing FSM.
+	m.sealing = sealing.New(adaptedAPI, fc, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, cfg, m.handleSealingNotifications, as)
+
+	// Run the sealing FSM.
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 
 	return nil
