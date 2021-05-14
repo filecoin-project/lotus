@@ -11,7 +11,7 @@ executors:
     resource_class: 2xlarge
   ubuntu:
     docker:
-      - image: ubuntu:19.10
+      - image: ubuntu:20.04
 
 commands:
   install-deps:
