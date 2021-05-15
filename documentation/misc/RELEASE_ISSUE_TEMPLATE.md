@@ -81,7 +81,7 @@ Testing an RC:
     - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
     - [ ] Check if any [config](https://docs.filecoin.io/get-started/lotus/configuration-and-advanced-usage/#configuration) updates are needed
   - [ ] Invite the wider community through (link to the release issue):
-    - [ ] Create a lotus disucssion, example [here](https://github.com/filecoin-project/lotus/discussions/5595)
+    - [ ] Check `Create a discussion for this release` when tagging for the major rcs(new features, hot-fixes) release 
     - [ ] Link the disucssion in #fil-lotus on Filecoin slack
     
 - [ ] **Stage 4 - Release**
@@ -90,11 +90,11 @@ Testing an RC:
     - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
     - [ ] Ensure that [README.md](https://github.com/filecoin-project/lotus/blob/master/README.md) is up to date
     - [ ] Merge `release-vX.Y.Z` into the `releases` branch.
-    - [ ] Tag this merge commit (on the `releases` branch) with `vX.Y.Z`.
+    - [ ] Tag this merge commit (on the `releases` branch) with `vX.Y.Z`
     - [ ] Cut the release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true&target=releases).
+        - [ ]  Check `Create a discussion for this release` when tagging the release 
     - [ ] Final announcements
         - [ ] Update network.filecoin.io for mainnet, calib and nerpa.
-        - [ ] Add a comment when the final release is tagged, example [here](https://github.com/filecoin-project/lotus/discussions/5905#discussioncomment-571752)
         - [ ] repost in #fil-lotus in filecoin slack
         - [ ] Inform node provides (Protofire, Digital Ocean..)
 
