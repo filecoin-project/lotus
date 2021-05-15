@@ -94,6 +94,11 @@ var preSealCmd = &cli.Command{
 			Name:  "fake-sectors",
 			Value: false,
 		},
+		&cli.IntFlag{
+			Name:  "network-version",
+			Value: 0,
+			Usage: "specify network version",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sector-dir")
@@ -129,7 +134,7 @@ var preSealCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, network.Version0)
+		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, network.Version(c.Uint64("network-version")))
 		if err != nil {
 			return err
 		}

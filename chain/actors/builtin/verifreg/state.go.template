@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 {{if (ge .v 3)}}	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-{{end}}	verifreg{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/verifreg"
+{{end}} verifreg{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/verifreg"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 )
 
@@ -21,6 +21,26 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store, rootKeyAddress address.Address) (State, error) {
+	out := state{{.v}}{store: store}
+	{{if (le .v 2)}}
+		em, err := adt{{.v}}.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *verifreg{{.v}}.ConstructState(em, rootKeyAddress)
+	{{else}}
+		s, err := verifreg{{.v}}.ConstructState(store, rootKeyAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *s
+	{{end}}
 	return &out, nil
 }
 
@@ -55,4 +75,8 @@ func (s *state{{.v}}) verifiedClients() (adt.Map, error) {
 
 func (s *state{{.v}}) verifiers() (adt.Map, error) {
 	return adt{{.v}}.AsMap(s.store, s.Verifiers{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
 }
