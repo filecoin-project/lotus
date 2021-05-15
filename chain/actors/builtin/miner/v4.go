@@ -32,6 +32,12 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make4(store adt.Store) (State, error) {
+	out := state4{store: store}
+	out.State = miner4.State{}
+	return &out, nil
+}
+
 type state4 struct {
 	miner4.State
 	store adt.Store
@@ -242,6 +248,10 @@ func (s *state4) IsAllocated(num abi.SectorNumber) (bool, error) {
 	return allocatedSectors.IsSet(uint64(num))
 }
 
+func (s *state4) GetProvingPeriodStart() (abi.ChainEpoch, error) {
+	return s.State.ProvingPeriodStart, nil
+}
+
 func (s *state4) LoadDeadline(idx uint64) (Deadline, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -358,6 +368,43 @@ func (s *state4) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 	return fromV4SectorPreCommitOnChainInfo(sp), nil
 }
 
+func (s *state4) EraseAllUnproven() error {
+
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return err
+	}
+
+	err = dls.ForEach(s.store, func(dindx uint64, dl *miner4.Deadline) error {
+		ps, err := dl.PartitionsArray(s.store)
+		if err != nil {
+			return err
+		}
+
+		var part miner4.Partition
+		err = ps.ForEach(&part, func(pindx int64) error {
+			_ = part.ActivateUnproven()
+			err = ps.Set(uint64(pindx), &part)
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+
+		dl.Partitions, err = ps.Root()
+		if err != nil {
+			return err
+		}
+
+		return dls.UpdateDeadline(s.store, dindx, dl)
+	})
+
+	return s.State.SaveDeadlines(s.store, dls)
+
+	return nil
+}
+
 func (d *deadline4) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
 	if err != nil {
@@ -442,4 +489,8 @@ func fromV4SectorPreCommitOnChainInfo(v4 miner4.SectorPreCommitOnChainInfo) Sect
 		VerifiedDealWeight: v4.VerifiedDealWeight,
 	}
 
+}
+
+func (s *state4) GetState() interface{} {
+	return &s.State
 }

@@ -26,6 +26,24 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make0(store adt.Store) (State, error) {
+	out := state0{store: store}
+
+	ea, err := adt0.MakeEmptyArray(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	em, err := adt0.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *market0.ConstructState(ea, em, em)
+
+	return &out, nil
+}
+
 type state0 struct {
 	market0.State
 	store adt.Store
@@ -206,4 +224,8 @@ func (s *dealProposals0) array() adt.Array {
 
 func fromV0DealProposal(v0 market0.DealProposal) DealProposal {
 	return (DealProposal)(v0)
+}
+
+func (s *state0) GetState() interface{} {
+	return &s.State
 }

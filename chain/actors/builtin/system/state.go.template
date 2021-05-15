@@ -1,0 +1,35 @@
+package system
+
+import (
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	system{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/system"
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = system{{.v}}.State{}
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	system{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}

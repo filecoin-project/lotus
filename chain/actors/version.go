@@ -8,6 +8,10 @@ import (
 
 type Version int
 
+var LatestVersion = 4
+
+var Versions = []int{0, 2, 3, LatestVersion}
+
 const (
 	Version0 Version = 0
 	Version2 Version = 2

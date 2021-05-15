@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -197,6 +199,7 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 	sys := vm.Syscalls(&genFakeVerifier{})
 
 	tpl := genesis.Template{
+		NetworkVersion: network.Version0,
 		Accounts: []genesis.Actor{
 			{
 				Type:    genesis.TAccount,
