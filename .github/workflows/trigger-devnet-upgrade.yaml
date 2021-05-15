@@ -10,7 +10,7 @@ on:
         default: "butterfly.fildev.network"
       slack_channel:
         description: "the slack channel where notifications are sent"
-        default: "netops-circleci-test"
+        default: "fil-infra-alerts"
       circle_branch:
         description: "circleci branch (used for testing new lotus-infra deploy code)"
         default: master
