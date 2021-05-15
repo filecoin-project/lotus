@@ -1,0 +1,38 @@
+---
+name: trigger-devnet-reset
+on:
+  workflow_dispatch:
+    inputs:
+      override_tag:
+        description: "lotus tag"
+      lotus_install_network:
+        description: "network to build lotus tools"
+        default: "butterflynet"
+      lotus_deploy_network:
+        description: "network to find ansible host"
+        default: "butterfly.fildev.network"
+      slack_channel:
+        description: "the slack channel where notifications are sent"
+        default: "netops-circleci-test"
+      circle_branch:
+        description: "circleci branch (used for testing new lotus-infra deploy code)"
+        default: master
+
+jobs:
+  trigger-circleci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: trigger
+        uses: promiseofcake/circleci-trigger-action@v1
+        with:
+          user-token: ${{ secrets.CIRCLE_TOKEN }}
+          project-slug: filecoin-project/lotus-infra
+          branch: ${{ github.event.inputs.circle_branch }}
+          payload: |
+            {
+              "api_workflow_requested": "lotus-devnet-ansible-reset",
+              "override_tag": "${{ github.event.inputs.override_tag }}",
+              "lotus_install_network": "${{ github.event.inputs.lotus_install_network }}",
+              "lotus_deploy_network": "${{ github.event.inputs.lotus_deploy_network }}",
+              "slack_channel": "${{ github.event.inputs.slack_channel }}"
+            }
