@@ -1172,6 +1172,34 @@ func (mr *MockFullNodeMockRecorder) MpoolPending(arg0, arg1 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolPending", reflect.TypeOf((*MockFullNode)(nil).MpoolPending), arg0, arg1)
 }
 
+// MpoolPublishByAddr mocks base method
+func (m *MockFullNode) MpoolPublishByAddr(arg0 context.Context, arg1 address.Address) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolPublishByAddr", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MpoolPublishByAddr indicates an expected call of MpoolPublishByAddr
+func (mr *MockFullNodeMockRecorder) MpoolPublishByAddr(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolPublishByAddr", reflect.TypeOf((*MockFullNode)(nil).MpoolPublishByAddr), arg0, arg1)
+}
+
+// MpoolPublishMessage mocks base method
+func (m *MockFullNode) MpoolPublishMessage(arg0 context.Context, arg1 *types.SignedMessage) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MpoolPublishMessage", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MpoolPublishMessage indicates an expected call of MpoolPublishMessage
+func (mr *MockFullNodeMockRecorder) MpoolPublishMessage(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolPublishMessage", reflect.TypeOf((*MockFullNode)(nil).MpoolPublishMessage), arg0, arg1)
+}
+
 // MpoolPush mocks base method
 func (m *MockFullNode) MpoolPush(arg0 context.Context, arg1 *types.SignedMessage) (cid.Cid, error) {
 	m.ctrl.T.Helper()
