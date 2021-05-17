@@ -531,7 +531,6 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 	mcid, err := m.commiter.AddCommit(ctx.Context(), sector.SectorNumber, AggregateInput{
 		info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
-			DealIDs:               sector.dealIDs(),
 			Randomness:            sector.TicketValue,
 			InteractiveRandomness: sector.SeedValue,
 			SealedCID:             *sector.CommR,

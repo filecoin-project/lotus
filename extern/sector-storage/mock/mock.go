@@ -524,7 +524,7 @@ func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProo
 	return bytes.Equal(aggregate.Proof, out), nil
 }
 
-func (m mockVerif) AggregateSealProofs(proofType abi.RegisteredSealProof, proofs [][]byte) ([]byte, error) {
+func (m mockVerif) AggregateSealProofs(proofType abi.RegisteredSealProof, rap abi.RegisteredAggregationProof, proofs [][]byte) ([]byte, error) {
 	out := make([]byte, 200) // todo: figure out more real length
 	for pi, proof := range proofs {
 		for i := range proof[:32] {

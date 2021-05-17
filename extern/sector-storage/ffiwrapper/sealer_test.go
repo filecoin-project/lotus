@@ -32,6 +32,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
@@ -538,12 +539,12 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 
 	aggStart := time.Now()
 
-	avi.Proof, err = ProofVerifier.AggregateSealProofs(sealProofType, toAggregate)
+	avi.Proof, err = ProofVerifier.AggregateSealProofs(sealProofType, policy.GetDefaultAggregationProof(), toAggregate)
 	require.NoError(t, err)
 
 	aggDone := time.Now()
 
-	_, err = ProofVerifier.AggregateSealProofs(sealProofType, toAggregate)
+	_, err = ProofVerifier.AggregateSealProofs(sealProofType, policy.GetDefaultAggregationProof(), toAggregate)
 	require.NoError(t, err)
 
 	aggHot := time.Now()

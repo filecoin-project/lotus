@@ -23,6 +23,7 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -142,6 +143,14 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStV
 		return false, xerrors.Errorf("bad proof")
 	}
 	return true, nil
+}
+
+func (m mockVerif) AggregateSealProofs(proofType abi.RegisteredSealProof, rap abi.RegisteredAggregationProof, proofs [][]byte) ([]byte, error) {
+	panic("implement me")
+}
+
+func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+	panic("implement me")
 }
 
 func (m mockVerif) VerifySeal(proof2.SealVerifyInfo) (bool, error) {

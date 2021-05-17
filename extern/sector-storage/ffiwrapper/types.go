@@ -42,7 +42,7 @@ type Verifier interface {
 	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
 
 	// cheap, makes no sense to put this on the storage interface
-	AggregateSealProofs(proofType abi.RegisteredSealProof, proofs [][]byte) ([]byte, error)
+	AggregateSealProofs(proofType abi.RegisteredSealProof, rap abi.RegisteredAggregationProof, proofs [][]byte) ([]byte, error)
 }
 
 type SectorProvider interface {

@@ -28,13 +28,16 @@ var (
 	CommitBatchWait = 5 * time.Minute
 )
 
+const arp = abi.RegisteredAggregationProof_SnarkPackV1
+
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 }
 
 type AggregateInput struct {
-	// TODO: Something changed in actors, I think this now needs to be AggregateSealVerifyProofAndInfos
+	spt abi.RegisteredSealProof
+	// TODO: Something changed in actors, I think this now needs to be AggregateSealVerifyProofAndInfos todo ??
 	info  proof5.AggregateSealVerifyInfo
 	proof []byte
 }
@@ -137,20 +140,15 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, nil
 	}
 
-	spt := b.todo[0].info.SealProof
+	spt := b.todo[0].spt
 	proofs := make([][]byte, total)
 
 	for id, p := range b.todo {
-		if p.info.SealProof != spt {
-			// todo: handle when we'll have proof upgrade
-			return nil, xerrors.Errorf("different seal proof types in commit batch: %w", err)
-		}
-
 		params.SectorNumbers.Set(uint64(id))
 		proofs[id] = p.proof
 	}
 
-	params.AggregateProof, err = b.verif.AggregateSealProofs(spt, proofs)
+	params.AggregateProof, err = b.verif.AggregateSealProofs(spt, arp, proofs)
 	if err != nil {
 		return nil, xerrors.Errorf("aggregating proofs: %w", err)
 	}

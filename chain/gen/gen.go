@@ -693,7 +693,7 @@ func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 	panic("not supported")
 }
 
-func (m genFakeVerifier) AggregateSealProofs(proofType abi.RegisteredSealProof, proofs [][]byte) ([]byte, error) {
+func (m genFakeVerifier) AggregateSealProofs(proofType abi.RegisteredSealProof, rap abi.RegisteredAggregationProof, proofs [][]byte) ([]byte, error) {
 	panic("not supported")
 }
 
