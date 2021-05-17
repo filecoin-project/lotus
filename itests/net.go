@@ -1,4 +1,4 @@
-package test
+package itests
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 	test2 "github.com/filecoin-project/lotus/node/test"
 )
 
-func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) (test.TestNode, address.Address) {
-	n, sn := test2.RPCMockSbBuilder(t, test.OneFull, test.OneMiner)
+func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) (TestNode, address.Address) {
+	n, sn := RPCMockSbBuilder(t, OneFull, OneMiner)
 
 	full := n[0]
 	miner := sn[0]
@@ -30,7 +30,7 @@ func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Dura
 	}
 
 	// Start mining blocks
-	bm := test.NewBlockMiner(ctx, t, miner, blocktime)
+	bm := NewBlockMiner(ctx, t, miner, blocktime)
 	bm.MineBlocks()
 	t.Cleanup(bm.Stop)
 
@@ -44,8 +44,8 @@ func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Dura
 	return full, fullAddr
 }
 
-func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]test.TestNode, []address.Address) {
-	n, sn := test2.RPCMockSbBuilder(t, test.TwoFull, test.OneMiner)
+func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]TestNode, []address.Address) {
+	n, sn := RPCMockSbBuilder(t, TwoFull, OneMiner)
 
 	fullNode1 := n[0]
 	fullNode2 := n[1]

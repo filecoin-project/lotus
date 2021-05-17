@@ -1,12 +1,11 @@
-package test
+package itests
 
 import (
 	"context"
 	"fmt"
 	"sort"
-	"sync/atomic"
-
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 

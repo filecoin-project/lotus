@@ -1,4 +1,4 @@
-package test
+package itests
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 )
 
+// BlockMiner is a utility that makes a test miner mine blocks on a timer.
 type BlockMiner struct {
 	ctx       context.Context
 	t         *testing.T

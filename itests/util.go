@@ -1,4 +1,4 @@
-package test
+package itests
 
 import "github.com/ipfs/go-log/v2"
 

@@ -1,4 +1,4 @@
-package test
+package itests
 
 import (
 	"bytes"
@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
@@ -65,7 +64,7 @@ func init() {
 	messagepool.HeadChangeCoalesceMergeInterval = 100 * time.Nanosecond
 }
 
-func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
+func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd TestNode, mn mocknet.Mocknet, opts node.Option) TestStorageNode {
 	r := repo.NewMemory(nil)
 
 	lr, err := r.Lock(repo.StorageMiner)
@@ -89,7 +88,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	require.NoError(t, err)
 
 	nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
-	for i := 0; i < test.GenesisPreseals; i++ {
+	for i := 0; i < GenesisPreseals; i++ {
 		_, err := nic.Next()
 		require.NoError(t, err)
 	}
@@ -154,11 +153,11 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 		}
 	}
 
-	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne, Stop: stop}
+	return TestStorageNode{StorageMiner: minerapi, MineOne: mineOne, Stop: stop}
 }
 
-func storageBuilder(parentNode test.TestNode, mn mocknet.Mocknet, opts node.Option) test.StorageBuilder {
-	return func(ctx context.Context, t *testing.T, spt abi.RegisteredSealProof, owner address.Address) test.TestStorageNode {
+func storageBuilder(parentNode TestNode, mn mocknet.Mocknet, opts node.Option) StorageBuilder {
+	return func(ctx context.Context, t *testing.T, spt abi.RegisteredSealProof, owner address.Address) TestStorageNode {
 		pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 		require.NoError(t, err)
 
@@ -200,30 +199,30 @@ func storageBuilder(parentNode test.TestNode, mn mocknet.Mocknet, opts node.Opti
 	}
 }
 
-func Builder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+func Builder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode) {
 	return mockBuilderOpts(t, fullOpts, storage, false)
 }
 
-func MockSbBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+func MockSbBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode) {
 	return mockSbBuilderOpts(t, fullOpts, storage, false)
 }
 
-func RPCBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+func RPCBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode) {
 	return mockBuilderOpts(t, fullOpts, storage, true)
 }
 
-func RPCMockSbBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+func RPCMockSbBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode) {
 	return mockSbBuilderOpts(t, fullOpts, storage, true)
 }
 
-func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
+func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestNode, []TestStorageNode) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
 	mn := mocknet.New(ctx)
 
-	fulls := make([]test.TestNode, len(fullOpts))
-	storers := make([]test.TestStorageNode, len(storage))
+	fulls := make([]TestNode, len(fullOpts))
+	storers := make([]TestStorageNode, len(storage))
 
 	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
@@ -254,7 +253,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := seed.PreSeal(maddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, test.GenesisPreseals, tdir, []byte("make genesis mem random"), nil, true)
+		genm, k, err := seed.PreSeal(maddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, GenesisPreseals, tdir, []byte("make genesis mem random"), nil, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -366,12 +365,12 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		var wait sync.Mutex
 		wait.Lock()
 
-		test.MineUntilBlock(ctx, t, fulls[0], storers[0], func(epoch abi.ChainEpoch) {
+		MineUntilBlock(ctx, t, fulls[0], storers[0], func(epoch abi.ChainEpoch) {
 			wait.Unlock()
 		})
 
 		wait.Lock()
-		test.MineUntilBlock(ctx, t, fulls[0], storers[0], func(epoch abi.ChainEpoch) {
+		MineUntilBlock(ctx, t, fulls[0], storers[0], func(epoch abi.ChainEpoch) {
 			wait.Unlock()
 		})
 		wait.Lock()
@@ -380,14 +379,14 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 	return fulls, storers
 }
 
-func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
+func mockSbBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestNode, []TestStorageNode) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
 	mn := mocknet.New(ctx)
 
-	fulls := make([]test.TestNode, len(fullOpts))
-	storers := make([]test.TestStorageNode, len(storage))
+	fulls := make([]TestNode, len(fullOpts))
+	storers := make([]TestStorageNode, len(storage))
 
 	var genbuf bytes.Buffer
 
@@ -406,8 +405,8 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		}
 
 		preseals := storage[i].Preseal
-		if preseals == test.PresealGenesis {
-			preseals = test.GenesisPreseals
+		if preseals == PresealGenesis {
+			preseals = GenesisPreseals
 		}
 
 		genm, k, err := mockstorage.PreSeal(abi.RegisteredSealProof_StackedDrg2KiBV1, maddr, preseals)
@@ -545,11 +544,11 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		var wait sync.Mutex
 		wait.Lock()
 
-		test.MineUntilBlock(ctx, t, fulls[0], storers[0], func(abi.ChainEpoch) {
+		MineUntilBlock(ctx, t, fulls[0], storers[0], func(abi.ChainEpoch) {
 			wait.Unlock()
 		})
 		wait.Lock()
-		test.MineUntilBlock(ctx, t, fulls[0], storers[0], func(abi.ChainEpoch) {
+		MineUntilBlock(ctx, t, fulls[0], storers[0], func(abi.ChainEpoch) {
 			wait.Unlock()
 		})
 		wait.Lock()
@@ -558,7 +557,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 	return fulls, storers
 }
 
-func fullRpc(t *testing.T, nd test.TestNode) test.TestNode {
+func fullRpc(t *testing.T, nd TestNode) TestNode {
 	ma, listenAddr, err := CreateRPCServer(t, map[string]interface{}{
 		"/rpc/v1": nd,
 		"/rpc/v0": &v0api.WrapperV1Full{FullNode: nd},
@@ -566,7 +565,7 @@ func fullRpc(t *testing.T, nd test.TestNode) test.TestNode {
 	require.NoError(t, err)
 
 	var stop func()
-	var full test.TestNode
+	var full TestNode
 	full.FullNode, stop, err = client.NewFullNodeRPCV1(context.Background(), listenAddr+"/rpc/v1", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
@@ -575,14 +574,14 @@ func fullRpc(t *testing.T, nd test.TestNode) test.TestNode {
 	return full
 }
 
-func storerRpc(t *testing.T, nd test.TestStorageNode) test.TestStorageNode {
+func storerRpc(t *testing.T, nd TestStorageNode) TestStorageNode {
 	ma, listenAddr, err := CreateRPCServer(t, map[string]interface{}{
 		"/rpc/v0": nd,
 	})
 	require.NoError(t, err)
 
 	var stop func()
-	var storer test.TestStorageNode
+	var storer TestStorageNode
 	storer.StorageMiner, stop, err = client.NewStorageMinerRPCV0(context.Background(), listenAddr+"/rpc/v0", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
@@ -599,7 +598,7 @@ func CreateRPCServer(t *testing.T, handlers map[string]interface{}) (multiaddr.M
 		rpcServer.Register("Filecoin", handler)
 		m.Handle(path, rpcServer)
 	}
-	testServ := httptest.NewServer(m) //  todo: close
+	testServ := httpNewServer(m) //  todo: close
 	t.Cleanup(testServ.Close)
 	t.Cleanup(testServ.CloseClientConnections)
 

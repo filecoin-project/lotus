@@ -1,4 +1,4 @@
-package test
+package itests
 
 import (
 	"context"
@@ -24,12 +24,12 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	} {
 		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			testCCUpgrade(t, b, blocktime, height)
+			runTestCCUpgrade(t, b, blocktime, height)
 		})
 	}
 }
 
-func testCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeHeight abi.ChainEpoch) {
+func runTestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeHeight abi.ChainEpoch) {
 	ctx := context.Background()
 	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(upgradeHeight)}, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)

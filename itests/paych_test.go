@@ -1,4 +1,4 @@
-package cli
+package itests
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/cli"
 	clitest "github.com/filecoin-project/lotus/cli/test"
 
 	"github.com/filecoin-project/go-address"
@@ -37,18 +38,18 @@ func init() {
 // commands
 func TestPaymentChannels(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
+	nodes, addrs := StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	paymentReceiver := nodes[1]
 	creatorAddr := addrs[0]
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
+	mockCLI := NewMockCLI(ctx, t, cli.Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 

@@ -1,4 +1,4 @@
-package test
+package itests
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -22,7 +21,7 @@ import (
 )
 
 // RunClientTest exercises some of the client CLI commands
-func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode) {
+func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -44,7 +43,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 
 	// Create a deal (non-interactive)
 	// client deal --start-epoch=<start epoch> <cid> <miner addr> 1000000attofil <duration>
-	res, _, err := test.CreateClientFile(ctx, clientNode, 1)
+	res, _, err := CreateClientFile(ctx, clientNode, 1)
 	require.NoError(t, err)
 	startEpoch := fmt.Sprintf("--start-epoch=%d", 2<<12)
 	dataCid := res.Root
@@ -60,7 +59,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode)
 	// <miner addr>
 	// "no" (verified client)
 	// "yes" (confirm deal)
-	res, _, err = test.CreateClientFile(ctx, clientNode, 2)
+	res, _, err = CreateClientFile(ctx, clientNode, 2)
 	require.NoError(t, err)
 	dataCid2 := res.Root
 	duration = fmt.Sprintf("%d", build.MinDealDuration/builtin.EpochsInDay)

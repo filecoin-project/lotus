@@ -1,4 +1,4 @@
-package node_test
+package itests_test
 
 import (
 	"os"
@@ -183,7 +183,7 @@ func TestWindowedPost(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestWindowPost(t, builder.MockSbBuilder, 2*time.Millisecond, 10)
+	TestWindowPost(t, builder.MockSbBuilder, 2*time.Millisecond, 10)
 }
 
 func TestTerminate(t *testing.T) {
@@ -197,7 +197,7 @@ func TestTerminate(t *testing.T) {
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
 
-	test.TestTerminate(t, builder.MockSbBuilder, 2*time.Millisecond)
+	TestTerminate(t, builder.MockSbBuilder, 2*time.Millisecond)
 }
 
 func TestCCUpgrade(t *testing.T) {
