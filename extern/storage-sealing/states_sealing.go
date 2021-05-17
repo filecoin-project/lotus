@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -457,8 +458,16 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 	if err != nil {
 		return xerrors.Errorf("getting config: %w", err)
 	}
+
 	if cfg.AggregateCommits {
-		return ctx.Send(SectorSubmitCommitAggregate{})
+		nv, err := m.api.StateNetworkVersion(ctx.Context(), nil)
+		if err != nil {
+			return xerrors.Errorf("getting network version: %w", err)
+		}
+
+		if nv >= network.Version13 {
+			return ctx.Send(SectorSubmitCommitAggregate{})
+		}
 	}
 
 	tok, _, err := m.api.ChainHead(ctx.Context())

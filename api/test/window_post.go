@@ -188,6 +188,12 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 	}
 
 	for len(toCheck) > 0 {
+		cb, err := miner.SectorCommitFlush(ctx)
+		require.NoError(t, err)
+		if cb != nil {
+			fmt.Printf("BATCH: %s\n", *cb)
+		}
+
 		for n := range toCheck {
 			st, err := miner.SectorsStatus(ctx, n, false)
 			require.NoError(t, err)

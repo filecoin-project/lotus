@@ -141,11 +141,11 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	}
 
 	spt := b.todo[0].spt
-	proofs := make([][]byte, total)
+	proofs := make([][]byte, 0, total)
 
 	for id, p := range b.todo {
 		params.SectorNumbers.Set(uint64(id))
-		proofs[id] = p.proof
+		proofs = append(proofs, p.proof)
 	}
 
 	params.AggregateProof, err = b.verif.AggregateSealProofs(spt, arp, proofs)
