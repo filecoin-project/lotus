@@ -47,6 +47,11 @@ BUILD_DEPS+=ffi-version-check
 
 .PHONY: ffi-version-check
 
+build/rice-box.go:
+	go run github.com/GeertJohan/go.rice/rice embed-go -i ./build
+
+BUILD_DEPS+=build/rice-box.go
+
 
 $(MODULES): build/.update-modules ;
 # dummy file that marks the last time modules were updated
@@ -84,7 +89,6 @@ butterflynet: build-devnets
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	go build $(GOFLAGS) -o lotus ./cmd/lotus
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
 
 .PHONY: lotus
 BINS+=lotus
@@ -92,27 +96,23 @@ BINS+=lotus
 lotus-miner: $(BUILD_DEPS)
 	rm -f lotus-miner
 	go build $(GOFLAGS) -o lotus-miner ./cmd/lotus-storage-miner
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-miner -i ./build
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
 	go build $(GOFLAGS) -o lotus-worker ./cmd/lotus-seal-worker
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-worker -i ./build
 .PHONY: lotus-worker
 BINS+=lotus-worker
 
 lotus-shed: $(BUILD_DEPS)
 	rm -f lotus-shed
 	go build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-shed -i ./build
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
 lotus-gateway: $(BUILD_DEPS)
 	rm -f lotus-gateway
-	go build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
@@ -138,7 +138,6 @@ install-worker:
 lotus-seed: $(BUILD_DEPS)
 	rm -f lotus-seed
 	go build $(GOFLAGS) -o lotus-seed ./cmd/lotus-seed
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-seed -i ./build
 
 .PHONY: lotus-seed
 BINS+=lotus-seed

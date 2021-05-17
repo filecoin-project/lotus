@@ -6,7 +6,7 @@ AppDir:
     id: io.filecoin.lotus
     name: Lotus
     icon: icon
-    version: v1.8.0
+    version: current
     exec: usr/bin/lotus
     exec_args: $@
   apt:
