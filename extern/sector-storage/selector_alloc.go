@@ -26,6 +26,8 @@ func newAllocSelector(index stores.SectorIndex, alloc storiface.SectorFileType, 
 	}
 }
 
+// allocSelector only allows selecting a worker which supports the given tasktype and has enough space in the configured path type(`s.ptype`) in
+// the sector store to store a sector file of type/s `s.alloc` for a sector with the given size(`spt.SectorSize()`).
 func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *workerHandle) (bool, error) {
 	tasks, err := whnd.workerRpc.TaskTypes(ctx)
 	if err != nil {

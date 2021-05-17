@@ -28,6 +28,10 @@ func newExistingSelector(index stores.SectorIndex, sector abi.SectorID, alloc st
 	}
 }
 
+// existingSelector only allows selecting a worker which supports the given tasktype and
+// 1. If `s.allowFetch` is false -> already has the sector file of type `s.alloc` for sector `s.sector` locally.
+// 2. If `s.allowFetch` is true -> if it dosen't have the sector file locally, it should have enough space in it's local sealing scratch space
+// to store the sector file/files`.
 func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *workerHandle) (bool, error) {
 	tasks, err := whnd.workerRpc.TaskTypes(ctx)
 	if err != nil {

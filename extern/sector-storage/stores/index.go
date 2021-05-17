@@ -51,15 +51,31 @@ type SectorStorageInfo struct {
 	Primary bool
 }
 
+// SectorIndex is the Miner's sector store Index/Registry that keeps track of all storage directories
+// and sector files in the sector stores of all Workers.
+// The Miner exposes this Index API over JSON RPC to all remote workers. Local workers can of-course call it from within the process.
 type SectorIndex interface { // part of storage-miner api
+	// StorageAttach is called by workers to register a new storage directory or update information about an existing storage directory
+	// with the Index.
 	StorageAttach(context.Context, StorageInfo, fsutil.FsStat) error
+	// StorageInfo is used to get detailed information about a storage directory with the given ID.
 	StorageInfo(context.Context, ID) (StorageInfo, error)
+	// StorageReportHealth is called by workers to report the health of a registered storage directory.
+	// This is the mechanism my which the Index tracks healthy/unhealthy/available/unavailable storage directories across workers.
 	StorageReportHealth(context.Context, ID, HealthReport) error
 
+	// StorageDeclareSector is called by workers to register new sector files or update information about
+	// existing sector files with the Index.
 	StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error
-	StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType) error
-	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]SectorStorageInfo, error)
 
+	// StorageDropSector is called by workers to drop sector files from the Index.
+	StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType) error
+	// StorageFindSector is called by workers to lookup storage directories containing the given sector files.
+	// If `allowFetch` is set to true, the Index will also return storage directories that do NOT yet have the sector files
+	// but can store them after fetching them from other storage directories that have them.
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]SectorStorageInfo, error)
+	// StorageBestAlloc is called by workers to lookup storage directories that can store sector files of the given types for a given sector.
+	// `pathType` indicates the storage capabilities(sealing/long term storage) that a storage directory should have to be considered eligible.
 	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]StorageInfo, error)
 
 	// atomically acquire locks on all sector file types. close ctx to unlock
