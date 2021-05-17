@@ -821,7 +821,7 @@ func (s *WindowPoStScheduler) setSender(ctx context.Context, msg *types.Message,
 	// estimate
 	minGasFeeMsg := *msg
 
-	minGasFeeMsg.GasPremium, err = s.api.GasEstimateGasPremium(ctx, 5, msg.From, msg.GasLimit, types.TipSetKey{})
+	minGasFeeMsg.GasPremium, err = s.api.GasEstimateGasPremium(ctx, 5, msg.From, msg.GasLimit, types.EmptyTSK)
 	if err != nil {
 		log.Errorf("failed to estimate minimum gas premium: %+v", err)
 		minGasFeeMsg.GasPremium = msg.GasPremium

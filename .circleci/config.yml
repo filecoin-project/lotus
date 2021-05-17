@@ -436,7 +436,7 @@ jobs:
       - run:
           command: "! go fmt ./... 2>&1 | read"
 
-  cbor-gen-check:
+  gen-check:
     executor: golang
     steps:
       - install-deps
@@ -444,7 +444,10 @@ jobs:
       - run: make deps
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
-      - run: make type-gen
+      - run: make gen
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+      - run: make docsgen-cli
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet
 
@@ -701,7 +704,7 @@ workflows:
           concurrency: "16"   # expend all docker 2xlarge CPUs.
       - mod-tidy-check
       - gofmt
-      - cbor-gen-check
+      - gen-check
       - docs-check
       - test:
           codecov-upload: true

@@ -346,12 +346,15 @@ func (tu *syncTestUtil) checkpointTs(node int, tsk types.TipSetKey) {
 	require.NoError(tu.t, tu.nds[node].SyncCheckpoint(context.TODO(), tsk))
 }
 
+func (tu *syncTestUtil) nodeHasTs(node int, tsk types.TipSetKey) bool {
+	_, err := tu.nds[node].ChainGetTipSet(context.TODO(), tsk)
+	return err == nil
+}
+
 func (tu *syncTestUtil) waitUntilNodeHasTs(node int, tsk types.TipSetKey) {
-	for {
-		_, err := tu.nds[node].ChainGetTipSet(context.TODO(), tsk)
-		if err != nil {
-			break
-		}
+	for !tu.nodeHasTs(node, tsk) {
+		// Time to allow for syncing and validation
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	// Time to allow for syncing and validation
@@ -751,8 +754,6 @@ func TestSyncInputs(t *testing.T) {
 }
 
 func TestSyncCheckpointHead(t *testing.T) {
-	t.Skip("flaky")
-
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -790,13 +791,16 @@ func TestSyncCheckpointHead(t *testing.T) {
 	tu.connect(p1, p2)
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
-	require.Equal(tu.t, p1Head, a.TipSet())
+	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
+
+	// Should be able to switch forks.
+	tu.checkpointTs(p1, b.TipSet().Key())
+	p1Head = tu.getHead(p1)
+	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }
 
 func TestSyncCheckpointEarlierThanHead(t *testing.T) {
-	t.Skip("flaky")
-
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -834,6 +838,11 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	tu.connect(p1, p2)
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
-	require.Equal(tu.t, p1Head, a.TipSet())
+	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
+
+	// Should be able to switch forks.
+	tu.checkpointTs(p1, b.TipSet().Key())
+	p1Head = tu.getHead(p1)
+	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }

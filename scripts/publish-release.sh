@@ -29,13 +29,24 @@ RELEASE_ID=`echo "${RELEASE_RESPONSE}" | jq '.id'`
 if [ "${RELEASE_ID}" = "null" ]; then
   echo "creating release"
 
+  COND_CREATE_DISCUSSION=""
+  PRERELEASE=true
+  if [[ ${CIRCLE_TAG} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    COND_CREATE_DISCUSSION="\"discussion_category_name\": \"announcement\","
+    PRERELEASE=false
+  fi
+
   RELEASE_DATA="{
     \"tag_name\": \"${CIRCLE_TAG}\",
     \"target_commitish\": \"${CIRCLE_SHA1}\",
+<<<<<<< HEAD
     \"discussion_category_name\": \"announcement\",
+=======
+    ${COND_CREATE_DISCUSSION}
+>>>>>>> master
     \"name\": \"${CIRCLE_TAG}\",
     \"body\": \"\",
-    \"prerelease\": false
+    \"prerelease\": ${PRERELEASE}
   }"
 
   # create it if it doesn't exist yet

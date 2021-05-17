@@ -223,7 +223,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithActorsV4At(upgradeHeight)}, OneMiner)
+	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(upgradeHeight)}, OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
@@ -442,7 +442,7 @@ func TestTerminate(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 	nSectors := uint64(2)
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithActorsV4At(-1)}, []StorageMiner{{Full: 0, Preseal: int(nSectors)}})
+	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, []StorageMiner{{Full: 0, Preseal: int(nSectors)}})
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
@@ -617,7 +617,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 	///
 	// Then we're going to manually submit bad proofs.
 	n, sn := b(t, []FullNodeOpts{
-		FullNodeWithActorsV4At(-1),
+		FullNodeWithLatestActorsAt(-1),
 	}, []StorageMiner{
 		{Full: 0, Preseal: PresealGenesis},
 		{Full: 0},
@@ -900,7 +900,7 @@ func TestWindowPostDisputeFails(t *testing.T, b APIBuilder, blocktime time.Durat
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithActorsV4At(-1)}, OneMiner)
+	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]

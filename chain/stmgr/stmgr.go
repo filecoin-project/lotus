@@ -854,10 +854,7 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}
-	st, _, err := sm.TipSetState(ctx, ts)
-	if err != nil {
-		return nil, err
-	}
+	st := ts.ParentState()
 
 	stateTree, err := sm.StateTree(st)
 	if err != nil {

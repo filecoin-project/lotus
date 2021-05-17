@@ -56,7 +56,7 @@ type MockCLIClient struct {
 
 func (c *MockCLIClient) RunCmd(input ...string) string {
 	out, err := c.RunCmdRaw(input...)
-	require.NoError(c.t, err)
+	require.NoError(c.t, err, "output:\n%s", out)
 
 	return out
 }
