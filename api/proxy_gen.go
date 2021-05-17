@@ -205,6 +205,8 @@ type FullNodeStruct struct {
 
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
+		ClientStatelessDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"write"`
+
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
@@ -1392,6 +1394,14 @@ func (s *FullNodeStruct) ClientStartDeal(p0 context.Context, p1 *StartDealParams
 }
 
 func (s *FullNodeStub) ClientStartDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ClientStatelessDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
+	return s.Internal.ClientStatelessDeal(p0, p1)
+}
+
+func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
 	return nil, xerrors.New("method not supported")
 }
 

@@ -544,6 +544,7 @@ The minimum value is 518400 (6 months).
 OPTIONS:
    --manual-piece-cid value     manually specify piece commitment for data (dataCid must be to a car file)
    --manual-piece-size value    if manually specifying piece cid, used to specify size (dataCid must be to a car file) (default: 0)
+   --manual-stateless-deal      instructs the node to send an offline deal without registering it with the deallist/fsm (default: false)
    --from value                 specify address to fund the deal with
    --start-epoch value          specify the epoch that the deal should start at (default: -1)
    --fast-retrieval             indicates that data should be available for fast retrieval (default: true)
