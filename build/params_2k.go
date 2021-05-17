@@ -24,22 +24,22 @@ var UpgradeIgnitionHeight = abi.ChainEpoch(-2)
 var UpgradeRefuelHeight = abi.ChainEpoch(-3)
 var UpgradeTapeHeight = abi.ChainEpoch(-4)
 
-var UpgradeAssemblyHeight = abi.ChainEpoch(10)
+var UpgradeAssemblyHeight = abi.ChainEpoch(5)
 var UpgradeLiftoffHeight = abi.ChainEpoch(-5)
 
-var UpgradeKumquatHeight = abi.ChainEpoch(15)
-var UpgradeCalicoHeight = abi.ChainEpoch(20)
-var UpgradePersianHeight = abi.ChainEpoch(25)
-var UpgradeOrangeHeight = abi.ChainEpoch(27)
-var UpgradeClausHeight = abi.ChainEpoch(30)
+var UpgradeKumquatHeight = abi.ChainEpoch(6)
+var UpgradeCalicoHeight = abi.ChainEpoch(7)
+var UpgradePersianHeight = abi.ChainEpoch(8)
+var UpgradeOrangeHeight = abi.ChainEpoch(9)
+var UpgradeClausHeight = abi.ChainEpoch(10)
 
-var UpgradeTrustHeight = abi.ChainEpoch(35)
+var UpgradeTrustHeight = abi.ChainEpoch(11)
 
-var UpgradeNorwegianHeight = abi.ChainEpoch(40)
+var UpgradeNorwegianHeight = abi.ChainEpoch(12)
 
-var UpgradeTurboHeight = abi.ChainEpoch(45)
+var UpgradeTurboHeight = abi.ChainEpoch(13)
 
-var UpgradeHyperdriveHeight = abi.ChainEpoch(50)
+var UpgradeHyperdriveHeight = abi.ChainEpoch(14)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
