@@ -39,11 +39,7 @@ if [ "${RELEASE_ID}" = "null" ]; then
   RELEASE_DATA="{
     \"tag_name\": \"${CIRCLE_TAG}\",
     \"target_commitish\": \"${CIRCLE_SHA1}\",
-<<<<<<< HEAD
-    \"discussion_category_name\": \"announcement\",
-=======
     ${COND_CREATE_DISCUSSION}
->>>>>>> master
     \"name\": \"${CIRCLE_TAG}\",
     \"body\": \"\",
     \"prerelease\": ${PRERELEASE}
