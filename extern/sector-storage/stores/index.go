@@ -66,6 +66,8 @@ type SectorIndex interface { // part of storage-miner api
 
 	// StorageDeclareSector is called by workers to register new sector files or update information about
 	// existing sector files with the Index.
+	// `primary` is set to true if the sector files are in the long term storage of the worker.
+	// `primary` is set to false if the sector files are in the sealing scratch space of the worker.
 	StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error
 
 	// StorageDropSector is called by workers to drop sector files from the Index.

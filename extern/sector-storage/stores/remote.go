@@ -41,6 +41,8 @@ type Remote struct {
 	fetching map[abi.SectorID]chan struct{}
 }
 
+// RemoveCopies removes all copies of the sector files for the given sector from the local sealing scratch space.
+// It does NOT remove the "primary" copies of the sector files i.e. sector files that are stored in the local long term storage space.
 func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types storiface.SectorFileType) error {
 	// TODO: do this on remotes too
 	//  (not that we really need to do that since it's always called by the
@@ -61,6 +63,15 @@ func NewRemote(local *Local, index SectorIndex, auth http.Header, fetchLimit int
 	}
 }
 
+// AcquireSector is used to perform two functions for a sector with the given ID:
+//
+// 1. Enlist local storage IDs and absolute paths containing the sector files for the file types present in the `existing` bitmask.
+//    If the worker does NOT have these sector files locally, it will fetch them from a worker that has them by doing an Index lookup, reserving enough
+//    space locally and then fetching them via the JSON RPC API.
+//    If the given acquire mode indicates move semantics, we will remove the fetched sector files from the worker we fetch them from.
+//
+// 2. Enlist local candidate storage IDs and absolute paths that can be used to store the sector files for the file types present in the `allocate` bitmask.
+//    Only storage directories that support the storage capability (sealing / long term storage)  required by the given `pathType` will be considered.
 func (r *Remote) AcquireSector(ctx context.Context, s storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
 	if existing|allocate != existing^allocate {
 		return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.New("can't both find and allocate a sector")
@@ -293,6 +304,9 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	}
 }
 
+// MoveStorage is used to move the given sector file types for a given sector from the local sealing scratch space to a local long term storage directory.
+// If the local sector store does NOT have the sector files, it will fetch them from a worker that has them before moving them.
+// Look at the documentation for `AcquireSector` to grok how the sector files are fetched.
 func (r *Remote) MoveStorage(ctx context.Context, s storage.SectorRef, types storiface.SectorFileType) error {
 	// Make sure we have the data local
 	_, _, err := r.AcquireSector(ctx, s, types, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
@@ -303,6 +317,9 @@ func (r *Remote) MoveStorage(ctx context.Context, s storage.SectorRef, types sto
 	return r.local.MoveStorage(ctx, s, types)
 }
 
+// Remove removes the given sector file types for the given sector from the local sealing scratch space and also from the local
+// long term storage. It basically removes them completely from the local sector store.
+// In addition, it also removes them completely from the sector stores of all workers that have the files.
 func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType, force bool) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
