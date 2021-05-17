@@ -51,6 +51,7 @@ build/rice-box.go:
 	go run github.com/GeertJohan/go.rice/rice embed-go -i ./build
 
 BUILD_DEPS+=build/rice-box.go
+CLEAN+=build/rice-box.go
 
 
 $(MODULES): build/.update-modules ;
