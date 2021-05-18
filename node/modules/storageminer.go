@@ -847,14 +847,22 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
 				AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
-				AggregateCommits:          cfg.Sealing.AggregateCommits,
-				MinCommitBatch:            cfg.Sealing.MinCommitBatch,
-				MaxCommitBatch:            cfg.Sealing.MaxCommitBatch,
-				CommitBatchWait:           cfg.Sealing.CommitBatchWait,
-				CommitBatchSlack:          cfg.Sealing.CommitBatchSlack,
-				TerminateBatchMax:         cfg.Sealing.TerminateBatchMax,
-				TerminateBatchMin:         cfg.Sealing.TerminateBatchMin,
-				TerminateBatchWait:        cfg.Sealing.TerminateBatchWait,
+
+				BatchPreCommits:     cfg.Sealing.BatchPreCommits,
+				MinPreCommitBatch:   cfg.Sealing.MinPreCommitBatch,
+				MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
+				PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
+				PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
+
+				AggregateCommits: cfg.Sealing.AggregateCommits,
+				MinCommitBatch:   cfg.Sealing.MinCommitBatch,
+				MaxCommitBatch:   cfg.Sealing.MaxCommitBatch,
+				CommitBatchWait:  time.Duration(cfg.Sealing.CommitBatchWait),
+				CommitBatchSlack: time.Duration(cfg.Sealing.CommitBatchSlack),
+
+				TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
+				TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
+				TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
 			}
 		})
 		return

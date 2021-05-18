@@ -18,6 +18,12 @@ type Config struct {
 
 	AlwaysKeepUnsealedCopy bool
 
+	BatchPreCommits     bool
+	MaxPreCommitBatch   int
+	MinPreCommitBatch   int
+	PreCommitBatchWait  time.Duration
+	PreCommitBatchSlack time.Duration
+
 	AggregateCommits bool
 	MinCommitBatch   int
 	MaxCommitBatch   int

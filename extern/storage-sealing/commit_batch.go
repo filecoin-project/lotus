@@ -155,32 +155,6 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
 	return wait
 }
 
-func (b *CommitBatcher) getSectorDeadline(si SectorInfo) time.Time {
-	tok, curEpoch, err := b.api.ChainHead(b.mctx)
-	if err != nil {
-		log.Errorf("getting chain head: %s", err)
-		return time.Time{}
-	}
-
-	deadlineEpoch := si.TicketEpoch
-	for _, p := range si.Pieces {
-		if p.DealInfo == nil {
-			continue
-		}
-
-		startEpoch := p.DealInfo.DealSchedule.StartEpoch
-		if startEpoch < deadlineEpoch {
-			deadlineEpoch = startEpoch
-		}
-	}
-
-	if deadlineEpoch <= curEpoch {
-		return time.Now()
-	}
-
-	return time.Duration(deadlineEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second
-}
-
 func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
@@ -208,20 +182,27 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 
 	spt := b.todo[0].spt
 	proofs := make([][]byte, 0, total)
+	infos := make([]proof5.AggregateSealVerifyInfo, 0, total)
 
 	for id, p := range b.todo {
 		params.SectorNumbers.Set(uint64(id))
 		proofs = append(proofs, p.proof)
+		infos = append(infos, p.info)
 	}
 
-	params.AggregateProof, err = b.verif.AggregateSealProofs(spt, arp, proofs)
+	params.AggregateProof, err = b.verif.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{
+		Miner:          0,
+		SealProof:      spt,
+		AggregateProof: arp,
+		Infos:          infos,
+	}, proofs)
 	if err != nil {
 		return nil, xerrors.Errorf("aggregating proofs: %w", err)
 	}
 
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
-		return nil, xerrors.Errorf("couldn't serialize TerminateSectors params: %w", err)
+		return nil, xerrors.Errorf("couldn't serialize ProveCommitAggregateParams: %w", err)
 	}
 
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
@@ -261,9 +242,16 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 
 // register commit, wait for batch message, return message CID
 func (b *CommitBatcher) AddCommit(ctx context.Context, s SectorInfo, in AggregateInput) (mcid cid.Cid, err error) {
+	_, curEpoch, err := b.api.ChainHead(b.mctx)
+	if err != nil {
+		log.Errorf("getting chain head: %s", err)
+		return cid.Undef, nil
+	}
+
 	sn := s.SectorNumber
+
 	b.lk.Lock()
-	b.deadlines[sn] = b.getSectorDeadline(s)
+	b.deadlines[sn] = getSectorDeadline(curEpoch, s)
 	b.todo[sn] = in
 
 	sent := make(chan cid.Cid, 1)
@@ -335,4 +323,24 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func getSectorDeadline(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
+	deadlineEpoch := si.TicketEpoch
+	for _, p := range si.Pieces {
+		if p.DealInfo == nil {
+			continue
+		}
+
+		startEpoch := p.DealInfo.DealSchedule.StartEpoch
+		if startEpoch < deadlineEpoch {
+			deadlineEpoch = startEpoch
+		}
+	}
+
+	if deadlineEpoch <= curEpoch {
+		return time.Now()
+	}
+
+	return time.Now().Add(time.Duration(deadlineEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second)
 }

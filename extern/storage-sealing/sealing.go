@@ -102,8 +102,9 @@ type Sealing struct {
 
 	stats SectorStats
 
-	terminator *TerminateBatcher
-	commiter   *CommitBatcher
+	terminator  *TerminateBatcher
+	precommiter *PreCommitBatcher
+	commiter    *CommitBatcher
 
 	getConfig GetSealingConfigFunc
 	dealInfo  *CurrentDealInfoManager
@@ -152,8 +153,9 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		notifee: notifee,
 		addrSel: as,
 
-		terminator: NewTerminationBatcher(context.TODO(), maddr, api, as, fc, gc),
-		commiter:   NewCommitBatcher(context.TODO(), maddr, api, as, fc, gc, verif),
+		terminator:  NewTerminationBatcher(context.TODO(), maddr, api, as, fc, gc),
+		precommiter: NewPreCommitBatcher(context.TODO(), maddr, api, as, fc, gc),
+		commiter:    NewCommitBatcher(context.TODO(), maddr, api, as, fc, gc, verif),
 
 		getConfig: gc,
 		dealInfo:  &CurrentDealInfoManager{api},
@@ -202,6 +204,14 @@ func (m *Sealing) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
 
 func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) {
 	return m.terminator.Pending(ctx)
+}
+
+func (m *Sealing) SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) {
+	return m.precommiter.Flush(ctx)
+}
+
+func (m *Sealing) SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.precommiter.Pending(ctx)
 }
 
 func (m *Sealing) CommitFlush(ctx context.Context) (*cid.Cid, error) {

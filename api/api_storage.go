@@ -80,8 +80,13 @@ type StorageMiner interface {
 	// SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
 	SectorTerminatePending(ctx context.Context) ([]abi.SectorID, error)  //perm:admin
 	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error //perm:admin
-	SectorCommitFlush(ctx context.Context) (*cid.Cid, error)             //perm:admin
-	SectorCommitPending(ctx context.Context) ([]abi.SectorID, error)     //perm:admin
+	// SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
+	// Returns null if message wasn't sent
+	SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) //perm:admin
+	// SectorPreCommitPending returns a list of pending PreCommit sectors to be sent in the next batch message
+	SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
+	SectorCommitFlush(ctx context.Context) (*cid.Cid, error)            //perm:admin
+	SectorCommitPending(ctx context.Context) ([]abi.SectorID, error)    //perm:admin
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true

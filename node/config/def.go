@@ -82,9 +82,21 @@ type SealingConfig struct {
 
 	AlwaysKeepUnsealedCopy bool
 
+	BatchPreCommits     bool
+	MaxPreCommitBatch   int
+	MinPreCommitBatch   int
+	PreCommitBatchWait  Duration
+	PreCommitBatchSlack Duration
+
 	AggregateCommits bool
 	MinCommitBatch   int
 	MaxCommitBatch   int
+	CommitBatchWait  Duration
+	CommitBatchSlack Duration
+
+	TerminateBatchMax  uint64
+	TerminateBatchMin  uint64
+	TerminateBatchWait Duration
 
 	// Keep this many sectors in sealing pipeline, start CC if needed
 	// todo TargetSealingSectors uint64
@@ -242,14 +254,21 @@ func DefaultStorageMiner() *StorageMiner {
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
 
-			AggregateCommits:   true,
-			MinCommitBatch:     1,        // we must have at least one proof to aggregate
-			MaxCommitBatch:     204,      // this is the maximum aggregation per FIP13
-			CommitBatchWait:    time.Day, // this can be up to 6 days
-			CommitBatchSlack:   8 * time.Hour,
+			BatchPreCommits:     true,
+			MinPreCommitBatch:   1,                        // we must have at least one proof to aggregate
+			MaxPreCommitBatch:   204,                      // todo max?
+			PreCommitBatchWait:  Duration(24 * time.Hour), // this can be up to 6 days
+			PreCommitBatchSlack: Duration(8 * time.Hour),
+
+			AggregateCommits: true,
+			MinCommitBatch:   1,                        // we must have at least one proof to aggregate
+			MaxCommitBatch:   204,                      // this is the maximum aggregation per FIP13
+			CommitBatchWait:  Duration(24 * time.Hour), // this can be up to 6 days
+			CommitBatchSlack: Duration(8 * time.Hour),
+
 			TerminateBatchMin:  1,
 			TerminateBatchMax:  100,
-			TerminateBatchWait: 5 * time.Minute,
+			TerminateBatchWait: Duration(5 * time.Minute),
 		},
 
 		Storage: sectorstorage.SealerConfig{

@@ -80,6 +80,11 @@ func (b *TerminateBatcher) run() {
 		}
 		lastMsg = nil
 
+		cfg, err := b.getConfig()
+		if err != nil {
+			log.Warnw("TerminateBatcher getconfig error", "error", err)
+		}
+
 		var sendAboveMax, sendAboveMin bool
 		select {
 		case <-b.stop:
@@ -87,13 +92,12 @@ func (b *TerminateBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-time.After(TerminateBatchWait):
+		case <-time.After(cfg.TerminateBatchWait):
 			sendAboveMin = true
 		case fr := <-b.force: // user triggered
 			forceRes = fr
 		}
 
-		var err error
 		lastMsg, err = b.processBatch(sendAboveMax, sendAboveMin)
 		if err != nil {
 			log.Warnw("TerminateBatcher processBatch error", "error", err)

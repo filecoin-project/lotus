@@ -649,6 +649,10 @@ type StorageMinerStruct struct {
 
 		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
+		SectorPreCommitFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
+
+		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
+
 		SectorRemove func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
 		SectorSetExpectedSealDuration func(p0 context.Context, p1 time.Duration) error `perm:"write"`
@@ -1945,6 +1949,14 @@ func (s *StorageMinerStruct) SectorGetSealDelay(p0 context.Context) (time.Durati
 
 func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
 	return s.Internal.SectorMarkForUpgrade(p0, p1)
+}
+
+func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) (*cid.Cid, error) {
+	return s.Internal.SectorPreCommitFlush(p0)
+}
+
+func (s *StorageMinerStruct) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {
+	return s.Internal.SectorPreCommitPending(p0)
 }
 
 func (s *StorageMinerStruct) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
