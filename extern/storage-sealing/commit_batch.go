@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
 
@@ -333,7 +334,7 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 }
 
 func getSectorDeadline(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
-	deadlineEpoch := si.TicketEpoch
+	deadlineEpoch := si.TicketEpoch + policy.MaxPreCommitRandomnessLookback
 	for _, p := range si.Pieces {
 		if p.DealInfo == nil {
 			continue
