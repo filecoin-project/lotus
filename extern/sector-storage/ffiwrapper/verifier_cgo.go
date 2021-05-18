@@ -140,6 +140,6 @@ func (proofVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, pro
 	return ffi.GenerateWinningPoStSectorChallenge(proofType, minerID, randomness, eligibleSectorCount)
 }
 
-func (v proofVerifier) AggregateSealProofs(proofType abi.RegisteredSealProof, rap abi.RegisteredAggregationProof, proofs [][]byte) ([]byte, error) {
-	return ffi.AggregateSealProofs(proofType, rap, proofs)
+func (v proofVerifier) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
+	return ffi.AggregateSealProofs(aggregateInfo, proofs)
 }

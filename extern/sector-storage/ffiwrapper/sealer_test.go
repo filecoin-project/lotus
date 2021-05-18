@@ -513,8 +513,11 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 	defer cleanup()
 
 	avi := proof5.AggregateSealVerifyProofAndInfos{
-		Miner: miner,
-		Infos: make([]proof5.AggregateSealVerifyInfo, numAgg),
+		Miner:          miner,
+		SealProof:      sealProofType,
+		AggregateProof: policy.GetDefaultAggregationProof(),
+		Proof:          nil,
+		Infos:          make([]proof5.AggregateSealVerifyInfo, numAgg),
 	}
 
 	toAggregate := make([][]byte, numAgg)
@@ -539,12 +542,12 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 
 	aggStart := time.Now()
 
-	avi.Proof, err = ProofVerifier.AggregateSealProofs(sealProofType, policy.GetDefaultAggregationProof(), toAggregate)
+	avi.Proof, err = ProofVerifier.AggregateSealProofs(avi, toAggregate)
 	require.NoError(t, err)
 
 	aggDone := time.Now()
 
-	_, err = ProofVerifier.AggregateSealProofs(sealProofType, policy.GetDefaultAggregationProof(), toAggregate)
+	_, err = ProofVerifier.AggregateSealProofs(avi, toAggregate)
 	require.NoError(t, err)
 
 	aggHot := time.Now()
