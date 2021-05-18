@@ -20,18 +20,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
-var (
-	// TODO: config
-
-	PreCommitBatchMax  uint64 = 100 // adjust based on real-world gas numbers, actors limit at 10k
-	PreCommitBatchMin  uint64 = 1
-	PreCommitBatchWait        = 5 * time.Minute
-)
-
 type PreCommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
+}
+
+type preCommitEntry struct {
+	deposit abi.TokenAmount
+	pci     *miner0.SectorPreCommitInfo
 }
 
 type PreCommitBatcher struct {
@@ -43,7 +40,7 @@ type PreCommitBatcher struct {
 	getConfig GetSealingConfigFunc
 
 	deadlines map[abi.SectorNumber]time.Time
-	todo      map[abi.SectorNumber]*miner0.SectorPreCommitInfo
+	todo      map[abi.SectorNumber]*preCommitEntry
 	waiting   map[abi.SectorNumber][]chan cid.Cid
 
 	notify, stop, stopped chan struct{}
@@ -61,7 +58,7 @@ func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCom
 		getConfig: getConfig,
 
 		deadlines: map[abi.SectorNumber]time.Time{},
-		todo:      map[abi.SectorNumber]*miner0.SectorPreCommitInfo{},
+		todo:      map[abi.SectorNumber]*preCommitEntry{},
 		waiting:   map[abi.SectorNumber][]chan cid.Cid{},
 
 		notify:  make(chan struct{}, 1),
@@ -172,8 +169,11 @@ func (b *PreCommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, nil
 	}
 
+	deposit := big.Zero()
+
 	for _, p := range b.todo {
-		params.Sectors = append(params.Sectors, p)
+		params.Sectors = append(params.Sectors, p.pci)
+		deposit = big.Add(deposit, p.deposit)
 	}
 
 	enc := new(bytes.Buffer)
@@ -186,12 +186,14 @@ func (b *PreCommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
-	from, _, err := b.addrSel(b.mctx, mi, api.PreCommitAddr, b.feeCfg.MaxPreCommitGasFee, b.feeCfg.MaxPreCommitGasFee)
+	goodFunds := big.Add(deposit, b.feeCfg.MaxPreCommitGasFee)
+
+	from, _, err := b.addrSel(b.mctx, mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
 		return nil, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.PreCommitSectorBatch, big.Zero(), b.feeCfg.MaxPreCommitGasFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.PreCommitSectorBatch, deposit, b.feeCfg.MaxPreCommitGasFee, enc.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -213,7 +215,7 @@ func (b *PreCommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 }
 
 // register PreCommit, wait for batch message, return message CID
-func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, in *miner0.SectorPreCommitInfo) (mcid cid.Cid, err error) {
+func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, deposit abi.TokenAmount, in *miner0.SectorPreCommitInfo) (mcid cid.Cid, err error) {
 	_, curEpoch, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		log.Errorf("getting chain head: %s", err)
@@ -224,7 +226,10 @@ func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, in *m
 
 	b.lk.Lock()
 	b.deadlines[sn] = getSectorDeadline(curEpoch, s)
-	b.todo[sn] = in
+	b.todo[sn] = &preCommitEntry{
+		deposit: deposit,
+		pci:     in,
+	}
 
 	sent := make(chan cid.Cid, 1)
 	b.waiting[sn] = append(b.waiting[sn], sent)
@@ -271,7 +276,7 @@ func (b *PreCommitBatcher) Pending(ctx context.Context) ([]abi.SectorID, error) 
 	for _, s := range b.todo {
 		res = append(res, abi.SectorID{
 			Miner:  abi.ActorID(mid),
-			Number: s.SectorNumber,
+			Number: s.pci.SectorNumber,
 		})
 	}
 

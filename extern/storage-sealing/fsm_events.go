@@ -150,6 +150,10 @@ func (evt SectorPreCommit2) apply(state *SectorInfo) {
 	state.CommR = &commr
 }
 
+type SectorPreCommitBatch struct{}
+
+func (evt SectorPreCommitBatch) apply(*SectorInfo) {}
+
 type SectorPreCommitLanded struct {
 	TipSet TipSetToken
 }
