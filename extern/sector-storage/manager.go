@@ -103,18 +103,12 @@ type StorageAuth http.Header
 type WorkerStateStore *statestore.StateStore
 type ManagerStateStore *statestore.StateStore
 
-func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, sc SealerConfig, urls URLs, sa StorageAuth, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
-	lstor, err := stores.NewLocal(ctx, ls, si, urls)
-	if err != nil {
-		return nil, err
-	}
+func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc SealerConfig, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
 
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
-
-	stor := stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit)
 
 	m := &Manager{
 		ls:         ls,
@@ -204,6 +198,10 @@ func (m *Manager) schedFetch(sector storage.SectorRef, ft storiface.SectorFileTy
 	}
 }
 
+// SectorsUnsealPiece will Unseal the Sealed sector file for the given sector.
+// It will schedule the Unsealing task on a worker that either already has the sealed sector files or has space in
+// one of it's sealing scratch spaces to store them after fetching them from another worker.
+// If the chosen worker already has the Unsealed sector file, we will NOT Unseal the sealed sector file again.
 func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed *cid.Cid) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -213,6 +211,8 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 		return xerrors.Errorf("acquiring unseal sector lock: %w", err)
 	}
 
+	// if the selected worker does NOT have the sealed files for the sector, instruct it to fetch it from a worker that has them and
+	// put it in the sealing scratch space.
 	sealFetch := func(ctx context.Context, worker Worker) error {
 		log.Debugf("copy sealed/cache sector data for sector %d", sector.ID)
 		if _, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy)); err != nil {
@@ -231,6 +231,8 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 		return xerrors.Errorf("getting sector size: %w", err)
 	}
 
+	// selector will schedule the Unseal task on a worker that either already has the sealed sector files or has space in
+	// one of it's sealing scratch spaces to store them after fetching them from another worker.
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTSealed|storiface.FTCache, true)
 
 	log.Debugf("schedule unseal for sector %d", sector.ID)
@@ -241,12 +243,14 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 		//  unseal the sector partially. Requesting the whole sector here can
 		//  save us some work in case another piece is requested from here
 		log.Debugf("unseal sector %d", sector.ID)
+
+		// Note: This unsealed call will essentially become a no-op of the worker already has an Unsealed sector file for the given sector.
 		_, err := m.waitSimpleCall(ctx)(w.UnsealPiece(ctx, sector, 0, abi.PaddedPieceSize(ssize).Unpadded(), ticket, *unsealed))
 		log.Debugf("completed unseal sector %d", sector.ID)
 		return err
 	})
 	if err != nil {
-		return err
+		return xerrors.Errorf("worker UnsealPiece call: %s", err)
 	}
 
 	return nil

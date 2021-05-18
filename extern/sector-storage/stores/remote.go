@@ -479,10 +479,19 @@ func (r *Remote) readRemote(ctx context.Context, url string, offset, size abi.Pa
 	return resp.Body, nil
 }
 
-// Reader gets a reader for unsealed file range. Can return nil in case the requested range isn't allocated in the file
+// Reader returns a reader for an unsealed piece at the given offset in the given sector.
+// If the Miner has the unsealed piece locally, it will return a reader that reads from the local copy.
+// If the Miner does NOT have the unsealed piece locally, it will query all workers that have the unsealed sector file
+// to know if they have the unsealed piece and will then read the unsealed piece data from a worker that has it.
+//
+// Returns a nil reader if :
+// 1. no worker(local worker included) has an unsealed file for the given sector OR
+// 2. no worker(local worker included) has the unsealed piece in their unsealed sector file.
+// Will return a nil reader and a nil error in such a case.
 func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
 	ft := storiface.FTUnsealed
 
+	// check if we have the unsealed sector file locally
 	paths, _, err := r.local.AcquireSector(ctx, s, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire local: %w", err)
@@ -490,7 +499,11 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 
 	path := storiface.PathByType(paths, ft)
 	var rd io.ReadCloser
+
 	if path == "" {
+		// if we don't have the unsealed sector file locally, we'll first lookup the Miner Sector Store Index
+		// to determine which workers have the unsealed file and then query those workers to know
+		// if they have the unsealed piece in the unsealed sector file.
 		si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
 		if err != nil {
 			return nil, err
@@ -500,7 +513,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 			return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
 		}
 
-		// TODO Why are we sorting in ascending order here -> shouldn't we sort in descending order as higher weight means more preferred to store ?
+		// TODO Why are we sorting in ascending order here -> shouldn't we sort in descending order as higher weight means more likely to have the file ?
 		sort.Slice(si, func(i, j int) bool {
 			return si[i].Weight < si[j].Weight
 		})
@@ -508,6 +521,8 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 	iloop:
 		for _, info := range si {
 			for _, url := range info.URLs {
+				// checkAllocated makes a JSON RPC query to a remote worker to determine if it has
+				// unsealed piece in their unsealed sector file.
 				ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
 				if err != nil {
 					log.Warnw("check if remote has piece", "url", url, "error", err)
@@ -517,6 +532,8 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 					continue
 				}
 
+				// readRemote fetches a reader that we can used to read the unsealed piece from the remote worker.
+				// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
 				rd, err = r.readRemote(ctx, url, offset, size)
 				if err != nil {
 					log.Warnw("reading from remote", "url", url, "error", err)
@@ -527,17 +544,22 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 			}
 		}
 	} else {
+		// if we have the unsealed file locally, return a reader that can be used to read the contents of the
+		// unsealed piece.
 		log.Infof("Read local %s (+%d,%d)", path, offset, size)
 		ssize, err := s.ProofType.SectorSize()
 		if err != nil {
 			return nil, err
 		}
 
+		// open the unsealed sector file for the given sector size located at the given path.
 		pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
 		if err != nil {
 			return nil, xerrors.Errorf("opening partial file: %w", err)
 		}
 
+		// even though we have an unsealed file for the given sector, we still need to determine if we have the unsealed piece
+		// in the unsealed sector file. That is what `HasAllocated` checks for.
 		has, err := pf.HasAllocated(storiface.UnpaddedByteIndex(offset.Unpadded()), size.Unpadded())
 		if err != nil {
 			return nil, xerrors.Errorf("has allocated: %w", err)
@@ -547,10 +569,10 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 			if err := pf.Close(); err != nil {
 				return nil, xerrors.Errorf("close partial file: %w", err)
 			}
-
 			return nil, nil
 		}
 
+		log.Debugf("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
 		return pf.Reader(storiface.PaddedByteIndex(offset), size)
 	}
 

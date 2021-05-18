@@ -375,6 +375,8 @@ var MinerNode = Options(
 	Override(new(*stores.Index), stores.NewIndex),
 	Override(new(stores.SectorIndex), From(new(*stores.Index))),
 	Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+	Override(new(*stores.Local), modules.LocalStorage),
+	Override(new(*stores.Remote), modules.RemoteStorage),
 	Override(new(*sectorstorage.Manager), modules.SectorStorage),
 	Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 	Override(new(storiface.WorkerReturn), From(new(sectorstorage.SectorManager))),

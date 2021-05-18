@@ -59,6 +59,8 @@ func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// remoteGetSector returns the sector file/tared directory byte stream for the sectorID and sector file type sent in the request.
+// returns an error if it does NOT have the required sector file/dir.
 func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Request) {
 	log.Infof("SERVE GET %s", r.URL)
 	vars := mux.Vars(r)
@@ -129,8 +131,11 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		}
 	} else {
 		w.Header().Set("Content-Type", "application/octet-stream")
+		// will do a ranged read over the file at the given path if the caller has asked for a ranged read in the request headers.
 		http.ServeFile(w, r, path)
 	}
+
+	log.Debugf("served sector file/dir, sectorID=%+v, fileType=%s, path=%s", id, ft, path)
 }
 
 func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.Request) {
@@ -158,6 +163,9 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 	}
 }
 
+// remoteGetAllocated returns `http.StatusOK` if the worker already has an Unsealed sector file
+// containing the Unsealed piece sent in the request.
+// returns `http.StatusRequestedRangeNotSatisfiable` otherwise.
 func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.Request) {
 	log.Infof("SERVE Alloc check %s", r.URL)
 	vars := mux.Vars(r)
@@ -216,6 +224,8 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 		ProofType: 0,
 	}
 
+	// get the path of the local Unsealed file for the given sector.
+	// return error if we do NOT have it.
 	paths, _, err := handler.Local.AcquireSector(r.Context(), si, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		log.Errorf("%+v", err)
@@ -230,6 +240,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// open the Unsealed file and check if it has the Unsealed sector for the piece at the given offset and size.
 	pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
 	if err != nil {
 		log.Error("opening partial file: ", err)
@@ -250,9 +261,12 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 	}
 
 	if has {
+		log.Debugf("returning ok: worker has unsealed file with unsealed piece, sector:%+v, offset:%d, size:%d", id, offi, szi)
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+
+	log.Debugf("returning StatusRequestedRangeNotSatisfiable: worker does NOT have unsealed file with unsealed piece, sector:%+v, offset:%d, size:%d", id, offi, szi)
 	w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 }
 
