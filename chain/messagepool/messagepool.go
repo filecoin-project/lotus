@@ -331,7 +331,7 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
 	return types.BigInt{Int: requiredFunds}
 }
 
-func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
+func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
 
@@ -375,7 +375,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 
 	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
-		err := mp.HeadChange(rev, app)
+		err := mp.HeadChange(ctx, rev, app)
 		if err != nil {
 			log.Errorf("mpool head notif handler error: %+v", err)
 		}
@@ -386,7 +386,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 	mp.lk.Lock()
 
 	go func() {
-		err := mp.loadLocal()
+		err := mp.loadLocal(ctx)
 
 		mp.lk.Unlock()
 		mp.curTsLk.Unlock()
@@ -444,9 +444,8 @@ func (mp *MessagePool) runLoop() {
 	}
 }
 
-func (mp *MessagePool) addLocal(m *types.SignedMessage) error {
-	// TODO: Is context.TODO() safe here? Idk how Go works.
-	sk, err := mp.api.StateAccountKey(context.TODO(), m.Message.From, mp.curTs)
+func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) error {
+	sk, err := mp.api.StateAccountKey(ctx, m.Message.From, mp.curTs)
 	if err != nil {
 		log.Debugf("mpooladdlocal failed to resolve sender: %s", err)
 		return err
@@ -519,7 +518,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	return publish, nil
 }
 
-func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
+func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(m)
 	if err != nil {
 		return cid.Undef, err
@@ -532,7 +531,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}()
 
 	mp.curTsLk.Lock()
-	publish, err := mp.addTs(m, mp.curTs, true, false)
+	publish, err := mp.addTs(ctx, m, mp.curTs, true, false)
 	if err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err
@@ -585,7 +584,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	return nil
 }
 
-func (mp *MessagePool) Add(m *types.SignedMessage) error {
+func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	err := mp.checkMessage(m)
 	if err != nil {
 		return err
@@ -600,7 +599,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
-	_, err = mp.addTs(m, mp.curTs, false, false)
+	_, err = mp.addTs(ctx, m, mp.curTs, false, false)
 	return err
 }
 
@@ -640,7 +639,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	return nil
 }
 
-func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet) error {
+func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage, curTs *types.TipSet) error {
 	balance, err := mp.getStateBalance(m.Message.From, curTs)
 	if err != nil {
 		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrSoftValidationFailure)
@@ -654,8 +653,7 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 	// add Value for soft failure check
 	//requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
 
-	// TODO: Is context.TODO() safe here? Idk how Go works.
-	sk, err := mp.api.StateAccountKey(context.TODO(), m.Message.From, mp.curTs)
+	sk, err := mp.api.StateAccountKey(ctx, m.Message.From, mp.curTs)
 	if err != nil {
 		log.Debugf("mpoolcheckbalance failed to resolve sender: %s", err)
 		return err
@@ -675,7 +673,7 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet)
 	return nil
 }
 
-func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local, untrusted bool) (bool, error) {
+func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs *types.TipSet, local, untrusted bool) (bool, error) {
 	snonce, err := mp.getStateNonce(m.Message.From, curTs)
 	if err != nil {
 		return false, xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
@@ -693,17 +691,17 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local,
 		return false, err
 	}
 
-	if err := mp.checkBalance(m, curTs); err != nil {
+	if err := mp.checkBalance(ctx, m, curTs); err != nil {
 		return false, err
 	}
 
-	err = mp.addLocked(m, !local, untrusted)
+	err = mp.addLocked(ctx, m, !local, untrusted)
 	if err != nil {
 		return false, err
 	}
 
 	if local {
-		err = mp.addLocal(m)
+		err = mp.addLocal(ctx, m)
 		if err != nil {
 			return false, xerrors.Errorf("error persisting local message: %w", err)
 		}
@@ -712,7 +710,7 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local,
 	return publish, nil
 }
 
-func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
+func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) error {
 	err := mp.checkMessage(m)
 	if err != nil {
 		return err
@@ -738,21 +736,21 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 		return err
 	}
 
-	if err := mp.checkBalance(m, curTs); err != nil {
+	if err := mp.checkBalance(ctx, m, curTs); err != nil {
 		return err
 	}
 
-	return mp.addLocked(m, false, false)
+	return mp.addLocked(ctx, m, false, false)
 }
 
-func (mp *MessagePool) addSkipChecks(m *types.SignedMessage) error {
+func (mp *MessagePool) addSkipChecks(ctx context.Context, m *types.SignedMessage) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.addLocked(m, false, false)
+	return mp.addLocked(ctx, m, false, false)
 }
 
-func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool) error {
+func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, strict, untrusted bool) error {
 	log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
 	if m.Signature.Type == crypto.SigTypeBLS {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
@@ -768,8 +766,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 		return err
 	}
 
-	// TODO: Is context.TODO() safe here? Idk how Go works.
-	sk, err := mp.api.StateAccountKey(context.TODO(), m.Message.From, mp.curTs)
+	sk, err := mp.api.StateAccountKey(ctx, m.Message.From, mp.curTs)
 	if err != nil {
 		log.Debugf("mpooladd failed to resolve sender: %s", err)
 		return err
@@ -818,24 +815,23 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 	return nil
 }
 
-func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
+func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.getNonceLocked(addr, mp.curTs)
+	return mp.getNonceLocked(ctx, addr, mp.curTs)
 }
 
-func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *types.TipSet) (uint64, error) {
+func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address, curTs *types.TipSet) (uint64, error) {
 	stateNonce, err := mp.getStateNonce(addr, curTs) // sanity check
 	if err != nil {
 		return 0, err
 	}
 
-	// TODO: Is context.TODO() safe here? Idk how Go works.
-	sk, err := mp.api.StateAccountKey(context.TODO(), addr, mp.curTs)
+	sk, err := mp.api.StateAccountKey(ctx, addr, mp.curTs)
 	if err != nil {
 		log.Debugf("mpoolgetnonce failed to resolve sender: %s", err)
 		return 0, err
@@ -878,7 +874,7 @@ func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (
 //  - strict checks are enabled
 //  - extra strict add checks are used when adding the messages to the msgSet
 //    that means: no nonce gaps, at most 10 pending messages for the actor
-func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
+func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(m)
 	if err != nil {
 		return cid.Undef, err
@@ -891,7 +887,7 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 	}()
 
 	mp.curTsLk.Lock()
-	publish, err := mp.addTs(m, mp.curTs, true, true)
+	publish, err := mp.addTs(ctx, m, mp.curTs, true, true)
 	if err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err
@@ -913,16 +909,15 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 	return m.Cid(), nil
 }
 
-func (mp *MessagePool) Remove(from address.Address, nonce uint64, applied bool) {
+func (mp *MessagePool) Remove(ctx context.Context, from address.Address, nonce uint64, applied bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	mp.remove(from, nonce, applied)
+	mp.remove(ctx, from, nonce, applied)
 }
 
-func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) {
-	// TODO: Is context.TODO() safe here? Idk how Go works.
-	sk, err := mp.api.StateAccountKey(context.TODO(), from, mp.curTs)
+func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce uint64, applied bool) {
+	sk, err := mp.api.StateAccountKey(ctx, from, mp.curTs)
 	if err != nil {
 		log.Debugf("mpoolremove failed to resolve sender: %s", err)
 		return
@@ -957,37 +952,36 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 	}
 }
 
-func (mp *MessagePool) Pending() ([]*types.SignedMessage, *types.TipSet) {
+func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.allPending()
+	return mp.allPending(ctx)
 }
 
-func (mp *MessagePool) allPending() ([]*types.SignedMessage, *types.TipSet) {
+func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
 	out := make([]*types.SignedMessage, 0)
 	for a := range mp.pending {
-		out = append(out, mp.pendingFor(a)...)
+		out = append(out, mp.pendingFor(ctx, a)...)
 	}
 
 	return out, mp.curTs
 }
 
-func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *types.TipSet) {
+func (mp *MessagePool) PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
-	return mp.pendingFor(a), mp.curTs
+	return mp.pendingFor(ctx, a), mp.curTs
 }
 
-func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
-	// TODO: Is context.TODO() safe here? Idk how Go works.
-	sk, err := mp.api.StateAccountKey(context.TODO(), a, mp.curTs)
+func (mp *MessagePool) pendingFor(ctx context.Context, a address.Address) []*types.SignedMessage {
+	sk, err := mp.api.StateAccountKey(ctx, a, mp.curTs)
 	if err != nil {
 		log.Debugf("mpoolpendingfor failed to resolve sender: %s", err)
 		return nil
@@ -1011,7 +1005,7 @@ func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
 	return set
 }
 
-func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet) error {
+func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, apply []*types.TipSet) error {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -1028,7 +1022,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 	rm := func(from address.Address, nonce uint64) {
 		s, ok := rmsgs[from]
 		if !ok {
-			mp.Remove(from, nonce, true)
+			mp.Remove(ctx, from, nonce, true)
 			return
 		}
 
@@ -1037,7 +1031,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 			return
 		}
 
-		mp.Remove(from, nonce, true)
+		mp.Remove(ctx, from, nonce, true)
 	}
 
 	maybeRepub := func(cid cid.Cid) {
@@ -1108,7 +1102,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 
 	for _, s := range rmsgs {
 		for _, msg := range s {
-			if err := mp.addSkipChecks(msg); err != nil {
+			if err := mp.addSkipChecks(ctx, msg); err != nil {
 				log.Errorf("Failed to readd message from reorg to mpool: %s", err)
 			}
 		}
@@ -1116,7 +1110,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 
 	if len(revert) > 0 && futureDebug {
 		mp.lk.Lock()
-		msgs, ts := mp.allPending()
+		msgs, ts := mp.allPending(ctx)
 		mp.lk.Unlock()
 
 		buckets := map[address.Address]*statBucket{}
@@ -1323,7 +1317,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 	return out, nil
 }
 
-func (mp *MessagePool) loadLocal() error {
+func (mp *MessagePool) loadLocal(ctx context.Context) error {
 	res, err := mp.localMsgs.Query(query.Query{})
 	if err != nil {
 		return xerrors.Errorf("query local messages: %w", err)
@@ -1339,7 +1333,7 @@ func (mp *MessagePool) loadLocal() error {
 			return xerrors.Errorf("unmarshaling local message: %w", err)
 		}
 
-		if err := mp.addLoaded(&sm); err != nil {
+		if err := mp.addLoaded(ctx, &sm); err != nil {
 			if xerrors.Is(err, ErrNonceTooLow) {
 				continue // todo: drop the message from local cache (if above certain confidence threshold)
 			}
@@ -1347,8 +1341,7 @@ func (mp *MessagePool) loadLocal() error {
 			log.Errorf("adding local message: %+v", err)
 		}
 
-		// TODO: Is context.TODO() safe here? Idk how Go works.
-		sk, err := mp.api.StateAccountKey(context.TODO(), sm.Message.From, mp.curTs)
+		sk, err := mp.api.StateAccountKey(ctx, sm.Message.From, mp.curTs)
 		if err != nil {
 			log.Debugf("mpoolloadLocal failed to resolve sender: %s", err)
 			return err

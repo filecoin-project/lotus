@@ -60,7 +60,7 @@ func makeTestMessage(w *wallet.LocalWallet, from, to address.Address, nonce uint
 func makeTestMpool() (*MessagePool, *testMpoolAPI) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
-	mp, err := New(tma, ds, "test", nil)
+	mp, err := New(context.TODO(), tma, ds, "test", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -464,7 +464,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	tma.applyBlock(t, block2)
 
 	// we should have no pending messages in the mpool
-	pend, _ := mp.Pending()
+	pend, _ := mp.Pending(context.TODO())
 	if len(pend) != 0 {
 		t.Fatalf("expected no pending messages, but got %d", len(pend))
 	}

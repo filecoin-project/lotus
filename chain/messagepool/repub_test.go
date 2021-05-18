@@ -24,7 +24,7 @@ func TestRepubMessages(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil)
+	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestRepubMessages(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		_, err := mp.Push(m)
+		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
 		}

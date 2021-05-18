@@ -23,7 +23,7 @@ type MpoolNonceAPI struct {
 }
 
 // GetNonce gets the nonce from current chain head.
-func (a *MpoolNonceAPI) GetNonce(addr address.Address) (uint64, error) {
+func (a *MpoolNonceAPI) GetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	ts := a.StateAPI.Chain.GetHeaviestTipSet()
 
 	// make sure we have a key address so we can compare with messages
