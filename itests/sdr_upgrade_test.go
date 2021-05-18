@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/itests/kit"
 	bminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ import (
 )
 
 func TestSDRUpgrade(t *testing.T) {
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	oldDelay := policy.GetPreCommitChallengeDelay()
 	policy.SetPreCommitChallengeDelay(5)
@@ -31,7 +32,7 @@ func TestSDRUpgrade(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := MockSbBuilder(t, []FullNodeOpts{FullNodeWithSDRAt(500, 1000)}, OneMiner)
+	n, sn := kit.MockSbBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithSDRAt(500, 1000)}, kit.OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -88,7 +89,7 @@ func TestSDRUpgrade(t *testing.T) {
 	}()
 
 	// before.
-	pledgeSectors(t, ctx, miner, 9, 0, pledge)
+	kit.PledgeSectors(t, ctx, miner, 9, 0, pledge)
 
 	s, err := miner.SectorsList(ctx)
 	require.NoError(t, err)

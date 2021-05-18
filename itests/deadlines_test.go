@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
@@ -74,7 +75,7 @@ func TestDeadlineToggling(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := MockSbBuilder(t, []FullNodeOpts{FullNodeWithLatestActorsAt(upgradeH)}, OneMiner)
+	n, sn := kit.MockSbBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(upgradeH)}, kit.OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	minerA := sn[0]
@@ -103,7 +104,7 @@ func TestDeadlineToggling(t *testing.T) {
 		defer close(done)
 		for ctx.Err() == nil {
 			build.Clock.Sleep(blocktime)
-			if err := minerA.MineOne(ctx, MineNext); err != nil {
+			if err := minerA.MineOne(ctx, kit.MineNext); err != nil {
 				if ctx.Err() != nil {
 					// context was canceled, ignore the error.
 					return
@@ -117,8 +118,8 @@ func TestDeadlineToggling(t *testing.T) {
 		<-done
 	}()
 
-	minerB := n[0].Stb(ctx, t, TestSpt, defaultFrom)
-	minerC := n[0].Stb(ctx, t, TestSpt, defaultFrom)
+	minerB := n[0].Stb(ctx, t, kit.TestSpt, defaultFrom)
+	minerC := n[0].Stb(ctx, t, kit.TestSpt, defaultFrom)
 
 	maddrB, err := minerB.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -130,7 +131,7 @@ func TestDeadlineToggling(t *testing.T) {
 
 	// pledge sectors on C, go through a PP, check for power
 	{
-		pledgeSectors(t, ctx, minerC, sectorsC, 0, nil)
+		kit.PledgeSectors(t, ctx, minerC, sectorsC, 0, nil)
 
 		di, err := client.StateMinerProvingDeadline(ctx, maddrC, types.EmptyTSK)
 		require.NoError(t, err)
@@ -199,8 +200,8 @@ func TestDeadlineToggling(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, nv, network.Version12)
 
-	minerD := n[0].Stb(ctx, t, TestSpt, defaultFrom)
-	minerE := n[0].Stb(ctx, t, TestSpt, defaultFrom)
+	minerD := n[0].Stb(ctx, t, kit.TestSpt, defaultFrom)
+	minerE := n[0].Stb(ctx, t, kit.TestSpt, defaultFrom)
 
 	maddrD, err := minerD.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -208,7 +209,7 @@ func TestDeadlineToggling(t *testing.T) {
 	require.NoError(t, err)
 
 	// first round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.GenesisPreseals), true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(uint64(ssz)*sectorsC), true, types.EmptyTSK)
 
 	checkMiner(maddrB, types.NewInt(0), false, types.EmptyTSK)
@@ -216,10 +217,10 @@ func TestDeadlineToggling(t *testing.T) {
 	checkMiner(maddrE, types.NewInt(0), false, types.EmptyTSK)
 
 	// pledge sectors on minerB/minerD, stop post on minerC
-	pledgeSectors(t, ctx, minerB, sectorsB, 0, nil)
+	kit.PledgeSectors(t, ctx, minerB, sectorsB, 0, nil)
 	checkMiner(maddrB, types.NewInt(0), true, types.EmptyTSK)
 
-	pledgeSectors(t, ctx, minerD, sectorsD, 0, nil)
+	kit.PledgeSectors(t, ctx, minerD, sectorsD, 0, nil)
 	checkMiner(maddrD, types.NewInt(0), true, types.EmptyTSK)
 
 	minerC.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).Fail()
@@ -235,7 +236,7 @@ func TestDeadlineToggling(t *testing.T) {
 		params := &miner.SectorPreCommitInfo{
 			Expiration:   2880 * 300,
 			SectorNumber: 22,
-			SealProof:    TestSpt,
+			SealProof:    kit.TestSpt,
 
 			SealedCID:     cr,
 			SealRandEpoch: head.Height() - 200,
@@ -285,7 +286,7 @@ func TestDeadlineToggling(t *testing.T) {
 	}
 
 	// second round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.GenesisPreseals), true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(0), true, types.EmptyTSK)
 	checkMiner(maddrB, types.NewInt(uint64(ssz)*sectorsB), true, types.EmptyTSK)
 	checkMiner(maddrD, types.NewInt(uint64(ssz)*sectorsD), true, types.EmptyTSK)
@@ -356,7 +357,7 @@ func TestDeadlineToggling(t *testing.T) {
 	}
 
 	// third round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.GenesisPreseals), true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(0), true, types.EmptyTSK)
 	checkMiner(maddrB, types.NewInt(0), true, types.EmptyTSK)
 	checkMiner(maddrD, types.NewInt(0), false, types.EmptyTSK)

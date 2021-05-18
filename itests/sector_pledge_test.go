@@ -8,19 +8,20 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/itests/kit"
 	bminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
 func TestPledgeSectors(t *testing.T) {
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	t.Run("1", func(t *testing.T) {
-		runPledgeSectorTest(t, MockSbBuilder, 50*time.Millisecond, 1)
+		runPledgeSectorTest(t, kit.MockSbBuilder, 50*time.Millisecond, 1)
 	})
 
 	t.Run("100", func(t *testing.T) {
-		runPledgeSectorTest(t, MockSbBuilder, 50*time.Millisecond, 100)
+		runPledgeSectorTest(t, kit.MockSbBuilder, 50*time.Millisecond, 100)
 	})
 
 	t.Run("1000", func(t *testing.T) {
@@ -28,15 +29,15 @@ func TestPledgeSectors(t *testing.T) {
 			t.Skip("skipping test in short mode")
 		}
 
-		runPledgeSectorTest(t, MockSbBuilder, 50*time.Millisecond, 1000)
+		runPledgeSectorTest(t, kit.MockSbBuilder, 50*time.Millisecond, 1000)
 	})
 }
 
-func runPledgeSectorTest(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
+func runPledgeSectorTest(t *testing.T, b kit.APIBuilder, blocktime time.Duration, nSectors int) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, OneFull, OneMiner)
+	n, sn := b(t, kit.OneFull, kit.OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -64,7 +65,7 @@ func runPledgeSectorTest(t *testing.T, b APIBuilder, blocktime time.Duration, nS
 		}
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
+	kit.PledgeSectors(t, ctx, miner, nSectors, 0, nil)
 
 	atomic.StoreInt64(&mine, 0)
 	<-done

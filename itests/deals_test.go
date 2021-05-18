@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
@@ -24,7 +25,7 @@ import (
 )
 
 func TestDealCycle(t *testing.T) {
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blockTime := 10 * time.Millisecond
 
@@ -34,16 +35,19 @@ func TestDealCycle(t *testing.T) {
 	dealStartEpoch := abi.ChainEpoch(2 << 12)
 
 	t.Run("TestFullDealCycle_Single", func(t *testing.T) {
-		runFullDealCycles(t, 1, MockSbBuilder, blockTime, false, false, dealStartEpoch)
+		runFullDealCycles(t, 1, kit.MockSbBuilder, blockTime, false, false, dealStartEpoch)
 	})
 	t.Run("TestFullDealCycle_Two", func(t *testing.T) {
-		runFullDealCycles(t, 2, MockSbBuilder, blockTime, false, false, dealStartEpoch)
+		runFullDealCycles(t, 2, kit.MockSbBuilder, blockTime, false, false, dealStartEpoch)
 	})
 	t.Run("WithExportedCAR", func(t *testing.T) {
-		runFullDealCycles(t, 1, MockSbBuilder, blockTime, true, false, dealStartEpoch)
+		runFullDealCycles(t, 1, kit.MockSbBuilder, blockTime, true, false, dealStartEpoch)
 	})
 	t.Run("TestFastRetrievalDealCycle", func(t *testing.T) {
-		TestFastRetrievalDealFlow(t, MockSbBuilder, blockTime, dealStartEpoch)
+		runFastRetrievalDealFlowT(t, kit.MockSbBuilder, blockTime, dealStartEpoch)
+	})
+	t.Run("TestZeroPricePerByteRetrievalDealFlow", func(t *testing.T) {
+		runZeroPricePerByteRetrievalDealFlow(t, kit.MockSbBuilder, blockTime, dealStartEpoch)
 	})
 }
 
@@ -52,7 +56,7 @@ func TestAPIDealFlowReal(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	// TODO: just set this globally?
 	oldDelay := policy.GetPreCommitChallengeDelay()
@@ -62,22 +66,22 @@ func TestAPIDealFlowReal(t *testing.T) {
 	})
 
 	t.Run("basic", func(t *testing.T) {
-		runFullDealCycles(t, 1, Builder, time.Second, false, false, 0)
+		runFullDealCycles(t, 1, kit.Builder, time.Second, false, false, 0)
 	})
 
 	t.Run("fast-retrieval", func(t *testing.T) {
-		runFullDealCycles(t, 1, Builder, time.Second, false, true, 0)
+		runFullDealCycles(t, 1, kit.Builder, time.Second, false, true, 0)
 	})
 
 	t.Run("retrieval-second", func(t *testing.T) {
-		runSecondDealRetrievalTest(t, Builder, time.Second)
+		runSecondDealRetrievalTest(t, kit.Builder, time.Second)
 	})
 }
 
 func TestPublishDealsBatching(t *testing.T) {
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
-	b := MockSbBuilder
+	b := kit.MockSbBuilder
 	blocktime := 10 * time.Millisecond
 	startEpoch := abi.ChainEpoch(2 << 12)
 
@@ -85,7 +89,7 @@ func TestPublishDealsBatching(t *testing.T) {
 	maxDealsPerMsg := uint64(2)
 
 	// Set max deals per publish deals message to 2
-	minerDef := []StorageMiner{{
+	minerDef := []kit.StorageMiner{{
 		Full: 0,
 		Opts: node.Override(
 			new(*storageadapter.DealPublisher),
@@ -93,25 +97,25 @@ func TestPublishDealsBatching(t *testing.T) {
 				Period:         publishPeriod,
 				MaxDealsPerMsg: maxDealsPerMsg,
 			})),
-		Preseal: PresealGenesis,
+		Preseal: kit.PresealGenesis,
 	}}
 
 	// Create a connect client and miner node
-	n, sn := b(t, OneFull, minerDef)
+	n, sn := b(t, kit.OneFull, minerDef)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
-	s := connectAndStartMining(t, blocktime, client, miner)
-	defer s.blockMiner.Stop()
+	s := kit.ConnectAndStartMining(t, blocktime, client, miner)
+	defer s.BlockMiner.Stop()
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
+		res, _, err := kit.CreateClientFile(s.Ctx, s.Client, rseed)
 		require.NoError(t, err)
 
-		upds, err := client.ClientGetDealUpdates(s.ctx)
+		upds, err := client.ClientGetDealUpdates(s.Ctx)
 		require.NoError(t, err)
 
-		startDeal(t, s.ctx, s.miner, s.client, res.Root, false, startEpoch)
+		kit.StartDeal(t, s.Ctx, s.Miner, s.Client, res.Root, false, startEpoch)
 
 		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 		time.Sleep(time.Second)
@@ -143,11 +147,11 @@ func TestPublishDealsBatching(t *testing.T) {
 	}
 
 	// Expect a single PublishStorageDeals message that includes the first two deals
-	msgCids, err := s.client.StateListMessages(s.ctx, &api.MessageMatch{To: market.Address}, types.EmptyTSK, 1)
+	msgCids, err := s.Client.StateListMessages(s.Ctx, &api.MessageMatch{To: market.Address}, types.EmptyTSK, 1)
 	require.NoError(t, err)
 	count := 0
 	for _, msgCid := range msgCids {
-		msg, err := s.client.ChainGetMessage(s.ctx, msgCid)
+		msg, err := s.Client.ChainGetMessage(s.Ctx, msgCid)
 		require.NoError(t, err)
 
 		if msg.Method == market.Methods.PublishStorageDeals {
@@ -177,14 +181,14 @@ func TestDealMining(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
-	b := MockSbBuilder
+	b := kit.MockSbBuilder
 	blocktime := 50 * time.Millisecond
 
 	ctx := context.Background()
-	n, sn := b(t, OneFull, []StorageMiner{
-		{Full: 0, Preseal: PresealGenesis},
+	n, sn := b(t, kit.OneFull, []kit.StorageMiner{
+		{Full: 0, Preseal: kit.PresealGenesis},
 		{Full: 0, Preseal: 0}, // TODO: Add support for miners on non-first full node
 	})
 	client := n[0].FullNode.(*impl.FullNodeAPI)
@@ -282,12 +286,12 @@ func TestDealMining(t *testing.T) {
 		}
 	}()
 
-	deal := startDeal(t, ctx, provider, client, fcid, false, 0)
+	deal := kit.StartDeal(t, ctx, provider, client, fcid, false, 0)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 
-	waitDealSealed(t, ctx, provider, client, deal, false)
+	kit.WaitDealSealed(t, ctx, provider, client, deal, false)
 
 	<-minedTwo
 
@@ -296,12 +300,98 @@ func TestDealMining(t *testing.T) {
 	<-done
 }
 
-func runFullDealCycles(t *testing.T, n int, b APIBuilder, blocktime time.Duration, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	s := setupOneClientOneMiner(t, b, blocktime)
-	defer s.blockMiner.Stop()
+func runFullDealCycles(t *testing.T, n int, b kit.APIBuilder, blocktime time.Duration, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
+	s := kit.SetupOneClientOneMiner(t, b, blocktime)
+	defer s.BlockMiner.Stop()
 
 	baseseed := 6
 	for i := 0; i < n; i++ {
-		MakeDeal(t, s.ctx, baseseed+i, s.client, s.miner, carExport, fastRet, startEpoch)
+		kit.MakeDeal(t, s.Ctx, baseseed+i, s.Client, s.Miner, carExport, fastRet, startEpoch)
 	}
+}
+
+func runFastRetrievalDealFlowT(t *testing.T, b kit.APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
+	s := kit.SetupOneClientOneMiner(t, b, blocktime)
+	defer s.BlockMiner.Stop()
+
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(int64(8))).Read(data)
+
+	r := bytes.NewReader(data)
+	fcid, err := s.Client.ClientImportLocal(s.Ctx, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println("FILE CID: ", fcid)
+
+	deal := kit.StartDeal(t, s.Ctx, s.Miner, s.Client, fcid, true, startEpoch)
+
+	kit.WaitDealPublished(t, s.Ctx, s.Miner, deal)
+	fmt.Println("deal published, retrieving")
+	// Retrieval
+	info, err := s.Client.ClientGetDealInfo(s.Ctx, *deal)
+	require.NoError(t, err)
+
+	kit.TestRetrieval(t, s.Ctx, s.Client, fcid, &info.PieceCID, false, data)
+}
+
+func runSecondDealRetrievalTest(t *testing.T, b kit.APIBuilder, blocktime time.Duration) {
+	s := kit.SetupOneClientOneMiner(t, b, blocktime)
+	defer s.BlockMiner.Stop()
+
+	{
+		data1 := make([]byte, 800)
+		rand.New(rand.NewSource(int64(3))).Read(data1)
+		r := bytes.NewReader(data1)
+
+		fcid1, err := s.Client.ClientImportLocal(s.Ctx, r)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		data2 := make([]byte, 800)
+		rand.New(rand.NewSource(int64(9))).Read(data2)
+		r2 := bytes.NewReader(data2)
+
+		fcid2, err := s.Client.ClientImportLocal(s.Ctx, r2)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		deal1 := kit.StartDeal(t, s.Ctx, s.Miner, s.Client, fcid1, true, 0)
+
+		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
+		time.Sleep(time.Second)
+		kit.WaitDealSealed(t, s.Ctx, s.Miner, s.Client, deal1, true)
+
+		deal2 := kit.StartDeal(t, s.Ctx, s.Miner, s.Client, fcid2, true, 0)
+
+		time.Sleep(time.Second)
+		kit.WaitDealSealed(t, s.Ctx, s.Miner, s.Client, deal2, false)
+
+		// Retrieval
+		info, err := s.Client.ClientGetDealInfo(s.Ctx, *deal2)
+		require.NoError(t, err)
+
+		rf, _ := s.Miner.SectorsRefs(s.Ctx)
+		fmt.Printf("refs: %+v\n", rf)
+
+		kit.TestRetrieval(t, s.Ctx, s.Client, fcid2, &info.PieceCID, false, data2)
+	}
+}
+
+func runZeroPricePerByteRetrievalDealFlow(t *testing.T, b kit.APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
+	s := kit.SetupOneClientOneMiner(t, b, blocktime)
+	defer s.BlockMiner.Stop()
+
+	// Set price-per-byte to zero
+	ask, err := s.Miner.MarketGetRetrievalAsk(s.Ctx)
+	require.NoError(t, err)
+
+	ask.PricePerByte = abi.NewTokenAmount(0)
+	err = s.Miner.MarketSetRetrievalAsk(s.Ctx, ask)
+	require.NoError(t, err)
+
+	kit.MakeDeal(t, s.Ctx, 6, s.Client, s.Miner, false, false, startEpoch)
 }

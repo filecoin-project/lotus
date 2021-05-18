@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -14,7 +15,7 @@ import (
 )
 
 func TestBatchDealInput(t *testing.T) {
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var (
 		blockTime = 10 * time.Millisecond
@@ -29,7 +30,7 @@ func TestBatchDealInput(t *testing.T) {
 	)
 
 	// Set max deals per publish deals message to maxDealsPerMsg
-	minerDef := []StorageMiner{{
+	minerDef := []kit.StorageMiner{{
 		Full: 0,
 		Opts: node.Options(
 			node.Override(
@@ -49,23 +50,23 @@ func TestBatchDealInput(t *testing.T) {
 				}, nil
 			}),
 		),
-		Preseal: PresealGenesis,
+		Preseal: kit.PresealGenesis,
 	}}
 
 	// Create a connect client and miner node
-	n, sn := MockSbBuilder(t, OneFull, minerDef)
+	n, sn := kit.MockSbBuilder(t, kit.OneFull, minerDef)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
-	s := connectAndStartMining(t, blockTime, client, miner)
-	defer s.blockMiner.Stop()
+	s := kit.ConnectAndStartMining(t, blockTime, client, miner)
+	defer s.BlockMiner.Stop()
 
 	// Starts a deal and waits until it's published
 	runDealTillSeal := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
+		res, _, err := kit.CreateClientFile(s.Ctx, s.Client, rseed)
 		require.NoError(t, err)
 
-		dc := startDeal(t, s.ctx, s.miner, s.client, res.Root, false, dealStartEpoch)
-		waitDealSealed(t, s.ctx, s.miner, s.client, dc, false)
+		dc := kit.StartDeal(t, s.Ctx, s.Miner, s.Client, res.Root, false, dealStartEpoch)
+		kit.WaitDealSealed(t, s.Ctx, s.Miner, s.Client, dc, false)
 	}
 
 	// Run maxDealsPerMsg+1 deals in parallel
@@ -83,7 +84,7 @@ func TestBatchDealInput(t *testing.T) {
 		<-done
 	}
 
-	sl, err := sn[0].SectorsList(s.ctx)
+	sl, err := sn[0].SectorsList(s.Ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(sl), 4)
 	require.LessOrEqual(t, len(sl), 5)

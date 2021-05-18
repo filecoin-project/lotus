@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,7 @@ func TestTerminate(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	const blocktime = 2 * time.Millisecond
 
@@ -30,9 +31,9 @@ func TestTerminate(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := MockSbBuilder(t,
-		[]FullNodeOpts{FullNodeWithLatestActorsAt(-1)},
-		[]StorageMiner{{Full: 0, Preseal: int(nSectors)}},
+	n, sn := kit.MockSbBuilder(t,
+		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)},
+		[]kit.StorageMiner{{Full: 0, Preseal: int(nSectors)}},
 	)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
@@ -53,7 +54,7 @@ func TestTerminate(t *testing.T) {
 		defer close(done)
 		for ctx.Err() == nil {
 			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, MineNext); err != nil {
+			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
 				if ctx.Err() != nil {
 					// context was canceled, ignore the error.
 					return
@@ -80,7 +81,7 @@ func TestTerminate(t *testing.T) {
 
 	fmt.Printf("Seal a sector\n")
 
-	pledgeSectors(t, ctx, miner, 1, 0, nil)
+	kit.PledgeSectors(t, ctx, miner, 1, 0, nil)
 
 	fmt.Printf("wait for power\n")
 

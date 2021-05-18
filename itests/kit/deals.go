@@ -1,4 +1,4 @@
-package itests
+package kit
 
 import (
 	"bytes"
@@ -38,17 +38,17 @@ func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode,
 	fcid := res.Root
 	fmt.Println("FILE CID: ", fcid)
 
-	deal := startDeal(t, ctx, miner, client, fcid, fastRet, startEpoch)
+	deal := StartDeal(t, ctx, miner, client, fcid, fastRet, startEpoch)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-	waitDealSealed(t, ctx, miner, client, deal, false)
+	WaitDealSealed(t, ctx, miner, client, deal, false)
 
 	// Retrieval
 	info, err := client.ClientGetDealInfo(ctx, *deal)
 	require.NoError(t, err)
 
-	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
+	TestRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
 }
 
 func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
@@ -73,93 +73,7 @@ func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api
 	return res, data, nil
 }
 
-func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-	s := setupOneClientOneMiner(t, b, blocktime)
-	defer s.blockMiner.Stop()
-
-	data := make([]byte, 1600)
-	rand.New(rand.NewSource(int64(8))).Read(data)
-
-	r := bytes.NewReader(data)
-	fcid, err := s.client.ClientImportLocal(s.ctx, r)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	fmt.Println("FILE CID: ", fcid)
-
-	deal := startDeal(t, s.ctx, s.miner, s.client, fcid, true, startEpoch)
-
-	waitDealPublished(t, s.ctx, s.miner, deal)
-	fmt.Println("deal published, retrieving")
-	// Retrieval
-	info, err := s.client.ClientGetDealInfo(s.ctx, *deal)
-	require.NoError(t, err)
-
-	testRetrieval(t, s.ctx, s.client, fcid, &info.PieceCID, false, data)
-}
-
-func runSecondDealRetrievalTest(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	s := setupOneClientOneMiner(t, b, blocktime)
-	defer s.blockMiner.Stop()
-
-	{
-		data1 := make([]byte, 800)
-		rand.New(rand.NewSource(int64(3))).Read(data1)
-		r := bytes.NewReader(data1)
-
-		fcid1, err := s.client.ClientImportLocal(s.ctx, r)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		data2 := make([]byte, 800)
-		rand.New(rand.NewSource(int64(9))).Read(data2)
-		r2 := bytes.NewReader(data2)
-
-		fcid2, err := s.client.ClientImportLocal(s.ctx, r2)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		deal1 := startDeal(t, s.ctx, s.miner, s.client, fcid1, true, 0)
-
-		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-		time.Sleep(time.Second)
-		waitDealSealed(t, s.ctx, s.miner, s.client, deal1, true)
-
-		deal2 := startDeal(t, s.ctx, s.miner, s.client, fcid2, true, 0)
-
-		time.Sleep(time.Second)
-		waitDealSealed(t, s.ctx, s.miner, s.client, deal2, false)
-
-		// Retrieval
-		info, err := s.client.ClientGetDealInfo(s.ctx, *deal2)
-		require.NoError(t, err)
-
-		rf, _ := s.miner.SectorsRefs(s.ctx)
-		fmt.Printf("refs: %+v\n", rf)
-
-		testRetrieval(t, s.ctx, s.client, fcid2, &info.PieceCID, false, data2)
-	}
-}
-
-func TestZeroPricePerByteRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-	s := setupOneClientOneMiner(t, b, blocktime)
-	defer s.blockMiner.Stop()
-
-	// Set price-per-byte to zero
-	ask, err := s.miner.MarketGetRetrievalAsk(s.ctx)
-	require.NoError(t, err)
-
-	ask.PricePerByte = abi.NewTokenAmount(0)
-	err = s.miner.MarketSetRetrievalAsk(s.ctx, ask)
-	require.NoError(t, err)
-
-	MakeDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
-}
-
-func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
+func StartDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +101,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 	return deal
 }
 
-func waitDealSealed(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, deal *cid.Cid, noseal bool) {
+func WaitDealSealed(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, deal *cid.Cid, noseal bool) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
@@ -199,7 +113,7 @@ loop:
 			if noseal {
 				return
 			}
-			startSealingWaiting(t, ctx, miner)
+			StartSealingWaiting(t, ctx, miner)
 		case storagemarket.StorageDealProposalRejected:
 			t.Fatal("deal rejected")
 		case storagemarket.StorageDealFailing:
@@ -215,7 +129,7 @@ loop:
 	}
 }
 
-func waitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode, deal *cid.Cid) {
+func WaitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode, deal *cid.Cid) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	updates, err := miner.MarketGetDealUpdates(subCtx)
@@ -245,7 +159,7 @@ func waitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode,
 	}
 }
 
-func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNode) {
+func StartSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNode) {
 	snums, err := miner.SectorsList(ctx)
 	require.NoError(t, err)
 
@@ -260,7 +174,7 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 	}
 }
 
-func testRetrieval(t *testing.T, ctx context.Context, client api.FullNode, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
+func TestRetrieval(t *testing.T, ctx context.Context, client api.FullNode, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
 	offers, err := client.ClientFindData(ctx, fcid, piece)
 	if err != nil {
 		t.Fatal(err)
@@ -301,7 +215,7 @@ func testRetrieval(t *testing.T, ctx context.Context, client api.FullNode, fcid 
 	}
 
 	if carExport {
-		rdata = extractCarData(t, ctx, rdata, rpath)
+		rdata = ExtractCarData(t, ctx, rdata, rpath)
 	}
 
 	if !bytes.Equal(rdata, data) {
@@ -309,7 +223,7 @@ func testRetrieval(t *testing.T, ctx context.Context, client api.FullNode, fcid 
 	}
 }
 
-func extractCarData(t *testing.T, ctx context.Context, rdata []byte, rpath string) []byte {
+func ExtractCarData(t *testing.T, ctx context.Context, rdata []byte, rpath string) []byte {
 	bserv := dstest.Bserv()
 	ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
 	if err != nil {
@@ -339,21 +253,21 @@ func extractCarData(t *testing.T, ctx context.Context, rdata []byte, rpath strin
 	return rdata
 }
 
-type dealsScaffold struct {
-	ctx        context.Context
-	client     *impl.FullNodeAPI
-	miner      TestStorageNode
-	blockMiner *BlockMiner
+type DealsScaffold struct {
+	Ctx        context.Context
+	Client     *impl.FullNodeAPI
+	Miner      TestStorageNode
+	BlockMiner *BlockMiner
 }
 
-func setupOneClientOneMiner(t *testing.T, b APIBuilder, blocktime time.Duration) *dealsScaffold {
+func SetupOneClientOneMiner(t *testing.T, b APIBuilder, blocktime time.Duration) *DealsScaffold {
 	n, sn := b(t, OneFull, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
-	return connectAndStartMining(t, blocktime, client, miner)
+	return ConnectAndStartMining(t, blocktime, client, miner)
 }
 
-func connectAndStartMining(t *testing.T, blocktime time.Duration, client *impl.FullNodeAPI, miner TestStorageNode) *dealsScaffold {
+func ConnectAndStartMining(t *testing.T, blocktime time.Duration, client *impl.FullNodeAPI, miner TestStorageNode) *DealsScaffold {
 	ctx := context.Background()
 	addrinfo, err := client.NetAddrsListen(ctx)
 	if err != nil {
@@ -368,10 +282,10 @@ func connectAndStartMining(t *testing.T, blocktime time.Duration, client *impl.F
 	blockMiner := NewBlockMiner(ctx, t, miner, blocktime)
 	blockMiner.MineBlocks()
 
-	return &dealsScaffold{
-		ctx:        ctx,
-		client:     client,
-		miner:      miner,
-		blockMiner: blockMiner,
+	return &DealsScaffold{
+		Ctx:        ctx,
+		Client:     client,
+		Miner:      miner,
+		BlockMiner: blockMiner,
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -24,7 +25,7 @@ func TestWindowedPost(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var (
 		blocktime = 2 * time.Millisecond
@@ -38,16 +39,16 @@ func TestWindowedPost(t *testing.T) {
 	} {
 		height := height // copy to satisfy lints
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			testWindowPostUpgrade(t, MockSbBuilder, blocktime, nSectors, height)
+			testWindowPostUpgrade(t, kit.MockSbBuilder, blocktime, nSectors, height)
 		})
 	}
 }
 
-func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int, upgradeHeight abi.ChainEpoch) {
+func testWindowPostUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Duration, nSectors int, upgradeHeight abi.ChainEpoch) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(upgradeHeight)}, OneMiner)
+	n, sn := b(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(upgradeHeight)}, kit.OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
@@ -67,7 +68,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 		defer close(done)
 		for ctx.Err() == nil {
 			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, MineNext); err != nil {
+			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
 				if ctx.Err() != nil {
 					// context was canceled, ignore the error.
 					return
@@ -81,7 +82,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 		<-done
 	}()
 
-	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
+	kit.PledgeSectors(t, ctx, miner, nSectors, 0, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -113,7 +114,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	require.NoError(t, err)
 
 	require.Equal(t, p.MinerPower, p.TotalPower)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+GenesisPreseals)))
+	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+kit.GenesisPreseals)))
 
 	fmt.Printf("Drop some sectors\n")
 
@@ -196,7 +197,7 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
 	sectors := p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+GenesisPreseals-3, int(sectors)) // -3 just removed sectors
+	require.Equal(t, nSectors+kit.GenesisPreseals-3, int(sectors)) // -3 just removed sectors
 
 	fmt.Printf("Recover one sector\n")
 
@@ -226,11 +227,11 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
 	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+GenesisPreseals-2, int(sectors)) // -2 not recovered sectors
+	require.Equal(t, nSectors+kit.GenesisPreseals-2, int(sectors)) // -2 not recovered sectors
 
 	// pledge a sector after recovery
 
-	pledgeSectors(t, ctx, miner, 1, nSectors, nil)
+	kit.PledgeSectors(t, ctx, miner, 1, nSectors, nil)
 
 	{
 		// Wait until proven.
@@ -257,5 +258,5 @@ func testWindowPostUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
 	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+GenesisPreseals-2+1, int(sectors)) // -2 not recovered sectors + 1 just pledged
+	require.Equal(t, nSectors+kit.GenesisPreseals-2+1, int(sectors)) // -2 not recovered sectors + 1 just pledged
 }

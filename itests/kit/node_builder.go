@@ -1,4 +1,4 @@
-package itests
+package kit
 
 import (
 	"bytes"
@@ -84,7 +84,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 
 	ds, err := lr.Datastore(context.TODO(), "/metadata")
 	require.NoError(t, err)
-	err = ds.Put(datastore.NewKey("miner-address"), act.Bytes())
+	err = ds.Put(datastore.NewKey("Miner-address"), act.Bytes())
 	require.NoError(t, err)
 
 	nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
@@ -139,10 +139,10 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	t.Cleanup(func() { _ = stop(context.Background()) })
 
 	/*// Bootstrap with full node
-	remoteAddrs, err := tnd.NetAddrsListen(ctx)
+	remoteAddrs, err := tnd.NetAddrsListen(Ctx)
 	require.NoError(t, err)
 
-	err = minerapi.NetConnect(ctx, remoteAddrs)
+	err = minerapi.NetConnect(Ctx, remoteAddrs)
 	require.NoError(t, err)*/
 	mineOne := func(ctx context.Context, req lotusminer.MineReq) error {
 		select {

@@ -18,7 +18,7 @@ import (
 // TestMultisig does a basic test to exercise the multisig CLI commands
 func TestMultisig(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	QuietMiningLogs()
+	harness.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,7 +17,7 @@ import (
 )
 
 func TestCCUpgrade(t *testing.T) {
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	for _, height := range []abi.ChainEpoch{
 		-1,   // before
@@ -26,14 +27,14 @@ func TestCCUpgrade(t *testing.T) {
 	} {
 		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			runTestCCUpgrade(t, MockSbBuilder, 5*time.Millisecond, height)
+			runTestCCUpgrade(t, kit.MockSbBuilder, 5*time.Millisecond, height)
 		})
 	}
 }
 
-func runTestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeHeight abi.ChainEpoch) {
+func runTestCCUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Duration, upgradeHeight abi.ChainEpoch) {
 	ctx := context.Background()
-	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(upgradeHeight)}, OneMiner)
+	n, sn := b(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(upgradeHeight)}, kit.OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -53,7 +54,7 @@ func runTestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgra
 		defer close(done)
 		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, MineNext); err != nil {
+			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
 				t.Error(err)
 			}
 		}
@@ -64,10 +65,10 @@ func runTestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgra
 		t.Fatal(err)
 	}
 
-	CC := abi.SectorNumber(GenesisPreseals + 1)
+	CC := abi.SectorNumber(kit.GenesisPreseals + 1)
 	Upgraded := CC + 1
 
-	pledgeSectors(t, ctx, miner, 1, 0, nil)
+	kit.PledgeSectors(t, ctx, miner, 1, 0, nil)
 
 	sl, err := miner.SectorsList(ctx)
 	if err != nil {
@@ -91,7 +92,7 @@ func runTestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgra
 		t.Fatal(err)
 	}
 
-	MakeDeal(t, ctx, 6, client, miner, false, false, 0)
+	kit.MakeDeal(t, ctx, 6, client, miner, false, false, 0)
 
 	// Validate upgrade
 

@@ -1,4 +1,4 @@
-package itests
+package kit
 
 import (
 	"context"
@@ -57,7 +57,7 @@ const GenesisPreseals = 2
 
 const TestSpt = abi.RegisteredSealProof_StackedDrg2KiBV1_1
 
-// Options for setting up a mock storage miner
+// Options for setting up a mock storage Miner
 type StorageMiner struct {
 	Full    int
 	Opts    node.Option

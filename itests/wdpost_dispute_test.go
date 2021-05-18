@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	minerActor "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 	proof3 "github.com/filecoin-project/specs-actors/v3/actors/runtime/proof"
 	"github.com/stretchr/testify/require"
@@ -26,9 +27,9 @@ func TestWindowPostDispute(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
-	b := MockSbBuilder
+	b := kit.MockSbBuilder
 	blocktime := 2 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -38,12 +39,12 @@ func TestWindowPostDispute(t *testing.T) {
 	// it doesn't submit proofs.
 	//
 	// Then we're going to manually submit bad proofs.
-	n, sn := b(t, []FullNodeOpts{
-		FullNodeWithLatestActorsAt(-1),
-	}, []StorageMiner{
-		{Full: 0, Preseal: PresealGenesis},
-		{Full: 0},
-	})
+	n, sn := b(t,
+		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)},
+		[]kit.StorageMiner{
+			{Full: 0, Preseal: kit.PresealGenesis},
+			{Full: 0},
+		})
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	chainMiner := sn[0]
@@ -75,7 +76,7 @@ func TestWindowPostDispute(t *testing.T) {
 		defer close(done)
 		for ctx.Err() == nil {
 			build.Clock.Sleep(blocktime)
-			if err := chainMiner.MineOne(ctx, MineNext); err != nil {
+			if err := chainMiner.MineOne(ctx, kit.MineNext); err != nil {
 				if ctx.Err() != nil {
 					// context was canceled, ignore the error.
 					return
@@ -90,9 +91,9 @@ func TestWindowPostDispute(t *testing.T) {
 	}()
 
 	// Give the chain miner enough sectors to win every block.
-	pledgeSectors(t, ctx, chainMiner, 10, 0, nil)
+	kit.PledgeSectors(t, ctx, chainMiner, 10, 0, nil)
 	// And the evil one 1 sector. No cookie for you.
-	pledgeSectors(t, ctx, evilMiner, 1, 0, nil)
+	kit.PledgeSectors(t, ctx, evilMiner, 1, 0, nil)
 
 	// Let the evil miner's sectors gain power.
 	evilMinerAddr, err := evilMiner.ActorAddress(ctx)
@@ -257,15 +258,15 @@ func TestWindowPostDisputeFails(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	QuietMiningLogs()
+	kit.QuietMiningLogs()
 
-	b := MockSbBuilder
+	b := kit.MockSbBuilder
 	blocktime := 2 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, OneMiner)
+	n, sn := b(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)}, kit.OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
@@ -295,7 +296,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 		defer close(done)
 		for ctx.Err() == nil {
 			build.Clock.Sleep(blocktime)
-			if err := miner.MineOne(ctx, MineNext); err != nil {
+			if err := miner.MineOne(ctx, kit.MineNext); err != nil {
 				if ctx.Err() != nil {
 					// context was canceled, ignore the error.
 					return
@@ -309,7 +310,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 		<-done
 	}()
 
-	pledgeSectors(t, ctx, miner, 10, 0, nil)
+	kit.PledgeSectors(t, ctx, miner, 10, 0, nil)
 
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -330,7 +331,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 
 	ssz, err := miner.ActorSectorSize(ctx, maddr)
 	require.NoError(t, err)
-	expectedPower := types.NewInt(uint64(ssz) * (GenesisPreseals + 10))
+	expectedPower := types.NewInt(uint64(ssz) * (kit.GenesisPreseals + 10))
 
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)

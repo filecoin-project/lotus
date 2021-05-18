@@ -1,4 +1,4 @@
-package itests
+package kit
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	lcli "github.com/urfave/cli/v2"
 )
 
-// RunClientTest exercises some of the client CLI commands
+// RunClientTest exercises some of the Client CLI commands
 func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -29,7 +29,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 	mockCLI := NewMockCLI(ctx, t, cmds)
 	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
-	// Get the miner address
+	// Get the Miner address
 	addrs, err := clientNode.StateListMiners(ctx, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Len(t, addrs, 1)
@@ -37,33 +37,33 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 	minerAddr := addrs[0]
 	fmt.Println("Miner:", minerAddr)
 
-	// client query-ask <miner addr>
-	out := clientCLI.RunCmd("client", "query-ask", minerAddr.String())
+	// Client query-ask <Miner addr>
+	out := clientCLI.RunCmd("Client", "query-ask", minerAddr.String())
 	require.Regexp(t, regexp.MustCompile("Ask:"), out)
 
 	// Create a deal (non-interactive)
-	// client deal --start-epoch=<start epoch> <cid> <miner addr> 1000000attofil <duration>
+	// Client deal --start-epoch=<start epoch> <cid> <Miner addr> 1000000attofil <duration>
 	res, _, err := CreateClientFile(ctx, clientNode, 1)
 	require.NoError(t, err)
 	startEpoch := fmt.Sprintf("--start-epoch=%d", 2<<12)
 	dataCid := res.Root
 	price := "1000000attofil"
 	duration := fmt.Sprintf("%d", build.MinDealDuration)
-	out = clientCLI.RunCmd("client", "deal", startEpoch, dataCid.String(), minerAddr.String(), price, duration)
-	fmt.Println("client deal", out)
+	out = clientCLI.RunCmd("Client", "deal", startEpoch, dataCid.String(), minerAddr.String(), price, duration)
+	fmt.Println("Client deal", out)
 
 	// Create a deal (interactive)
-	// client deal
+	// Client deal
 	// <cid>
 	// <duration> (in days)
-	// <miner addr>
-	// "no" (verified client)
+	// <Miner addr>
+	// "no" (verified Client)
 	// "yes" (confirm deal)
 	res, _, err = CreateClientFile(ctx, clientNode, 2)
 	require.NoError(t, err)
 	dataCid2 := res.Root
 	duration = fmt.Sprintf("%d", build.MinDealDuration/builtin.EpochsInDay)
-	cmd := []string{"client", "deal"}
+	cmd := []string{"Client", "deal"}
 	interactiveCmds := []string{
 		dataCid2.String(),
 		duration,
@@ -72,13 +72,13 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 		"yes",
 	}
 	out = clientCLI.RunInteractiveCmd(cmd, interactiveCmds)
-	fmt.Println("client deal:\n", out)
+	fmt.Println("Client deal:\n", out)
 
 	// Wait for provider to start sealing deal
 	dealStatus := ""
 	for {
-		// client list-deals
-		out = clientCLI.RunCmd("client", "list-deals")
+		// Client list-deals
+		out = clientCLI.RunCmd("Client", "list-deals")
 		fmt.Println("list-deals:\n", out)
 
 		lines := strings.Split(out, "\n")
@@ -97,12 +97,12 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 		time.Sleep(time.Second)
 	}
 
-	// Retrieve the first file from the miner
-	// client retrieve <cid> <file path>
-	tmpdir, err := ioutil.TempDir(os.TempDir(), "test-cli-client")
+	// Retrieve the first file from the Miner
+	// Client retrieve <cid> <file path>
+	tmpdir, err := ioutil.TempDir(os.TempDir(), "test-cli-Client")
 	require.NoError(t, err)
 	path := filepath.Join(tmpdir, "outfile.dat")
-	out = clientCLI.RunCmd("client", "retrieve", dataCid.String(), path)
+	out = clientCLI.RunCmd("Client", "retrieve", dataCid.String(), path)
 	fmt.Println("retrieve:\n", out)
 	require.Regexp(t, regexp.MustCompile("Success"), out)
 }

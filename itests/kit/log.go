@@ -1,9 +1,9 @@
-package itests
+package kit
 
 import logging "github.com/ipfs/go-log/v2"
 
 func QuietMiningLogs() {
-	_ = logging.SetLogLevel("miner", "ERROR")
+	_ = logging.SetLogLevel("Miner", "ERROR")
 	_ = logging.SetLogLevel("chainstore", "ERROR")
 	_ = logging.SetLogLevel("chain", "ERROR")
 	_ = logging.SetLogLevel("sub", "ERROR")
