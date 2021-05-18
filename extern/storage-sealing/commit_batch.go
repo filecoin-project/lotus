@@ -48,9 +48,9 @@ type CommitBatcher struct {
 	getConfig GetSealingConfigFunc
 	verif     ffiwrapper.Verifier
 
-	sectors map[abi.SectorNumber]SectorInfo
-	todo    map[abi.SectorNumber]AggregateInput
-	waiting map[abi.SectorNumber][]chan cid.Cid
+	deadlines map[abi.SectorNumber]time.Time
+	todo      map[abi.SectorNumber]AggregateInput
+	waiting   map[abi.SectorNumber][]chan cid.Cid
 
 	notify, stop, stopped chan struct{}
 	force                 chan chan *cid.Cid
@@ -67,8 +67,9 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		getConfig: getConfig,
 		verif:     verif,
 
-		todo:    map[abi.SectorNumber]AggregateInput{},
-		waiting: map[abi.SectorNumber][]chan cid.Cid{},
+		deadlines: map[abi.SectorNumber]time.Time{},
+		todo:      map[abi.SectorNumber]AggregateInput{},
+		waiting:   map[abi.SectorNumber][]chan cid.Cid{},
 
 		notify:  make(chan struct{}, 1),
 		force:   make(chan chan *cid.Cid),
@@ -126,13 +127,13 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
 
 	var deadline time.Time
 	for sn := range b.todo {
-		sectorDeadline := b.getSectorDeadline(sn)
+		sectorDeadline := b.deadlines[sn]
 		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
 			deadline = sectorDeadline
 		}
 	}
 	for sn := range b.waiting {
-		sectorDeadline := b.getSectorDeadline(sn)
+		sectorDeadline := b.deadlines[sn]
 		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
 			deadline = sectorDeadline
 		}
@@ -155,12 +156,7 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
 	return wait
 }
 
-func (b *CommitBatcher) getSectorDeadline(sn abi.SectorNumber) time.Time {
-	si, ok := b.sectors[sn]
-	if !ok {
-		return time.Time{}
-	}
-
+func (b *CommitBatcher) getSectorDeadline(si SectorInfo) time.Time {
 	tok, curEpoch, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		log.Errorf("getting chain head: %s", err)
@@ -259,7 +255,7 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		}
 		delete(b.waiting, sn)
 		delete(b.todo, sn)
-		delete(b.sectors, sn)
+		delete(b.deadlines, sn)
 		return nil
 	})
 	if err != nil {
@@ -273,7 +269,7 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 func (b *CommitBatcher) AddCommit(ctx context.Context, s SectorInfo, in AggregateInput) (mcid cid.Cid, err error) {
 	sn := s.SectorNumber
 	b.lk.Lock()
-	b.sectors[sn] = s
+	b.deadlines[sn] = b.getSectorDeadline(s)
 	b.todo[sn] = in
 
 	sent := make(chan cid.Cid, 1)
