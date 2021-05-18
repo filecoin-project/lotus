@@ -28,7 +28,6 @@ const arp = abi.RegisteredAggregationProof_SnarkPackV1
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (*api.MarketDeal, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 }
 
@@ -169,14 +168,9 @@ func (b *CommitBatcher) getSectorDeadline(si SectorInfo) time.Time {
 			continue
 		}
 
-		proposal, err := b.api.StateMarketStorageDealProposal(b.mctx, p.DealInfo.DealID, tok)
-		if err != nil {
-			log.Errorf("getting deal proposal for %d: %s", p.DealInfo.DealID, err)
-			continue
-		}
-
-		if proposal.StartEpoch < deadlineEpoch {
-			deadlineEpoch = proposal.StartEpoch
+		startEpoch := p.DealInfo.DealSchedule.StartEpoch
+		if startEpoch < deadlineEpoch {
+			deadlineEpoch = startEpoch
 		}
 	}
 
