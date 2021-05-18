@@ -643,11 +643,10 @@ func RetrievalProvider(h host.Host,
 	pieceStore dtypes.ProviderPieceStore,
 	mds dtypes.StagingMultiDstore,
 	dt dtypes.ProviderDataTransfer,
-	onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
+	pieceProvider sectorstorage.PieceProvider,
 	userFilter dtypes.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
-	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
+	adapter := retrievaladapter.NewRetrievalProviderNode(miner, pieceProvider, full)
 
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {

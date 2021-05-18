@@ -3,6 +3,7 @@ package stores
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/bits"
@@ -16,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 
@@ -413,6 +415,147 @@ func (r *Remote) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	defer resp.Body.Close() // nolint
 
 	return out, nil
+}
+
+func (r *Remote) checkAllocated(ctx context.Context, url string, spt abi.RegisteredSealProof, offset, size abi.PaddedPieceSize) (bool, error) {
+	url = fmt.Sprintf("%s/%d/allocated/%d/%d", url, spt, offset.Unpadded(), size.Unpadded())
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return false, xerrors.Errorf("request: %w", err)
+	}
+	req.Header = r.auth.Clone()
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, xerrors.Errorf("do request: %w", err)
+	}
+	defer resp.Body.Close() // nolint
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusRequestedRangeNotSatisfiable:
+		return false, nil
+	default:
+		return false, xerrors.Errorf("unexpected http response: %d", resp.StatusCode)
+	}
+}
+
+func (r *Remote) readRemote(ctx context.Context, url string, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
+	if len(r.limit) >= cap(r.limit) {
+		log.Infof("Throttling remote read, %d already running", len(r.limit))
+	}
+
+	// TODO: Smarter throttling
+	//  * Priority (just going sequentially is still pretty good)
+	//  * Per interface
+	//  * Aware of remote load
+	select {
+	case r.limit <- struct{}{}:
+		defer func() { <-r.limit }()
+	case <-ctx.Done():
+		return nil, xerrors.Errorf("context error while waiting for fetch limiter: %w", ctx.Err())
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("request: %w", err)
+	}
+	req.Header = r.auth.Clone()
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+size-1))
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, xerrors.Errorf("do request: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		resp.Body.Close() // nolint
+		return nil, xerrors.Errorf("non-200 code: %d", resp.StatusCode)
+	}
+
+	return resp.Body, nil
+}
+
+// Reader gets a reader for unsealed file range. Can return nil in case the requested range isn't allocated in the file
+func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
+	ft := storiface.FTUnsealed
+
+	paths, _, err := r.local.AcquireSector(ctx, s, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+	if err != nil {
+		return nil, xerrors.Errorf("acquire local: %w", err)
+	}
+
+	path := storiface.PathByType(paths, ft)
+	var rd io.ReadCloser
+	if path == "" {
+		si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(si) == 0 {
+			return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
+		}
+
+		// TODO Why are we sorting in ascending order here -> shouldn't we sort in descending order as higher weight means more preferred to store ?
+		sort.Slice(si, func(i, j int) bool {
+			return si[i].Weight < si[j].Weight
+		})
+
+	iloop:
+		for _, info := range si {
+			for _, url := range info.URLs {
+				ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
+				if err != nil {
+					log.Warnw("check if remote has piece", "url", url, "error", err)
+					continue
+				}
+				if !ok {
+					continue
+				}
+
+				rd, err = r.readRemote(ctx, url, offset, size)
+				if err != nil {
+					log.Warnw("reading from remote", "url", url, "error", err)
+					continue
+				}
+				log.Infof("Read remote %s (+%d,%d)", url, offset, size)
+				break iloop
+			}
+		}
+	} else {
+		log.Infof("Read local %s (+%d,%d)", path, offset, size)
+		ssize, err := s.ProofType.SectorSize()
+		if err != nil {
+			return nil, err
+		}
+
+		pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+		if err != nil {
+			return nil, xerrors.Errorf("opening partial file: %w", err)
+		}
+
+		has, err := pf.HasAllocated(storiface.UnpaddedByteIndex(offset.Unpadded()), size.Unpadded())
+		if err != nil {
+			return nil, xerrors.Errorf("has allocated: %w", err)
+		}
+
+		if !has {
+			if err := pf.Close(); err != nil {
+				return nil, xerrors.Errorf("close partial file: %w", err)
+			}
+
+			return nil, nil
+		}
+
+		return pf.Reader(storiface.PaddedByteIndex(offset), size)
+	}
+
+	// note: rd can be nil
+	return rd, nil
 }
 
 var _ Store = &Remote{}

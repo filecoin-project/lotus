@@ -378,6 +378,7 @@ var MinerNode = Options(
 	Override(new(*sectorstorage.Manager), modules.SectorStorage),
 	Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 	Override(new(storiface.WorkerReturn), From(new(sectorstorage.SectorManager))),
+	Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 
 	// Sector storage: Proofs
 	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
@@ -405,6 +406,7 @@ var MinerNode = Options(
 	Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
 	// Markets (retrieval)
+	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 	Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 	Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 	Override(HandleRetrievalKey, modules.HandleRetrieval),
