@@ -16,12 +16,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration) {
+func TestTapeFix(t *testing.T) {
+	QuietMiningLogs()
+
+	var blocktime = 2 * time.Millisecond
+
 	// The "before" case is disabled, because we need the builder to mock 32 GiB sectors to accurately repro this case
 	// TODO: Make the mock sector size configurable and reenable this
-	//t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
-	t.Run("after", func(t *testing.T) { testTapeFix(t, b, blocktime, true) })
+	// t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
+	t.Run("after", func(t *testing.T) { testTapeFix(t, MockSbBuilder, blocktime, true) })
 }
+
 func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -97,5 +102,4 @@ func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool
 		build.Clock.Sleep(100 * time.Millisecond)
 		fmt.Println("WaitSeal")
 	}
-
 }

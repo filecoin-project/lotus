@@ -9,8 +9,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api/test"
-	test2 "github.com/filecoin-project/lotus/node/test"
 )
 
 func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) (TestNode, address.Address) {
@@ -66,7 +64,7 @@ func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Dur
 	}
 
 	// Start mining blocks
-	bm := test.NewBlockMiner(ctx, t, miner, blocktime)
+	bm := NewBlockMiner(ctx, t, miner, blocktime)
 	bm.MineBlocks()
 	t.Cleanup(bm.Stop)
 
@@ -76,7 +74,7 @@ func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Dur
 		t.Fatal(err)
 	}
 
-	test.SendFunds(ctx, t, fullNode1, fullNodeAddr2, abi.NewTokenAmount(1e18))
+	SendFunds(ctx, t, fullNode1, fullNodeAddr2, abi.NewTokenAmount(1e18))
 
 	// Get the first node's address
 	fullNodeAddr1, err := fullNode1.WalletDefaultAddress(ctx)

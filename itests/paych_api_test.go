@@ -26,9 +26,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
+func TestPaymentChannelsAPI(t *testing.T) {
+	QuietMiningLogs()
+
 	ctx := context.Background()
-	n, sn := b(t, TwoFull, OneMiner)
+	n, sn := MockSbBuilder(t, TwoFull, OneMiner)
 
 	paymentCreator := n[0]
 	paymentReceiver := n[1]
@@ -49,7 +51,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	}
 
 	// start mining blocks
-	bm := NewBlockMiner(ctx, t, miner, blocktime)
+	bm := NewBlockMiner(ctx, t, miner, 5*time.Millisecond)
 	bm.MineBlocks()
 
 	// send some funds to register the receiver
@@ -173,7 +175,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 	select {
 	case <-finished:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("Timed out waiting for receiver to submit vouchers")
 	}
 

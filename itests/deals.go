@@ -20,35 +20,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
-	"github.com/filecoin-project/lotus/markets/storageadapter"
-	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
 )
-
-func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	s := setupOneClientOneMiner(t, b, blocktime)
-	defer s.blockMiner.Stop()
-
-	MakeDeal(t, s.ctx, 6, s.client, s.miner, carExport, fastRet, startEpoch)
-}
-
-func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-	s := setupOneClientOneMiner(t, b, blocktime)
-	defer s.blockMiner.Stop()
-
-	MakeDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
-	MakeDeal(t, s.ctx, 7, s.client, s.miner, false, false, startEpoch)
-}
 
 func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
 	res, data, err := CreateClientFile(ctx, client, rseed)
@@ -94,162 +73,6 @@ func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api
 	return res, data, nil
 }
 
-func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-	publishPeriod := 10 * time.Second
-	maxDealsPerMsg := uint64(2)
-
-	// Set max deals per publish deals message to 2
-	minerDef := []StorageMiner{{
-		Full: 0,
-		Opts: node.Override(
-			new(*storageadapter.DealPublisher),
-			storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
-				Period:         publishPeriod,
-				MaxDealsPerMsg: maxDealsPerMsg,
-			})),
-		Preseal: PresealGenesis,
-	}}
-
-	// Create a connect client and miner node
-	n, sn := b(t, OneFull, minerDef)
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-	s := connectAndStartMining(t, b, blocktime, client, miner)
-	defer s.blockMiner.Stop()
-
-	// Starts a deal and waits until it's published
-	runDealTillPublish := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
-		require.NoError(t, err)
-
-		upds, err := client.ClientGetDealUpdates(s.ctx)
-		require.NoError(t, err)
-
-		startDeal(t, s.ctx, s.miner, s.client, res.Root, false, startEpoch)
-
-		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-		time.Sleep(time.Second)
-
-		done := make(chan struct{})
-		go func() {
-			for upd := range upds {
-				if upd.DataRef.Root == res.Root && upd.State == storagemarket.StorageDealAwaitingPreCommit {
-					done <- struct{}{}
-				}
-			}
-		}()
-		<-done
-	}
-
-	// Run three deals in parallel
-	done := make(chan struct{}, maxDealsPerMsg+1)
-	for rseed := 1; rseed <= 3; rseed++ {
-		rseed := rseed
-		go func() {
-			runDealTillPublish(rseed)
-			done <- struct{}{}
-		}()
-	}
-
-	// Wait for two of the deals to be published
-	for i := 0; i < int(maxDealsPerMsg); i++ {
-		<-done
-	}
-
-	// Expect a single PublishStorageDeals message that includes the first two deals
-	msgCids, err := s.client.StateListMessages(s.ctx, &api.MessageMatch{To: market.Address}, types.EmptyTSK, 1)
-	require.NoError(t, err)
-	count := 0
-	for _, msgCid := range msgCids {
-		msg, err := s.client.ChainGetMessage(s.ctx, msgCid)
-		require.NoError(t, err)
-
-		if msg.Method == market.Methods.PublishStorageDeals {
-			count++
-			var pubDealsParams market2.PublishStorageDealsParams
-			err = pubDealsParams.UnmarshalCBOR(bytes.NewReader(msg.Params))
-			require.NoError(t, err)
-			require.Len(t, pubDealsParams.Deals, int(maxDealsPerMsg))
-		}
-	}
-	require.Equal(t, 1, count)
-
-	// The third deal should be published once the publish period expires.
-	// Allow a little padding as it takes a moment for the state change to
-	// be noticed by the client.
-	padding := 10 * time.Second
-	select {
-	case <-time.After(publishPeriod + padding):
-		require.Fail(t, "Expected 3rd deal to be published once publish period elapsed")
-	case <-done: // Success
-	}
-}
-
-func TestBatchDealInput(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-	publishPeriod := 10 * time.Second
-	maxDealsPerMsg := uint64(4)
-
-	// Set max deals per publish deals message to maxDealsPerMsg
-	minerDef := []StorageMiner{{
-		Full: 0,
-		Opts: node.Options(
-			node.Override(
-				new(*storageadapter.DealPublisher),
-				storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
-					Period:         publishPeriod,
-					MaxDealsPerMsg: maxDealsPerMsg,
-				})),
-			node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
-				return func() (sealiface.Config, error) {
-					return sealiface.Config{
-						MaxWaitDealsSectors:       1,
-						MaxSealingSectors:         1,
-						MaxSealingSectorsForDeals: 2,
-						AlwaysKeepUnsealedCopy:    true,
-					}, nil
-				}, nil
-			}),
-		),
-		Preseal: PresealGenesis,
-	}}
-
-	// Create a connect client and miner node
-	n, sn := b(t, OneFull, minerDef)
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-	s := connectAndStartMining(t, b, blocktime, client, miner)
-	defer s.blockMiner.Stop()
-
-	// Starts a deal and waits until it's published
-	runDealTillSeal := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
-		require.NoError(t, err)
-
-		dc := startDeal(t, s.ctx, s.miner, s.client, res.Root, false, startEpoch)
-		waitDealSealed(t, s.ctx, s.miner, s.client, dc, false)
-	}
-
-	// Run maxDealsPerMsg+1 deals in parallel
-	done := make(chan struct{}, maxDealsPerMsg+1)
-	for rseed := 1; rseed <= int(maxDealsPerMsg+1); rseed++ {
-		rseed := rseed
-		go func() {
-			runDealTillSeal(rseed)
-			done <- struct{}{}
-		}()
-	}
-
-	// Wait for maxDealsPerMsg of the deals to be published
-	for i := 0; i < int(maxDealsPerMsg); i++ {
-		<-done
-	}
-
-	sl, err := sn[0].SectorsList(s.ctx)
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(sl), 4)
-	require.LessOrEqual(t, len(sl), 5)
-}
-
 func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
 	s := setupOneClientOneMiner(t, b, blocktime)
 	defer s.blockMiner.Stop()
@@ -276,7 +99,7 @@ func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Durati
 	testRetrieval(t, s.ctx, s.client, fcid, &info.PieceCID, false, data)
 }
 
-func TestSecondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration) {
+func runSecondDealRetrievalTest(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	s := setupOneClientOneMiner(t, b, blocktime)
 	defer s.blockMiner.Stop()
 
@@ -527,10 +350,10 @@ func setupOneClientOneMiner(t *testing.T, b APIBuilder, blocktime time.Duration)
 	n, sn := b(t, OneFull, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
-	return connectAndStartMining(t, b, blocktime, client, miner)
+	return connectAndStartMining(t, blocktime, client, miner)
 }
 
-func connectAndStartMining(t *testing.T, b APIBuilder, blocktime time.Duration, client *impl.FullNodeAPI, miner TestStorageNode) *dealsScaffold {
+func connectAndStartMining(t *testing.T, blocktime time.Duration, client *impl.FullNodeAPI, miner TestStorageNode) *dealsScaffold {
 	ctx := context.Background()
 	addrinfo, err := client.NetAddrsListen(ctx)
 	if err != nil {

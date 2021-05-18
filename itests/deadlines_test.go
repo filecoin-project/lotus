@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
-
-	"github.com/filecoin-project/lotus/api"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -17,10 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -29,6 +23,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	"github.com/filecoin-project/lotus/node/impl"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/stretchr/testify/require"
 )
 
 // TestDeadlineToggling:
@@ -54,16 +53,28 @@ import (
 // * goes through another PP
 // * asserts that miner B loses power
 // * asserts that miner D loses power, is inactive
-func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	var upgradeH abi.ChainEpoch = 4000
-	var provingPeriod abi.ChainEpoch = 2880
+func TestDeadlineToggling(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_DEADLINE_TOGGLING") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_DEADLINE_TOGGLING=1 to run")
+	}
+	_ = logging.SetLogLevel("miner", "ERROR")
+	_ = logging.SetLogLevel("chainstore", "ERROR")
+	_ = logging.SetLogLevel("chain", "ERROR")
+	_ = logging.SetLogLevel("sub", "ERROR")
+	_ = logging.SetLogLevel("storageminer", "FATAL")
 
-	const sectorsC, sectorsD, sectersB = 10, 9, 8
+	const sectorsC, sectorsD, sectorsB = 10, 9, 8
+
+	var (
+		upgradeH      abi.ChainEpoch = 4000
+		provingPeriod abi.ChainEpoch = 2880
+		blocktime                    = 2 * time.Millisecond
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(upgradeH)}, OneMiner)
+	n, sn := MockSbBuilder(t, []FullNodeOpts{FullNodeWithLatestActorsAt(upgradeH)}, OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	minerA := sn[0]
@@ -205,7 +216,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	checkMiner(maddrE, types.NewInt(0), false, types.EmptyTSK)
 
 	// pledge sectors on minerB/minerD, stop post on minerC
-	pledgeSectors(t, ctx, minerB, sectersB, 0, nil)
+	pledgeSectors(t, ctx, minerB, sectorsB, 0, nil)
 	checkMiner(maddrB, types.NewInt(0), true, types.EmptyTSK)
 
 	pledgeSectors(t, ctx, minerD, sectorsD, 0, nil)
@@ -276,7 +287,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	// second round of miner checks
 	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(0), true, types.EmptyTSK)
-	checkMiner(maddrB, types.NewInt(uint64(ssz)*sectersB), true, types.EmptyTSK)
+	checkMiner(maddrB, types.NewInt(uint64(ssz)*sectorsB), true, types.EmptyTSK)
 	checkMiner(maddrD, types.NewInt(uint64(ssz)*sectorsD), true, types.EmptyTSK)
 	checkMiner(maddrE, types.NewInt(0), false, types.EmptyTSK)
 

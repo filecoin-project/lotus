@@ -15,7 +15,9 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
-func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
+func TestCCUpgrade(t *testing.T) {
+	QuietMiningLogs()
+
 	for _, height := range []abi.ChainEpoch{
 		-1,   // before
 		162,  // while sealing
@@ -24,7 +26,7 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	} {
 		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			runTestCCUpgrade(t, b, blocktime, height)
+			runTestCCUpgrade(t, MockSbBuilder, 5*time.Millisecond, height)
 		})
 	}
 }

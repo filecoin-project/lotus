@@ -598,7 +598,7 @@ func CreateRPCServer(t *testing.T, handlers map[string]interface{}) (multiaddr.M
 		rpcServer.Register("Filecoin", handler)
 		m.Handle(path, rpcServer)
 	}
-	testServ := httpNewServer(m) //  todo: close
+	testServ := httptest.NewServer(m) //  todo: close
 	t.Cleanup(testServ.Close)
 	t.Cleanup(testServ.CloseClientConnections)
 
