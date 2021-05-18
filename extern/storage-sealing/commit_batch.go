@@ -22,12 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
 
-var (
-	// TODO: config!
-
-	CommitBatchWait = 5 * time.Minute
-)
-
 const arp = abi.RegisteredAggregationProof_SnarkPackV1
 
 type CommitBatcherApi interface {
@@ -87,6 +81,11 @@ func (b *CommitBatcher) run() {
 	var forceRes chan *cid.Cid
 	var lastMsg *cid.Cid
 
+	cfg, err := b.getConfig()
+	if err != nil {
+		panic(err)
+	}
+
 	for {
 		if forceRes != nil {
 			forceRes <- lastMsg
@@ -101,7 +100,7 @@ func (b *CommitBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-time.After(TerminateBatchWait):
+		case <-time.After(cfg.CommitBatchWait):
 			sendAboveMin = true
 		case fr := <-b.force: // user triggered
 			forceRes = fr

@@ -152,7 +152,7 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		notifee: notifee,
 		addrSel: as,
 
-		terminator: NewTerminationBatcher(context.TODO(), maddr, api, as, fc),
+		terminator: NewTerminationBatcher(context.TODO(), maddr, api, as, fc, gc),
 		commiter:   NewCommitBatcher(context.TODO(), maddr, api, as, fc, gc, verif),
 
 		getConfig: gc,
