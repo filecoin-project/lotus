@@ -517,7 +517,7 @@ func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProo
 		for i := 0; i < 32; i++ {
 			b := svi.UnsealedCID.Bytes()[i] + svi.SealedCID.Bytes()[31-i] - svi.InteractiveRandomness[i]*svi.Randomness[i] // raw proof byte
 
-			b *= uint8(pi)                                                                                                 // with aggregate index
+			b *= uint8(pi) // with aggregate index
 			out[i] += b
 		}
 	}

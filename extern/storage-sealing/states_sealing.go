@@ -3,7 +3,6 @@ package sealing
 import (
 	"bytes"
 	"context"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -590,6 +589,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			UnsealedCID:           *sector.CommD,
 		},
 		proof: sector.Proof, // todo: this correct??
+		spt:   sector.SectorType,
 	})
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})

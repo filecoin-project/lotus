@@ -181,7 +181,6 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, nil
 	}
 
-	spt := b.todo[0].spt
 	proofs := make([][]byte, 0, total)
 	infos := make([]proof5.AggregateSealVerifyInfo, 0, total)
 
@@ -198,9 +197,14 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		proofs = append(proofs, b.todo[info.Number].proof)
 	}
 
+	mid, err := address.IDFromAddress(b.maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("getting miner id: %w", err)
+	}
+
 	params.AggregateProof, err = b.verif.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{
-		Miner:          0,
-		SealProof:      spt,
+		Miner:          abi.ActorID(mid),
+		SealProof:      b.todo[infos[0].Number].spt,
 		AggregateProof: arp,
 		Infos:          infos,
 	}, proofs)

@@ -121,7 +121,7 @@ func TestPledgeBatching(t *testing.T, b APIBuilder, blocktime time.Duration, nSe
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t,  []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, OneMiner)
+	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
