@@ -117,6 +117,52 @@ func TestSDRUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	<-done
 }
 
+func TestPledgeBatching(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, sn := b(t,  []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, OneMiner)
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	addrinfo, err := client.NetAddrsListen(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := miner.NetConnect(ctx, addrinfo); err != nil {
+		t.Fatal(err)
+	}
+	build.Clock.Sleep(time.Second)
+
+	mine := int64(1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for atomic.LoadInt64(&mine) != 0 {
+			build.Clock.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
+
+			}}); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	for {
+		h, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+		if h.Height() > 10 {
+			break
+		}
+	}
+
+	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
+
+	atomic.StoreInt64(&mine, 0)
+	<-done
+}
+
 func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
