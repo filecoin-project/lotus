@@ -827,6 +827,11 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AggregateCommits:          cfg.AggregateCommits,
 				MinCommitBatch:            cfg.MinCommitBatch,
 				MaxCommitBatch:            cfg.MaxCommitBatch,
+				CommitBatchWait:           cfg.CommitBatchWait,
+				CommitBatchSlack:          cfg.CommitBatchSlack,
+				TerminateBatchMax:         cfg.TerminateBatchMax,
+				TerminateBatchMin:         cfg.TerminateBatchMin,
+				TerminateBatchWait:        cfg.TerminateBatchWait,
 			}
 		})
 		return
@@ -845,6 +850,11 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 				AggregateCommits:          cfg.Sealing.AggregateCommits,
 				MinCommitBatch:            cfg.Sealing.MinCommitBatch,
 				MaxCommitBatch:            cfg.Sealing.MaxCommitBatch,
+				CommitBatchWait:           cfg.Sealing.CommitBatchWait,
+				CommitBatchSlack:          cfg.Sealing.CommitBatchSlack,
+				TerminateBatchMax:         cfg.Sealing.TerminateBatchMax,
+				TerminateBatchMin:         cfg.Sealing.TerminateBatchMin,
+				TerminateBatchWait:        cfg.Sealing.TerminateBatchWait,
 			}
 		})
 		return
