@@ -79,6 +79,14 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorDealsExpired{}, DealsExpired),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
+	SubmitPreCommitBatch: planOne(
+		on(SectorPreCommitBatchSent{}, PreCommitBatchWait),
+	),
+	PreCommitBatchWait: planOne(
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+		on(SectorPreCommitLanded{}, WaitSeed),
+		on(SectorRetryPreCommit{}, PreCommitting),
+	),
 	PreCommitWait: planOne(
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 		on(SectorPreCommitLanded{}, WaitSeed),
@@ -343,6 +351,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePreCommitting, processed, nil
 	case SubmitPreCommitBatch:
 		return m.handleSubmitPreCommitBatch, processed, nil
+	case PreCommitBatchWait:
+		fallthrough
 	case PreCommitWait:
 		return m.handlePreCommitWait, processed, nil
 	case WaitSeed:

@@ -113,7 +113,7 @@ func (b *CommitBatcher) run() {
 		var err error
 		lastMsg, err = b.processBatch(sendAboveMax, sendAboveMin)
 		if err != nil {
-			log.Warnw("TerminateBatcher processBatch error", "error", err)
+			log.Warnw("CommitBatcher processBatch error", "error", err)
 		}
 	}
 }

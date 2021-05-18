@@ -104,7 +104,7 @@ func (b *PreCommitBatcher) run() {
 		var err error
 		lastMsg, err = b.processBatch(sendAboveMax, sendAboveMin)
 		if err != nil {
-			log.Warnw("TerminateBatcher processBatch error", "error", err)
+			log.Warnw("PreCommitBatcher processBatch error", "error", err)
 		}
 	}
 }

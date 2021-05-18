@@ -302,6 +302,22 @@ func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (
 }
 
 func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+
+	if cfg.BatchPreCommits {
+		nv, err := m.api.StateNetworkVersion(ctx.Context(), nil)
+		if err != nil {
+			return xerrors.Errorf("getting network version: %w", err)
+		}
+
+		if nv >= network.Version13 {
+			return ctx.Send(SectorPreCommitBatch{})
+		}
+	}
+
 	params, deposit, tok, err := m.preCommitParams(ctx, sector)
 	if err != nil {
 		return err
@@ -349,10 +365,10 @@ func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector Se
 
 	mcid, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)
 	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing precommit batch failed: %w", err)})
 	}
 
-	return ctx.Send(SectorCommitAggregateSent{mcid})
+	return ctx.Send(SectorPreCommitBatchSent{mcid})
 }
 
 func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {

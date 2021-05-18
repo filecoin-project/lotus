@@ -103,6 +103,8 @@
   * [SectorGetExpectedSealDuration](#SectorGetExpectedSealDuration)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
+  * [SectorPreCommitFlush](#SectorPreCommitFlush)
+  * [SectorPreCommitPending](#SectorPreCommitPending)
   * [SectorRemove](#SectorRemove)
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
   * [SectorSetSealDelay](#SectorSetSealDelay)
@@ -1610,6 +1612,27 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SectorPreCommitFlush
+SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
+Returns null if message wasn't sent
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
+### SectorPreCommitPending
+SectorPreCommitPending returns a list of pending PreCommit sectors to be sent in the next batch message
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
 
 ### SectorRemove
 SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can

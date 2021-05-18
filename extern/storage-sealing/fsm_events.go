@@ -154,6 +154,14 @@ type SectorPreCommitBatch struct{}
 
 func (evt SectorPreCommitBatch) apply(*SectorInfo) {}
 
+type SectorPreCommitBatchSent struct {
+	Message cid.Cid
+}
+
+func (evt SectorPreCommitBatchSent) apply(state *SectorInfo) {
+	state.PreCommitMessage = &evt.Message
+}
+
 type SectorPreCommitLanded struct {
 	TipSet TipSetToken
 }
