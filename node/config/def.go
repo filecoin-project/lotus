@@ -258,13 +258,13 @@ func DefaultStorageMiner() *StorageMiner {
 			MinPreCommitBatch:   1,                        // we must have at least one proof to aggregate
 			MaxPreCommitBatch:   204,                      // todo max?
 			PreCommitBatchWait:  Duration(24 * time.Hour), // this can be up to 6 days
-			PreCommitBatchSlack: Duration(8 * time.Hour),
+			PreCommitBatchSlack: Duration(3 * time.Hour),
 
 			AggregateCommits: true,
 			MinCommitBatch:   1,                        // we must have at least one proof to aggregate
 			MaxCommitBatch:   204,                      // this is the maximum aggregation per FIP13
 			CommitBatchWait:  Duration(24 * time.Hour), // this can be up to 6 days
-			CommitBatchSlack: Duration(8 * time.Hour),
+			CommitBatchSlack: Duration(1 * time.Hour),
 
 			TerminateBatchMin:  1,
 			TerminateBatchMax:  100,

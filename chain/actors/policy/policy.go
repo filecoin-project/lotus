@@ -39,7 +39,7 @@ const (
 	ChainFinality                  = miner5.ChainFinality
 	SealRandomnessLookback         = ChainFinality
 	PaychSettleDelay               = paych5.SettleDelay
-	MaxPreCommitRandomnessLookback = builtin5.EpochsInDay + SealRandomnessLookback
+	MaxPreCommitRandomnessLookback = builtin5.EpochsInDay + SealRandomnessLookback // todo fix
 )
 
 // SetSupportedProofTypes sets supported proof types, across all actor versions.
