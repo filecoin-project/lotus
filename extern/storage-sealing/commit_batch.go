@@ -186,8 +186,15 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 
 	for id, p := range b.todo {
 		params.SectorNumbers.Set(uint64(id))
-		proofs = append(proofs, p.proof)
 		infos = append(infos, p.info)
+	}
+
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].Number < infos[j].Number
+	})
+
+	for _, info := range infos {
+		proofs = append(proofs, b.todo[info.Number].proof)
 	}
 
 	params.AggregateProof, err = b.verif.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{

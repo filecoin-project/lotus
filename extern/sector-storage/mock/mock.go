@@ -516,10 +516,17 @@ func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProo
 	for pi, svi := range aggregate.Infos {
 		for i := 0; i < 32; i++ {
 			b := svi.UnsealedCID.Bytes()[i] + svi.SealedCID.Bytes()[31-i] - svi.InteractiveRandomness[i]*svi.Randomness[i] // raw proof byte
+
 			b *= uint8(pi)                                                                                                 // with aggregate index
 			out[i] += b
 		}
 	}
+
+	var sis []abi.SectorNumber
+	for _, info := range aggregate.Infos {
+		sis = append(sis, info.Number)
+	}
+	fmt.Printf("VERSIS %+v\n", sis)
 
 	return bytes.Equal(aggregate.Proof, out), nil
 }
@@ -531,6 +538,13 @@ func (m mockVerif) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyP
 			out[i] += proof[i] * uint8(pi)
 		}
 	}
+
+	var sis []abi.SectorNumber
+	for _, info := range aggregateInfo.Infos {
+		sis = append(sis, info.Number)
+	}
+	fmt.Printf("AGGSIS %+v\n", sis)
+
 	return out, nil
 }
 
