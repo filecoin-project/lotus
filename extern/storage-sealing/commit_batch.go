@@ -18,6 +18,7 @@ import (
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
@@ -27,6 +28,7 @@ const arp = abi.RegisteredAggregationProof_SnarkPackV1
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
+	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 }
 
 type AggregateInput struct {
@@ -45,8 +47,9 @@ type CommitBatcher struct {
 	getConfig GetSealingConfigFunc
 	verif     ffiwrapper.Verifier
 
-	todo    map[abi.SectorNumber]AggregateInput
-	waiting map[abi.SectorNumber][]chan cid.Cid
+	deadlines map[abi.SectorNumber]time.Time
+	todo      map[abi.SectorNumber]AggregateInput
+	waiting   map[abi.SectorNumber][]chan cid.Cid
 
 	notify, stop, stopped chan struct{}
 	force                 chan chan *cid.Cid
@@ -63,8 +66,9 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		getConfig: getConfig,
 		verif:     verif,
 
-		todo:    map[abi.SectorNumber]AggregateInput{},
-		waiting: map[abi.SectorNumber][]chan cid.Cid{},
+		deadlines: map[abi.SectorNumber]time.Time{},
+		todo:      map[abi.SectorNumber]AggregateInput{},
+		waiting:   map[abi.SectorNumber][]chan cid.Cid{},
 
 		notify:  make(chan struct{}, 1),
 		force:   make(chan chan *cid.Cid),
@@ -100,7 +104,7 @@ func (b *CommitBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-time.After(cfg.CommitBatchWait):
+		case <-time.After(b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack)):
 			sendAboveMin = true
 		case fr := <-b.force: // user triggered
 			forceRes = fr
@@ -112,6 +116,69 @@ func (b *CommitBatcher) run() {
 			log.Warnw("TerminateBatcher processBatch error", "error", err)
 		}
 	}
+}
+
+func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
+	now := time.Now()
+
+	b.lk.Lock()
+	defer b.lk.Unlock()
+
+	var deadline time.Time
+	for sn := range b.todo {
+		sectorDeadline := b.deadlines[sn]
+		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
+			deadline = sectorDeadline
+		}
+	}
+	for sn := range b.waiting {
+		sectorDeadline := b.deadlines[sn]
+		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
+			deadline = sectorDeadline
+		}
+	}
+
+	if deadline.IsZero() {
+		return maxWait
+	}
+
+	deadline = deadline.Add(-slack)
+	if deadline.Before(now) {
+		return time.Nanosecond // can't return 0
+	}
+
+	wait := deadline.Sub(now)
+	if wait > maxWait {
+		wait = maxWait
+	}
+
+	return wait
+}
+
+func (b *CommitBatcher) getSectorDeadline(si SectorInfo) time.Time {
+	tok, curEpoch, err := b.api.ChainHead(b.mctx)
+	if err != nil {
+		log.Errorf("getting chain head: %s", err)
+		return time.Time{}
+	}
+
+	deadlineEpoch := si.TicketEpoch
+	for _, p := range si.Pieces {
+		if p.DealInfo == nil {
+			continue
+		}
+
+		startEpoch := p.DealInfo.DealSchedule.StartEpoch
+		if startEpoch < deadlineEpoch {
+			deadlineEpoch = startEpoch
+		}
+	}
+
+	if deadlineEpoch <= curEpoch {
+		return time.Now()
+	}
+
+	return time.Duration(deadlineEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second
 }
 
 func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
@@ -182,6 +249,7 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		}
 		delete(b.waiting, sn)
 		delete(b.todo, sn)
+		delete(b.deadlines, sn)
 		return nil
 	})
 	if err != nil {
@@ -192,12 +260,14 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 }
 
 // register commit, wait for batch message, return message CID
-func (b *CommitBatcher) AddCommit(ctx context.Context, s abi.SectorNumber, in AggregateInput) (mcid cid.Cid, err error) {
+func (b *CommitBatcher) AddCommit(ctx context.Context, s SectorInfo, in AggregateInput) (mcid cid.Cid, err error) {
+	sn := s.SectorNumber
 	b.lk.Lock()
-	b.todo[s] = in
+	b.deadlines[sn] = b.getSectorDeadline(s)
+	b.todo[sn] = in
 
 	sent := make(chan cid.Cid, 1)
-	b.waiting[s] = append(b.waiting[s], sent)
+	b.waiting[sn] = append(b.waiting[sn], sent)
 
 	select {
 	case b.notify <- struct{}{}:
