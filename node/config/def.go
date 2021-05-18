@@ -243,8 +243,8 @@ func DefaultStorageMiner() *StorageMiner {
 			AlwaysKeepUnsealedCopy:    true,
 
 			AggregateCommits: true,
-			MinCommitBatch:   5, // todo: base this on some real numbers
-			MaxCommitBatch:   400,
+			MinCommitBatch:   1,   // we must have at least one proof to aggregate
+			MaxCommitBatch:   204, // this is the maximum aggregation per FIP13
 		},
 
 		Storage: sectorstorage.SealerConfig{
