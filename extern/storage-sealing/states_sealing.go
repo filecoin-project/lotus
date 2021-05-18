@@ -537,7 +537,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
-	mcid, err := m.commiter.AddCommit(ctx.Context(), sector.SectorNumber, AggregateInput{
+	mcid, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
 		info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
 			Randomness:            sector.TicketValue,

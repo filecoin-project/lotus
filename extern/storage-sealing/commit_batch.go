@@ -18,6 +18,7 @@ import (
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
@@ -27,6 +28,8 @@ const arp = abi.RegisteredAggregationProof_SnarkPackV1
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (*api.MarketDeal, error)
+	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 }
 
 type AggregateInput struct {
@@ -45,6 +48,7 @@ type CommitBatcher struct {
 	getConfig GetSealingConfigFunc
 	verif     ffiwrapper.Verifier
 
+	sectors map[abi.SectorNumber]SectorInfo
 	todo    map[abi.SectorNumber]AggregateInput
 	waiting map[abi.SectorNumber][]chan cid.Cid
 
@@ -100,7 +104,7 @@ func (b *CommitBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-time.After(cfg.CommitBatchWait):
+		case <-time.After(b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack)):
 			sendAboveMin = true
 		case fr := <-b.force: // user triggered
 			forceRes = fr
@@ -112,6 +116,79 @@ func (b *CommitBatcher) run() {
 			log.Warnw("TerminateBatcher processBatch error", "error", err)
 		}
 	}
+}
+
+func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
+	now := time.Now()
+
+	b.lk.Lock()
+	defer b.lk.Unlock()
+
+	var deadline time.Time
+	for sn := range b.todo {
+		sectorDeadline := b.getSectorDeadline(sn)
+		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
+			deadline = sectorDeadline
+		}
+	}
+	for sn := range b.waiting {
+		sectorDeadline := b.getSectorDeadline(sn)
+		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
+			deadline = sectorDeadline
+		}
+	}
+
+	if deadline.IsZero() {
+		return maxWait
+	}
+
+	deadline = deadline.Add(-slack)
+	if deadline.Before(now) {
+		return time.Nanosecond // can't return 0
+	}
+
+	wait := deadline.Sub(now)
+	if wait > maxWait {
+		wait = maxWait
+	}
+
+	return wait
+}
+
+func (b *CommitBatcher) getSectorDeadline(sn abi.SectorNumber) time.Time {
+	si, ok := b.sectors[sn]
+	if !ok {
+		return time.Time{}
+	}
+
+	tok, curEpoch, err := b.api.ChainHead(b.mctx)
+	if err != nil {
+		log.Errorf("getting chain head: %s", err)
+		return time.Time{}
+	}
+
+	deadlineEpoch := si.TicketEpoch
+	for _, p := range si.Pieces {
+		if p.DealInfo == nil {
+			continue
+		}
+
+		proposal, err := b.api.StateMarketStorageDealProposal(b.mctx, p.DealInfo.DealID, tok)
+		if err != nil {
+			log.Errorf("getting deal proposal for %d: %s", p.DealInfo.DealID, err)
+			continue
+		}
+
+		if proposal.StartEpoch < deadlineEpoch {
+			deadlineEpoch = proposal.StartEpoch
+		}
+	}
+
+	if deadlineEpoch <= curEpoch {
+		return time.Now()
+	}
+
+	return time.Duration(deadlineEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second
 }
 
 func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
@@ -182,6 +259,7 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		}
 		delete(b.waiting, sn)
 		delete(b.todo, sn)
+		delete(b.sectors, sn)
 		return nil
 	})
 	if err != nil {
@@ -192,12 +270,14 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 }
 
 // register commit, wait for batch message, return message CID
-func (b *CommitBatcher) AddCommit(ctx context.Context, s abi.SectorNumber, in AggregateInput) (mcid cid.Cid, err error) {
+func (b *CommitBatcher) AddCommit(ctx context.Context, s SectorInfo, in AggregateInput) (mcid cid.Cid, err error) {
+	sn := s.SectorNumber
 	b.lk.Lock()
-	b.todo[s] = in
+	b.sectors[sn] = s
+	b.todo[sn] = in
 
 	sent := make(chan cid.Cid, 1)
-	b.waiting[s] = append(b.waiting[s], sent)
+	b.waiting[sn] = append(b.waiting[sn], sent)
 
 	select {
 	case b.notify <- struct{}{}:

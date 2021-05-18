@@ -246,9 +246,10 @@ func DefaultStorageMiner() *StorageMiner {
 			MinCommitBatch:     1,        // we must have at least one proof to aggregate
 			MaxCommitBatch:     204,      // this is the maximum aggregation per FIP13
 			CommitBatchWait:    time.Day, // this can be up to 6 days
-			TerminateBatchMin:  1,        // same as above
-			TerminateBatchMax:  204,      // same as above
-			TerminateBatchWait: time.Day, // this can be up to 6 days
+			CommitBatchSlack:   8 * time.Hour,
+			TerminateBatchMin:  1,
+			TerminateBatchMax:  100,
+			TerminateBatchWait: 5 * time.Minute,
 		},
 
 		Storage: sectorstorage.SealerConfig{

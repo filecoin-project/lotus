@@ -22,6 +22,7 @@ type Config struct {
 	MinCommitBatch   int
 	MaxCommitBatch   int
 	CommitBatchWait  time.Duration
+	CommitBatchSlack time.Duration
 
 	TerminateBatchMax  uint64
 	TerminateBatchMin  uint64
