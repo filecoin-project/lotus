@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 // TODO: refactor this to be direct somehow
@@ -132,3 +133,5 @@ func (m *Miner) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnC
 
 	return sInfo, nil
 }
+
+var _ sectorblocks.SectorBuilder = &Miner{}
