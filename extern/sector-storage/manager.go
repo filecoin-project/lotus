@@ -244,7 +244,7 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 		//  save us some work in case another piece is requested from here
 		log.Debugf("unseal sector %d", sector.ID)
 
-		// Note: This unsealed call will essentially become a no-op of the worker already has an Unsealed sector file for the given sector.
+		// Note: This unseal piece call will essentially become a no-op if the worker already has an Unsealed sector file for the given sector.
 		_, err := m.waitSimpleCall(ctx)(w.UnsealPiece(ctx, sector, 0, abi.PaddedPieceSize(ssize).Unpadded(), ticket, *unsealed))
 		log.Debugf("completed unseal sector %d", sector.ID)
 		return err

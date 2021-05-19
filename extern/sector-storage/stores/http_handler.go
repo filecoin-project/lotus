@@ -249,7 +249,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 	}
 	defer func() {
 		if err := pf.Close(); err != nil {
-			log.Error("close partial file: ", err)
+			log.Error("closing partial file: ", err)
 		}
 	}()
 
