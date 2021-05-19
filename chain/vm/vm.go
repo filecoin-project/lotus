@@ -669,6 +669,12 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	return root, nil
 }
 
+// Get the buffered blockstore associated with the VM. This includes any temporary blocks produced
+// during thsi VM's execution.
+func (vm *VM) ActorStore(ctx context.Context) adt.Store {
+	return adt.WrapStore(ctx, vm.cst)
+}
+
 func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 	switch blk.Cid().Prefix().Codec {
 	case cid.DagCBOR:
