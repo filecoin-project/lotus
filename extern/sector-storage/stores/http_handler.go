@@ -21,8 +21,23 @@ import (
 
 var log = logging.Logger("stores")
 
+var _ partialFileHandler = &DefaultPartialFileHandler{}
+
+// DefaultPartialFileHandler is the default implementation of the partialFileHandler interface.
+// This is probably the only implementation we'll ever use because the purpose of the
+// interface to is to mock out partial file related functionality during testing.
+type DefaultPartialFileHandler struct{}
+
+func (d *DefaultPartialFileHandler) OpenPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialfile.PartialFile, error) {
+	return partialfile.OpenPartialFile(maxPieceSize, path)
+}
+func (d *DefaultPartialFileHandler) HasAllocated(pf *partialfile.PartialFile, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+	return pf.HasAllocated(offset, size)
+}
+
 type FetchHandler struct {
-	*Local
+	Local     Store
+	PfHandler partialFileHandler
 }
 
 func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // /remote/
@@ -88,7 +103,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	paths, _, err := handler.Local.AcquireSector(r.Context(), si, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("AcquireSector: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -104,7 +119,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("os.Stat: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -131,6 +146,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		}
 	} else {
 		w.Header().Set("Content-Type", "application/octet-stream")
+		w.WriteHeader(200)
 		// will do a ranged read over the file at the given path if the caller has asked for a ranged read in the request headers.
 		http.ServeFile(w, r, path)
 	}
@@ -156,7 +172,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := handler.Remove(r.Context(), id, ft, false); err != nil {
+	if err := handler.Local.Remove(r.Context(), id, ft, false); err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
@@ -172,14 +188,14 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 
 	id, err := storiface.ParseSectorID(vars["id"])
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("parsing sectorID: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
 
 	ft, err := ftFromString(vars["type"])
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("ftFromString: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -198,7 +214,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 	spt := abi.RegisteredSealProof(spti)
 	ssize, err := spt.SectorSize()
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("spt.SectorSize(): %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -211,7 +227,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 	}
 	szi, err := strconv.ParseInt(vars["size"], 10, 64)
 	if err != nil {
-		log.Errorf("parsing spt: %+v", err)
+		log.Errorf("parsing size: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -228,7 +244,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 	// return error if we do NOT have it.
 	paths, _, err := handler.Local.AcquireSector(r.Context(), si, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("AcquireSector: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -241,7 +257,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 	}
 
 	// open the Unsealed file and check if it has the Unsealed sector for the piece at the given offset and size.
-	pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+	pf, err := handler.PfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
 	if err != nil {
 		log.Error("opening partial file: ", err)
 		w.WriteHeader(500)
@@ -253,7 +269,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 		}
 	}()
 
-	has, err := pf.HasAllocated(storiface.UnpaddedByteIndex(offi), abi.UnpaddedPieceSize(szi))
+	has, err := handler.PfHandler.HasAllocated(pf, storiface.UnpaddedByteIndex(offi), abi.UnpaddedPieceSize(szi))
 	if err != nil {
 		log.Error("has allocated: ", err)
 		w.WriteHeader(500)
