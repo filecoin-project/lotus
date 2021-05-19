@@ -66,7 +66,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 	}
 
 	var done func()
-	var stagedFile *partialFile
+	var stagedFile *PartialFile
 
 	defer func() {
 		if done != nil {
@@ -97,7 +97,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 			return abi.PieceInfo{}, xerrors.Errorf("acquire unsealed sector: %w", err)
 		}
 
-		stagedFile, err = openPartialFile(maxPieceSize, stagedPath.Unsealed)
+		stagedFile, err = OpenPartialFile(maxPieceSize, stagedPath.Unsealed)
 		if err != nil {
 			return abi.PieceInfo{}, xerrors.Errorf("opening unsealed sector file: %w", err)
 		}
@@ -257,7 +257,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storage.SectorRef, off
 
 	// try finding existing
 	unsealedPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed, storiface.FTNone, storiface.PathStorage)
-	var pf *partialFile
+	var pf *PartialFile
 
 	switch {
 	case xerrors.Is(err, storiface.ErrSectorNotFound):
@@ -275,7 +275,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storage.SectorRef, off
 	case err == nil:
 		defer done()
 
-		pf, err = openPartialFile(maxPieceSize, unsealedPath.Unsealed)
+		pf, err = OpenPartialFile(maxPieceSize, unsealedPath.Unsealed)
 		if err != nil {
 			return xerrors.Errorf("opening partial file: %w", err)
 		}
@@ -427,7 +427,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector storag
 	}
 	maxPieceSize := abi.PaddedPieceSize(ssize)
 
-	pf, err := openPartialFile(maxPieceSize, path.Unsealed)
+	pf, err := OpenPartialFile(maxPieceSize, path.Unsealed)
 	if err != nil {
 		if xerrors.Is(err, os.ErrNotExist) {
 			return false, nil
@@ -611,7 +611,7 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 		}
 		defer done()
 
-		pf, err := openPartialFile(maxPieceSize, paths.Unsealed)
+		pf, err := OpenPartialFile(maxPieceSize, paths.Unsealed)
 		if err == nil {
 			var at uint64
 			for sr.HasNext() {
