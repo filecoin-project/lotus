@@ -29,7 +29,7 @@ import (
 	unixfile "github.com/ipfs/go-unixfs/file"
 )
 
-func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
+func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestMiner, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
 	res, data, err := CreateClientFile(ctx, client, rseed)
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +73,7 @@ func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api
 	return res, data, nil
 }
 
-func StartDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
+func StartDeal(t *testing.T, ctx context.Context, miner TestMiner, client api.FullNode, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func StartDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 	return deal
 }
 
-func WaitDealSealed(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, deal *cid.Cid, noseal bool) {
+func WaitDealSealed(t *testing.T, ctx context.Context, miner TestMiner, client api.FullNode, deal *cid.Cid, noseal bool) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
@@ -129,7 +129,7 @@ loop:
 	}
 }
 
-func WaitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode, deal *cid.Cid) {
+func WaitDealPublished(t *testing.T, ctx context.Context, miner TestMiner, deal *cid.Cid) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	updates, err := miner.MarketGetDealUpdates(subCtx)
@@ -159,7 +159,7 @@ func WaitDealPublished(t *testing.T, ctx context.Context, miner TestStorageNode,
 	}
 }
 
-func StartSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNode) {
+func StartSealingWaiting(t *testing.T, ctx context.Context, miner TestMiner) {
 	snums, err := miner.SectorsList(ctx)
 	require.NoError(t, err)
 
@@ -256,7 +256,7 @@ func ExtractCarData(t *testing.T, ctx context.Context, rdata []byte, rpath strin
 type DealsScaffold struct {
 	Ctx        context.Context
 	Client     *impl.FullNodeAPI
-	Miner      TestStorageNode
+	Miner      TestMiner
 	BlockMiner *BlockMiner
 }
 
@@ -267,7 +267,7 @@ func SetupOneClientOneMiner(t *testing.T, b APIBuilder, blocktime time.Duration)
 	return ConnectAndStartMining(t, blocktime, client, miner)
 }
 
-func ConnectAndStartMining(t *testing.T, blocktime time.Duration, client *impl.FullNodeAPI, miner TestStorageNode) *DealsScaffold {
+func ConnectAndStartMining(t *testing.T, blocktime time.Duration, client *impl.FullNodeAPI, miner TestMiner) *DealsScaffold {
 	ctx := context.Background()
 	addrinfo, err := client.NetAddrsListen(ctx)
 	if err != nil {
@@ -288,4 +288,24 @@ func ConnectAndStartMining(t *testing.T, blocktime time.Duration, client *impl.F
 		Miner:      miner,
 		BlockMiner: blockMiner,
 	}
+}
+
+type TestDealState int
+
+const (
+	TestDealStateFailed     = TestDealState(-1)
+	TestDealStateInProgress = TestDealState(0)
+	TestDealStateComplete   = TestDealState(1)
+)
+
+// CategorizeDealState categorizes deal states into one of three states:
+// Complete, InProgress, Failed.
+func CategorizeDealState(dealStatus string) TestDealState {
+	switch dealStatus {
+	case "StorageDealFailing", "StorageDealError":
+		return TestDealStateFailed
+	case "StorageDealStaged", "StorageDealAwaitingPreCommit", "StorageDealSealing", "StorageDealActive", "StorageDealExpired", "StorageDealSlashed":
+		return TestDealStateComplete
+	}
+	return TestDealStateInProgress
 }

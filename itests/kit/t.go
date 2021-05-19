@@ -30,9 +30,9 @@ func init() {
 	build.InsecurePoStValidation = true
 }
 
-type StorageBuilder func(context.Context, *testing.T, abi.RegisteredSealProof, address.Address) TestStorageNode
+type StorageBuilder func(context.Context, *testing.T, abi.RegisteredSealProof, address.Address) TestMiner
 
-type TestNode struct {
+type TestFullNode struct {
 	v1api.FullNode
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node
@@ -41,7 +41,7 @@ type TestNode struct {
 	Stb StorageBuilder
 }
 
-type TestStorageNode struct {
+type TestMiner struct {
 	lapi.StorageMiner
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node
@@ -64,7 +64,7 @@ type StorageMiner struct {
 	Preseal int
 }
 
-type OptionGenerator func([]TestNode) node.Option
+type OptionGenerator func([]TestFullNode) node.Option
 
 // Options for setting up a mock full node
 type FullNodeOpts struct {
@@ -78,16 +78,13 @@ type FullNodeOpts struct {
 // fullOpts array defines options for each full node
 // storage array defines storage nodes, numbers in the array specify full node
 // index the storage node 'belongs' to
-type APIBuilder func(t *testing.T, full []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode)
-type testSuite struct {
-	makeNodes APIBuilder
-}
+type APIBuilder func(t *testing.T, full []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner)
 
 func DefaultFullOpts(nFull int) []FullNodeOpts {
 	full := make([]FullNodeOpts, nFull)
 	for i := range full {
 		full[i] = FullNodeOpts{
-			Opts: func(nodes []TestNode) node.Option {
+			Opts: func(nodes []TestFullNode) node.Option {
 				return node.Options()
 			},
 		}
@@ -105,7 +102,7 @@ var FullNodeWithLatestActorsAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts
 	}
 
 	return FullNodeOpts{
-		Opts: func(nodes []TestNode) node.Option {
+		Opts: func(nodes []TestFullNode) node.Option {
 			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
 				// prepare for upgrade.
 				Network:   network.Version9,
@@ -126,7 +123,7 @@ var FullNodeWithLatestActorsAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts
 
 var FullNodeWithSDRAt = func(calico, persian abi.ChainEpoch) FullNodeOpts {
 	return FullNodeOpts{
-		Opts: func(nodes []TestNode) node.Option {
+		Opts: func(nodes []TestFullNode) node.Option {
 			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
 				Network:   network.Version6,
 				Height:    1,

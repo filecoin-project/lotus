@@ -44,7 +44,7 @@ func testTapeFix(t *testing.T, b kit.APIBuilder, blocktime time.Duration, after 
 		})
 	}
 
-	n, sn := b(t, []kit.FullNodeOpts{{Opts: func(_ []kit.TestNode) node.Option {
+	n, sn := b(t, []kit.FullNodeOpts{{Opts: func(_ []kit.TestFullNode) node.Option {
 		return node.Override(new(stmgr.UpgradeSchedule), upgradeSchedule)
 	}}}, kit.OneMiner)
 

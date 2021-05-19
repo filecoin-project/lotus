@@ -11,21 +11,26 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+type testSuite struct {
+	makeNodes kit.APIBuilder
+}
+
 func TestAPI(t *testing.T) {
-	runAPITest(t, Builder)
+	runAPITest(t, kit.Builder)
 }
 
 func TestAPIRPC(t *testing.T) {
-	runAPITest(t, RPCBuilder)
+	runAPITest(t, kit.RPCBuilder)
 }
 
 // runAPITest is the entry point to API test suite
-func runAPITest(t *testing.T, b APIBuilder) {
+func runAPITest(t *testing.T, b kit.APIBuilder) {
 	ts := testSuite{
 		makeNodes: b,
 	}
@@ -46,7 +51,7 @@ func (ts *testSuite) testVersion(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, OneFull, OneMiner)
+	apis, _ := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
 	napi := apis[0]
 
 	v, err := napi.Version(ctx)
@@ -61,7 +66,7 @@ func (ts *testSuite) testVersion(t *testing.T) {
 }
 
 func (ts *testSuite) testSearchMsg(t *testing.T) {
-	apis, miners := ts.makeNodes(t, OneFull, OneMiner)
+	apis, miners := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
 
 	api := apis[0]
 	ctx, cancel := context.WithCancel(context.Background())
@@ -76,8 +81,8 @@ func (ts *testSuite) testSearchMsg(t *testing.T) {
 		To:    senderAddr,
 		Value: big.Zero(),
 	}
-	bm := NewBlockMiner(ctx, t, miners[0], 100*time.Millisecond)
-	bm.MineBlocks()
+	bm := kit.NewBlockMiner(t, miners[0])
+	bm.MineBlocks(ctx, 100*time.Millisecond)
 	defer bm.Stop()
 
 	sm, err := api.MpoolPushMessage(ctx, msg, nil)
@@ -105,7 +110,7 @@ func (ts *testSuite) testSearchMsg(t *testing.T) {
 
 func (ts *testSuite) testID(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, OneFull, OneMiner)
+	apis, _ := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
 	api := apis[0]
 
 	id, err := api.ID(ctx)
@@ -117,7 +122,7 @@ func (ts *testSuite) testID(t *testing.T) {
 
 func (ts *testSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, TwoFull, OneMiner)
+	apis, _ := ts.makeNodes(t, kit.TwoFull, kit.OneMiner)
 
 	p, err := apis[0].NetPeers(ctx)
 	if err != nil {
@@ -163,8 +168,8 @@ func (ts *testSuite) testConnectTwo(t *testing.T) {
 
 func (ts *testSuite) testMining(t *testing.T) {
 	ctx := context.Background()
-	apis, sn := ts.makeNodes(t, OneFull, OneMiner)
-	api := apis[0]
+	fulls, miners := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
+	api := fulls[0]
 
 	newHeads, err := api.ChainNotify(ctx)
 	require.NoError(t, err)
@@ -175,7 +180,8 @@ func (ts *testSuite) testMining(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(h1.Height()), int64(baseHeight))
 
-	MineUntilBlock(ctx, t, apis[0], sn[0], nil)
+	bm := kit.NewBlockMiner(t, miners[0])
+	bm.MineUntilBlock(ctx, fulls[0], nil)
 	require.NoError(t, err)
 
 	<-newHeads
@@ -192,8 +198,8 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	apis, sn := ts.makeNodes(t, OneFull, OneMiner)
-	api := apis[0]
+	fulls, miners := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
+	api := fulls[0]
 
 	newHeads, err := api.ChainNotify(ctx)
 	require.NoError(t, err)
@@ -203,7 +209,9 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(at), int64(h1.Height()))
 
-	MineUntilBlock(ctx, t, apis[0], sn[0], nil)
+	bm := kit.NewBlockMiner(t, miners[0])
+
+	bm.MineUntilBlock(ctx, fulls[0], nil)
 	require.NoError(t, err)
 
 	<-newHeads
@@ -212,7 +220,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.NoError(t, err)
 	require.Greater(t, int64(h2.Height()), int64(h1.Height()))
 
-	MineUntilBlock(ctx, t, apis[0], sn[0], nil)
+	bm.MineUntilBlock(ctx, fulls[0], nil)
 	require.NoError(t, err)
 
 	<-newHeads
@@ -224,11 +232,10 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 
 func (ts *testSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
-	n, sn := ts.makeNodes(t, []FullNodeOpts{
-		FullNodeWithLatestActorsAt(-1),
-	}, []StorageMiner{
-		{Full: 0, Preseal: PresealGenesis},
-	})
+	n, sn := ts.makeNodes(t,
+		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)},
+		[]kit.StorageMiner{{Full: 0, Preseal: kit.PresealGenesis}},
+	)
 
 	full, ok := n[0].FullNode.(*impl.FullNodeAPI)
 	if !ok {
@@ -237,8 +244,8 @@ func (ts *testSuite) testNonGenesisMiner(t *testing.T) {
 	}
 	genesisMiner := sn[0]
 
-	bm := NewBlockMiner(ctx, t, genesisMiner, 4*time.Millisecond)
-	bm.MineBlocks()
+	bm := kit.NewBlockMiner(t, genesisMiner)
+	bm.MineBlocks(ctx, 4*time.Millisecond)
 	t.Cleanup(bm.Stop)
 
 	gaa, err := genesisMiner.ActorAddress(ctx)
@@ -247,7 +254,7 @@ func (ts *testSuite) testNonGenesisMiner(t *testing.T) {
 	gmi, err := full.StateMinerInfo(ctx, gaa, types.EmptyTSK)
 	require.NoError(t, err)
 
-	testm := n[0].Stb(ctx, t, TestSpt, gmi.Owner)
+	testm := n[0].Stb(ctx, t, kit.TestSpt, gmi.Owner)
 
 	ta, err := testm.ActorAddress(ctx)
 	require.NoError(t, err)

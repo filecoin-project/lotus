@@ -268,7 +268,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	bm.Stop()
 }
 
-func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymentReceiver kit.TestNode, receiverAddr address.Address, count int) {
+func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymentReceiver kit.TestFullNode, receiverAddr address.Address, count int) {
 	// We need to add null blocks in batches, if we add too many the chain can't sync
 	batchSize := 60
 	for i := 0; i < count; i += batchSize {
@@ -297,7 +297,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymen
 	}
 }
 
-func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
+func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
 	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 

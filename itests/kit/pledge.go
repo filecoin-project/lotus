@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func PledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, existing int, blockNotif <-chan struct{}) {
+func PledgeSectors(t *testing.T, ctx context.Context, miner TestMiner, n, existing int, blockNotif <-chan struct{}) {
 	for i := 0; i < n; i++ {
 		if i%3 == 0 && blockNotif != nil {
 			<-blockNotif

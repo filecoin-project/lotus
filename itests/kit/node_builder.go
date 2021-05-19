@@ -64,7 +64,7 @@ func init() {
 	messagepool.HeadChangeCoalesceMergeInterval = 100 * time.Nanosecond
 }
 
-func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd TestNode, mn mocknet.Mocknet, opts node.Option) TestStorageNode {
+func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd TestFullNode, mn mocknet.Mocknet, opts node.Option) TestMiner {
 	r := repo.NewMemory(nil)
 
 	lr, err := r.Lock(repo.StorageMiner)
@@ -153,11 +153,11 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 		}
 	}
 
-	return TestStorageNode{StorageMiner: minerapi, MineOne: mineOne, Stop: stop}
+	return TestMiner{StorageMiner: minerapi, MineOne: mineOne, Stop: stop}
 }
 
-func storageBuilder(parentNode TestNode, mn mocknet.Mocknet, opts node.Option) StorageBuilder {
-	return func(ctx context.Context, t *testing.T, spt abi.RegisteredSealProof, owner address.Address) TestStorageNode {
+func storageBuilder(parentNode TestFullNode, mn mocknet.Mocknet, opts node.Option) StorageBuilder {
+	return func(ctx context.Context, t *testing.T, spt abi.RegisteredSealProof, owner address.Address) TestMiner {
 		pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 		require.NoError(t, err)
 
@@ -199,30 +199,30 @@ func storageBuilder(parentNode TestNode, mn mocknet.Mocknet, opts node.Option) S
 	}
 }
 
-func Builder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode) {
+func Builder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
 	return mockBuilderOpts(t, fullOpts, storage, false)
 }
 
-func MockSbBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode) {
+func MockSbBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
 	return mockSbBuilderOpts(t, fullOpts, storage, false)
 }
 
-func RPCBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode) {
+func RPCBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
 	return mockBuilderOpts(t, fullOpts, storage, true)
 }
 
-func RPCMockSbBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestNode, []TestStorageNode) {
+func RPCMockSbBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
 	return mockSbBuilderOpts(t, fullOpts, storage, true)
 }
 
-func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestNode, []TestStorageNode) {
+func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestFullNode, []TestMiner) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
 	mn := mocknet.New(ctx)
 
-	fulls := make([]TestNode, len(fullOpts))
-	storers := make([]TestStorageNode, len(storage))
+	fulls := make([]TestFullNode, len(fullOpts))
+	miners := make([]TestMiner, len(storage))
 
 	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
@@ -342,17 +342,17 @@ func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMin
 		if opts == nil {
 			opts = node.Options()
 		}
-		storers[i] = CreateTestStorageNode(ctx, t, wa, genMiner, pk, f, mn, opts)
-		if err := storers[i].StorageAddLocal(ctx, presealDirs[i]); err != nil {
+		miners[i] = CreateTestStorageNode(ctx, t, wa, genMiner, pk, f, mn, opts)
+		if err := miners[i].StorageAddLocal(ctx, presealDirs[i]); err != nil {
 			t.Fatalf("%+v", err)
 		}
 		/*
-			sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
+			sma := miners[i].StorageMiner.(*impl.StorageMinerAPI)
 
 			psd := presealDirs[i]
 		*/
 		if rpc {
-			storers[i] = storerRpc(t, storers[i])
+			miners[i] = storerRpc(t, miners[i])
 		}
 	}
 
@@ -360,33 +360,35 @@ func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMin
 		t.Fatal(err)
 	}
 
-	if len(storers) > 0 {
+	if len(miners) > 0 {
 		// Mine 2 blocks to setup some CE stuff in some actors
 		var wait sync.Mutex
 		wait.Lock()
 
-		MineUntilBlock(ctx, t, fulls[0], storers[0], func(epoch abi.ChainEpoch) {
+		bm := NewBlockMiner(t, miners[0])
+
+		bm.MineUntilBlock(ctx, fulls[0], func(epoch abi.ChainEpoch) {
 			wait.Unlock()
 		})
 
 		wait.Lock()
-		MineUntilBlock(ctx, t, fulls[0], storers[0], func(epoch abi.ChainEpoch) {
+		bm.MineUntilBlock(ctx, fulls[0], func(epoch abi.ChainEpoch) {
 			wait.Unlock()
 		})
 		wait.Lock()
 	}
 
-	return fulls, storers
+	return fulls, miners
 }
 
-func mockSbBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestNode, []TestStorageNode) {
+func mockSbBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestFullNode, []TestMiner) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
 	mn := mocknet.New(ctx)
 
-	fulls := make([]TestNode, len(fullOpts))
-	storers := make([]TestStorageNode, len(storage))
+	fulls := make([]TestFullNode, len(fullOpts))
+	miners := make([]TestMiner, len(storage))
 
 	var genbuf bytes.Buffer
 
@@ -521,7 +523,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageM
 		if opts == nil {
 			opts = node.Options()
 		}
-		storers[i] = CreateTestStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
+		miners[i] = CreateTestStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
 			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
 				return mock.NewMockSectorMgr(sectors), nil
 			}),
@@ -531,7 +533,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageM
 		))
 
 		if rpc {
-			storers[i] = storerRpc(t, storers[i])
+			miners[i] = storerRpc(t, miners[i])
 		}
 	}
 
@@ -539,25 +541,27 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageM
 		t.Fatal(err)
 	}
 
-	if len(storers) > 0 {
+	bm := NewBlockMiner(t, miners[0])
+
+	if len(miners) > 0 {
 		// Mine 2 blocks to setup some CE stuff in some actors
 		var wait sync.Mutex
 		wait.Lock()
 
-		MineUntilBlock(ctx, t, fulls[0], storers[0], func(abi.ChainEpoch) {
+		bm.MineUntilBlock(ctx, fulls[0], func(abi.ChainEpoch) {
 			wait.Unlock()
 		})
 		wait.Lock()
-		MineUntilBlock(ctx, t, fulls[0], storers[0], func(abi.ChainEpoch) {
+		bm.MineUntilBlock(ctx, fulls[0], func(abi.ChainEpoch) {
 			wait.Unlock()
 		})
 		wait.Lock()
 	}
 
-	return fulls, storers
+	return fulls, miners
 }
 
-func fullRpc(t *testing.T, nd TestNode) TestNode {
+func fullRpc(t *testing.T, nd TestFullNode) TestFullNode {
 	ma, listenAddr, err := CreateRPCServer(t, map[string]interface{}{
 		"/rpc/v1": nd,
 		"/rpc/v0": &v0api.WrapperV1Full{FullNode: nd},
@@ -565,7 +569,7 @@ func fullRpc(t *testing.T, nd TestNode) TestNode {
 	require.NoError(t, err)
 
 	var stop func()
-	var full TestNode
+	var full TestFullNode
 	full.FullNode, stop, err = client.NewFullNodeRPCV1(context.Background(), listenAddr+"/rpc/v1", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
@@ -574,14 +578,14 @@ func fullRpc(t *testing.T, nd TestNode) TestNode {
 	return full
 }
 
-func storerRpc(t *testing.T, nd TestStorageNode) TestStorageNode {
+func storerRpc(t *testing.T, nd TestMiner) TestMiner {
 	ma, listenAddr, err := CreateRPCServer(t, map[string]interface{}{
 		"/rpc/v0": nd,
 	})
 	require.NoError(t, err)
 
 	var stop func()
-	var storer TestStorageNode
+	var storer TestMiner
 	storer.StorageMiner, stop, err = client.NewStorageMinerRPCV0(context.Background(), listenAddr+"/rpc/v0", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)

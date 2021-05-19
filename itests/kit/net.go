@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) (TestNode, address.Address) {
+func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) (TestFullNode, address.Address) {
 	n, sn := RPCMockSbBuilder(t, OneFull, OneMiner)
 
 	full := n[0]
@@ -42,7 +42,7 @@ func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Dura
 	return full, fullAddr
 }
 
-func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]TestNode, []address.Address) {
+func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]TestFullNode, []address.Address) {
 	n, sn := RPCMockSbBuilder(t, TwoFull, OneMiner)
 
 	fullNode1 := n[0]

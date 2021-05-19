@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func SendFunds(ctx context.Context, t *testing.T, sender TestNode, addr address.Address, amount abi.TokenAmount) {
+func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, addr address.Address, amount abi.TokenAmount) {
 	senderAddr, err := sender.WalletDefaultAddress(ctx)
 	if err != nil {
 		t.Fatal(err)

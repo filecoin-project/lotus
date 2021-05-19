@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -21,7 +19,7 @@ import (
 )
 
 // RunClientTest exercises some of the Client CLI commands
-func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
+func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -38,7 +36,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 	fmt.Println("Miner:", minerAddr)
 
 	// Client query-ask <Miner addr>
-	out := clientCLI.RunCmd("Client", "query-ask", minerAddr.String())
+	out := clientCLI.RunCmd("client", "query-ask", minerAddr.String())
 	require.Regexp(t, regexp.MustCompile("Ask:"), out)
 
 	// Create a deal (non-interactive)
@@ -90,7 +88,10 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 		}
 		dealStatus = parts[3]
 		fmt.Println("  Deal status:", dealStatus)
-		if dealComplete(t, dealStatus) {
+
+		st := CategorizeDealState(dealStatus)
+		require.NotEqual(t, TestDealStateFailed, st)
+		if st == TestDealStateComplete {
 			break
 		}
 
@@ -105,15 +106,4 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestNode) {
 	out = clientCLI.RunCmd("Client", "retrieve", dataCid.String(), path)
 	fmt.Println("retrieve:\n", out)
 	require.Regexp(t, regexp.MustCompile("Success"), out)
-}
-
-func dealComplete(t *testing.T, dealStatus string) bool {
-	switch dealStatus {
-	case "StorageDealFailing", "StorageDealError":
-		t.Fatal(xerrors.Errorf("Storage deal failed with status: " + dealStatus))
-	case "StorageDealStaged", "StorageDealAwaitingPreCommit", "StorageDealSealing", "StorageDealActive", "StorageDealExpired", "StorageDealSlashed":
-		return true
-	}
-
-	return false
 }

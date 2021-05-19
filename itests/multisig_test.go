@@ -12,20 +12,21 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 )
 
 // TestMultisig does a basic test to exercise the multisig CLI commands
 func TestMultisig(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	harness.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	clientNode, _ := StartOneNodeOneMiner(ctx, t, blocktime)
+	clientNode, _ := kit.StartOneNodeOneMiner(ctx, t, blocktime)
 
 	// Create mock CLI
-	mockCLI := NewMockCLI(ctx, t, cli.Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
 	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
 	// Create some wallets on the node to use for testing multisig
@@ -36,7 +37,7 @@ func TestMultisig(t *testing.T) {
 
 		walletAddrs = append(walletAddrs, addr)
 
-		SendFunds(ctx, t, clientNode, addr, types.NewInt(1e15))
+		kit.SendFunds(ctx, t, clientNode, addr, types.NewInt(1e15))
 	}
 
 	// Create an msig with three of the addresses and threshold of two sigs

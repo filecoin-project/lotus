@@ -378,7 +378,7 @@ func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 }
 
 // waitForHeight waits for the node to reach the given chain epoch
-func waitForHeight(ctx context.Context, t *testing.T, node kit.TestNode, height abi.ChainEpoch) {
+func waitForHeight(ctx context.Context, t *testing.T, node kit.TestFullNode, height abi.ChainEpoch) {
 	atHeight := make(chan struct{})
 	chainEvents := events.NewEvents(ctx, node)
 	err := chainEvents.ChainAt(func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
@@ -396,7 +396,7 @@ func waitForHeight(ctx context.Context, t *testing.T, node kit.TestNode, height 
 }
 
 // getPaychState gets the state of the payment channel with the given address
-func getPaychState(ctx context.Context, t *testing.T, node kit.TestNode, chAddr address.Address) paych.State {
+func getPaychState(ctx context.Context, t *testing.T, node kit.TestFullNode, chAddr address.Address) paych.State {
 	act, err := node.StateGetActor(ctx, chAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
