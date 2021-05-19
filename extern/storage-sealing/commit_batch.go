@@ -194,6 +194,11 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	})
 
 	for _, info := range infos {
+		if len(infos) >= cfg.MaxCommitBatch {
+			log.Infow("commit batch full")
+			break
+		}
+
 		proofs = append(proofs, b.todo[info.Number].proof)
 	}
 
@@ -232,7 +237,7 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("sending message failed: %w", err)
 	}
 
-	log.Infow("Sent ProveCommitAggregate message", "cid", mcid, "from", from, "sectors", total)
+	log.Infow("Sent ProveCommitAggregate message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
 
 	err = params.SectorNumbers.ForEach(func(us uint64) error {
 		sn := abi.SectorNumber(us)

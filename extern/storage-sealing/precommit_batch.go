@@ -172,6 +172,11 @@ func (b *PreCommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	deposit := big.Zero()
 
 	for _, p := range b.todo {
+		if len(params.Sectors) >= cfg.MaxPreCommitBatch {
+			log.Infow("precommit batch full")
+			break
+		}
+
 		params.Sectors = append(params.Sectors, p.pci)
 		deposit = big.Add(deposit, p.deposit)
 	}

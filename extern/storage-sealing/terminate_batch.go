@@ -183,7 +183,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 			Sectors:   toTerminate,
 		})
 
-		if total >= uint64(miner.AddressedSectorsMax) {
+		if total >= uint64(miner.AddressedSectorsMax) || total >= cfg.TerminateBatchMax {
 			break
 		}
 
