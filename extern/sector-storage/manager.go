@@ -336,6 +336,49 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector storage.
 	return nil
 }
 
+func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed *cid.Cid) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTSealed|storiface.FTCache, storiface.FTUnsealed); err != nil {
+		return xerrors.Errorf("acquiring unseal sector lock: %w", err)
+	}
+
+	unsealFetch := func(ctx context.Context, worker Worker) error {
+		if _, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy)); err != nil {
+			return xerrors.Errorf("copy sealed/cache sector data: %w", err)
+		}
+
+		return nil
+	}
+
+	if unsealed == nil {
+		return xerrors.Errorf("cannot unseal piece (sector: %d, offset: %d size: %d) - unsealed cid is undefined", sector, offset, size)
+	}
+
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTSealed|storiface.FTCache, false)
+
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
+		// TODO: make restartable
+
+		// NOTE: we're unsealing the whole sector here as with SDR we can't really
+		//  unseal the sector partially. Requesting the whole sector here can
+		//  save us some work in case another piece is requested from here
+		_, err := m.waitSimpleCall(ctx)(w.UnsealPiece(ctx, sector, 0, abi.PaddedPieceSize(ssize).Unpadded(), ticket, *unsealed))
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *Manager) NewSector(ctx context.Context, sector storage.SectorRef) error {
 	log.Warnf("stub NewSector")
 	return nil

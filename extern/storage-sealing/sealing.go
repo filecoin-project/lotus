@@ -122,7 +122,7 @@ type openSector struct {
 
 type pendingPiece struct {
 	size abi.UnpaddedPieceSize
-	deal DealInfo
+	deal api.PieceDealInfo
 
 	data storage.Data
 

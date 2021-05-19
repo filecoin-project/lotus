@@ -30,7 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-var initRestoreCmd = &cli.Command{
+var restoreCmd = &cli.Command{
 	Name:  "restore",
 	Usage: "Initialize a lotus miner repo from a backup",
 	Flags: []cli.Flag{
