@@ -858,7 +858,7 @@ func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, 
 // a common ancestor. It then returns the respective chain segments that fork
 // from the identified ancestor, in reverse order, where the first element of
 // each slice is the supplied tipset, and the last element is the common
-// ancenstor.
+// ancestor.
 //
 // If an error happens along the way, we return the error with nil slices.
 func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
