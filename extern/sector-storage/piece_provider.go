@@ -43,7 +43,7 @@ func NewPieceProvider(storage *stores.Remote, index stores.SectorIndex, uns Unse
 // tryReadUnsealedPiece will try to read the unsealed piece from an existing unsealed sector file for the given sector from any worker that has it.
 // It will NOT try to schedule an Unseal of a sealed sector file for the read.
 //
-// Will return a nil reader if the piece does NOT exist in any unsealed file/there is not unsealed file for the given sector on any of the workers.
+// Returns a nil reader if the piece does NOT exist in any unsealed file or there is no unsealed file for the given sector on any of the workers.
 func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.ReadCloser, context.CancelFunc, error) {
 	// acquire a lock purely for reading unsealed sectors
 	ctx, cancel := context.WithCancel(ctx)

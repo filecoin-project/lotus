@@ -532,7 +532,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 					continue
 				}
 
-				// readRemote fetches a reader that we can used to read the unsealed piece from the remote worker.
+				// readRemote fetches a reader that we can use to read the unsealed piece from the remote worker.
 				// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
 				rd, err = r.readRemote(ctx, url, offset, size)
 				if err != nil {
