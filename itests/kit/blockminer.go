@@ -2,7 +2,6 @@ package kit
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -11,42 +10,40 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 )
 
-// BlockMiner is a utility that makes a test Miner Mine blocks on a timer.
+// BlockMiner is a utility that makes a test miner Mine blocks on a timer.
 type BlockMiner struct {
-	ctx       context.Context
-	t         *testing.T
-	miner     TestStorageNode
-	blocktime time.Duration
-	done      chan struct{}
+	t     *testing.T
+	miner TestStorageNode
 
-	Mine  int64
-	Nulls int64
+	nextNulls int64
+	stopCh    chan chan struct{}
 }
 
-func NewBlockMiner(ctx context.Context, t *testing.T, miner TestStorageNode, blocktime time.Duration) *BlockMiner {
+func NewBlockMiner(t *testing.T, miner TestStorageNode) *BlockMiner {
 	return &BlockMiner{
-		ctx:       ctx,
-		t:         t,
-		miner:     miner,
-		blocktime: blocktime,
-		Mine:      int64(1),
-		done:      make(chan struct{}),
+		t:      t,
+		miner:  miner,
+		stopCh: make(chan chan struct{}),
 	}
 }
 
-func (bm *BlockMiner) MineBlocks() {
+func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 	time.Sleep(time.Second)
+
 	go func() {
-		defer close(bm.done)
-		for atomic.LoadInt64(&bm.Mine) == 1 {
+		for {
 			select {
-			case <-bm.ctx.Done():
+			case <-time.After(blocktime):
+			case <-ctx.Done():
 				return
-			case <-time.After(bm.blocktime):
+			case ch := <-bm.stopCh:
+				close(ch)
+				close(bm.stopCh)
+				return
 			}
 
-			nulls := atomic.SwapInt64(&bm.Nulls, 0)
-			if err := bm.miner.MineOne(bm.ctx, miner.MineReq{
+			nulls := atomic.SwapInt64(&bm.nextNulls, 0)
+			if err := bm.miner.MineOne(ctx, miner.MineReq{
 				InjectNulls: abi.ChainEpoch(nulls),
 				Done:        func(bool, abi.ChainEpoch, error) {},
 			}); err != nil {
@@ -56,8 +53,20 @@ func (bm *BlockMiner) MineBlocks() {
 	}()
 }
 
+// InjectNulls injects the specified amount of null rounds in the next
+// mining rounds.
+func (bm *BlockMiner) InjectNulls(rounds abi.ChainEpoch) {
+	atomic.AddInt64(&bm.nextNulls, int64(rounds))
+}
+
+// Stop stops the block miner.
 func (bm *BlockMiner) Stop() {
-	atomic.AddInt64(&bm.Mine, -1)
-	fmt.Println("shutting down mining")
-	<-bm.done
+	bm.t.Log("shutting down mining")
+	if _, ok := <-bm.stopCh; ok {
+		// already stopped
+		return
+	}
+	ch := make(chan struct{})
+	bm.stopCh <- ch
+	<-ch
 }

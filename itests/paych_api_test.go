@@ -3,7 +3,6 @@ package itests
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,8 +51,9 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	}
 
 	// start mining blocks
-	bm := kit.NewBlockMiner(ctx, t, miner, 5*time.Millisecond)
-	bm.MineBlocks()
+	bm := kit.NewBlockMiner(t, miner)
+	bm.MineBlocks(ctx, 5*time.Millisecond)
+	t.Cleanup(bm.Stop)
 
 	// send some funds to register the receiver
 	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
@@ -278,7 +278,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymen
 		}
 
 		// Add a batch of null blocks
-		atomic.StoreInt64(&bm.Nulls, int64(size-1))
+		bm.InjectNulls(abi.ChainEpoch(size - 1))
 
 		// Add a real block
 		m, err := paymentReceiver.MpoolPushMessage(ctx, &types.Message{

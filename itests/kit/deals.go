@@ -279,8 +279,8 @@ func ConnectAndStartMining(t *testing.T, blocktime time.Duration, client *impl.F
 	}
 	time.Sleep(time.Second)
 
-	blockMiner := NewBlockMiner(ctx, t, miner, blocktime)
-	blockMiner.MineBlocks()
+	blockMiner := NewBlockMiner(t, miner)
+	blockMiner.MineBlocks(ctx, blocktime)
 
 	return &DealsScaffold{
 		Ctx:        ctx,

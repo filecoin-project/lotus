@@ -28,8 +28,8 @@ func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Dura
 	}
 
 	// Start mining blocks
-	bm := NewBlockMiner(ctx, t, miner, blocktime)
-	bm.MineBlocks()
+	bm := NewBlockMiner(t, miner)
+	bm.MineBlocks(ctx, blocktime)
 	t.Cleanup(bm.Stop)
 
 	// Get the full node's wallet address
@@ -64,8 +64,8 @@ func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Dur
 	}
 
 	// Start mining blocks
-	bm := NewBlockMiner(ctx, t, miner, blocktime)
-	bm.MineBlocks()
+	bm := NewBlockMiner(t, miner)
+	bm.MineBlocks(ctx, blocktime)
 	t.Cleanup(bm.Stop)
 
 	// Send some funds to register the second node
