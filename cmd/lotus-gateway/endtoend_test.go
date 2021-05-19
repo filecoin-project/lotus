@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"os"
 	"testing"
 	"time"
@@ -30,14 +29,10 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node"
 	builder "github.com/filecoin-project/lotus/node/test"
 )
-
-const maxLookbackCap = time.Duration(math.MaxInt64)
-const maxStateWaitLookbackLimit = stmgr.LookbackNoLimit
 
 func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
@@ -53,7 +48,7 @@ func TestWalletMsig(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodes(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	nodes := startNodes(ctx, t, blocktime, DefautLookbackCap, DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
@@ -187,7 +182,7 @@ func TestMsigCLI(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, DefautLookbackCap, DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
@@ -200,7 +195,7 @@ func TestDealFlow(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, DefautLookbackCap, DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	// For these tests where the block time is artificially short, just use
@@ -216,7 +211,7 @@ func TestCLIDealFlow(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, DefautLookbackCap, DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	clitest.RunClientTest(t, cli.Commands, nodes.lite)
