@@ -22,6 +22,11 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+const (
+	DefaultLookbackCap            = time.Hour * 24
+	DefaultStateWaitLookbackLimit = abi.ChainEpoch(20)
+)
+
 // TargetAPI defines the API methods that the Node depends on
 // (to make it easy to mock for tests)
 type TargetAPI interface {

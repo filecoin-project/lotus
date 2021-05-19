@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"time"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -30,11 +29,6 @@ import (
 )
 
 var log = logging.Logger("gateway")
-
-const (
-	LookbackCap            = time.Hour * 24
-	StateWaitLookbackLimit = abi.ChainEpoch(20)
-)
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -81,12 +75,12 @@ var runCmd = &cli.Command{
 		&cli.DurationFlag{
 			Name:  "api-max-lookback",
 			Usage: "maximum duration allowable for tipset lookbacks",
-			Value: LookbackCap,
+			Value: gateway.DefaultLookbackCap,
 		},
 		&cli.Int64Flag{
 			Name:  "api-wait-lookback-limit",
 			Usage: "maximum number of blocks to search back through for message inclusion",
-			Value: int64(StateWaitLookbackLimit),
+			Value: int64(gateway.DefaultStateWaitLookbackLimit),
 		},
 	},
 	Action: func(cctx *cli.Context) error {

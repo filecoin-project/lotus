@@ -6,31 +6,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
-	"github.com/filecoin-project/lotus/build"
-
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/lotus/chain/types/mock"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
-)
+	"github.com/filecoin-project/go-state-types/network"
 
-const (
-	lookbackCap            = time.Hour * 24
-	stateWaitLookbackLimit = abi.ChainEpoch(20)
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/mock"
 )
 
 func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 	ctx := context.Background()
 
-	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(lookbackCap.Seconds())
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultLookbackCap.Seconds())
 	type args struct {
 		h         abi.ChainEpoch
 		tskh      abi.ChainEpoch
@@ -96,7 +89,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := NewNode(mock, lookbackCap, stateWaitLookbackLimit)
+			a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
