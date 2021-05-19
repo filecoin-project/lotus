@@ -46,7 +46,7 @@ type CommitBatcher struct {
 	addrSel   AddrSel
 	feeCfg    FeeConfig
 	getConfig GetSealingConfigFunc
-	verif     ffiwrapper.Verifier
+	prover    ffiwrapper.Prover
 
 	deadlines map[abi.SectorNumber]time.Time
 	todo      map[abi.SectorNumber]AggregateInput
@@ -57,7 +57,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg FeeConfig, getConfig GetSealingConfigFunc, verif ffiwrapper.Verifier) *CommitBatcher {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg FeeConfig, getConfig GetSealingConfigFunc, prov ffiwrapper.Prover) *CommitBatcher {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -65,7 +65,7 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		addrSel:   addrSel,
 		feeCfg:    feeCfg,
 		getConfig: getConfig,
-		verif:     verif,
+		prover:    prov,
 
 		deadlines: map[abi.SectorNumber]time.Time{},
 		todo:      map[abi.SectorNumber]AggregateInput{},
@@ -202,7 +202,7 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("getting miner id: %w", err)
 	}
 
-	params.AggregateProof, err = b.verif.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{
+	params.AggregateProof, err = b.prover.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{
 		Miner:          abi.ActorID(mid),
 		SealProof:      b.todo[infos[0].Number].spt,
 		AggregateProof: arp,

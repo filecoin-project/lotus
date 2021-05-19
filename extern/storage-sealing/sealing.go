@@ -132,7 +132,7 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
+func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, prov ffiwrapper.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
 	s := &Sealing{
 		api:    api,
 		feeCfg: fc,
@@ -155,7 +155,7 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 
 		terminator:  NewTerminationBatcher(context.TODO(), maddr, api, as, fc, gc),
 		precommiter: NewPreCommitBatcher(context.TODO(), maddr, api, as, fc, gc),
-		commiter:    NewCommitBatcher(context.TODO(), maddr, api, as, fc, gc, verif),
+		commiter:    NewCommitBatcher(context.TODO(), maddr, api, as, fc, gc, prov),
 
 		getConfig: gc,
 		dealInfo:  &CurrentDealInfoManager{api},

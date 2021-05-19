@@ -101,8 +101,4 @@ func (cv cachingVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVer
 	return cv.backend.VerifyAggregateSeals(aggregate)
 }
 
-func (cv cachingVerifier) AggregateSealProofs(proofType abi.RegisteredSealProof, rap abi.RegisteredAggregationProof, proofs [][]byte) ([]byte, error) {
-	return cv.backend.AggregateSealProofs(proofType, rap, proofs)
-}
-
 var _ ffiwrapper.Verifier = (*cachingVerifier)(nil)

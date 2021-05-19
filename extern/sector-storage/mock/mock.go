@@ -34,7 +34,7 @@ type SectorMgr struct {
 	lk sync.Mutex
 }
 
-type mockVerif struct{}
+type mockVerifProver struct{}
 
 func NewMockSectorMgr(genesisSectors []abi.SectorID) *SectorMgr {
 	sectors := make(map[abi.SectorID]*sectorState)
@@ -490,7 +490,7 @@ func (mgr *SectorMgr) ReturnFetch(ctx context.Context, callID storiface.CallID, 
 	panic("not supported")
 }
 
-func (m mockVerif) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
+func (m mockVerifProver) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
 	plen, err := svi.SealProof.ProofSize()
 	if err != nil {
 		return false, err
@@ -511,7 +511,7 @@ func (m mockVerif) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
 	out := make([]byte, 200)
 	for pi, svi := range aggregate.Infos {
 		for i := 0; i < 32; i++ {
@@ -531,7 +531,7 @@ func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProo
 	return bytes.Equal(aggregate.Proof, out), nil
 }
 
-func (m mockVerif) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
+func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
 	out := make([]byte, 200) // todo: figure out more real length
 	for pi, proof := range proofs {
 		for i := range proof[:32] {
@@ -548,12 +548,12 @@ func (m mockVerif) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyP
 	return out, nil
 }
 
-func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
+func (m mockVerifProver) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
 	info.Randomness[31] &= 0x3f
 	return true, nil
 }
 
-func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error) {
+func (m mockVerifProver) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error) {
 	if len(info.Proofs) != 1 {
 		return false, xerrors.Errorf("expected 1 proof entry")
 	}
@@ -567,15 +567,17 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStV
 	return true, nil
 }
 
-func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (m mockVerifProver) GenerateDataCommitment(pt abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return ffiwrapper.GenerateUnsealedCID(pt, pieces)
 }
 
-func (m mockVerif) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
+func (m mockVerifProver) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	return []uint64{0}, nil
 }
 
-var MockVerifier = mockVerif{}
+var MockVerifier = mockVerifProver{}
+var MockProver = mockVerifProver{}
 
 var _ storage.Sealer = &SectorMgr{}
 var _ ffiwrapper.Verifier = MockVerifier
+var _ ffiwrapper.Prover = MockProver

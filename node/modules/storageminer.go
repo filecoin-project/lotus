@@ -202,6 +202,7 @@ type StorageMinerParams struct {
 	Sealer             sectorstorage.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
 	Verifier           ffiwrapper.Verifier
+	Prover             ffiwrapper.Prover
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
 	Journal            journal.Journal
 	AddrSel            *storage.AddressSelector
@@ -218,6 +219,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			h      = params.Host
 			sc     = params.SectorIDCounter
 			verif  = params.Verifier
+			prover = params.Prover
 			gsd    = params.GetSealingConfigFn
 			j      = params.Journal
 			as     = params.AddrSel
@@ -235,7 +237,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, gsd, fc, j, as)
+		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, prover, gsd, fc, j, as)
 		if err != nil {
 			return nil, err
 		}

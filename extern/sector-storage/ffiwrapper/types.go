@@ -40,8 +40,12 @@ type Verifier interface {
 	VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error)
 
 	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
+}
 
-	// cheap, makes no sense to put this on the storage interface
+// Prover contains cheap proving-related methods
+type Prover interface {
+	// TODO: move GenerateWinningPoStSectorChallenge from the Verifier interface to here
+
 	AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error)
 }
 
