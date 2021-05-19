@@ -9,8 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/cli"
 	clitest "github.com/filecoin-project/lotus/cli/test"
+	"github.com/filecoin-project/lotus/gateway"
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
@@ -29,14 +31,15 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node"
 	builder "github.com/filecoin-project/lotus/node/test"
 )
 
-const maxLookbackCap = time.Duration(math.MaxInt64)
-const maxStateWaitLookbackLimit = stmgr.LookbackNoLimit
+const (
+	maxLookbackCap            = time.Duration(math.MaxInt64)
+	maxStateWaitLookbackLimit = stmgr.LookbackNoLimit
+)
 
 func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
@@ -275,7 +278,7 @@ func startNodes(
 				fullNode := nodes[0]
 
 				// Create a gateway server in front of the full node
-				gapiImpl := newGatewayAPI(fullNode, lookbackCap, stateWaitLookbackLimit)
+				gapiImpl := gateway.NewNode(fullNode, lookbackCap, stateWaitLookbackLimit)
 				_, addr, err := builder.CreateRPCServer(t, map[string]interface{}{
 					"/rpc/v1": gapiImpl,
 					"/rpc/v0": api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), gapiImpl),

@@ -9,6 +9,7 @@ import (
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/gateway"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/tag"
 
@@ -74,12 +75,12 @@ var runCmd = &cli.Command{
 		&cli.DurationFlag{
 			Name:  "api-max-lookback",
 			Usage: "maximum duration allowable for tipset lookbacks",
-			Value: LookbackCap,
+			Value: gateway.DefaultLookbackCap,
 		},
 		&cli.Int64Flag{
 			Name:  "api-wait-lookback-limit",
 			Usage: "maximum number of blocks to search back through for message inclusion",
-			Value: int64(StateWaitLookbackLimit),
+			Value: int64(gateway.DefaultStateWaitLookbackLimit),
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -122,7 +123,7 @@ var runCmd = &cli.Command{
 
 		waitLookback := abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
 
-		ma := metrics.MetricedGatewayAPI(newGatewayAPI(api, lookbackCap, waitLookback))
+		ma := metrics.MetricedGatewayAPI(gateway.NewNode(api, lookbackCap, waitLookback))
 
 		serveRpc("/rpc/v1", ma)
 		serveRpc("/rpc/v0", lapi.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))
