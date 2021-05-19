@@ -6,6 +6,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
@@ -256,13 +258,13 @@ func DefaultStorageMiner() *StorageMiner {
 
 			BatchPreCommits:     true,
 			MinPreCommitBatch:   1,                        // we must have at least one proof to aggregate
-			MaxPreCommitBatch:   204,                      // todo max?
+			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize,                      //
 			PreCommitBatchWait:  Duration(24 * time.Hour), // this can be up to 6 days
 			PreCommitBatchSlack: Duration(3 * time.Hour),
 
 			AggregateCommits: true,
 			MinCommitBatch:   1,                        // we must have at least one proof to aggregate
-			MaxCommitBatch:   204,                      // this is the maximum aggregation per FIP13
+			MaxCommitBatch:   miner5.MaxAggregatedSectors,                      // this is the maximum aggregation per FIP13
 			CommitBatchWait:  Duration(24 * time.Hour), // this can be up to 6 days
 			CommitBatchSlack: Duration(1 * time.Hour),
 
