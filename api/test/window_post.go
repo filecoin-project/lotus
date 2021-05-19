@@ -201,6 +201,20 @@ func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSect
 	<-done
 }
 
+func flushSealingBatches(t *testing.T, ctx context.Context, miner TestStorageNode) {
+	pcb, err := miner.SectorPreCommitFlush(ctx)
+	require.NoError(t, err)
+	if pcb != nil {
+		fmt.Printf("PRECOMMIT BATCH: %s\n", *pcb)
+	}
+
+	cb, err := miner.SectorCommitFlush(ctx)
+	require.NoError(t, err)
+	if cb != nil {
+		fmt.Printf("COMMIT BATCH: %s\n", *cb)
+	}
+}
+
 func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, existing int, blockNotif <-chan struct{}) {
 	for i := 0; i < n; i++ {
 		if i%3 == 0 && blockNotif != nil {
@@ -234,17 +248,7 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 	}
 
 	for len(toCheck) > 0 {
-		pcb, err := miner.SectorPreCommitFlush(ctx)
-		require.NoError(t, err)
-		if pcb != nil {
-			fmt.Printf("PRECOMMIT BATCH: %s\n", *pcb)
-		}
-
-		cb, err := miner.SectorCommitFlush(ctx)
-		require.NoError(t, err)
-		if cb != nil {
-			fmt.Printf("COMMIT BATCH: %s\n", *cb)
-		}
+		flushSealingBatches(t, ctx, miner)
 
 		for n := range toCheck {
 			st, err := miner.SectorsStatus(ctx, n, false)

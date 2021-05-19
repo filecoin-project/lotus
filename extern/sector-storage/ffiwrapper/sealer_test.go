@@ -542,12 +542,12 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 
 	aggStart := time.Now()
 
-	avi.Proof, err = ProofVerifier.AggregateSealProofs(avi, toAggregate)
+	avi.Proof, err = ProofProver.AggregateSealProofs(avi, toAggregate)
 	require.NoError(t, err)
 
 	aggDone := time.Now()
 
-	_, err = ProofVerifier.AggregateSealProofs(avi, toAggregate)
+	_, err = ProofProver.AggregateSealProofs(avi, toAggregate)
 	require.NoError(t, err)
 
 	aggHot := time.Now()
