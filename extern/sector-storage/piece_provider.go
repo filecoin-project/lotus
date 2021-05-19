@@ -52,6 +52,9 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage
 		return nil, nil, xerrors.Errorf("acquiring read sector lock: %w", err)
 	}
 
+	// Reader returns a reader for an unsealed piece at the given offset in the given sector.
+	// The returned reader will be nil if none of the workers has an unsealed sector file containing
+	// the unsealed piece.
 	r, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded())
 	if err != nil {
 		cancel()
@@ -85,7 +88,11 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 	}
 
 	var uns bool
+
 	if r == nil {
+		// a nil reader means that none of the workers has an unsealed sector file
+		// containing the unsealed piece.
+		// we now need to unseal a sealed sector file for the given sector to read the unsealed piece from it.
 		uns = true
 		commd := &unsealed
 		if unsealed == cid.Undef {
@@ -111,6 +118,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 
 	upr, err := fr32.NewUnpadReader(r, size.Padded())
 	if err != nil {
+		unlock()
 		return nil, uns, xerrors.Errorf("creating unpadded reader: %w", err)
 	}
 

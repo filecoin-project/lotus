@@ -498,52 +498,8 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 	}
 
 	path := storiface.PathByType(paths, ft)
-	var rd io.ReadCloser
 
-	if path == "" {
-		// if we don't have the unsealed sector file locally, we'll first lookup the Miner Sector Store Index
-		// to determine which workers have the unsealed file and then query those workers to know
-		// if they have the unsealed piece in the unsealed sector file.
-		si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(si) == 0 {
-			return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
-		}
-
-		// TODO Why are we sorting in ascending order here -> shouldn't we sort in descending order as higher weight means more likely to have the file ?
-		sort.Slice(si, func(i, j int) bool {
-			return si[i].Weight < si[j].Weight
-		})
-
-	iloop:
-		for _, info := range si {
-			for _, url := range info.URLs {
-				// checkAllocated makes a JSON RPC query to a remote worker to determine if it has
-				// unsealed piece in their unsealed sector file.
-				ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
-				if err != nil {
-					log.Warnw("check if remote has piece", "url", url, "error", err)
-					continue
-				}
-				if !ok {
-					continue
-				}
-
-				// readRemote fetches a reader that we can use to read the unsealed piece from the remote worker.
-				// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
-				rd, err = r.readRemote(ctx, url, offset, size)
-				if err != nil {
-					log.Warnw("reading from remote", "url", url, "error", err)
-					continue
-				}
-				log.Infof("Read remote %s (+%d,%d)", url, offset, size)
-				break iloop
-			}
-		}
-	} else {
+	if path != "" {
 		// if we have the unsealed file locally, return a reader that can be used to read the contents of the
 		// unsealed piece.
 		log.Infof("Read local %s (+%d,%d)", path, offset, size)
@@ -576,8 +532,53 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		return pf.Reader(storiface.PaddedByteIndex(offset), size)
 	}
 
-	// note: rd can be nil
-	return rd, nil
+	// --- We don't have the unsealed sector file locally
+
+	// if we don't have the unsealed sector file locally, we'll first lookup the Miner Sector Store Index
+	// to determine which workers have the unsealed file and then query those workers to know
+	// if they have the unsealed piece in the unsealed sector file.
+	si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(si) == 0 {
+		return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
+	}
+
+	// TODO Why are we sorting in ascending order here -> shouldn't we sort in descending order as higher weight means more likely to have the file ?
+	sort.Slice(si, func(i, j int) bool {
+		return si[i].Weight < si[j].Weight
+	})
+
+	for _, info := range si {
+		for _, url := range info.URLs {
+			// checkAllocated makes a JSON RPC query to a remote worker to determine if it has
+			// unsealed piece in their unsealed sector file.
+			ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
+			if err != nil {
+				log.Warnw("check if remote has piece", "url", url, "error", err)
+				continue
+			}
+			if !ok {
+				continue
+			}
+
+			// readRemote fetches a reader that we can use to read the unsealed piece from the remote worker.
+			// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
+			rd, err := r.readRemote(ctx, url, offset, size)
+			if err != nil {
+				log.Warnw("reading from remote", "url", url, "error", err)
+				continue
+			}
+			log.Infof("Read remote %s (+%d,%d)", url, offset, size)
+			return rd, nil
+		}
+	}
+
+	// we couldn't find a unsealed file with the unsealed piece, will return a nil reader.
+	log.Debugf("returning nil reader, did not find unsealed piece for %+v (+%d,%d)", s, offset, size)
+	return nil, nil
 }
 
 var _ Store = &Remote{}
