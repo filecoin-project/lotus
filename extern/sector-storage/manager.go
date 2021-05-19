@@ -114,7 +114,7 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 		ls:         ls,
 		storage:    stor,
 		localStore: lstor,
-		remoteHnd:  &stores.FetchHandler{Local: lstor},
+		remoteHnd:  &stores.FetchHandler{Local: lstor, PfHandler: &stores.DefaultPartialFileHandler{}},
 		index:      si,
 
 		sched: newScheduler(),
