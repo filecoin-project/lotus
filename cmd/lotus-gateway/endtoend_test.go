@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/cli"
 	clitest "github.com/filecoin-project/lotus/cli/test"
+	"github.com/filecoin-project/lotus/gateway"
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
@@ -275,7 +276,7 @@ func startNodes(
 				fullNode := nodes[0]
 
 				// Create a gateway server in front of the full node
-				gapiImpl := newGatewayAPI(fullNode, lookbackCap, stateWaitLookbackLimit)
+				gapiImpl := gateway.NewNode(fullNode, lookbackCap, stateWaitLookbackLimit)
 				_, addr, err := builder.CreateRPCServer(t, map[string]interface{}{
 					"/rpc/v1": gapiImpl,
 					"/rpc/v0": api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), gapiImpl),

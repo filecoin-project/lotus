@@ -5,10 +5,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/gateway"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/tag"
 
@@ -28,6 +30,11 @@ import (
 )
 
 var log = logging.Logger("gateway")
+
+const (
+	LookbackCap            = time.Hour * 24
+	StateWaitLookbackLimit = abi.ChainEpoch(20)
+)
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -122,7 +129,7 @@ var runCmd = &cli.Command{
 
 		waitLookback := abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
 
-		ma := metrics.MetricedGatewayAPI(newGatewayAPI(api, lookbackCap, waitLookback))
+		ma := metrics.MetricedGatewayAPI(gateway.NewNode(api, lookbackCap, waitLookback))
 
 		serveRpc("/rpc/v1", ma)
 		serveRpc("/rpc/v0", lapi.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))
