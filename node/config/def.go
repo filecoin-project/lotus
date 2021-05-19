@@ -257,15 +257,15 @@ func DefaultStorageMiner() *StorageMiner {
 			AlwaysKeepUnsealedCopy:    true,
 
 			BatchPreCommits:     true,
-			MinPreCommitBatch:   1,                        // we must have at least one proof to aggregate
-			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize,                      //
-			PreCommitBatchWait:  Duration(24 * time.Hour), // this can be up to 6 days
+			MinPreCommitBatch:   1,                                  // we must have at least one proof to aggregate
+			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize, //
+			PreCommitBatchWait:  Duration(24 * time.Hour),           // this can be up to 6 days
 			PreCommitBatchSlack: Duration(3 * time.Hour),
 
 			AggregateCommits: true,
-			MinCommitBatch:   1,                        // we must have at least one proof to aggregate
-			MaxCommitBatch:   miner5.MaxAggregatedSectors,                      // this is the maximum aggregation per FIP13
-			CommitBatchWait:  Duration(24 * time.Hour), // this can be up to 6 days
+			MinCommitBatch:   1,                           // we must have at least one proof to aggregate
+			MaxCommitBatch:   miner5.MaxAggregatedSectors, // this is the maximum aggregation per FIP13
+			CommitBatchWait:  Duration(24 * time.Hour),    // this can be up to 6 days
 			CommitBatchSlack: Duration(1 * time.Hour),
 
 			TerminateBatchMin:  1,
