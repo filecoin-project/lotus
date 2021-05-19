@@ -1,4 +1,4 @@
-package main
+package itests
 
 import (
 	"bytes"
@@ -8,30 +8,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/cli"
-	clitest "github.com/filecoin-project/lotus/cli/test"
-	"github.com/filecoin-project/lotus/gateway"
-
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
-
-	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/gateway"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
-	builder "github.com/filecoin-project/lotus/node/test"
+
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 )
 
 func init() {
@@ -44,11 +42,11 @@ func init() {
 // node that is connected through a gateway to a full API node
 func TestWalletMsig(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodes(ctx, t, blocktime, DefautLookbackCap, DefaultStateWaitLookbackLimit)
+	nodes := startNodes(ctx, t, blocktime, gateway.DefautLookbackCap, gateway.DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
@@ -178,49 +176,49 @@ func TestWalletMsig(t *testing.T) {
 // on a lite node that is connected through a gateway to a full API node
 func TestMsigCLI(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, DefautLookbackCap, DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefautLookbackCap, gateway.DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
-	clitest.RunMultisigTest(t, cli.Commands, lite)
+	runMultisigTests(t, lite)
 }
 
 func TestDealFlow(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, DefautLookbackCap, DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefautLookbackCap, gateway.DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
 	// so that the deal starts sealing in time
 	dealStartEpoch := abi.ChainEpoch(2 << 12)
-	test.MakeDeal(t, ctx, 6, nodes.lite, nodes.miner, false, false, dealStartEpoch)
+	kit.MakeDeal(t, ctx, 6, nodes.lite, nodes.miner, false, false, dealStartEpoch)
 }
 
 func TestCLIDealFlow(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, DefautLookbackCap, DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefautLookbackCap, gateway.DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
-	clitest.RunClientTest(t, cli.Commands, nodes.lite)
+	kit.RunClientTest(t, cli.Commands, nodes.lite)
 }
 
 type testNodes struct {
-	lite   test.TestNode
-	full   test.TestNode
-	miner  test.TestStorageNode
+	lite   kit.TestFullNode
+	full   kit.TestFullNode
+	miner  kit.TestMiner
 	closer jsonrpc.ClientCloser
 }
 
@@ -263,16 +261,16 @@ func startNodes(
 	// - Connect lite node -> gateway server -> full node
 	opts := append(
 		// Full node
-		test.OneFull,
+		kit.OneFull,
 		// Lite node
-		test.FullNodeOpts{
+		kit.FullNodeOpts{
 			Lite: true,
-			Opts: func(nodes []test.TestNode) node.Option {
+			Opts: func(nodes []kit.TestFullNode) node.Option {
 				fullNode := nodes[0]
 
 				// Create a gateway server in front of the full node
 				gapiImpl := gateway.NewNode(fullNode, lookbackCap, stateWaitLookbackLimit)
-				_, addr, err := builder.CreateRPCServer(t, map[string]interface{}{
+				_, addr, err := kit.CreateRPCServer(t, map[string]interface{}{
 					"/rpc/v1": gapiImpl,
 					"/rpc/v0": api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), gapiImpl),
 				})
@@ -288,7 +286,7 @@ func startNodes(
 			},
 		},
 	)
-	n, sn := builder.RPCMockSbBuilder(t, opts, test.OneMiner)
+	n, sn := kit.RPCMockSbBuilder(t, opts, kit.OneMiner)
 
 	full := n[0]
 	lite := n[1]
@@ -310,14 +308,14 @@ func startNodes(
 	require.NoError(t, err)
 
 	// Start mining blocks
-	bm := test.NewBlockMiner(ctx, t, miner, blocktime)
-	bm.MineBlocks()
+	bm := kit.NewBlockMiner(t, miner)
+	bm.MineBlocks(ctx, blocktime)
 	t.Cleanup(bm.Stop)
 
 	return &testNodes{lite: lite, full: full, miner: miner, closer: closer}
 }
 
-func sendFunds(ctx context.Context, fromNode test.TestNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
+func sendFunds(ctx context.Context, fromNode kit.TestFullNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
 	msg := &types.Message{
 		From:  fromAddr,
 		To:    toAddr,

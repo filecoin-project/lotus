@@ -93,7 +93,7 @@ func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn TestFullNode, cb fu
 					break
 				}
 
-				require.Equal(bm.t, i, nloops-1, "block never managed to sync to node")
+				require.NotEqual(bm.t, i, nloops-1, "block never managed to sync to node")
 				time.Sleep(time.Millisecond * 10)
 			}
 

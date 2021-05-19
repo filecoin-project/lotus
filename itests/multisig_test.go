@@ -25,7 +25,12 @@ func TestMultisig(t *testing.T) {
 	ctx := context.Background()
 	clientNode, _ := kit.StartOneNodeOneMiner(ctx, t, blocktime)
 
+	runMultisigTests(t, clientNode)
+}
+
+func runMultisigTests(t *testing.T, clientNode kit.TestFullNode) {
 	// Create mock CLI
+	ctx := context.Background()
 	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
 	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
