@@ -26,8 +26,8 @@ func TestRemoteGetAllocated(t *testing.T) {
 	pfPath := "path"
 	expectedSectorRef := storage.SectorRef{
 		ID: abi.SectorID{
-			123,
-			123,
+			Miner:  123,
+			Number: 123,
 		},
 		ProofType: 0,
 	}
@@ -196,6 +196,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 	}
 
 	for name, tc := range tcs {
+		tc := tc
 		t.Run(name, func(t *testing.T) {
 			lstore := &mocks.Store{}
 			pfhandler := &mocks.PartialFileHandler{}
@@ -210,6 +211,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 			defer ts.Close()
 
 			pi := validPieceInfo
+
 			if tc.piFnc != nil {
 				tc.piFnc(&pi)
 			}
@@ -231,7 +233,9 @@ func TestRemoteGetAllocated(t *testing.T) {
 				pi.size)
 			resp, err := http.Get(url)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 
 			// assert expected status code
 			require.Equal(t, tc.expectedStatusCode, resp.StatusCode)
@@ -250,8 +254,8 @@ func TestRemoteGetSector(t *testing.T) {
 	validSectorFileType := storiface.FTUnsealed.String()
 	expectedSectorRef := storage.SectorRef{
 		ID: abi.SectorID{
-			123,
-			123,
+			Miner:  123,
+			Number: 123,
 		},
 		ProofType: 0,
 	}
@@ -359,6 +363,7 @@ func TestRemoteGetSector(t *testing.T) {
 	}
 
 	for name, tc := range tcs {
+		tc := tc
 		t.Run(name, func(t *testing.T) {
 			var path string
 
@@ -366,7 +371,11 @@ func TestRemoteGetSector(t *testing.T) {
 				// create file
 				tempFile, err := ioutil.TempFile("", "TestRemoteGetSector-")
 				require.NoError(t, err)
-				defer os.Remove(tempFile.Name())
+
+				defer func() {
+					_ = os.Remove(tempFile.Name())
+				}()
+
 				_, err = tempFile.Write(fileBytes)
 				require.NoError(t, err)
 				path = tempFile.Name()
@@ -374,12 +383,19 @@ func TestRemoteGetSector(t *testing.T) {
 				// create dir with a file
 				tempFile2, err := ioutil.TempFile("", "TestRemoteGetSector-")
 				require.NoError(t, err)
-				defer os.Remove(tempFile2.Name())
+				defer func() {
+					_ = os.Remove(tempFile2.Name())
+				}()
+
 				stat, err := os.Stat(tempFile2.Name())
 				require.NoError(t, err)
 				tempDir, err := ioutil.TempDir("", "TestRemoteGetSector-")
 				require.NoError(t, err)
-				defer os.RemoveAll(tempDir)
+
+				defer func() {
+					_ = os.RemoveAll(tempDir)
+				}()
+
 				require.NoError(t, os.Rename(tempFile2.Name(), filepath.Join(tempDir, stat.Name())))
 
 				path = tempDir
@@ -414,7 +430,9 @@ func TestRemoteGetSector(t *testing.T) {
 			)
 			resp, err := http.Get(url)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 
 			bz, err := ioutil.ReadAll(resp.Body)
 			require.NoError(t, err)
