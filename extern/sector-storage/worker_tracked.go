@@ -2,7 +2,6 @@ package sectorstorage
 
 import (
 	"context"
-	"io"
 	"sync"
 	"time"
 
@@ -154,10 +153,6 @@ func (t *trackedWorker) Fetch(ctx context.Context, s storage.SectorRef, ft stori
 
 func (t *trackedWorker) UnsealPiece(ctx context.Context, id storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
 	return t.tracker.track(ctx, t.wid, t.workerInfo, id, sealtasks.TTUnseal)(t.Worker.UnsealPiece(ctx, id, index, size, randomness, cid))
-}
-
-func (t *trackedWorker) ReadPiece(ctx context.Context, writer io.Writer, id storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (storiface.CallID, error) {
-	return t.tracker.track(ctx, t.wid, t.workerInfo, id, sealtasks.TTReadUnsealed)(t.Worker.ReadPiece(ctx, writer, id, index, size))
 }
 
 var _ Worker = &trackedWorker{}

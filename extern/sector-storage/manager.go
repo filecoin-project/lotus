@@ -133,7 +133,7 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 	go m.sched.runSched()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTReadUnsealed,
+		sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
 	}
 	if sc.AllowAddPiece {
 		localTasks = append(localTasks, sealtasks.TTAddPiece)
