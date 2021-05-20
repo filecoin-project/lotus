@@ -353,6 +353,8 @@ func (st *Local) reportStorage(ctx context.Context) {
 	}
 }
 
+// Reserve reserves space for the given sector file types on the given local storage directories after accounting for the overhead incurred by storing
+// sector files for the sector size that the given proof type entails.
 func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
 	ssize, err := sid.ProofType.SectorSize()
 	if err != nil {
@@ -414,7 +416,13 @@ func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 	return done, nil
 }
 
-func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
+// AcquireSector is used to perform two functions for a sector with the given ID:
+//
+// 1. Enlist local storage IDs and absolute paths containing the sector files for the file types present in the `existing` bitmask.
+//
+// 2. Enlist candidate storage IDs and absolute paths that can be used to store the sector files for the file types present in the `allocate` bitmask.
+//    Only storage directories that support the storage capability (sealing / long term storage)  required by the given `pathType` will be considered.
+func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, _ storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
 	if existing|allocate != existing^allocate {
 		return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.New("can't both find and allocate a sector")
 	}
@@ -537,6 +545,8 @@ func (st *Local) Local(ctx context.Context) ([]StoragePath, error) {
 	return out, nil
 }
 
+// Remove removes the given sector file types  for the given sector from the local sealing scratch space and also from the local
+// long term storage. It basically removes them completely from the local sector store.
 func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType, force bool) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
@@ -560,6 +570,8 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ storiface.Sec
 	return nil
 }
 
+// RemoveCopies removes all copies of the given sector file types for the given sector from the local sealing scratch space.
+// However, it does NOT remove the "primary" copies of those sector files i.e. sector files that are stored in the local long term storage space.
 func (st *Local) RemoveCopies(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
@@ -622,6 +634,7 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ storifa
 	return nil
 }
 
+// MoveStorage is used to move the given sector file types for a given sector from the local sealing scratch space to a local long term storage directory.
 func (st *Local) MoveStorage(ctx context.Context, s storage.SectorRef, types storiface.SectorFileType) error {
 	dest, destIds, err := st.AcquireSector(ctx, s, storiface.FTNone, types, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {

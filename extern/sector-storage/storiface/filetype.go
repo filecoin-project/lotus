@@ -9,16 +9,23 @@ import (
 )
 
 const (
+	// FTUnsealed means a bitmask containing only an unsealed sector file.
 	FTUnsealed SectorFileType = 1 << iota
+	// FTSealed means a bitmask containing only a sealed sector file.
 	FTSealed
+	// FTCache means a bitmask containing only the index/"cached" files directory used for proof generation
+	// for a sealed sector.
 	FTCache
 
+	// FileTypes is the number of possible unique values that a SectorFileType bitmask can contain.
 	FileTypes = iota
 )
 
+// PathTypes is used to iterate over all the possible unique values in a SectorFileType bitmask.
 var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache}
 
 const (
+	// FTNone means an empty bitmask of type `SectorFileType`.
 	FTNone SectorFileType = 0
 )
 
@@ -36,6 +43,7 @@ var FsOverheadFinalized = map[SectorFileType]int{
 	FTCache:    2,
 }
 
+// SectorFileType is a bitmask that represents a set of sector file types.
 type SectorFileType int
 
 func (t SectorFileType) String() string {
@@ -51,10 +59,12 @@ func (t SectorFileType) String() string {
 	}
 }
 
+// Has returns true if the bitmask contains the given single file type.
 func (t SectorFileType) Has(singleType SectorFileType) bool {
 	return t&singleType == singleType
 }
 
+// SealSpaceUse returns the total sealing space that will be used to store all file types in `t` for a sector of size `ssize`.
 func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 	var need uint64
 	for _, pathType := range PathTypes {
@@ -73,6 +83,7 @@ func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 	return need, nil
 }
 
+// All returns all the file types contained in the bitmask.
 func (t SectorFileType) All() [FileTypes]bool {
 	var out [FileTypes]bool
 
@@ -83,6 +94,9 @@ func (t SectorFileType) All() [FileTypes]bool {
 	return out
 }
 
+// SectorPaths is used to store two types of information
+// 1. The Storage IDs used to store the Unsealed, Sealed & Cached sector files for the sector with ID `ID`.
+// 2. The absolute sector store paths used to store the Unsealed, Sealed & Cached sector files for the sector with ID `ID`.
 type SectorPaths struct {
 	ID abi.SectorID
 
@@ -91,6 +105,7 @@ type SectorPaths struct {
 	Cache    string
 }
 
+// ParseSectorID extracts the sector ID from the sector name.
 func ParseSectorID(baseName string) (abi.SectorID, error) {
 	var n abi.SectorNumber
 	var mid abi.ActorID
@@ -113,6 +128,7 @@ func SectorName(sid abi.SectorID) string {
 	return fmt.Sprintf("s-t0%d-%d", sid.Miner, sid.Number)
 }
 
+// PathByType returns the  storageID/absolute sector store path  of the given fileType in the SectorPaths.
 func PathByType(sps SectorPaths, fileType SectorFileType) string {
 	switch fileType {
 	case FTUnsealed:
@@ -126,6 +142,7 @@ func PathByType(sps SectorPaths, fileType SectorFileType) string {
 	panic("requested unknown path type")
 }
 
+// PathByType sets the  storageID/absolute sector store path of the given fileType in the SectorPaths.
 func SetPathByType(sps *SectorPaths, fileType SectorFileType, p string) {
 	switch fileType {
 	case FTUnsealed:
