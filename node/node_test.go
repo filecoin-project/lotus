@@ -152,6 +152,9 @@ func TestPledgeBatching(t *testing.T) {
 	t.Run("100", func(t *testing.T) {
 		test.TestPledgeBatching(t, builder.MockSbBuilder, 50*time.Millisecond, 100)
 	})
+	t.Run("100-before-nv13", func(t *testing.T) {
+		test.TestPledgeBeforeNv13(t, builder.MockSbBuilder, 50*time.Millisecond, 100)
+	})
 }
 
 func TestTapeFix(t *testing.T) {

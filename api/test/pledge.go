@@ -17,8 +17,10 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	bminer "github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
@@ -177,6 +179,93 @@ func TestPledgeBatching(t *testing.T, b APIBuilder, blocktime time.Duration, nSe
 			require.NoError(t, err)
 			if cb != nil {
 				fmt.Printf("COMMIT BATCH: %s\n", *cb)
+			}
+		}
+
+		build.Clock.Sleep(100 * time.Millisecond)
+		fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
+	}
+
+	atomic.StoreInt64(&mine, 0)
+	<-done
+}
+
+func TestPledgeBeforeNv13(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, sn := b(t, []FullNodeOpts{
+		{
+			Opts: func(nodes []TestNode) node.Option {
+				return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
+					Network:   network.Version9,
+					Height:    1,
+					Migration: stmgr.UpgradeActorsV2,
+				}, {
+					Network:   network.Version10,
+					Height:    2,
+					Migration: stmgr.UpgradeActorsV3,
+				}, {
+					Network:   network.Version12,
+					Height:    3,
+					Migration: stmgr.UpgradeActorsV4,
+				}, {
+					Network:   network.Version13,
+					Height:    1000000000,
+					Migration: stmgr.UpgradeActorsV5,
+				}})
+			},
+		},
+	}, OneMiner)
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	addrinfo, err := client.NetAddrsListen(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := miner.NetConnect(ctx, addrinfo); err != nil {
+		t.Fatal(err)
+	}
+	build.Clock.Sleep(time.Second)
+
+	mine := int64(1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for atomic.LoadInt64(&mine) != 0 {
+			build.Clock.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
+
+			}}); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	for {
+		h, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+		if h.Height() > 10 {
+			break
+		}
+	}
+
+	toCheck := startPledge(t, ctx, miner, nSectors, 0, nil)
+
+	for len(toCheck) > 0 {
+		states := map[api.SectorState]int{}
+
+		for n := range toCheck {
+			st, err := miner.SectorsStatus(ctx, n, false)
+			require.NoError(t, err)
+			states[st.State]++
+			if st.State == api.SectorState(sealing.Proving) {
+				delete(toCheck, n)
+			}
+			if strings.Contains(string(st.State), "Fail") {
+				t.Fatal("sector in a failed state", st.State)
 			}
 		}
 
