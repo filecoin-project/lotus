@@ -50,10 +50,16 @@ func TestPieceProviderReadPiece(t *testing.T) {
 		localTasks := []sealtasks.TaskType{
 			sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
 		}
-		testWorker := newTestWorker(WorkerConfig{
+
+		csts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/stmgr/calls")))
+
+		// passing a nil executor here mirrors an actual worker setup as it
+		// will initialize the worker to use the rust proofs lib under the hood
+		worker := newLocalWorker(nil, WorkerConfig{
 			TaskTypes: localTasks,
-		}, localStore, mgr)
-		err = mgr.AddWorker(ctx, testWorker)
+		}, remoteStore, localStore, index, mgr, csts)
+
+		err = mgr.AddWorker(ctx, worker)
 		require.NoError(t, err)
 
 		// Create piece provider
