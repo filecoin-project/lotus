@@ -145,10 +145,6 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStV
 	return true, nil
 }
 
-func (m mockVerif) AggregateSealProofs(proofType abi.RegisteredSealProof, rap abi.RegisteredAggregationProof, proofs [][]byte) ([]byte, error) {
-	panic("implement me")
-}
-
 func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
 	panic("implement me")
 }

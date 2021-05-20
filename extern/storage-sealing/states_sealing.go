@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -318,7 +319,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	params, deposit, tok, err := m.preCommitParams(ctx, sector)
-	if err != nil {
+	if params == nil || err != nil {
 		return err
 	}
 
@@ -358,7 +359,7 @@ func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector Se
 	}
 
 	params, deposit, _, err := m.preCommitParams(ctx, sector)
-	if err != nil {
+	if params == nil || err != nil {
 		return err
 	}
 
