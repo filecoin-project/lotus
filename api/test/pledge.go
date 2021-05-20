@@ -146,7 +146,43 @@ func TestPledgeBatching(t *testing.T, b APIBuilder, blocktime time.Duration, nSe
 		}
 	}
 
-	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
+	toCheck := startPledge(t, ctx, miner, nSectors, 0, nil)
+
+	for len(toCheck) > 0 {
+		states := map[api.SectorState]int{}
+
+		for n := range toCheck {
+			st, err := miner.SectorsStatus(ctx, n, false)
+			require.NoError(t, err)
+			states[st.State]++
+			if st.State == api.SectorState(sealing.Proving) {
+				delete(toCheck, n)
+			}
+			if strings.Contains(string(st.State), "Fail") {
+				t.Fatal("sector in a failed state", st.State)
+			}
+		}
+		if states[api.SectorState(sealing.SubmitPreCommitBatch)] == nSectors ||
+			(states[api.SectorState(sealing.SubmitPreCommitBatch)] > 0 && states[api.SectorState(sealing.PreCommit1)] == 0 && states[api.SectorState(sealing.PreCommit2)] == 0) {
+			pcb, err := miner.SectorPreCommitFlush(ctx)
+			require.NoError(t, err)
+			if pcb != nil {
+				fmt.Printf("PRECOMMIT BATCH: %s\n", *pcb)
+			}
+		}
+
+		if states[api.SectorState(sealing.SubmitCommitAggregate)] == nSectors ||
+			(states[api.SectorState(sealing.SubmitCommitAggregate)] > 0 && states[api.SectorState(sealing.WaitSeed)] == 0 && states[api.SectorState(sealing.Committing)] == 0) {
+			cb, err := miner.SectorCommitFlush(ctx)
+			require.NoError(t, err)
+			if cb != nil {
+				fmt.Printf("COMMIT BATCH: %s\n", *cb)
+			}
+		}
+
+		build.Clock.Sleep(100 * time.Millisecond)
+		fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
+	}
 
 	atomic.StoreInt64(&mine, 0)
 	<-done
@@ -204,7 +240,7 @@ func flushSealingBatches(t *testing.T, ctx context.Context, miner TestStorageNod
 	}
 }
 
-func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, existing int, blockNotif <-chan struct{}) {
+func startPledge(t *testing.T, ctx context.Context, miner TestStorageNode, n, existing int, blockNotif <-chan struct{}) map[abi.SectorNumber]struct{} {
 	for i := 0; i < n; i++ {
 		if i%3 == 0 && blockNotif != nil {
 			<-blockNotif
@@ -236,6 +272,12 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 		toCheck[number] = struct{}{}
 	}
 
+	return toCheck
+}
+
+func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, existing int, blockNotif <-chan struct{}) {
+	toCheck := startPledge(t, ctx, miner, n, existing, blockNotif)
+
 	for len(toCheck) > 0 {
 		flushSealingBatches(t, ctx, miner)
 
@@ -253,6 +295,6 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 		}
 
 		build.Clock.Sleep(100 * time.Millisecond)
-		fmt.Printf("WaitSeal: %d %+v\n", len(s), states)
+		fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
 	}
 }
