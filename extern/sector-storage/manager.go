@@ -105,18 +105,11 @@ type StorageAuth http.Header
 type WorkerStateStore *statestore.StateStore
 type ManagerStateStore *statestore.StateStore
 
-func New(ctx context.Context, ls stores.LocalStorage, si stores.SectorIndex, sc SealerConfig, urls URLs, sa StorageAuth, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
-	lstor, err := stores.NewLocal(ctx, ls, si, urls)
-	if err != nil {
-		return nil, err
-	}
-
+func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc SealerConfig, sa StorageAuth, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
-
-	stor := stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit)
 
 	m := &Manager{
 		ls:         ls,

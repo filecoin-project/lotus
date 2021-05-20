@@ -661,13 +661,22 @@ func RetrievalProvider(h host.Host,
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
 var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
+func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, urls stores.URLs) (*stores.Local, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	return stores.NewLocal(ctx, ls, si, urls)
+}
+
+func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.StorageAuth, sc sectorstorage.SealerConfig) *stores.Remote {
+	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit)
+}
+
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
 	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sectorstorage.New(ctx, ls, si, sc, urls, sa, wsts, smsts)
+	sst, err := sectorstorage.New(ctx, lstor, stor, ls, si, sc, sa, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}
