@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
@@ -171,10 +172,12 @@ var runCmd = &cli.Command{
 
 		mux := mux.NewRouter()
 
-		rpcServer := jsonrpc.NewServer()
+		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
+		rpcServer := jsonrpc.NewServer(readerServerOpt)
 		rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(metrics.MetricedStorMinerAPI(minerapi)))
 
 		mux.Handle("/rpc/v0", rpcServer)
+		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
 		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
 		mux.Handle("/debug/metrics", metrics.Exporter())
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
