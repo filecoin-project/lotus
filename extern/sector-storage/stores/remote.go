@@ -581,4 +581,8 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 	return nil, nil
 }
 
+func (r *Remote) Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
+	panic("not implemented")
+}
+
 var _ Store = &Remote{}

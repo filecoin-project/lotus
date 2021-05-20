@@ -35,4 +35,6 @@ type Store interface {
 	MoveStorage(ctx context.Context, s storage.SectorRef, types storiface.SectorFileType) error
 
 	FsStat(ctx context.Context, id ID) (fsutil.FsStat, error)
+
+	Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error)
 }
