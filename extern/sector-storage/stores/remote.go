@@ -406,6 +406,9 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 			}
 		}
 	} else {
+		//
+		// magik(start): This part technically should live on the Local store
+		//
 		log.Infof("Read local %s (+%d,%d)", path, offset, size)
 		ssize, err := s.ProofType.SectorSize()
 		if err != nil {
@@ -431,6 +434,9 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		}
 
 		return pf.Reader(storiface.PaddedByteIndex(offset), size)
+		//
+		// magik(end)
+		//
 	}
 
 	// note: rd can be nil
