@@ -72,8 +72,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	PreCommitting: planOne(
 		on(SectorPreCommitBatch{}, SubmitPreCommitBatch),
-		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorPreCommitted{}, PreCommitWait),
+		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 		on(SectorPreCommitLanded{}, WaitSeed),
 		on(SectorDealsExpired{}, DealsExpired),
@@ -81,6 +81,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	SubmitPreCommitBatch: planOne(
 		on(SectorPreCommitBatchSent{}, PreCommitBatchWait),
+		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+		on(SectorPreCommitLanded{}, WaitSeed),
+		on(SectorDealsExpired{}, DealsExpired),
+		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
 	PreCommitBatchWait: planOne(
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
@@ -99,8 +104,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	Committing: planCommitting,
 	SubmitCommit: planOne(
 		on(SectorCommitSubmitted{}, CommitWait),
-		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorSubmitCommitAggregate{}, SubmitCommitAggregate),
+		on(SectorCommitFailed{}, CommitFailed),
 	),
 	SubmitCommitAggregate: planOne(
 		on(SectorCommitAggregateSent{}, CommitWait),
