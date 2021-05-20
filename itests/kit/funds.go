@@ -7,11 +7,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-address"
-	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, addr address.Address, amount abi.TokenAmount) {
+// SendFunds sends funds from the default wallet of the specified sender node
+// to the recipient address.
+func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, recipient address.Address, amount abi.TokenAmount) {
 	senderAddr, err := sender.WalletDefaultAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -19,7 +21,7 @@ func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, addr addr
 
 	msg := &types.Message{
 		From:  senderAddr,
-		To:    addr,
+		To:    recipient,
 		Value: amount,
 	}
 
@@ -27,7 +29,7 @@ func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, addr addr
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := sender.StateWaitMsg(ctx, sm.Cid(), 3, lapi.LookbackNoLimit, true)
+	res, err := sender.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
 	if err != nil {
 		t.Fatal(err)
 	}

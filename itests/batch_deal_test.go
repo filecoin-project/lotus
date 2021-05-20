@@ -1,6 +1,7 @@
 package itests
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -57,16 +58,20 @@ func TestBatchDealInput(t *testing.T) {
 	n, sn := kit.MockMinerBuilder(t, kit.OneFull, minerDef)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
-	s := kit.ConnectAndStartMining(t, blockTime, client, miner)
-	defer s.BlockMiner.Stop()
+
+	blockMiner := kit.ConnectAndStartMining(t, blockTime, miner, client)
+	t.Cleanup(blockMiner.Stop)
+
+	dh := kit.NewDealHarness(t, client, miner)
+	ctx := context.Background()
 
 	// Starts a deal and waits until it's published
 	runDealTillSeal := func(rseed int) {
-		res, _, err := kit.CreateClientFile(s.Ctx, s.Client, rseed)
+		res, _, err := kit.CreateImportFile(ctx, client, rseed)
 		require.NoError(t, err)
 
-		dc := kit.StartDeal(t, s.Ctx, s.Miner, s.Client, res.Root, false, dealStartEpoch)
-		kit.WaitDealSealed(t, s.Ctx, s.Miner, s.Client, dc, false)
+		deal := dh.StartDeal(ctx, res.Root, false, dealStartEpoch)
+		dh.WaitDealSealed(ctx, deal, false)
 	}
 
 	// Run maxDealsPerMsg+1 deals in parallel
@@ -84,7 +89,7 @@ func TestBatchDealInput(t *testing.T) {
 		<-done
 	}
 
-	sl, err := sn[0].SectorsList(s.Ctx)
+	sl, err := sn[0].SectorsList(ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(sl), 4)
 	require.LessOrEqual(t, len(sl), 5)

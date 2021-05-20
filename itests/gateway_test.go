@@ -206,7 +206,9 @@ func TestDealFlow(t *testing.T) {
 	// a deal start epoch that is guaranteed to be far enough in the future
 	// so that the deal starts sealing in time
 	dealStartEpoch := abi.ChainEpoch(2 << 12)
-	kit.MakeDeal(t, ctx, 6, nodes.lite, nodes.miner, false, false, dealStartEpoch)
+
+	dh := kit.NewDealHarness(t, nodes.lite, nodes.miner)
+	dh.MakeFullDeal(ctx, 6, false, false, dealStartEpoch)
 }
 
 func TestCLIDealFlow(t *testing.T) {

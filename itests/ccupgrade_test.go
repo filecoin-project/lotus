@@ -92,7 +92,9 @@ func runTestCCUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Duration, u
 		t.Fatal(err)
 	}
 
-	kit.MakeDeal(t, ctx, 6, client, miner, false, false, 0)
+	dh := kit.NewDealHarness(t, client, miner)
+
+	dh.MakeFullDeal(context.Background(), 6, false, false, 0)
 
 	// Validate upgrade
 

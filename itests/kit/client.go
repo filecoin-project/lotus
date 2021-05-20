@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -41,7 +43,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 
 	// Create a deal (non-interactive)
 	// Client deal --start-epoch=<start epoch> <cid> <Miner addr> 1000000attofil <duration>
-	res, _, err := CreateClientFile(ctx, clientNode, 1)
+	res, _, err := CreateImportFile(ctx, clientNode, 1)
 	require.NoError(t, err)
 	startEpoch := fmt.Sprintf("--start-epoch=%d", 2<<12)
 	dataCid := res.Root
@@ -57,7 +59,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	// <Miner addr>
 	// "no" (verified Client)
 	// "yes" (confirm deal)
-	res, _, err = CreateClientFile(ctx, clientNode, 2)
+	res, _, err = CreateImportFile(ctx, clientNode, 2)
 	require.NoError(t, err)
 	dataCid2 := res.Root
 	duration = fmt.Sprintf("%d", build.MinDealDuration/builtin.EpochsInDay)
@@ -106,4 +108,26 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	out = clientCLI.RunCmd("Client", "retrieve", dataCid.String(), path)
 	fmt.Println("retrieve:\n", out)
 	require.Regexp(t, regexp.MustCompile("Success"), out)
+}
+
+func CreateImportFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(int64(rseed))).Read(data)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	path := filepath.Join(dir, "sourcefile.dat")
+	err = ioutil.WriteFile(path, data, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	res, err := client.ClientImport(ctx, api.FileRef{Path: path})
+	if err != nil {
+		return nil, nil, err
+	}
+	return res, data, nil
 }

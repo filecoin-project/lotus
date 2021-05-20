@@ -43,7 +43,6 @@ import (
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
@@ -224,6 +223,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMin
 	fulls := make([]TestFullNode, len(fullOpts))
 	miners := make([]TestMiner, len(storage))
 
+	// *****
 	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
@@ -235,13 +235,17 @@ func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMin
 	if len(storage) > 1 {
 		panic("need more peer IDs")
 	}
+	// *****
+
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
 
-	var genms []genesis.Miner
-	var maddrs []address.Address
-	var genaccs []genesis.Actor
-	var keys []*wallet.Key
+	var (
+		genms   []genesis.Miner
+		maddrs  []address.Address
+		genaccs []genesis.Actor
+		keys    []*wallet.Key
+	)
 
 	var presealDirs []string
 	for i := 0; i < len(storage); i++ {
@@ -395,11 +399,13 @@ func mockMinerBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []Stora
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
 
-	var genms []genesis.Miner
-	var genaccs []genesis.Actor
-	var maddrs []address.Address
-	var keys []*wallet.Key
-	var pidKeys []crypto.PrivKey
+	var (
+		genms   []genesis.Miner
+		genaccs []genesis.Actor
+		maddrs  []address.Address
+		keys    []*wallet.Key
+		pidKeys []crypto.PrivKey
+	)
 	for i := 0; i < len(storage); i++ {
 		maddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(i))
 		if err != nil {
@@ -467,9 +473,6 @@ func mockMinerBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []Stora
 			node.Test(),
 
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-
-			// so that we subscribe to pubsub topics immediately
-			node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
 
 			genesis,
 
