@@ -205,31 +205,29 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var rd io.Reader
 	if stat.IsDir() {
-		rd, err = tarutil.TarDirectory(path)
-		w.Header().Set("Content-Type", "application/x-tar")
-	} else {
-		rd, err = os.OpenFile(path, os.O_RDONLY, 0644) // nolint
-		w.Header().Set("Content-Type", "application/octet-stream")
-	}
-	if err != nil {
-		log.Errorf("%+v", err)
-		w.WriteHeader(500)
-		return
-	}
-	if !stat.IsDir() {
-		defer func() {
-			if err := rd.(*os.File).Close(); err != nil {
-				log.Errorf("closing source file: %+v", err)
-			}
-		}()
-	}
+		if _, has := r.Header["Range"]; has {
+			log.Error("Range not supported on directories")
+			w.WriteHeader(500)
+			return
+		}
 
-	w.WriteHeader(200)
-	if _, err := io.CopyBuffer(w, rd, make([]byte, CopyBuf)); err != nil {
-		log.Errorf("%+v", err)
-		return
+		rd, err := tarutil.TarDirectory(path)
+		if err != nil {
+			log.Errorf("%+v", err)
+			w.WriteHeader(500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/x-tar")
+		w.WriteHeader(200)
+		if _, err := io.CopyBuffer(w, rd, make([]byte, CopyBuf)); err != nil {
+			log.Errorf("%+v", err)
+			return
+		}
+	} else {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		http.ServeFile(w, r, path)
 	}
 }
 
