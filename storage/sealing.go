@@ -30,10 +30,6 @@ func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {
 	return m.sealing.ListSectors()
 }
 
-func (m *Miner) GetSectorInfo(sid abi.SectorNumber) (sealing.SectorInfo, error) {
-	return m.sealing.GetSectorInfo(sid)
-}
-
 func (m *Miner) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
 	return m.sealing.PledgeSector(ctx)
 }
