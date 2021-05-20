@@ -29,8 +29,6 @@ var log = logging.Logger("advmgr")
 
 var ErrNoWorkers = errors.New("no suitable workers found")
 
-type URLs []string
-
 type Worker interface {
 	storiface.WorkerCalls
 
@@ -47,8 +45,6 @@ type Worker interface {
 }
 
 type SectorManager interface {
-	ReadPiece(context.Context, io.Writer, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) error
-
 	ffiwrapper.StorageSealer
 	storage.Prover
 	storiface.WorkerReturn
@@ -804,3 +800,4 @@ func (m *Manager) Close(ctx context.Context) error {
 }
 
 var _ SectorManager = &Manager{}
+var _ Unsealer = &Manager{}

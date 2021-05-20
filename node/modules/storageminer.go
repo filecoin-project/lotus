@@ -67,7 +67,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -632,11 +631,15 @@ func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dt
 	}
 }
 
+func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
+	return rmnet.NewFromLibp2pHost(h)
+}
+
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host,
-	miner *storage.Miner,
-	sealer sectorstorage.SectorManager,
-	full v1api.FullNode,
+func RetrievalProvider(
+	maddr dtypes.MinerAddress,
+	adapter retrievalmarket.RetrievalProviderNode,
+	netwk rmnet.RetrievalMarketNetwork,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
 	mds dtypes.StagingMultiDstore,
@@ -645,17 +648,8 @@ func RetrievalProvider(h host.Host,
 	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
 	userFilter dtypes.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
-	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
-
-	maddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
-	}
-
-	netwk := rmnet.NewFromLibp2pHost(h)
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-
-	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
+	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
 }
 
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")

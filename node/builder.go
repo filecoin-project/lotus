@@ -490,10 +490,10 @@ func ConfigCommon(cfg *config.Common) Option {
 		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e dtypes.APIEndpoint) error {
 			return lr.SetAPIEndpoint(e)
 		}),
-		Override(new(sectorstorage.URLs), func(e dtypes.APIEndpoint) (sectorstorage.URLs, error) {
+		Override(new(stores.URLs), func(e dtypes.APIEndpoint) (stores.URLs, error) {
 			ip := cfg.API.RemoteListenAddress
 
-			var urls sectorstorage.URLs
+			var urls stores.URLs
 			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
 			return urls, nil
 		}),
