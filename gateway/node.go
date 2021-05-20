@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	DefautLookbackCap             = time.Hour * 24
+	DefaultLookbackCap            = time.Hour * 24
 	DefaultStateWaitLookbackLimit = abi.ChainEpoch(20)
 )
 

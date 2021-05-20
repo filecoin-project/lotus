@@ -75,7 +75,7 @@ var runCmd = &cli.Command{
 		&cli.DurationFlag{
 			Name:  "api-max-lookback",
 			Usage: "maximum duration allowable for tipset lookbacks",
-			Value: gateway.DefautLookbackCap,
+			Value: gateway.DefaultLookbackCap,
 		},
 		&cli.Int64Flag{
 			Name:  "api-wait-lookback-limit",

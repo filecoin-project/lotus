@@ -4,24 +4,25 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"testing"
 	"time"
 
-	"golang.org/x/xerrors"
-
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/gateway"
@@ -30,6 +31,11 @@ import (
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+)
+
+const (
+	maxLookbackCap            = time.Duration(math.MaxInt64)
+	maxStateWaitLookbackLimit = stmgr.LookbackNoLimit
 )
 
 func init() {
@@ -46,7 +52,7 @@ func TestWalletMsig(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodes(ctx, t, blocktime, gateway.DefautLookbackCap, gateway.DefaultStateWaitLookbackLimit)
+	nodes := startNodes(ctx, t, blocktime, gateway.DefaultLookbackCap, gateway.DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
@@ -180,7 +186,7 @@ func TestMsigCLI(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefautLookbackCap, gateway.DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefaultLookbackCap, gateway.DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
@@ -193,7 +199,7 @@ func TestDealFlow(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefautLookbackCap, gateway.DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefaultLookbackCap, gateway.DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	// For these tests where the block time is artificially short, just use
@@ -209,7 +215,7 @@ func TestCLIDealFlow(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefautLookbackCap, gateway.DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefaultLookbackCap, gateway.DefaultStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	kit.RunClientTest(t, cli.Commands, nodes.lite)
