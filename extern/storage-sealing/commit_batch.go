@@ -185,6 +185,11 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	infos := make([]proof5.AggregateSealVerifyInfo, 0, total)
 
 	for id, p := range b.todo {
+		if len(infos) >= cfg.MaxCommitBatch {
+			log.Infow("commit batch full")
+			break
+		}
+
 		params.SectorNumbers.Set(uint64(id))
 		infos = append(infos, p.info)
 	}
@@ -194,11 +199,6 @@ func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	})
 
 	for _, info := range infos {
-		if len(infos) >= cfg.MaxCommitBatch {
-			log.Infow("commit batch full")
-			break
-		}
-
 		proofs = append(proofs, b.todo[info.Number].proof)
 	}
 
