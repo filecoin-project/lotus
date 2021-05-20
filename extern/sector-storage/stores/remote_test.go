@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 )
