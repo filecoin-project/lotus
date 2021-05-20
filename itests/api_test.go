@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type testSuite struct {
+type apiSuite struct {
 	makeNodes kit.APIBuilder
 }
 
@@ -31,7 +31,7 @@ func TestAPIRPC(t *testing.T) {
 
 // runAPITest is the entry point to API test suite
 func runAPITest(t *testing.T, b kit.APIBuilder) {
-	ts := testSuite{
+	ts := apiSuite{
 		makeNodes: b,
 	}
 
@@ -44,7 +44,7 @@ func runAPITest(t *testing.T, b kit.APIBuilder) {
 	t.Run("testNonGenesisMiner", ts.testNonGenesisMiner)
 }
 
-func (ts *testSuite) testVersion(t *testing.T) {
+func (ts *apiSuite) testVersion(t *testing.T) {
 	lapi.RunningNodeType = lapi.NodeFull
 	t.Cleanup(func() {
 		lapi.RunningNodeType = lapi.NodeUnknown
@@ -65,7 +65,7 @@ func (ts *testSuite) testVersion(t *testing.T) {
 	require.Equal(t, versions[0], build.BuildVersion)
 }
 
-func (ts *testSuite) testSearchMsg(t *testing.T) {
+func (ts *apiSuite) testSearchMsg(t *testing.T) {
 	apis, miners := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
 
 	api := apis[0]
@@ -108,7 +108,7 @@ func (ts *testSuite) testSearchMsg(t *testing.T) {
 
 }
 
-func (ts *testSuite) testID(t *testing.T) {
+func (ts *apiSuite) testID(t *testing.T) {
 	ctx := context.Background()
 	apis, _ := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
 	api := apis[0]
@@ -120,7 +120,7 @@ func (ts *testSuite) testID(t *testing.T) {
 	assert.Regexp(t, "^12", id.Pretty())
 }
 
-func (ts *testSuite) testConnectTwo(t *testing.T) {
+func (ts *apiSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
 	apis, _ := ts.makeNodes(t, kit.TwoFull, kit.OneMiner)
 
@@ -166,7 +166,7 @@ func (ts *testSuite) testConnectTwo(t *testing.T) {
 	}
 }
 
-func (ts *testSuite) testMining(t *testing.T) {
+func (ts *apiSuite) testMining(t *testing.T) {
 	ctx := context.Background()
 	fulls, miners := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
 	api := fulls[0]
@@ -191,7 +191,7 @@ func (ts *testSuite) testMining(t *testing.T) {
 	require.Greater(t, int64(h2.Height()), int64(h1.Height()))
 }
 
-func (ts *testSuite) testMiningReal(t *testing.T) {
+func (ts *apiSuite) testMiningReal(t *testing.T) {
 	build.InsecurePoStValidation = false
 	defer func() {
 		build.InsecurePoStValidation = true
@@ -230,7 +230,7 @@ func (ts *testSuite) testMiningReal(t *testing.T) {
 	require.Greater(t, int64(h3.Height()), int64(h2.Height()))
 }
 
-func (ts *testSuite) testNonGenesisMiner(t *testing.T) {
+func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
 	n, sn := ts.makeNodes(t,
 		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)},

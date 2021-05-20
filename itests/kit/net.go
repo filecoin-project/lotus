@@ -12,7 +12,7 @@ import (
 )
 
 func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) (TestFullNode, address.Address) {
-	n, sn := RPCMockSbBuilder(t, OneFull, OneMiner)
+	n, sn := RPCMockMinerBuilder(t, OneFull, OneMiner)
 
 	full := n[0]
 	miner := sn[0]
@@ -43,7 +43,7 @@ func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Dura
 }
 
 func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]TestFullNode, []address.Address) {
-	n, sn := RPCMockSbBuilder(t, TwoFull, OneMiner)
+	n, sn := RPCMockMinerBuilder(t, TwoFull, OneMiner)
 
 	fullNode1 := n[0]
 	fullNode2 := n[1]

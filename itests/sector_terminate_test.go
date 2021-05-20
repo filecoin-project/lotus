@@ -31,7 +31,7 @@ func TestTerminate(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := kit.MockSbBuilder(t,
+	n, sn := kit.MockMinerBuilder(t,
 		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)},
 		[]kit.StorageMiner{{Full: 0, Preseal: int(nSectors)}},
 	)

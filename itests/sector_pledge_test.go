@@ -17,11 +17,11 @@ func TestPledgeSectors(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	t.Run("1", func(t *testing.T) {
-		runPledgeSectorTest(t, kit.MockSbBuilder, 50*time.Millisecond, 1)
+		runPledgeSectorTest(t, kit.MockMinerBuilder, 50*time.Millisecond, 1)
 	})
 
 	t.Run("100", func(t *testing.T) {
-		runPledgeSectorTest(t, kit.MockSbBuilder, 50*time.Millisecond, 100)
+		runPledgeSectorTest(t, kit.MockMinerBuilder, 50*time.Millisecond, 100)
 	})
 
 	t.Run("1000", func(t *testing.T) {
@@ -29,7 +29,7 @@ func TestPledgeSectors(t *testing.T) {
 			t.Skip("skipping test in short mode")
 		}
 
-		runPledgeSectorTest(t, kit.MockSbBuilder, 50*time.Millisecond, 1000)
+		runPledgeSectorTest(t, kit.MockMinerBuilder, 50*time.Millisecond, 1000)
 	})
 }
 

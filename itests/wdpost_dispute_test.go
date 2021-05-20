@@ -29,7 +29,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	b := kit.MockSbBuilder
+	b := kit.MockMinerBuilder
 	blocktime := 2 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -260,7 +260,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	b := kit.MockSbBuilder
+	b := kit.MockMinerBuilder
 	blocktime := 2 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())

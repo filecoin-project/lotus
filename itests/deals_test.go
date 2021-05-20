@@ -35,19 +35,19 @@ func TestDealCycle(t *testing.T) {
 	dealStartEpoch := abi.ChainEpoch(2 << 12)
 
 	t.Run("TestFullDealCycle_Single", func(t *testing.T) {
-		runFullDealCycles(t, 1, kit.MockSbBuilder, blockTime, false, false, dealStartEpoch)
+		runFullDealCycles(t, 1, kit.MockMinerBuilder, blockTime, false, false, dealStartEpoch)
 	})
 	t.Run("TestFullDealCycle_Two", func(t *testing.T) {
-		runFullDealCycles(t, 2, kit.MockSbBuilder, blockTime, false, false, dealStartEpoch)
+		runFullDealCycles(t, 2, kit.MockMinerBuilder, blockTime, false, false, dealStartEpoch)
 	})
 	t.Run("WithExportedCAR", func(t *testing.T) {
-		runFullDealCycles(t, 1, kit.MockSbBuilder, blockTime, true, false, dealStartEpoch)
+		runFullDealCycles(t, 1, kit.MockMinerBuilder, blockTime, true, false, dealStartEpoch)
 	})
 	t.Run("TestFastRetrievalDealCycle", func(t *testing.T) {
-		runFastRetrievalDealFlowT(t, kit.MockSbBuilder, blockTime, dealStartEpoch)
+		runFastRetrievalDealFlowT(t, kit.MockMinerBuilder, blockTime, dealStartEpoch)
 	})
 	t.Run("TestZeroPricePerByteRetrievalDealFlow", func(t *testing.T) {
-		runZeroPricePerByteRetrievalDealFlow(t, kit.MockSbBuilder, blockTime, dealStartEpoch)
+		runZeroPricePerByteRetrievalDealFlow(t, kit.MockMinerBuilder, blockTime, dealStartEpoch)
 	})
 }
 
@@ -81,7 +81,7 @@ func TestAPIDealFlowReal(t *testing.T) {
 func TestPublishDealsBatching(t *testing.T) {
 	kit.QuietMiningLogs()
 
-	b := kit.MockSbBuilder
+	b := kit.MockMinerBuilder
 	blocktime := 10 * time.Millisecond
 	startEpoch := abi.ChainEpoch(2 << 12)
 
@@ -183,7 +183,7 @@ func TestDealMining(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	b := kit.MockSbBuilder
+	b := kit.MockMinerBuilder
 	blocktime := 50 * time.Millisecond
 
 	ctx := context.Background()

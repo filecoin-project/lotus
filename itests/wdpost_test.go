@@ -39,7 +39,7 @@ func TestWindowedPost(t *testing.T) {
 	} {
 		height := height // copy to satisfy lints
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			testWindowPostUpgrade(t, kit.MockSbBuilder, blocktime, nSectors, height)
+			testWindowPostUpgrade(t, kit.MockMinerBuilder, blocktime, nSectors, height)
 		})
 	}
 }

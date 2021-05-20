@@ -292,7 +292,7 @@ func startNodes(
 			},
 		},
 	)
-	n, sn := kit.RPCMockSbBuilder(t, opts, kit.OneMiner)
+	n, sn := kit.RPCMockMinerBuilder(t, opts, kit.OneMiner)
 
 	full := n[0]
 	lite := n[1]

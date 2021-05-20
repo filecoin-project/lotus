@@ -54,7 +54,7 @@ func TestBatchDealInput(t *testing.T) {
 	}}
 
 	// Create a connect client and miner node
-	n, sn := kit.MockSbBuilder(t, kit.OneFull, minerDef)
+	n, sn := kit.MockMinerBuilder(t, kit.OneFull, minerDef)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 	s := kit.ConnectAndStartMining(t, blockTime, client, miner)

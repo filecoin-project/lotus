@@ -30,7 +30,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	ctx := context.Background()
-	n, sn := kit.MockSbBuilder(t, kit.TwoFull, kit.OneMiner)
+	n, sn := kit.MockMinerBuilder(t, kit.TwoFull, kit.OneMiner)
 
 	paymentCreator := n[0]
 	paymentReceiver := n[1]

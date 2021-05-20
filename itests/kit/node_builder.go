@@ -203,16 +203,16 @@ func Builder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]T
 	return mockBuilderOpts(t, fullOpts, storage, false)
 }
 
-func MockSbBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
-	return mockSbBuilderOpts(t, fullOpts, storage, false)
-}
-
 func RPCBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
 	return mockBuilderOpts(t, fullOpts, storage, true)
 }
 
-func RPCMockSbBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
-	return mockSbBuilderOpts(t, fullOpts, storage, true)
+func MockMinerBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
+	return mockMinerBuilderOpts(t, fullOpts, storage, false)
+}
+
+func RPCMockMinerBuilder(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner) ([]TestFullNode, []TestMiner) {
+	return mockMinerBuilderOpts(t, fullOpts, storage, true)
 }
 
 func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestFullNode, []TestMiner) {
@@ -381,7 +381,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMin
 	return fulls, miners
 }
 
-func mockSbBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestFullNode, []TestMiner) {
+func mockMinerBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMiner, rpc bool) ([]TestFullNode, []TestMiner) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 

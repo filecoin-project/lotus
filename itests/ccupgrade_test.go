@@ -27,7 +27,7 @@ func TestCCUpgrade(t *testing.T) {
 	} {
 		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			runTestCCUpgrade(t, kit.MockSbBuilder, 5*time.Millisecond, height)
+			runTestCCUpgrade(t, kit.MockMinerBuilder, 5*time.Millisecond, height)
 		})
 	}
 }

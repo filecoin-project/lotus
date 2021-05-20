@@ -32,7 +32,7 @@ func TestSDRUpgrade(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := kit.MockSbBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithSDRAt(500, 1000)}, kit.OneMiner)
+	n, sn := kit.MockMinerBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithSDRAt(500, 1000)}, kit.OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
