@@ -98,7 +98,7 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	require.NoError(t, err)
 
-	stor := stores.NewRemote(lstor, si, nil, 6000)
+	stor := stores.NewRemote(lstor, si, nil, 6000, &stores.DefaultPartialFileHandler{})
 
 	m := &Manager{
 		ls:         st,

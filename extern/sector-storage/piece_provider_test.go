@@ -31,7 +31,7 @@ func TestPieceProviderReadPiece(t *testing.T) {
 		index := stores.NewIndex()
 		localStore, err := stores.NewLocal(ctx, storage, index, nil)
 		require.NoError(t, err)
-		remoteStore := stores.NewRemote(localStore, index, nil, 6000)
+		remoteStore := stores.NewRemote(localStore, index, nil, 6000, &stores.DefaultPartialFileHandler{})
 		dstore := ds_sync.MutexWrap(datastore.NewMapDatastore())
 		wsts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/worker/calls")))
 		smsts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/stmgr/calls")))

@@ -460,7 +460,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			if err != nil {
 				return err
 			}
-			stor := stores.NewRemote(lstor, si, http.Header(sa), 10)
+			stor := stores.NewRemote(lstor, si, http.Header(sa), 10, &stores.DefaultPartialFileHandler{})
 
 			smgr, err := sectorstorage.New(ctx, lstor, stor, lr, si, sectorstorage.SealerConfig{
 				ParallelFetchLimit: 10,

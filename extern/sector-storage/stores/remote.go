@@ -17,7 +17,6 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 
@@ -33,7 +32,7 @@ var FetchTempSubdir = "fetching"
 var CopyBuf = 1 << 20
 
 type Remote struct {
-	local *Local
+	local Store
 	index SectorIndex
 	auth  http.Header
 
@@ -41,6 +40,8 @@ type Remote struct {
 
 	fetchLk  sync.Mutex
 	fetching map[abi.SectorID]chan struct{}
+
+	pfHandler partialFileHandler
 }
 
 func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types storiface.SectorFileType) error {
@@ -51,7 +52,7 @@ func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types storifa
 	return r.local.RemoveCopies(ctx, s, types)
 }
 
-func NewRemote(local *Local, index SectorIndex, auth http.Header, fetchLimit int) *Remote {
+func NewRemote(local Store, index SectorIndex, auth http.Header, fetchLimit int, pfHandler partialFileHandler) *Remote {
 	return &Remote{
 		local: local,
 		index: index,
@@ -59,7 +60,8 @@ func NewRemote(local *Local, index SectorIndex, auth http.Header, fetchLimit int
 
 		limit: make(chan struct{}, fetchLimit),
 
-		fetching: map[abi.SectorID]chan struct{}{},
+		fetching:  map[abi.SectorID]chan struct{}{},
+		pfHandler: pfHandler,
 	}
 }
 
@@ -462,7 +464,10 @@ func (r *Remote) readRemote(ctx context.Context, url string, offset, size abi.Pa
 	if err != nil {
 		return nil, xerrors.Errorf("request: %w", err)
 	}
-	req.Header = r.auth.Clone()
+
+	if r.auth != nil {
+		req.Header = r.auth.Clone()
+	}
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+size-1))
 	req = req.WithContext(ctx)
 
@@ -509,27 +514,27 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		}
 
 		// open the unsealed sector file for the given sector size located at the given path.
-		pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+		pf, err := r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
 		if err != nil {
 			return nil, xerrors.Errorf("opening partial file: %w", err)
 		}
 
 		// even though we have an unsealed file for the given sector, we still need to determine if we have the unsealed piece
 		// in the unsealed sector file. That is what `HasAllocated` checks for.
-		has, err := pf.HasAllocated(storiface.UnpaddedByteIndex(offset.Unpadded()), size.Unpadded())
+		has, err := r.pfHandler.HasAllocated(pf, storiface.UnpaddedByteIndex(offset.Unpadded()), size.Unpadded())
 		if err != nil {
 			return nil, xerrors.Errorf("has allocated: %w", err)
 		}
 
 		if !has {
-			if err := pf.Close(); err != nil {
+			if err := r.pfHandler.Close(pf); err != nil {
 				return nil, xerrors.Errorf("close partial file: %w", err)
 			}
 			return nil, nil
 		}
 
 		log.Debugf("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
-		return pf.Reader(storiface.PaddedByteIndex(offset), size)
+		return r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset), size)
 	}
 
 	// --- We don't have the unsealed sector file locally
@@ -546,9 +551,8 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
 	}
 
-	// TODO Why are we sorting in ascending order here -> shouldn't we sort in descending order as higher weight means more likely to have the file ?
 	sort.Slice(si, func(i, j int) bool {
-		return si[i].Weight < si[j].Weight
+		return si[i].Weight > si[j].Weight
 	})
 
 	for _, info := range si {
