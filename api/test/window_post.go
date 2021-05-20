@@ -247,7 +247,6 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 		toCheck[number] = struct{}{}
 	}
 
-
 	for len(toCheck) > 0 {
 		flushSealingBatches(t, ctx, miner)
 
@@ -263,7 +262,6 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 				t.Fatal("sector in a failed state", st.State)
 			}
 		}
-
 
 		build.Clock.Sleep(100 * time.Millisecond)
 		fmt.Printf("WaitSeal: %d %+v\n", len(s), states)
