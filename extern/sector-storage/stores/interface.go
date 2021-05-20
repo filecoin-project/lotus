@@ -2,6 +2,7 @@ package stores
 
 import (
 	"context"
+	"os"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
@@ -18,9 +19,15 @@ type partialFileHandler interface {
 	// size
 	OpenPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialfile.PartialFile, error)
 
-	// HasAllocated returns true if the given partialfile has an unsealed piece starting at the given offset with the given size.
+	// HasAllocated returns true if the given partial file has an unsealed piece starting at the given offset with the given size.
 	// returns false otherwise.
 	HasAllocated(pf *partialfile.PartialFile, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
+
+	// Reader returns a file from which we can read the unsealed piece in the partial file.
+	Reader(pf *partialfile.PartialFile, offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error)
+
+	// Close closes the partial file
+	Close(pf *partialfile.PartialFile) error
 }
 
 type Store interface {

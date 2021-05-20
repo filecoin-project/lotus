@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	os "os"
 	reflect "reflect"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
@@ -40,6 +41,20 @@ func (m *MockpartialFileHandler) EXPECT() *MockpartialFileHandlerMockRecorder {
 	return m.recorder
 }
 
+// Close mocks base method.
+func (m *MockpartialFileHandler) Close(pf *partialfile.PartialFile) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close", pf)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockpartialFileHandlerMockRecorder) Close(pf interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockpartialFileHandler)(nil).Close), pf)
+}
+
 // HasAllocated mocks base method.
 func (m *MockpartialFileHandler) HasAllocated(pf *partialfile.PartialFile, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	m.ctrl.T.Helper()
@@ -68,6 +83,21 @@ func (m *MockpartialFileHandler) OpenPartialFile(maxPieceSize abi.PaddedPieceSiz
 func (mr *MockpartialFileHandlerMockRecorder) OpenPartialFile(maxPieceSize, path interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenPartialFile", reflect.TypeOf((*MockpartialFileHandler)(nil).OpenPartialFile), maxPieceSize, path)
+}
+
+// Reader mocks base method.
+func (m *MockpartialFileHandler) Reader(pf *partialfile.PartialFile, offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Reader", pf, offset, size)
+	ret0, _ := ret[0].(*os.File)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Reader indicates an expected call of Reader.
+func (mr *MockpartialFileHandlerMockRecorder) Reader(pf, offset, size interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reader", reflect.TypeOf((*MockpartialFileHandler)(nil).Reader), pf, offset, size)
 }
 
 // MockStore is a mock of Store interface.

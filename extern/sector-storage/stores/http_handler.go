@@ -35,6 +35,15 @@ func (d *DefaultPartialFileHandler) HasAllocated(pf *partialfile.PartialFile, of
 	return pf.HasAllocated(offset, size)
 }
 
+func (d *DefaultPartialFileHandler) Reader(pf *partialfile.PartialFile, offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error) {
+	return pf.Reader(offset, size)
+}
+
+// Close closes the partial file
+func (d *DefaultPartialFileHandler) Close(pf *partialfile.PartialFile) error {
+	return pf.Close()
+}
+
 type FetchHandler struct {
 	Local     Store
 	PfHandler partialFileHandler

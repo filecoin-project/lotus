@@ -118,10 +118,9 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 		},
-		"fails when partial file is not found locally": {
+		"fails when error while opening partial file": {
 			expectedStatusCode: http.StatusInternalServerError,
 			storeFnc: func(l *mocks.MockStore) {
-				// will return emppty paths
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -131,7 +130,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 			},
 
 			pfFunc: func(pf *mocks.MockpartialFileHandler) {
-				//OpenPartialFile(maxPieceSize abi.PaddedPieceSize, path string)
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(&partialfile.PartialFile{},
 					xerrors.New("some error")).Times(1)
 			},
@@ -140,7 +138,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"fails when determining partial file allocation returns an error": {
 			expectedStatusCode: http.StatusInternalServerError,
 			storeFnc: func(l *mocks.MockStore) {
-				// will return emppty paths
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -160,7 +157,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"StatusRequestedRangeNotSatisfiable when piece is NOT allocated in partial file": {
 			expectedStatusCode: http.StatusRequestedRangeNotSatisfiable,
 			storeFnc: func(l *mocks.MockStore) {
-				// will return emppty paths
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -180,7 +176,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"OK when piece is allocated in partial file": {
 			expectedStatusCode: http.StatusOK,
 			storeFnc: func(l *mocks.MockStore) {
-				// will return emppty paths
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
