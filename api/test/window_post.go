@@ -247,12 +247,15 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 		toCheck[number] = struct{}{}
 	}
 
+
 	for len(toCheck) > 0 {
 		flushSealingBatches(t, ctx, miner)
 
+		states := map[api.SectorState]int{}
 		for n := range toCheck {
 			st, err := miner.SectorsStatus(ctx, n, false)
 			require.NoError(t, err)
+			states[st.State]++
 			if st.State == api.SectorState(sealing.Proving) {
 				delete(toCheck, n)
 			}
@@ -261,8 +264,9 @@ func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, 
 			}
 		}
 
+
 		build.Clock.Sleep(100 * time.Millisecond)
-		fmt.Printf("WaitSeal: %d\n", len(s))
+		fmt.Printf("WaitSeal: %d %+v\n", len(s), states)
 	}
 }
 
