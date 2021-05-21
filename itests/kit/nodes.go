@@ -2,11 +2,8 @@ package kit
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"testing"
 
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
@@ -15,22 +12,12 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 )
 
-func init() {
-	logging.SetAllLoggers(logging.LevelInfo)
-	err := os.Setenv("BELLMAN_NO_GPU", "1")
-	if err != nil {
-		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
-	}
-	build.InsecurePoStValidation = true
-}
-
-type StorageBuilder func(context.Context, *testing.T, abi.RegisteredSealProof, address.Address) TestMiner
+type MinerBuilder func(context.Context, *testing.T, abi.RegisteredSealProof, address.Address) TestMiner
 
 type TestFullNode struct {
 	v1api.FullNode
@@ -38,7 +25,7 @@ type TestFullNode struct {
 	// API server is created for this Node
 	ListenAddr multiaddr.Multiaddr
 
-	Stb StorageBuilder
+	Stb MinerBuilder
 }
 
 type TestMiner struct {

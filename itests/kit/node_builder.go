@@ -156,7 +156,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 	return TestMiner{StorageMiner: minerapi, MineOne: mineOne, Stop: stop}
 }
 
-func storageBuilder(parentNode TestFullNode, mn mocknet.Mocknet, opts node.Option) StorageBuilder {
+func storageBuilder(parentNode TestFullNode, mn mocknet.Mocknet, opts node.Option) MinerBuilder {
 	return func(ctx context.Context, t *testing.T, spt abi.RegisteredSealProof, owner address.Address) TestMiner {
 		pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 		require.NoError(t, err)
