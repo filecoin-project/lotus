@@ -171,7 +171,7 @@ var provingInfoCmd = &cli.Command{
 
 		var faultPerc float64
 		if proving > 0 {
-			faultPerc = float64(faults*10000/proving) / 100
+			faultPerc = float64(faults * 100 / proving)
 		}
 
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
