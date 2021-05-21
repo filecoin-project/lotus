@@ -71,6 +71,9 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage
 // ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
 // If an Unsealed sector file exists with the Piece Unsealed in it, we'll use that for the read.
 // Otherwise, we will Unseal a Sealed sector file for the given sector and read the Unsealed piece from it.
+// If we do NOT have an existing unsealed file  containing the given piece thus causing us to schedule an Unseal,
+// the returned boolean parameter will be set to true.
+// If we have an existing unsealed file containing the given piece, the returned boolean will be set to false.
 func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error) {
 	if err := offset.Valid(); err != nil {
 		return nil, false, xerrors.Errorf("offset is not valid: %w", err)

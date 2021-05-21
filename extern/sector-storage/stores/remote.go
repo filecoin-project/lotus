@@ -560,6 +560,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		return si[i].Weight > si[j].Weight
 	})
 
+	var lastErr error
 	for _, info := range si {
 		for _, url := range info.URLs {
 			// checkAllocated makes a JSON RPC query to a remote worker to determine if it has
@@ -567,6 +568,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 			ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
 			if err != nil {
 				log.Warnw("check if remote has piece", "url", url, "error", err)
+				lastErr = err
 				continue
 			}
 			if !ok {
@@ -578,6 +580,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 			rd, err := r.readRemote(ctx, url, offset, size)
 			if err != nil {
 				log.Warnw("reading from remote", "url", url, "error", err)
+				lastErr = err
 				continue
 			}
 			log.Infof("Read remote %s (+%d,%d)", url, offset, size)
@@ -586,12 +589,15 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 	}
 
 	// we couldn't find a unsealed file with the unsealed piece, will return a nil reader.
-	log.Debugf("returning nil reader, did not find unsealed piece for %+v (+%d,%d)", s, offset, size)
+	log.Debugf("returning nil reader, did not find unsealed piece for %+v (+%d,%d), last error=%s", s, offset, size, lastErr)
 	return nil, nil
 }
 
 func (r *Remote) Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
-	panic("not implemented")
+	log.Warnf("reserve called on remote store, sectorID: %v", sid.ID)
+	return func() {
+
+	}, nil
 }
 
 var _ Store = &Remote{}

@@ -155,7 +155,6 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		}
 	} else {
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.WriteHeader(200)
 		// will do a ranged read over the file at the given path if the caller has asked for a ranged read in the request headers.
 		http.ServeFile(w, r, path)
 	}
