@@ -28,52 +28,54 @@ import (
 // TestPieceProviderReadPiece verifies that the ReadPiece method works correctly
 // only uses miner and does NOT use any remote worker.
 func TestPieceProviderSimpleNoRemoteWorker(t *testing.T) {
-
-	runTest := func(t *testing.T, alreadyUnsealed bool) {
-		// Set up sector storage manager
-		sealerCfg := SealerConfig{
-			ParallelFetchLimit: 10,
-			AllowAddPiece:      true,
-			AllowPreCommit1:    true,
-			AllowPreCommit2:    true,
-			AllowCommit:        true,
-			AllowUnseal:        true,
-		}
-
-		ppt := newPieceProviderTestHarness(t, sealerCfg, abi.RegisteredSealProof_StackedDrg8MiBV1)
-		defer ppt.shutdown(t)
-
-		// Create some padded data that aligns with the piece boundaries.
-		pieceData := generatePieceData(8 * 127 * 1024 * 8)
-		size := abi.UnpaddedPieceSize(len(pieceData))
-		ppt.addPiece(t, pieceData)
-
-		// pre-commit 1
-		preCommit1 := ppt.preCommit1(t)
-
-		// pre-commit 2
-		ppt.preCommit2(t, preCommit1)
-
-		// If we want to test what happens when the data must be unsealed
-		// (ie there is not an unsealed copy already available)
-		if !alreadyUnsealed {
-			// Remove the unsealed copy from local storage
-			ppt.removeAllUnsealedSectorFiles(t)
-		}
-
-		// Read the piece
-		ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
-			!alreadyUnsealed, pieceData)
+	// Set up sector storage manager
+	sealerCfg := SealerConfig{
+		ParallelFetchLimit: 10,
+		AllowAddPiece:      true,
+		AllowPreCommit1:    true,
+		AllowPreCommit2:    true,
+		AllowCommit:        true,
+		AllowUnseal:        true,
 	}
 
-	t.Run("already unsealed", func(t *testing.T) {
-		runTest(t, true)
-	})
-	t.Run("requires unseal", func(t *testing.T) {
-		runTest(t, false)
-	})
-}
+	ppt := newPieceProviderTestHarness(t, sealerCfg, abi.RegisteredSealProof_StackedDrg8MiBV1)
+	defer ppt.shutdown(t)
 
+	// Create some padded data that aligns with the piece boundaries.
+	pieceData := generatePieceData(8 * 127 * 1024 * 8)
+	size := abi.UnpaddedPieceSize(len(pieceData))
+	ppt.addPiece(t, pieceData)
+
+	// read piece
+	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
+		false, pieceData)
+
+	// pre-commit 1
+	preCommit1 := ppt.preCommit1(t)
+
+	// read piece
+	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
+		false, pieceData)
+
+	// pre-commit 2
+	ppt.preCommit2(t, preCommit1)
+
+	// read piece
+	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
+		false, pieceData)
+
+	// finalize -> nil here will remove unsealed file
+	ppt.finalizeSector(t, nil)
+
+	// Read the piece -> will have to unseal
+	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
+		true, pieceData)
+
+	// read the piece -> will not have to unseal
+	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
+		false, pieceData)
+
+}
 func TestReadPieceRemoteWorkers(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
@@ -116,9 +118,15 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 
 	// pre-commit 1
 	pC1 := ppt.preCommit1(t)
+	// Read the piece -> no need to unseal
+	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), pd1size,
+		false, pd1)
 
 	// pre-commit 2
 	ppt.preCommit2(t, pC1)
+	// Read the piece -> no need to unseal
+	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), pd1size,
+		false, pd1)
 
 	// finalize the sector so we declare to the index we have the sealed file
 	// so the unsealing worker can later look it up and fetch it if needed
