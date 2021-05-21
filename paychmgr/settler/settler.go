@@ -96,6 +96,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, build.MessageConfidence, api.LookbackNoLimit, true)
 			if err != nil {
 				log.Errorf("submitting voucher: %s", err.Error())
+				return
 			}
 			if msgLookup.Receipt.ExitCode != 0 {
 				log.Errorf("failed submitting voucher: %+v", voucher)

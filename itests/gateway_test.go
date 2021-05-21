@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -31,21 +33,26 @@ import (
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 )
 
+const (
+	maxLookbackCap            = time.Duration(math.MaxInt64)
+	maxStateWaitLookbackLimit = stmgr.LookbackNoLimit
+)
+
 func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
-// TestWalletMsig tests that API calls to wallet and msig can be made on a lite
+// TestGatewayWalletMsig tests that API calls to wallet and msig can be made on a lite
 // node that is connected through a gateway to a full API node
-func TestWalletMsig(t *testing.T) {
+func TestGatewayWalletMsig(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodes(ctx, t, blocktime, gateway.DefaultLookbackCap, gateway.DefaultStateWaitLookbackLimit)
+	nodes := startNodes(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
@@ -171,28 +178,28 @@ func TestWalletMsig(t *testing.T) {
 	require.True(t, approveReturn.Applied)
 }
 
-// TestMsigCLI tests that msig CLI calls can be made
+// TestGatewayMsigCLI tests that msig CLI calls can be made
 // on a lite node that is connected through a gateway to a full API node
-func TestMsigCLI(t *testing.T) {
+func TestGatewayMsigCLI(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefaultLookbackCap, gateway.DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	lite := nodes.lite
 	runMultisigTests(t, lite)
 }
 
-func TestDealFlow(t *testing.T) {
+func TestGatewayDealFlow(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefaultLookbackCap, gateway.DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	// For these tests where the block time is artificially short, just use
@@ -204,13 +211,13 @@ func TestDealFlow(t *testing.T) {
 	dh.MakeFullDeal(ctx, 6, false, false, dealStartEpoch)
 }
 
-func TestCLIDealFlow(t *testing.T) {
+func TestGatewayCLIDealFlow(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, gateway.DefaultLookbackCap, gateway.DefaultStateWaitLookbackLimit)
+	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
 
 	kit.RunClientTest(t, cli.Commands, nodes.lite)
