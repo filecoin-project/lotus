@@ -3,7 +3,6 @@ package gen
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -634,8 +633,6 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 func (wpp *wppProvider) ComputeProof(context.Context, []proof5.SectorInfo, abi.PoStRandomness) ([]proof5.PoStProof, error) {
 	return ValidWpostForTesting, nil
 }
-
-var b64 = base64.URLEncoding.WithPadding(base64.NoPadding)
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
