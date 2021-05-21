@@ -510,6 +510,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		log.Infof("Read local %s (+%d,%d)", path, offset, size)
 		ssize, err := s.ProofType.SectorSize()
 		if err != nil {
+			log.Debugf("failed to get sectorsize: %s", err)
 			return nil, err
 		}
 
@@ -530,6 +531,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 			if err := r.pfHandler.Close(pf); err != nil {
 				return nil, xerrors.Errorf("close partial file: %w", err)
 			}
+			log.Debugf("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
 			return nil, nil
 		}
 
