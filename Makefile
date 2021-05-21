@@ -375,6 +375,10 @@ gen: actors-gen type-gen method-gen docsgen api-gen
 	@echo ">>> IF YOU'VE MODIFIED THE CLI, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 
+snap: lotus lotus-miner lotus-worker
+	snapcraft
+	# snapcraft upload ./lotus_*.snap
+
 # separate from gen because it needs binaries
 docsgen-cli: lotus lotus-miner lotus-worker
 	python ./scripts/generate-lotus-cli.py
