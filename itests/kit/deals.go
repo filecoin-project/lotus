@@ -252,7 +252,7 @@ type DealsScaffold struct {
 	BlockMiner *BlockMiner
 }
 
-func ConnectAndStartMining(t *testing.T, blocktime time.Duration, miner TestMiner, clients ...*impl.FullNodeAPI) *BlockMiner {
+func ConnectAndStartMining(t *testing.T, blocktime time.Duration, miner TestMiner, clients ...api.FullNode) *BlockMiner {
 	ctx := context.Background()
 
 	for _, c := range clients {

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/gorilla/mux"
 	"golang.org/x/xerrors"
 
@@ -474,6 +475,9 @@ func mockMinerBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []Stora
 			node.Test(),
 
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
+
+			// so that we subscribe to pubsub topics immediately
+			node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
 
 			genesis,
 

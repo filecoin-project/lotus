@@ -277,7 +277,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymen
 			size = count - i
 		}
 
-		// Add a batch of null blocks
+		// Add a batch of null blocks to advance the chain quicker through finalities.
 		bm.InjectNulls(abi.ChainEpoch(size - 1))
 
 		// Add a real block
