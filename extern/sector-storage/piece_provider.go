@@ -57,7 +57,7 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage
 	// the unsealed piece.
 	r, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded())
 	if err != nil {
-		log.Debugf("failed storage reader;sector=%+v, err:%s", sector.ID, err)
+		log.Debugf("did not get storage reader;sector=%+v, err:%s", sector.ID, err)
 		cancel()
 		return nil, nil, err
 	}
@@ -81,13 +81,14 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 
 	r, unlock, err := p.tryReadUnsealedPiece(ctx, sector, offset, size)
 
-	log.Debugf("result of tryReadUnsealedPiece: r=%+v, err=%s", r, err)
+	log.Debugf("result of first tryReadUnsealedPiece: r=%+v, err=%s", r, err)
 
 	if xerrors.Is(err, storiface.ErrSectorNotFound) {
 		log.Debugf("no unsealed sector file with unsealed piece, sector=%+v, offset=%d, size=%d", sector, offset, size)
 		err = nil
 	}
 	if err != nil {
+		log.Errorf("returning error from ReadPiece:%s", err)
 		return nil, false, err
 	}
 
@@ -103,6 +104,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 			commd = nil
 		}
 		if err := p.uns.SectorsUnsealPiece(ctx, sector, offset, size, ticket, commd); err != nil {
+			log.Errorf("failed to SectorsUnsealPiece: %s", err)
 			return nil, false, xerrors.Errorf("unsealing piece: %w", err)
 		}
 
@@ -110,9 +112,11 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 
 		r, unlock, err = p.tryReadUnsealedPiece(ctx, sector, offset, size)
 		if err != nil {
+			log.Errorf("failed to tryReadUnsealedPiece after SectorsUnsealPiece: %s", err)
 			return nil, true, xerrors.Errorf("read after unsealing: %w", err)
 		}
 		if r == nil {
+			log.Errorf("got no reader after unsealing piece")
 			return nil, true, xerrors.Errorf("got no reader after unsealing piece")
 		}
 		log.Debugf("got a reader to read unsealed piece, sector=%+v, offset=%d, size=%d", sector, offset, size)

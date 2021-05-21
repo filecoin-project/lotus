@@ -548,6 +548,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 	// if they have the unsealed piece in the unsealed sector file.
 	si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
 	if err != nil {
+		log.Debugf("Reader, did not find unsealed file on any of the workers %s (+%d,%d)", path, offset, size)
 		return nil, err
 	}
 
