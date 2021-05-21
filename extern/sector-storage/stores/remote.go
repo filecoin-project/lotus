@@ -510,17 +510,16 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		log.Infof("Read local %s (+%d,%d)", path, offset, size)
 		ssize, err := s.ProofType.SectorSize()
 		if err != nil {
-			log.Debugf("failed to get sectorsize: %s", err)
 			return nil, err
 		}
-		log.Infof("fetched sector size %s (+%d,%d)", path, offset, size)
+		log.Debugf("fetched sector size %s (+%d,%d)", path, offset, size)
 
 		// open the unsealed sector file for the given sector size located at the given path.
 		pf, err := r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
 		if err != nil {
 			return nil, xerrors.Errorf("opening partial file: %w", err)
 		}
-		log.Infof("partial file opened %s (+%d,%d)", path, offset, size)
+		log.Debugf("local partial file opened %s (+%d,%d)", path, offset, size)
 
 		// even though we have an unsealed file for the given sector, we still need to determine if we have the unsealed piece
 		// in the unsealed sector file. That is what `HasAllocated` checks for.
@@ -528,10 +527,10 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		if err != nil {
 			return nil, xerrors.Errorf("has allocated: %w", err)
 		}
-		log.Infof("partial file is allocated %s (+%d,%d)", path, offset, size)
+		log.Debugf("check if partial file is allocated %s (+%d,%d)", path, offset, size)
 
 		if !has {
-			log.Infof("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
+			log.Debugf("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
 			if err := r.pfHandler.Close(pf); err != nil {
 				return nil, xerrors.Errorf("close partial file: %w", err)
 			}
