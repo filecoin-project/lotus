@@ -18,13 +18,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
-	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 func TestWorkerKeyChange(t *testing.T) {
@@ -51,7 +50,7 @@ func TestWorkerKeyChange(t *testing.T) {
 
 	blocktime := 1 * time.Millisecond
 
-	n, sn := builder.MockSbBuilder(t, []test.FullNodeOpts{test.FullNodeWithLatestActorsAt(-1), test.FullNodeWithLatestActorsAt(-1)}, test.OneMiner)
+	n, sn := kit.MockMinerBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1), kit.FullNodeWithLatestActorsAt(-1)}, kit.OneMiner)
 
 	client1 := n[0]
 	client2 := n[1]
@@ -92,7 +91,7 @@ func TestWorkerKeyChange(t *testing.T) {
 		defer close(done)
 		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, test.MineNext); err != nil {
+			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
 				t.Error(err)
 			}
 		}
@@ -107,7 +106,7 @@ func TestWorkerKeyChange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Initialize wallet.
-	test.SendFunds(ctx, t, client1, newKey, abi.NewTokenAmount(0))
+	kit.SendFunds(ctx, t, client1, newKey, abi.NewTokenAmount(0))
 
 	require.NoError(t, run(actorProposeChangeWorker, "--really-do-it", newKey.String()))
 

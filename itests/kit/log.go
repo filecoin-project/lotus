@@ -1,8 +1,13 @@
 package kit
 
-import logging "github.com/ipfs/go-log/v2"
+import (
+	"github.com/filecoin-project/lotus/lib/lotuslog"
+	logging "github.com/ipfs/go-log/v2"
+)
 
 func QuietMiningLogs() {
+	lotuslog.SetupLogLevels()
+
 	_ = logging.SetLogLevel("Miner", "ERROR")
 	_ = logging.SetLogLevel("chainstore", "ERROR")
 	_ = logging.SetLogLevel("chain", "ERROR")
