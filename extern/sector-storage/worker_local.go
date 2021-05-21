@@ -441,6 +441,8 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storage.SectorRef,
 			return nil, xerrors.Errorf("removing source data: %w", err)
 		}
 
+		log.Debugf("worker has unsealed piece, sector=%+v", sector.ID)
+
 		return nil, nil
 	})
 }
