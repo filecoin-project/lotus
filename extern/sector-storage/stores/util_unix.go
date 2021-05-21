@@ -2,6 +2,7 @@ package stores
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -37,6 +38,10 @@ func move(from, to string) error {
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "darwin" {
+		if err := os.MkdirAll(toDir, 0777); err != nil {
+			return xerrors.Errorf("failed exec MkdirAll: %s", err)
+		}
+
 		cmd = exec.Command("/usr/bin/env", "mv", from, toDir) // nolint
 	} else {
 		cmd = exec.Command("/usr/bin/env", "mv", "-t", toDir, from) // nolint
