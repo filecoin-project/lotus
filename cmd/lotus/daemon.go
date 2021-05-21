@@ -351,8 +351,21 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("getting api endpoint: %w", err)
 		}
 
+		// Start the RPC server.
+		rpcStopper, err := node.ServeRPC(api, endpoint, int64(cctx.Int("api-max-req-size")))
+		if err != nil {
+			return fmt.Errorf("failed to start JSON-RPC API: %s", err)
+		}
+
+		// Monitor for shutdown.
+		finishCh := node.MonitorShutdown(shutdownChan,
+			node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
+			node.ShutdownHandler{Component: "node", StopFunc: stop},
+		)
+		<-finishCh // fires when shutdown is complete.
+
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, endpoint, shutdownChan, int64(cctx.Int("api-max-req-size")))
+		return nil
 	},
 	Subcommands: []*cli.Command{
 		daemonStopCmd,
