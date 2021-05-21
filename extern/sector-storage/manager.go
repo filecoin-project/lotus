@@ -235,14 +235,14 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 	// one of it's sealing scratch spaces to store them after fetching them from another worker.
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTSealed|storiface.FTCache, true)
 
-	log.Debugf("schedule unseal for sector %d", sector.ID)
+	log.Debugf("will schedule unseal for sector %d", sector.ID)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, sealFetch, func(ctx context.Context, w Worker) error {
 		// TODO: make restartable
 
 		// NOTE: we're unsealing the whole sector here as with SDR we can't really
 		//  unseal the sector partially. Requesting the whole sector here can
 		//  save us some work in case another piece is requested from here
-		log.Debugf("unseal sector %d", sector.ID)
+		log.Debugf("calling unseal sector on worker, sectoID=%d", sector.ID)
 
 		// Note: This unseal piece call will essentially become a no-op if the worker already has an Unsealed sector file for the given sector.
 		_, err := m.waitSimpleCall(ctx)(w.UnsealPiece(ctx, sector, 0, abi.PaddedPieceSize(ssize).Unpadded(), ticket, *unsealed))
