@@ -370,6 +370,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []StorageMin
 		wait.Lock()
 
 		bm := NewBlockMiner(t, miners[0])
+		t.Cleanup(bm.Stop)
 
 		bm.MineUntilBlock(ctx, fulls[0], func(epoch abi.ChainEpoch) {
 			wait.Unlock()

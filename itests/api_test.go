@@ -17,16 +17,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAPI(t *testing.T) {
+	t.Run("direct", func(t *testing.T) {
+		runAPITest(t, kit.Builder)
+	})
+	t.Run("rpc", func(t *testing.T) {
+		runAPITest(t, kit.RPCBuilder)
+	})
+}
+
 type apiSuite struct {
 	makeNodes kit.APIBuilder
-}
-
-func TestAPI(t *testing.T) {
-	runAPITest(t, kit.Builder)
-}
-
-func TestAPIRPC(t *testing.T) {
-	runAPITest(t, kit.RPCBuilder)
 }
 
 // runAPITest is the entry point to API test suite
