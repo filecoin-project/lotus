@@ -13,6 +13,7 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 
@@ -438,13 +439,15 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			}
 		}
 
-		log.Infow(
-			"completed mineOne",
-			"tookMilliseconds", (build.Clock.Now().UnixNano()-start.UnixNano())/1_000_000,
+		isLate := uint64(start.Unix()) > (base.TipSet.MinTimestamp() + uint64(base.NullRounds*builtin.EpochDurationSeconds) + build.PropagationDelaySecs)
+
+		logStruct := []interface{}{
+			"tookMilliseconds", (build.Clock.Now().UnixNano() - start.UnixNano()) / 1_000_000,
 			"forRound", int64(round),
 			"baseEpoch", int64(base.TipSet.Height()),
-			"baseDeltaSeconds", uint64(start.Unix())-base.TipSet.MinTimestamp(),
+			"baseDeltaSeconds", uint64(start.Unix()) - base.TipSet.MinTimestamp(),
 			"nullRounds", int64(base.NullRounds),
+			"lateStart", isLate,
 			"beaconEpoch", uint64(rbase.Round),
 			"lookbackEpochs", int64(policy.ChainFinality), // hardcoded as it is unlikely to change again: https://github.com/filecoin-project/lotus/blob/v1.8.0/chain/actors/policy/policy.go#L180-L186
 			"networkPowerAtLookback", mbi.NetworkPower.String(),
@@ -452,7 +455,15 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			"isEligible", mbi.EligibleForMining,
 			"isWinner", (winner != nil),
 			"error", err,
-		)
+		}
+
+		if err != nil {
+			log.Errorw("completed mineOne", logStruct...)
+		} else if isLate {
+			log.Warnw("completed mineOne", logStruct...)
+		} else {
+			log.Infow("completed mineOne", logStruct...)
+		}
 	}()
 
 	mbi, err = m.api.MinerGetBaseInfo(ctx, m.address, round, base.TipSet.Key())
