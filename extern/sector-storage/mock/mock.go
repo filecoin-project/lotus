@@ -381,6 +381,10 @@ func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, o
 	return ioutil.NopCloser(bytes.NewReader(mgr.pieces[mgr.sectors[sector.ID].pieces[0]][:size])), false, nil
 }
 
+func (mgr *SectorMgr) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+	return false, nil
+}
+
 func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof) (storage.SectorRef, []abi.PieceInfo, error) {
 	psize, err := spt.SectorSize()
 	if err != nil {

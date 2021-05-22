@@ -99,3 +99,69 @@ func (rpn *retrievalProviderNode) GetChainHead(ctx context.Context) (shared.TipS
 
 	return head.Key().Bytes(), head.Height(), nil
 }
+
+func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
+	si, err := rpn.miner.GetSectorInfo(sectorID)
+	if err != nil {
+		return false, xerrors.Errorf("failed to get sectorinfo, err=%s", err)
+	}
+
+	mid, err := address.IDFromAddress(rpn.miner.Address())
+	if err != nil {
+		return false, err
+	}
+
+	ref := specstorage.SectorRef{
+		ID: abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: sectorID,
+		},
+		ProofType: si.SectorType,
+	}
+
+	log.Debugf("will call IsUnsealed now sector=%+v, offset=%d, size=%d", sectorID, offset, length)
+	return rpn.pp.IsUnsealed(ctx, ref, storiface.UnpaddedByteIndex(offset), length)
+}
+
+// `storageDeals` param here is the list of storage deals made for the `payloadCID` the retrieval client is looking for.
+//
+// `pieceCID` is the CID of the specific Piece we want to retrieve the payload from. The client can either mandate that
+// we retrieve the payload from a specific piece or we choose a Piece to retrieve the payload from, prioritizing
+// a Piece for which an unsealed sector file already exists if possible.
+//
+// 1. For the `VerifiedDeal` flag in the response `PricingInput`, we are looking to answer the question "does there exist any verified storage deal for this `payloadCID`" ?
+//
+// 2. We also want to ensure that we return the `PieceSize` for the actual piece we want to retrieve the deal from.
+func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, pieceCID cid.Cid, storageDeals []abi.DealID) (retrievalmarket.PricingInput, error) {
+	resp := retrievalmarket.PricingInput{}
+
+	head, err := rpn.full.ChainHead(ctx)
+	if err != nil {
+		return resp, xerrors.Errorf("failed to get chain head: %w", err)
+	}
+	tsk := head.Key()
+
+	for _, dealID := range storageDeals {
+		ds, err := rpn.full.StateMarketStorageDeal(ctx, dealID, tsk)
+		if err != nil {
+			return resp, xerrors.Errorf("failed to look up deal %d on chain: err=%w", dealID, err)
+		}
+		if ds.Proposal.VerifiedDeal {
+			resp.VerifiedDeal = true
+		}
+
+		if ds.Proposal.PieceCID.Equals(pieceCID) {
+			resp.PieceSize = ds.Proposal.PieceSize.Unpadded()
+		}
+
+		if resp.VerifiedDeal && resp.PieceSize != 0 {
+			break
+		}
+	}
+
+	if resp.PieceSize == 0 {
+		return resp, xerrors.New("failed to find matching piece, PieceSize is zero")
+	}
+
+	return resp, nil
+}

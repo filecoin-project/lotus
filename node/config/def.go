@@ -10,6 +10,14 @@ import (
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
 
+const (
+	// DefaultRetrievalPricing configures the node to use the default retrieval pricing policy.
+	DefaultRetrievalPricing = "default"
+	// ExternalRetrievalPricing configures the node to use the external retrieval pricing script
+	// configured by the user.
+	ExternalRetrievalPricing = "external"
+)
+
 // Common is common config between full node and miner
 type Common struct {
 	API    API
@@ -66,6 +74,29 @@ type DealmakingConfig struct {
 
 	Filter          string
 	RetrievalFilter string
+
+	RetrievalPricing *RetrievalPricing
+}
+
+type RetrievalPricing struct {
+	Strategy string // possible values: "default", "external"
+
+	Default  *RetrievalPricingDefault
+	External *RetrievalPricingExternal
+}
+
+type RetrievalPricingExternal struct {
+	// Path of the external script that will be run to price a retrieval deal.
+	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".
+	Path string
+}
+
+type RetrievalPricingDefault struct {
+	// VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
+	// of a payloadCid that belongs to a verified storage deal.
+	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "default".
+	// default value is true
+	VerifiedDealsFreeTransfer bool
 }
 
 type SealingConfig struct {
@@ -264,6 +295,13 @@ func DefaultStorageMiner() *StorageMiner {
 			PublishMsgPeriod:                Duration(time.Hour),
 			MaxDealsPerPublishMsg:           8,
 			MaxProviderCollateralMultiplier: 2,
+
+			RetrievalPricing: &RetrievalPricing{
+				Strategy: DefaultRetrievalPricing,
+				Default: &RetrievalPricingDefault{
+					VerifiedDealsFreeTransfer: true,
+				},
+			},
 		},
 
 		Fees: MinerFeeConfig{
