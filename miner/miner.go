@@ -440,9 +440,12 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 
 		log.Infow(
 			"completed mineOne",
+			"tookMilliseconds", (build.Clock.Now().UnixNano()-start.UnixNano())/1_000_000,
 			"forRound", int64(round),
 			"baseEpoch", int64(base.TipSet.Height()),
-			"beaconEpoch", rbase.Round,
+			"baseDeltaSeconds", uint64(start.Unix())-base.TipSet.MinTimestamp(),
+			"nullRounds", int64(base.NullRounds),
+			"beaconEpoch", uint64(rbase.Round),
 			"lookbackEpochs", int64(policy.ChainFinality), // hardcoded as it is unlikely to change again: https://github.com/filecoin-project/lotus/blob/v1.8.0/chain/actors/policy/policy.go#L180-L186
 			"networkPowerAtLookback", mbi.NetworkPower.String(),
 			"minerPowerAtLookback", mbi.MinerPower.String(),
@@ -474,8 +477,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	bvals := mbi.BeaconEntries
 
 	tPowercheck := build.Clock.Now()
-
-	log.Infof("Time delta between now and our mining base: %ds (nulls: %d)", uint64(build.Clock.Now().Unix())-base.TipSet.MinTimestamp(), base.NullRounds)
 
 	rbase = beaconPrev
 	if len(bvals) > 0 {
