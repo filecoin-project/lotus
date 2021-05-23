@@ -1,4 +1,4 @@
-package main
+package node
 
 import (
 	"context"
@@ -6,10 +6,8 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
-	"os/signal"
 	"runtime"
-	"syscall"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -25,13 +23,17 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
-var log = logging.Logger("main")
+var rpclog = logging.Logger("rpc")
 
-func serveRPC(a v1api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shutdownCh <-chan struct{}, maxRequestSize int64) error {
+// ServeRPC serves the full node API over the supplied listen multiaddr.
+//
+// It returns the stop function to be called to terminate the endpoint.
+//
+// This function spawns a goroutine to run the server, and returns immediately.
+func ServeRPC(a v1api.FullNode, addr multiaddr.Multiaddr, maxRequestSize int64) (StopFunc, error) {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
@@ -62,15 +64,17 @@ func serveRPC(a v1api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, sh
 
 	http.Handle("/debug/metrics", metrics.Exporter())
 	http.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
-	http.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction",
-		func(x int) { runtime.SetMutexProfileFraction(x) },
-	))
+	http.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction", func(x int) {
+		runtime.SetMutexProfileFraction(x)
+	}))
 
+	// Start listening to the addr; if invalid or occupied, we will fail early.
 	lst, err := manet.Listen(addr)
 	if err != nil {
-		return xerrors.Errorf("could not listen: %w", err)
+		return nil, xerrors.Errorf("could not listen: %w", err)
 	}
 
+	// Instantiate the server and start listening.
 	srv := &http.Server{
 		Handler: http.DefaultServeMux,
 		BaseContext: func(listener net.Listener) context.Context {
@@ -79,35 +83,14 @@ func serveRPC(a v1api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, sh
 		},
 	}
 
-	sigCh := make(chan os.Signal, 2)
-	shutdownDone := make(chan struct{})
 	go func() {
-		select {
-		case sig := <-sigCh:
-			log.Warnw("received shutdown", "signal", sig)
-		case <-shutdownCh:
-			log.Warn("received shutdown")
+		err = srv.Serve(manet.NetListener(lst))
+		if err != http.ErrServerClosed {
+			log.Warnf("rpc server failed: %s", err)
 		}
-
-		log.Warn("Shutting down...")
-		if err := srv.Shutdown(context.TODO()); err != nil {
-			log.Errorf("shutting down RPC server failed: %s", err)
-		}
-		if err := stop(context.TODO()); err != nil {
-			log.Errorf("graceful shutting down failed: %s", err)
-		}
-		log.Warn("Graceful shutdown successful")
-		_ = log.Sync() //nolint:errcheck
-		close(shutdownDone)
 	}()
-	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 
-	err = srv.Serve(manet.NetListener(lst))
-	if err == http.ErrServerClosed {
-		<-shutdownDone
-		return nil
-	}
-	return err
+	return srv.Shutdown, err
 }
 
 func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {
@@ -134,5 +117,32 @@ func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Reque
 			log.Errorf("/rest/v0/import: Writing response failed: %+v", err)
 			return
 		}
+	}
+}
+
+func handleFractionOpt(name string, setter func(int)) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(rw, "only POST allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		asfr := r.Form.Get("x")
+		if len(asfr) == 0 {
+			http.Error(rw, "parameter 'x' must be set", http.StatusBadRequest)
+			return
+		}
+
+		fr, err := strconv.Atoi(asfr)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+		log.Infof("setting %s to %d", name, fr)
+		setter(fr)
 	}
 }

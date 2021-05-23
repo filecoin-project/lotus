@@ -15,11 +15,12 @@ COMMANDS:
    version  Print version
    help, h  Shows a list of commands or help for one command
    BASIC:
-     send    Send funds between accounts
-     wallet  Manage wallet
-     client  Make deals, store data, retrieve data
-     msig    Interact with a multisig wallet
-     paych   Manage payment channels
+     send      Send funds between accounts
+     wallet    Manage wallet
+     client    Make deals, store data, retrieve data
+     msig      Interact with a multisig wallet
+     verifreg  Interact with the verified registry actor
+     paych     Manage payment channels
    DEVELOPER:
      auth          Manage RPC permissions
      mpool         Manage message pool
@@ -1031,6 +1032,94 @@ USAGE:
 OPTIONS:
    --from value  account to send the proposal from
    --help, -h    show help (default: false)
+   
+```
+
+## lotus verifreg
+```
+NAME:
+   lotus verifreg - Interact with the verified registry actor
+
+USAGE:
+   lotus verifreg command [command options] [arguments...]
+
+COMMANDS:
+   verify-client   give allowance to the specified verified client address
+   list-verifiers  list all verifiers
+   list-clients    list all verified clients
+   check-client    check verified client remaining bytes
+   check-verifier  check verifiers remaining bytes
+   help, h         Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+### lotus verifreg verify-client
+```
+NAME:
+   lotus verifreg verify-client - give allowance to the specified verified client address
+
+USAGE:
+   lotus verifreg verify-client [command options] [arguments...]
+
+OPTIONS:
+   --from value  specify your verifier address to send the message from
+   --help, -h    show help (default: false)
+   
+```
+
+### lotus verifreg list-verifiers
+```
+NAME:
+   lotus verifreg list-verifiers - list all verifiers
+
+USAGE:
+   lotus verifreg list-verifiers [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus verifreg list-clients
+```
+NAME:
+   lotus verifreg list-clients - list all verified clients
+
+USAGE:
+   lotus verifreg list-clients [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus verifreg check-client
+```
+NAME:
+   lotus verifreg check-client - check verified client remaining bytes
+
+USAGE:
+   lotus verifreg check-client [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus verifreg check-verifier
+```
+NAME:
+   lotus verifreg check-verifier - check verifiers remaining bytes
+
+USAGE:
+   lotus verifreg check-verifier [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

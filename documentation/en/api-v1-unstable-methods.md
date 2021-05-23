@@ -3008,8 +3008,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Addrs": []
+  "Addrs": null,
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
 }
 ```
 
@@ -3158,8 +3158,8 @@ Inputs:
 ```json
 [
   {
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Addrs": []
+    "Addrs": null,
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
   }
 ]
 ```
@@ -3209,8 +3209,8 @@ Inputs:
 Response:
 ```json
 {
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Addrs": []
+  "Addrs": null,
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
 }
 ```
 

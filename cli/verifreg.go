@@ -1,9 +1,13 @@
-package main
+package cli
 
 import (
+	"context"
 	"fmt"
 
+	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
+
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api/v0api"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -11,15 +15,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
-
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -28,7 +29,6 @@ var verifRegCmd = &cli.Command{
 	Usage: "Interact with the verified registry actor",
 	Flags: []cli.Flag{},
 	Subcommands: []*cli.Command{
-		verifRegAddVerifierCmd,
 		verifRegVerifyClientCmd,
 		verifRegListVerifiersCmd,
 		verifRegListClientsCmd,
@@ -37,91 +37,17 @@ var verifRegCmd = &cli.Command{
 	},
 }
 
-var verifRegAddVerifierCmd = &cli.Command{
-	Name:      "add-verifier",
-	Usage:     "make a given account a verifier",
-	ArgsUsage: "<message sender> <new verifier> <allowance>",
-	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must specify three arguments: sender, verifier, and allowance")
-		}
-
-		sender, err := address.NewFromString(cctx.Args().Get(0))
-		if err != nil {
-			return err
-		}
-
-		verifier, err := address.NewFromString(cctx.Args().Get(1))
-		if err != nil {
-			return err
-		}
-
-		allowance, err := types.BigFromString(cctx.Args().Get(2))
-		if err != nil {
-			return err
-		}
-
-		// TODO: ActorUpgrade: Abstract
-		params, err := actors.SerializeParams(&verifreg2.AddVerifierParams{Address: verifier, Allowance: allowance})
-		if err != nil {
-			return err
-		}
-
-		srv, err := lcli.GetFullNodeServices(cctx)
-		if err != nil {
-			return err
-		}
-		defer srv.Close() //nolint:errcheck
-
-		api := srv.FullNodeAPI()
-		ctx := lcli.ReqContext(cctx)
-
-		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		proto, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.AddVerifier), params)
-		if err != nil {
-			return err
-		}
-
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
-		if err != nil {
-			return err
-		}
-
-		msgCid := sm.Cid()
-
-		fmt.Printf("message sent, now waiting on cid: %s\n", msgCid)
-
-		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
-		if err != nil {
-			return err
-		}
-
-		if mwait.Receipt.ExitCode != 0 {
-			return fmt.Errorf("failed to add verifier: %d", mwait.Receipt.ExitCode)
-		}
-
-		//TODO: Internal msg might still have failed
-		return nil
-
-	},
-}
-
 var verifRegVerifyClientCmd = &cli.Command{
-	Name:   "verify-client",
-	Usage:  "make a given account a verified client",
-	Hidden: true,
+	Name:  "verify-client",
+	Usage: "give allowance to the specified verified client address",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "from",
-			Usage: "specify your verifier address to send the message from",
+			Name:     "from",
+			Usage:    "specify your verifier address to send the message from",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
 		froms := cctx.String("from")
 		if froms == "" {
 			return fmt.Errorf("must specify from address with --from")
@@ -146,17 +72,31 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&verifreg2.AddVerifiedClientParams{Address: target, Allowance: allowance})
-		if err != nil {
-			return err
-		}
-
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := ReqContext(cctx)
+
+		found, dcap, err := checkVerifier(ctx, api, fromk)
+		if err != nil {
+			return err
+		}
+
+		if !found {
+			return xerrors.New("sender address must be a verifier")
+		}
+
+		if dcap.Cmp(allowance.Int) < 0 {
+			return xerrors.Errorf("cannot allot more allowance than verifier data cap: %s < %s", dcap, allowance)
+		}
+
+		// TODO: This should be abstracted over actor versions
+		params, err := actors.SerializeParams(&verifreg4.AddVerifiedClientParams{Address: target, Allowance: allowance})
+		if err != nil {
+			return err
+		}
 
 		msg := &types.Message{
 			To:     verifreg.Address,
@@ -186,17 +126,15 @@ var verifRegVerifyClientCmd = &cli.Command{
 }
 
 var verifRegListVerifiersCmd = &cli.Command{
-	Name:   "list-verifiers",
-	Usage:  "list all verifiers",
-	Hidden: true,
+	Name:  "list-verifiers",
+	Usage: "list all verifiers",
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
 		if err != nil {
@@ -218,17 +156,15 @@ var verifRegListVerifiersCmd = &cli.Command{
 }
 
 var verifRegListClientsCmd = &cli.Command{
-	Name:   "list-clients",
-	Usage:  "list all verified clients",
-	Hidden: true,
+	Name:  "list-clients",
+	Usage: "list all verified clients",
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
 		if err != nil {
@@ -250,11 +186,9 @@ var verifRegListClientsCmd = &cli.Command{
 }
 
 var verifRegCheckClientCmd = &cli.Command{
-	Name:   "check-client",
-	Usage:  "check verified client remaining bytes",
-	Hidden: true,
+	Name:  "check-client",
+	Usage: "check verified client remaining bytes",
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify client address to check")
 		}
@@ -264,12 +198,12 @@ var verifRegCheckClientCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		dcap, err := api.StateVerifiedClientStatus(ctx, caddr, types.EmptyTSK)
 		if err != nil {
@@ -286,11 +220,9 @@ var verifRegCheckClientCmd = &cli.Command{
 }
 
 var verifRegCheckVerifierCmd = &cli.Command{
-	Name:   "check-verifier",
-	Usage:  "check verifiers remaining bytes",
-	Hidden: true,
+	Name:  "check-verifier",
+	Usage: "check verifiers remaining bytes",
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify verifier address to check")
 		}
@@ -300,37 +232,14 @@ var verifRegCheckVerifierCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := ReqContext(cctx)
 
-		head, err := api.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-
-		vid, err := api.StateLookupID(ctx, vaddr, head.Key())
-		if err != nil {
-			return err
-		}
-
-		act, err := api.StateGetActor(ctx, verifreg.Address, head.Key())
-		if err != nil {
-			return err
-		}
-
-		apibs := blockstore.NewAPIBlockstore(api)
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
-
-		st, err := verifreg.Load(store, act)
-		if err != nil {
-			return err
-		}
-
-		found, dcap, err := st.VerifierDataCap(vid)
+		found, dcap, err := checkVerifier(ctx, api, vaddr)
 		if err != nil {
 			return err
 		}
@@ -342,4 +251,26 @@ var verifRegCheckVerifierCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func checkVerifier(ctx context.Context, api v0api.FullNode, vaddr address.Address) (bool, abi.StoragePower, error) {
+	vid, err := api.StateLookupID(ctx, vaddr, types.EmptyTSK)
+	if err != nil {
+		return false, big.Zero(), err
+	}
+
+	act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+	if err != nil {
+		return false, big.Zero(), err
+	}
+
+	apibs := blockstore.NewAPIBlockstore(api)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+	st, err := verifreg.Load(store, act)
+	if err != nil {
+		return false, big.Zero(), err
+	}
+
+	return st.VerifierDataCap(vid)
 }
