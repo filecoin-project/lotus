@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
@@ -28,18 +29,44 @@ import (
 
 var rpclog = logging.Logger("rpc")
 
-// ServeRPC serves the full node API over the supplied listen multiaddr.
-//
-// It returns the stop function to be called to terminate the endpoint.
+// ServeRPC serves an HTTP handler over the supplied listen multiaddr.
 //
 // This function spawns a goroutine to run the server, and returns immediately.
-func ServeRPC(a v1api.FullNode, addr multiaddr.Multiaddr, maxRequestSize int64) (StopFunc, error) {
-	serverOptions := make([]jsonrpc.ServerOption, 0)
-	if maxRequestSize != 0 { // config set
-		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
+// It returns the stop function to be called to terminate the endpoint.
+//
+// The supplied ID is used in tracing, by inserting a tag in the context.
+func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, error) {
+	// Start listening to the addr; if invalid or occupied, we will fail early.
+	lst, err := manet.Listen(addr)
+	if err != nil {
+		return nil, xerrors.Errorf("could not listen: %w", err)
 	}
+
+	// Instantiate the server and start listening.
+	srv := &http.Server{
+		Handler: h,
+		BaseContext: func(listener net.Listener) context.Context {
+			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, id))
+			return ctx
+		},
+	}
+
+	go func() {
+		err = srv.Serve(manet.NetListener(lst))
+		if err != http.ErrServerClosed {
+			rpclog.Warnf("rpc server failed: %s", err)
+		}
+	}()
+
+	return srv.Shutdown, err
+}
+
+// FullNodeHandler returns a full node handler, to be mounted as-is on the server.
+func FullNodeHandler(a v1api.FullNode, opts ...jsonrpc.ServerOption) (http.Handler, error) {
+	m := mux.NewRouter()
+
 	serveRpc := func(path string, hnd interface{}) {
-		rpcServer := jsonrpc.NewServer(serverOptions...)
+		rpcServer := jsonrpc.NewServer(opts...)
 		rpcServer.Register("Filecoin", hnd)
 
 		ah := &auth.Handler{
@@ -47,7 +74,7 @@ func ServeRPC(a v1api.FullNode, addr multiaddr.Multiaddr, maxRequestSize int64) 
 			Next:   rpcServer.ServeHTTP,
 		}
 
-		http.Handle(path, ah)
+		m.Handle(path, ah)
 	}
 
 	pma := api.PermissionedFullAPI(metrics.MetricedFullAPI(a))
@@ -60,37 +87,39 @@ func ServeRPC(a v1api.FullNode, addr multiaddr.Multiaddr, maxRequestSize int64) 
 		Next:   handleImport(a.(*impl.FullNodeAPI)),
 	}
 
-	http.Handle("/rest/v0/import", importAH)
+	m.Handle("/rest/v0/import", importAH)
 
-	http.Handle("/debug/metrics", metrics.Exporter())
-	http.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
-	http.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction", func(x int) {
+	// debugging
+	m.Handle("/debug/metrics", metrics.Exporter())
+	m.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
+	m.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction", func(x int) {
 		runtime.SetMutexProfileFraction(x)
 	}))
+	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
-	// Start listening to the addr; if invalid or occupied, we will fail early.
-	lst, err := manet.Listen(addr)
-	if err != nil {
-		return nil, xerrors.Errorf("could not listen: %w", err)
+	return m, nil
+}
+
+// MinerHandler returns a miner handler, to be mounted as-is on the server.
+func MinerHandler(a api.StorageMiner) (http.Handler, error) {
+	m := mux.NewRouter()
+
+	rpcServer := jsonrpc.NewServer()
+	rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(metrics.MetricedStorMinerAPI(a)))
+
+	m.Handle("/rpc/v0", rpcServer)
+	m.PathPrefix("/remote").HandlerFunc(a.(*impl.StorageMinerAPI).ServeRemote)
+
+	// debugging
+	m.Handle("/debug/metrics", metrics.Exporter())
+	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+	ah := &auth.Handler{
+		Verify: a.AuthVerify,
+		Next:   m.ServeHTTP,
 	}
 
-	// Instantiate the server and start listening.
-	srv := &http.Server{
-		Handler: http.DefaultServeMux,
-		BaseContext: func(listener net.Listener) context.Context {
-			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-daemon"))
-			return ctx
-		},
-	}
-
-	go func() {
-		err = srv.Serve(manet.NetListener(lst))
-		if err != http.ErrServerClosed {
-			log.Warnf("rpc server failed: %s", err)
-		}
-	}()
-
-	return srv.Shutdown, err
+	return ah, nil
 }
 
 func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +143,7 @@ func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(200)
 		err = json.NewEncoder(w).Encode(struct{ Cid cid.Cid }{c})
 		if err != nil {
-			log.Errorf("/rest/v0/import: Writing response failed: %+v", err)
+			rpclog.Errorf("/rest/v0/import: Writing response failed: %+v", err)
 			return
 		}
 	}
@@ -142,7 +171,7 @@ func handleFractionOpt(name string, setter func(int)) http.HandlerFunc {
 			http.Error(rw, err.Error(), http.StatusBadRequest)
 			return
 		}
-		log.Infof("setting %s to %d", name, fr)
+		rpclog.Infof("setting %s to %d", name, fr)
 		setter(fr)
 	}
 }

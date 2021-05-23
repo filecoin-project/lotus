@@ -15,6 +15,7 @@ import (
 	"runtime/pprof"
 	"strings"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
@@ -351,10 +352,26 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("getting api endpoint: %w", err)
 		}
 
-		// Start the RPC server.
-		rpcStopper, err := node.ServeRPC(api, endpoint, int64(cctx.Int("api-max-req-size")))
+		//
+		// Instantiate JSON-RPC endpoint.
+		// ----
+
+		// Populate JSON-RPC options.
+		serverOptions := make([]jsonrpc.ServerOption, 0)
+		if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
+			serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
+		}
+
+		// Instantiate the full node handler.
+		h, err := node.FullNodeHandler(api, serverOptions...)
 		if err != nil {
-			return fmt.Errorf("failed to start JSON-RPC API: %s", err)
+			return fmt.Errorf("failed to instantiate rpc handler: %s", err)
+		}
+
+		// Serve the RPC.
+		rpcStopper, err := node.ServeRPC(h, "lotus-daemon", endpoint)
+		if err != nil {
+			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 		}
 
 		// Monitor for shutdown.
