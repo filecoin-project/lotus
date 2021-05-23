@@ -28,6 +28,11 @@ import (
 
 var rpclog = logging.Logger("rpc")
 
+// ServeRPC serves the full node API over the supplied listen multiaddr.
+//
+// It returns the stop function to be called to terminate the endpoint.
+//
+// This function spawns a goroutine to run the server, and returns immediately.
 func ServeRPC(a v1api.FullNode, addr multiaddr.Multiaddr, maxRequestSize int64) (StopFunc, error) {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
