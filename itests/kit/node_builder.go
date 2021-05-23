@@ -5,26 +5,19 @@ import (
 	"context"
 	"crypto/rand"
 	"io/ioutil"
-	"net"
+	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/gorilla/mux"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -44,6 +37,7 @@ import (
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
@@ -54,6 +48,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/stretchr/testify/require"
 )
 
@@ -569,81 +564,43 @@ func mockMinerBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []Stora
 	return fulls, miners
 }
 
-func fullRpc(t *testing.T, nd TestFullNode) TestFullNode {
-	ma, listenAddr, err := CreateRPCServer(t, map[string]interface{}{
-		"/rpc/v1": nd,
-		"/rpc/v0": &v0api.WrapperV1Full{FullNode: nd},
-	})
-	require.NoError(t, err)
-
-	var stop func()
-	var full TestFullNode
-	full.FullNode, stop, err = client.NewFullNodeRPCV1(context.Background(), listenAddr+"/rpc/v1", nil)
-	require.NoError(t, err)
-	t.Cleanup(stop)
-
-	full.ListenAddr = ma
-	return full
-}
-
-func storerRpc(t *testing.T, nd TestMiner) TestMiner {
-	ma, listenAddr, err := CreateRPCServer(t, map[string]interface{}{
-		"/rpc/v0": nd,
-	})
-	require.NoError(t, err)
-
-	var stop func()
-	var storer TestMiner
-	storer.StorageMiner, stop, err = client.NewStorageMinerRPCV0(context.Background(), listenAddr+"/rpc/v0", nil)
-	require.NoError(t, err)
-	t.Cleanup(stop)
-
-	storer.ListenAddr = ma
-	storer.MineOne = nd.MineOne
-	return storer
-}
-
-func CreateRPCServer(t *testing.T, handlers map[string]interface{}) (multiaddr.Multiaddr, string, error) {
-	m := mux.NewRouter()
-	for path, handler := range handlers {
-		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", handler)
-		m.Handle(path, rpcServer)
-	}
-	testServ := httptest.NewServer(m) //  todo: close
+func CreateRPCServer(t *testing.T, handler http.Handler) (*httptest.Server, multiaddr.Multiaddr) {
+	testServ := httptest.NewServer(handler)
 	t.Cleanup(testServ.Close)
 	t.Cleanup(testServ.CloseClientConnections)
 
 	addr := testServ.Listener.Addr()
-	listenAddr := "ws://" + addr.String()
-	ma, err := parseWSMultiAddr(addr)
-	if err != nil {
-		return nil, "", err
-	}
-	return ma, listenAddr, err
+	maddr, err := manet.FromNetAddr(addr)
+	require.NoError(t, err)
+	return testServ, maddr
 }
 
-func parseWSMultiAddr(addr net.Addr) (multiaddr.Multiaddr, error) {
-	host, port, err := net.SplitHostPort(addr.String())
-	if err != nil {
-		return nil, err
-	}
-	ma, err := multiaddr.NewMultiaddr("/ip4/" + host + "/" + addr.Network() + "/" + port + "/ws")
-	if err != nil {
-		return nil, err
-	}
-	return ma, nil
+func fullRpc(t *testing.T, nd TestFullNode) TestFullNode {
+	handler, err := node.FullNodeHandler(nd.FullNode)
+	require.NoError(t, err)
+
+	srv, maddr := CreateRPCServer(t, handler)
+
+	var ret TestFullNode
+	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), srv.Listener.Addr().String()+"/rpc/v1", nil)
+	require.NoError(t, err)
+	t.Cleanup(stop)
+	ret.ListenAddr, ret.FullNode = maddr, cl
+
+	return ret
 }
 
-func WSMultiAddrToString(addr multiaddr.Multiaddr) (string, error) {
-	parts := strings.Split(addr.String(), "/")
-	if len(parts) != 6 || parts[0] != "" {
-		return "", xerrors.Errorf("Malformed ws multiaddr %s", addr)
-	}
+func storerRpc(t *testing.T, nd TestMiner) TestMiner {
+	handler, err := node.MinerHandler(nd.StorageMiner)
+	require.NoError(t, err)
 
-	host := parts[2]
-	port := parts[4]
-	proto := parts[5]
+	srv, maddr := CreateRPCServer(t, handler)
 
-	return proto + "://" + host + ":" + port + "/rpc/v0", nil
+	var ret TestMiner
+	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), srv.Listener.Addr().String()+"/rpc/v0", nil)
+	require.NoError(t, err)
+	t.Cleanup(stop)
+
+	ret.ListenAddr, ret.StorageMiner, ret.MineOne = maddr, cl, nd.MineOne
+	return ret
 }

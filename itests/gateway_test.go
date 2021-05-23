@@ -20,8 +20,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
@@ -277,16 +275,15 @@ func startNodes(
 				fullNode := nodes[0]
 
 				// Create a gateway server in front of the full node
-				gapiImpl := gateway.NewNode(fullNode, lookbackCap, stateWaitLookbackLimit)
-				_, addr, err := kit.CreateRPCServer(t, map[string]interface{}{
-					"/rpc/v1": gapiImpl,
-					"/rpc/v0": api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), gapiImpl),
-				})
+				gwapi := gateway.NewNode(fullNode, lookbackCap, stateWaitLookbackLimit)
+				handler, err := gateway.Handler(gwapi)
 				require.NoError(t, err)
+
+				srv, _ := kit.CreateRPCServer(t, handler)
 
 				// Create a gateway client API that connects to the gateway server
 				var gapi api.Gateway
-				gapi, closer, err = client.NewGatewayRPCV1(ctx, addr+"/rpc/v1", nil)
+				gapi, closer, err = client.NewGatewayRPCV1(ctx, srv.Listener.Addr().String()+"/rpc/v1", nil)
 				require.NoError(t, err)
 
 				// Provide the gateway API to dependency injection
