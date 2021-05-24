@@ -448,7 +448,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			"baseDeltaSeconds", uint64(start.Unix()) - base.TipSet.MinTimestamp(),
 			"nullRounds", int64(base.NullRounds),
 			"lateStart", isLate,
-			"beaconEpoch", uint64(rbase.Round),
+			"beaconEpoch", rbase.Round,
 			"lookbackEpochs", int64(policy.ChainFinality), // hardcoded as it is unlikely to change again: https://github.com/filecoin-project/lotus/blob/v1.8.0/chain/actors/policy/policy.go#L180-L186
 			"networkPowerAtLookback", mbi.NetworkPower.String(),
 			"minerPowerAtLookback", mbi.MinerPower.String(),
