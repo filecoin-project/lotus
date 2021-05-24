@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipld/go-car"
@@ -51,6 +52,13 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, sta
 }
 
 func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
+	data, info, fcid := mkStorageDeal(t, ctx, rseed, client, miner, carExport, fastRet, startEpoch)
+
+	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
+}
+
+func mkStorageDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool, startEpoch abi.ChainEpoch) ([]byte,
+	*api.DealInfo, cid.Cid) {
 	res, data, err := CreateClientFile(ctx, client, rseed)
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +77,7 @@ func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode,
 	info, err := client.ClientGetDealInfo(ctx, *deal)
 	require.NoError(t, err)
 
-	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
+	return data, info, fcid
 }
 
 func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
@@ -319,6 +327,53 @@ func TestSecondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration
 
 		testRetrieval(t, s.ctx, s.client, fcid2, &info.PieceCID, false, data2)
 	}
+}
+
+func TestNonUnsealedRetrievalQuoteForDefaultPricing(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
+	ppb := int64(1)
+	unsealPrice := int64(77)
+
+	s := setupOneClientOneMiner(t, b, blocktime)
+	defer s.blockMiner.Stop()
+
+	// Set unsealed price to non-zero
+	ask, err := s.miner.MarketGetRetrievalAsk(s.ctx)
+	require.NoError(t, err)
+	ask.PricePerByte = abi.NewTokenAmount(ppb)
+	ask.UnsealPrice = abi.NewTokenAmount(unsealPrice)
+	err = s.miner.MarketSetRetrievalAsk(s.ctx, ask)
+	require.NoError(t, err)
+
+	_, info, fcid := mkStorageDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
+
+	// fetch quote -> zero for unsealed price since unsealed file already exists.
+	offers, err := s.client.ClientFindData(s.ctx, fcid, &info.PieceCID)
+	require.NoError(t, err)
+	require.Len(t, offers, 1)
+	require.Equal(t, uint64(0), offers[0].UnsealPrice.Uint64())
+	require.Equal(t, info.Size*uint64(ppb), offers[0].MinPrice.Uint64())
+
+	// remove unsealed file
+	ss, err := s.miner.StorageList(context.Background())
+	require.NoError(t, err)
+
+	_, err = s.miner.SectorsList(s.ctx)
+	require.NoError(t, err)
+
+	for storeID, sd := range ss {
+		for _, sector := range sd {
+			require.NoError(t, s.miner.StorageDropSector(s.ctx, storeID, sector.SectorID, storiface.FTUnsealed))
+		}
+	}
+
+	// get retrieval quote -> non-zero for unsealed price as unsealed file does NOT exist.
+	offers, err = s.client.ClientFindData(s.ctx, fcid, &info.PieceCID)
+	require.NoError(t, err)
+	require.Len(t, offers, 1)
+
+	require.Equal(t, uint64(unsealPrice), offers[0].UnsealPrice.Uint64())
+	total := (info.Size * uint64(ppb)) + uint64(unsealPrice)
+	require.Equal(t, total, offers[0].MinPrice.Uint64())
 }
 
 func TestZeroPricePerByteRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {

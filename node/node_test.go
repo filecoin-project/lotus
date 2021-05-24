@@ -106,6 +106,14 @@ func TestAPIDealFlowReal(t *testing.T) {
 	t.Run("retrieval-second", func(t *testing.T) {
 		test.TestSecondDealRetrieval(t, builder.Builder, time.Second)
 	})
+
+	t.Run("zeroppb-retrieval", func(t *testing.T) {
+		test.TestZeroPricePerByteRetrievalDealFlow(t, builder.Builder, time.Second, 0)
+	})
+
+	t.Run("quote-price-for-non-unsealed-retrieval", func(t *testing.T) {
+		test.TestNonUnsealedRetrievalQuoteForDefaultPricing(t, builder.Builder, time.Second, 0)
+	})
 }
 
 func TestDealMining(t *testing.T) {
