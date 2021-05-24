@@ -346,31 +346,57 @@ func TestNonUnsealedRetrievalQuoteForDefaultPricing(t *testing.T, b APIBuilder, 
 
 	_, info, fcid := mkStorageDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
 
+	// one more storage deal for the same data
+	_, _, fcid2 := mkStorageDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
+	require.Equal(t, fcid, fcid2)
+
 	// fetch quote -> zero for unsealed price since unsealed file already exists.
 	offers, err := s.client.ClientFindData(s.ctx, fcid, &info.PieceCID)
 	require.NoError(t, err)
-	require.Len(t, offers, 1)
+	require.Len(t, offers, 2)
+	require.Equal(t, offers[0], offers[1])
 	require.Equal(t, uint64(0), offers[0].UnsealPrice.Uint64())
 	require.Equal(t, info.Size*uint64(ppb), offers[0].MinPrice.Uint64())
 
-	// remove unsealed file
+	// remove ONLY one unsealed file
 	ss, err := s.miner.StorageList(context.Background())
 	require.NoError(t, err)
-
 	_, err = s.miner.SectorsList(s.ctx)
 	require.NoError(t, err)
 
+iLoop:
+	for storeID, sd := range ss {
+		for _, sector := range sd {
+			require.NoError(t, s.miner.StorageDropSector(s.ctx, storeID, sector.SectorID, storiface.FTUnsealed))
+			// remove ONLY one
+			break iLoop
+		}
+	}
+
+	// get retrieval quote -> zero for unsealed price as unsealed file exists.
+	offers, err = s.client.ClientFindData(s.ctx, fcid, &info.PieceCID)
+	require.NoError(t, err)
+	require.Len(t, offers, 2)
+	require.Equal(t, offers[0], offers[1])
+	require.Equal(t, uint64(0), offers[0].UnsealPrice.Uint64())
+	require.Equal(t, info.Size*uint64(ppb), offers[0].MinPrice.Uint64())
+
+	// remove the other unsealed file as well
+	ss, err = s.miner.StorageList(context.Background())
+	require.NoError(t, err)
+	_, err = s.miner.SectorsList(s.ctx)
+	require.NoError(t, err)
 	for storeID, sd := range ss {
 		for _, sector := range sd {
 			require.NoError(t, s.miner.StorageDropSector(s.ctx, storeID, sector.SectorID, storiface.FTUnsealed))
 		}
 	}
 
-	// get retrieval quote -> non-zero for unsealed price as unsealed file does NOT exist.
+	// fetch quote -> non-zero for unseal price as we no more unsealed files.
 	offers, err = s.client.ClientFindData(s.ctx, fcid, &info.PieceCID)
 	require.NoError(t, err)
-	require.Len(t, offers, 1)
-
+	require.Len(t, offers, 2)
+	require.Equal(t, offers[0], offers[1])
 	require.Equal(t, uint64(unsealPrice), offers[0].UnsealPrice.Uint64())
 	total := (info.Size * uint64(ppb)) + uint64(unsealPrice)
 	require.Equal(t, total, offers[0].MinPrice.Uint64())
