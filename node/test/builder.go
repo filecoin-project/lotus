@@ -276,12 +276,25 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		maddrs = append(maddrs, maddr)
 		genms = append(genms, *genm)
 	}
+
+	rkhKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	if err != nil {
+		return nil, nil
+	}
+
+	vrk := genesis.Actor{
+		Type:    genesis.TAccount,
+		Balance: big.Mul(big.NewInt(400000000), types.NewInt(build.FilecoinPrecision)),
+		Meta:    (&genesis.AccountMeta{Owner: rkhKey.Address}).ActorMeta(),
+	}
+	keys = append(keys, rkhKey)
+
 	templ := &genesis.Template{
 		Accounts:         genaccs,
 		Miners:           genms,
 		NetworkName:      "test",
 		Timestamp:        uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
-		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		VerifregRootKey:  vrk,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 
@@ -306,6 +319,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 
 			fullOpts[i].Opts(fulls),
 		)
+
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -317,6 +331,10 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		}
 
 		fulls[i].Stb = storageBuilder(fulls[i], mn, node.Options())
+	}
+
+	if _, err := fulls[0].FullNode.WalletImport(ctx, &rkhKey.KeyInfo); err != nil {
+		t.Fatal(err)
 	}
 
 	for i, def := range storage {
