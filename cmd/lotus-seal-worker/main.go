@@ -63,9 +63,10 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:    "lotus-worker",
-		Usage:   "Remote miner worker",
-		Version: build.UserVersion(),
+		Name:                 "lotus-worker",
+		Usage:                "Remote miner worker",
+		Version:              build.UserVersion(),
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWorkerRepo,
