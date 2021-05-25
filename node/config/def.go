@@ -84,16 +84,24 @@ type SealingConfig struct {
 
 	AlwaysKeepUnsealedCopy bool
 
+	// enable / disable precommit batching (takes effect after nv13)
 	BatchPreCommits     bool
+	// maximum precommit batch size - batches will be sent immediately above this size
 	MaxPreCommitBatch   int
 	MinPreCommitBatch   int
+	// how long to wait before submitting a batch after crossing the minimum batch size
 	PreCommitBatchWait  Duration
+	// time buffer for forceful batch submission before sectors in batch would start expiring
 	PreCommitBatchSlack Duration
 
+	// enable / disable commit aggregation (takes effect after nv13)
 	AggregateCommits bool
+	// maximum batched commit size - batches will be sent immediately above this size
 	MinCommitBatch   int
 	MaxCommitBatch   int
+	// how long to wait before submitting a batch after crossing the minimum batch size
 	CommitBatchWait  Duration
+	// time buffer for forceful batch submission before sectors in batch would start expiring
 	CommitBatchSlack Duration
 
 	TerminateBatchMax  uint64
