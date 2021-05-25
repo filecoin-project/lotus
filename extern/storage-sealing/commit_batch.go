@@ -105,7 +105,7 @@ func (b *CommitBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-time.After(b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack)):
+		case <-b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack):
 			sendAboveMin = true
 		case fr := <-b.force: // user triggered
 			forceRes = fr
@@ -119,11 +119,15 @@ func (b *CommitBatcher) run() {
 	}
 }
 
-func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
+func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.Time {
 	now := time.Now()
 
 	b.lk.Lock()
 	defer b.lk.Unlock()
+
+	if len(b.todo) == 0 {
+		return nil
+	}
 
 	var deadline time.Time
 	for sn := range b.todo {
@@ -140,12 +144,12 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
 	}
 
 	if deadline.IsZero() {
-		return maxWait
+		return time.After(maxWait)
 	}
 
 	deadline = deadline.Add(-slack)
 	if deadline.Before(now) {
-		return time.Nanosecond // can't return 0
+		return time.After(time.Nanosecond) // can't return 0
 	}
 
 	wait := deadline.Sub(now)
@@ -153,7 +157,7 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
 		wait = maxWait
 	}
 
-	return wait
+	return time.After(wait)
 }
 
 func (b *CommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {

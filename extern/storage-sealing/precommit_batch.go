@@ -95,7 +95,7 @@ func (b *PreCommitBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-time.After(b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack)):
+		case <-b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack):
 			sendAboveMin = true
 		case fr := <-b.force: // user triggered
 			forceRes = fr
@@ -109,11 +109,15 @@ func (b *PreCommitBatcher) run() {
 	}
 }
 
-func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
+func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.Time {
 	now := time.Now()
 
 	b.lk.Lock()
 	defer b.lk.Unlock()
+
+	if len(b.todo) == 0 {
+		return nil
+	}
 
 	var deadline time.Time
 	for sn := range b.todo {
@@ -130,12 +134,12 @@ func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration
 	}
 
 	if deadline.IsZero() {
-		return maxWait
+		return time.After(maxWait)
 	}
 
 	deadline = deadline.Add(-slack)
 	if deadline.Before(now) {
-		return time.Nanosecond // can't return 0
+		return time.After(time.Nanosecond) // can't return 0
 	}
 
 	wait := deadline.Sub(now)
@@ -143,7 +147,7 @@ func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration
 		wait = maxWait
 	}
 
-	return wait
+	return time.After(wait)
 }
 
 func (b *PreCommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
