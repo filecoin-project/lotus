@@ -173,6 +173,7 @@ func TestWindowedPost(t *testing.T) {
 	}
 
 	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
@@ -221,6 +222,7 @@ func TestWindowPostDispute(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
@@ -234,6 +236,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
@@ -247,6 +250,7 @@ func TestDeadlineToggling(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_DEADLINE_TOGGLING=1 to run")
 	}
 	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
