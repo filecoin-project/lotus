@@ -522,11 +522,6 @@ func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 		}
 	}
 
-	var sis []abi.SectorNumber
-	for _, info := range aggregate.Infos {
-		sis = append(sis, info.Number)
-	}
-
 	return bytes.Equal(aggregate.Proof, out), nil
 }
 
@@ -536,11 +531,6 @@ func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealV
 		for i := range proof[:32] {
 			out[i] += proof[i] * uint8(pi)
 		}
-	}
-
-	var sis []abi.SectorNumber
-	for _, info := range aggregateInfo.Infos {
-		sis = append(sis, info.Number)
 	}
 
 	return out, nil
