@@ -146,39 +146,13 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 		}
 
 		// Extract the message parameters
-		switch msg.Method {
-		case miner.Methods.PreCommitSector:
-			var params miner.SectorPreCommitInfo
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
-			}
+		sn, err := dealSectorInPreCommitMsg(msg, res)
+		if err != nil {
+			return false, err
+		}
 
-			// Check through the deal IDs associated with this message
-			for _, did := range params.DealIDs {
-				if did == res.DealID {
-					// Found the deal ID in this message. Callback with the sector ID.
-					cb(params.SectorNumber, false, nil)
-					return false, nil
-				}
-			}
-		case miner.Methods.PreCommitSectorBatch:
-			var params miner5.PreCommitSectorBatchParams
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
-			}
-
-			for _, precommit := range params.Sectors {
-				// Check through the deal IDs associated with this message
-				for _, did := range precommit.DealIDs {
-					if did == res.DealID {
-						// Found the deal ID in this message. Callback with the sector ID.
-						cb(precommit.SectorNumber, false, nil)
-						return false, nil
-					}
-				}
-			}
-		default:
-			return false, xerrors.Errorf("unexpected method %d", msg.Method)
+		if sn != nil {
+			cb(*sn, false, nil)
 		}
 
 		// Didn't find the deal ID in this message, so keep looking
@@ -233,31 +207,7 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 			return false, nil
 		}
 
-		switch msg.Method {
-		case miner.Methods.ProveCommitSector:
-			var params miner.ProveCommitSectorParams
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
-			}
-
-			return params.SectorNumber == sectorNumber, nil
-
-		case miner.Methods.ProveCommitAggregate:
-			var params miner5.ProveCommitAggregateParams
-			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
-			}
-
-			set, err := params.SectorNumbers.IsSet(uint64(sectorNumber))
-			if err != nil {
-				return false, xerrors.Errorf("checking if sectorNumber is set in commit aggregate message: %w", err)
-			}
-
-			return set, nil
-
-		default:
-			return false, nil
-		}
+		return sectorInCommitMsg(msg, sectorNumber)
 	}
 
 	// The deal must be accepted by the deal proposal start epoch, so timeout
@@ -312,6 +262,73 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 	}
 
 	return nil
+}
+
+// dealSectorInPreCommitMsg tries to find a sector containing the specified deal
+func dealSectorInPreCommitMsg(msg *types.Message, res sealing.CurrentDealInfo) (*abi.SectorNumber, error) {
+	switch msg.Method {
+	case miner.Methods.PreCommitSector:
+		var params miner.SectorPreCommitInfo
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return nil, xerrors.Errorf("unmarshal pre commit: %w", err)
+		}
+
+		// Check through the deal IDs associated with this message
+		for _, did := range params.DealIDs {
+			if did == res.DealID {
+				// Found the deal ID in this message. Callback with the sector ID.
+				return &params.SectorNumber, nil
+			}
+		}
+	case miner.Methods.PreCommitSectorBatch:
+		var params miner5.PreCommitSectorBatchParams
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return nil, xerrors.Errorf("unmarshal pre commit: %w", err)
+		}
+
+		for _, precommit := range params.Sectors {
+			// Check through the deal IDs associated with this message
+			for _, did := range precommit.DealIDs {
+				if did == res.DealID {
+					// Found the deal ID in this message. Callback with the sector ID.
+					return &precommit.SectorNumber, nil
+				}
+			}
+		}
+	default:
+		return nil, xerrors.Errorf("unexpected method %d", msg.Method)
+	}
+
+	return nil, nil
+}
+
+// sectorInCommitMsg checks if the provided message commits specified sector
+func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool, error) {
+	switch msg.Method {
+	case miner.Methods.ProveCommitSector:
+		var params miner.ProveCommitSectorParams
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+		}
+
+		return params.SectorNumber == sectorNumber, nil
+
+	case miner.Methods.ProveCommitAggregate:
+		var params miner5.ProveCommitAggregateParams
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+		}
+
+		set, err := params.SectorNumbers.IsSet(uint64(sectorNumber))
+		if err != nil {
+			return false, xerrors.Errorf("checking if sectorNumber is set in commit aggregate message: %w", err)
+		}
+
+		return set, nil
+
+	default:
+		return false, nil
+	}
 }
 
 func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (sealing.CurrentDealInfo, bool, error) {

@@ -20,7 +20,6 @@ func main() {
 		base32Cmd,
 		base16Cmd,
 		bitFieldCmd,
-		cronWcCmd,
 		frozenMinersCmd,
 		keyinfoCmd,
 		jwtCmd,

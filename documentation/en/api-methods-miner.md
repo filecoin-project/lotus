@@ -1561,6 +1561,8 @@ Response: `{}`
 
 
 ### SectorCommitFlush
+SectorCommitFlush immediately sends a Commit message with sectors aggregated for Commit.
+Returns null if message wasn't sent
 
 
 Perms: admin
@@ -1570,6 +1572,7 @@ Inputs: `null`
 Response: `null`
 
 ### SectorCommitPending
+SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
 
 
 Perms: admin

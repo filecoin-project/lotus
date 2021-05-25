@@ -85,8 +85,11 @@ type StorageMiner interface {
 	SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) //perm:admin
 	// SectorPreCommitPending returns a list of pending PreCommit sectors to be sent in the next batch message
 	SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
-	SectorCommitFlush(ctx context.Context) (*cid.Cid, error)            //perm:admin
-	SectorCommitPending(ctx context.Context) ([]abi.SectorID, error)    //perm:admin
+	// SectorCommitFlush immediately sends a Commit message with sectors aggregated for Commit.
+	// Returns null if message wasn't sent
+	SectorCommitFlush(ctx context.Context) (*cid.Cid, error) //perm:admin
+	// SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
+	SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true

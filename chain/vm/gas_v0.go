@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -187,7 +188,7 @@ func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
 }
 
 // OnVerifyAggregateSeals
-func (pl *pricelistV0) OnVerifyAggregateSeals() GasCharge {
+func (pl *pricelistV0) OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge {
 	// TODO: this needs more cost tunning
 	return newGasCharge("OnVerifyAggregateSeals", pl.verifyAggregateSealBase, 0)
 }

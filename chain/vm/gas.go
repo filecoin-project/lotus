@@ -75,7 +75,7 @@ type Pricelist interface {
 	OnHashing(dataSize int) GasCharge
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
 	OnVerifySeal(info proof5.SealVerifyInfo) GasCharge
-	OnVerifyAggregateSeals() GasCharge
+	OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge
 	OnVerifyPost(info proof5.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
 }
@@ -282,7 +282,7 @@ func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof5.SealV
 }
 
 func (ps pricedSyscalls) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) error {
-	ps.chargeGas(ps.pl.OnVerifyAggregateSeals())
+	ps.chargeGas(ps.pl.OnVerifyAggregateSeals(aggregate))
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.VerifyAggregateSeals(aggregate)

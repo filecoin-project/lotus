@@ -526,7 +526,6 @@ func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 	for _, info := range aggregate.Infos {
 		sis = append(sis, info.Number)
 	}
-	fmt.Printf("VERSIS %+v\n", sis)
 
 	return bytes.Equal(aggregate.Proof, out), nil
 }
@@ -543,7 +542,6 @@ func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealV
 	for _, info := range aggregateInfo.Infos {
 		sis = append(sis, info.Number)
 	}
-	fmt.Printf("AGGSIS %+v\n", sis)
 
 	return out, nil
 }
