@@ -31,11 +31,11 @@ import (
 type DealHarness struct {
 	t      *testing.T
 	client api.FullNode
-	miner  TestMiner
+	miner  *TestMiner
 }
 
 // NewDealHarness creates a test harness that contains testing utilities for deals.
-func NewDealHarness(t *testing.T, client api.FullNode, miner TestMiner) *DealHarness {
+func NewDealHarness(t *testing.T, client api.FullNode, miner *TestMiner) *DealHarness {
 	return &DealHarness{
 		t:      t,
 		client: client,
@@ -250,27 +250,6 @@ type DealsScaffold struct {
 	Client     *impl.FullNodeAPI
 	Miner      TestMiner
 	BlockMiner *BlockMiner
-}
-
-func ConnectAndStartMining(t *testing.T, blocktime time.Duration, miner TestMiner, clients ...api.FullNode) *BlockMiner {
-	ctx := context.Background()
-
-	for _, c := range clients {
-		addrinfo, err := c.NetAddrsListen(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := miner.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	time.Sleep(time.Second)
-
-	blockMiner := NewBlockMiner(t, miner)
-	blockMiner.MineBlocks(ctx, blocktime)
-
-	return blockMiner
 }
 
 type TestDealState int

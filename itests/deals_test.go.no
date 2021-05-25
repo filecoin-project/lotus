@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/impl/client"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/stretchr/testify/require"
 )
@@ -66,15 +67,15 @@ func TestAPIDealFlowReal(t *testing.T) {
 	})
 
 	t.Run("basic", func(t *testing.T) {
-		runFullDealCycles(t, 1, kit.Builder, time.Second, false, false, 0)
+		runFullDealCycles(t, 1, kit.FullNodeBuilder, time.Second, false, false, 0)
 	})
 
 	t.Run("fast-retrieval", func(t *testing.T) {
-		runFullDealCycles(t, 1, kit.Builder, time.Second, false, true, 0)
+		runFullDealCycles(t, 1, kit.FullNodeBuilder, time.Second, false, true, 0)
 	})
 
 	t.Run("retrieval-second", func(t *testing.T) {
-		runSecondDealRetrievalTest(t, kit.Builder, time.Second)
+		runSecondDealRetrievalTest(t, kit.FullNodeBuilder, time.Second)
 	})
 }
 
@@ -309,6 +310,7 @@ func TestDealMining(t *testing.T) {
 }
 
 func runFullDealCycles(t *testing.T, n int, b kit.APIBuilder, blocktime time.Duration, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
+
 	fulls, miners := b(t, kit.OneFull, kit.OneMiner)
 	client, miner := fulls[0].FullNode.(*impl.FullNodeAPI), miners[0]
 
@@ -325,21 +327,23 @@ func runFullDealCycles(t *testing.T, n int, b kit.APIBuilder, blocktime time.Dur
 func runFastRetrievalDealFlowT(t *testing.T, b kit.APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
 	ctx := context.Background()
 
-	fulls, miners := b(t, kit.OneFull, kit.OneMiner)
-	client, miner := fulls[0].FullNode.(*impl.FullNodeAPI), miners[0]
+	var (
+		nb    = kit.NewNodeBuilder(t)
+		full  = nb.FullNode()
+		miner = nb.Miner(full)
+	)
 
-	kit.ConnectAndStartMining(t, blocktime, miner, client)
+	nb.Create()
 
-	dh := kit.NewDealHarness(t, client, miner)
+	kit.ConnectAndStartMining(t, blocktime, miner, full)
 
+	dh := kit.NewDealHarness(t, full, miner)
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(int64(8))).Read(data)
 
 	r := bytes.NewReader(data)
-	fcid, err := client.ClientImportLocal(ctx, r)
-	if err != nil {
-		t.Fatal(err)
-	}
+	fcid, err := full.FullNode.(*impl.FullNodeAPI).ClientImportLocal(ctx, r)
+	require.NoError(t, err)
 
 	fmt.Println("FILE CID: ", fcid)
 
@@ -349,7 +353,7 @@ func runFastRetrievalDealFlowT(t *testing.T, b kit.APIBuilder, blocktime time.Du
 	fmt.Println("deal published, retrieving")
 
 	// Retrieval
-	info, err := client.ClientGetDealInfo(ctx, *deal)
+	info, err := full.ClientGetDealInfo(ctx, *deal)
 	require.NoError(t, err)
 
 	dh.TestRetrieval(ctx, fcid, &info.PieceCID, false, data)
