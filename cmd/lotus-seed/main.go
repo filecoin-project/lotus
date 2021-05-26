@@ -96,7 +96,6 @@ var preSealCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "network-version",
-			Value: 0,
 			Usage: "specify network version",
 		},
 	},
@@ -134,7 +133,12 @@ var preSealCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, network.Version(c.Uint64("network-version")))
+		nv := build.NewestNetworkVersion
+		if c.IsSet("network-version") {
+			nv = network.Version(c.Uint64("network-version"))
+		}
+
+		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv)
 		if err != nil {
 			return err
 		}
