@@ -208,17 +208,31 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 }
 
 func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetChainRandomness(rt.ctx, personalization, randEpoch, entropy)
+	var err error
+	var res []byte
+	if rt.vm.GetNtwkVersion(rt.ctx, randEpoch) >= network.Version13 {
+		res, err = rt.vm.rand.GetChainRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
+	} else {
+		res, err = rt.vm.rand.GetChainRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
+	}
+
 	if err != nil {
-		panic(aerrors.Fatalf("could not get randomness: %s", err))
+		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 	return res
 }
 
 func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, personalization, randEpoch, entropy)
+	var err error
+	var res []byte
+	if rt.vm.GetNtwkVersion(rt.ctx, randEpoch) >= network.Version13 {
+		res, err = rt.vm.rand.GetBeaconRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
+	} else {
+		res, err = rt.vm.rand.GetBeaconRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
+	}
+
 	if err != nil {
-		panic(aerrors.Fatalf("could not get randomness: %s", err))
+		panic(aerrors.Fatalf("could not get beacon randomness: %s", err))
 	}
 	return res
 }

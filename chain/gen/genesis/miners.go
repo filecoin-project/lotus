@@ -335,13 +335,25 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetChainRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
+	return out, nil
+}
+
+func (fr *fakeRand) GetBeaconRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
+	return out, nil
+}
+
+func (fr *fakeRand) GetBeaconRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil

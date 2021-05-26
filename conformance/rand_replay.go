@@ -43,7 +43,15 @@ func (r *ReplayingRand) match(requested schema.RandomnessRule) ([]byte, bool) {
 	return nil, false
 }
 
-func (r *ReplayingRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *ReplayingRand) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getChainRandomness(ctx, pers, round, entropy, false)
+}
+
+func (r *ReplayingRand) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getChainRandomness(ctx, pers, round, entropy, true)
+}
+
+func (r *ReplayingRand) getChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error) {
 	rule := schema.RandomnessRule{
 		Kind:                schema.RandomnessChain,
 		DomainSeparationTag: int64(pers),
@@ -57,10 +65,23 @@ func (r *ReplayingRand) GetChainRandomness(ctx context.Context, pers crypto.Doma
 	}
 
 	r.reporter.Logf("returning fallback chain randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
-	return r.fallback.GetChainRandomness(ctx, pers, round, entropy)
+
+	if lookback {
+		return r.fallback.GetChainRandomnessLookingBack(ctx, pers, round, entropy)
+	}
+
+	return r.fallback.GetChainRandomnessLookingForward(ctx, pers, round, entropy)
 }
 
-func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *ReplayingRand) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy, false)
+}
+
+func (r *ReplayingRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy, true)
+}
+
+func (r *ReplayingRand) getBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error) {
 	rule := schema.RandomnessRule{
 		Kind:                schema.RandomnessBeacon,
 		DomainSeparationTag: int64(pers),
@@ -74,6 +95,10 @@ func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, pers crypto.Dom
 	}
 
 	r.reporter.Logf("returning fallback beacon randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
-	return r.fallback.GetBeaconRandomness(ctx, pers, round, entropy)
 
+	if lookback {
+		return r.fallback.GetBeaconRandomnessLookingBack(ctx, pers, round, entropy)
+	}
+
+	return r.fallback.GetBeaconRandomnessLookingForward(ctx, pers, round, entropy)
 }
