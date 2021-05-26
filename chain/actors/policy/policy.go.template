@@ -197,6 +197,10 @@ func GetDefaultSectorSize() abi.SectorSize {
 	return szs[0]
 }
 
+func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
+       return abi.RegisteredAggregationProof_SnarkPackV1
+}
+
 func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) abi.ChainEpoch {
 	if nwVer <= network.Version10 {
 		return builtin{{.latestVersion}}.SealProofPoliciesV0[proof].SectorMaxLifetime

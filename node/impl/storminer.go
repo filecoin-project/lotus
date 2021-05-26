@@ -374,8 +374,24 @@ func (sm *StorageMinerAPI) SectorTerminatePending(ctx context.Context) ([]abi.Se
 	return sm.Miner.TerminatePending(ctx)
 }
 
+func (sm *StorageMinerAPI) SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) {
+	return sm.Miner.SectorPreCommitFlush(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return sm.Miner.SectorPreCommitPending(ctx)
+}
+
 func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {
 	return sm.Miner.MarkForUpgrade(id)
+}
+
+func (sm *StorageMinerAPI) SectorCommitFlush(ctx context.Context) (*cid.Cid, error) {
+	return sm.Miner.CommitFlush(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return sm.Miner.CommitPending(ctx)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {

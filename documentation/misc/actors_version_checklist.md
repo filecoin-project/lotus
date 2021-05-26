@@ -8,7 +8,7 @@
 - [ ] Register in `chain/vm/invoker.go`
 - [ ] Register in `chain/vm/mkactor.go`
 - [ ] Update `chain/types/state.go`
-- [ ] Update `chain/state/statetree.go`
+- [ ] Update `chain/state/statetree.go` (New / Load)
 - [ ] Update `chain/stmgr/forks.go`
   - [ ] Schedule
   - [ ] Migration

@@ -9,8 +9,8 @@ import (
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	vmr2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	vmr5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
 )
 
@@ -74,8 +74,9 @@ type Pricelist interface {
 	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
 	OnHashing(dataSize int) GasCharge
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
-	OnVerifySeal(info proof2.SealVerifyInfo) GasCharge
-	OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge
+	OnVerifySeal(info proof5.SealVerifyInfo) GasCharge
+	OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge
+	OnVerifyPost(info proof5.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
 }
 
@@ -111,6 +112,7 @@ var prices = map[abi.ChainEpoch]Pricelist{
 		hashingBase:                  31355,
 		computeUnsealedSectorCidBase: 98647,
 		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+		verifyAggregateSealBase:      0,
 		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
 			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
 				flat:  123861062,
@@ -158,7 +160,8 @@ var prices = map[abi.ChainEpoch]Pricelist{
 
 		hashingBase:                  31355,
 		computeUnsealedSectorCidBase: 98647,
-		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+		verifySealBase:               2000,        // TODO gas , it VerifySeal syscall is not used
+		verifyAggregateSealBase:      400_000_000, // TODO (~40ms, I think)
 		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
 			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
 				flat:  117680921,
@@ -198,7 +201,7 @@ func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 }
 
 type pricedSyscalls struct {
-	under     vmr2.Syscalls
+	under     vmr5.Syscalls
 	pl        Pricelist
 	chargeGas func(GasCharge)
 }
@@ -232,7 +235,7 @@ func (ps pricedSyscalls) ComputeUnsealedSectorCID(reg abi.RegisteredSealProof, p
 }
 
 // Verifies a sector seal proof.
-func (ps pricedSyscalls) VerifySeal(vi proof2.SealVerifyInfo) error {
+func (ps pricedSyscalls) VerifySeal(vi proof5.SealVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifySeal(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -240,7 +243,7 @@ func (ps pricedSyscalls) VerifySeal(vi proof2.SealVerifyInfo) error {
 }
 
 // Verifies a proof of spacetime.
-func (ps pricedSyscalls) VerifyPoSt(vi proof2.WindowPoStVerifyInfo) error {
+func (ps pricedSyscalls) VerifyPoSt(vi proof5.WindowPoStVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifyPost(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -257,14 +260,14 @@ func (ps pricedSyscalls) VerifyPoSt(vi proof2.WindowPoStVerifyInfo) error {
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr2.ConsensusFault, error) {
+func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr5.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.VerifyConsensusFault(h1, h2, extra)
 }
 
-func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof2.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof5.SealVerifyInfo) (map[address.Address][]bool, error) {
 	count := int64(0)
 	for _, svis := range inp {
 		count += int64(len(svis))
@@ -276,4 +279,11 @@ func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof2.SealV
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.BatchVerifySeals(inp)
+}
+
+func (ps pricedSyscalls) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) error {
+	ps.chargeGas(ps.pl.OnVerifyAggregateSeals(aggregate))
+	defer ps.chargeGas(gasOnActorExec)
+
+	return ps.under.VerifyAggregateSeals(aggregate)
 }

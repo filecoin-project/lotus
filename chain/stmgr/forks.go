@@ -1247,7 +1247,7 @@ func upgradeActorsV5Common(
 
 	// Persist the result.
 	newRoot, err := store.Put(ctx, &types.StateRoot{
-		Version: types.StateTreeVersion3,
+		Version: types.StateTreeVersion4,
 		Actors:  newHamtRoot,
 		Info:    stateRoot.Info,
 	})

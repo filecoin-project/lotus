@@ -489,7 +489,9 @@
     "ConfirmUpdateWorkerKey",
     "RepayDebt",
     "ChangeOwnerAddress",
-    "DisputeWindowedPoSt"
+    "DisputeWindowedPoSt",
+    "PreCommitSectorBatch",
+    "ProveCommitAggregate"
   ],
   "fil/5/storagepower": [
     "Send",

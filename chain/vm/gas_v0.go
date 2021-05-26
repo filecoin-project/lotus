@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -91,6 +92,7 @@ type pricelistV0 struct {
 
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
+	verifyAggregateSealBase      int64
 	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
 	verifyPostDiscount           bool
 	verifyConsensusFault         int64
@@ -183,6 +185,12 @@ func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
 	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
+}
+
+// OnVerifyAggregateSeals
+func (pl *pricelistV0) OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge {
+	// TODO: this needs more cost tunning
+	return newGasCharge("OnVerifyAggregateSeals", pl.verifyAggregateSealBase, 0)
 }
 
 // OnVerifyPost

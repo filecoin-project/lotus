@@ -45,6 +45,7 @@ var sectorsCmd = &cli.Command{
 		sectorsStartSealCmd,
 		sectorsSealDelayCmd,
 		sectorsCapacityCollateralCmd,
+		sectorsBatching,
 	},
 }
 
@@ -966,6 +967,109 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
+	},
+}
+
+var sectorsBatching = &cli.Command{
+	Name:  "batching",
+	Usage: "manage batch sector operations",
+	Subcommands: []*cli.Command{
+		sectorsBatchingPendingCommit,
+		sectorsBatchingPendingPreCommit,
+	},
+}
+
+var sectorsBatchingPendingCommit = &cli.Command{
+	Name:  "pending-commit",
+	Usage: "list sectors waiting in commit batch queue",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "publish-now",
+			Usage: "send a batch now",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Bool("publish-now") {
+			cid, err := api.SectorCommitFlush(ctx)
+			if err != nil {
+				return xerrors.Errorf("flush: %w", err)
+			}
+			if cid == nil {
+				return xerrors.Errorf("no sectors to publish")
+			}
+
+			fmt.Println("sector batch published: ", cid)
+			return nil
+		}
+
+		pending, err := api.SectorCommitPending(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting pending deals: %w", err)
+		}
+
+		if len(pending) > 0 {
+			for _, sector := range pending {
+				fmt.Println(sector.Number)
+			}
+			return nil
+		}
+
+		fmt.Println("No sectors queued to be committed")
+		return nil
+	},
+}
+
+var sectorsBatchingPendingPreCommit = &cli.Command{
+	Name:  "pending-precommit",
+	Usage: "list sectors waiting in precommit batch queue",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "publish-now",
+			Usage: "send a batch now",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Bool("publish-now") {
+			cid, err := api.SectorPreCommitFlush(ctx)
+			if err != nil {
+				return xerrors.Errorf("flush: %w", err)
+			}
+			if cid == nil {
+				return xerrors.Errorf("no sectors to publish")
+			}
+
+			fmt.Println("sector batch published: ", cid)
+			return nil
+		}
+
+		pending, err := api.SectorPreCommitPending(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting pending deals: %w", err)
+		}
+
+		if len(pending) > 0 {
+			for _, sector := range pending {
+				fmt.Println(sector.Number)
+			}
+			return nil
+		}
+
+		fmt.Println("No sectors queued to be committed")
+		return nil
 	},
 }
 
