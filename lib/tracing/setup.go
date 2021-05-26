@@ -56,7 +56,6 @@ func jaegerOptsFromEnv(opts *jaeger.Options) bool {
 		log.Infof("jaeger traces will be sent to agent %s", opts.AgentEndpoint)
 		return true
 	}
-	log.Infof("jaeger tracing is not configured.")
 	return false
 }
 
