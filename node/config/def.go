@@ -277,6 +277,13 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxProviderCollateralMultiplier: 2,
 		},
 
+		Subsystems: MinerSubsystemConfig{
+			EnableMining:        true,
+			EnableSealing:       true,
+			EnableSectorStorage: true,
+			EnableStorageMarket: true,
+		},
+
 		Fees: MinerFeeConfig{
 			MaxPreCommitGasFee:     types.MustParseFIL("0.025"),
 			MaxCommitGasFee:        types.MustParseFIL("0.05"),
