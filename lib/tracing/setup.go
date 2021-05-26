@@ -17,19 +17,20 @@ const (
 	envAgentEndpoint     = "LOTUS_JAEGER_AGENT_ENDPOINT"
 	envAgentHost         = "LOTUS_JAEGER_AGENT_HOST"
 	envAgentPort         = "LOTUS_JAEGER_AGENT_PORT"
-	envUsername          = "LOTUS_JAEGER_USERNAME"
-	envPassword          = "LOTUS_JAEGER_PASSWORD"
+	envJaegerUser        = "LOTUS_JAEGER_USERNAME"
+	envJaegerCred        = "LOTUS_JAEGER_PASSWORD"
 )
 
 // When sending directly to the collector, agent options are ignored.
 // The collector endpoint is an HTTP or HTTPs URL.
-// The agent endpoint is a thrift/udp protocol given like "hostname:port"
-// or separate host and port environment variables.
+// The agent endpoint is a thrift/udp protocol and should be given
+// as a string like "hostname:port". The agent can also be configured
+// with separate host and port variables.
 func jaegerOptsFromEnv(opts *jaeger.Options) bool {
 	var e string
 	var ok bool
-	if e, ok = os.LookupEnv(envUsername); ok {
-		if p, ok := os.LookupEnv(envPassword); ok {
+	if e, ok = os.LookupEnv(envJaegerUser); ok {
+		if p, ok := os.LookupEnv(envJaegerCred); ok {
 			opts.Username = e
 			opts.Password = p
 		} else {
@@ -67,7 +68,7 @@ func SetupJaegerTracing(serviceName string) *jaeger.Exporter {
 	opts.ServiceName = serviceName
 	je, err := jaeger.NewExporter(opts)
 	if err != nil {
-		log.Errorw("Failed to create the Jaeger exporter", "error", err)
+		log.Errorw("failed to create the jaeger exporter", "error", err)
 		return nil
 	}
 
