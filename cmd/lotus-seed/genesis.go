@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -41,7 +39,6 @@ var genesisCmd = &cli.Command{
 		genesisAddMsigsCmd,
 		genesisSetVRKCmd,
 		genesisSetRemainderCmd,
-		genesisSetActorVersionCmd,
 		genesisCarCmd,
 	},
 }
@@ -59,7 +56,6 @@ var genesisNewCmd = &cli.Command{
 			return xerrors.New("seed genesis new [genesis.json]")
 		}
 		out := genesis.Template{
-			NetworkVersion:   network.Version0,
 			Accounts:         []genesis.Actor{},
 			Miners:           []genesis.Miner{},
 			VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
@@ -494,53 +490,6 @@ var genesisSetRemainderCmd = &cli.Command{
 		} else {
 			return xerrors.Errorf("must include either --account or --multisig flag")
 		}
-
-		b, err = json.MarshalIndent(&template, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
-			return err
-		}
-		return nil
-	},
-}
-
-var genesisSetActorVersionCmd = &cli.Command{
-	Name:      "set-network-version",
-	Usage:     "Set the version that this network will start from",
-	ArgsUsage: "<genesisFile> <actorVersion>",
-	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must specify genesis file and network version (e.g. '0'")
-		}
-
-		genf, err := homedir.Expand(cctx.Args().First())
-		if err != nil {
-			return err
-		}
-
-		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
-		if err != nil {
-			return xerrors.Errorf("read genesis template: %w", err)
-		}
-
-		if err := json.Unmarshal(b, &template); err != nil {
-			return xerrors.Errorf("unmarshal genesis template: %w", err)
-		}
-
-		nv, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
-		if err != nil {
-			return xerrors.Errorf("parsing network version: %w", err)
-		}
-
-		if nv > uint64(build.NewestNetworkVersion) {
-			return xerrors.Errorf("invalid network version: %d", nv)
-		}
-
-		template.NetworkVersion = network.Version(nv)
 
 		b, err = json.MarshalIndent(&template, "", "  ")
 		if err != nil {

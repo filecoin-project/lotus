@@ -6,26 +6,33 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"text/template"
-
-	lotusactors "github.com/filecoin-project/lotus/chain/actors"
 
 	"golang.org/x/xerrors"
 )
 
+var latestVersion = 4
+
+var versions = []int{0, 2, 3, latestVersion}
+
+var versionImports = map[int]string{
+	0:             "/",
+	2:             "/v2/",
+	3:             "/v3/",
+	latestVersion: "/v4/",
+}
+
 var actors = map[string][]int{
-	"account":  lotusactors.Versions,
-	"cron":     lotusactors.Versions,
-	"init":     lotusactors.Versions,
-	"market":   lotusactors.Versions,
-	"miner":    lotusactors.Versions,
-	"multisig": lotusactors.Versions,
-	"paych":    lotusactors.Versions,
-	"power":    lotusactors.Versions,
-	"system":   lotusactors.Versions,
-	"reward":   lotusactors.Versions,
-	"verifreg": lotusactors.Versions,
+	"account":  versions,
+	"cron":     versions,
+	"init":     versions,
+	"market":   versions,
+	"miner":    versions,
+	"multisig": versions,
+	"paych":    versions,
+	"power":    versions,
+	"reward":   versions,
+	"verifreg": versions,
 }
 
 func main() {
@@ -64,14 +71,14 @@ func generateAdapters() error {
 			}
 
 			tpl := template.Must(template.New("").Funcs(template.FuncMap{
-				"import": func(v int) string { return getVersionImports()[v] },
+				"import": func(v int) string { return versionImports[v] },
 			}).Parse(string(af)))
 
 			var b bytes.Buffer
 
 			err = tpl.Execute(&b, map[string]interface{}{
 				"versions":      versions,
-				"latestVersion": lotusactors.LatestVersion,
+				"latestVersion": latestVersion,
 			})
 			if err != nil {
 				return err
@@ -96,14 +103,14 @@ func generateState(actDir string) error {
 		return xerrors.Errorf("loading state adapter template: %w", err)
 	}
 
-	for _, version := range lotusactors.Versions {
+	for _, version := range versions {
 		tpl := template.Must(template.New("").Funcs(template.FuncMap{}).Parse(string(af)))
 
 		var b bytes.Buffer
 
 		err := tpl.Execute(&b, map[string]interface{}{
 			"v":      version,
-			"import": getVersionImports()[version],
+			"import": versionImports[version],
 		})
 		if err != nil {
 			return err
@@ -127,14 +134,14 @@ func generateMessages(actDir string) error {
 		return xerrors.Errorf("loading message adapter template: %w", err)
 	}
 
-	for _, version := range lotusactors.Versions {
+	for _, version := range versions {
 		tpl := template.Must(template.New("").Funcs(template.FuncMap{}).Parse(string(af)))
 
 		var b bytes.Buffer
 
 		err := tpl.Execute(&b, map[string]interface{}{
 			"v":      version,
-			"import": getVersionImports()[version],
+			"import": versionImports[version],
 		})
 		if err != nil {
 			return err
@@ -160,13 +167,13 @@ func generatePolicy(policyPath string) error {
 	}
 
 	tpl := template.Must(template.New("").Funcs(template.FuncMap{
-		"import": func(v int) string { return getVersionImports()[v] },
+		"import": func(v int) string { return versionImports[v] },
 	}).Parse(string(pf)))
 	var b bytes.Buffer
 
 	err = tpl.Execute(&b, map[string]interface{}{
-		"versions":      lotusactors.Versions,
-		"latestVersion": lotusactors.LatestVersion,
+		"versions":      versions,
+		"latestVersion": latestVersion,
 	})
 	if err != nil {
 		return err
@@ -191,13 +198,13 @@ func generateBuiltin(builtinPath string) error {
 	}
 
 	tpl := template.Must(template.New("").Funcs(template.FuncMap{
-		"import": func(v int) string { return getVersionImports()[v] },
+		"import": func(v int) string { return versionImports[v] },
 	}).Parse(string(bf)))
 	var b bytes.Buffer
 
 	err = tpl.Execute(&b, map[string]interface{}{
-		"versions":      lotusactors.Versions,
-		"latestVersion": lotusactors.LatestVersion,
+		"versions":      versions,
+		"latestVersion": latestVersion,
 	})
 	if err != nil {
 		return err
@@ -208,17 +215,4 @@ func generateBuiltin(builtinPath string) error {
 	}
 
 	return nil
-}
-
-func getVersionImports() map[int]string {
-	versionImports := make(map[int]string, lotusactors.LatestVersion)
-	for _, v := range lotusactors.Versions {
-		if v == 0 {
-			versionImports[v] = "/"
-		} else {
-			versionImports[v] = "/v" + strconv.Itoa(v) + "/"
-		}
-	}
-
-	return versionImports
 }

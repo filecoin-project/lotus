@@ -3,13 +3,11 @@ package genesis
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
 	"github.com/filecoin-project/go-address"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -28,26 +26,25 @@ func init() {
 	RootVerifierID = idk
 }
 
-func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
-	cst := cbor.NewCborStore(bs)
-	vst, err := verifreg.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, RootVerifierID)
+func SetupVerifiedRegistryActor(bs bstore.Blockstore) (*types.Actor, error) {
+	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
+
+	h, err := adt.MakeEmptyMap(store).Root()
 	if err != nil {
 		return nil, err
 	}
 
-	statecid, err := cst.Put(ctx, vst.GetState())
-	if err != nil {
-		return nil, err
-	}
+	sms := verifreg0.ConstructState(h, RootVerifierID)
 
-	actcid, err := verifreg.GetActorCodeID(av)
+	stcid, err := store.Put(store.Context(), sms)
 	if err != nil {
 		return nil, err
 	}
 
 	act := &types.Actor{
-		Code: actcid,
-		Head: statecid,
+		Code:    builtin.VerifiedRegistryActorCodeID,
+		Head:    stcid,
+		Balance: types.NewInt(0),
 	}
 
 	return act, nil
