@@ -24,6 +24,19 @@ func load3(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make3(store adt.Store, rootKeyAddress address.Address) (State, error) {
+	out := state3{store: store}
+
+	s, err := verifreg3.ConstructState(store, rootKeyAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
+	return &out, nil
+}
+
 type state3 struct {
 	verifreg3.State
 	store adt.Store
@@ -55,4 +68,8 @@ func (s *state3) verifiedClients() (adt.Map, error) {
 
 func (s *state3) verifiers() (adt.Map, error) {
 	return adt3.AsMap(s.store, s.Verifiers, builtin3.DefaultHamtBitwidth)
+}
+
+func (s *state3) GetState() interface{} {
+	return &s.State
 }

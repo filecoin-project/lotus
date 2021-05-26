@@ -24,6 +24,12 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make4(store adt.Store) (State, error) {
+	out := state4{store: store}
+	out.State = paych4.State{}
+	return &out, nil
+}
+
 type state4 struct {
 	paych4.State
 	store adt.Store
@@ -72,6 +78,10 @@ func (s *state4) LaneCount() (uint64, error) {
 		return 0, err
 	}
 	return lsamt.Length(), nil
+}
+
+func (s *state4) GetState() interface{} {
+	return &s.State
 }
 
 // Iterate lane states
