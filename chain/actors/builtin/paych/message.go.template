@@ -21,7 +21,7 @@ func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount)
 		return nil, aerr
 	}
 	enc, aerr := actors.SerializeParams(&init{{.v}}.ExecParams{
-		CodeCID:		   builtin{{.v}}.PaymentChannelActorCodeID,
+		CodeCID:           builtin{{.v}}.PaymentChannelActorCodeID,
 		ConstructorParams: params,
 	})
 	if aerr != nil {
@@ -29,9 +29,9 @@ func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount)
 	}
 
 	return &types.Message{
-		To:		init_.Address,
-		From:	m.from,
-		Value:	initialAmount,
+		To:     init_.Address,
+		From:   m.from,
+		Value:  initialAmount,
 		Method: builtin{{.v}}.MethodsInit.Exec,
 		Params: enc,
 	}, nil
@@ -39,7 +39,7 @@ func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount)
 
 func (m message{{.v}}) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := actors.SerializeParams(&paych{{.v}}.UpdateChannelStateParams{
-		Sv:		*sv,
+		Sv:     *sv,
 		Secret: secret,
 	})
 	if aerr != nil {
@@ -47,9 +47,9 @@ func (m message{{.v}}) Update(paych address.Address, sv *SignedVoucher, secret [
 	}
 
 	return &types.Message{
-		To:		paych,
-		From:	m.from,
-		Value:	abi.NewTokenAmount(0),
+		To:     paych,
+		From:   m.from,
+		Value:  abi.NewTokenAmount(0),
 		Method: builtin{{.v}}.MethodsPaych.UpdateChannelState,
 		Params: params,
 	}, nil
@@ -57,18 +57,18 @@ func (m message{{.v}}) Update(paych address.Address, sv *SignedVoucher, secret [
 
 func (m message{{.v}}) Settle(paych address.Address) (*types.Message, error) {
 	return &types.Message{
-		To:		paych,
-		From:	m.from,
-		Value:	abi.NewTokenAmount(0),
+		To:     paych,
+		From:   m.from,
+		Value:  abi.NewTokenAmount(0),
 		Method: builtin{{.v}}.MethodsPaych.Settle,
 	}, nil
 }
 
 func (m message{{.v}}) Collect(paych address.Address) (*types.Message, error) {
 	return &types.Message{
-		To:		paych,
-		From:	m.from,
-		Value:	abi.NewTokenAmount(0),
+		To:     paych,
+		From:   m.from,
+		Value:  abi.NewTokenAmount(0),
 		Method: builtin{{.v}}.MethodsPaych.Collect,
 	}, nil
 }

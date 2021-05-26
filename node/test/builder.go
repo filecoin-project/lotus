@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/gorilla/mux"
 	"golang.org/x/xerrors"
 
@@ -279,7 +277,6 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		NetworkVersion:   network.Version0,
 		Accounts:         genaccs,
 		Miners:           genms,
 		NetworkName:      "test",
@@ -443,7 +440,6 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		NetworkVersion:   network.Version0,
 		Accounts:         genaccs,
 		Miners:           genms,
 		NetworkName:      "test",
