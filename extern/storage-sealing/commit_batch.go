@@ -33,8 +33,7 @@ type CommitBatcherApi interface {
 }
 
 type AggregateInput struct {
-	spt abi.RegisteredSealProof
-	// TODO: Something changed in actors, I think this now needs to be AggregateSealVerifyProofAndInfos todo ??
+	spt   abi.RegisteredSealProof
 	info  proof5.AggregateSealVerifyInfo
 	proof []byte
 }

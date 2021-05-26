@@ -512,7 +512,7 @@ func (m mockVerifProver) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
 }
 
 func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
-	out := make([]byte, 200)
+	out := make([]byte, m.aggLen(len(aggregate.Infos)))
 	for pi, svi := range aggregate.Infos {
 		for i := 0; i < 32; i++ {
 			b := svi.UnsealedCID.Bytes()[i] + svi.SealedCID.Bytes()[31-i] - svi.InteractiveRandomness[i]*svi.Randomness[i] // raw proof byte
@@ -526,7 +526,7 @@ func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 }
 
 func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
-	out := make([]byte, 200) // todo: figure out more real length
+	out := make([]byte, m.aggLen(len(aggregateInfo.Infos))) // todo: figure out more real length
 	for pi, proof := range proofs {
 		for i := range proof[:32] {
 			out[i] += proof[i] * uint8(pi)
@@ -534,6 +534,35 @@ func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealV
 	}
 
 	return out, nil
+}
+
+func (m mockVerifProver) aggLen(nproofs int) int {
+	switch {
+	case nproofs <= 8:
+		return 11220
+	case nproofs <= 16:
+		return 14196
+	case nproofs <= 32:
+		return 17172
+	case nproofs <= 64:
+		return 20148
+	case nproofs <= 128:
+		return 23124
+	case nproofs <= 256:
+		return 26100
+	case nproofs <= 512:
+		return 29076
+	case nproofs <= 1024:
+		return 32052
+	case nproofs <= 2048:
+		return 35028
+	case nproofs <= 4096:
+		return 38004
+	case nproofs <= 8192:
+		return 40980
+	default:
+		panic("too many proofs")
+	}
 }
 
 func (m mockVerifProver) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
