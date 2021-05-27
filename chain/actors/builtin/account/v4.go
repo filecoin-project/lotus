@@ -20,6 +20,12 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make4(store adt.Store, addr address.Address) (State, error) {
+	out := state4{store: store}
+	out.State = account4.State{Address: addr}
+	return &out, nil
+}
+
 type state4 struct {
 	account4.State
 	store adt.Store
@@ -27,4 +33,8 @@ type state4 struct {
 
 func (s *state4) PubkeyAddress() (address.Address, error) {
 	return s.Address, nil
+}
+
+func (s *state4) GetState() interface{} {
+	return &s.State
 }

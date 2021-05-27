@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/build"
@@ -45,7 +46,12 @@ func BenchmarkStateTreeSet(b *testing.B) {
 
 func BenchmarkStateTreeSetFlush(b *testing.B) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
+	sv, err := VersionForNetwork(build.NewestNetworkVersion)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -75,7 +81,12 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 
 func TestResolveCache(t *testing.T) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
+	sv, err := VersionForNetwork(build.NewestNetworkVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +183,12 @@ func TestResolveCache(t *testing.T) {
 
 func BenchmarkStateTree10kGetActor(b *testing.B) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
+	sv, err := VersionForNetwork(build.NewestNetworkVersion)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -214,7 +230,12 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 
 func TestSetCache(t *testing.T) {
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
+	sv, err := VersionForNetwork(build.NewestNetworkVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +272,13 @@ func TestSetCache(t *testing.T) {
 func TestSnapshots(t *testing.T) {
 	ctx := context.Background()
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst, VersionForNetwork(build.NewestNetworkVersion))
+
+	sv, err := VersionForNetwork(build.NewestNetworkVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,8 +361,15 @@ func assertNotHas(t *testing.T, st *StateTree, addr address.Address) {
 
 func TestStateTreeConsistency(t *testing.T) {
 	cst := cbor.NewMemCborStore()
+
 	// TODO: ActorUpgrade: this test tests pre actors v2
-	st, err := NewStateTree(cst, VersionForNetwork(network.Version3))
+
+	sv, err := VersionForNetwork(network.Version3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		t.Fatal(err)
 	}

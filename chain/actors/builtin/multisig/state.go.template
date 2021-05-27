@@ -31,6 +31,32 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make{{.v}}(store adt.Store, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = msig{{.v}}.State{}
+	out.State.Signers = signers
+	out.State.NumApprovalsThreshold = threshold
+	out.State.StartEpoch = startEpoch
+	out.State.UnlockDuration = unlockDuration
+	out.State.InitialBalance = initialBalance
+	{{if (le .v 2)}}
+		em, err := adt{{.v}}.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
+
+		out.State.PendingTxns = em
+	{{else}}
+		em, err := adt{{.v}}.StoreEmptyMap(store, builtin{{.v}}.DefaultHamtBitwidth)
+		if err != nil {
+			return nil, err
+		}
+
+		out.State.PendingTxns = em
+	{{end}}
+	return &out, nil
+}
+
 type state{{.v}} struct {
 	msig{{.v}}.State
 	store adt.Store
@@ -94,4 +120,8 @@ func (s *state{{.v}}) decodeTransaction(val *cbg.Deferred) (Transaction, error) 
 		return Transaction{}, err
 	}
 	return tx, nil
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
 }

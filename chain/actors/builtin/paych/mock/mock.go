@@ -17,6 +17,10 @@ type mockState struct {
 	lanes      map[uint64]paych.LaneState
 }
 
+func (ms *mockState) GetState() interface{} {
+	panic("implement me")
+}
+
 type mockLaneState struct {
 	redeemed big.Int
 	nonce    uint64
