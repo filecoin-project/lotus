@@ -51,7 +51,7 @@ const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 const UpgradeOrangeHeight = 336458
 
 // 2020-12-22T02:00:00Z
-const UpgradeClausHeight = 343200
+var UpgradeClausHeight = abi.ChainEpoch(343200)
 
 // 2021-03-04T00:00:30Z
 const UpgradeTrustHeight = 550321

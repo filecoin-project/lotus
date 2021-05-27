@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -845,4 +847,156 @@ waitForProof:
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to dispute valid post (RetCode=16)")
 	}
+}
+
+func TestWindowPostBaseFeeNoBurn(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	och := build.UpgradeClausHeight
+	build.UpgradeClausHeight = 10
+	n, sn := b(t, DefaultFullOpts(1), OneMiner)
+
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	{
+		addrinfo, err := client.NetAddrsListen(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := miner.NetConnect(ctx, addrinfo); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	build.Clock.Sleep(time.Second)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for ctx.Err() == nil {
+			build.Clock.Sleep(blocktime)
+			if err := miner.MineOne(ctx, MineNext); err != nil {
+				if ctx.Err() != nil {
+					// context was canceled, ignore the error.
+					return
+				}
+				t.Error(err)
+			}
+		}
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+
+	pledgeSectors(t, ctx, miner, 10, 0, nil)
+	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en := wact.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof:
+	for {
+		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en {
+			break waitForProof
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr, err := client.StateReplay(ctx, types.EmptyTSK, slm[0])
+	require.NoError(t, err)
+
+	require.Equal(t, pmr.GasCost.BaseFeeBurn, big.Zero())
+
+	build.UpgradeClausHeight = och
+}
+
+func TestWindowPostBaseFeeBurn(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, OneMiner)
+
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	{
+		addrinfo, err := client.NetAddrsListen(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := miner.NetConnect(ctx, addrinfo); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	build.Clock.Sleep(time.Second)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for ctx.Err() == nil {
+			build.Clock.Sleep(blocktime)
+			if err := miner.MineOne(ctx, MineNext); err != nil {
+				if ctx.Err() != nil {
+					// context was canceled, ignore the error.
+					return
+				}
+				t.Error(err)
+			}
+		}
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+
+	pledgeSectors(t, ctx, miner, 10, 0, nil)
+	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en := wact.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof:
+	for {
+		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en {
+			break waitForProof
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr, err := client.StateReplay(ctx, types.EmptyTSK, slm[0])
+	require.NoError(t, err)
+
+	require.NotEqual(t, pmr.GasCost.BaseFeeBurn, big.Zero())
 }
