@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
@@ -668,7 +670,7 @@ var storageCleanupCmd = &cli.Command{
 	},
 }
 
-func cleanupRemovedSectorData(ctx context.Context, api api.StorageMiner, napi api.FullNode) error {
+func cleanupRemovedSectorData(ctx context.Context, api api.StorageMiner, napi v0api.FullNode) error {
 	sectors, err := api.SectorsList(ctx)
 	if err != nil {
 		return err

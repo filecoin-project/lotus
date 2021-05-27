@@ -795,7 +795,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 	return nil
 }
 
-func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
+func (mp *MessagePool) GetNonce(_ context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -803,6 +803,13 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 	defer mp.lk.Unlock()
 
 	return mp.getNonceLocked(addr, mp.curTs)
+}
+
+// GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
+func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+	return mp.api.GetActorAfter(addr, mp.curTs)
 }
 
 func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *types.TipSet) (uint64, error) {
@@ -825,8 +832,8 @@ func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *types.TipSet)
 	return stateNonce, nil
 }
 
-func (mp *MessagePool) getStateNonce(addr address.Address, curTs *types.TipSet) (uint64, error) {
-	act, err := mp.api.GetActorAfter(addr, curTs)
+func (mp *MessagePool) getStateNonce(addr address.Address, ts *types.TipSet) (uint64, error) {
+	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return 0, err
 	}

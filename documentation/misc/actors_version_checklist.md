@@ -4,6 +4,8 @@
 - [ ] Define upgrade heights in `build/params_`
 - [ ] Generate adapters
   - [ ] Add the new version in `chain/actors/agen/main.go`
+  - [ ] Update adapter code in `chain/actors/builtin` if needed
+- [ ] Update `chain/actors/policy/policy.go`
 - [ ] Update `chain/actors/version.go`
 - [ ] Register in `chain/vm/invoker.go`
 - [ ] Register in `chain/vm/mkactor.go`

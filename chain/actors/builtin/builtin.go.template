@@ -6,9 +6,9 @@ import (
 	"golang.org/x/xerrors"
 
 	{{range .versions}}
-        builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
-        smoothing{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/util/smoothing"
-    {{end}}
+		builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+		smoothing{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/util/smoothing"
+	{{end}}
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	miner{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/miner"
-	proof{{.latestVersion}}  "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/runtime/proof"
+	proof{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/runtime/proof"
 )
 
 var SystemActorAddr = builtin{{.latestVersion}}.SystemActorAddr
@@ -53,13 +53,13 @@ func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, 
 }
 
 {{range .versions}}
-    func FromV{{.}}FilterEstimate(v{{.}} smoothing{{.}}.FilterEstimate) FilterEstimate {
+	func FromV{{.}}FilterEstimate(v{{.}} smoothing{{.}}.FilterEstimate) FilterEstimate {
 	{{if (eq . 0)}}
-	    return (FilterEstimate)(v{{.}}) //nolint:unconvert
-    {{else}}
-        return (FilterEstimate)(v{{.}})
-    {{end}}
-    }
+		return (FilterEstimate)(v{{.}}) //nolint:unconvert
+	{{else}}
+		return (FilterEstimate)(v{{.}})
+	{{end}}
+	}
 {{end}}
 
 type ActorStateLoader func(store adt.Store, root cid.Cid) (cbor.Marshaler, error)
@@ -80,58 +80,58 @@ func Load(store adt.Store, act *types.Actor) (cbor.Marshaler, error) {
 
 func ActorNameByCode(c cid.Cid) string {
 	switch {
-        {{range .versions}}
-            case builtin{{.}}.IsBuiltinActor(c):
-            return builtin{{.}}.ActorNameByCode(c)
-        {{end}}
+		{{range .versions}}
+			case builtin{{.}}.IsBuiltinActor(c):
+			return builtin{{.}}.ActorNameByCode(c)
+		{{end}}
 	default:
 		return "<unknown>"
 	}
 }
 
 func IsBuiltinActor(c cid.Cid) bool {
-    {{range .versions}}
-        if builtin{{.}}.IsBuiltinActor(c) {
-            return true
-        }
-    {{end}}
-    return false
+	{{range .versions}}
+		if builtin{{.}}.IsBuiltinActor(c) {
+			return true
+		}
+	{{end}}
+	return false
 }
 
 func IsAccountActor(c cid.Cid) bool {
-    {{range .versions}}
-        if c == builtin{{.}}.AccountActorCodeID {
-            return true
-        }
-    {{end}}
-    return false
+	{{range .versions}}
+		if c == builtin{{.}}.AccountActorCodeID {
+			return true
+		}
+	{{end}}
+	return false
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {
-    {{range .versions}}
-        if c == builtin{{.}}.StorageMinerActorCodeID {
-            return true
-        }
-    {{end}}
-    return false
+	{{range .versions}}
+		if c == builtin{{.}}.StorageMinerActorCodeID {
+			return true
+		}
+	{{end}}
+	return false
 }
 
 func IsMultisigActor(c cid.Cid) bool {
-    {{range .versions}}
-        if c == builtin{{.}}.MultisigActorCodeID {
-            return true
-        }
-    {{end}}
-    return false
+	{{range .versions}}
+		if c == builtin{{.}}.MultisigActorCodeID {
+			return true
+		}
+	{{end}}
+	return false
 }
 
 func IsPaymentChannelActor(c cid.Cid) bool {
-    {{range .versions}}
-        if c == builtin{{.}}.PaymentChannelActorCodeID {
-            return true
-        }
-    {{end}}
-    return false
+	{{range .versions}}
+		if c == builtin{{.}}.PaymentChannelActorCodeID {
+			return true
+		}
+	{{end}}
+	return false
 }
 
 func makeAddress(addr string) address.Address {

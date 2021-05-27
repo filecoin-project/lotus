@@ -8,9 +8,14 @@ import (
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/gateway"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/tag"
 
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
@@ -67,6 +72,16 @@ var runCmd = &cli.Command{
 			Name:  "api-max-req-size",
 			Usage: "maximum API request size accepted by the JSON RPC server",
 		},
+		&cli.DurationFlag{
+			Name:  "api-max-lookback",
+			Usage: "maximum duration allowable for tipset lookbacks",
+			Value: gateway.DefaultLookbackCap,
+		},
+		&cli.Int64Flag{
+			Name:  "api-wait-lookback-limit",
+			Usage: "maximum number of blocks to search back through for message inclusion",
+			Value: int64(gateway.DefaultStateWaitLookbackLimit),
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
@@ -82,7 +97,7 @@ var runCmd = &cli.Command{
 			log.Fatalf("Cannot register the view: %v", err)
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -93,14 +108,25 @@ var runCmd = &cli.Command{
 
 		log.Info("Setting up API endpoint at " + address)
 
-		serverOptions := make([]jsonrpc.ServerOption, 0)
-		if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
-			serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
-		}
-		rpcServer := jsonrpc.NewServer(serverOptions...)
-		rpcServer.Register("Filecoin", metrics.MetricedGatewayAPI(NewGatewayAPI(api)))
+		serveRpc := func(path string, hnd interface{}) {
+			serverOptions := make([]jsonrpc.ServerOption, 0)
+			if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
+				serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
+			}
+			rpcServer := jsonrpc.NewServer(serverOptions...)
+			rpcServer.Register("Filecoin", hnd)
 
-		mux.Handle("/rpc/v0", rpcServer)
+			mux.Handle(path, rpcServer)
+		}
+
+		lookbackCap := cctx.Duration("api-max-lookback")
+
+		waitLookback := abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+
+		ma := metrics.MetricedGatewayAPI(gateway.NewNode(api, lookbackCap, waitLookback))
+
+		serveRpc("/rpc/v1", ma)
+		serveRpc("/rpc/v0", lapi.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))
 
 		registry := promclient.DefaultRegisterer.(*promclient.Registry)
 		exporter, err := prometheus.NewExporter(prometheus.Options{

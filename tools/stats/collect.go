@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	client "github.com/influxdata/influxdb1-client/v2"
 )
 
-func Collect(ctx context.Context, api api.FullNode, influx client.Client, database string, height int64, headlag int) {
+func Collect(ctx context.Context, api v0api.FullNode, influx client.Client, database string, height int64, headlag int) {
 	tipsetsCh, err := GetTips(ctx, api, abi.ChainEpoch(height), headlag)
 	if err != nil {
 		log.Fatal(err)

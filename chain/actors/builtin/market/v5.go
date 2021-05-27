@@ -26,6 +26,19 @@ func load5(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make5(store adt.Store) (State, error) {
+	out := state5{store: store}
+
+	s, err := market5.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
+	return &out, nil
+}
+
 type state5 struct {
 	market5.State
 	store adt.Store
@@ -206,4 +219,8 @@ func (s *dealProposals5) array() adt.Array {
 
 func fromV5DealProposal(v5 market5.DealProposal) DealProposal {
 	return (DealProposal)(v5)
+}
+
+func (s *state5) GetState() interface{} {
+	return &s.State
 }

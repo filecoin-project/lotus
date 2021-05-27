@@ -1,6 +1,7 @@
 package account
 
 import (
+	"github.com/filecoin-project/lotus/chain/actors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -69,8 +70,54 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version, addr address.Address) (State, error) {
+	switch av {
+
+	case actors.Version0:
+		return make0(store, addr)
+
+	case actors.Version2:
+		return make2(store, addr)
+
+	case actors.Version3:
+		return make3(store, addr)
+
+	case actors.Version4:
+		return make4(store, addr)
+
+	case actors.Version5:
+		return make5(store, addr)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+
+	case actors.Version0:
+		return builtin0.AccountActorCodeID, nil
+
+	case actors.Version2:
+		return builtin2.AccountActorCodeID, nil
+
+	case actors.Version3:
+		return builtin3.AccountActorCodeID, nil
+
+	case actors.Version4:
+		return builtin4.AccountActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.AccountActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type State interface {
 	cbor.Marshaler
 
 	PubkeyAddress() (address.Address, error)
+	GetState() interface{}
 }

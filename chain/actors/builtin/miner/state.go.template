@@ -35,6 +35,12 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make{{.v}}(store adt.Store) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = miner{{.v}}.State{}
+	return &out, nil
+}
+
 type state{{.v}} struct {
 	miner{{.v}}.State
 	store adt.Store
@@ -245,6 +251,10 @@ func (s *state{{.v}}) IsAllocated(num abi.SectorNumber) (bool, error) {
 	return allocatedSectors.IsSet(uint64(num))
 }
 
+func (s *state{{.v}}) GetProvingPeriodStart() (abi.ChainEpoch, error) {
+	return s.State.ProvingPeriodStart, nil
+}
+
 func (s *state{{.v}}) LoadDeadline(idx uint64) (Deadline, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -366,6 +376,45 @@ func (s *state{{.v}}) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (Secto
 	return fromV{{.v}}SectorPreCommitOnChainInfo(sp), nil
 }
 
+func (s *state{{.v}}) EraseAllUnproven() error {
+	{{if (ge .v 2)}}
+		dls, err := s.State.LoadDeadlines(s.store)
+		if err != nil {
+			return err
+		}
+
+		err = dls.ForEach(s.store, func(dindx uint64, dl *miner{{.v}}.Deadline) error {
+			ps, err := dl.PartitionsArray(s.store)
+			if err != nil {
+				return err
+			}
+
+			var part miner{{.v}}.Partition
+			err = ps.ForEach(&part, func(pindx int64) error {
+				_ = part.ActivateUnproven()
+				err = ps.Set(uint64(pindx), &part)
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			dl.Partitions, err = ps.Root()
+			if err != nil {
+				return err
+			}
+
+			return dls.UpdateDeadline(s.store, dindx, dl)
+		})
+
+		return s.State.SaveDeadlines(s.store, dls)
+	{{else}}
+		// field doesn't exist until v2
+	{{end}}
+	return nil
+}
+
 func (d *deadline{{.v}}) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
 	if err != nil {
@@ -457,4 +506,8 @@ func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOn
 {{else}}
 	return (SectorPreCommitOnChainInfo)(v0)
 {{end}}
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
 }

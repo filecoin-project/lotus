@@ -20,6 +20,12 @@ func load3(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make3(store adt.Store, addr address.Address) (State, error) {
+	out := state3{store: store}
+	out.State = account3.State{Address: addr}
+	return &out, nil
+}
+
 type state3 struct {
 	account3.State
 	store adt.Store
@@ -27,4 +33,8 @@ type state3 struct {
 
 func (s *state3) PubkeyAddress() (address.Address, error) {
 	return s.Address, nil
+}
+
+func (s *state3) GetState() interface{} {
+	return &s.State
 }

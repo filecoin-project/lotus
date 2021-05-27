@@ -1,6 +1,7 @@
 package init
 
 import (
+	"github.com/filecoin-project/lotus/chain/actors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -74,6 +75,51 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version, networkName string) (State, error) {
+	switch av {
+
+	case actors.Version0:
+		return make0(store, networkName)
+
+	case actors.Version2:
+		return make2(store, networkName)
+
+	case actors.Version3:
+		return make3(store, networkName)
+
+	case actors.Version4:
+		return make4(store, networkName)
+
+	case actors.Version5:
+		return make5(store, networkName)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+
+	case actors.Version0:
+		return builtin0.InitActorCodeID, nil
+
+	case actors.Version2:
+		return builtin2.InitActorCodeID, nil
+
+	case actors.Version3:
+		return builtin3.InitActorCodeID, nil
+
+	case actors.Version4:
+		return builtin4.InitActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.InitActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type State interface {
 	cbor.Marshaler
 
@@ -91,5 +137,12 @@ type State interface {
 	// Sets the network's name. This should only be used on upgrade/fork.
 	SetNetworkName(name string) error
 
-	addressMap() (adt.Map, error)
+	// Sets the next ID for the init actor. This should only be used for testing.
+	SetNextID(id abi.ActorID) error
+
+	// Sets the address map for the init actor. This should only be used for testing.
+	SetAddressMap(mcid cid.Cid) error
+
+	AddressMap() (adt.Map, error)
+	GetState() interface{}
 }

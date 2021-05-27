@@ -22,6 +22,12 @@ func init() {
 	_ = log.SetLogLevel("stats", "WARN")
 	_ = log.SetLogLevel("dht/RtRefreshManager", "ERROR") // noisy
 	_ = log.SetLogLevel("bitswap", "ERROR")              // noisy
+	_ = log.SetLogLevel("badgerbs", "ERROR")             // noisy
+	_ = log.SetLogLevel("sub", "ERROR")                  // noisy
+	_ = log.SetLogLevel("pubsub", "ERROR")               // noisy
+	_ = log.SetLogLevel("chain", "ERROR")                // noisy
+	_ = log.SetLogLevel("chainstore", "ERROR")           // noisy
+	_ = log.SetLogLevel("basichost", "ERROR")            // noisy
 
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 

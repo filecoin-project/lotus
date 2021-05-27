@@ -40,6 +40,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -321,6 +322,10 @@ The minimum value is 518400 (6 months).`,
 			Name:  "manual-piece-size",
 			Usage: "if manually specifying piece cid, used to specify size (dataCid must be to a car file)",
 		},
+		&cli.BoolFlag{
+			Name:  "manual-stateless-deal",
+			Usage: "instructs the node to send an offline deal without registering it with the deallist/fsm",
+		},
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "specify address to fund the deal with",
@@ -460,7 +465,7 @@ The minimum value is 518400 (6 months).`,
 			isVerified = verifiedDealParam
 		}
 
-		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
+		sdParams := &lapi.StartDealParams{
 			Data:               ref,
 			Wallet:             a,
 			Miner:              miner,
@@ -470,7 +475,18 @@ The minimum value is 518400 (6 months).`,
 			FastRetrieval:      cctx.Bool("fast-retrieval"),
 			VerifiedDeal:       isVerified,
 			ProviderCollateral: provCol,
-		})
+		}
+
+		var proposal *cid.Cid
+		if cctx.Bool("manual-stateless-deal") {
+			if ref.TransferType != storagemarket.TTManual || price.Int64() != 0 {
+				return xerrors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
+			}
+			proposal, err = api.ClientStatelessDeal(ctx, sdParams)
+		} else {
+			proposal, err = api.ClientStartDeal(ctx, sdParams)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -1295,7 +1311,8 @@ var clientListAsksCmd = &cli.Command{
 	Usage: "List asks for top miners",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "by-ping",
+			Name:  "by-ping",
+			Usage: "sort by ping",
 		},
 		&cli.StringFlag{
 			Name:  "output-format",
@@ -1348,7 +1365,7 @@ type QueriedAsk struct {
 	Ping time.Duration
 }
 
-func GetAsks(ctx context.Context, api lapi.FullNode) ([]QueriedAsk, error) {
+func GetAsks(ctx context.Context, api v0api.FullNode) ([]QueriedAsk, error) {
 	isTTY := true
 	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
 		isTTY = false
@@ -1450,17 +1467,17 @@ loop:
 				}
 
 				rt := time.Now()
-
 				_, err = api.ClientQueryAsk(ctx, *mi.PeerId, miner)
 				if err != nil {
 					return
 				}
+				pingDuration := time.Now().Sub(rt)
 
 				atomic.AddInt64(&got, 1)
 				lk.Lock()
 				asks = append(asks, QueriedAsk{
 					Ask:  ask,
-					Ping: time.Now().Sub(rt),
+					Ping: pingDuration,
 				})
 				lk.Unlock()
 			}(miner)
@@ -1655,7 +1672,7 @@ var clientListDeals = &cli.Command{
 	},
 }
 
-func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet, v api.DealInfo) deal {
+func dealFromDealInfo(ctx context.Context, full v0api.FullNode, head *types.TipSet, v api.DealInfo) deal {
 	if v.DealID == 0 {
 		return deal{
 			LocalDeal:        v,
@@ -1674,7 +1691,7 @@ func dealFromDealInfo(ctx context.Context, full api.FullNode, head *types.TipSet
 	}
 }
 
-func outputStorageDeals(ctx context.Context, out io.Writer, full lapi.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
+func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
 	sort.Slice(localDeals, func(i, j int) bool {
 		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
 	})
@@ -2293,7 +2310,7 @@ func ellipsis(s string, length int) string {
 	return s
 }
 
-func inspectDealCmd(ctx context.Context, api lapi.FullNode, proposalCid string, dealId int) error {
+func inspectDealCmd(ctx context.Context, api v0api.FullNode, proposalCid string, dealId int) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -2346,7 +2363,7 @@ func renderDeal(di *lapi.DealInfo) {
 	}
 
 	for _, stg := range di.DealStages.Stages {
-		msg := fmt.Sprintf("%s %s: %s (%s)", color.BlueString("Stage:"), color.BlueString(strings.TrimPrefix(stg.Name, "StorageDeal")), stg.Description, color.GreenString(stg.ExpectedDuration))
+		msg := fmt.Sprintf("%s %s: %s (expected duration: %s)", color.BlueString("Stage:"), color.BlueString(strings.TrimPrefix(stg.Name, "StorageDeal")), stg.Description, color.GreenString(stg.ExpectedDuration))
 		if stg.UpdatedTime.Time().IsZero() {
 			msg = color.YellowString(msg)
 		}

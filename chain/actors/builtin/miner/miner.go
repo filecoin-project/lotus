@@ -3,6 +3,7 @@ package miner
 import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -95,6 +96,51 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version) (State, error) {
+	switch av {
+
+	case actors.Version0:
+		return make0(store)
+
+	case actors.Version2:
+		return make2(store)
+
+	case actors.Version3:
+		return make3(store)
+
+	case actors.Version4:
+		return make4(store)
+
+	case actors.Version5:
+		return make5(store)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+
+	case actors.Version0:
+		return builtin0.StorageMinerActorCodeID, nil
+
+	case actors.Version2:
+		return builtin2.StorageMinerActorCodeID, nil
+
+	case actors.Version3:
+		return builtin3.StorageMinerActorCodeID, nil
+
+	case actors.Version4:
+		return builtin4.StorageMinerActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.StorageMinerActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type State interface {
 	cbor.Marshaler
 
@@ -114,6 +160,11 @@ type State interface {
 	NumLiveSectors() (uint64, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
 
+	// Note that ProvingPeriodStart is deprecated and will be renamed / removed in a future version of actors
+	GetProvingPeriodStart() (abi.ChainEpoch, error)
+	// Testing only
+	EraseAllUnproven() error
+
 	LoadDeadline(idx uint64) (Deadline, error)
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
 	NumDeadlines() (uint64, error)
@@ -130,6 +181,7 @@ type State interface {
 	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
 	precommits() (adt.Map, error)
 	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (SectorPreCommitOnChainInfo, error)
+	GetState() interface{}
 }
 
 type Deadline interface {

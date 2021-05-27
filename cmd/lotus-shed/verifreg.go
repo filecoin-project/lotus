@@ -67,11 +67,13 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		srv, err := lcli.GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
 
 		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
@@ -79,14 +81,21 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return err
 		}
 
-		smsg, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.AddVerifier), params)
+		proto, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.AddVerifier), params)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("message sent, now waiting on cid: %s\n", smsg)
+		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		if err != nil {
+			return err
+		}
 
-		mwait, err := api.StateWaitMsg(ctx, smsg, build.MessageConfidence)
+		msgCid := sm.Cid()
+
+		fmt.Printf("message sent, now waiting on cid: %s\n", msgCid)
+
+		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -102,8 +111,9 @@ var verifRegAddVerifierCmd = &cli.Command{
 }
 
 var verifRegVerifyClientCmd = &cli.Command{
-	Name:  "verify-client",
-	Usage: "make a given account a verified client",
+	Name:   "verify-client",
+	Usage:  "make a given account a verified client",
+	Hidden: true,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -111,6 +121,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
 		froms := cctx.String("from")
 		if froms == "" {
 			return fmt.Errorf("must specify from address with --from")
@@ -175,9 +186,11 @@ var verifRegVerifyClientCmd = &cli.Command{
 }
 
 var verifRegListVerifiersCmd = &cli.Command{
-	Name:  "list-verifiers",
-	Usage: "list all verifiers",
+	Name:   "list-verifiers",
+	Usage:  "list all verifiers",
+	Hidden: true,
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -205,9 +218,11 @@ var verifRegListVerifiersCmd = &cli.Command{
 }
 
 var verifRegListClientsCmd = &cli.Command{
-	Name:  "list-clients",
-	Usage: "list all verified clients",
+	Name:   "list-clients",
+	Usage:  "list all verified clients",
+	Hidden: true,
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -235,9 +250,11 @@ var verifRegListClientsCmd = &cli.Command{
 }
 
 var verifRegCheckClientCmd = &cli.Command{
-	Name:  "check-client",
-	Usage: "check verified client remaining bytes",
+	Name:   "check-client",
+	Usage:  "check verified client remaining bytes",
+	Hidden: true,
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify client address to check")
 		}
@@ -269,9 +286,11 @@ var verifRegCheckClientCmd = &cli.Command{
 }
 
 var verifRegCheckVerifierCmd = &cli.Command{
-	Name:  "check-verifier",
-	Usage: "check verifiers remaining bytes",
+	Name:   "check-verifier",
+	Usage:  "check verifiers remaining bytes",
+	Hidden: true,
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify verifier address to check")
 		}

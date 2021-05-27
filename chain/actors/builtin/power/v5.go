@@ -28,6 +28,19 @@ func load5(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make5(store adt.Store) (State, error) {
+	out := state5{store: store}
+
+	s, err := power5.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
+	return &out, nil
+}
+
 type state5 struct {
 	power5.State
 	store adt.Store
@@ -128,6 +141,30 @@ func (s *state5) ClaimsChanged(other State) (bool, error) {
 		return true, nil
 	}
 	return !s.State.Claims.Equals(other5.State.Claims), nil
+}
+
+func (s *state5) SetTotalQualityAdjPower(p abi.StoragePower) error {
+	s.State.TotalQualityAdjPower = p
+	return nil
+}
+
+func (s *state5) SetTotalRawBytePower(p abi.StoragePower) error {
+	s.State.TotalRawBytePower = p
+	return nil
+}
+
+func (s *state5) SetThisEpochQualityAdjPower(p abi.StoragePower) error {
+	s.State.ThisEpochQualityAdjPower = p
+	return nil
+}
+
+func (s *state5) SetThisEpochRawBytePower(p abi.StoragePower) error {
+	s.State.ThisEpochRawBytePower = p
+	return nil
+}
+
+func (s *state5) GetState() interface{} {
+	return &s.State
 }
 
 func (s *state5) claims() (adt.Map, error) {

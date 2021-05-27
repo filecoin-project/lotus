@@ -36,7 +36,7 @@ import (
 type mockStorageMinerAPI struct {
 	partitions     []api.Partition
 	pushedMessages chan *types.Message
-	storageMinerApi
+	fullNodeFilteredAPI
 }
 
 func newMockStorageMinerAPI() *mockStorageMinerAPI {
@@ -93,7 +93,7 @@ func (m *mockStorageMinerAPI) MpoolPushMessage(ctx context.Context, message *typ
 	}, nil
 }
 
-func (m *mockStorageMinerAPI) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+func (m *mockStorageMinerAPI) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
 	return &api.MsgLookup{
 		Receipt: types.MessageReceipt{
 			ExitCode: 0,
@@ -316,7 +316,7 @@ func (m *mockStorageMinerAPI) StateMinerInitialPledgeCollateral(ctx context.Cont
 	panic("implement me")
 }
 
-func (m *mockStorageMinerAPI) StateSearchMsg(ctx context.Context, cid cid.Cid) (*api.MsgLookup, error) {
+func (m *mockStorageMinerAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
 	panic("implement me")
 }
 
@@ -394,4 +394,4 @@ func (m *mockStorageMinerAPI) WalletHas(ctx context.Context, address address.Add
 	return true, nil
 }
 
-var _ storageMinerApi = &mockStorageMinerAPI{}
+var _ fullNodeFilteredAPI = &mockStorageMinerAPI{}

@@ -35,6 +35,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -113,7 +114,7 @@ func init() {
 	addExample(network.Connected)
 	addExample(dtypes.NetworkName("lotus"))
 	addExample(api.SyncStateStage(1))
-	addExample(api.FullAPIVersion)
+	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
 	addExample(datatransfer.TransferID(3))
@@ -260,6 +261,45 @@ func init() {
 		},
 		"methods": []interface{}{}},
 	)
+
+	addExample(api.CheckStatusCode(0))
+	addExample(map[string]interface{}{"abc": 123})
+}
+
+func GetAPIType(name, pkg string) (i interface{}, t, permStruct, commonPermStruct reflect.Type) {
+	switch pkg {
+	case "api": // latest
+		switch name {
+		case "FullNode":
+			i = &api.FullNodeStruct{}
+			t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
+			permStruct = reflect.TypeOf(api.FullNodeStruct{}.Internal)
+			commonPermStruct = reflect.TypeOf(api.CommonStruct{}.Internal)
+		case "StorageMiner":
+			i = &api.StorageMinerStruct{}
+			t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
+			permStruct = reflect.TypeOf(api.StorageMinerStruct{}.Internal)
+			commonPermStruct = reflect.TypeOf(api.CommonStruct{}.Internal)
+		case "Worker":
+			i = &api.WorkerStruct{}
+			t = reflect.TypeOf(new(struct{ api.Worker })).Elem()
+			permStruct = reflect.TypeOf(api.WorkerStruct{}.Internal)
+			commonPermStruct = reflect.TypeOf(api.WorkerStruct{}.Internal)
+		default:
+			panic("unknown type")
+		}
+	case "v0api":
+		switch name {
+		case "FullNode":
+			i = v0api.FullNodeStruct{}
+			t = reflect.TypeOf(new(struct{ v0api.FullNode })).Elem()
+			permStruct = reflect.TypeOf(v0api.FullNodeStruct{}.Internal)
+			commonPermStruct = reflect.TypeOf(v0api.CommonStruct{}.Internal)
+		default:
+			panic("unknown type")
+		}
+	}
+	return
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
@@ -342,9 +382,9 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 
 const NoComment = "There are not yet any comments for this method."
 
-func ParseApiASTInfo(apiFile, iface string) (comments map[string]string, groupDocs map[string]string) { //nolint:golint
+func ParseApiASTInfo(apiFile, iface, pkg, dir string) (comments map[string]string, groupDocs map[string]string) { //nolint:golint
 	fset := token.NewFileSet()
-	apiDir, err := filepath.Abs("./api")
+	apiDir, err := filepath.Abs(dir)
 	if err != nil {
 		fmt.Println("./api filepath absolute error: ", err)
 		return
@@ -360,14 +400,14 @@ func ParseApiASTInfo(apiFile, iface string) (comments map[string]string, groupDo
 		return
 	}
 
-	ap := pkgs["api"]
+	ap := pkgs[pkg]
 
 	f := ap.Files[apiFile]
 
 	cmap := ast.NewCommentMap(fset, f, f.Comments)
 
 	v := &Visitor{iface, make(map[string]ast.Node)}
-	ast.Walk(v, pkgs["api"])
+	ast.Walk(v, ap)
 
 	comments = make(map[string]string)
 	groupDocs = make(map[string]string)

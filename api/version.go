@@ -42,11 +42,11 @@ var RunningNodeType NodeType
 func VersionForType(nodeType NodeType) (Version, error) {
 	switch nodeType {
 	case NodeFull:
-		return FullAPIVersion, nil
+		return FullAPIVersion1, nil
 	case NodeMiner:
-		return MinerAPIVersion, nil
+		return MinerAPIVersion0, nil
 	case NodeWorker:
-		return WorkerAPIVersion, nil
+		return WorkerAPIVersion0, nil
 	default:
 		return Version(0), xerrors.Errorf("unknown node type %d", nodeType)
 	}
@@ -54,9 +54,11 @@ func VersionForType(nodeType NodeType) (Version, error) {
 
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion   = newVer(1, 2, 0)
-	MinerAPIVersion  = newVer(1, 0, 1)
-	WorkerAPIVersion = newVer(1, 0, 0)
+	FullAPIVersion0 = newVer(1, 3, 0)
+	FullAPIVersion1 = newVer(2, 1, 0)
+
+	MinerAPIVersion0  = newVer(1, 0, 1)
+	WorkerAPIVersion0 = newVer(1, 0, 0)
 )
 
 //nolint:varcheck,deadcode

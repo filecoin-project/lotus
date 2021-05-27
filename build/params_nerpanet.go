@@ -40,8 +40,8 @@ const UpgradeClausHeight = 250
 const UpgradeOrangeHeight = 300
 
 const UpgradeTrustHeight = 600
-const UpgradeNorwegianHeight = 999999
-const UpgradeTurboHeight = 99999999
+const UpgradeNorwegianHeight = 201000
+const UpgradeTurboHeight = 203000
 const UpgradeHyperdriveHeight = 999999999
 
 func init() {

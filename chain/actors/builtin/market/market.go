@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -21,6 +22,7 @@ import (
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -76,6 +78,51 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version) (State, error) {
+	switch av {
+
+	case actors.Version0:
+		return make0(store)
+
+	case actors.Version2:
+		return make2(store)
+
+	case actors.Version3:
+		return make3(store)
+
+	case actors.Version4:
+		return make4(store)
+
+	case actors.Version5:
+		return make5(store)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+
+	case actors.Version0:
+		return builtin0.StorageMarketActorCodeID, nil
+
+	case actors.Version2:
+		return builtin2.StorageMarketActorCodeID, nil
+
+	case actors.Version3:
+		return builtin3.StorageMarketActorCodeID, nil
+
+	case actors.Version4:
+		return builtin4.StorageMarketActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.StorageMarketActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type State interface {
 	cbor.Marshaler
 	BalancesChanged(State) (bool, error)
@@ -90,6 +137,7 @@ type State interface {
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
 	) (weight, verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
+	GetState() interface{}
 }
 
 type BalanceTable interface {
@@ -174,4 +222,20 @@ func EmptyDealState() *DealState {
 		SlashEpoch:       -1,
 		LastUpdatedEpoch: -1,
 	}
+}
+
+// returns the earned fees and pending fees for a given deal
+func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
+	tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
+
+	ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
+	if ef.LessThan(big.Zero()) {
+		ef = big.Zero()
+	}
+
+	if ef.GreaterThan(tf) {
+		ef = tf
+	}
+
+	return ef, big.Sub(tf, ef)
 }
