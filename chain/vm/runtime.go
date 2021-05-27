@@ -81,6 +81,10 @@ type Runtime struct {
 	lastGasCharge     *types.GasTrace
 }
 
+func (rt *Runtime) BaseFee() abi.TokenAmount {
+	return rt.vm.baseFee
+}
+
 func (rt *Runtime) NetworkVersion() network.Version {
 	return rt.vm.GetNtwkVersion(rt.ctx, rt.CurrEpoch())
 }

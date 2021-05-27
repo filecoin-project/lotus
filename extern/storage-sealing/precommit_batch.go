@@ -181,7 +181,7 @@ func (b *PreCommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 			break
 		}
 
-		params.Sectors = append(params.Sectors, p.pci)
+		params.Sectors = append(params.Sectors, *p.pci)
 		deposit = big.Add(deposit, p.deposit)
 	}
 
