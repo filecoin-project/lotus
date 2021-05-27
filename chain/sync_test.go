@@ -895,6 +895,7 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 func TestDrandNull(t *testing.T) {
 	H := 10
 	v5h := abi.ChainEpoch(50)
+	ov5h := build.UpgradeHyperdriveHeight
 	build.UpgradeHyperdriveHeight = v5h
 	tu := prepSyncTestWithV5Height(t, H, v5h)
 
@@ -942,4 +943,6 @@ func TestDrandNull(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, []byte(rand), expectedRand)
+	build.UpgradeHyperdriveHeight = ov5h
+
 }
