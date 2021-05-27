@@ -1298,7 +1298,7 @@ var clientListRetrievalsCmd = &cli.Command{
 
 func isTerminalError(status retrievalmarket.DealStatus) bool {
 	// should patch this in go-fil-markets but to solve the problem immediate and not have buggy output
-	return retrievalmarket.IsTerminalError(status) || status == retrievalmarket.DealStatusErrored
+	return retrievalmarket.IsTerminalError(status) || status == retrievalmarket.DealStatusErrored || status == retrievalmarket.DealStatusCancelled
 }
 func outputRetrievalDeals(ctx context.Context, out io.Writer, localDeals []lapi.RetrievalInfo, verbose bool, color bool, showFailed bool, completed bool) error {
 	var deals []api.RetrievalInfo
