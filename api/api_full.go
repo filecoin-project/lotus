@@ -344,6 +344,10 @@ type FullNode interface {
 	// ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
 	// of status updates.
 	ClientRetrieveWithEvents(ctx context.Context, order RetrievalOrder, ref *FileRef) (<-chan marketevents.RetrievalEvent, error) //perm:admin
+	// ClientListRetrievals returns information about retrievals made by the local client
+	ClientListRetrievals(ctx context.Context) ([]RetrievalInfo, error) //perm:write
+	// ClientGetRetrievalUpdates returns status of updated retrieval deals
+	ClientGetRetrievalUpdates(ctx context.Context) (<-chan RetrievalInfo, error) //perm:write
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) //perm:read
 	// ClientCalcCommP calculates the CommP and data size of the specified CID

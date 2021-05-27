@@ -179,6 +179,8 @@ type FullNodeStruct struct {
 
 		ClientGetDealUpdates func(p0 context.Context) (<-chan DealInfo, error) `perm:"write"`
 
+		ClientGetRetrievalUpdates func(p0 context.Context) (<-chan RetrievalInfo, error) `perm:"write"`
+
 		ClientHasLocal func(p0 context.Context, p1 cid.Cid) (bool, error) `perm:"write"`
 
 		ClientImport func(p0 context.Context, p1 FileRef) (*ImportRes, error) `perm:"admin"`
@@ -188,6 +190,8 @@ type FullNodeStruct struct {
 		ClientListDeals func(p0 context.Context) ([]DealInfo, error) `perm:"write"`
 
 		ClientListImports func(p0 context.Context) ([]Import, error) `perm:"write"`
+
+		ClientListRetrievals func(p0 context.Context) ([]RetrievalInfo, error) `perm:"write"`
 
 		ClientMinerQueryOffer func(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (QueryOffer, error) `perm:"read"`
 
@@ -1293,6 +1297,14 @@ func (s *FullNodeStub) ClientGetDealUpdates(p0 context.Context) (<-chan DealInfo
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *FullNodeStruct) ClientGetRetrievalUpdates(p0 context.Context) (<-chan RetrievalInfo, error) {
+	return s.Internal.ClientGetRetrievalUpdates(p0)
+}
+
+func (s *FullNodeStub) ClientGetRetrievalUpdates(p0 context.Context) (<-chan RetrievalInfo, error) {
+	return nil, xerrors.New("method not supported")
+}
+
 func (s *FullNodeStruct) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bool, error) {
 	return s.Internal.ClientHasLocal(p0, p1)
 }
@@ -1331,6 +1343,14 @@ func (s *FullNodeStruct) ClientListImports(p0 context.Context) ([]Import, error)
 
 func (s *FullNodeStub) ClientListImports(p0 context.Context) ([]Import, error) {
 	return *new([]Import), xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ClientListRetrievals(p0 context.Context) ([]RetrievalInfo, error) {
+	return s.Internal.ClientListRetrievals(p0)
+}
+
+func (s *FullNodeStub) ClientListRetrievals(p0 context.Context) ([]RetrievalInfo, error) {
+	return *new([]RetrievalInfo), xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ClientMinerQueryOffer(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (QueryOffer, error) {
