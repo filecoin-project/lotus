@@ -136,6 +136,7 @@ var ChainNode = Options(
 
 	// Full node API / service startup
 	ApplyIf(isFullNode,
+		Override(new(messagepool.Provider), messagepool.NewProvider),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
