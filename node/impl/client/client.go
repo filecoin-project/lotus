@@ -96,7 +96,13 @@ func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.Chain
 	minExp := startEpoch + abi.ChainEpoch(minDuration)
 
 	// Align on miners ProvingPeriodBoundary
-	return minExp + md.WPoStProvingPeriod - (minExp % md.WPoStProvingPeriod) + (md.PeriodStart % md.WPoStProvingPeriod) - 1
+	exp := minExp + md.WPoStProvingPeriod - (minExp % md.WPoStProvingPeriod) + (md.PeriodStart % md.WPoStProvingPeriod) - 1
+	// Should only be possible for miners created around genesis
+	for exp < minExp {
+		exp += md.WPoStProvingPeriod
+	}
+
+	return exp
 }
 
 func (a *API) imgr() *importmgr.Mgr {
