@@ -45,8 +45,17 @@ func (r *RecordingRand) loadHead() {
 	r.head = head.Key()
 }
 
-func (r *RecordingRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getChainRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getChainRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) getChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
+	// FullNode's ChainGetRandomnessFromTickets handles whether we should be looking forward or back
 	ret, err := r.api.ChainGetRandomnessFromTickets(ctx, r.head, pers, round, entropy)
 	if err != nil {
 		return ret, err
@@ -70,7 +79,15 @@ func (r *RecordingRand) GetChainRandomness(ctx context.Context, pers crypto.Doma
 	return ret, err
 }
 
-func (r *RecordingRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) getBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
 	ret, err := r.api.ChainGetRandomnessFromBeacon(ctx, r.head, pers, round, entropy)
 	if err != nil {
