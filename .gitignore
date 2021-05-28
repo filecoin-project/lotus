@@ -1,7 +1,6 @@
 /AppDir
 /appimage-builder-cache
 *.AppImage
-build/rice-box.go
 /lotus
 /lotus-miner
 /lotus-worker
