@@ -47,13 +47,6 @@ BUILD_DEPS+=ffi-version-check
 
 .PHONY: ffi-version-check
 
-build/rice-box.go:
-	go run github.com/GeertJohan/go.rice/rice embed-go -i ./build
-
-BUILD_DEPS+=build/rice-box.go
-CLEAN+=build/rice-box.go
-
-
 $(MODULES): build/.update-modules ;
 # dummy file that marks the last time modules were updated
 build/.update-modules:
@@ -172,13 +165,11 @@ lotus-townhall-front:
 .PHONY: lotus-townhall-front
 
 lotus-townhall-app: lotus-touch lotus-townhall-front
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-townhall -i ./cmd/lotus-townhall -i ./build
 .PHONY: lotus-townhall-app
 
 lotus-fountain:
 	rm -f lotus-fountain
 	go build -o lotus-fountain ./cmd/lotus-fountain
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-fountain -i ./cmd/lotus-fountain -i ./build
 .PHONY: lotus-fountain
 BINS+=lotus-fountain
 
@@ -191,28 +182,24 @@ BINS+=lotus-chainwatch
 lotus-bench:
 	rm -f lotus-bench
 	go build -o lotus-bench ./cmd/lotus-bench
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-bench -i ./build
 .PHONY: lotus-bench
 BINS+=lotus-bench
 
 lotus-stats:
 	rm -f lotus-stats
 	go build $(GOFLAGS) -o lotus-stats ./cmd/lotus-stats
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-stats -i ./build
 .PHONY: lotus-stats
 BINS+=lotus-stats
 
 lotus-pcr:
 	rm -f lotus-pcr
 	go build $(GOFLAGS) -o lotus-pcr ./cmd/lotus-pcr
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-pcr -i ./build
 .PHONY: lotus-pcr
 BINS+=lotus-pcr
 
 lotus-health:
 	rm -f lotus-health
 	go build -o lotus-health ./cmd/lotus-health
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-health -i ./build
 .PHONY: lotus-health
 BINS+=lotus-health
 
