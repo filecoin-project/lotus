@@ -61,9 +61,9 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	}
 
 	// we also never prune locally published messages
-	for actor := range mp.localAddrs {
+	mp.forEachLocal(ctx, func(ctx context.Context, actor address.Address) {
 		protected[actor] = struct{}{}
-	}
+	})
 
 	// Collect all messages to track which ones to remove and create chains for block inclusion
 	pruneMsgs := make(map[cid.Cid]*types.SignedMessage, mp.currentSize)

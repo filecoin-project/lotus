@@ -654,8 +654,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 		inSync = true
 	}
 
-	// first add our current pending messages
-	for a, mset := range mp.pending {
+	mp.forEachPending(func(a address.Address, mset *msgSet) {
 		if inSync {
 			// no need to copy the map
 			result[a] = mset.msgs
@@ -668,7 +667,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 			result[a] = msetCopy
 
 		}
-	}
+	})
 
 	// we are in sync, that's the happy path
 	if inSync {
