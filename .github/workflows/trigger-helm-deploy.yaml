@@ -3,14 +3,27 @@ name: trigger-helm-deploy
 on:
   workflow_dispatch:
     inputs:
+      circle_context:
+        description: "CI context for aws credentials"
+        default: "sentinel-staging-deploy"
+      kubernetes_cluster:
+        description: "kubernetes cluster"
+        default: "mainnet-us-east-2-dev-eks"
+      aws_region:
+        description: "aws region"
+        default: "us-east-2"
       namespace:
         description: "kubernetes namespace"
+        default: "ntwk-butterfly-fullnode"
       release:
         description: "helm release"
+        default: "fullnode-0"
       chart:
         description: "the helm chart"
+        default: "filecoin/lotus-fullnode"
       chart_version:
         description: "the helm chart version"
+        default: "0.3.2"
       helm_append:
         description: "append this to the end of the helm command (i.e to add more -set's)"
       override_repository:
@@ -19,7 +32,7 @@ on:
         description: "helm chart image.tag"
       slack_channel:
         description: "the slack channel where notifications are sent"
-        default: "fil-infra-alerts"
+        default: "netops-circleci-test"
       circle_branch:
         description: "circleci branch (used for testing new lotus-infra deploy code)"
         default: master
@@ -37,6 +50,9 @@ jobs:
           payload: |
             {
               "api_workflow_requested": "helm-deploy",
+              "circle_context": "${{ github.event.inputs.circle_context }}",
+              "kubernetes_cluster": "${{ github.event.inputs.kubernetes_cluster }}",
+              "aws_region": "${{ github.event.inputs.aws_region }}",
               "namespace": "${{ github.event.inputs.namespace }}",
               "release": "${{ github.event.inputs.release }}",
               "chart": "${{ github.event.inputs.chart }}",
