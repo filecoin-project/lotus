@@ -127,52 +127,52 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 	var us UpgradeSchedule
 
 	updates := []Upgrade{{
-		Height:    build.UpgradeBreezeHeight,
+		Height:    build.NetworkParams().UpgradeBreezeHeight(),
 		Network:   network.Version1,
 		Migration: UpgradeFaucetBurnRecovery,
 	}, {
-		Height:    build.UpgradeSmokeHeight,
+		Height:    build.NetworkParams().UpgradeSmokeHeight(),
 		Network:   network.Version2,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeIgnitionHeight,
+		Height:    build.NetworkParams().UpgradeIgnitionHeight(),
 		Network:   network.Version3,
 		Migration: UpgradeIgnition,
 	}, {
-		Height:    build.UpgradeRefuelHeight,
+		Height:    build.NetworkParams().UpgradeRefuelHeight(),
 		Network:   network.Version3,
 		Migration: UpgradeRefuel,
 	}, {
-		Height:    build.UpgradeActorsV2Height,
+		Height:    build.NetworkParams().UpgradeActorsV2Height(),
 		Network:   network.Version4,
 		Expensive: true,
 		Migration: UpgradeActorsV2,
 	}, {
-		Height:    build.UpgradeTapeHeight,
+		Height:    build.NetworkParams().UpgradeTapeHeight(),
 		Network:   network.Version5,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeLiftoffHeight,
+		Height:    build.NetworkParams().UpgradeLiftoffHeight(),
 		Network:   network.Version5,
 		Migration: UpgradeLiftoff,
 	}, {
-		Height:    build.UpgradeKumquatHeight,
+		Height:    build.NetworkParams().UpgradeKumquatHeight(),
 		Network:   network.Version6,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeCalicoHeight,
+		Height:    build.NetworkParams().UpgradeCalicoHeight(),
 		Network:   network.Version7,
 		Migration: UpgradeCalico,
 	}, {
-		Height:    build.UpgradePersianHeight,
+		Height:    build.NetworkParams().UpgradePersianHeight(),
 		Network:   network.Version8,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeOrangeHeight,
+		Height:    build.NetworkParams().UpgradeOrangeHeight(),
 		Network:   network.Version9,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeActorsV3Height,
+		Height:    build.NetworkParams().UpgradeActorsV3Height(),
 		Network:   network.Version10,
 		Migration: UpgradeActorsV3,
 		PreMigrations: []PreMigration{{
@@ -188,11 +188,11 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeNorwegianHeight,
+		Height:    build.NetworkParams().UpgradeNorwegianHeight(),
 		Network:   network.Version11,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeActorsV4Height,
+		Height:    build.NetworkParams().UpgradeActorsV4Height(),
 		Network:   network.Version12,
 		Migration: UpgradeActorsV4,
 		PreMigrations: []PreMigration{{
@@ -734,7 +734,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *StateManager, _ Migratio
 func UpgradeIgnition(ctx context.Context, sm *StateManager, _ MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	store := sm.cs.ActorStore(ctx)
 
-	if build.UpgradeLiftoffHeight <= epoch {
+	if build.NetworkParams().UpgradeLiftoffHeight() <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
 	}
 
@@ -763,7 +763,7 @@ func UpgradeIgnition(ctx context.Context, sm *StateManager, _ MigrationCache, cb
 		return cid.Undef, xerrors.Errorf("second split address: %w", err)
 	}
 
-	err = resetGenesisMsigs0(ctx, sm, store, tree, build.UpgradeLiftoffHeight)
+	err = resetGenesisMsigs0(ctx, sm, store, tree, build.NetworkParams().UpgradeLiftoffHeight())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("resetting genesis msig start epochs: %w", err)
 	}
@@ -873,7 +873,7 @@ func UpgradeLiftoff(ctx context.Context, sm *StateManager, _ MigrationCache, cb 
 }
 
 func UpgradeCalico(ctx context.Context, sm *StateManager, _ MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	if build.BuildType != build.BuildMainnet {
+	if address.CurrentNetwork == address.Mainnet {
 		return root, nil
 	}
 
@@ -1001,7 +1001,7 @@ func UpgradeActorsV3(ctx context.Context, sm *StateManager, cache MigrationCache
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
 	}
 
-	if build.BuildType == build.BuildMainnet {
+	if address.CurrentNetwork == address.Mainnet {
 		err := terminateActor(ctx, tree, build.ZeroAddress, cb, epoch)
 		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
 			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %w", err)

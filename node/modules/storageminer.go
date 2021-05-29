@@ -118,7 +118,7 @@ func MinerID(ma dtypes.MinerAddress) (dtypes.MinerID, error) {
 }
 
 func StorageNetworkName(ctx helpers.MetricsCtx, a v1api.FullNode) (dtypes.NetworkName, error) {
-	if !build.Devnet {
+	if !build.NetworkParams().Devnet() {
 		return "testnetnet", nil
 	}
 	return a.StateNetworkName(ctx)
@@ -551,7 +551,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 				return false, "miner error", err
 			}
 
-			sealEpochs := sealDuration / (time.Duration(build.BlockDelaySecs) * time.Second)
+			sealEpochs := sealDuration / (time.Duration(build.NetworkParams().BlockDelaySecs()) * time.Second)
 			_, ht, err := spn.GetChainHead(ctx)
 			if err != nil {
 				return false, "failed to get chain head", err
@@ -564,7 +564,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 
 			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg
-			maxStartEpoch := earliest + abi.ChainEpoch(7*builtin.SecondsInDay/build.BlockDelaySecs)
+			maxStartEpoch := earliest + abi.ChainEpoch(7*builtin.SecondsInDay/build.NetworkParams().BlockDelaySecs())
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}

@@ -1,77 +1,128 @@
-// +build nerpanet
-
 package build
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/ipfs/go-cid"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
-var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+var nerpaDrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
-const BootstrappersFile = "nerpanet.pi"
-const GenesisFile = "nerpanet.car"
+const nerpaBootstrappersFile = "nerpanet.pi"
+const nerpaGenesisFile = "nerpanet.car"
 
-const UpgradeBreezeHeight = -1
-const BreezeGasTampingDuration = 0
+const nerpaUpgradeBreezeHeight = -1
+const nerpaBreezeGasTampingDuration = 0
 
-const UpgradeSmokeHeight = -1
+const nerpaUpgradeSmokeHeight = -1
 
-const UpgradeIgnitionHeight = -2
-const UpgradeRefuelHeight = -3
+const nerpaUpgradeIgnitionHeight = -2
+const nerpaUpgradeRefuelHeight = -3
 
-const UpgradeLiftoffHeight = -5
+const nerpaUpgradeLiftoffHeight = -5
 
-const UpgradeActorsV2Height = 30 // critical: the network can bootstrap from v1 only
-const UpgradeTapeHeight = 60
+const nerpaUpgradeActorsV2Height = 30 // critical: the network can bootstrap from v1 only
+const nerpaUpgradeTapeHeight = 60
 
-const UpgradeKumquatHeight = 90
+const nerpaUpgradeKumquatHeight = 90
 
-const UpgradeCalicoHeight = 100
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
+const nerpaUpgradeCalicoHeight = 100
+const nerpaUpgradePersianHeight = nerpaUpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
 
-const UpgradeClausHeight = 250
+const nerpaUpgradeClausHeight = 250
 
-const UpgradeOrangeHeight = 300
+const nerpaUpgradeOrangeHeight = 300
 
-const UpgradeActorsV3Height = 600
-const UpgradeNorwegianHeight = 201000
-const UpgradeActorsV4Height = 203000
+const nerpaUpgradeActorsV3Height = 600
+const nerpaUpgradeNorwegianHeight = 201000
+const nerpaUpgradeActorsV4Height = 203000
 
-func init() {
-	// Minimum block production power is set to 4 TiB
-	// Rationale is to discourage small-scale miners from trying to take over the network
-	// One needs to invest in ~2.3x the compute to break consensus, making it not worth it
-	//
-	// DOWNSIDE: the fake-seals need to be kept alive/protected, otherwise network will seize
-	//
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(4 << 40))
+const nerpaBlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
-	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg512MiBV1,
-		abi.RegisteredSealProof_StackedDrg32GiBV1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1,
-	)
-
-	// Lower the most time-consuming parts of PoRep
-	policy.SetPreCommitChallengeDelay(10)
-
-	// TODO - make this a variable
-	//miner.WPoStChallengeLookback = abi.ChainEpoch(2)
-
-	Devnet = false
-}
-
-const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
-
-const PropagationDelaySecs = uint64(6)
+const nerpaPropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
-const BootstrapPeerThreshold = 4
+const nerpaBootstrapPeerThreshold = 4
 
-var WhitelistedBlock = cid.Undef
+var nerpaWhitelistedBlock = cid.Undef
+
+type nerpaConfigurableParams struct{}
+
+func (nerpaConfigurableParams) DrandSchedule() map[abi.ChainEpoch]DrandEnum {
+	return nerpaDrandSchedule
+}
+func (nerpaConfigurableParams) BootstrappersFile() string {
+	return nerpaBootstrappersFile
+}
+func (nerpaConfigurableParams) GenesisFile() string {
+	return nerpaGenesisFile
+}
+func (nerpaConfigurableParams) UpgradeBreezeHeight() abi.ChainEpoch {
+	return nerpaUpgradeBreezeHeight
+}
+func (nerpaConfigurableParams) BreezeGasTampingDuration() abi.ChainEpoch {
+	return nerpaBreezeGasTampingDuration
+}
+func (nerpaConfigurableParams) UpgradeSmokeHeight() abi.ChainEpoch {
+	return nerpaUpgradeSmokeHeight
+}
+func (nerpaConfigurableParams) UpgradeIgnitionHeight() abi.ChainEpoch {
+	return nerpaUpgradeIgnitionHeight
+}
+func (nerpaConfigurableParams) UpgradeRefuelHeight() abi.ChainEpoch {
+	return nerpaUpgradeRefuelHeight
+}
+func (nerpaConfigurableParams) UpgradeActorsV2Height() abi.ChainEpoch {
+	return nerpaUpgradeActorsV2Height
+}
+func (nerpaConfigurableParams) UpgradeTapeHeight() abi.ChainEpoch {
+	return nerpaUpgradeTapeHeight
+}
+func (nerpaConfigurableParams) UpgradeLiftoffHeight() abi.ChainEpoch {
+	return nerpaUpgradeLiftoffHeight
+}
+func (nerpaConfigurableParams) UpgradeKumquatHeight() abi.ChainEpoch {
+	return nerpaUpgradeKumquatHeight
+}
+func (nerpaConfigurableParams) UpgradeCalicoHeight() abi.ChainEpoch {
+	return nerpaUpgradeCalicoHeight
+}
+func (nerpaConfigurableParams) UpgradePersianHeight() abi.ChainEpoch {
+	return nerpaUpgradePersianHeight
+}
+func (nerpaConfigurableParams) UpgradeOrangeHeight() abi.ChainEpoch {
+	return nerpaUpgradeOrangeHeight
+}
+func (nerpaConfigurableParams) UpgradeClausHeight() abi.ChainEpoch {
+	return nerpaUpgradeClausHeight
+}
+func (nerpaConfigurableParams) UpgradeActorsV3Height() abi.ChainEpoch {
+	return nerpaUpgradeActorsV3Height
+}
+func (nerpaConfigurableParams) UpgradeNorwegianHeight() abi.ChainEpoch {
+	return nerpaUpgradeNorwegianHeight
+}
+func (nerpaConfigurableParams) UpgradeActorsV4Height() abi.ChainEpoch {
+	return nerpaUpgradeActorsV4Height
+}
+func (nerpaConfigurableParams) BlockDelaySecs() uint64 {
+	return nerpaBlockDelaySecs
+}
+func (nerpaConfigurableParams) PropagationDelaySecs() uint64 {
+	return nerpaPropagationDelaySecs
+}
+func (nerpaConfigurableParams) BootstrapPeerThreshold() int {
+	return nerpaBootstrapPeerThreshold
+}
+func (nerpaConfigurableParams) WhitelistedBlock() cid.Cid {
+	return nerpaWhitelistedBlock
+}
+func (nerpaConfigurableParams) InsecurePoStValidation() bool {
+	return false
+}
+func (nerpaConfigurableParams) Devnet() bool {
+	return false
+}

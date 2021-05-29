@@ -1,57 +1,120 @@
-// +build butterflynet
-
 package build
 
 import (
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/ipfs/go-cid"
 )
 
-var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+var butterflyDrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
-const BootstrappersFile = "butterflynet.pi"
-const GenesisFile = "butterflynet.car"
+const butterflyBootstrappersFile = "butterflynet.pi"
+const butterflyGenesisFile = "butterflynet.car"
 
-const UpgradeBreezeHeight = -1
-const BreezeGasTampingDuration = 120
-const UpgradeSmokeHeight = -2
-const UpgradeIgnitionHeight = -3
-const UpgradeRefuelHeight = -4
+const butterflyUpgradeBreezeHeight = -1
+const butterflyBreezeGasTampingDuration = 120
+const butterflyUpgradeSmokeHeight = -2
+const butterflyUpgradeIgnitionHeight = -3
+const butterflyUpgradeRefuelHeight = -4
 
-var UpgradeActorsV2Height = abi.ChainEpoch(30)
+var butterflyUpgradeActorsV2Height = abi.ChainEpoch(30)
 
-const UpgradeTapeHeight = 60
-const UpgradeLiftoffHeight = -5
-const UpgradeKumquatHeight = 90
-const UpgradeCalicoHeight = 120
-const UpgradePersianHeight = 150
-const UpgradeClausHeight = 180
-const UpgradeOrangeHeight = 210
-const UpgradeActorsV3Height = 240
-const UpgradeNorwegianHeight = UpgradeActorsV3Height + (builtin2.EpochsInHour * 12)
-const UpgradeActorsV4Height = 8922
+const butterflyUpgradeTapeHeight = 60
+const butterflyUpgradeLiftoffHeight = -5
+const butterflyUpgradeKumquatHeight = 90
+const butterflyUpgradeCalicoHeight = 120
+const butterflyUpgradePersianHeight = 150
+const butterflyUpgradeClausHeight = 180
+const butterflyUpgradeOrangeHeight = 210
+const butterflyUpgradeActorsV3Height = 240
+const butterflyUpgradeNorwegianHeight = butterflyUpgradeActorsV3Height + (builtin2.EpochsInHour * 12)
+const butterflyUpgradeActorsV4Height = 8922
 
-func init() {
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
-	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg512MiBV1,
-	)
+const butterflyBlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
-	SetAddressNetwork(address.Testnet)
-
-	Devnet = true
-}
-
-const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
-
-const PropagationDelaySecs = uint64(6)
+const butterflyPropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
-const BootstrapPeerThreshold = 2
+const butterflyBootstrapPeerThreshold = 2
 
-var WhitelistedBlock = cid.Undef
+var butterflyWhitelistedBlock = cid.Undef
+
+type butterflyConfigurableParams struct{}
+
+func (butterflyConfigurableParams) DrandSchedule() map[abi.ChainEpoch]DrandEnum {
+	return butterflyDrandSchedule
+}
+func (butterflyConfigurableParams) BootstrappersFile() string {
+	return butterflyBootstrappersFile
+}
+func (butterflyConfigurableParams) GenesisFile() string {
+	return butterflyGenesisFile
+}
+func (butterflyConfigurableParams) UpgradeBreezeHeight() abi.ChainEpoch {
+	return butterflyUpgradeBreezeHeight
+}
+func (butterflyConfigurableParams) BreezeGasTampingDuration() abi.ChainEpoch {
+	return butterflyBreezeGasTampingDuration
+}
+func (butterflyConfigurableParams) UpgradeSmokeHeight() abi.ChainEpoch {
+	return butterflyUpgradeSmokeHeight
+}
+func (butterflyConfigurableParams) UpgradeIgnitionHeight() abi.ChainEpoch {
+	return butterflyUpgradeIgnitionHeight
+}
+func (butterflyConfigurableParams) UpgradeRefuelHeight() abi.ChainEpoch {
+	return butterflyUpgradeRefuelHeight
+}
+func (butterflyConfigurableParams) UpgradeActorsV2Height() abi.ChainEpoch {
+	return butterflyUpgradeActorsV2Height
+}
+func (butterflyConfigurableParams) UpgradeTapeHeight() abi.ChainEpoch {
+	return butterflyUpgradeTapeHeight
+}
+func (butterflyConfigurableParams) UpgradeLiftoffHeight() abi.ChainEpoch {
+	return butterflyUpgradeLiftoffHeight
+}
+func (butterflyConfigurableParams) UpgradeKumquatHeight() abi.ChainEpoch {
+	return butterflyUpgradeKumquatHeight
+}
+func (butterflyConfigurableParams) UpgradeCalicoHeight() abi.ChainEpoch {
+	return butterflyUpgradeCalicoHeight
+}
+func (butterflyConfigurableParams) UpgradePersianHeight() abi.ChainEpoch {
+	return butterflyUpgradePersianHeight
+}
+func (butterflyConfigurableParams) UpgradeOrangeHeight() abi.ChainEpoch {
+	return butterflyUpgradeOrangeHeight
+}
+func (butterflyConfigurableParams) UpgradeClausHeight() abi.ChainEpoch {
+	return butterflyUpgradeClausHeight
+}
+func (butterflyConfigurableParams) UpgradeActorsV3Height() abi.ChainEpoch {
+	return butterflyUpgradeActorsV3Height
+}
+func (butterflyConfigurableParams) UpgradeNorwegianHeight() abi.ChainEpoch {
+	return butterflyUpgradeNorwegianHeight
+}
+func (butterflyConfigurableParams) UpgradeActorsV4Height() abi.ChainEpoch {
+	return butterflyUpgradeActorsV4Height
+}
+func (butterflyConfigurableParams) BlockDelaySecs() uint64 {
+	return butterflyBlockDelaySecs
+}
+func (butterflyConfigurableParams) PropagationDelaySecs() uint64 {
+	return butterflyPropagationDelaySecs
+}
+func (butterflyConfigurableParams) BootstrapPeerThreshold() int {
+	return butterflyBootstrapPeerThreshold
+}
+func (butterflyConfigurableParams) WhitelistedBlock() cid.Cid {
+	return butterflyWhitelistedBlock
+}
+func (butterflyConfigurableParams) InsecurePoStValidation() bool {
+	return false
+}
+func (butterflyConfigurableParams) Devnet() bool {
+	return true
+}

@@ -28,7 +28,7 @@ func New(dstore ds.Batching) *SlashFilter {
 }
 
 func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
-	if build.IsNearUpgrade(bh.Height, build.UpgradeOrangeHeight) {
+	if build.IsNearUpgrade(bh.Height, build.NetworkParams().UpgradeOrangeHeight()) {
 		return nil
 	}
 

@@ -226,7 +226,7 @@ func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
 		Version:    build.UserVersion(),
 		APIVersion: v,
 
-		BlockDelay: build.BlockDelaySecs,
+		BlockDelay: build.NetworkParams().BlockDelaySecs(),
 	}, nil
 }
 
