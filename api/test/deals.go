@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -227,6 +228,9 @@ func TestBatchDealInput(t *testing.T, b APIBuilder, blocktime time.Duration, sta
 			s := connectAndStartMining(t, b, blocktime, client, miner)
 			defer s.blockMiner.Stop()
 
+			err := miner.MarketSetAsk(s.ctx, big.Zero(), big.Zero(), 200, 128, 32<<30)
+			require.NoError(t, err)
+
 			checkNoPadding := func() {
 				sl, err := sn[0].SectorsList(s.ctx)
 				require.NoError(t, err)
@@ -239,7 +243,7 @@ func TestBatchDealInput(t *testing.T, b APIBuilder, blocktime time.Duration, sta
 					si, err := sn[0].SectorsStatus(s.ctx, snum, false)
 					require.NoError(t, err)
 
-					fmt.Printf("S %d: %+v %s\n", snum, si.Deals, si.State)
+					// fmt.Printf("S %d: %+v %s\n", snum, si.Deals, si.State)
 
 					for _, deal := range si.Deals {
 						if deal == 0 {
@@ -278,13 +282,18 @@ func TestBatchDealInput(t *testing.T, b APIBuilder, blocktime time.Duration, sta
 			sl, err := sn[0].SectorsList(s.ctx)
 			require.NoError(t, err)
 			require.Equal(t, len(sl), expectSectors)
-			//require.LessOrEqual(t, len(sl), expectSectors+1)
 		}
 	}
 
 	t.Run("4-p1600B", run(1600, 4, 4))
 	t.Run("4-p513B", run(513, 4, 2))
-	t.Run("32-p257B", run(257, 32, 8))
+	if !testing.Short() {
+		t.Run("32-p257B", run(257, 32, 8))
+		t.Run("32-p10B", run(10, 32, 2))
+
+		// fixme: this appears to break data-transfer / markets in some really creative ways
+		//t.Run("128-p10B", run(10, 128, 8))
+	}
 }
 
 func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {

@@ -104,8 +104,6 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 			}
 		}
 
-		log.Infow("sub precommit", "deal", dealInfo.DealID)
-
 		// Not yet active, start matching against incoming messages
 		return false, true, nil
 	}
