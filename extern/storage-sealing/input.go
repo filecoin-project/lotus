@@ -27,6 +27,10 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 
 	m.inputLk.Lock()
 
+	if m.creating != nil && *m.creating == sector.SectorNumber {
+		m.creating = nil
+	}
+
 	sid := m.minerSectorID(sector.SectorNumber)
 
 	if len(m.assignedPieces[sid]) > 0 {
@@ -392,6 +396,10 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSealProof) error {
 	m.startupWait.Wait()
 
+	if m.creating != nil {
+		return nil // new sector is being created right now
+	}
+
 	cfg, err := m.getConfig()
 	if err != nil {
 		return xerrors.Errorf("getting storage config: %w", err)
@@ -409,6 +417,8 @@ func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSeal
 	if err != nil {
 		return err
 	}
+
+	m.creating = &sid
 
 	log.Infow("Creating sector", "number", sid, "type", "deal", "proofType", sp)
 	return m.sectors.Send(uint64(sid), SectorStart{
