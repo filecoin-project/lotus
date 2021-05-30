@@ -237,6 +237,10 @@ func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
 			continue // don't log on every fsm restart
 		}
 
+		if len(e) > 8000 {
+			e = []byte(string(e[:8000]) + "... truncated")
+		}
+
 		l := Log{
 			Timestamp: uint64(time.Now().Unix()),
 			Message:   string(e),
