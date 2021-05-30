@@ -57,7 +57,12 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	mpCfg := mp.getConfig()
 	// we never prune priority addresses
 	for _, actor := range mpCfg.PriorityAddrs {
-		protected[actor] = struct{}{}
+		pk, err := mp.api.StateAccountKey(ctx, actor, mp.curTs)
+		if err != nil {
+			log.Debugf("pruneMessages failed to resolve priority address: %s", err)
+		}
+
+		protected[pk] = struct{}{}
 	}
 
 	// we also never prune locally published messages

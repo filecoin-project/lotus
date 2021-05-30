@@ -58,7 +58,7 @@ func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQ
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return a.Mpool.SelectMessages(ts, ticketQuality)
+	return a.Mpool.SelectMessages(ctx, ts, ticketQuality)
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {

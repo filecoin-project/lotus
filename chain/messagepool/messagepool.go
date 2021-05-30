@@ -347,7 +347,7 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 	return set
 }
 
-func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
+func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
 
@@ -390,6 +390,8 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, netName dtypes
 	// enable initial prunes
 	mp.pruneCooldown <- struct{}{}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(ctx, rev, app)
@@ -403,6 +405,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, netName dtypes
 	mp.lk.Lock()
 
 	go func() {
+		defer cancel()
 		err := mp.loadLocal(ctx)
 
 		mp.lk.Unlock()
@@ -414,7 +417,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, netName dtypes
 
 		log.Info("mpool ready")
 
-		mp.runLoop(context.Background())
+		mp.runLoop(ctx)
 	}()
 
 	return mp, nil

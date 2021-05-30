@@ -61,8 +61,7 @@ func ChainBlockService(bs dtypes.ExposedBlockstore, rem dtypes.ChainBitswap) dty
 
 func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal) (*messagepool.MessagePool, error) {
 	mpp := messagepool.NewProvider(sm, ps)
-	// TODO: I still don't know how go works -- should this context be part of the builder?
-	mp, err := messagepool.New(context.TODO(), mpp, ds, nn, j)
+	mp, err := messagepool.New(mpp, ds, nn, j)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %w", err)
 	}

@@ -226,7 +226,7 @@ func TestMessagePool(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +295,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	_, _ = mp.Pending(context.TODO())
 
-	selm, _ := mp.SelectMessages(tsa, 1)
+	selm, _ := mp.SelectMessages(context.Background(), tsa, 1)
 	if len(selm) == 0 {
 		t.Fatal("should have returned the rest of the messages")
 	}
@@ -316,7 +316,7 @@ func TestRevertMessages(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +379,7 @@ func TestPruningSimple(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +423,7 @@ func TestLoadLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,7 +466,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mp, err = New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err = New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -495,7 +495,7 @@ func TestClearAll(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -549,7 +549,7 @@ func TestClearNonLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -610,7 +610,7 @@ func TestUpdates(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.TODO(), tma, ds, "mptest", nil)
+	mp, err := New(tma, ds, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

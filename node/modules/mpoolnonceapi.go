@@ -27,14 +27,14 @@ func (a *MpoolNonceAPI) GetNonce(ctx context.Context, addr address.Address) (uin
 	ts := a.StateAPI.Chain.GetHeaviestTipSet()
 
 	// make sure we have a key address so we can compare with messages
-	keyAddr, err := a.StateAPI.StateManager.ResolveToKeyAddress(context.TODO(), addr, ts)
+	keyAddr, err := a.StateAPI.StateManager.ResolveToKeyAddress(ctx, addr, ts)
 	if err != nil {
 		return 0, err
 	}
 
 	// Load the last nonce from the state, if it exists.
 	highestNonce := uint64(0)
-	if baseActor, err := a.StateAPI.StateManager.LoadActorRaw(context.TODO(), addr, ts.ParentState()); err != nil {
+	if baseActor, err := a.StateAPI.StateManager.LoadActorRaw(ctx, addr, ts.ParentState()); err != nil {
 		if !xerrors.Is(err, types.ErrActorNotFound) {
 			return 0, err
 		}
