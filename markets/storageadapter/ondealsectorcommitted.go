@@ -103,8 +103,6 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 			}
 		}
 
-		log.Infow("sub precommit", "deal", dealInfo.DealID)
-
 		// Not yet active, start matching against incoming messages
 		return false, true, nil
 	}
@@ -156,7 +154,6 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 		for _, did := range params.DealIDs {
 			if did == res.DealID {
 				// Found the deal ID in this message. Callback with the sector ID.
-				log.Infow("deal precommit found", "deal", res.DealID, "sector", params.SectorNumber)
 				cb(params.SectorNumber, false, nil)
 				return false, nil
 			}
