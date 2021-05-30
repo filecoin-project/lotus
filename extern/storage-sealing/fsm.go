@@ -225,6 +225,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 
 func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
 	for _, event := range events {
+		log.Debugw("sector event", "sector", state.SectorNumber, "type", fmt.Sprintf("%T", event.User), "event", event.User)
+
 		e, err := json.Marshal(event)
 		if err != nil {
 			log.Errorf("marshaling event for logging: %+v", err)

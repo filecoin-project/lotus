@@ -63,6 +63,24 @@ func TestAPIDealFlow(t *testing.T) {
 	})
 }
 
+func TestBatchDealInput(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+	logging.SetLogLevel("sectors", "DEBUG")
+
+	blockTime := 10 * time.Millisecond
+
+	// For these tests where the block time is artificially short, just use
+	// a deal start epoch that is guaranteed to be far enough in the future
+	// so that the deal starts sealing in time
+	dealStartEpoch := abi.ChainEpoch(2 << 12)
+
+	test.TestBatchDealInput(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
+}
+
 func TestAPIDealFlowReal(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
