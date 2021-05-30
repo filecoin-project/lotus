@@ -75,7 +75,7 @@ func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) 
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	return mpp.sm.ResolveToKeyAddress(ctx, addr, ts)
+	return mpp.sm.ResolveToKeyAddressReorgProof(ctx, addr, ts)
 }
 
 func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {

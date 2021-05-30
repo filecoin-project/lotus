@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -540,6 +542,44 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 	}
 
 	return vm.ResolveToKeyAddr(tree, cst, addr)
+}
+
+// ResolveToKeyAddressReorgProof is similar to stmgr.ResolveToKeyAddress but fails if the ID address being resolved isn't reorg-stable yet.
+// It should not be used for consensus-critical subsystems.
+func (sm *StateManager) ResolveToKeyAddressReorgProof(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	switch addr.Protocol() {
+	case address.BLS, address.SECP256K1:
+		return addr, nil
+	case address.Actor:
+		return address.Undef, xerrors.New("cannot resolve actor address to key address")
+	default:
+	}
+
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	if ts.Height() > policy.ChainFinality {
+		var err error
+		ts, err = sm.ChainStore().GetTipsetByHeight(ctx, ts.Height()-policy.ChainFinality, ts, true)
+		if err != nil {
+			return address.Undef, xerrors.Errorf("failed to load lookback tipset: %w", err)
+		}
+	}
+
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
+
+	tree, err := state.LoadStateTree(cst, ts.ParentState())
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to load parent state tree: %w", err)
+	}
+
+	resolved, err := vm.ResolveToKeyAddr(tree, cst, addr)
+	if err == nil {
+		return resolved, nil
+	}
+
+	return address.Undef, xerrors.New("ID address not found in lookback state")
 }
 
 func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Address, ts *types.TipSet) (pubk []byte, err error) {
