@@ -66,6 +66,7 @@ func TestBatchDealInput(t *testing.T) {
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
+	logging.SetLogLevel("sectors", "DEBUG")
 
 	blockTime := 10 * time.Millisecond
 
