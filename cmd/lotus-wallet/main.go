@@ -127,8 +127,8 @@ var runCmd = &cli.Command{
 			Usage: "don't query chain state in interactive mode",
 		},
 		&cli.BoolFlag{
-			Name:  "disable-auth",
-			Usage: "(insecure) disable api auth",
+			Name:   "disable-auth",
+			Usage:  "(insecure) disable api auth",
 			Hidden: true,
 		},
 	},
@@ -192,16 +192,20 @@ var runCmd = &cli.Command{
 			w = &LoggedWallet{under: w}
 		}
 
+		rpcApi := metrics.MetricedWalletAPI(w)
+		if !cctx.Bool("disable-auth") {
+			rpcApi = api.PermissionedWalletAPI(rpcApi)
+		}
+
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", metrics.MetricedWalletAPI(w))
+		rpcServer.Register("Filecoin", rpcApi)
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 		var handler http.Handler = mux
 
-		if cctx.Bool("disable-auth") {
-			log.Info("API auth enabled, use 'lotus wallet get-api-key' to get API key")
+		if !cctx.Bool("disable-auth") {
 			authKey, err := modules.APISecret(ks, lr)
 			if err != nil {
 				return xerrors.Errorf("setting up api secret: %w", err)
@@ -216,6 +220,7 @@ var runCmd = &cli.Command{
 				return payload.Allow, nil
 			}
 
+			log.Info("API auth enabled, use 'lotus-wallet get-api-key' to get API key")
 			handler = &auth.Handler{
 				Verify: authVerify,
 				Next:   mux.ServeHTTP,
@@ -248,7 +253,7 @@ var runCmd = &cli.Command{
 	},
 }
 
-func openRepo(cctx *cli.Context) (repo.LockedRepo, types.KeyStore ,error) {
+func openRepo(cctx *cli.Context) (repo.LockedRepo, types.KeyStore, error) {
 	repoPath := cctx.String(FlagWalletRepo)
 	r, err := repo.NewFS(repoPath)
 	if err != nil {

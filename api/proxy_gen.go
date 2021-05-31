@@ -731,19 +731,19 @@ type StorageMinerStub struct {
 
 type WalletStruct struct {
 	Internal struct {
-		WalletDelete func(p0 context.Context, p1 address.Address) error ``
+		WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
 
-		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) ``
+		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) `perm:"admin"`
 
-		WalletHas func(p0 context.Context, p1 address.Address) (bool, error) ``
+		WalletHas func(p0 context.Context, p1 address.Address) (bool, error) `perm:"admin"`
 
-		WalletImport func(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) ``
+		WalletImport func(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) `perm:"admin"`
 
-		WalletList func(p0 context.Context) ([]address.Address, error) ``
+		WalletList func(p0 context.Context) ([]address.Address, error) `perm:"admin"`
 
-		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) ``
+		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"admin"`
 
-		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) ``
+		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) `perm:"admin"`
 	}
 }
 
