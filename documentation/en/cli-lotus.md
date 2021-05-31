@@ -1756,13 +1756,14 @@ NAME:
    lotus state call - Invoke a method on an actor locally
 
 USAGE:
-   lotus state call [command options] [toAddress methodId <param1 param2 ...> (optional)]
+   lotus state call [command options] [toAddress methodId params (optional)]
 
 OPTIONS:
-   --from value   (default: "f00")
-   --value value  specify value field for invocation (default: "0")
-   --ret value    specify how to parse output (auto, raw, addr, big) (default: "auto")
-   --help, -h     show help (default: false)
+   --from value      (default: "f00")
+   --value value     specify value field for invocation (default: "0")
+   --ret value       specify how to parse output (raw, decoded, base64, hex) (default: "decoded")
+   --encoding value  specify params encoding to parse (base64, hex) (default: "base64")
+   --help, -h        show help (default: false)
    
 ```
 
