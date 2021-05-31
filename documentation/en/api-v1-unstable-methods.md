@@ -57,6 +57,7 @@
   * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
   * [ClientRetrieveWithEvents](#ClientRetrieveWithEvents)
   * [ClientStartDeal](#ClientStartDeal)
+  * [ClientStatelessDeal](#ClientStatelessDeal)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Gas](#Gas)
@@ -1475,6 +1476,39 @@ ClientStartDeal proposes a deal with a miner.
 
 
 Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Data": {
+      "TransferType": "string value",
+      "Root": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceCid": null,
+      "PieceSize": 1024,
+      "RawBlockSize": 42
+    },
+    "Wallet": "f01234",
+    "Miner": "f01234",
+    "EpochPrice": "0",
+    "MinBlocksDuration": 42,
+    "ProviderCollateral": "0",
+    "DealStartEpoch": 10101,
+    "FastRetrieval": true,
+    "VerifiedDeal": true
+  }
+]
+```
+
+Response: `null`
+
+### ClientStatelessDeal
+ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
+
+
+Perms: write
 
 Inputs:
 ```json
@@ -4738,7 +4772,7 @@ Inputs:
 ]
 ```
 
-Response: `11`
+Response: `12`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

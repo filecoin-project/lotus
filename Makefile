@@ -303,17 +303,10 @@ clean-services: clean-all-services
 
 buildall: $(BINS)
 
-completions:
-	./scripts/make-completions.sh lotus
-	./scripts/make-completions.sh lotus-miner
-.PHONY: completions
-
 install-completions:
 	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
 	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
-	install -C ./scripts/bash-completion/lotus-miner /usr/share/bash-completion/completions/lotus-miner
 	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
-	install -C ./scripts/zsh-completion/lotus-miner /usr/local/share/zsh/site-functions/_lotus-miner
 
 clean:
 	rm -rf $(CLEAN) $(BINS)
@@ -374,6 +367,10 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 gen: actors-gen type-gen method-gen docsgen api-gen
 	@echo ">>> IF YOU'VE MODIFIED THE CLI, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
+
+snap: lotus lotus-miner lotus-worker
+	snapcraft
+	# snapcraft upload ./lotus_*.snap
 
 # separate from gen because it needs binaries
 docsgen-cli: lotus lotus-miner lotus-worker

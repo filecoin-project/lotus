@@ -26,6 +26,19 @@ func load3(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make3(store adt.Store) (State, error) {
+	out := state3{store: store}
+
+	s, err := market3.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
+	return &out, nil
+}
+
 type state3 struct {
 	market3.State
 	store adt.Store
@@ -206,4 +219,8 @@ func (s *dealProposals3) array() adt.Array {
 
 func fromV3DealProposal(v3 market3.DealProposal) DealProposal {
 	return (DealProposal)(v3)
+}
+
+func (s *state3) GetState() interface{} {
+	return &s.State
 }

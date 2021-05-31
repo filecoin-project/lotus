@@ -35,6 +35,12 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make{{.v}}(store adt.Store) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = miner{{.v}}.State{}
+	return &out, nil
+}
+
 type state{{.v}} struct {
 	miner{{.v}}.State
 	store adt.Store
@@ -68,9 +74,9 @@ func (s *state{{.v}}) VestedFunds(epoch abi.ChainEpoch) (abi.TokenAmount, error)
 
 func (s *state{{.v}}) LockedFunds() (LockedFunds, error) {
 	return LockedFunds{
-		VestingFunds:             s.State.LockedFunds,
+		VestingFunds:			  s.State.LockedFunds,
 		InitialPledgeRequirement: s.State.InitialPledge{{if (le .v 1)}}Requirement{{end}},
-		PreCommitDeposits:        s.State.PreCommitDeposits,
+		PreCommitDeposits:		  s.State.PreCommitDeposits,
 	}, nil
 }
 
@@ -245,6 +251,10 @@ func (s *state{{.v}}) IsAllocated(num abi.SectorNumber) (bool, error) {
 	return allocatedSectors.IsSet(uint64(num))
 }
 
+func (s *state{{.v}}) GetProvingPeriodStart() (abi.ChainEpoch, error) {
+	return s.State.ProvingPeriodStart, nil
+}
+
 func (s *state{{.v}}) LoadDeadline(idx uint64) (Deadline, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -307,19 +317,19 @@ func (s *state{{.v}}) Info() (MinerInfo, error) {
 	}
 {{end}}
 	mi := MinerInfo{
-		Owner:            info.Owner,
-		Worker:           info.Worker,
+		Owner:			  info.Owner,
+		Worker:			  info.Worker,
 		ControlAddresses: info.ControlAddresses,
 
-		NewWorker:         address.Undef,
+		NewWorker:		   address.Undef,
 		WorkerChangeEpoch: -1,
 
-		PeerId:                     pid,
-		Multiaddrs:                 info.Multiaddrs,
-		WindowPoStProofType:        {{if (ge .v 3)}}info.WindowPoStProofType{{else}}wpp{{end}},
-		SectorSize:                 info.SectorSize,
+		PeerId:						pid,
+		Multiaddrs:					info.Multiaddrs,
+		WindowPoStProofType:		{{if (ge .v 3)}}info.WindowPoStProofType{{else}}wpp{{end}},
+		SectorSize:					info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
-		ConsensusFaultElapsed:      {{if (ge .v 2)}}info.ConsensusFaultElapsed{{else}}-1{{end}},
+		ConsensusFaultElapsed:		{{if (ge .v 2)}}info.ConsensusFaultElapsed{{else}}-1{{end}},
 	}
 
 	if info.PendingWorkerKey != nil {
@@ -364,6 +374,45 @@ func (s *state{{.v}}) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (Secto
 	}
 
 	return fromV{{.v}}SectorPreCommitOnChainInfo(sp), nil
+}
+
+func (s *state{{.v}}) EraseAllUnproven() error {
+	{{if (ge .v 2)}}
+		dls, err := s.State.LoadDeadlines(s.store)
+		if err != nil {
+			return err
+		}
+
+		err = dls.ForEach(s.store, func(dindx uint64, dl *miner{{.v}}.Deadline) error {
+			ps, err := dl.PartitionsArray(s.store)
+			if err != nil {
+				return err
+			}
+
+			var part miner{{.v}}.Partition
+			err = ps.ForEach(&part, func(pindx int64) error {
+				_ = part.ActivateUnproven()
+				err = ps.Set(uint64(pindx), &part)
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			dl.Partitions, err = ps.Root()
+			if err != nil {
+				return err
+			}
+
+			return dls.UpdateDeadline(s.store, dindx, dl)
+		})
+
+		return s.State.SaveDeadlines(s.store, dls)
+	{{else}}
+		// field doesn't exist until v2
+	{{end}}
+	return nil
 }
 
 func (d *deadline{{.v}}) LoadPartition(idx uint64) (Partition, error) {
@@ -428,16 +477,16 @@ func (p *partition{{.v}}) RecoveringSectors() (bitfield.BitField, error) {
 func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorOnChainInfo {
 {{if (ge .v 2)}}
 	return SectorOnChainInfo{
-		SectorNumber:          v{{.v}}.SectorNumber,
-		SealProof:             v{{.v}}.SealProof,
-		SealedCID:             v{{.v}}.SealedCID,
-		DealIDs:               v{{.v}}.DealIDs,
-		Activation:            v{{.v}}.Activation,
-		Expiration:            v{{.v}}.Expiration,
-		DealWeight:            v{{.v}}.DealWeight,
-		VerifiedDealWeight:    v{{.v}}.VerifiedDealWeight,
-		InitialPledge:         v{{.v}}.InitialPledge,
-		ExpectedDayReward:     v{{.v}}.ExpectedDayReward,
+		SectorNumber:		   v{{.v}}.SectorNumber,
+		SealProof:			   v{{.v}}.SealProof,
+		SealedCID:			   v{{.v}}.SealedCID,
+		DealIDs:			   v{{.v}}.DealIDs,
+		Activation:			   v{{.v}}.Activation,
+		Expiration:			   v{{.v}}.Expiration,
+		DealWeight:			   v{{.v}}.DealWeight,
+		VerifiedDealWeight:	   v{{.v}}.VerifiedDealWeight,
+		InitialPledge:		   v{{.v}}.InitialPledge,
+		ExpectedDayReward:	   v{{.v}}.ExpectedDayReward,
 		ExpectedStoragePledge: v{{.v}}.ExpectedStoragePledge,
 	}
 {{else}}
@@ -448,13 +497,17 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
 {{if (ge .v 2)}}
 	return SectorPreCommitOnChainInfo{
-		Info:               (SectorPreCommitInfo)(v{{.v}}.Info),
-		PreCommitDeposit:   v{{.v}}.PreCommitDeposit,
-		PreCommitEpoch:     v{{.v}}.PreCommitEpoch,
-		DealWeight:         v{{.v}}.DealWeight,
+		Info:				(SectorPreCommitInfo)(v{{.v}}.Info),
+		PreCommitDeposit:	v{{.v}}.PreCommitDeposit,
+		PreCommitEpoch:		v{{.v}}.PreCommitEpoch,
+		DealWeight:			v{{.v}}.DealWeight,
 		VerifiedDealWeight: v{{.v}}.VerifiedDealWeight,
 	}
 {{else}}
 	return (SectorPreCommitOnChainInfo)(v0)
 {{end}}
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
 }

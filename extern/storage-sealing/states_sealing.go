@@ -99,8 +99,8 @@ func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, exi
 	return out, nil
 }
 
-func checkTicketExpired(sector SectorInfo, epoch abi.ChainEpoch) bool {
-	return epoch-sector.TicketEpoch > MaxTicketAge // TODO: allow configuring expected seal durations
+func checkTicketExpired(ticket, head abi.ChainEpoch) bool {
+	return head-ticket > MaxTicketAge // TODO: allow configuring expected seal durations
 }
 
 func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, error) {
@@ -124,7 +124,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 	if pci != nil {
 		ticketEpoch = pci.Info.SealRandEpoch
 
-		if checkTicketExpired(sector, ticketEpoch) {
+		if checkTicketExpired(ticketEpoch, epoch) {
 			return nil, 0, xerrors.Errorf("ticket expired for precommitted sector")
 		}
 	}
@@ -186,7 +186,7 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		return nil
 	}
 
-	if checkTicketExpired(sector, height) {
+	if checkTicketExpired(sector.TicketEpoch, height) {
 		return ctx.Send(SectorOldTicket{}) // go get new ticket
 	}
 

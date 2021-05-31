@@ -771,6 +771,21 @@ func (mr *MockFullNodeMockRecorder) ClientStartDeal(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientStartDeal", reflect.TypeOf((*MockFullNode)(nil).ClientStartDeal), arg0, arg1)
 }
 
+// ClientStatelessDeal mocks base method
+func (m *MockFullNode) ClientStatelessDeal(arg0 context.Context, arg1 *api.StartDealParams) (*cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientStatelessDeal", arg0, arg1)
+	ret0, _ := ret[0].(*cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientStatelessDeal indicates an expected call of ClientStatelessDeal
+func (mr *MockFullNodeMockRecorder) ClientStatelessDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientStatelessDeal", reflect.TypeOf((*MockFullNode)(nil).ClientStatelessDeal), arg0, arg1)
+}
+
 // Closing mocks base method
 func (m *MockFullNode) Closing(arg0 context.Context) (<-chan struct{}, error) {
 	m.ctrl.T.Helper()

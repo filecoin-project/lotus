@@ -1,4 +1,4 @@
-package main
+package gateway
 
 import (
 	"context"
@@ -6,26 +6,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
-	"github.com/filecoin-project/lotus/build"
-
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/lotus/chain/types/mock"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/lotus/chain/types/mock"
 )
 
 func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 	ctx := context.Background()
 
-	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(LookbackCap.Seconds())
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultLookbackCap.Seconds())
 	type args struct {
 		h         abi.ChainEpoch
 		tskh      abi.ChainEpoch
@@ -91,7 +89,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := NewGatewayAPI(mock)
+			a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -111,7 +109,7 @@ type mockGatewayDepsAPI struct {
 	lk      sync.RWMutex
 	tipsets []*types.TipSet
 
-	gatewayDepsAPI // satisfies all interface requirements but will panic if
+	TargetAPI // satisfies all interface requirements but will panic if
 	// methods are called. easier than filling out with panic stubs IMO
 }
 

@@ -11,12 +11,12 @@ import (
 )
 
 func DiffAddressMap(pre, cur State) (*AddressMapChanges, error) {
-	prem, err := pre.addressMap()
+	prem, err := pre.AddressMap()
 	if err != nil {
 		return nil, err
 	}
 
-	curm, err := cur.addressMap()
+	curm, err := cur.AddressMap()
 	if err != nil {
 		return nil, err
 	}
