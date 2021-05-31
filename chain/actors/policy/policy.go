@@ -60,8 +60,6 @@ func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
 	miner4.PreCommitSealProofTypesV7 = make(map[abi.RegisteredSealProof]struct{}, len(types)*2)
 	miner4.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 
-	miner5.PreCommitSealProofTypesV0 = make(map[abi.RegisteredSealProof]struct{}, len(types))
-	miner5.PreCommitSealProofTypesV7 = make(map[abi.RegisteredSealProof]struct{}, len(types)*2)
 	miner5.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 
 	AddSupportedProofTypes(types...)
@@ -93,9 +91,6 @@ func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
 		miner4.PreCommitSealProofTypesV7[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
 		miner4.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
 
-		miner5.PreCommitSealProofTypesV0[t] = struct{}{}
-		miner5.PreCommitSealProofTypesV7[t] = struct{}{}
-		miner5.PreCommitSealProofTypesV7[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
 		miner5.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
 
 	}
@@ -308,7 +303,7 @@ func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
 
 func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) abi.ChainEpoch {
 	if nwVer <= network.Version10 {
-		return builtin5.SealProofPoliciesV0[proof].SectorMaxLifetime
+		return builtin4.SealProofPoliciesV0[proof].SectorMaxLifetime
 	}
 
 	return builtin5.SealProofPoliciesV11[proof].SectorMaxLifetime
