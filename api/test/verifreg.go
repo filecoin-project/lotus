@@ -21,14 +21,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-func init() {
-	logging.SetAllLoggers(logging.LevelInfo)
-	err := os.Setenv("BELLMAN_NO_GPU", "1")
-	if err != nil {
-		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
-	}
-	build.InsecurePoStValidation = true
-}
 
 func AddVerifiedClient(t *testing.T, b APIBuilder) {
 
