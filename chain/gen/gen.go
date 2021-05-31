@@ -76,9 +76,10 @@ type ChainGen struct {
 
 	w *wallet.LocalWallet
 
-	eppProvs    map[address.Address]WinningPoStProver
-	Miners      []address.Address
-	receivers   []address.Address
+	eppProvs  map[address.Address]WinningPoStProver
+	Miners    []address.Address
+	receivers []address.Address
+	// a SecP address
 	banker      address.Address
 	bankerNonce uint64
 
@@ -111,7 +112,7 @@ var DefaultRemainderAccountActor = genesis.Actor{
 	Meta:    remAccMeta.ActorMeta(),
 }
 
-func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
+func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeSchedule) (*ChainGen, error) {
 	j := journal.NilJournal()
 	// TODO: we really shouldn't modify a global variable here.
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
@@ -246,7 +247,10 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 		mgen[genesis2.MinerAddress(uint64(i))] = &wppProvider{}
 	}
 
-	sm := stmgr.NewStateManager(cs)
+	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(cs, us)
+	if err != nil {
+		return nil, xerrors.Errorf("initing stmgr: %w", err)
+	}
 
 	miners := []address.Address{maddr1, maddr2}
 
@@ -282,6 +286,14 @@ func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
 
 func NewGenerator() (*ChainGen, error) {
 	return NewGeneratorWithSectors(1)
+}
+
+func NewGeneratorWithSectors(numSectors int) (*ChainGen, error) {
+	return NewGeneratorWithSectorsAndUpgradeSchedule(numSectors, stmgr.DefaultUpgradeSchedule())
+}
+
+func NewGeneratorWithUpgradeSchedule(us stmgr.UpgradeSchedule) (*ChainGen, error) {
+	return NewGeneratorWithSectorsAndUpgradeSchedule(1, us)
 }
 
 func (cg *ChainGen) StateManager() *stmgr.StateManager {
@@ -386,7 +398,7 @@ type MinedTipSet struct {
 }
 
 func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
-	mts, err := cg.NextTipSetFromMiners(cg.CurTipset.TipSet(), cg.Miners)
+	mts, err := cg.NextTipSetFromMiners(cg.CurTipset.TipSet(), cg.Miners, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +411,7 @@ func (cg *ChainGen) SetWinningPoStProver(m address.Address, wpp WinningPoStProve
 	cg.eppProvs[m] = wpp
 }
 
-func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
+func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address, nulls abi.ChainEpoch) (*MinedTipSet, error) {
 	ms, err := cg.GetMessages(cg)
 	if err != nil {
 		return nil, xerrors.Errorf("get random messages: %w", err)
@@ -410,10 +422,12 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 		msgs[i] = ms
 	}
 
-	fts, err := cg.NextTipSetFromMinersWithMessages(base, miners, msgs)
+	fts, err := cg.NextTipSetFromMinersWithMessagesAndNulls(base, miners, msgs, nulls)
 	if err != nil {
 		return nil, err
 	}
+
+	cg.CurTipset = fts
 
 	return &MinedTipSet{
 		TipSet:   fts,
@@ -421,10 +435,10 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 	}, nil
 }
 
-func (cg *ChainGen) NextTipSetFromMinersWithMessages(base *types.TipSet, miners []address.Address, msgs [][]*types.SignedMessage) (*store.FullTipSet, error) {
+func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet, miners []address.Address, msgs [][]*types.SignedMessage, nulls abi.ChainEpoch) (*store.FullTipSet, error) {
 	var blks []*types.FullBlock
 
-	for round := base.Height() + 1; len(blks) == 0; round++ {
+	for round := base.Height() + nulls + 1; len(blks) == 0; round++ {
 		for mi, m := range miners {
 			bvals, et, ticket, err := cg.nextBlockProof(context.TODO(), base, m, round)
 			if err != nil {
@@ -456,6 +470,8 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessages(base *types.TipSet, miners 
 	if err := cg.cs.PutTipSet(context.TODO(), fts.TipSet()); err != nil {
 		return nil, err
 	}
+
+	cg.CurTipset = fts
 
 	return fts, nil
 }
@@ -576,7 +592,7 @@ func (mca mca) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipS
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return mca.sm.ChainStore().GetChainRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return mca.sm.ChainStore().GetChainRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (mca mca) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -585,7 +601,7 @@ func (mca mca) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSe
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return mca.sm.ChainStore().GetBeaconRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return mca.sm.ChainStore().GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {

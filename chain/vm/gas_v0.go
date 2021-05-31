@@ -18,6 +18,28 @@ type scalingCost struct {
 	scale int64
 }
 
+type stepCost []step
+
+type step struct {
+	start int64
+	cost  int64
+}
+
+func (sc stepCost) Lookup(x int64) int64 {
+	i := 0
+	for ; i < len(sc); i++ {
+		if sc[i].start > x {
+			break
+		}
+	}
+	i-- // look at previous item
+	if i < 0 {
+		return 0
+	}
+
+	return sc[i].cost
+}
+
 type pricelistV0 struct {
 	computeGasMulti int64
 	storageGasMulti int64
@@ -93,9 +115,12 @@ type pricelistV0 struct {
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
 	verifyAggregateSealBase      int64
-	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
-	verifyPostDiscount           bool
-	verifyConsensusFault         int64
+	verifyAggregateSealPer       map[abi.RegisteredSealProof]int64
+	verifyAggregateSealSteps     map[abi.RegisteredSealProof]stepCost
+
+	verifyPostLookup     map[abi.RegisteredPoStProof]scalingCost
+	verifyPostDiscount   bool
+	verifyConsensusFault int64
 }
 
 var _ Pricelist = (*pricelistV0)(nil)
@@ -189,8 +214,18 @@ func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
 
 // OnVerifyAggregateSeals
 func (pl *pricelistV0) OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge {
-	// TODO: this needs more cost tunning
-	return newGasCharge("OnVerifyAggregateSeals", pl.verifyAggregateSealBase, 0)
+	proofType := aggregate.SealProof
+	perProof, ok := pl.verifyAggregateSealPer[proofType]
+	if !ok {
+		perProof = pl.verifyAggregateSealPer[abi.RegisteredSealProof_StackedDrg32GiBV1_1]
+	}
+
+	step, ok := pl.verifyAggregateSealSteps[proofType]
+	if !ok {
+		step = pl.verifyAggregateSealSteps[abi.RegisteredSealProof_StackedDrg32GiBV1_1]
+	}
+	num := int64(len(aggregate.Infos))
+	return newGasCharge("OnVerifyAggregateSeals", perProof*num+step.Lookup(num), 0)
 }
 
 // OnVerifyPost
