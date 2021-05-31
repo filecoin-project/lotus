@@ -2,9 +2,9 @@ package test
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"strings"
+
+	lapi "github.com/filecoin-project/lotus/api"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
@@ -15,12 +15,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
-	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	logging "github.com/ipfs/go-log/v2"
 )
-
 
 func AddVerifiedClient(t *testing.T, b APIBuilder) {
 
