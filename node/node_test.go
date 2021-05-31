@@ -245,6 +245,34 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	test.TestWindowPostDisputeFails(t, builder.MockSbBuilder, 2*time.Millisecond)
 }
 
+func TestWindowPostBaseFeeNoBurn(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestWindowPostBaseFeeNoBurn(t, builder.MockSbBuilder, 2*time.Millisecond)
+}
+
+func TestWindowPostBaseFeeBurn(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestWindowPostBaseFeeBurn(t, builder.MockSbBuilder, 2*time.Millisecond)
+}
+
 func TestDeadlineToggling(t *testing.T) {
 	if os.Getenv("LOTUS_TEST_DEADLINE_TOGGLING") != "1" {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_DEADLINE_TOGGLING=1 to run")
