@@ -194,7 +194,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 
-	waitDealSealed(t, ctx, provider, client, deal, false)
+	waitDealSealed(t, ctx, provider, client, deal, false, false, nil)
 
 	<-minedTwo
 
