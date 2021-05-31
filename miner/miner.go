@@ -428,6 +428,9 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	var mbi *api.MiningBaseInfo
 	var rbase types.BeaconEntry
 	defer func() {
+
+		var hasMinPower bool
+
 		// mbi can be nil if we are deep in penalty and there are 0 eligible sectors
 		// in the current deadline. If this case - put together a dummy one for reporting
 		// https://github.com/filecoin-project/lotus/blob/v1.9.0/chain/stmgr/utils.go#L500-L502
@@ -435,7 +438,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			mbi = &api.MiningBaseInfo{
 				NetworkPower:      big.NewInt(-1), // we do not know how big the network is at this point
 				EligibleForMining: false,
-				MinerPower:        big.NewInt(0), // but we do know we do not have anything
+				MinerPower:        big.NewInt(0), // but we do know we do not have anything eligible
+			}
+
+			// try to opportunistically pull actual power and plug it into the fake mbi
+			if pow, err := m.api.StateMinerPower(ctx, m.address, base.TipSet.Key()); err == nil && pow != nil {
+				hasMinPower = pow.HasMinPower
+				mbi.MinerPower = pow.MinerPower.QualityAdjPower
+				mbi.NetworkPower = pow.TotalPower.QualityAdjPower
 			}
 		}
 
@@ -459,7 +469,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 
 		if err != nil {
 			log.Errorw("completed mineOne", logStruct...)
-		} else if isLate {
+		} else if isLate || (hasMinPower && !mbi.EligibleForMining) {
 			log.Warnw("completed mineOne", logStruct...)
 		} else {
 			log.Infow("completed mineOne", logStruct...)
