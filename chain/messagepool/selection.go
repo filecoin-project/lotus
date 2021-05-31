@@ -543,7 +543,7 @@ func (mp *MessagePool) selectPriorityMessages(ctx context.Context, pending map[a
 	var chains []*msgChain
 	priority := mpCfg.PriorityAddrs
 	for _, actor := range priority {
-		pk, err := mp.api.StateAccountKey(ctx, actor, mp.curTs)
+		pk, err := mp.resolveToKey(ctx, actor)
 		if err != nil {
 			log.Debugf("mpooladdlocal failed to resolve sender: %s", err)
 			return nil, gasLimit

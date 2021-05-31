@@ -57,7 +57,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	mpCfg := mp.getConfig()
 	// we never prune priority addresses
 	for _, actor := range mpCfg.PriorityAddrs {
-		pk, err := mp.api.StateAccountKey(ctx, actor, mp.curTs)
+		pk, err := mp.resolveToKey(ctx, actor)
 		if err != nil {
 			log.Debugf("pruneMessages failed to resolve priority address: %s", err)
 		}

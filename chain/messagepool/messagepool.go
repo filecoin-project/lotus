@@ -390,7 +390,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 	// enable initial prunes
 	mp.pruneCooldown <- struct{}{}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.TODO())
 
 	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
@@ -431,7 +431,7 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 	}
 
 	// resolve the address
-	ka, err := mp.api.StateAccountKey(ctx, addr, mp.curTs)
+	ka, err := mp.api.StateAccountKeyAtFinality(ctx, addr, mp.curTs)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -875,6 +875,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		return err
 	}
 
+	// Note: If performance becomes an issue, making this getOrCreatePendingMset will save some work
 	mset, ok, err := mp.getPendingMset(ctx, m.Message.From)
 	if err != nil {
 		log.Debug(err)
