@@ -547,7 +547,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	}
 
 	tCreateBlock := build.Clock.Now()
-	dur := tCreateBlock.Sub(start)
+	dur := tCreateBlock.Sub(tStart)
 	parentMiners := make([]address.Address, len(base.TipSet.Blocks()))
 	for i, header := range base.TipSet.Blocks() {
 		parentMiners[i] = header.Miner
