@@ -246,7 +246,7 @@ var genesisAddMsigsCmd = &cli.Command{
 
 func monthsToBlocks(nmonths int) int {
 	days := uint64((365 * nmonths) / 12)
-	return int(days * 24 * 60 * 60 / build.BlockDelaySecs)
+	return int(days * 24 * 60 * 60 / build.NetworkParams().BlockDelaySecs())
 }
 
 func parseMultisigCsv(csvf string) ([]GenAccountEntry, error) {

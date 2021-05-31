@@ -10,7 +10,7 @@ type DrandEnum int
 
 func DrandConfigSchedule() dtypes.DrandSchedule {
 	out := dtypes.DrandSchedule{}
-	for start, config := range DrandSchedule {
+	for start, config := range NetworkParams().DrandSchedule() {
 		out = append(out, dtypes.DrandPoint{Start: start, Config: DrandConfigs[config]})
 	}
 

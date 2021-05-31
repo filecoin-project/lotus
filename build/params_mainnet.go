@@ -1,81 +1,140 @@
-// +build !debug
-// +build !2k
-// +build !testground
-// +build !calibnet
-// +build !nerpanet
-// +build !butterflynet
-
 package build
 
 import (
-	"os"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/ipfs/go-cid"
 )
 
-var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandIncentinet,
-	UpgradeSmokeHeight: DrandMainnet,
+var mainDrandSchedule = map[abi.ChainEpoch]DrandEnum{
+	0:                      DrandIncentinet,
+	mainUpgradeSmokeHeight: DrandMainnet,
 }
 
-const BootstrappersFile = "mainnet.pi"
-const GenesisFile = "mainnet.car"
+const mainBootstrappersFile = "mainnet.pi"
+const mainGenesisFile = "mainnet.car"
 
-const UpgradeBreezeHeight = 41280
+const mainUpgradeBreezeHeight = 41280
 
-const BreezeGasTampingDuration = 120
+const mainBreezeGasTampingDuration = 120
 
-const UpgradeSmokeHeight = 51000
+const mainUpgradeSmokeHeight = 51000
 
-const UpgradeIgnitionHeight = 94000
-const UpgradeRefuelHeight = 130800
+const mainUpgradeIgnitionHeight = 94000
+const mainUpgradeRefuelHeight = 130800
 
-const UpgradeActorsV2Height = 138720
+const mainUpgradeActorsV2Height = 138720
 
-const UpgradeTapeHeight = 140760
+const mainUpgradeTapeHeight = 140760
 
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
 // We still have upgrades and state changes to do, but can happen after signaling timing here.
-const UpgradeLiftoffHeight = 148888
+const mainUpgradeLiftoffHeight = 148888
 
-const UpgradeKumquatHeight = 170000
+const mainUpgradeKumquatHeight = 170000
 
-const UpgradeCalicoHeight = 265200
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
+const mainUpgradeCalicoHeight = 265200
+const mainUpgradePersianHeight = mainUpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 
-const UpgradeOrangeHeight = 336458
+const mainUpgradeOrangeHeight = 336458
 
 // 2020-12-22T02:00:00Z
-const UpgradeClausHeight = 343200
+const mainUpgradeClausHeight = 343200
 
 // 2021-03-04T00:00:30Z
-const UpgradeActorsV3Height = 550321
+const mainUpgradeActorsV3Height = 550321
 
 // 2021-04-12T22:00:00Z
-const UpgradeNorwegianHeight = 665280
+const mainUpgradeNorwegianHeight = 665280
 
 // 2021-04-29T06:00:00Z
-const UpgradeActorsV4Height = 712320
+const mainUpgradeActorsV4Height = 712320
 
-func init() {
-	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
-		SetAddressNetwork(address.Mainnet)
-	}
+const mainBlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
-	Devnet = false
-
-	BuildType = BuildMainnet
-}
-
-const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
-
-const PropagationDelaySecs = uint64(6)
+const mainPropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
-const BootstrapPeerThreshold = 4
+const mainBootstrapPeerThreshold = 4
 
 // we skip checks on message validity in this block to sidestep the zero-bls signature
-var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
+var mainWhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
+
+type mainConfigurableParams struct{}
+
+func (mainConfigurableParams) DrandSchedule() map[abi.ChainEpoch]DrandEnum {
+	return mainDrandSchedule
+}
+func (mainConfigurableParams) BootstrappersFile() string {
+	return mainBootstrappersFile
+}
+func (mainConfigurableParams) GenesisFile() string {
+	return mainGenesisFile
+}
+func (mainConfigurableParams) UpgradeBreezeHeight() abi.ChainEpoch {
+	return mainUpgradeBreezeHeight
+}
+func (mainConfigurableParams) BreezeGasTampingDuration() abi.ChainEpoch {
+	return mainBreezeGasTampingDuration
+}
+func (mainConfigurableParams) UpgradeSmokeHeight() abi.ChainEpoch {
+	return mainUpgradeSmokeHeight
+}
+func (mainConfigurableParams) UpgradeIgnitionHeight() abi.ChainEpoch {
+	return mainUpgradeIgnitionHeight
+}
+func (mainConfigurableParams) UpgradeRefuelHeight() abi.ChainEpoch {
+	return mainUpgradeRefuelHeight
+}
+func (mainConfigurableParams) UpgradeActorsV2Height() abi.ChainEpoch {
+	return mainUpgradeActorsV2Height
+}
+func (mainConfigurableParams) UpgradeTapeHeight() abi.ChainEpoch {
+	return mainUpgradeTapeHeight
+}
+func (mainConfigurableParams) UpgradeLiftoffHeight() abi.ChainEpoch {
+	return mainUpgradeLiftoffHeight
+}
+func (mainConfigurableParams) UpgradeKumquatHeight() abi.ChainEpoch {
+	return mainUpgradeKumquatHeight
+}
+func (mainConfigurableParams) UpgradeCalicoHeight() abi.ChainEpoch {
+	return mainUpgradeCalicoHeight
+}
+func (mainConfigurableParams) UpgradePersianHeight() abi.ChainEpoch {
+	return mainUpgradePersianHeight
+}
+func (mainConfigurableParams) UpgradeOrangeHeight() abi.ChainEpoch {
+	return mainUpgradeOrangeHeight
+}
+func (mainConfigurableParams) UpgradeClausHeight() abi.ChainEpoch {
+	return mainUpgradeClausHeight
+}
+func (mainConfigurableParams) UpgradeActorsV3Height() abi.ChainEpoch {
+	return mainUpgradeActorsV3Height
+}
+func (mainConfigurableParams) UpgradeNorwegianHeight() abi.ChainEpoch {
+	return mainUpgradeNorwegianHeight
+}
+func (mainConfigurableParams) UpgradeActorsV4Height() abi.ChainEpoch {
+	return mainUpgradeActorsV4Height
+}
+func (mainConfigurableParams) BlockDelaySecs() uint64 {
+	return mainBlockDelaySecs
+}
+func (mainConfigurableParams) PropagationDelaySecs() uint64 {
+	return mainPropagationDelaySecs
+}
+func (mainConfigurableParams) BootstrapPeerThreshold() int {
+	return mainBootstrapPeerThreshold
+}
+func (mainConfigurableParams) WhitelistedBlock() cid.Cid {
+	return mainWhitelistedBlock
+}
+func (mainConfigurableParams) InsecurePoStValidation() bool {
+	return false
+}
+func (mainConfigurableParams) Devnet() bool {
+	return false
+}

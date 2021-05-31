@@ -1,100 +1,133 @@
-// +build debug 2k
-
 package build
 
 import (
-	"os"
-	"strconv"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
-const BootstrappersFile = ""
-const GenesisFile = ""
+const twokBootstrappersFile = ""
+const twokGenesisFile = ""
 
-var UpgradeBreezeHeight = abi.ChainEpoch(-1)
+var twokUpgradeBreezeHeight = abi.ChainEpoch(-1)
 
-const BreezeGasTampingDuration = 0
+const twokBreezeGasTampingDuration = 0
 
-var UpgradeSmokeHeight = abi.ChainEpoch(-1)
-var UpgradeIgnitionHeight = abi.ChainEpoch(-2)
-var UpgradeRefuelHeight = abi.ChainEpoch(-3)
-var UpgradeTapeHeight = abi.ChainEpoch(-4)
+var twokUpgradeSmokeHeight = abi.ChainEpoch(-1)
+var twokUpgradeIgnitionHeight = abi.ChainEpoch(-2)
+var twokUpgradeRefuelHeight = abi.ChainEpoch(-3)
+var twokUpgradeTapeHeight = abi.ChainEpoch(-4)
 
-var UpgradeActorsV2Height = abi.ChainEpoch(-5)
-var UpgradeLiftoffHeight = abi.ChainEpoch(-6)
+var twokUpgradeActorsV2Height = abi.ChainEpoch(-5)
+var twokUpgradeLiftoffHeight = abi.ChainEpoch(-6)
 
-var UpgradeKumquatHeight = abi.ChainEpoch(-7)
-var UpgradeCalicoHeight = abi.ChainEpoch(-8)
-var UpgradePersianHeight = abi.ChainEpoch(-9)
-var UpgradeOrangeHeight = abi.ChainEpoch(-10)
-var UpgradeClausHeight = abi.ChainEpoch(-11)
+var twokUpgradeKumquatHeight = abi.ChainEpoch(-7)
+var twokUpgradeCalicoHeight = abi.ChainEpoch(-8)
+var twokUpgradePersianHeight = abi.ChainEpoch(-9)
+var twokUpgradeOrangeHeight = abi.ChainEpoch(-10)
+var twokUpgradeClausHeight = abi.ChainEpoch(-11)
 
-var UpgradeActorsV3Height = abi.ChainEpoch(-12)
+var twokUpgradeActorsV3Height = abi.ChainEpoch(-12)
 
-var UpgradeNorwegianHeight = abi.ChainEpoch(-13)
+var twokUpgradeNorwegianHeight = abi.ChainEpoch(-13)
 
-var UpgradeActorsV4Height = abi.ChainEpoch(-14)
+var twokUpgradeActorsV4Height = abi.ChainEpoch(-14)
 
-var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+var twokDrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
-func init() {
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1, abi.RegisteredSealProof_StackedDrg8MiBV1)
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
-	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
-	policy.SetPreCommitChallengeDelay(abi.ChainEpoch(10))
+const twokBlockDelaySecs = uint64(4)
 
-	getUpgradeHeight := func(ev string, def abi.ChainEpoch) abi.ChainEpoch {
-		hs, found := os.LookupEnv(ev)
-		if found {
-			h, err := strconv.Atoi(hs)
-			if err != nil {
-				log.Panicf("failed to parse %s env var", ev)
-			}
-
-			return abi.ChainEpoch(h)
-		}
-
-		return def
-	}
-
-	UpgradeBreezeHeight = getUpgradeHeight("LOTUS_BREEZE_HEIGHT", UpgradeBreezeHeight)
-	UpgradeSmokeHeight = getUpgradeHeight("LOTUS_SMOKE_HEIGHT", UpgradeSmokeHeight)
-	UpgradeIgnitionHeight = getUpgradeHeight("LOTUS_IGNITION_HEIGHT", UpgradeIgnitionHeight)
-	UpgradeRefuelHeight = getUpgradeHeight("LOTUS_REFUEL_HEIGHT", UpgradeRefuelHeight)
-	UpgradeTapeHeight = getUpgradeHeight("LOTUS_TAPE_HEIGHT", UpgradeTapeHeight)
-	UpgradeActorsV2Height = getUpgradeHeight("LOTUS_ACTORSV2_HEIGHT", UpgradeActorsV2Height)
-	UpgradeLiftoffHeight = getUpgradeHeight("LOTUS_LIFTOFF_HEIGHT", UpgradeLiftoffHeight)
-	UpgradeKumquatHeight = getUpgradeHeight("LOTUS_KUMQUAT_HEIGHT", UpgradeKumquatHeight)
-	UpgradeCalicoHeight = getUpgradeHeight("LOTUS_CALICO_HEIGHT", UpgradeCalicoHeight)
-	UpgradePersianHeight = getUpgradeHeight("LOTUS_PERSIAN_HEIGHT", UpgradePersianHeight)
-	UpgradeOrangeHeight = getUpgradeHeight("LOTUS_ORANGE_HEIGHT", UpgradeOrangeHeight)
-	UpgradeClausHeight = getUpgradeHeight("LOTUS_CLAUS_HEIGHT", UpgradeClausHeight)
-	UpgradeActorsV3Height = getUpgradeHeight("LOTUS_ACTORSV3_HEIGHT", UpgradeActorsV3Height)
-	UpgradeNorwegianHeight = getUpgradeHeight("LOTUS_NORWEGIAN_HEIGHT", UpgradeNorwegianHeight)
-	UpgradeActorsV4Height = getUpgradeHeight("LOTUS_ACTORSV4_HEIGHT", UpgradeActorsV4Height)
-
-	BuildType |= Build2k
-}
-
-const BlockDelaySecs = uint64(4)
-
-const PropagationDelaySecs = uint64(1)
+const twokPropagationDelaySecs = uint64(1)
 
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed
 //
 // Epochs
-const SlashablePowerDelay = 20
+const twokSlashablePowerDelay = 20
 
 // Epochs
-const InteractivePoRepConfidence = 6
+const twokInteractivePoRepConfidence = 6
 
-const BootstrapPeerThreshold = 1
+const twokBootstrapPeerThreshold = 1
 
-var WhitelistedBlock = cid.Undef
+var twokWhitelistedBlock = cid.Undef
+
+type twokConfigurableParams struct{}
+
+func (twokConfigurableParams) DrandSchedule() map[abi.ChainEpoch]DrandEnum {
+	return twokDrandSchedule
+}
+func (twokConfigurableParams) BootstrappersFile() string {
+	return twokBootstrappersFile
+}
+func (twokConfigurableParams) GenesisFile() string {
+	return twokGenesisFile
+}
+func (twokConfigurableParams) UpgradeBreezeHeight() abi.ChainEpoch {
+	return twokUpgradeBreezeHeight
+}
+func (twokConfigurableParams) BreezeGasTampingDuration() abi.ChainEpoch {
+	return twokBreezeGasTampingDuration
+}
+func (twokConfigurableParams) UpgradeSmokeHeight() abi.ChainEpoch {
+	return twokUpgradeSmokeHeight
+}
+func (twokConfigurableParams) UpgradeIgnitionHeight() abi.ChainEpoch {
+	return twokUpgradeIgnitionHeight
+}
+func (twokConfigurableParams) UpgradeRefuelHeight() abi.ChainEpoch {
+	return twokUpgradeRefuelHeight
+}
+func (twokConfigurableParams) UpgradeActorsV2Height() abi.ChainEpoch {
+	return twokUpgradeActorsV2Height
+}
+func (twokConfigurableParams) UpgradeTapeHeight() abi.ChainEpoch {
+	return twokUpgradeTapeHeight
+}
+func (twokConfigurableParams) UpgradeLiftoffHeight() abi.ChainEpoch {
+	return twokUpgradeLiftoffHeight
+}
+func (twokConfigurableParams) UpgradeKumquatHeight() abi.ChainEpoch {
+	return twokUpgradeKumquatHeight
+}
+func (twokConfigurableParams) UpgradeCalicoHeight() abi.ChainEpoch {
+	return twokUpgradeCalicoHeight
+}
+func (twokConfigurableParams) UpgradePersianHeight() abi.ChainEpoch {
+	return twokUpgradePersianHeight
+}
+func (twokConfigurableParams) UpgradeOrangeHeight() abi.ChainEpoch {
+	return twokUpgradeOrangeHeight
+}
+func (twokConfigurableParams) UpgradeClausHeight() abi.ChainEpoch {
+	return twokUpgradeClausHeight
+}
+func (twokConfigurableParams) UpgradeActorsV3Height() abi.ChainEpoch {
+	return twokUpgradeActorsV3Height
+}
+func (twokConfigurableParams) UpgradeNorwegianHeight() abi.ChainEpoch {
+	return twokUpgradeNorwegianHeight
+}
+func (twokConfigurableParams) UpgradeActorsV4Height() abi.ChainEpoch {
+	return twokUpgradeActorsV4Height
+}
+func (twokConfigurableParams) BlockDelaySecs() uint64 {
+	return twokBlockDelaySecs
+}
+func (twokConfigurableParams) PropagationDelaySecs() uint64 {
+	return twokPropagationDelaySecs
+}
+func (twokConfigurableParams) BootstrapPeerThreshold() int {
+	return twokBootstrapPeerThreshold
+}
+func (twokConfigurableParams) WhitelistedBlock() cid.Cid {
+	return twokWhitelistedBlock
+}
+func (twokConfigurableParams) InsecurePoStValidation() bool {
+	return true
+}
+func (twokConfigurableParams) Devnet() bool {
+	return true
+}

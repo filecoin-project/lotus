@@ -66,9 +66,9 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 
 	switch {
-	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*3/2): // within 1.5 epochs
+	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.NetworkParams().BlockDelaySecs()*3/2): // within 1.5 epochs
 		fmt.Printf("[%s]", color.GreenString("sync ok"))
-	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*5): // within 5 epochs
+	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.NetworkParams().BlockDelaySecs()*5): // within 5 epochs
 		fmt.Printf("[%s]", color.YellowString("sync slow (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
 	default:
 		fmt.Printf("[%s]", color.RedString("sync behind! (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
@@ -162,7 +162,7 @@ func infoCmdAct(cctx *cli.Context) error {
 			if expWinChance > 1 {
 				expWinChance = 1
 			}
-			winRate := time.Duration(float64(time.Second*time.Duration(build.BlockDelaySecs)) / expWinChance)
+			winRate := time.Duration(float64(time.Second*time.Duration(build.NetworkParams().BlockDelaySecs())) / expWinChance)
 			winPerDay := float64(time.Hour*24) / float64(winRate)
 
 			fmt.Print("Expected block win rate: ")

@@ -128,7 +128,7 @@ var prices = map[abi.ChainEpoch]Pricelist{
 		verifyPostDiscount:   true,
 		verifyConsensusFault: 495422,
 	},
-	abi.ChainEpoch(build.UpgradeCalicoHeight): &pricelistV0{
+	abi.ChainEpoch(build.NetworkParams().UpgradeCalicoHeight()): &pricelistV0{
 		computeGasMulti: 1,
 		storageGasMulti: 1300,
 

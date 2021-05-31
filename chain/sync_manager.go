@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	BootstrapPeerThreshold = build.BootstrapPeerThreshold
+	BootstrapPeerThreshold = build.NetworkParams().BootstrapPeerThreshold()
 
 	RecentSyncBufferSize = 10
 	MaxSyncWorkers       = 5

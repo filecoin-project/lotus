@@ -67,8 +67,6 @@ var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 // /////
 // Devnet settings
 
-var Devnet = true
-
 const FilBase = uint64(2_000_000_000)
 const FilAllocStorageMining = uint64(1_100_000_000)
 

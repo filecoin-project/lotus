@@ -82,7 +82,7 @@ func NewMiner(api v1api.FullNode, epp gen.WinningPoStProver, addr address.Addres
 			// the result is that we WILL NOT wait, therefore fast-forwarding
 			// and thus healing the chain by backfilling it with null rounds
 			// rapidly.
-			deadline := baseTime + build.PropagationDelaySecs
+			deadline := baseTime + build.NetworkParams().PropagationDelaySecs()
 			baseT := time.Unix(int64(deadline), 0)
 
 			baseT = baseT.Add(randTimeOffset(time.Second))
@@ -274,7 +274,7 @@ minerLoop:
 
 		if base.TipSet.Equals(lastBase.TipSet) && lastBase.NullRounds == base.NullRounds {
 			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.NullRounds)
-			if !m.niceSleep(time.Duration(build.BlockDelaySecs) * time.Second) {
+			if !m.niceSleep(time.Duration(build.NetworkParams().BlockDelaySecs()) * time.Second) {
 				continue minerLoop
 			}
 			continue
@@ -346,7 +346,7 @@ minerLoop:
 			// has enough time to form.
 			//
 			// See:  https://github.com/filecoin-project/lotus/issues/1845
-			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+build.BlockDelaySecs*uint64(base.NullRounds))+int64(build.PropagationDelaySecs), 0)
+			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+build.NetworkParams().BlockDelaySecs()*uint64(base.NullRounds))+int64(build.NetworkParams().PropagationDelaySecs()), 0)
 
 			select {
 			case <-build.Clock.After(build.Clock.Until(nextRound)):
@@ -439,7 +439,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			}
 		}
 
-		isLate := uint64(start.Unix()) > (base.TipSet.MinTimestamp() + uint64(base.NullRounds*builtin.EpochDurationSeconds) + build.PropagationDelaySecs)
+		isLate := uint64(start.Unix()) > (base.TipSet.MinTimestamp() + uint64(base.NullRounds*builtin.EpochDurationSeconds) + build.NetworkParams().PropagationDelaySecs())
 
 		logStruct := []interface{}{
 			"tookMilliseconds", (build.Clock.Now().UnixNano() - start.UnixNano()) / 1_000_000,
@@ -559,7 +559,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		parentMiners[i] = header.Miner
 	}
 	log.Infow("mined new block", "cid", minedBlock.Cid(), "height", int64(minedBlock.Header.Height), "miner", minedBlock.Header.Miner, "parents", parentMiners, "parentTipset", base.TipSet.Key().String(), "took", dur)
-	if dur > time.Second*time.Duration(build.BlockDelaySecs) {
+	if dur > time.Second*time.Duration(build.NetworkParams().BlockDelaySecs()) {
 		log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
 			"tMinerBaseInfo ", tMBI.Sub(start),
 			"tDrand ", tDrand.Sub(tMBI),
@@ -581,7 +581,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 	}
 
 	round := base.TipSet.Height() + base.NullRounds + 1
-	if round > build.UpgradeSmokeHeight {
+	if round > build.NetworkParams().UpgradeSmokeHeight() {
 		buf.Write(base.TipSet.MinTicket().VRFProof)
 	}
 
@@ -602,7 +602,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
 	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
-	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
+	uts := base.TipSet.MinTimestamp() + build.NetworkParams().BlockDelaySecs()*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1
 

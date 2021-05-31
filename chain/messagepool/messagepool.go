@@ -48,7 +48,7 @@ var rbfDenomBig = types.NewInt(RbfDenom)
 
 const RbfDenom = 256
 
-var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+var RepublishInterval = time.Duration(10*build.NetworkParams().BlockDelaySecs()+build.NetworkParams().PropagationDelaySecs()) * time.Second
 
 var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
 var baseFeeLowerBoundFactor = types.NewInt(10)
@@ -106,7 +106,7 @@ type MessagePoolEvtMessage struct {
 
 func init() {
 	// if the republish interval is too short compared to the pubsub timecache, adjust it
-	minInterval := pubsub.TimeCacheDuration + time.Duration(build.PropagationDelaySecs)
+	minInterval := pubsub.TimeCacheDuration + time.Duration(build.NetworkParams().PropagationDelaySecs())
 	if RepublishInterval < minInterval {
 		RepublishInterval = minInterval
 	}

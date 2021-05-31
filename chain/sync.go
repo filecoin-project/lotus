@@ -164,7 +164,7 @@ func NewSyncer(ds dtypes.MetadataDS, sm *stmgr.StateManager, exchange exchange.C
 		incoming: pubsub.New(50),
 	}
 
-	if build.InsecurePoStValidation {
+	if build.NetworkParams().InsecurePoStValidation() {
 		log.Warn("*********************************************************************************************")
 		log.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
 		log.Warn("*********************************************************************************************")
@@ -185,14 +185,14 @@ func (syncer *Syncer) Start() {
 
 func (syncer *Syncer) runMetricsTricker(tickerCtx context.Context) {
 	genesisTime := time.Unix(int64(syncer.Genesis.MinTimestamp()), 0)
-	ticker := build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second)
+	ticker := build.Clock.Ticker(time.Duration(build.NetworkParams().BlockDelaySecs()) * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			sinceGenesis := build.Clock.Now().Sub(genesisTime)
-			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
+			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.NetworkParams().BlockDelaySecs())
 
 			stats.Record(tickerCtx, metrics.ChainNodeHeightExpected.M(expectedHeight))
 		case <-tickerCtx.Done():
@@ -728,7 +728,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 
 	// fast checks first
 	nulls := h.Height - (baseTs.Height() + 1)
-	if tgtTs := baseTs.MinTimestamp() + build.BlockDelaySecs*uint64(nulls+1); h.Timestamp != tgtTs {
+	if tgtTs := baseTs.MinTimestamp() + build.NetworkParams().BlockDelaySecs()*uint64(nulls+1); h.Timestamp != tgtTs {
 		return xerrors.Errorf("block has wrong timestamp: %d != %d", h.Timestamp, tgtTs)
 	}
 
@@ -741,7 +741,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 	}
 
 	msgsCheck := async.Err(func() error {
-		if b.Cid() == build.WhitelistedBlock {
+		if b.Cid() == build.NetworkParams().WhitelistedBlock() {
 			return nil
 		}
 
@@ -891,7 +891,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		if h.Height > build.UpgradeSmokeHeight {
+		if h.Height > build.NetworkParams().UpgradeSmokeHeight() {
 			buf.Write(baseTs.MinTicket().VRFProof)
 		}
 
@@ -966,7 +966,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 }
 
 func (syncer *Syncer) VerifyWinningPoStProof(ctx context.Context, nv network.Version, h *types.BlockHeader, prevBeacon types.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
-	if build.InsecurePoStValidation {
+	if build.NetworkParams().InsecurePoStValidation() {
 		if len(h.WinPoStProof) == 0 {
 			return xerrors.Errorf("[INSECURE-POST-VALIDATION] No winning post proof given")
 		}
@@ -1793,5 +1793,5 @@ func (syncer *Syncer) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
 	}
 
 	now := uint64(build.Clock.Now().Unix())
-	return epoch > (abi.ChainEpoch((now-syncer.Genesis.MinTimestamp())/build.BlockDelaySecs) + MaxHeightDrift)
+	return epoch > (abi.ChainEpoch((now-syncer.Genesis.MinTimestamp())/build.NetworkParams().BlockDelaySecs()) + MaxHeightDrift)
 }

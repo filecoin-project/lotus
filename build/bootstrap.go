@@ -17,8 +17,9 @@ func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 
 	b := rice.MustFindBox("bootstrap")
 
-	if BootstrappersFile != "" {
-		spi := b.MustString(BootstrappersFile)
+	fn := NetworkParams().BootstrappersFile()
+	if fn != "" {
+		spi := b.MustString(fn)
 		if spi == "" {
 			return nil, nil
 		}
