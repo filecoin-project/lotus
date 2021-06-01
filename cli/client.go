@@ -1227,6 +1227,7 @@ var clientListRetrievalsCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "show-failed",
 			Usage: "show failed/failing deals",
+			Value: true,
 		},
 		&cli.BoolFlag{
 			Name:  "completed",
