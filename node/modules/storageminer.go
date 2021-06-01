@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"go.uber.org/fx"
@@ -691,6 +692,19 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.Storage
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 	return sectorstorage.StorageAuth(headers), nil
+}
+
+func StorageAuthWithURL(url string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+	log.Infow("Setting auth token based on URL", "url", url)
+	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+		s := strings.Split(url, ":")
+		if len(s) != 2 {
+			return nil, errors.New("unexpected format of URL")
+		}
+		headers := http.Header{}
+		headers.Add("Authorization", "Bearer "+s[0])
+		return sectorstorage.StorageAuth(headers), nil
+	}
 }
 
 func NewConsiderOnlineStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderOnlineStorageDealsConfigFunc, error) {

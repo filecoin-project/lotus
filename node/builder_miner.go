@@ -103,6 +103,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		),
 
 		If(!cfg.Subsystems.EnableSectorStorage,
+			Override(new(sectorstorage.StorageAuth), modules.StorageAuthWithURL(cfg.Subsystems.SectorIndexApiInfo)),
 			Override(new(modules.MinerStorageService), modules.ConnectStorageService(cfg.Subsystems.SectorIndexApiInfo)),
 			Override(new(sectorstorage.Unsealer), From(new(modules.MinerStorageService))),
 			Override(new(sectorblocks.SectorBuilder), From(new(modules.MinerStorageService))),
