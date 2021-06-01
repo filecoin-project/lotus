@@ -187,7 +187,7 @@ func (b *CommitBatcher) maybeStartBatch(notif, after bool) ([]sealiface.CommitBa
 
 	var res []sealiface.CommitBatchRes
 
-	if total < cfg.MinCommitBatch || total < miner5.PreCommitSectorBatchMaxSize {
+	if total < cfg.MinCommitBatch || total < miner5.MinAggregatedSectors {
 		res, err = b.processIndividually()
 	} else {
 		res, err = b.processBatch(cfg)

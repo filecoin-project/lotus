@@ -271,7 +271,7 @@ func DefaultStorageMiner() *StorageMiner {
 			PreCommitBatchSlack: Duration(3 * time.Hour),
 
 			AggregateCommits: true,
-			MinCommitBatch:   1,                           // we must have at least one proof to aggregate
+			MinCommitBatch:   miner5.MinAggregatedSectors, // we must have at least four proofs to aggregate
 			MaxCommitBatch:   miner5.MaxAggregatedSectors, // this is the maximum aggregation per FIP13
 			CommitBatchWait:  Duration(24 * time.Hour),    // this can be up to 6 days
 			CommitBatchSlack: Duration(1 * time.Hour),
