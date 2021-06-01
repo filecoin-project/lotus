@@ -997,15 +997,30 @@ var sectorsBatchingPendingCommit = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.Bool("publish-now") {
-			cid, err := api.SectorCommitFlush(ctx)
+			res, err := api.SectorCommitFlush(ctx)
 			if err != nil {
 				return xerrors.Errorf("flush: %w", err)
 			}
-			if cid == nil {
+			if res == nil {
 				return xerrors.Errorf("no sectors to publish")
 			}
 
-			fmt.Println("sector batch published: ", cid)
+			for i, re := range res {
+				fmt.Printf("Batch %d:\n", i)
+				if re.Error != "" {
+					fmt.Printf("\tError: %s\n", re.Error)
+				} else {
+					fmt.Printf("\tMessage: %s\n", re.Msg)
+				}
+				fmt.Printf("\tSectors:\n")
+				for _, sector := range re.Sectors {
+					if e, found := re.FailedSectors[sector]; found {
+						fmt.Printf("\t\t%d\tERROR %s\n", sector, e)
+					} else {
+						fmt.Printf("\t\t%d\tOK\n", sector)
+					}
+				}
+			}
 			return nil
 		}
 
