@@ -260,3 +260,9 @@ func TestDeadlineToggling(t *testing.T) {
 
 	test.TestDeadlineToggling(t, builder.MockSbBuilder, 2*time.Millisecond)
 }
+
+func TestVerifiedClientTopUp(t *testing.T) {
+	logging.SetLogLevel("storageminer", "FATAL")
+	logging.SetLogLevel("chain", "ERROR")
+	test.AddVerifiedClient(t, builder.MockSbBuilder)
+}
