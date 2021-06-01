@@ -152,6 +152,8 @@ func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
 		return types.StateTreeVersion2, nil
 	case network.Version12:
 		return types.StateTreeVersion3, nil
+	case network.Version13:
+		return types.StateTreeVersion4, nil
 	default:
 		panic(fmt.Sprintf("unsupported network version %d", ver))
 	}
@@ -162,7 +164,7 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 	switch ver {
 	case types.StateTreeVersion0:
 		// info is undefined
-	case types.StateTreeVersion1, types.StateTreeVersion2, types.StateTreeVersion3:
+	case types.StateTreeVersion1, types.StateTreeVersion2, types.StateTreeVersion3, types.StateTreeVersion4:
 		var err error
 		info, err = cst.Put(context.TODO(), new(types.StateInfo0))
 		if err != nil {
