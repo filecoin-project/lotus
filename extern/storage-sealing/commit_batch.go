@@ -216,6 +216,11 @@ func (b *CommitBatcher) maybeStartBatch(notif, after bool) ([]sealiface.CommitBa
 }
 
 func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
+	tok, _, err := b.api.ChainHead(b.mctx)
+	if err != nil {
+		return nil, err
+	}
+
 	total := len(b.todo)
 
 	var res sealiface.CommitBatchRes
@@ -226,6 +231,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	proofs := make([][]byte, 0, total)
 	infos := make([]proof5.AggregateSealVerifyInfo, 0, total)
+	collateral := big.Zero()
 
 	for id, p := range b.todo {
 		if len(infos) >= cfg.MaxCommitBatch {
@@ -233,6 +239,15 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 			break
 		}
 
+		sc, err := b.getSectorCollateral(id, tok)
+		if err != nil {
+			res.FailedSectors[id] = err.Error()
+			continue
+		}
+
+		collateral = big.Add(collateral, sc)
+
+		res.Sectors = append(res.Sectors, id)
 		params.SectorNumbers.Set(uint64(id))
 		infos = append(infos, p.info)
 	}
@@ -242,7 +257,6 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	})
 
 	for _, info := range infos {
-		res.Sectors = append(res.Sectors, info.Number)
 		proofs = append(proofs, b.todo[info.Number].proof)
 	}
 
@@ -271,14 +285,14 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
-	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, b.feeCfg.MaxCommitGasFee, b.feeCfg.MaxCommitGasFee)
+	goodFunds := big.Add(b.feeCfg.MaxCommitGasFee, collateral)
+
+	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	// todo: collateral
-
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, big.Zero(), b.feeCfg.MaxCommitGasFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, collateral, b.feeCfg.MaxCommitGasFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
