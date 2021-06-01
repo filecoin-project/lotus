@@ -178,7 +178,7 @@ func TestPledgeBatching(t *testing.T, b APIBuilder, blocktime time.Duration, nSe
 			cb, err := miner.SectorCommitFlush(ctx)
 			require.NoError(t, err)
 			if cb != nil {
-				fmt.Printf("COMMIT BATCH: %s\n", *cb)
+				fmt.Printf("COMMIT BATCH: %+v\n", cb)
 			}
 		}
 
@@ -325,7 +325,7 @@ func flushSealingBatches(t *testing.T, ctx context.Context, miner TestStorageNod
 	cb, err := miner.SectorCommitFlush(ctx)
 	require.NoError(t, err)
 	if cb != nil {
-		fmt.Printf("COMMIT BATCH: %s\n", *cb)
+		fmt.Printf("COMMIT BATCH: %+v\n", cb)
 	}
 }
 

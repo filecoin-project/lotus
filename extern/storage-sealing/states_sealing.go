@@ -581,7 +581,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
-	mcid, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
+	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
 		info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
 			Randomness:            sector.TicketValue,
@@ -596,7 +596,19 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})
 	}
 
-	return ctx.Send(SectorCommitAggregateSent{mcid})
+	if res.Error != "" {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("aggregate error: %s", res.Error)})
+	}
+
+	if e, found := res.FailedSectors[sector.SectorNumber]; found {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector failed in aggregate processing: %s", e)})
+	}
+
+	if res.Msg == nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("aggregate message was nil")})
+	}
+
+	return ctx.Send(SectorCommitAggregateSent{*res.Msg})
 }
 
 func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) error {

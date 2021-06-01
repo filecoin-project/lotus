@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -87,7 +88,7 @@ type StorageMiner interface {
 	SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
 	// SectorCommitFlush immediately sends a Commit message with sectors aggregated for Commit.
 	// Returns null if message wasn't sent
-	SectorCommitFlush(ctx context.Context) (*cid.Cid, error) //perm:admin
+	SectorCommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) //perm:admin
 	// SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
 	SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
 
