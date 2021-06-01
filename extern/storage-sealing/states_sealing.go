@@ -355,7 +355,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector SectorInfo) error {
 	if sector.CommD == nil || sector.CommR == nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
 	params, deposit, _, err := m.preCommitParams(ctx, sector)
@@ -363,12 +363,20 @@ func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector Se
 		return err
 	}
 
-	mcid, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)
+	res, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)
 	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing precommit batch failed: %w", err)})
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("queuing precommit batch failed: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitBatchSent{mcid})
+	if res.Error != "" {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("precommit batch error: %s", res.Error)})
+	}
+
+	if res.Msg == nil {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("batch message was nil")})
+	}
+
+	return ctx.Send(SectorPreCommitBatchSent{*res.Msg})
 }
 
 func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {

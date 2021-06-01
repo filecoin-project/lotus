@@ -650,7 +650,7 @@ type StorageMinerStruct struct {
 
 		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
-		SectorPreCommitFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
+		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
@@ -1952,7 +1952,7 @@ func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.Sec
 	return s.Internal.SectorMarkForUpgrade(p0, p1)
 }
 
-func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) (*cid.Cid, error) {
+func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
 	return s.Internal.SectorPreCommitFlush(p0)
 }
 

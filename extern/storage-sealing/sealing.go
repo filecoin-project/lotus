@@ -207,7 +207,7 @@ func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) 
 	return m.terminator.Pending(ctx)
 }
 
-func (m *Sealing) SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) {
+func (m *Sealing) SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) {
 	return m.precommiter.Flush(ctx)
 }
 

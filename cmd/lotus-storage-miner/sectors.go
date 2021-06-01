@@ -1059,15 +1059,26 @@ var sectorsBatchingPendingPreCommit = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.Bool("publish-now") {
-			cid, err := api.SectorPreCommitFlush(ctx)
+			res, err := api.SectorPreCommitFlush(ctx)
 			if err != nil {
 				return xerrors.Errorf("flush: %w", err)
 			}
-			if cid == nil {
+			if res == nil {
 				return xerrors.Errorf("no sectors to publish")
 			}
 
-			fmt.Println("sector batch published: ", cid)
+			for i, re := range res {
+				fmt.Printf("Batch %d:\n", i)
+				if re.Error != "" {
+					fmt.Printf("\tError: %s\n", re.Error)
+				} else {
+					fmt.Printf("\tMessage: %s\n", re.Msg)
+				}
+				fmt.Printf("\tSectors:\n")
+				for _, sector := range re.Sectors {
+					fmt.Printf("\t\t%d\tOK\n", sector)
+				}
+			}
 			return nil
 		}
 

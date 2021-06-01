@@ -375,7 +375,7 @@ func (sm *StorageMinerAPI) SectorTerminatePending(ctx context.Context) ([]abi.Se
 	return sm.Miner.TerminatePending(ctx)
 }
 
-func (sm *StorageMinerAPI) SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) {
+func (sm *StorageMinerAPI) SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) {
 	return sm.Miner.SectorPreCommitFlush(ctx)
 }
 

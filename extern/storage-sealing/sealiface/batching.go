@@ -14,3 +14,10 @@ type CommitBatchRes struct {
 	Msg   *cid.Cid
 	Error string // if set, means that all sectors are failed, implies Msg==nil
 }
+
+type PreCommitBatchRes struct {
+	Sectors []abi.SectorNumber
+
+	Msg   *cid.Cid
+	Error string // if set, means that all sectors are failed, implies Msg==nil
+}

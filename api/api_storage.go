@@ -83,7 +83,7 @@ type StorageMiner interface {
 	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error //perm:admin
 	// SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
 	// Returns null if message wasn't sent
-	SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) //perm:admin
+	SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) //perm:admin
 	// SectorPreCommitPending returns a list of pending PreCommit sectors to be sent in the next batch message
 	SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
 	// SectorCommitFlush immediately sends a Commit message with sectors aggregated for Commit.
