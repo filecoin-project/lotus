@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -87,6 +89,7 @@ type StateManager struct {
 	expensiveUpgrades map[abi.ChainEpoch]struct{}
 
 	stCache             map[string][]cid.Cid
+	tCache              treeCache
 	compWait            map[string]chan struct{}
 	stlk                sync.Mutex
 	genesisMsigLk       sync.Mutex
@@ -97,6 +100,12 @@ type StateManager struct {
 
 	genesisPledge      abi.TokenAmount
 	genesisMarketFunds abi.TokenAmount
+}
+
+// Caches a single state tree
+type treeCache struct {
+	root cid.Cid
+	tree *state.StateTree
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -151,7 +160,11 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 		newVM:             vm.NewVM,
 		cs:                cs,
 		stCache:           make(map[string][]cid.Cid),
-		compWait:          make(map[string]chan struct{}),
+		tCache: treeCache{
+			root: cid.Undef,
+			tree: nil,
+		},
+		compWait: make(map[string]chan struct{}),
 	}, nil
 }
 
@@ -540,6 +553,52 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 	}
 
 	return vm.ResolveToKeyAddr(tree, cst, addr)
+}
+
+// ResolveToKeyAddressAtFinality is similar to stmgr.ResolveToKeyAddress but fails if the ID address being resolved isn't reorg-stable yet.
+// It should not be used for consensus-critical subsystems.
+func (sm *StateManager) ResolveToKeyAddressAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	switch addr.Protocol() {
+	case address.BLS, address.SECP256K1:
+		return addr, nil
+	case address.Actor:
+		return address.Undef, xerrors.New("cannot resolve actor address to key address")
+	default:
+	}
+
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	var err error
+	if ts.Height() > policy.ChainFinality {
+		ts, err = sm.ChainStore().GetTipsetByHeight(ctx, ts.Height()-policy.ChainFinality, ts, true)
+		if err != nil {
+			return address.Undef, xerrors.Errorf("failed to load lookback tipset: %w", err)
+		}
+	}
+
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
+	tree := sm.tCache.tree
+
+	if tree == nil || sm.tCache.root != ts.ParentState() {
+		tree, err = state.LoadStateTree(cst, ts.ParentState())
+		if err != nil {
+			return address.Undef, xerrors.Errorf("failed to load parent state tree: %w", err)
+		}
+
+		sm.tCache = treeCache{
+			root: ts.ParentState(),
+			tree: tree,
+		}
+	}
+
+	resolved, err := vm.ResolveToKeyAddr(tree, cst, addr)
+	if err == nil {
+		return resolved, nil
+	}
+
+	return address.Undef, xerrors.New("ID address not found in lookback state")
 }
 
 func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Address, ts *types.TipSet) (pubk []byte, err error) {
