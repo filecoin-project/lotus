@@ -214,7 +214,7 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	var err error
 	var res []byte
-	if rt.vm.GetNtwkVersion(rt.ctx, randEpoch) >= network.Version13 {
+	if randEpoch > build.UpgradeHyperdriveHeight {
 		res, err = rt.vm.rand.GetChainRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
 	} else {
 		res, err = rt.vm.rand.GetChainRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
