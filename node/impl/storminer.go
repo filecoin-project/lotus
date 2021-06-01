@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
@@ -373,7 +374,7 @@ func (sm *StorageMinerAPI) SectorTerminatePending(ctx context.Context) ([]abi.Se
 	return sm.Miner.TerminatePending(ctx)
 }
 
-func (sm *StorageMinerAPI) SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) {
+func (sm *StorageMinerAPI) SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) {
 	return sm.Miner.SectorPreCommitFlush(ctx)
 }
 
@@ -385,7 +386,7 @@ func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.Sect
 	return sm.Miner.MarkForUpgrade(id)
 }
 
-func (sm *StorageMinerAPI) SectorCommitFlush(ctx context.Context) (*cid.Cid, error) {
+func (sm *StorageMinerAPI) SectorCommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) {
 	return sm.Miner.CommitFlush(ctx)
 }
 

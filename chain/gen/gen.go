@@ -592,6 +592,10 @@ func (mca mca) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipS
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
+	if randEpoch > build.UpgradeHyperdriveHeight {
+		return mca.sm.ChainStore().GetChainRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	}
+
 	return mca.sm.ChainStore().GetChainRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
@@ -599,6 +603,10 @@ func (mca mca) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSe
 	pts, err := mca.sm.ChainStore().LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	if randEpoch > build.UpgradeHyperdriveHeight {
+		return mca.sm.ChainStore().GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
 	}
 
 	return mca.sm.ChainStore().GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)

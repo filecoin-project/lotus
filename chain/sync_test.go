@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/lotus/chain/stmgr"
 
 	"github.com/ipfs/go-cid"
@@ -108,6 +107,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 	}
 
 	tu.addSourceNode(stmgr.DefaultUpgradeSchedule(), h)
+
 	//tu.checkHeight("source", source, h)
 
 	// separate logs
@@ -733,7 +733,6 @@ func TestBadNonce(t *testing.T) {
 
 	// Produce a message from the banker with a bad nonce
 	makeBadMsg := func() *types.SignedMessage {
-
 		msg := types.Message{
 			To:   tu.g.Banker(),
 			From: tu.g.Banker(),
@@ -762,6 +761,114 @@ func TestBadNonce(t *testing.T) {
 	msgs[0] = []*types.SignedMessage{makeBadMsg()}
 
 	tu.mineOnBlock(base, 0, []int{0}, true, true, msgs, 0)
+}
+
+// This test introduces a block that has 2 messages, with the same sender, and same nonce.
+// One of the messages uses the sender's robust address, the other uses the ID address.
+// Such a block is invalid and should not sync.
+func TestMismatchedNoncesRobustID(t *testing.T) {
+	v5h := abi.ChainEpoch(4)
+	tu := prepSyncTestWithV5Height(t, int(v5h+5), v5h)
+
+	base := tu.g.CurTipset
+
+	// Get the banker from computed tipset state, not the parent.
+	st, _, err := tu.g.StateManager().TipSetState(context.TODO(), base.TipSet())
+	require.NoError(t, err)
+	ba, err := tu.g.StateManager().LoadActorRaw(context.TODO(), tu.g.Banker(), st)
+	require.NoError(t, err)
+
+	// Produce a message from the banker
+	makeMsg := func(id bool) *types.SignedMessage {
+		sender := tu.g.Banker()
+		if id {
+			s, err := tu.nds[0].StateLookupID(context.TODO(), sender, base.TipSet().Key())
+			require.NoError(t, err)
+			sender = s
+		}
+
+		msg := types.Message{
+			To:   tu.g.Banker(),
+			From: sender,
+
+			Nonce: ba.Nonce,
+
+			Value: types.NewInt(1),
+
+			Method: 0,
+
+			GasLimit:   100_000_000,
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
+		}
+
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		require.NoError(t, err)
+
+		return &types.SignedMessage{
+			Message:   msg,
+			Signature: *sig,
+		}
+	}
+
+	msgs := make([][]*types.SignedMessage, 1)
+	msgs[0] = []*types.SignedMessage{makeMsg(false), makeMsg(true)}
+
+	tu.mineOnBlock(base, 0, []int{0}, true, true, msgs, 0)
+}
+
+// This test introduces a block that has 2 messages, with the same sender, and nonces N and N+1 (so both can be included in a block)
+// One of the messages uses the sender's robust address, the other uses the ID address.
+// Such a block is valid and should sync.
+func TestMatchedNoncesRobustID(t *testing.T) {
+	v5h := abi.ChainEpoch(4)
+	tu := prepSyncTestWithV5Height(t, int(v5h+5), v5h)
+
+	base := tu.g.CurTipset
+
+	// Get the banker from computed tipset state, not the parent.
+	st, _, err := tu.g.StateManager().TipSetState(context.TODO(), base.TipSet())
+	require.NoError(t, err)
+	ba, err := tu.g.StateManager().LoadActorRaw(context.TODO(), tu.g.Banker(), st)
+	require.NoError(t, err)
+
+	// Produce a message from the banker with specified nonce
+	makeMsg := func(n uint64, id bool) *types.SignedMessage {
+		sender := tu.g.Banker()
+		if id {
+			s, err := tu.nds[0].StateLookupID(context.TODO(), sender, base.TipSet().Key())
+			require.NoError(t, err)
+			sender = s
+		}
+
+		msg := types.Message{
+			To:   tu.g.Banker(),
+			From: sender,
+
+			Nonce: n,
+
+			Value: types.NewInt(1),
+
+			Method: 0,
+
+			GasLimit:   100_000_000,
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
+		}
+
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		require.NoError(t, err)
+
+		return &types.SignedMessage{
+			Message:   msg,
+			Signature: *sig,
+		}
+	}
+
+	msgs := make([][]*types.SignedMessage, 1)
+	msgs[0] = []*types.SignedMessage{makeMsg(ba.Nonce, false), makeMsg(ba.Nonce+1, true)}
+
+	tu.mineOnBlock(base, 0, []int{0}, true, false, msgs, 0)
 }
 
 func BenchmarkSyncBasic(b *testing.B) {

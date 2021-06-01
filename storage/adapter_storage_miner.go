@@ -147,15 +147,7 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 		return cid.Undef, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
 	}
 
-	ts, err := s.delegate.ChainGetTipSet(ctx, tsk)
-	if err != nil {
-		return cid.Cid{}, err
-	}
-
-	// using parent ts because the migration won't be run on the first nv13
-	// tipset we apply StateCall to (because we don't run migrations in StateCall
-	// and just apply to parent state)
-	nv, err := s.delegate.StateNetworkVersion(ctx, ts.Parents())
+	nv, err := s.delegate.StateNetworkVersion(ctx, tsk)
 	if err != nil {
 		return cid.Cid{}, err
 	}

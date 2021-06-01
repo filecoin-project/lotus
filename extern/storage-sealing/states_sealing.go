@@ -355,20 +355,28 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector SectorInfo) error {
 	if sector.CommD == nil || sector.CommR == nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
 	params, deposit, _, err := m.preCommitParams(ctx, sector)
 	if params == nil || err != nil {
-		return err
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
 	}
 
-	mcid, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)
+	res, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)
 	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing precommit batch failed: %w", err)})
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("queuing precommit batch failed: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitBatchSent{mcid})
+	if res.Error != "" {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("precommit batch error: %s", res.Error)})
+	}
+
+	if res.Msg == nil {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("batch message was nil")})
+	}
+
+	return ctx.Send(SectorPreCommitBatchSent{*res.Msg})
 }
 
 func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {
@@ -581,7 +589,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
-	mcid, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
+	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
 		info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
 			Randomness:            sector.TicketValue,
@@ -596,7 +604,19 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})
 	}
 
-	return ctx.Send(SectorCommitAggregateSent{mcid})
+	if res.Error != "" {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("aggregate error: %s", res.Error)})
+	}
+
+	if e, found := res.FailedSectors[sector.SectorNumber]; found {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector failed in aggregate processing: %s", e)})
+	}
+
+	if res.Msg == nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("aggregate message was nil")})
+	}
+
+	return ctx.Send(SectorCommitAggregateSent{*res.Msg})
 }
 
 func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) error {

@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -659,7 +660,7 @@ type StorageMinerStruct struct {
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
-		SectorCommitFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
+		SectorCommitFlush func(p0 context.Context) ([]sealiface.CommitBatchRes, error) `perm:"admin"`
 
 		SectorCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
@@ -669,7 +670,7 @@ type StorageMinerStruct struct {
 
 		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
-		SectorPreCommitFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
+		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
@@ -3125,12 +3126,12 @@ func (s *StorageMinerStub) SealingSchedDiag(p0 context.Context, p1 bool) (interf
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) (*cid.Cid, error) {
+func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
 	return s.Internal.SectorCommitFlush(p0)
 }
 
-func (s *StorageMinerStub) SectorCommitFlush(p0 context.Context) (*cid.Cid, error) {
-	return nil, xerrors.New("method not supported")
+func (s *StorageMinerStub) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
+	return *new([]sealiface.CommitBatchRes), xerrors.New("method not supported")
 }
 
 func (s *StorageMinerStruct) SectorCommitPending(p0 context.Context) ([]abi.SectorID, error) {
@@ -3165,12 +3166,12 @@ func (s *StorageMinerStub) SectorMarkForUpgrade(p0 context.Context, p1 abi.Secto
 	return xerrors.New("method not supported")
 }
 
-func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) (*cid.Cid, error) {
+func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
 	return s.Internal.SectorPreCommitFlush(p0)
 }
 
-func (s *StorageMinerStub) SectorPreCommitFlush(p0 context.Context) (*cid.Cid, error) {
-	return nil, xerrors.New("method not supported")
+func (s *StorageMinerStub) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
+	return *new([]sealiface.PreCommitBatchRes), xerrors.New("method not supported")
 }
 
 func (s *StorageMinerStruct) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {

@@ -92,6 +92,13 @@ func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
 		miner4.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
 
 		miner5.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+		wpp, err := t.RegisteredWindowPoStProof()
+		if err != nil {
+			// Fine to panic, this is a test-only method
+			panic(err)
+		}
+
+		miner5.WindowPoStProofTypes[wpp] = struct{}{}
 
 	}
 }

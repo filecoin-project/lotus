@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
 const SectorStorePrefix = "/sectors"
@@ -207,7 +208,7 @@ func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) 
 	return m.terminator.Pending(ctx)
 }
 
-func (m *Sealing) SectorPreCommitFlush(ctx context.Context) (*cid.Cid, error) {
+func (m *Sealing) SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) {
 	return m.precommiter.Flush(ctx)
 }
 
@@ -215,7 +216,7 @@ func (m *Sealing) SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, e
 	return m.precommiter.Pending(ctx)
 }
 
-func (m *Sealing) CommitFlush(ctx context.Context) (*cid.Cid, error) {
+func (m *Sealing) CommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) {
 	return m.commiter.Flush(ctx)
 }
 

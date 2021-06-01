@@ -26,7 +26,7 @@ type Provider interface {
 	PutMessage(m types.ChainMsg) (cid.Cid, error)
 	PubSubPublish(string, []byte) error
 	GetActorAfter(address.Address, *types.TipSet) (*types.Actor, error)
-	StateAccountKey(context.Context, address.Address, *types.TipSet) (address.Address, error)
+	StateAccountKeyAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
 	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
@@ -40,6 +40,8 @@ type mpoolProvider struct {
 
 	lite messagesigner.MpoolNonceAPI
 }
+
+var _ Provider = (*mpoolProvider)(nil)
 
 func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
 	return &mpoolProvider{sm: sm, ps: ps}
@@ -97,8 +99,8 @@ func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) 
 	return st.GetActor(addr)
 }
 
-func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	return mpp.sm.ResolveToKeyAddress(ctx, addr, ts)
+func (mpp *mpoolProvider) StateAccountKeyAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	return mpp.sm.ResolveToKeyAddressAtFinality(ctx, addr, ts)
 }
 
 func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {

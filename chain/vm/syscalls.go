@@ -287,7 +287,7 @@ func (ss *syscallShim) VerifyAggregateSeals(aggregate proof5.AggregateSealVerify
 		return xerrors.Errorf("failed to verify aggregated PoRep: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("invalid aggredate proof")
+		return fmt.Errorf("invalid aggregate proof")
 	}
 
 	return nil
