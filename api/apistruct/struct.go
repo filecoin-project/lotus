@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -639,7 +640,7 @@ type StorageMinerStruct struct {
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
-		SectorCommitFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
+		SectorCommitFlush func(p0 context.Context) ([]sealiface.CommitBatchRes, error) `perm:"admin"`
 
 		SectorCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
@@ -649,7 +650,7 @@ type StorageMinerStruct struct {
 
 		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
-		SectorPreCommitFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
+		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
@@ -1931,7 +1932,7 @@ func (s *StorageMinerStruct) SealingSchedDiag(p0 context.Context, p1 bool) (inte
 	return s.Internal.SealingSchedDiag(p0, p1)
 }
 
-func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) (*cid.Cid, error) {
+func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
 	return s.Internal.SectorCommitFlush(p0)
 }
 
@@ -1951,7 +1952,7 @@ func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.Sec
 	return s.Internal.SectorMarkForUpgrade(p0, p1)
 }
 
-func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) (*cid.Cid, error) {
+func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
 	return s.Internal.SectorPreCommitFlush(p0)
 }
 
