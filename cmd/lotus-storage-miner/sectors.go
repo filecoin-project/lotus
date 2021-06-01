@@ -980,7 +980,7 @@ var sectorsBatching = &cli.Command{
 }
 
 var sectorsBatchingPendingCommit = &cli.Command{
-	Name:  "pending-commit",
+	Name:  "commit",
 	Usage: "list sectors waiting in commit batch queue",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -1042,7 +1042,7 @@ var sectorsBatchingPendingCommit = &cli.Command{
 }
 
 var sectorsBatchingPendingPreCommit = &cli.Command{
-	Name:  "pending-precommit",
+	Name:  "precommit",
 	Usage: "list sectors waiting in precommit batch queue",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
