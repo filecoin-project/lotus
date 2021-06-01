@@ -2,8 +2,9 @@ package test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/network"
 	"strings"
+
+	"github.com/filecoin-project/go-state-types/network"
 
 	lapi "github.com/filecoin-project/lotus/api"
 
@@ -23,7 +24,7 @@ func AddVerifiedClient(t *testing.T, b APIBuilder) {
 	test := func(nv network.Version, shouldWork bool) func(*testing.T) {
 		return func(t *testing.T) {
 
-			nodes, miners := b(t, []FullNodeOpts{FullNodeWithActorsUpgradeAt(nv, -1)}, OneMiner)
+			nodes, miners := b(t, []FullNodeOpts{FullNodeWithNetworkUpgradeAt(nv, -1)}, OneMiner)
 			api := nodes[0].FullNode.(*impl.FullNodeAPI)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -128,7 +129,7 @@ func AddVerifiedClient(t *testing.T, b APIBuilder) {
 				t.Fatal("expected nil err", err)
 			}
 
-			if !shouldWork && err == nil || !strings.Contains(err.Error(), "verified client already exists") {
+			if !shouldWork && (err == nil || !strings.Contains(err.Error(), "verified client already exists")) {
 				t.Fatal("Add datacap to an existing verified client should fail")
 			}
 		}

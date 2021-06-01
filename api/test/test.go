@@ -123,10 +123,10 @@ var TwoFull = DefaultFullOpts(2)
 
 var FullNodeWithLatestActorsAt = func(upgradeHeight abi.ChainEpoch) FullNodeOpts {
 	// Attention: Update this when introducing new actor versions or your tests will be sad
-	return FullNodeWithActorsUpgradeAt(network.Version13, upgradeHeight)
+	return FullNodeWithNetworkUpgradeAt(network.Version13, upgradeHeight)
 }
 
-var FullNodeWithActorsUpgradeAt = func(version network.Version, upgradeHeight abi.ChainEpoch) FullNodeOpts {
+var FullNodeWithNetworkUpgradeAt = func(version network.Version, upgradeHeight abi.ChainEpoch) FullNodeOpts {
 	fullSchedule := stmgr.UpgradeSchedule{{
 		// prepare for upgrade.
 		Network:   network.Version9,
@@ -158,9 +158,10 @@ var FullNodeWithActorsUpgradeAt = func(version network.Version, upgradeHeight ab
 	if upgradeHeight > 0 {
 		schedule[len(schedule)-1].Height = upgradeHeight
 	}
+
 	return FullNodeOpts{
 		Opts: func(nodes []TestNode) node.Option {
-			return node.Override(new(stmgr.UpgradeSchedule), fullSchedule)
+			return node.Override(new(stmgr.UpgradeSchedule), schedule)
 		},
 	}
 }
