@@ -1,6 +1,6 @@
 module github.com/filecoin-project/lotus/testplans/lotus-soup
 
-go 1.15
+go 1.16
 
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
@@ -13,7 +13,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v1.9.0
+	github.com/filecoin-project/lotus v1.9.1-0.20210602101339-07b025a54f6d
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.4
