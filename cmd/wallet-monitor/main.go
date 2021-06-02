@@ -37,6 +37,12 @@ func main() {
 		Usage:       "monitor wallet addresses",
 		Version:     build.UserVersion(),
 		Description: "Export wallet balances as metrics",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "listen",
+				Value: "0.0.0.0:8888",
+			},
+		},
 		Action: func(cctx *cli.Context) error {
 			api, closer, err := cliutil.GetFullNodeAPI(cctx)
 			if err != nil {
@@ -58,7 +64,7 @@ func main() {
 			go func() {
 				mux := http.NewServeMux()
 				mux.Handle("/metrics", pe)
-				if err := http.ListenAndServe(":8888", mux); err != nil {
+				if err := http.ListenAndServe(cctx.String("listen"), mux); err != nil {
 					log.Fatalw("failed to run endpoint", "err", err)
 				}
 			}()
