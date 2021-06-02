@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/davecgh/go-spew/spew"
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
@@ -190,6 +191,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		{
 			publish := func(params *market.PublishStorageDealsParams) error {
+				spew.Dump(params)
 				fmt.Printf("publishing %d storage deals on miner %s with worker %s\n", len(params.Deals), params.Deals[0].Proposal.Provider, m.Worker)
 
 				ret, err := doExecValue(ctx, vm, market.Address, m.Worker, big.Zero(), builtin0.MethodsMarket.PublishStorageDeals, mustEnc(params))
