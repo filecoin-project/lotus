@@ -39,7 +39,7 @@ const UpgradeClausHeight = 250
 
 const UpgradeOrangeHeight = 300
 
-const UpgradeActorsV3Height = 600
+const UpgradeTrustHeight = 600
 const UpgradeNorwegianHeight = 201000
 const UpgradeActorsV4Height = 203000
 const UpgradeHyperdriveHeight = 999999999
