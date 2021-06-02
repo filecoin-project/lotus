@@ -16,19 +16,27 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var (
 	log = logging.Logger("main")
 
-	keyWallet   = tag.MustNewKey("wallet")
-	balMetric   = stats.Int64("wallet/balance", "wallet blance", "FIL")
+	keyAddress  = tag.MustNewKey("address")
+	balMetric   = stats.Int64("actor/balance", "actor blance", "FIL")
+	nonceMetric = stats.Int64("actor/nonce", "nonce", "n")
 	balanceView = &view.View{
-		Name:        "wallet/balance",
+		Name:        "actor/balance",
 		Measure:     balMetric,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{keyWallet},
+		TagKeys:     []tag.Key{keyAddress},
+	}
+	nonceView = &view.View{
+		Name:        "actor/nonce",
+		Measure:     nonceMetric,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{keyAddress},
 	}
 )
 
@@ -51,7 +59,7 @@ func main() {
 			}
 			defer closer()
 
-			if err := view.Register(balanceView); err != nil {
+			if err := view.Register(balanceView, nonceView); err != nil {
 				return err
 			}
 
@@ -70,20 +78,25 @@ func main() {
 				}
 			}()
 
-			for range time.Tick(time.Minute) {
+			for range time.Tick(5 * time.Second) {
 				for _, arg := range cctx.Args().Slice() {
 					addr, err := address.NewFromString(arg)
 					if err != nil {
 						log.Warnw("invalid address will not be monitored", "address", arg, "err", err)
 					}
-					ctx, _ := tag.New(cctx.Context, tag.Insert(keyWallet, addr.String()))
-					bal, err := api.WalletBalance(ctx, addr)
+					ctx, _ := tag.New(cctx.Context, tag.Insert(keyAddress, addr.String()))
+					actor, err := api.StateGetActor(ctx, addr, types.TipSetKey{})
 					if err != nil {
-						log.Warnf("could not get balance", "address", arg, "err", err)
+						log.Warnf("could not get actor", "address", arg, "err", err)
+					}
+					if actor == nil {
+						log.Warnw("actor not found", "actor", arg)
+						continue
 					}
 					var fil big.Int
-					fil.Div(bal.Int, big.NewInt(1000000000000000000))
+					fil.Div(actor.Balance.Int, big.NewInt(1000000000000000000))
 					stats.Record(ctx, balMetric.M(fil.Int64()))
+					stats.Record(ctx, nonceMetric.M(int64(actor.Nonce)))
 				}
 			}
 
