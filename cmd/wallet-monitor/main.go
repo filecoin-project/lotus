@@ -87,7 +87,7 @@ func main() {
 					ctx, _ := tag.New(cctx.Context, tag.Insert(keyAddress, addr.String()))
 					actor, err := api.StateGetActor(ctx, addr, types.TipSetKey{})
 					if err != nil {
-						log.Warnf("could not get actor", "address", arg, "err", err)
+						log.Warnw("could not get actor", "address", arg, "err", err)
 					}
 					if actor == nil {
 						log.Warnw("actor not found", "actor", arg)
