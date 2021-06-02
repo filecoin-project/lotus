@@ -11,9 +11,9 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.6.0
 	github.com/filecoin-project/go-fil-markets v1.4.0
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
-	github.com/filecoin-project/go-state-types v0.1.0
+	github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v1.9.1-0.20210602101339-07b025a54f6d
+	github.com/filecoin-project/lotus v1.9.1-0.20210602131226-e1dc7ad6eb9e
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.4
