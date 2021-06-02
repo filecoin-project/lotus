@@ -11,7 +11,7 @@ executors:
     resource_class: 2xlarge
   ubuntu:
     docker:
-      - image: ubuntu:19.10
+      - image: ubuntu:20.04
 
 commands:
   install-deps:
@@ -747,7 +747,7 @@ workflows:
           filters:
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - test-conformance:
           test-suite-name: conformance
           packages: "./conformance"
@@ -768,28 +768,28 @@ workflows:
           filters:
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-calibration:
           requires:
             - test-short
           filters:
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-butterfly:
           requires:
             - test-short
           filters:
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-nerpa:
           requires:
             - test-short
           filters:
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
       - build-macos:
           requires:
@@ -800,7 +800,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
@@ -811,7 +811,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-and-push-image:
           dockerfile: Dockerfile.lotus
           path: .
@@ -826,7 +826,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-packer-calibrationnet:
           requires:
             - build-ntwk-calibration
@@ -836,7 +836,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-packer-butterflynet:
           requires:
             - build-ntwk-butterfly
@@ -846,7 +846,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-packer-nerpanet:
           requires:
             - build-ntwk-nerpa
@@ -856,4 +856,4 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
