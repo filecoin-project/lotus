@@ -107,6 +107,7 @@ BINS+=lotus-shed
 
 lotus-gateway: $(BUILD_DEPS)
 	rm -f lotus-gateway
+	go build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
