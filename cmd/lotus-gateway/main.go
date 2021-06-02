@@ -8,13 +8,17 @@ import (
 	"os"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/gateway"
+	"github.com/gorilla/mux"
+	logging "github.com/ipfs/go-log/v2"
 	promclient "github.com/prometheus/client_golang/prometheus"
+	"github.com/urfave/cli/v2"
+	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
@@ -23,15 +27,9 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/cli/util"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
-
-	logging "github.com/ipfs/go-log/v2"
-	"go.opencensus.io/stats/view"
-
-	"github.com/gorilla/mux"
-	"github.com/urfave/cli/v2"
 )
 
 var log = logging.Logger("gateway")
