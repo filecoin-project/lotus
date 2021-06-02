@@ -32,6 +32,7 @@ if [ "${RELEASE_ID}" = "null" ]; then
   RELEASE_DATA="{
     \"tag_name\": \"${CIRCLE_TAG}\",
     \"target_commitish\": \"${CIRCLE_SHA1}\",
+    \"discussion_category_name\": \"announcement\",
     \"name\": \"${CIRCLE_TAG}\",
     \"body\": \"\",
     \"prerelease\": false
@@ -51,8 +52,9 @@ else
 fi
 
 RELEASE_UPLOAD_URL=`echo "${RELEASE_RESPONSE}" | jq -r '.upload_url' | cut -d'{' -f1`
+echo "Preparing to send artifacts to ${RELEASE_UPLOAD_URL}"
 
-bundles=(
+artifacts=(
   "lotus_${CIRCLE_TAG}_linux-amd64.tar.gz"
   "lotus_${CIRCLE_TAG}_linux-amd64.tar.gz.cid"
   "lotus_${CIRCLE_TAG}_linux-amd64.tar.gz.sha512"
@@ -60,9 +62,10 @@ bundles=(
   "lotus_${CIRCLE_TAG}_darwin-amd64.tar.gz.cid"
   "lotus_${CIRCLE_TAG}_darwin-amd64.tar.gz.sha512"
 )
-for RELEASE_FILE in "${bundles[@]}"
+
+for RELEASE_FILE in "${artifacts[@]}"
 do
-  echo "Uploading release bundle: ${RELEASE_FILE}"
+  echo "Uploading ${RELEASE_FILE}..."
   curl \
     --request POST \
     --header "Authorization: token ${GITHUB_TOKEN}" \
@@ -70,7 +73,7 @@ do
     --data-binary "@${RELEASE_FILE}" \
     "$RELEASE_UPLOAD_URL?name=$(basename "${RELEASE_FILE}")"
 
-  echo "Release bundle uploaded: ${RELEASE_FILE}"
+  echo "Uploaded ${RELEASE_FILE}"
 done
 
 popd
