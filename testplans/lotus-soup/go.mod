@@ -15,6 +15,7 @@ require (
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/lotus v1.9.1-0.20210602131226-e1dc7ad6eb9e
 	github.com/filecoin-project/specs-actors v0.9.14
+	github.com/filecoin-project/specs-actors/v5 v5.0.0-20210602024058-0c296bb386bf // indirect
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.1.0
