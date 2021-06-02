@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/big"
 	"net/http"
 	"os"
 	"time"
@@ -69,7 +70,7 @@ func main() {
 				}
 			}()
 
-			for range time.Tick(time.Minute) {
+			for range time.Tick(5 * time.Second) {
 				for _, arg := range cctx.Args().Slice() {
 					addr, err := address.NewFromString(arg)
 					if err != nil {
@@ -80,7 +81,9 @@ func main() {
 					if err != nil {
 						log.Warnf("could not get balance", "address", arg, "err", err)
 					}
-					stats.Record(ctx, balMetric.M(bal.Int64()))
+					var fil big.Int
+					fil.Div(bal.Int, big.NewInt(1000000000000000000))
+					stats.Record(ctx, balMetric.M(fil.Int64()))
 				}
 			}
 
