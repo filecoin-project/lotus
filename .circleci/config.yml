@@ -802,8 +802,8 @@ workflows:
                 - master
       - build-debug
       - build-all:
-          # requires:
-          #   - test-short
+          requires:
+            - test-short
           filters:
             tags:
               only:
