@@ -34,7 +34,9 @@ type SectorMgr struct {
 	lk sync.Mutex
 }
 
-type mockVerifProver struct{}
+type mockVerifProver struct {
+	aggregates map[string]proof5.AggregateSealVerifyProofAndInfos // used for logging bad verifies
+}
 
 func NewMockSectorMgr(genesisSectors []abi.SectorID) *SectorMgr {
 	sectors := make(map[abi.SectorID]*sectorState)
@@ -522,7 +524,19 @@ func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 		}
 	}
 
-	return bytes.Equal(aggregate.Proof, out), nil
+	ok := bytes.Equal(aggregate.Proof, out)
+	if !ok {
+		genInfo, found := m.aggregates[string(aggregate.Proof)]
+		if !found {
+			log.Errorf("BAD AGGREGATE: saved generate inputs not found; agg.Proof: %x; expected: %x", aggregate.Proof, out)
+		} else {
+			log.Errorf("BAD AGGREGATE (1): agg.Proof: %x; expected: %x", aggregate.Proof, out)
+			log.Errorf("BAD AGGREGATE (2): Verify   Infos: %+v", aggregate.Infos)
+			log.Errorf("BAD AGGREGATE (3): Generate Infos: %+v", genInfo.Infos)
+		}
+	}
+
+	return ok, nil
 }
 
 func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
@@ -532,6 +546,8 @@ func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealV
 			out[i] += proof[i] * uint8(pi)
 		}
 	}
+
+	m.aggregates[string(out)] = aggregateInfo
 
 	return out, nil
 }
@@ -592,8 +608,11 @@ func (m mockVerifProver) GenerateWinningPoStSectorChallenge(ctx context.Context,
 	return []uint64{0}, nil
 }
 
-var MockVerifier = mockVerifProver{}
-var MockProver = mockVerifProver{}
+var MockVerifier = mockVerifProver{
+	aggregates: map[string]proof5.AggregateSealVerifyProofAndInfos{},
+}
+
+var MockProver = MockVerifier
 
 var _ storage.Sealer = &SectorMgr{}
 var _ ffiwrapper.Verifier = MockVerifier
