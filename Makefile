@@ -221,6 +221,11 @@ testground:
 .PHONY: testground
 BINS+=testground
 
+wallet-monitor:
+	go build -o wallet-monitor ./cmd/wallet-monitor
+.PHONY: wallet-monitor
+BINS+=wallet-monitor
+
 
 tvx:
 	rm -f tvx
