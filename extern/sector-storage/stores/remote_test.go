@@ -27,8 +27,10 @@ func TestReader(t *testing.T) {
 	bz := []byte("Hello World")
 
 	pfPath := "path"
-	ft := storiface.FTUnsealed
 	emptyPartialFile := &partialfile.PartialFile{}
+	sectorSize := abi.SealProofInfos[1].SectorSize
+
+	ft := storiface.FTUnsealed
 
 	sectorRef := storage.SectorRef{
 		ID: abi.SectorID{
@@ -37,7 +39,6 @@ func TestReader(t *testing.T) {
 		},
 		ProofType: 1,
 	}
-	sectorSize := abi.SealProofInfos[1].SectorSize
 
 	offset := abi.PaddedPieceSize(100)
 	size := abi.PaddedPieceSize(1000)
@@ -283,6 +284,8 @@ func TestReader(t *testing.T) {
 					expectedSectorType: fmt.Sprintf("%d", sectorRef.ProofType),
 
 					getAllocatedReturnCode: tc.getAllocatedReturnCode,
+					getSectorReturnCode:    tc.getSectorReturnCode,
+					getSectorBytes:         tc.expectedSectorBytes,
 				})
 				defer ts.Close()
 				tc.serverUrl = fmt.Sprintf("%s/remote/%s/%s", ts.URL, ft.String(), storiface.SectorName(sectorRef.ID))
@@ -594,10 +597,14 @@ type mockHttpServer struct {
 	expectedSectorType string
 
 	getAllocatedReturnCode int
+
+	getSectorReturnCode int
+	getSectorBytes      []byte
 }
 
 func (m *mockHttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mux := mux.NewRouter()
+	mux.HandleFunc("/remote/{type}/{id}", m.getSector).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}/{spt}/allocated/{offset}/{size}", m.getAllocated).Methods("GET")
 	mux.ServeHTTP(w, r)
 }
@@ -631,4 +638,21 @@ func (m *mockHttpServer) getAllocated(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(m.getAllocatedReturnCode)
+}
+
+func (m *mockHttpServer) getSector(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	if vars["id"] != m.expectedSectorName {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if vars["type"] != m.expectedFileType {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(m.getSectorReturnCode)
+	_, _ = w.Write(m.getSectorBytes)
 }
