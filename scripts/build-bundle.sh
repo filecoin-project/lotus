@@ -49,4 +49,7 @@ do
 
     ipfs add -q "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.cid"
 done
+cp "../appimage/Lotus-${CIRCLE_TAG}-x86_64.AppImage" .
+sha512sum "Lotus-${CIRCLE_TAG}-x86_64.AppImage" > "Lotus-${CIRCLE_TAG}-x86_64.AppImage.sha512"
+ipfs add -q "Lotus-${CIRCLE_TAG}-x86_64.AppImage" > "Lotus-${CIRCLE_TAG}-x86_64.AppImage.cid"
 popd
