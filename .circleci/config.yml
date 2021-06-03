@@ -804,10 +804,10 @@ workflows:
       - build-all:
           requires:
             - test-short
-          # filters:
-          #   tags:
-          #     only:
-          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-calibration:
           requires:
             - test-short
@@ -833,35 +833,35 @@ workflows:
       - build-macos:
           requires:
             - test-short
-          # filters:
-          #   branches:
-          #     ignore:
-          #       - /.*/
-          #   tags:
-          #     only:
-          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-appimage:
           requires:
             - test-short
-          # filters:
-          #   branches:
-          #     ignore:
-          #       - /.*/
-          #   tags:
-          #     only:
-          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
             - build-macos
             - build-appimage
-          # filters:
-          #   branches:
-          #     ignore:
-          #       - /.*/
-          #   tags:
-          #     only:
-          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-and-push-image:
           dockerfile: Dockerfile.lotus
           path: .

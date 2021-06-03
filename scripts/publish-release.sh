@@ -18,8 +18,6 @@ do
     command -v "${REQUIRE}" >/dev/null 2>&1 || echo >&2 "'${REQUIRE}' must be installed"
 done
 
-CIRCLE_TAG=DEFINITELYDOESNOTEXIST
-
 #see if the release already exists by tag
 RELEASE_RESPONSE=`
   curl \
@@ -49,7 +47,7 @@ if [ "${RELEASE_ID}" = "null" ]; then
 
   # create it if it doesn't exist yet
   RELEASE_RESPONSE=`
-    echo curl \
+    curl \
         --request POST \
         --header "Authorization: token ${GITHUB_TOKEN}" \
         --header "Content-Type: application/json" \
@@ -59,8 +57,6 @@ if [ "${RELEASE_ID}" = "null" ]; then
 else
   echo "release already exists"
 fi
-
-RELEASE_RESPONSE=DEFINITELYDOESNOTEXIST
 
 RELEASE_UPLOAD_URL=`echo "${RELEASE_RESPONSE}" | jq -r '.upload_url' | cut -d'{' -f1`
 echo "Preparing to send artifacts to ${RELEASE_UPLOAD_URL}"
@@ -80,7 +76,7 @@ artifacts=(
 for RELEASE_FILE in "${artifacts[@]}"
 do
   echo "Uploading ${RELEASE_FILE}..."
-  echo curl \
+  curl \
     --request POST \
     --header "Authorization: token ${GITHUB_TOKEN}" \
     --header "Content-Type: application/octet-stream" \
@@ -100,7 +96,7 @@ miscellaneous=(
 for MISC in "${miscellaneous[@]}"
 do
   echo "Uploading release bundle: ${MISC}"
-  echo curl \
+  curl \
     --request POST \
     --header "Authorization: token ${GITHUB_TOKEN}" \
     --header "Content-Type: application/octet-stream" \
