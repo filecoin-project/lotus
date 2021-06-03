@@ -78,7 +78,7 @@ func main() {
 				}
 			}()
 
-			for range time.Tick(5 * time.Second) {
+			for range time.Tick(time.Minute) {
 				for _, arg := range cctx.Args().Slice() {
 					addr, err := address.NewFromString(arg)
 					if err != nil {
