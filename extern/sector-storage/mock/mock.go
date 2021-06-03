@@ -9,7 +9,7 @@ import (
 	"math/rand"
 	"sync"
 
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	ffiwrapper2 "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	commcid "github.com/filecoin-project/go-fil-commcid"
@@ -34,7 +34,7 @@ type SectorMgr struct {
 	lk sync.Mutex
 }
 
-type mockVerif struct{}
+type mockVerifProver struct{}
 
 func NewMockSectorMgr(genesisSectors []abi.SectorID) *SectorMgr {
 	sectors := make(map[abi.SectorID]*sectorState)
@@ -300,14 +300,14 @@ func AddOpFinish(ctx context.Context) (context.Context, func()) {
 	}
 }
 
-func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) ([]proof2.PoStProof, error) {
+func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof5.SectorInfo, randomness abi.PoStRandomness) ([]proof5.PoStProof, error) {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 
 	return generateFakePoSt(sectorInfo, abi.RegisteredSealProof.RegisteredWinningPoStProof, randomness), nil
 }
 
-func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) ([]proof2.PoStProof, []abi.SectorID, error) {
+func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof5.SectorInfo, randomness abi.PoStRandomness) ([]proof5.PoStProof, []abi.SectorID, error) {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 
@@ -315,7 +315,8 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 		return nil, nil, xerrors.Errorf("failed to post (mock)")
 	}
 
-	si := make([]proof2.SectorInfo, 0, len(sectorInfo))
+	si := make([]proof5.SectorInfo, 0, len(sectorInfo))
+
 	var skipped []abi.SectorID
 
 	var err error
@@ -343,7 +344,7 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 	return generateFakePoSt(si, abi.RegisteredSealProof.RegisteredWindowPoStProof, randomness), skipped, nil
 }
 
-func generateFakePoStProof(sectorInfo []proof2.SectorInfo, randomness abi.PoStRandomness) []byte {
+func generateFakePoStProof(sectorInfo []proof5.SectorInfo, randomness abi.PoStRandomness) []byte {
 	randomness[31] &= 0x3f
 
 	hasher := sha256.New()
@@ -358,13 +359,13 @@ func generateFakePoStProof(sectorInfo []proof2.SectorInfo, randomness abi.PoStRa
 
 }
 
-func generateFakePoSt(sectorInfo []proof2.SectorInfo, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error), randomness abi.PoStRandomness) []proof2.PoStProof {
+func generateFakePoSt(sectorInfo []proof5.SectorInfo, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error), randomness abi.PoStRandomness) []proof5.PoStProof {
 	wp, err := rpt(sectorInfo[0].SealProof)
 	if err != nil {
 		panic(err)
 	}
 
-	return []proof2.PoStProof{
+	return []proof5.PoStProof{
 		{
 			PoStProof:  wp,
 			ProofBytes: generateFakePoStProof(sectorInfo, randomness),
@@ -489,7 +490,7 @@ func (mgr *SectorMgr) ReturnFetch(ctx context.Context, callID storiface.CallID, 
 	panic("not supported")
 }
 
-func (m mockVerif) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
+func (m mockVerifProver) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
 	plen, err := svi.SealProof.ProofSize()
 	if err != nil {
 		return false, err
@@ -501,6 +502,7 @@ func (m mockVerif) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 
 	// only the first 32 bytes, the rest are 0.
 	for i, b := range svi.Proof[:32] {
+		// unsealed+sealed-seed*ticket
 		if b != svi.UnsealedCID.Bytes()[i]+svi.SealedCID.Bytes()[31-i]-svi.InteractiveRandomness[i]*svi.Randomness[i] {
 			return false, nil
 		}
@@ -509,12 +511,66 @@ func (m mockVerif) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
+func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+	out := make([]byte, m.aggLen(len(aggregate.Infos)))
+	for pi, svi := range aggregate.Infos {
+		for i := 0; i < 32; i++ {
+			b := svi.UnsealedCID.Bytes()[i] + svi.SealedCID.Bytes()[31-i] - svi.InteractiveRandomness[i]*svi.Randomness[i] // raw proof byte
+
+			b *= uint8(pi) // with aggregate index
+			out[i] += b
+		}
+	}
+
+	return bytes.Equal(aggregate.Proof, out), nil
+}
+
+func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
+	out := make([]byte, m.aggLen(len(aggregateInfo.Infos))) // todo: figure out more real length
+	for pi, proof := range proofs {
+		for i := range proof[:32] {
+			out[i] += proof[i] * uint8(pi)
+		}
+	}
+
+	return out, nil
+}
+
+func (m mockVerifProver) aggLen(nproofs int) int {
+	switch {
+	case nproofs <= 8:
+		return 11220
+	case nproofs <= 16:
+		return 14196
+	case nproofs <= 32:
+		return 17172
+	case nproofs <= 64:
+		return 20148
+	case nproofs <= 128:
+		return 23124
+	case nproofs <= 256:
+		return 26100
+	case nproofs <= 512:
+		return 29076
+	case nproofs <= 1024:
+		return 32052
+	case nproofs <= 2048:
+		return 35028
+	case nproofs <= 4096:
+		return 38004
+	case nproofs <= 8192:
+		return 40980
+	default:
+		panic("too many proofs")
+	}
+}
+
+func (m mockVerifProver) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
 	info.Randomness[31] &= 0x3f
 	return true, nil
 }
 
-func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error) {
+func (m mockVerifProver) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error) {
 	if len(info.Proofs) != 1 {
 		return false, xerrors.Errorf("expected 1 proof entry")
 	}
@@ -528,15 +584,17 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStV
 	return true, nil
 }
 
-func (m mockVerif) GenerateDataCommitment(pt abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (m mockVerifProver) GenerateDataCommitment(pt abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return ffiwrapper.GenerateUnsealedCID(pt, pieces)
 }
 
-func (m mockVerif) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
+func (m mockVerifProver) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	return []uint64{0}, nil
 }
 
-var MockVerifier = mockVerif{}
+var MockVerifier = mockVerifProver{}
+var MockProver = mockVerifProver{}
 
 var _ storage.Sealer = &SectorMgr{}
 var _ ffiwrapper.Verifier = MockVerifier
+var _ ffiwrapper.Prover = MockProver

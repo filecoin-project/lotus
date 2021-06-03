@@ -516,7 +516,7 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		return pubsub.ValidationReject
 	}
 
-	if err := mv.mpool.Add(m); err != nil {
+	if err := mv.mpool.Add(ctx, m); err != nil {
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		ctx, _ = tag.New(
 			ctx,

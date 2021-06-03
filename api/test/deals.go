@@ -500,6 +500,8 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 			require.NoError(t, miner.SectorStartSealing(ctx, snum))
 		}
 	}
+
+	flushSealingBatches(t, ctx, miner)
 }
 
 func testRetrieval(t *testing.T, ctx context.Context, client api.FullNode, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {

@@ -72,12 +72,26 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 	),
 	PreCommitting: planOne(
-		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
+		on(SectorPreCommitBatch{}, SubmitPreCommitBatch),
 		on(SectorPreCommitted{}, PreCommitWait),
+		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 		on(SectorPreCommitLanded{}, WaitSeed),
 		on(SectorDealsExpired{}, DealsExpired),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
+	),
+	SubmitPreCommitBatch: planOne(
+		on(SectorPreCommitBatchSent{}, PreCommitBatchWait),
+		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+		on(SectorPreCommitLanded{}, WaitSeed),
+		on(SectorDealsExpired{}, DealsExpired),
+		on(SectorInvalidDealIDs{}, RecoverDealIDs),
+	),
+	PreCommitBatchWait: planOne(
+		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+		on(SectorPreCommitLanded{}, WaitSeed),
+		on(SectorRetryPreCommit{}, PreCommitting),
 	),
 	PreCommitWait: planOne(
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
@@ -91,9 +105,19 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	Committing: planCommitting,
 	SubmitCommit: planOne(
 		on(SectorCommitSubmitted{}, CommitWait),
+		on(SectorSubmitCommitAggregate{}, SubmitCommitAggregate),
+		on(SectorCommitFailed{}, CommitFailed),
+	),
+	SubmitCommitAggregate: planOne(
+		on(SectorCommitAggregateSent{}, CommitWait),
 		on(SectorCommitFailed{}, CommitFailed),
 	),
 	CommitWait: planOne(
+		on(SectorProving{}, FinalizeSector),
+		on(SectorCommitFailed{}, CommitFailed),
+		on(SectorRetrySubmitCommit{}, SubmitCommit),
+	),
+	CommitAggregateWait: planOne(
 		on(SectorProving{}, FinalizeSector),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
@@ -337,6 +361,10 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePreCommit2, processed, nil
 	case PreCommitting:
 		return m.handlePreCommitting, processed, nil
+	case SubmitPreCommitBatch:
+		return m.handleSubmitPreCommitBatch, processed, nil
+	case PreCommitBatchWait:
+		fallthrough
 	case PreCommitWait:
 		return m.handlePreCommitWait, processed, nil
 	case WaitSeed:
@@ -345,6 +373,10 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleCommitting, processed, nil
 	case SubmitCommit:
 		return m.handleSubmitCommit, processed, nil
+	case SubmitCommitAggregate:
+		return m.handleSubmitCommitAggregate, processed, nil
+	case CommitAggregateWait:
+		fallthrough
 	case CommitWait:
 		return m.handleCommitWait, processed, nil
 	case FinalizeSector:

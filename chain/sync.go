@@ -1074,9 +1074,19 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
-		if _, ok := nonces[m.From]; !ok {
+		var sender address.Address
+		if syncer.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version13 {
+			sender, err = st.LookupID(m.From)
+			if err != nil {
+				return err
+			}
+		} else {
+			sender = m.From
+		}
+
+		if _, ok := nonces[sender]; !ok {
 			// `GetActor` does not validate that this is an account actor.
-			act, err := st.GetActor(m.From)
+			act, err := st.GetActor(sender)
 			if err != nil {
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
@@ -1084,13 +1094,13 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			if !builtin.IsAccountActor(act.Code) {
 				return xerrors.New("Sender must be an account actor")
 			}
-			nonces[m.From] = act.Nonce
+			nonces[sender] = act.Nonce
 		}
 
-		if nonces[m.From] != m.Nonce {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.Nonce)
+		if nonces[sender] != m.Nonce {
+			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[sender], m.Nonce)
 		}
-		nonces[m.From]++
+		nonces[sender]++
 
 		return nil
 	}

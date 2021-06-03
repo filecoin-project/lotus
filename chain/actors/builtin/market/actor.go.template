@@ -104,6 +104,7 @@ type DealProposals interface {
 
 type PublishStorageDealsParams = market0.PublishStorageDealsParams
 type PublishStorageDealsReturn = market0.PublishStorageDealsReturn
+type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
 type WithdrawBalanceParams = market0.WithdrawBalanceParams
 
 type ClientDealProposal = market0.ClientDealProposal
@@ -111,7 +112,7 @@ type ClientDealProposal = market0.ClientDealProposal
 type DealState struct {
 	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
 	LastUpdatedEpoch abi.ChainEpoch // -1 if deal state never updated
-	SlashEpoch		 abi.ChainEpoch // -1 if deal never slashed
+	SlashEpoch       abi.ChainEpoch // -1 if deal never slashed
 }
 
 type DealProposal struct {

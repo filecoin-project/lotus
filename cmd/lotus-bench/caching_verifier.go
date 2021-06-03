@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/ipfs/go-datastore"
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -94,6 +95,10 @@ func (cv *cachingVerifier) VerifyWindowPoSt(ctx context.Context, info proof2.Win
 }
 func (cv *cachingVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, a abi.ActorID, rnd abi.PoStRandomness, u uint64) ([]uint64, error) {
 	return cv.backend.GenerateWinningPoStSectorChallenge(ctx, proofType, a, rnd, u)
+}
+
+func (cv cachingVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+	return cv.backend.VerifyAggregateSeals(aggregate)
 }
 
 var _ ffiwrapper.Verifier = (*cachingVerifier)(nil)

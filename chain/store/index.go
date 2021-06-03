@@ -107,6 +107,9 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 	}
 
 	rheight -= ci.skipLength
+	if rheight < 0 {
+		rheight = 0
+	}
 
 	var skipTarget *types.TipSet
 	if parent.Height() < rheight {

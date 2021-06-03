@@ -23,7 +23,7 @@ var FetchParamCmd = &cli.Command{
 		}
 		sectorSize := uint64(sectorSizeInt)
 
-		err = paramfetch.GetParams(ReqContext(cctx), build.ParametersJSON(), sectorSize)
+		err = paramfetch.GetParams(ReqContext(cctx), build.ParametersJSON(), build.SrsJSON(), sectorSize)
 		if err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}

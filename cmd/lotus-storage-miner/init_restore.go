@@ -255,7 +255,7 @@ var initRestoreCmd = &cli.Command{
 
 		log.Info("Checking proof parameters")
 
-		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(mi.SectorSize)); err != nil {
+		if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(mi.SectorSize)); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 

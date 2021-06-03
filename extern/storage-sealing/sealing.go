@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
 const SectorStorePrefix = "/sectors"
@@ -103,7 +104,9 @@ type Sealing struct {
 
 	stats SectorStats
 
-	terminator *TerminateBatcher
+	terminator  *TerminateBatcher
+	precommiter *PreCommitBatcher
+	commiter    *CommitBatcher
 
 	getConfig GetSealingConfigFunc
 	dealInfo  *CurrentDealInfoManager
@@ -131,7 +134,7 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
+func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, prov ffiwrapper.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
 	s := &Sealing{
 		api:    api,
 		feeCfg: fc,
@@ -152,7 +155,9 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		notifee: notifee,
 		addrSel: as,
 
-		terminator: NewTerminationBatcher(context.TODO(), maddr, api, as, fc),
+		terminator:  NewTerminationBatcher(context.TODO(), maddr, api, as, fc, gc),
+		precommiter: NewPreCommitBatcher(context.TODO(), maddr, api, as, fc, gc),
+		commiter:    NewCommitBatcher(context.TODO(), maddr, api, as, fc, gc, prov),
 
 		getConfig: gc,
 		dealInfo:  &CurrentDealInfoManager{api},
@@ -201,6 +206,22 @@ func (m *Sealing) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
 
 func (m *Sealing) TerminatePending(ctx context.Context) ([]abi.SectorID, error) {
 	return m.terminator.Pending(ctx)
+}
+
+func (m *Sealing) SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) {
+	return m.precommiter.Flush(ctx)
+}
+
+func (m *Sealing) SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.precommiter.Pending(ctx)
+}
+
+func (m *Sealing) CommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) {
+	return m.commiter.Flush(ctx)
+}
+
+func (m *Sealing) CommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.commiter.Pending(ctx)
 }
 
 func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof, error) {
