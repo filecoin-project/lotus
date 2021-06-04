@@ -29,7 +29,7 @@ parts:
       cp lotus lotus-miner lotus-worker $SNAPCRAFT_PART_INSTALL
 
 layout:
-  /var/tmp
+  /var/tmp:
     symlink: $SNAP_DATA/var/tmp
 apps:
   lotus:
