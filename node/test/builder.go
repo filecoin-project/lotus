@@ -462,13 +462,16 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
 
+		r := repo.NewMemory(nil)
+
 		stop, err := node.New(ctx,
 			node.FullAPI(&fulls[i].FullNode, node.Lite(fullOpts[i].Lite)),
 			node.Online(),
-			node.Repo(repo.NewMemory(nil)),
+			node.Repo(r),
 			node.MockHost(mn),
 			node.Test(),
 
+			node.Override(new(messagepool.Provider), messagepool.NewProvider),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 
 			// so that we subscribe to pubsub topics immediately
