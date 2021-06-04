@@ -53,14 +53,14 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef
 		return false, xerrors.Errorf("size is not a valid piece size: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	if err := p.index.StorageLock(ctx, sector.ID, storiface.FTUnsealed, storiface.FTNone); err != nil {
-		cancel()
-		return false, xerrors.Errorf("acquiring read sector lock: %w", err)
-	}
+	ctxLock, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	return p.storage.CheckIsUnsealed(ctx, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded())
+	if err := p.index.StorageLock(ctxLock, sector.ID, storiface.FTUnsealed, storiface.FTNone); err != nil {
+		return false, xerrors.Errorf("acquiring read sector lock: %w", err)
+	}
+
+	return p.storage.CheckIsUnsealed(ctxLock, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded())
 }
 
 // tryReadUnsealedPiece will try to read the unsealed piece from an existing unsealed sector file for the given sector from any worker that has it.
