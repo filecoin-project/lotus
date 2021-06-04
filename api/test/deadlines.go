@@ -159,7 +159,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		build.Clock.Sleep(blocktime)
 	}
 
-	checkMiner := func(ma address.Address, power abi.StoragePower, active bool, tsk types.TipSetKey) {
+	checkMiner := func(ma address.Address, power abi.StoragePower, active, activeIfCron bool, tsk types.TipSetKey) {
 		p, err := client.StateMinerPower(ctx, ma, tsk)
 		require.NoError(t, err)
 
@@ -174,6 +174,22 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 		act, err := mst.DeadlineCronActive()
 		require.NoError(t, err)
+
+		if tsk != types.EmptyTSK {
+			ts, err := client.ChainGetTipSet(ctx, tsk)
+			require.NoError(t, err)
+			di, err := mst.DeadlineInfo(ts.Height())
+			require.NoError(t, err)
+
+			// cron happened on the same epoch some other condition would have happened
+			if di.Open == ts.Height() {
+				act, err := mst.DeadlineCronActive()
+				require.NoError(t, err)
+				require.Equal(t, activeIfCron, act)
+				return
+			}
+		}
+
 		require.Equal(t, active, act)
 	}
 
@@ -181,7 +197,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	{
 		uts, err := client.ChainGetTipSetByHeight(ctx, upgradeH+2, types.EmptyTSK)
 		require.NoError(t, err)
-		checkMiner(maddrB, types.NewInt(0), true, uts.Key())
+		checkMiner(maddrB, types.NewInt(0), true, true, uts.Key())
 	}
 
 	nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
@@ -197,19 +213,19 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	require.NoError(t, err)
 
 	// first round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, types.EmptyTSK)
-	checkMiner(maddrC, types.NewInt(uint64(ssz)*sectorsC), true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, true, types.EmptyTSK)
+	checkMiner(maddrC, types.NewInt(uint64(ssz)*sectorsC), true, true, types.EmptyTSK)
 
-	checkMiner(maddrB, types.NewInt(0), false, types.EmptyTSK)
-	checkMiner(maddrD, types.NewInt(0), false, types.EmptyTSK)
-	checkMiner(maddrE, types.NewInt(0), false, types.EmptyTSK)
+	checkMiner(maddrB, types.NewInt(0), false, false, types.EmptyTSK)
+	checkMiner(maddrD, types.NewInt(0), false, false, types.EmptyTSK)
+	checkMiner(maddrE, types.NewInt(0), false, false, types.EmptyTSK)
 
 	// pledge sectors on minerB/minerD, stop post on minerC
 	pledgeSectors(t, ctx, minerB, sectersB, 0, nil)
-	checkMiner(maddrB, types.NewInt(0), true, types.EmptyTSK)
+	checkMiner(maddrB, types.NewInt(0), true, true, types.EmptyTSK)
 
 	pledgeSectors(t, ctx, minerD, sectorsD, 0, nil)
-	checkMiner(maddrD, types.NewInt(0), true, types.EmptyTSK)
+	checkMiner(maddrD, types.NewInt(0), true, true, types.EmptyTSK)
 
 	minerC.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).Fail()
 
@@ -259,7 +275,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		build.Clock.Sleep(blocktime)
 	}
 
-	checkMiner(maddrE, types.NewInt(0), true, types.EmptyTSK)
+	checkMiner(maddrE, types.NewInt(0), true, true, types.EmptyTSK)
 
 	// go through rest of the PP
 	for {
@@ -274,11 +290,11 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	}
 
 	// second round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, types.EmptyTSK)
-	checkMiner(maddrC, types.NewInt(0), true, types.EmptyTSK)
-	checkMiner(maddrB, types.NewInt(uint64(ssz)*sectersB), true, types.EmptyTSK)
-	checkMiner(maddrD, types.NewInt(uint64(ssz)*sectorsD), true, types.EmptyTSK)
-	checkMiner(maddrE, types.NewInt(0), false, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, true, types.EmptyTSK)
+	checkMiner(maddrC, types.NewInt(0), true, true, types.EmptyTSK)
+	checkMiner(maddrB, types.NewInt(uint64(ssz)*sectersB), true, true, types.EmptyTSK)
+	checkMiner(maddrD, types.NewInt(uint64(ssz)*sectorsD), true, true, types.EmptyTSK)
+	checkMiner(maddrE, types.NewInt(0), false, false, types.EmptyTSK)
 
 	// disable post on minerB
 	minerB.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).Fail()
@@ -329,7 +345,8 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		require.NoError(t, err)
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 
-		checkMiner(maddrD, types.NewInt(0), true, r.TipSet)
+		// assert inactive if the message landed in the tipset we run cron in
+		checkMiner(maddrD, types.NewInt(0), true, false, r.TipSet)
 	}
 
 	// go through another PP
@@ -345,8 +362,8 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	}
 
 	// third round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, types.EmptyTSK)
-	checkMiner(maddrC, types.NewInt(0), true, types.EmptyTSK)
-	checkMiner(maddrB, types.NewInt(0), true, types.EmptyTSK)
-	checkMiner(maddrD, types.NewInt(0), false, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*GenesisPreseals), true, true, types.EmptyTSK)
+	checkMiner(maddrC, types.NewInt(0), true, true, types.EmptyTSK)
+	checkMiner(maddrB, types.NewInt(0), true, true, types.EmptyTSK)
+	checkMiner(maddrD, types.NewInt(0), false, false, types.EmptyTSK)
 }
