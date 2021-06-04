@@ -2,27 +2,33 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 
+	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -30,17 +36,33 @@ var log = logging.Logger("main")
 
 const FlagWalletRepo = "wallet-repo"
 
+type jwtPayload struct {
+	Allow []auth.Permission
+}
+
 func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
 		runCmd,
+		getApiKeyCmd,
 	}
 
 	app := &cli.App{
 		Name:    "lotus-wallet",
 		Usage:   "Basic external wallet",
 		Version: build.UserVersion(),
+		Description: `
+lotus-wallet provides a remote wallet service for lotus.
+
+To configure your lotus node to use a remote wallet:
+* Run 'lotus-wallet get-api-key' to generate API key
+* Start lotus-wallet using 'lotus-wallet run' (see --help for additional flags)
+* Edit lotus config (~/.lotus/config.toml)
+  * Find the '[Wallet]' section
+  * Set 'RemoteBackend' to '[api key]:http://[wallet ip]:[wallet port]'
+    (the default port is 1777)
+* Start (or restart) the lotus daemon`,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWalletRepo,
@@ -65,6 +87,35 @@ func main() {
 	}
 }
 
+var getApiKeyCmd = &cli.Command{
+	Name:  "get-api-key",
+	Usage: "Generate API Key",
+	Action: func(cctx *cli.Context) error {
+		lr, ks, err := openRepo(cctx)
+		if err != nil {
+			return err
+		}
+		defer lr.Close() // nolint
+
+		p := jwtPayload{
+			Allow: []auth.Permission{api.PermAdmin},
+		}
+
+		authKey, err := modules.APISecret(ks, lr)
+		if err != nil {
+			return xerrors.Errorf("setting up api secret: %w", err)
+		}
+
+		k, err := jwt.Sign(&p, (*jwt.HMACSHA)(authKey))
+		if err != nil {
+			return xerrors.Errorf("jwt sign: %w", err)
+		}
+
+		fmt.Println(string(k))
+		return nil
+	},
+}
+
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus wallet",
@@ -86,7 +137,13 @@ var runCmd = &cli.Command{
 			Name:  "offline",
 			Usage: "don't query chain state in interactive mode",
 		},
+		&cli.BoolFlag{
+			Name:   "disable-auth",
+			Usage:  "(insecure) disable api auth",
+			Hidden: true,
+		},
 	},
+	Description: "For setup instructions see 'lotus-wallet --help'",
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus wallet")
 
@@ -101,31 +158,11 @@ var runCmd = &cli.Command{
 			log.Fatalf("Cannot register the view: %v", err)
 		}
 
-		repoPath := cctx.String(FlagWalletRepo)
-		r, err := repo.NewFS(repoPath)
+		lr, ks, err := openRepo(cctx)
 		if err != nil {
 			return err
 		}
-
-		ok, err := r.Exists()
-		if err != nil {
-			return err
-		}
-		if !ok {
-			if err := r.Init(repo.Worker); err != nil {
-				return err
-			}
-		}
-
-		lr, err := r.Lock(repo.Wallet)
-		if err != nil {
-			return err
-		}
-
-		ks, err := lr.KeyStore()
-		if err != nil {
-			return err
-		}
+		defer lr.Close() // nolint
 
 		lw, err := wallet.NewWallet(ks)
 		if err != nil {
@@ -167,19 +204,43 @@ var runCmd = &cli.Command{
 			w = &LoggedWallet{under: w}
 		}
 
+		rpcApi := metrics.MetricedWalletAPI(w)
+		if !cctx.Bool("disable-auth") {
+			rpcApi = api.PermissionedWalletAPI(rpcApi)
+		}
+
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", metrics.MetricedWalletAPI(w))
+		rpcServer.Register("Filecoin", rpcApi)
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
-		/*ah := &auth.Handler{
-			Verify: nodeApi.AuthVerify,
-			Next:   mux.ServeHTTP,
-		}*/
+		var handler http.Handler = mux
+
+		if !cctx.Bool("disable-auth") {
+			authKey, err := modules.APISecret(ks, lr)
+			if err != nil {
+				return xerrors.Errorf("setting up api secret: %w", err)
+			}
+
+			authVerify := func(ctx context.Context, token string) ([]auth.Permission, error) {
+				var payload jwtPayload
+				if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(authKey), &payload); err != nil {
+					return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+				}
+
+				return payload.Allow, nil
+			}
+
+			log.Info("API auth enabled, use 'lotus-wallet get-api-key' to get API key")
+			handler = &auth.Handler{
+				Verify: authVerify,
+				Next:   mux.ServeHTTP,
+			}
+		}
 
 		srv := &http.Server{
-			Handler: mux,
+			Handler: handler,
 			BaseContext: func(listener net.Listener) context.Context {
 				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-wallet"))
 				return ctx
@@ -202,4 +263,34 @@ var runCmd = &cli.Command{
 
 		return srv.Serve(nl)
 	},
+}
+
+func openRepo(cctx *cli.Context) (repo.LockedRepo, types.KeyStore, error) {
+	repoPath := cctx.String(FlagWalletRepo)
+	r, err := repo.NewFS(repoPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ok, err := r.Exists()
+	if err != nil {
+		return nil, nil, err
+	}
+	if !ok {
+		if err := r.Init(repo.Worker); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	lr, err := r.Lock(repo.Wallet)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ks, err := lr.KeyStore()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return lr, ks, nil
 }

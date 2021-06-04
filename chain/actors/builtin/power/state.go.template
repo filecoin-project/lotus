@@ -66,7 +66,7 @@ func (s *state{{.v}}) TotalLocked() (abi.TokenAmount, error) {
 
 func (s *state{{.v}}) TotalPower() (Claim, error) {
 	return Claim{
-		RawBytePower:	 s.TotalRawBytePower,
+		RawBytePower:    s.TotalRawBytePower,
 		QualityAdjPower: s.TotalQualityAdjPower,
 	}, nil
 }
@@ -74,7 +74,7 @@ func (s *state{{.v}}) TotalPower() (Claim, error) {
 // Committed power to the network. Includes miners below the minimum threshold.
 func (s *state{{.v}}) TotalCommitted() (Claim, error) {
 	return Claim{
-		RawBytePower:	 s.TotalBytesCommitted,
+		RawBytePower:    s.TotalBytesCommitted,
 		QualityAdjPower: s.TotalQABytesCommitted,
 	}, nil
 }
@@ -90,7 +90,7 @@ func (s *state{{.v}}) MinerPower(addr address.Address) (Claim, bool, error) {
 		return Claim{}, false, err
 	}
 	return Claim{
-		RawBytePower:	 claim.RawBytePower,
+		RawBytePower:    claim.RawBytePower,
 		QualityAdjPower: claim.QualityAdjPower,
 	}, ok, nil
 }
@@ -142,7 +142,7 @@ func (s *state{{.v}}) ForEachClaim(cb func(miner address.Address, claim Claim) e
 			return err
 		}
 		return cb(a, Claim{
-			RawBytePower:	 claim.RawBytePower,
+			RawBytePower:    claim.RawBytePower,
 			QualityAdjPower: claim.QualityAdjPower,
 		})
 	})
@@ -195,7 +195,7 @@ func (s *state{{.v}}) decodeClaim(val *cbg.Deferred) (Claim, error) {
 
 func fromV{{.v}}Claim(v{{.v}} power{{.v}}.Claim) Claim {
 	return Claim{
-		RawBytePower:	 v{{.v}}.RawBytePower,
+		RawBytePower:    v{{.v}}.RawBytePower,
 		QualityAdjPower: v{{.v}}.QualityAdjPower,
 	}
 }

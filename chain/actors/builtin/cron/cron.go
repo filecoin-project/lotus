@@ -13,6 +13,8 @@ import (
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 )
 
 func MakeState(store adt.Store, av actors.Version) (State, error) {
@@ -29,6 +31,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 
 	case actors.Version4:
 		return make4(store)
+
+	case actors.Version5:
+		return make5(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -49,14 +54,17 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	case actors.Version4:
 		return builtin4.CronActorCodeID, nil
 
+	case actors.Version5:
+		return builtin5.CronActorCodeID, nil
+
 	}
 
 	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 var (
-	Address = builtin4.CronActorAddr
-	Methods = builtin4.MethodsCron
+	Address = builtin5.CronActorAddr
+	Methods = builtin5.MethodsCron
 )
 
 type State interface {

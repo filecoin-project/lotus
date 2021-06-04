@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/lotus/build"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -97,7 +99,12 @@ func (a *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return a.Chain.GetChainRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
+	if randEpoch > build.UpgradeHyperdriveHeight {
+		return a.Chain.GetChainRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	}
+
+	return a.Chain.GetChainRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (a *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -106,7 +113,12 @@ func (a *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.T
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return a.Chain.GetBeaconRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
+	if randEpoch > build.UpgradeHyperdriveHeight {
+		return a.Chain.GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	}
+
+	return a.Chain.GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {

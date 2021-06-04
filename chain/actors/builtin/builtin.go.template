@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	miner{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/miner"
-	proof{{.latestVersion}}	 "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/runtime/proof"
+	proof{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/runtime/proof"
 )
 
 var SystemActorAddr = builtin{{.latestVersion}}.SystemActorAddr
@@ -33,12 +33,12 @@ var (
 
 const (
 	EpochDurationSeconds = builtin{{.latestVersion}}.EpochDurationSeconds
-	EpochsInDay			 = builtin{{.latestVersion}}.EpochsInDay
-	SecondsInDay		 = builtin{{.latestVersion}}.SecondsInDay
+	EpochsInDay          = builtin{{.latestVersion}}.EpochsInDay
+	SecondsInDay         = builtin{{.latestVersion}}.SecondsInDay
 )
 
 const (
-	MethodSend		  = builtin{{.latestVersion}}.MethodSend
+	MethodSend        = builtin{{.latestVersion}}.MethodSend
 	MethodConstructor = builtin{{.latestVersion}}.MethodConstructor
 )
 

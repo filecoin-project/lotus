@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -663,11 +664,19 @@ type StorageMinerStruct struct {
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
+		SectorCommitFlush func(p0 context.Context) ([]sealiface.CommitBatchRes, error) `perm:"admin"`
+
+		SectorCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
+
 		SectorGetExpectedSealDuration func(p0 context.Context) (time.Duration, error) `perm:"read"`
 
 		SectorGetSealDelay func(p0 context.Context) (time.Duration, error) `perm:"read"`
 
 		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
+
+		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
+
+		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
 		SectorRemove func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
@@ -735,19 +744,19 @@ type StorageMinerStub struct {
 
 type WalletStruct struct {
 	Internal struct {
-		WalletDelete func(p0 context.Context, p1 address.Address) error ``
+		WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
 
-		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) ``
+		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) `perm:"admin"`
 
-		WalletHas func(p0 context.Context, p1 address.Address) (bool, error) ``
+		WalletHas func(p0 context.Context, p1 address.Address) (bool, error) `perm:"admin"`
 
-		WalletImport func(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) ``
+		WalletImport func(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) `perm:"admin"`
 
-		WalletList func(p0 context.Context) ([]address.Address, error) ``
+		WalletList func(p0 context.Context) ([]address.Address, error) `perm:"admin"`
 
-		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) ``
+		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"admin"`
 
-		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) ``
+		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) `perm:"admin"`
 	}
 }
 
@@ -3137,6 +3146,22 @@ func (s *StorageMinerStub) SealingSchedDiag(p0 context.Context, p1 bool) (interf
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
+	return s.Internal.SectorCommitFlush(p0)
+}
+
+func (s *StorageMinerStub) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
+	return *new([]sealiface.CommitBatchRes), xerrors.New("method not supported")
+}
+
+func (s *StorageMinerStruct) SectorCommitPending(p0 context.Context) ([]abi.SectorID, error) {
+	return s.Internal.SectorCommitPending(p0)
+}
+
+func (s *StorageMinerStub) SectorCommitPending(p0 context.Context) ([]abi.SectorID, error) {
+	return *new([]abi.SectorID), xerrors.New("method not supported")
+}
+
 func (s *StorageMinerStruct) SectorGetExpectedSealDuration(p0 context.Context) (time.Duration, error) {
 	return s.Internal.SectorGetExpectedSealDuration(p0)
 }
@@ -3159,6 +3184,22 @@ func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.Sec
 
 func (s *StorageMinerStub) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
 	return xerrors.New("method not supported")
+}
+
+func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
+	return s.Internal.SectorPreCommitFlush(p0)
+}
+
+func (s *StorageMinerStub) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
+	return *new([]sealiface.PreCommitBatchRes), xerrors.New("method not supported")
+}
+
+func (s *StorageMinerStruct) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {
+	return s.Internal.SectorPreCommitPending(p0)
+}
+
+func (s *StorageMinerStub) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {
+	return *new([]abi.SectorID), xerrors.New("method not supported")
 }
 
 func (s *StorageMinerStruct) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
