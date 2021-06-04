@@ -1,28 +1,36 @@
-name: lotus
-base: core18
-version: '1.8.0'
+name: lotus-filecoin
+base: core20
+version: latest
 summary: filecoin daemon/client
 description: |
   Filecoin is a peer-to-peer network that stores files on the internet
   with built-in economic incentives to ensure files are stored reliably over time
 grade: devel
-confinement: devmode # use 'strict' once you have the right plugs and slots
+confinement: strict
 
 parts:
-  libs:
-    plugin: dump
+  lotus:
+    plugin: make
     source: ./
-    organize:
-      'lotus' : bin/
-      'lotus-*' : bin/
+    build-snaps:
+      - go
+      - rustup
+    build-packages:
+      - git
+      - jq
+      - libhwloc-dev
+      - ocl-icd-opencl-dev
+      - pkg-config
     stage-packages:
+      - libhwloc15
       - ocl-icd-libopencl1
-      - libhwloc1
-      - libgcc1
+    override-build: |
+      LDFLAGS="" make lotus lotus-miner lotus-worker
+      cp lotus lotus-miner lotus-worker $SNAPCRAFT_PART_INSTALL
 apps:
   lotus:
-    command: bin/lotus
+    command: lotus
   lotus-miner:
-    command: bin/lotus-miner
+    command: lotus-miner
   lotus-worker:
-    command: bin/lotus-worker
+    command: lotus-worker
