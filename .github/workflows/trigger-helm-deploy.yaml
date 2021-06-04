@@ -2,6 +2,7 @@
 name: trigger-helm-deploy
 on:
   workflow_dispatch:
+    # Warn: workflow_dispatch events take a maximum of 10 inputs
     inputs:
       circle_context:
         description: "CI context for aws credentials"
@@ -30,12 +31,6 @@ on:
         description: "helm chart image.repository"
       override_tag:
         description: "helm chart image.tag"
-      slack_channel:
-        description: "the slack channel where notifications are sent"
-        default: "netops-circleci-test"
-      circle_branch:
-        description: "circleci branch (used for testing new lotus-infra deploy code)"
-        default: master
 
 jobs:
   trigger-circleci:
@@ -46,7 +41,7 @@ jobs:
         with:
           user-token: ${{ secrets.CIRCLE_TOKEN }}
           project-slug: filecoin-project/lotus-infra
-          branch: ${{ github.event.inputs.circle_branch }}
+          branch: master
           payload: |
             {
               "api_workflow_requested": "helm-deploy",
@@ -60,5 +55,5 @@ jobs:
               "helm_append": "${{ github.event.inputs.helm_append }}",
               "override_repository": "${{ github.event.inputs.override_repository }}",
               "override_tag": "${{ github.event.inputs.override_tag }}",
-              "slack_channel": "${{ github.event.inputs.slack_channel }}"
+              "slack_channel": "netops-circleci-test"
             }
