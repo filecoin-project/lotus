@@ -239,24 +239,18 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 var errHaltExecution = fmt.Errorf("halt")
 
 func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.Cid) (*types.Message, *vm.ApplyRet, error) {
-	var outm *types.Message
-	var outr *vm.ApplyRet
+	var finder messageFinder
+	// message to find
+	finder.mcid = mcid
 
-	_, _, err := sm.computeTipSetState(ctx, ts, func(c cid.Cid, m *types.Message, ret *vm.ApplyRet) error {
-		if c == mcid {
-			outm = m
-			outr = ret
-			return errHaltExecution
-		}
-		return nil
-	})
+	_, _, err := sm.computeTipSetState(ctx, ts, &finder)
 	if err != nil && !xerrors.Is(err, errHaltExecution) {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}
 
-	if outr == nil {
+	if finder.outr == nil {
 		return nil, nil, xerrors.Errorf("given message not found in tipset")
 	}
 
-	return outm, outr, nil
+	return finder.outm, finder.outr, nil
 }
