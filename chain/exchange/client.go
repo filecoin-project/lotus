@@ -395,7 +395,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
 	}
 	if len(supported) == 0 || (supported[0] != BlockSyncProtocolID && supported[0] != ChainExchangeProtocolID) {
-		return nil, xerrors.Errorf("peer %s does not support protocols %s",
+		return nil, xerrors.Errorf("peer %s does not support protocols %s (supported: %s)",
 			peer, []string{BlockSyncProtocolID, ChainExchangeProtocolID})
 	}
 
