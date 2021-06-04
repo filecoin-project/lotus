@@ -502,7 +502,6 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			node.MockHost(mn),
 			node.Test(),
 
-			node.Override(new(messagepool.Provider), messagepool.NewProvider),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Override(new(ffiwrapper.Prover), mock.MockProver),
 
