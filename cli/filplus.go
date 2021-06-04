@@ -7,7 +7,6 @@ import (
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api/v0api"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -15,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -24,26 +24,26 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-var verifRegCmd = &cli.Command{
-	Name:  "verifreg",
-	Usage: "Interact with the verified registry actor",
+var filplusCmd = &cli.Command{
+	Name:  "filplus",
+	Usage: "Interact with the verified registry actor used by Filplus",
 	Flags: []cli.Flag{},
 	Subcommands: []*cli.Command{
-		verifRegVerifyClientCmd,
-		verifRegListVerifiersCmd,
-		verifRegListClientsCmd,
-		verifRegCheckClientCmd,
-		verifRegCheckVerifierCmd,
+		filplusVerifyClientCmd,
+		filplusListNotariesCmd,
+		filplusListClientsCmd,
+		filplusCheckClientCmd,
+		filplusCheckNotaryCmd,
 	},
 }
 
-var verifRegVerifyClientCmd = &cli.Command{
-	Name:  "verify-client",
+var filplusVerifyClientCmd = &cli.Command{
+	Name:  "grant-datacap",
 	Usage: "give allowance to the specified verified client address",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "from",
-			Usage:    "specify your verifier address to send the message from",
+			Usage:    "specify your notary address to send the message from",
 			Required: true,
 		},
 	},
@@ -79,17 +79,17 @@ var verifRegVerifyClientCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		found, dcap, err := checkVerifier(ctx, api, fromk)
+		found, dcap, err := checkNotary(ctx, api, fromk)
 		if err != nil {
 			return err
 		}
 
 		if !found {
-			return xerrors.New("sender address must be a verifier")
+			return xerrors.New("sender address must be a notary")
 		}
 
 		if dcap.Cmp(allowance.Int) < 0 {
-			return xerrors.Errorf("cannot allot more allowance than verifier data cap: %s < %s", dcap, allowance)
+			return xerrors.Errorf("cannot allot more allowance than notary data cap: %s < %s", dcap, allowance)
 		}
 
 		// TODO: This should be abstracted over actor versions
@@ -125,9 +125,9 @@ var verifRegVerifyClientCmd = &cli.Command{
 	},
 }
 
-var verifRegListVerifiersCmd = &cli.Command{
-	Name:  "list-verifiers",
-	Usage: "list all verifiers",
+var filplusListNotariesCmd = &cli.Command{
+	Name:  "list-notaries",
+	Usage: "list all notaries",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -155,7 +155,7 @@ var verifRegListVerifiersCmd = &cli.Command{
 	},
 }
 
-var verifRegListClientsCmd = &cli.Command{
+var filplusListClientsCmd = &cli.Command{
 	Name:  "list-clients",
 	Usage: "list all verified clients",
 	Action: func(cctx *cli.Context) error {
@@ -185,8 +185,8 @@ var verifRegListClientsCmd = &cli.Command{
 	},
 }
 
-var verifRegCheckClientCmd = &cli.Command{
-	Name:  "check-client",
+var filplusCheckClientCmd = &cli.Command{
+	Name:  "check-client-datacap",
 	Usage: "check verified client remaining bytes",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -219,12 +219,12 @@ var verifRegCheckClientCmd = &cli.Command{
 	},
 }
 
-var verifRegCheckVerifierCmd = &cli.Command{
-	Name:  "check-verifier",
-	Usage: "check verifiers remaining bytes",
+var filplusCheckNotaryCmd = &cli.Command{
+	Name:  "check-notaries-datacap",
+	Usage: "check notaries remaining bytes",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify verifier address to check")
+			return fmt.Errorf("must specify notary address to check")
 		}
 
 		vaddr, err := address.NewFromString(cctx.Args().First())
@@ -239,7 +239,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		found, dcap, err := checkVerifier(ctx, api, vaddr)
+		found, dcap, err := checkNotary(ctx, api, vaddr)
 		if err != nil {
 			return err
 		}
@@ -253,7 +253,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 	},
 }
 
-func checkVerifier(ctx context.Context, api v0api.FullNode, vaddr address.Address) (bool, abi.StoragePower, error) {
+func checkNotary(ctx context.Context, api v0api.FullNode, vaddr address.Address) (bool, abi.StoragePower, error) {
 	vid, err := api.StateLookupID(ctx, vaddr, types.EmptyTSK)
 	if err != nil {
 		return false, big.Zero(), err

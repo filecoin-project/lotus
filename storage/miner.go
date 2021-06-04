@@ -57,6 +57,7 @@ type Miner struct {
 	ds      datastore.Batching
 	sc      sealing.SectorIDCounter
 	verif   ffiwrapper.Verifier
+	prover  ffiwrapper.Prover
 	addrSel *AddressSelector
 
 	maddr address.Address
@@ -134,6 +135,7 @@ func NewMiner(api fullNodeFilteredAPI,
 	sealer sectorstorage.SectorManager,
 	sc sealing.SectorIDCounter,
 	verif ffiwrapper.Verifier,
+	prover ffiwrapper.Prover,
 	gsd dtypes.GetSealingConfigFunc,
 	feeCfg config.MinerFeeConfig,
 	journal journal.Journal,
@@ -146,6 +148,7 @@ func NewMiner(api fullNodeFilteredAPI,
 		ds:      ds,
 		sc:      sc,
 		verif:   verif,
+		prover:  prover,
 		addrSel: as,
 
 		maddr:          maddr,
@@ -202,7 +205,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	)
 
 	// Instantiate the sealing FSM.
-	m.sealing = sealing.New(adaptedAPI, fc, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, &pcp, cfg, m.handleSealingNotifications, as)
+	m.sealing = sealing.New(adaptedAPI, fc, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
 
 	// Run the sealing FSM.
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function

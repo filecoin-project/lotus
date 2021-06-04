@@ -278,13 +278,26 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		maddrs = append(maddrs, maddr)
 		genms = append(genms, *genm)
 	}
+
+	rkhKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	if err != nil {
+		return nil, nil
+	}
+
+	vrk := genesis.Actor{
+		Type:    genesis.TAccount,
+		Balance: big.Mul(big.Div(big.NewInt(int64(build.FilBase)), big.NewInt(100)), big.NewInt(int64(build.FilecoinPrecision))),
+		Meta:    (&genesis.AccountMeta{Owner: rkhKey.Address}).ActorMeta(),
+	}
+	keys = append(keys, rkhKey)
+
 	templ := &genesis.Template{
 		NetworkVersion:   network.Version0,
 		Accounts:         genaccs,
 		Miners:           genms,
 		NetworkName:      "test",
 		Timestamp:        uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
-		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		VerifregRootKey:  vrk,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 
@@ -309,6 +322,7 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 
 			fullOpts[i].Opts(fulls),
 		)
+
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -320,6 +334,10 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 		}
 
 		fulls[i].Stb = storageBuilder(fulls[i], mn, node.Options())
+	}
+
+	if _, err := fulls[0].FullNode.WalletImport(ctx, &rkhKey.KeyInfo); err != nil {
+		t.Fatal(err)
 	}
 
 	for i, def := range storage {
@@ -442,13 +460,26 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		maddrs = append(maddrs, maddr)
 		genms = append(genms, *genm)
 	}
+
+	rkhKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	if err != nil {
+		return nil, nil
+	}
+
+	vrk := genesis.Actor{
+		Type:    genesis.TAccount,
+		Balance: big.Mul(big.Div(big.NewInt(int64(build.FilBase)), big.NewInt(100)), big.NewInt(int64(build.FilecoinPrecision))),
+		Meta:    (&genesis.AccountMeta{Owner: rkhKey.Address}).ActorMeta(),
+	}
+	keys = append(keys, rkhKey)
+
 	templ := &genesis.Template{
 		NetworkVersion:   network.Version0,
 		Accounts:         genaccs,
 		Miners:           genms,
 		NetworkName:      "test",
 		Timestamp:        uint64(time.Now().Unix()) - (build.BlockDelaySecs * 20000),
-		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		VerifregRootKey:  vrk,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 
@@ -473,6 +504,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 
 			node.Override(new(messagepool.Provider), messagepool.NewProvider),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
+			node.Override(new(ffiwrapper.Prover), mock.MockProver),
 
 			// so that we subscribe to pubsub topics immediately
 			node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
@@ -496,8 +528,13 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 				return mock.NewMockSectorMgr(nil), nil
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
+			node.Override(new(ffiwrapper.Prover), mock.MockProver),
 			node.Unset(new(*sectorstorage.Manager)),
 		))
+	}
+
+	if _, err := fulls[0].FullNode.WalletImport(ctx, &rkhKey.KeyInfo); err != nil {
+		t.Fatal(err)
 	}
 
 	for i, def := range storage {
@@ -541,7 +578,8 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 				return mgr, nil
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-			//node.Unset(new(*sectorstorage.Manager)),
+			node.Override(new(ffiwrapper.Prover), mock.MockProver),
+			// node.Unset(new(*sectorstorage.Manager)),
 			opts,
 		))
 

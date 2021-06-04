@@ -5,6 +5,9 @@ import (
 	"context"
 	"testing"
 
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -23,6 +26,7 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -144,6 +148,10 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStV
 	return true, nil
 }
 
+func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+	panic("implement me")
+}
+
 func (m mockVerif) VerifySeal(proof2.SealVerifyInfo) (bool, error) {
 	panic("implement me")
 }
@@ -172,13 +180,16 @@ func TestWDPostDoPost(t *testing.T) {
 	mockStgMinerAPI := newMockStorageMinerAPI()
 
 	// Get the number of sectors allowed in a partition for this proof type
-	sectorsPerPartition, err := builtin2.PoStProofWindowPoStPartitionSectors(proofType)
+	sectorsPerPartition, err := builtin5.PoStProofWindowPoStPartitionSectors(proofType)
 	require.NoError(t, err)
 	// Work out the number of partitions that can be included in a message
 	// without exceeding the message sector limit
 
 	require.NoError(t, err)
-	partitionsPerMsg := int(miner2.AddressedSectorsMax / sectorsPerPartition)
+	partitionsPerMsg := int(miner5.AddressedSectorsMax / sectorsPerPartition)
+	if partitionsPerMsg > miner5.AddressedPartitionsMax {
+		partitionsPerMsg = miner5.AddressedPartitionsMax
+	}
 
 	// Enough partitions to fill expectedMsgCount-1 messages
 	partitionCount := (expectedMsgCount - 1) * partitionsPerMsg
@@ -214,11 +225,11 @@ func TestWDPostDoPost(t *testing.T) {
 	}
 
 	di := &dline.Info{
-		WPoStPeriodDeadlines:   miner2.WPoStPeriodDeadlines,
-		WPoStProvingPeriod:     miner2.WPoStProvingPeriod,
-		WPoStChallengeWindow:   miner2.WPoStChallengeWindow,
-		WPoStChallengeLookback: miner2.WPoStChallengeLookback,
-		FaultDeclarationCutoff: miner2.FaultDeclarationCutoff,
+		WPoStPeriodDeadlines:   miner5.WPoStPeriodDeadlines,
+		WPoStProvingPeriod:     miner5.WPoStProvingPeriod,
+		WPoStChallengeWindow:   miner5.WPoStChallengeWindow,
+		WPoStChallengeLookback: miner5.WPoStChallengeLookback,
+		FaultDeclarationCutoff: miner5.FaultDeclarationCutoff,
 	}
 	ts := mockTipSet(t)
 

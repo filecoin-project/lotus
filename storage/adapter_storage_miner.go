@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -146,10 +147,28 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 		return cid.Undef, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
 	}
 
-	ccparams, err := actors.SerializeParams(&market2.ComputeDataCommitmentParams{
-		DealIDs:    deals,
-		SectorType: sectorType,
-	})
+	nv, err := s.delegate.StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	var ccparams []byte
+	if nv < network.Version13 {
+		ccparams, err = actors.SerializeParams(&market2.ComputeDataCommitmentParams{
+			DealIDs:    deals,
+			SectorType: sectorType,
+		})
+	} else {
+		ccparams, err = actors.SerializeParams(&market5.ComputeDataCommitmentParams{
+			Inputs: []*market5.SectorDataSpec{
+				{
+					DealIDs:    deals,
+					SectorType: sectorType,
+				},
+			},
+		})
+	}
+
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("computing params for ComputeDataCommitment: %w", err)
 	}
@@ -169,12 +188,25 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 		return cid.Undef, xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)
 	}
 
-	var c cbg.CborCid
-	if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+	if nv < network.Version13 {
+		var c cbg.CborCid
+		if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+			return cid.Undef, xerrors.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+		}
+
+		return cid.Cid(c), nil
+	}
+
+	var cr market5.ComputeDataCommitmentReturn
+	if err := cr.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
 	}
 
-	return cid.Cid(c), nil
+	if len(cr.CommDs) != 1 {
+		return cid.Undef, xerrors.Errorf("CommD output must have 1 entry")
+	}
+
+	return cid.Cid(cr.CommDs[0]), nil
 }
 
 func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok sealing.TipSetToken) (*miner.SectorPreCommitOnChainInfo, error) {
