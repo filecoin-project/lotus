@@ -579,7 +579,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Override(new(ffiwrapper.Prover), mock.MockProver),
-			// node.Unset(new(*sectorstorage.Manager)),
+			node.Unset(new(*sectorstorage.Manager)),
 			opts,
 		))
 

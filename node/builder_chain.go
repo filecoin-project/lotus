@@ -127,6 +127,7 @@ var ChainNode = Options(
 
 	// Lite node API
 	ApplyIf(isLiteNode,
+		Override(new(messagepool.Provider), messagepool.NewProviderLite),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
 		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
 		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
