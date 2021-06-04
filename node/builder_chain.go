@@ -60,6 +60,7 @@ var ChainNode = Options(
 
 	// Consensus: crypto dependencies
 	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
+	Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
 
 	// Consensus: VM
 	Override(new(vm.SyscallBuilder), vm.Syscalls),

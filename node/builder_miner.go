@@ -74,6 +74,7 @@ func ConfigStorageMiner(c interface{}) Option {
 
 			// Sector storage: Proofs
 			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
+			Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
 			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
 
 			// Sealing (todo should be under EnableSealing, but storagefsm is currently bundled with storage.Miner)
