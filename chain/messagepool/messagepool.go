@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -970,8 +969,6 @@ func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address,
 }
 
 func (mp *MessagePool) getStateNonce(addr address.Address, ts *types.TipSet) (uint64, error) {
-	spew.Dump(addr)
-
 	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return 0, err

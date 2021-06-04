@@ -127,7 +127,6 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 
 			// Markets (retrieval)
-
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
 			Override(new(rmnet.RetrievalMarketNetwork), modules.RetrievalNetwork),
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
