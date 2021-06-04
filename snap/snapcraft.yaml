@@ -29,8 +29,8 @@ parts:
       cp lotus lotus-miner lotus-worker $SNAPCRAFT_PART_INSTALL
 
 layout:
-  /var/tmp/filecoin-proof-parameters:
-    bind: $SNAP_DATA/var/tmp/filecoin-proof-parameters
+  /var/tmp
+    symlink: $SNAP_DATA/var/tmp
 apps:
   lotus:
     command: lotus
