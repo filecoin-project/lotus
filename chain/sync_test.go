@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/event"
 
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -479,6 +479,8 @@ func TestSyncSimple(t *testing.T) {
 	client := tu.addClientNode()
 	//tu.checkHeight("client", client, 0)
 
+	inspectHosts(t, tu)
+
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(1, 0)
 	tu.waitUntilSync(0, client)
@@ -494,6 +496,8 @@ func TestSyncMining(t *testing.T) {
 
 	client := tu.addClientNode()
 	//tu.checkHeight("client", client, 0)
+
+	inspectHosts(t, tu)
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(client, 0)
@@ -648,6 +652,8 @@ func TestSyncFork(t *testing.T) {
 	printHead()
 
 	// Now for the fun part!!
+
+	inspectHosts(t, tu)
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(p1, p2)
@@ -988,8 +994,11 @@ func TestSyncCheckpointHead(t *testing.T) {
 
 	// Now for the fun part!! p1 should mark p2's head as BAD.
 
+	inspectHosts(t, tu)
+
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(p1, p2)
+
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(a.TipSet()))
@@ -1035,6 +1044,8 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 
 	// Now for the fun part!! p1 should mark p2's head as BAD.
 
+	inspectHosts(t, tu)
+
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(p1, p2)
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
@@ -1046,6 +1057,21 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	tu.checkpointTs(p1, b.TipSet().Key())
 	p1Head = tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(b.TipSet()))
+}
+
+func inspectHosts(t *testing.T, tu *syncTestUtil) {
+	for i, h := range tu.mn.Hosts() {
+		sub, err := h.EventBus().Subscribe(event.WildcardSubscription)
+		require.NoError(t, err)
+		i := i
+		id := h.ID()
+		fmt.Printf("protocols %d: %v\n", i, h.Mux().Protocols())
+		go func() {
+			for evt := range sub.Out() {
+				fmt.Printf("********** event in host idx=%d, peerId=%s: %#v\n", i, id, spew.NewFormatter(evt))
+			}
+		}()
+	}
 }
 
 func TestDrandNull(t *testing.T) {
