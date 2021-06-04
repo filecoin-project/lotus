@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
@@ -1045,6 +1046,10 @@ var clientRetrieveCmd = &cli.Command{
 			Usage: "miner address for retrieval, if not present it'll use local discovery",
 		},
 		&cli.StringFlag{
+			Name:  "datamodel-path-selector",
+			Usage: "a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal",
+		},
+		&cli.StringFlag{
 			Name:  "maxPrice",
 			Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %s FIL)", DefaultMaxRetrievePrice),
 		},
@@ -1177,6 +1182,10 @@ var clientRetrieveCmd = &cli.Command{
 		ref := &lapi.FileRef{
 			Path:  cctx.Args().Get(1),
 			IsCAR: cctx.Bool("car"),
+		}
+
+		if sel := textselector.Expression(cctx.String("datamodel-path-selector")); sel != "" {
+			order.DatamodelPathSelector = &sel
 		}
 
 		updates, err := fapi.ClientRetrieveWithEvents(ctx, *order, ref)
