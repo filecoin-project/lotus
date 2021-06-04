@@ -6,11 +6,13 @@ var CurrentCommit string
 var BuildType int
 
 const (
-	BuildDefault  = 0
-	BuildMainnet  = 0x1
-	Build2k       = 0x2
-	BuildDebug    = 0x3
-	BuildCalibnet = 0x4
+	BuildDefault      = 0
+	BuildMainnet      = 0x1
+	Build2k           = 0x2
+	BuildDebug        = 0x3
+	BuildCalibnet     = 0x4
+	BuildNerpanet     = 0x5
+	BuildButterflynet = 0x6
 )
 
 func buildType() string {
@@ -25,6 +27,10 @@ func buildType() string {
 		return "+debug"
 	case BuildCalibnet:
 		return "+calibnet"
+	case BuildNerpanet:
+		return "+nerpanet"
+	case BuildButterflynet:
+		return "+butterflynet"
 	default:
 		return "+huh?"
 	}
