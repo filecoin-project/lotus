@@ -1185,6 +1185,8 @@ var clientRetrieveCmd = &cli.Command{
 			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
 
+		var prevStatus retrievalmarket.DealStatus
+
 		for {
 			select {
 			case evt, ok := <-updates:
@@ -1195,14 +1197,23 @@ var clientRetrieveCmd = &cli.Command{
 						retrievalmarket.ClientEvents[evt.Event],
 						retrievalmarket.DealStatuses[evt.Status],
 					)
-				} else {
-					afmt.Println("Success")
-					return nil
+					prevStatus = evt.Status
 				}
 
 				if evt.Err != "" {
 					return xerrors.Errorf("retrieval failed: %s", evt.Err)
 				}
+
+				if !ok {
+					if prevStatus == retrievalmarket.DealStatusCompleted {
+						afmt.Println("Success")
+					} else {
+						afmt.Printf("saw final deal state %s instead of expected success state DealStatusCompleted\n",
+							retrievalmarket.DealStatuses[prevStatus])
+					}
+					return nil
+				}
+
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")
 			}
