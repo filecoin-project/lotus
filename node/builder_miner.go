@@ -123,7 +123,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
 			// Markets (retrieval deps)
-			Override(new(*sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
+			Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 
 			// Markets (retrieval)
 

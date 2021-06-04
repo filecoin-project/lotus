@@ -29,13 +29,13 @@ var log = logging.Logger("retrievaladapter")
 type retrievalProviderNode struct {
 	maddr address.Address
 	secb  sectorblocks.SectorBuilder
-	pp    *sectorstorage.PieceProvider
+	pp    sectorstorage.PieceProvider
 	full  v1api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp *sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
+func NewRetrievalProviderNode(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{address.Address(maddr), secb, pp, full}
 }
 

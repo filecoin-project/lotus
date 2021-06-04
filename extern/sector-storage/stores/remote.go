@@ -357,7 +357,7 @@ func (r *Remote) readRemote(ctx context.Context, url string, spt abi.RegisteredS
 	return resp.Body, nil
 }
 
-// Reated gets a reader for unsealed file range. Can return nil in case the requested range isn't allocated in the file
+// Reader gets a reader for unsealed file range. Can return nil in case the requested range isn't allocated in the file
 func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize, ft storiface.SectorFileType) (io.ReadCloser, error) {
 	if ft != storiface.FTUnsealed {
 		return nil, xerrors.Errorf("reader only supports unsealed files")

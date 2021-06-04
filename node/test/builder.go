@@ -521,6 +521,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 				Number: sector.SectorID,
 			}
 		}
+		mgr := mock.NewMockSectorMgr(sectors)
 
 		opts := def.Opts
 		if opts == nil {
@@ -528,10 +529,16 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		}
 		storers[i] = CreateTestStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
 			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
-				return mock.NewMockSectorMgr(sectors), nil
+				return mgr, nil
+			}),
+			node.Override(new(sectorstorage.PieceProvider), func() (sectorstorage.PieceProvider, error) {
+				return mgr, nil
+			}),
+			node.Override(new(sectorstorage.Unsealer), func() (sectorstorage.Unsealer, error) {
+				return mgr, nil
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-			node.Unset(new(*sectorstorage.Manager)),
+			//node.Unset(new(*sectorstorage.Manager)),
 			opts,
 		))
 
