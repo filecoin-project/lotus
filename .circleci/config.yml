@@ -794,7 +794,7 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all
+      - build-all:
           requires:
             - test-short
           filters:
