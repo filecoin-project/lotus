@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
@@ -931,9 +932,10 @@ type MarketDeal struct {
 
 type RetrievalOrder struct {
 	// TODO: make this less unixfs specific
-	Root  cid.Cid
-	Piece *cid.Cid
-	Size  uint64
+	Root                  cid.Cid
+	Piece                 *cid.Cid
+	DatamodelPathSelector *textselector.Expression
+	Size                  uint64
 
 	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	// TODO: support offset

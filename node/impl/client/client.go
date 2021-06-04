@@ -24,10 +24,15 @@ import (
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
+	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
@@ -67,6 +72,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+var log = logging.Logger("client")
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
@@ -500,7 +507,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	}
 
 	if ref.IsCAR {
-		// user gave us a CAR fil, use it as-is
+		// user gave us a CAR file, use it as-is
 		// validate that it's either a carv1 or carv2, and has one root.
 		f, err := os.Open(ref.Path)
 		if err != nil {
@@ -835,6 +842,29 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	}
 
 	sel := shared.AllSelector()
+	if order.DatamodelPathSelector != nil {
+
+		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+
+		selspec, err := textselector.SelectorSpecFromPath(
+
+			*order.DatamodelPathSelector,
+
+			// URGH - this is a direct copy from https://github.com/filecoin-project/go-fil-markets/blob/v1.12.0/shared/selectors.go#L10-L16
+			// Unable to use it because we need the SelectorSpec, and markets exposes just a reified node
+			ssb.ExploreRecursive(
+				selector.RecursionLimitNone(),
+				ssb.ExploreAll(ssb.ExploreRecursiveEdge()),
+			),
+		)
+		if err != nil {
+			finish(xerrors.Errorf("failed to parse text-selector '%s': %w", *order.DatamodelPathSelector, err))
+			return
+		}
+
+		sel = selspec.Node()
+		log.Infof("partial retrieval of datamodel-path-selector %s/*", *order.DatamodelPathSelector)
+	}
 
 	// summary:
 	// 1. if we're retrieving from an import, FromLocalCAR will be set.
@@ -961,8 +991,8 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	// Are we outputting a CAR?
 	if ref.IsCAR {
 
-		// not IPFS - just extract the CARv1 from the CARv2 we stored the retrieval in
-		if !retrieveIntoIPFS {
+		// not IPFS and we do full selection - just extract the CARv1 from the CARv2 we stored the retrieval in
+		if !retrieveIntoIPFS && order.DatamodelPathSelector == nil {
 			finish(carv2.ExtractV1File(carPath, ref.Path))
 			return
 		}
@@ -994,6 +1024,40 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	// we are extracting a UnixFS file.
 	ds := merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs)))
 	root := order.Root
+
+	// if we used a selector - need to find the sub-root the user actually wanted to retrieve
+	if order.DatamodelPathSelector != nil {
+
+		var subRootFound bool
+
+		// no err check - we just compiled this before starting, but now we do not wrap a `*`
+		selspec, _ := textselector.SelectorSpecFromPath(*order.DatamodelPathSelector, nil) //nolint:errcheck
+		if err := utils.TraverseDag(
+			ctx,
+			ds,
+			root,
+			selspec.Node(),
+			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
+				if r == traversal.VisitReason_SelectionMatch {
+					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
+					if !castOK {
+						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link.String())
+					}
+					root = cidLnk.Cid
+					subRootFound = true
+				}
+				return nil
+			},
+		); err != nil {
+			finish(xerrors.Errorf("Finding partial retrieval sub-root: %w", err))
+			return
+		}
+
+		if !subRootFound {
+			finish(xerrors.Errorf("Path selection '%s' does not match a node within %s", order.DatamodelPathSelector, root))
+			return
+		}
+	}
 
 	nd, err := ds.Get(ctx, root)
 	if err != nil {
