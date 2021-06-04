@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -330,12 +331,34 @@ func (tu *syncTestUtil) pid(n int) peer.ID {
 	return nal.ID
 }
 
+func (tu *syncTestUtil) waitIdentify(from int, pid peer.ID) {
+	start := time.Now()
+	deadline := start.Add(2 * time.Second)
+
+	for {
+		epi, err := tu.nds[from].NetPeerInfo(tu.ctx, pid)
+		require.NoError(tu.t, err)
+
+		if strings.Contains(strings.Join(epi.Protocols, ""), "/fil/chain/xchg") {
+			break
+		}
+
+		if time.Now().After(deadline) {
+			tu.t.Fatalf("peer didn't advertise chain xchg support: %+v", epi)
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func (tu *syncTestUtil) connect(from, to int) {
 	toPI, err := tu.nds[to].NetAddrsListen(tu.ctx)
 	require.NoError(tu.t, err)
 
 	err = tu.nds[from].NetConnect(tu.ctx, toPI)
 	require.NoError(tu.t, err)
+
+	tu.waitIdentify(from, toPI.ID)
 }
 
 func (tu *syncTestUtil) disconnect(from, to int) {
