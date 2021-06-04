@@ -795,12 +795,12 @@ workflows:
                 - master
       - build-debug
       - build-all
-          # requires:
-          #   - test-short
-          # filters:
-          #   tags:
-          #     only:
-          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-calibration:
           requires:
             - test-short
