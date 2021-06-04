@@ -301,6 +301,9 @@ func DefaultStorageMiner() *StorageMiner {
 				Default: &RetrievalPricingDefault{
 					VerifiedDealsFreeTransfer: true,
 				},
+				External: &RetrievalPricingExternal{
+					Path: "",
+				},
 			},
 		},
 
