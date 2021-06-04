@@ -40,7 +40,7 @@ func TestMinerAllInfo(t *testing.T) {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
 
-	n, sn := kit.Builder(t, kit.OneFull, kit.OneMiner)
+	n, sn := kit.FullNodeBuilder(t, kit.OneFull, kit.OneMiner)
 	client, miner := n[0].FullNode, sn[0]
 	kit.ConnectAndStartMining(t, time.Second, miner, client.(*impl.FullNodeAPI))
 
