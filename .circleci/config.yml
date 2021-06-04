@@ -899,6 +899,10 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-snapcraft:
+          name: publish-snapcraft-tmp
+          channel: edge
+
   nightly:
     triggers:
       - schedule:

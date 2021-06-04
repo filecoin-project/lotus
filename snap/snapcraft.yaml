@@ -27,10 +27,25 @@ parts:
     override-build: |
       LDFLAGS="" make lotus lotus-miner lotus-worker
       cp lotus lotus-miner lotus-worker $SNAPCRAFT_PART_INSTALL
+
+layout:
+  /var/tmp/filecoin-proof-parameters:
+    bind: $SNAP_DATA/var/tmp/filecoin-proof-parameters
 apps:
   lotus:
     command: lotus
+    plugs:
+      - network
+      - network-bind
   lotus-miner:
     command: lotus-miner
+    plugs:
+      - network
+      - network-bind
+      - opengl
   lotus-worker:
     command: lotus-worker
+    plugs:
+      - network
+      - network-bind
+      - opengl
