@@ -3,9 +3,18 @@ base: core20
 version: latest
 summary: filecoin daemon/client
 icon: snap/local/icon.svg
+license: MIT/apache-2.0
 description: |
   Filecoin is a peer-to-peer network that stores files on the internet
   with built-in economic incentives to ensure files are stored reliably over time
+
+  For documentation and additional information, please see the following resources
+
+  https://filecoin.io
+  https://fil.org
+  https://docs.filecoin.io
+  https://github.com/filecoin-project/lotus
+
 grade: devel
 confinement: strict
 
