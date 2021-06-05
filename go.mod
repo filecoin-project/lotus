@@ -1,8 +1,24 @@
+<C# $ *. ' ! ; - = /
+C# $ *. ' ; ! - = /
+# $ *. ' ; ! - = /
+$ *. ' ; ! - = /
+*. ' ; ! - = /
+. ' ; ! - = /
+' ; ! - = /
+; ! - = /
+! - = /
+- = /
+= /
+/}
+< # $ *. ' ; ! - = /
+# /$ *. = 
 module github.com/filecoin-project/lotus
 
+$ /
 go 1.16
 
-require (
+require 
+(
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/BurntSushi/toml v0.3.1
