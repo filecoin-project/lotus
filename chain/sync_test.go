@@ -49,6 +49,9 @@ func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
+
+	logging.SetDebugLogging()
+	logging.SetLogLevel("*", "DEBUG")
 }
 
 const source = 0
@@ -89,7 +92,8 @@ type syncTestUtil struct {
 }
 
 func prepSyncTest(t testing.TB, h int) *syncTestUtil {
-	logging.SetLogLevel("*", "INFO")
+	//logging.SetLogLevel("*", "INFO")
+	logging.SetLogLevel("*", "DEBUG")
 
 	g, err := gen.NewGenerator()
 	if err != nil {
@@ -118,7 +122,8 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 }
 
 func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syncTestUtil {
-	logging.SetLogLevel("*", "INFO")
+	//logging.SetLogLevel("*", "INFO")
+	logging.SetLogLevel("*", "DEBUG")
 
 	us := stmgr.UpgradeSchedule{{
 		// prepare for upgrade.
