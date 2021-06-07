@@ -522,9 +522,17 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			fulls[i] = fullRpc(t, fulls[i])
 		}
 
+		mgr := mock.NewMockSectorMgr(nil)
+
 		fulls[i].Stb = storageBuilder(fulls[i], mn, node.Options(
 			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
-				return mock.NewMockSectorMgr(nil), nil
+				return mgr, nil
+			}),
+			node.Override(new(sectorstorage.PieceProvider), func() (sectorstorage.PieceProvider, error) {
+				return mgr, nil
+			}),
+			node.Override(new(sectorstorage.Unsealer), func() (sectorstorage.Unsealer, error) {
+				return mgr, nil
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Override(new(ffiwrapper.Prover), mock.MockProver),
