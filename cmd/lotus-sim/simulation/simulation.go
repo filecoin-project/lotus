@@ -143,6 +143,10 @@ func (sim *Simulation) GetHead() *types.TipSet {
 	return sim.head
 }
 
+func (sim *Simulation) GetNetworkVersion() network.Version {
+	return sim.sm.GetNtwkVersion(context.TODO(), sim.head.Height())
+}
+
 func (sim *Simulation) SetHead(head *types.TipSet) error {
 	if err := sim.MetadataDS.Put(sim.key("head"), head.Key().Bytes()); err != nil {
 		return xerrors.Errorf("failed to store simulation head: %w", err)
