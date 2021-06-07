@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: testground run
-        uses: coryschwartz/testground-github-action@master
+        uses: coryschwartz/testground-github-action@v1.1
         with:
           backend_addr: ${{ matrix.backend_addr }}
           backend_proto: ${{ matrix.backend_proto }}
