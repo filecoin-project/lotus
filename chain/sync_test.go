@@ -495,6 +495,24 @@ func TestSyncSimple(t *testing.T) {
 	tu.compareSourceState(client)
 }
 
+func TestSyncRepo(t *testing.T) {
+	H := 5
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+	//tu.checkHeight("client", client, 0)
+
+	inspectHosts(t, tu)
+
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(1, 0)
+	tu.waitUntilSync(0, client)
+
+	//tu.checkHeight("client", client, H)
+
+	//tu.compareSourceState(client)
+}
+
 func TestSyncMining(t *testing.T) {
 	H := 50
 	tu := prepSyncTest(t, H)
