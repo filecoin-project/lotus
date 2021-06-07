@@ -12,7 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 
@@ -130,7 +130,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	pf, err := ffiwrapper.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+	pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
 	if err != nil {
 		log.Error("opening partial file: ", err)
 		w.WriteHeader(500)

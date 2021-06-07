@@ -16,8 +16,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 
@@ -415,7 +415,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 			return nil, err
 		}
 
-		pf, err := ffiwrapper.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+		pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
 		if err != nil {
 			return nil, xerrors.Errorf("opening partial file: %w", err)
 		}
