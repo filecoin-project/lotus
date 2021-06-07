@@ -46,6 +46,7 @@ apps:
     plugs:
       - network
       - network-bind
+      - home
     environment:
       FIL_PROOFS_PARAMETER_CACHE: $SNAP_USER_COMMON/filecoin-proof-parameters
       LOTUS_PATH: $SNAP_USER_COMMON/lotus
