@@ -331,7 +331,7 @@ jobs:
       - run: cd extern/filecoin-ffi && make
       - run:
           name: "go get lotus@master"
-          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../..
+          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../.. && go mod tidy
       - run:
           name: "build lotus-soup testplan"
           command: pushd testplans/lotus-soup && go build -tags=testground .

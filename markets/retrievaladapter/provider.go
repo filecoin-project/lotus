@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/lotus/api/v1api"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -25,15 +26,15 @@ import (
 var log = logging.Logger("retrievaladapter")
 
 type retrievalProviderNode struct {
-	miner  *storage.Miner
-	sealer sectorstorage.SectorManager
-	full   v1api.FullNode
+	miner *storage.Miner
+	pp    sectorstorage.PieceProvider
+	full  v1api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(miner *storage.Miner, sealer sectorstorage.SectorManager, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
-	return &retrievalProviderNode{miner, sealer, full}
+func NewRetrievalProviderNode(miner *storage.Miner, pp sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
+	return &retrievalProviderNode{miner, pp, full}
 }
 
 func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
@@ -67,24 +68,18 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 		ProofType: si.SectorType,
 	}
 
-	// Set up a pipe so that data can be written from the unsealing process
-	// into the reader returned by this function
-	r, w := io.Pipe()
-	go func() {
-		var commD cid.Cid
-		if si.CommD != nil {
-			commD = *si.CommD
-		}
+	var commD cid.Cid
+	if si.CommD != nil {
+		commD = *si.CommD
+	}
 
-		// Read the piece into the pipe's writer, unsealing the piece if necessary
-		log.Debugf("read piece in sector %d, offset %d, length %d from miner %d", sectorID, offset, length, mid)
-		err := rpn.sealer.ReadPiece(ctx, w, ref, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
-		if err != nil {
-			log.Errorf("failed to unseal piece from sector %d: %s", sectorID, err)
-		}
-		// Close the reader with any error that was returned while reading the piece
-		_ = w.CloseWithError(err)
-	}()
+	// Get a reader for the piece, unsealing the piece if necessary
+	log.Debugf("read piece in sector %d, offset %d, length %d from miner %d", sectorID, offset, length, mid)
+	r, unsealed, err := rpn.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)
+	}
+	_ = unsealed // todo: use
 
 	return r, nil
 }

@@ -441,7 +441,7 @@ func TestOfflineDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, st
 	require.Eventually(t, func() bool {
 		cd, _ := s.client.ClientGetDealInfo(s.ctx, *proposalCid)
 		return cd.State == storagemarket.StorageDealCheckForAcceptance
-	}, 1*time.Second, 100*time.Millisecond, "actual deal status is %s", storagemarket.DealStates[cd.State])
+	}, 30*time.Second, 1*time.Second, "actual deal status is %s", storagemarket.DealStates[cd.State])
 
 	// Create a CAR file from the raw file
 	carFileDir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-car")
