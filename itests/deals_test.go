@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -12,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -113,7 +117,7 @@ func TestPublishDealsBatching(t *testing.T) {
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
-		res, _, err := kit.CreateImportFile(ctx, client, rseed, 0)
+		res, _, _, err := kit.CreateImportFile(ctx, client, rseed, 0)
 		require.NoError(t, err)
 
 		upds, err := client.ClientGetDealUpdates(ctx)
@@ -306,6 +310,97 @@ func TestDealMining(t *testing.T) {
 	atomic.StoreInt32(&mine, 0)
 	fmt.Println("shutting down mining")
 	<-done
+}
+
+func TestOfflineDealFlow(t *testing.T) {
+	blocktime := 10 * time.Millisecond
+
+	// For these tests where the block time is artificially short, just use
+	// a deal start epoch that is guaranteed to be far enough in the future
+	// so that the deal starts sealing in time
+	startEpoch := abi.ChainEpoch(2 << 12)
+
+	runTest := func(t *testing.T, fastRet bool) {
+		ctx := context.Background()
+		fulls, miners := kit.MockMinerBuilder(t, kit.OneFull, kit.OneMiner)
+		client, miner := fulls[0].FullNode.(*impl.FullNodeAPI), miners[0]
+
+		kit.ConnectAndStartMining(t, blocktime, miner, client)
+
+		dh := kit.NewDealHarness(t, client, miner)
+
+		// Create a random file and import on the client.
+		res, path, data, err := kit.CreateImportFile(ctx, client, 1, 0)
+		require.NoError(t, err)
+
+		// Get the piece size and commP
+		fcid := res.Root
+		pieceInfo, err := client.ClientDealPieceCID(ctx, fcid)
+		require.NoError(t, err)
+		fmt.Println("FILE CID: ", fcid)
+
+		// Create a storage deal with the miner
+		maddr, err := miner.ActorAddress(ctx)
+		require.NoError(t, err)
+
+		addr, err := client.WalletDefaultAddress(ctx)
+		require.NoError(t, err)
+
+		// Manual storage deal (offline deal)
+		dataRef := &storagemarket.DataRef{
+			TransferType: storagemarket.TTManual,
+			Root:         fcid,
+			PieceCid:     &pieceInfo.PieceCID,
+			PieceSize:    pieceInfo.PieceSize.Unpadded(),
+		}
+
+		proposalCid, err := client.ClientStartDeal(ctx, &api.StartDealParams{
+			Data:              dataRef,
+			Wallet:            addr,
+			Miner:             maddr,
+			EpochPrice:        types.NewInt(1000000),
+			DealStartEpoch:    startEpoch,
+			MinBlocksDuration: uint64(build.MinDealDuration),
+			FastRetrieval:     fastRet,
+		})
+		require.NoError(t, err)
+
+		// Wait for the deal to reach StorageDealCheckForAcceptance on the client
+		cd, err := client.ClientGetDealInfo(ctx, *proposalCid)
+		require.NoError(t, err)
+		require.Eventually(t, func() bool {
+			cd, _ := client.ClientGetDealInfo(ctx, *proposalCid)
+			return cd.State == storagemarket.StorageDealCheckForAcceptance
+		}, 30*time.Second, 1*time.Second, "actual deal status is %s", storagemarket.DealStates[cd.State])
+
+		// Create a CAR file from the raw file
+		carFileDir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-car")
+		require.NoError(t, err)
+		carFilePath := filepath.Join(carFileDir, "out.car")
+		err = client.ClientGenCar(ctx, api.FileRef{Path: path}, carFilePath)
+		require.NoError(t, err)
+
+		// Import the CAR file on the miner - this is the equivalent to
+		// transferring the file across the wire in a normal (non-offline) deal
+		err = miner.DealsImportData(ctx, *proposalCid, carFilePath)
+		require.NoError(t, err)
+
+		// Wait for the deal to be published
+		dh.WaitDealPublished(ctx, proposalCid)
+
+		t.Logf("deal published, retrieving")
+
+		// Retrieve the deal
+		dh.TestRetrieval(ctx, fcid, &pieceInfo.PieceCID, false, data)
+	}
+
+	t.Run("NormalRetrieval", func(t *testing.T) {
+		runTest(t, false)
+	})
+	t.Run("FastRetrieval", func(t *testing.T) {
+		runTest(t, true)
+	})
+
 }
 
 func runFullDealCycles(t *testing.T, n int, b kit.APIBuilder, blocktime time.Duration, carExport, fastRet bool, startEpoch abi.ChainEpoch) {

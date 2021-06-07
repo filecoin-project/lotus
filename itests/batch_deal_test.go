@@ -98,7 +98,7 @@ func TestBatchDealInput(t *testing.T) {
 
 			// Starts a deal and waits until it's published
 			runDealTillSeal := func(rseed int) {
-				res, _, err := kit.CreateImportFile(ctx, client, rseed, piece)
+				res, _, _, err := kit.CreateImportFile(ctx, client, rseed, piece)
 				require.NoError(t, err)
 
 				deal := dh.StartDeal(ctx, res.Root, false, dealStartEpoch)

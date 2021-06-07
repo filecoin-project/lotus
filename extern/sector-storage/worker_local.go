@@ -161,7 +161,6 @@ const (
 	ReleaseUnsealed ReturnType = "ReleaseUnsealed"
 	MoveStorage     ReturnType = "MoveStorage"
 	UnsealPiece     ReturnType = "UnsealPiece"
-	ReadPiece       ReturnType = "ReadPiece"
 	Fetch           ReturnType = "Fetch"
 )
 
@@ -209,7 +208,6 @@ var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storifac
 	ReleaseUnsealed: rfunc(storiface.WorkerReturn.ReturnReleaseUnsealed),
 	MoveStorage:     rfunc(storiface.WorkerReturn.ReturnMoveStorage),
 	UnsealPiece:     rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
-	ReadPiece:       rfunc(storiface.WorkerReturn.ReturnReadPiece),
 	Fetch:           rfunc(storiface.WorkerReturn.ReturnFetch),
 }
 
@@ -430,6 +428,7 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storage.SectorRef,
 	}
 
 	return l.asyncCall(ctx, sector, UnsealPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		log.Debugf("worker will unseal piece now, sector=%+v", sector.ID)
 		if err = sb.UnsealPiece(ctx, sector, index, size, randomness, cid); err != nil {
 			return nil, xerrors.Errorf("unsealing sector: %w", err)
 		}
@@ -442,18 +441,9 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storage.SectorRef,
 			return nil, xerrors.Errorf("removing source data: %w", err)
 		}
 
+		log.Debugf("worker has unsealed piece, sector=%+v", sector.ID)
+
 		return nil, nil
-	})
-}
-
-func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (storiface.CallID, error) {
-	sb, err := l.executor()
-	if err != nil {
-		return storiface.UndefCall, err
-	}
-
-	return l.asyncCall(ctx, sector, ReadPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		return sb.ReadPiece(ctx, writer, sector, index, size)
 	})
 }
 

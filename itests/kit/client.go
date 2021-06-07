@@ -43,7 +43,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 
 	// Create a deal (non-interactive)
 	// client deal --start-epoch=<start epoch> <cid> <Miner addr> 1000000attofil <duration>
-	res, _, err := CreateImportFile(ctx, clientNode, 1, 0)
+	res, _, _, err := CreateImportFile(ctx, clientNode, 1, 0)
 
 	require.NoError(t, err)
 	startEpoch := fmt.Sprintf("--start-epoch=%d", 2<<12)
@@ -60,7 +60,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	// <miner addr>
 	// "no" (verified Client)
 	// "yes" (confirm deal)
-	res, _, err = CreateImportFile(ctx, clientNode, 2, 0)
+	res, _, _, err = CreateImportFile(ctx, clientNode, 2, 0)
 	require.NoError(t, err)
 	dataCid2 := res.Root
 	duration = fmt.Sprintf("%d", build.MinDealDuration/builtin.EpochsInDay)
@@ -111,17 +111,17 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	require.Regexp(t, regexp.MustCompile("Success"), out)
 }
 
-func CreateImportFile(ctx context.Context, client api.FullNode, rseed int, size int) (*api.ImportRes, []byte, error) {
-	data, path, err := createRandomFile(rseed, size)
+func CreateImportFile(ctx context.Context, client api.FullNode, rseed int, size int) (res *api.ImportRes, path string, data []byte, err error) {
+	data, path, err = createRandomFile(rseed, size)
 	if err != nil {
-		return nil, nil, err
+		return nil, "", nil, err
 	}
 
-	res, err := client.ClientImport(ctx, api.FileRef{Path: path})
+	res, err = client.ClientImport(ctx, api.FileRef{Path: path})
 	if err != nil {
-		return nil, nil, err
+		return nil, "", nil, err
 	}
-	return res, data, nil
+	return res, path, data, nil
 }
 
 func createRandomFile(rseed, size int) ([]byte, string, error) {

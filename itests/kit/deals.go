@@ -44,7 +44,7 @@ func NewDealHarness(t *testing.T, client api.FullNode, miner TestMiner) *DealHar
 }
 
 func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	res, data, err := CreateImportFile(ctx, dh.client, rseed, 0)
+	res, _, data, err := CreateImportFile(ctx, dh.client, rseed, 0)
 	if err != nil {
 		dh.t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	}
 }
 
-func (dh *DealHarness) TestRetrieval(ctx context.Context, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {
+func (dh *DealHarness) TestRetrieval(ctx context.Context, fcid cid.Cid, piece *cid.Cid, carExport bool, expect []byte) {
 	offers, err := dh.client.ClientFindData(ctx, fcid, piece)
 	if err != nil {
 		dh.t.Fatal(err)
@@ -226,8 +226,8 @@ func (dh *DealHarness) TestRetrieval(ctx context.Context, fcid cid.Cid, piece *c
 		rdata = dh.ExtractCarData(ctx, rdata, rpath)
 	}
 
-	if !bytes.Equal(rdata, data) {
-		dh.t.Fatal("wrong data retrieved")
+	if !bytes.Equal(rdata, expect) {
+		dh.t.Fatal("wrong expect retrieved")
 	}
 }
 
@@ -285,7 +285,7 @@ func ConnectAndStartMining(t *testing.T, blocktime time.Duration, miner TestMine
 
 	blockMiner := NewBlockMiner(t, miner)
 	blockMiner.MineBlocks(ctx, blocktime)
-
+	t.Cleanup(blockMiner.Stop)
 	return blockMiner
 }
 

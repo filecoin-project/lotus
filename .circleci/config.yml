@@ -331,7 +331,7 @@ jobs:
       - run: cd extern/filecoin-ffi && make
       - run:
           name: "go get lotus@master"
-          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../..
+          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../.. && go mod tidy
       - run:
           name: "build lotus-soup testplan"
           command: pushd testplans/lotus-soup && go build -tags=testground .
@@ -564,6 +564,34 @@ jobs:
       - run:
           name: Publish release
           command: ./scripts/publish-release.sh
+
+  publish-snapcraft:
+    description: build and push snapcraft
+    machine:
+      image: ubuntu-2004:202104-01
+    resource_class: 2xlarge
+    parameters:
+      channel:
+        type: string
+        default: "edge"
+        description: snapcraft channel
+    steps:
+      - checkout
+      - run:
+          name: install snapcraft
+          command: sudo snap install snapcraft --classic
+      - run:
+          name: create snapcraft config file
+          command: |
+            mkdir -p ~/.config/snapcraft
+            echo "$SNAPCRAFT_LOGIN_FILE" | base64 -d > ~/.config/snapcraft/snapcraft.cfg
+      - run:
+          name: build snap
+          command: snapcraft --use-lxd
+      - run:
+          name: publish snap
+          command: snapcraft push *.snap --release << parameters.channel >>
+
 
   build-and-push-image:
     description: build and push docker images to public AWS ECR registry
@@ -907,3 +935,26 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-snapcraft:
+          name: publish-snapcraft-stable
+          channel: stable
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - publish-snapcraft:
+          name: publish-snapcraft-nightly
+          channel: edge

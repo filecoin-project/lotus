@@ -4,7 +4,6 @@ package api
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -780,8 +779,6 @@ type WorkerStruct struct {
 		Paths func(p0 context.Context) ([]stores.StoragePath, error) `perm:"admin"`
 
 		ProcessSession func(p0 context.Context) (uuid.UUID, error) `perm:"admin"`
-
-		ReadPiece func(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) `perm:"admin"`
 
 		ReleaseUnsealed func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
@@ -3552,14 +3549,6 @@ func (s *WorkerStruct) ProcessSession(p0 context.Context) (uuid.UUID, error) {
 
 func (s *WorkerStub) ProcessSession(p0 context.Context) (uuid.UUID, error) {
 	return *new(uuid.UUID), xerrors.New("method not supported")
-}
-
-func (s *WorkerStruct) ReadPiece(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) {
-	return s.Internal.ReadPiece(p0, p1, p2, p3, p4)
-}
-
-func (s *WorkerStub) ReadPiece(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
 }
 
 func (s *WorkerStruct) ReleaseUnsealed(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
