@@ -4,16 +4,62 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/urfave/cli/v2"
 )
 
-var setUpgradeCommand = &cli.Command{
-	Name:        "set-upgrade",
+var upgradeCommand = &cli.Command{
+	Name:        "upgrade",
+	Description: "Modifies network upgrade heights.",
+	Subcommands: []*cli.Command{
+		upgradeSetCommand,
+	},
+}
+
+var upgradeList = &cli.Command{
+	Name:        "list",
+	Description: "Lists all pending upgrades.",
+	Subcommands: []*cli.Command{
+		upgradeSetCommand,
+	},
+	Action: func(cctx *cli.Context) error {
+		node, err := open(cctx)
+		if err != nil {
+			return err
+		}
+		defer node.Close()
+
+		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
+		if err != nil {
+			return err
+		}
+		upgrades, err := sim.ListUpgrades()
+		if err != nil {
+			return err
+		}
+
+		tw := tabwriter.NewWriter(cctx.App.Writer, 8, 8, 0, ' ', 0)
+		fmt.Fprintf(tw, "version\theight\tepochs\tmigration\texpensive")
+		epoch := sim.GetHead().Height()
+		for _, upgrade := range upgrades {
+			fmt.Fprintf(
+				tw, "%d\t%d\t%+d\t%t\t%t",
+				upgrade.Network, upgrade.Height, upgrade.Height-epoch,
+				upgrade.Migration != nil,
+				upgrade.Expensive,
+			)
+		}
+		return nil
+	},
+}
+
+var upgradeSetCommand = &cli.Command{
+	Name:        "set",
 	ArgsUsage:   "<network-version> [+]<epochs>",
-	Description: "Set a network upgrade height. prefix with '+' to set it relative to the last epoch.",
+	Description: "Set a network upgrade height. Prefix with '+' to set it relative to the last epoch.",
 	Action: func(cctx *cli.Context) error {
 		args := cctx.Args()
 		if args.Len() != 2 {

@@ -265,6 +265,21 @@ func (sim *Simulation) SetUpgradeHeight(nv network.Version, epoch abi.ChainEpoch
 	return nil
 }
 
+func (sim *Simulation) ListUpgrades() (stmgr.UpgradeSchedule, error) {
+	upgrades, err := sim.config.upgradeSchedule()
+	if err != nil {
+		return nil, err
+	}
+	var pending stmgr.UpgradeSchedule
+	for _, upgrade := range upgrades {
+		if upgrade.Height < sim.head.Height() {
+			continue
+		}
+		pending = append(pending, upgrade)
+	}
+	return pending, nil
+}
+
 func (sim *Simulation) saveConfig() error {
 	buf, err := json.Marshal(sim.config)
 	if err != nil {

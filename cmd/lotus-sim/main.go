@@ -16,7 +16,7 @@ var root []*cli.Command = []*cli.Command{
 	deleteSimCommand,
 	listSimCommand,
 	stepSimCommand,
-	setUpgradeCommand,
+	upgradeCommand,
 }
 
 func main() {
