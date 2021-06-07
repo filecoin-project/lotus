@@ -21,14 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
-var (
-	// TODO: config
-
-	TerminateBatchMax  uint64 = 100 // adjust based on real-world gas numbers, actors limit at 10k
-	TerminateBatchMin  uint64 = 1
-	TerminateBatchWait        = 5 * time.Minute
-)
-
 type TerminateBatcherApi interface {
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
@@ -38,11 +30,12 @@ type TerminateBatcherApi interface {
 }
 
 type TerminateBatcher struct {
-	api     TerminateBatcherApi
-	maddr   address.Address
-	mctx    context.Context
-	addrSel AddrSel
-	feeCfg  FeeConfig
+	api       TerminateBatcherApi
+	maddr     address.Address
+	mctx      context.Context
+	addrSel   AddrSel
+	feeCfg    FeeConfig
+	getConfig GetSealingConfigFunc
 
 	todo map[SectorLocation]*bitfield.BitField // MinerSectorLocation -> BitField
 
@@ -53,13 +46,14 @@ type TerminateBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddrSel, feeCfg FeeConfig) *TerminateBatcher {
+func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddrSel, feeCfg FeeConfig, getConfig GetSealingConfigFunc) *TerminateBatcher {
 	b := &TerminateBatcher{
-		api:     api,
-		maddr:   maddr,
-		mctx:    mctx,
-		addrSel: addrSel,
-		feeCfg:  feeCfg,
+		api:       api,
+		maddr:     maddr,
+		mctx:      mctx,
+		addrSel:   addrSel,
+		feeCfg:    feeCfg,
+		getConfig: getConfig,
 
 		todo:    map[SectorLocation]*bitfield.BitField{},
 		waiting: map[abi.SectorNumber][]chan cid.Cid{},
@@ -86,6 +80,11 @@ func (b *TerminateBatcher) run() {
 		}
 		lastMsg = nil
 
+		cfg, err := b.getConfig()
+		if err != nil {
+			log.Warnw("TerminateBatcher getconfig error", "error", err)
+		}
+
 		var sendAboveMax, sendAboveMin bool
 		select {
 		case <-b.stop:
@@ -93,13 +92,12 @@ func (b *TerminateBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-time.After(TerminateBatchWait):
+		case <-time.After(cfg.TerminateBatchWait):
 			sendAboveMin = true
 		case fr := <-b.force: // user triggered
 			forceRes = fr
 		}
 
-		var err error
 		lastMsg, err = b.processBatch(sendAboveMax, sendAboveMin)
 		if err != nil {
 			log.Warnw("TerminateBatcher processBatch error", "error", err)
@@ -111,6 +109,11 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	dl, err := b.api.StateMinerProvingDeadline(b.mctx, b.maddr, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("getting proving deadline info failed: %w", err)
+	}
+
+	cfg, err := b.getConfig()
+	if err != nil {
+		return nil, xerrors.Errorf("getting sealing config: %W", err)
 	}
 
 	b.lk.Lock()
@@ -180,7 +183,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 			Sectors:   toTerminate,
 		})
 
-		if total >= uint64(miner.AddressedSectorsMax) {
+		if total >= uint64(miner.AddressedSectorsMax) || total >= cfg.TerminateBatchMax {
 			break
 		}
 
@@ -193,11 +196,11 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, nil // nothing to do
 	}
 
-	if notif && total < TerminateBatchMax {
+	if notif && total < cfg.TerminateBatchMax {
 		return nil, nil
 	}
 
-	if after && total < TerminateBatchMin {
+	if after && total < cfg.TerminateBatchMin {
 		return nil, nil
 	}
 

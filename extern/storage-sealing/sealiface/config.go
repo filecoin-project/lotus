@@ -17,4 +17,20 @@ type Config struct {
 	WaitDealsDelay time.Duration
 
 	AlwaysKeepUnsealedCopy bool
+
+	BatchPreCommits     bool
+	MaxPreCommitBatch   int
+	MinPreCommitBatch   int
+	PreCommitBatchWait  time.Duration
+	PreCommitBatchSlack time.Duration
+
+	AggregateCommits bool
+	MinCommitBatch   int
+	MaxCommitBatch   int
+	CommitBatchWait  time.Duration
+	CommitBatchSlack time.Duration
+
+	TerminateBatchMax  uint64
+	TerminateBatchMin  uint64
+	TerminateBatchWait time.Duration
 }

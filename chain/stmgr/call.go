@@ -39,25 +39,29 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	}
 
 	bstate := ts.ParentState()
-	bheight := ts.Height()
+	pts, err := sm.cs.LoadTipSet(ts.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+	}
+	pheight := pts.Height()
 
 	// If we have to run an expensive migration, and we're not at genesis,
 	// return an error because the migration will take too long.
 	//
 	// We allow this at height 0 for at-genesis migrations (for testing).
-	if bheight-1 > 0 && sm.hasExpensiveFork(ctx, bheight-1) {
+	if pheight > 0 && sm.hasExpensiveFork(ctx, pheight) {
 		return nil, ErrExpensiveFork
 	}
 
 	// Run the (not expensive) migration.
-	bstate, err := sm.handleStateForks(ctx, bstate, bheight-1, nil, ts)
+	bstate, err = sm.handleStateForks(ctx, bstate, pheight, nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
-		Epoch:          bheight,
+		Epoch:          pheight + 1,
 		Rand:           store.NewChainRand(sm.cs, ts.Cids()),
 		Bstore:         sm.cs.StateBlockstore(),
 		Syscalls:       sm.cs.VMSys(),

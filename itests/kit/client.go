@@ -43,7 +43,8 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 
 	// Create a deal (non-interactive)
 	// client deal --start-epoch=<start epoch> <cid> <Miner addr> 1000000attofil <duration>
-	res, _, err := CreateImportFile(ctx, clientNode, 1)
+	res, _, err := CreateImportFile(ctx, clientNode, 1, 0)
+
 	require.NoError(t, err)
 	startEpoch := fmt.Sprintf("--start-epoch=%d", 2<<12)
 	dataCid := res.Root
@@ -56,10 +57,10 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	// client deal
 	// <cid>
 	// <duration> (in days)
-	// <Miner addr>
+	// <miner addr>
 	// "no" (verified Client)
 	// "yes" (confirm deal)
-	res, _, err = CreateImportFile(ctx, clientNode, 2)
+	res, _, err = CreateImportFile(ctx, clientNode, 2, 0)
 	require.NoError(t, err)
 	dataCid2 := res.Root
 	duration = fmt.Sprintf("%d", build.MinDealDuration/builtin.EpochsInDay)
@@ -110,17 +111,8 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	require.Regexp(t, regexp.MustCompile("Success"), out)
 }
 
-func CreateImportFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
-	data := make([]byte, 1600)
-	rand.New(rand.NewSource(int64(rseed))).Read(data)
-
-	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	path := filepath.Join(dir, "sourcefile.dat")
-	err = ioutil.WriteFile(path, data, 0644)
+func CreateImportFile(ctx context.Context, client api.FullNode, rseed int, size int) (*api.ImportRes, []byte, error) {
+	data, path, err := createRandomFile(rseed, size)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,4 +122,25 @@ func CreateImportFile(ctx context.Context, client api.FullNode, rseed int) (*api
 		return nil, nil, err
 	}
 	return res, data, nil
+}
+
+func createRandomFile(rseed, size int) ([]byte, string, error) {
+	if size == 0 {
+		size = 1600
+	}
+	data := make([]byte, size)
+	rand.New(rand.NewSource(int64(rseed))).Read(data)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
+	if err != nil {
+		return nil, "", err
+	}
+
+	path := filepath.Join(dir, "sourcefile.dat")
+	err = ioutil.WriteFile(path, data, 0644)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return data, path, nil
 }

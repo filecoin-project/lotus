@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
 // TODO: refactor this to be direct somehow
@@ -57,6 +58,22 @@ func (m *Miner) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
 
 func (m *Miner) TerminatePending(ctx context.Context) ([]abi.SectorID, error) {
 	return m.sealing.TerminatePending(ctx)
+}
+
+func (m *Miner) SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) {
+	return m.sealing.SectorPreCommitFlush(ctx)
+}
+
+func (m *Miner) SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.sealing.SectorPreCommitPending(ctx)
+}
+
+func (m *Miner) CommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) {
+	return m.sealing.CommitFlush(ctx)
+}
+
+func (m *Miner) CommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return m.sealing.CommitPending(ctx)
 }
 
 func (m *Miner) MarkForUpgrade(id abi.SectorNumber) error {

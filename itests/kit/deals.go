@@ -44,7 +44,7 @@ func NewDealHarness(t *testing.T, client api.FullNode, miner TestMiner) *DealHar
 }
 
 func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	res, data, err := CreateImportFile(ctx, dh.client, rseed)
+	res, data, err := CreateImportFile(ctx, dh.client, rseed, 0)
 	if err != nil {
 		dh.t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, f
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-	dh.WaitDealSealed(ctx, deal, false)
+	dh.WaitDealSealed(ctx, deal, false, false, nil)
 
 	// Retrieval
 	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
@@ -93,19 +93,20 @@ func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool
 	return deal
 }
 
-func (dh *DealHarness) WaitDealSealed(ctx context.Context, deal *cid.Cid, noseal bool) {
+func (dh *DealHarness) WaitDealSealed(ctx context.Context, deal *cid.Cid, noseal, noSealStart bool, cb func()) {
 loop:
 	for {
 		di, err := dh.client.ClientGetDealInfo(ctx, *deal)
-		if err != nil {
-			dh.t.Fatal(err)
-		}
+		require.NoError(dh.t, err)
+
 		switch di.State {
 		case storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing:
 			if noseal {
 				return
 			}
-			dh.StartSealingWaiting(ctx)
+			if !noSealStart {
+				dh.StartSealingWaiting(ctx)
+			}
 		case storagemarket.StorageDealProposalRejected:
 			dh.t.Fatal("deal rejected")
 		case storagemarket.StorageDealFailing:
@@ -116,8 +117,23 @@ loop:
 			fmt.Println("COMPLETE", di)
 			break loop
 		}
-		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
+
+		mds, err := dh.miner.MarketListIncompleteDeals(ctx)
+		require.NoError(dh.t, err)
+
+		var minerState storagemarket.StorageDealStatus
+		for _, md := range mds {
+			if md.DealID == di.DealID {
+				minerState = md.State
+				break
+			}
+		}
+
+		fmt.Printf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
 		time.Sleep(time.Second / 2)
+		if cb != nil {
+			cb()
+		}
 	}
 }
 

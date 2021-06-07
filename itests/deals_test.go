@@ -113,7 +113,7 @@ func TestPublishDealsBatching(t *testing.T) {
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
-		res, _, err := kit.CreateImportFile(ctx, client, rseed)
+		res, _, err := kit.CreateImportFile(ctx, client, rseed, 0)
 		require.NoError(t, err)
 
 		upds, err := client.ClientGetDealUpdates(ctx)
@@ -299,7 +299,7 @@ func TestDealMining(t *testing.T) {
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 
-	dh.WaitDealSealed(ctx, deal, false)
+	dh.WaitDealSealed(ctx, deal, false, false, nil)
 
 	<-minedTwo
 
@@ -388,12 +388,12 @@ func runSecondDealRetrievalTest(t *testing.T, b kit.APIBuilder, blocktime time.D
 
 		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 		time.Sleep(time.Second)
-		dh.WaitDealSealed(ctx, deal1, true)
+		dh.WaitDealSealed(ctx, deal1, true, false, nil)
 
 		deal2 := dh.StartDeal(ctx, fcid2, true, 0)
 
 		time.Sleep(time.Second)
-		dh.WaitDealSealed(ctx, deal2, false)
+		dh.WaitDealSealed(ctx, deal2, false, false, nil)
 
 		// Retrieval
 		info, err := client.ClientGetDealInfo(ctx, *deal2)

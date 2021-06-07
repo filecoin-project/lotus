@@ -580,6 +580,21 @@ func (mr *MockFullNodeMockRecorder) ClientGetDealUpdates(arg0 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientGetDealUpdates", reflect.TypeOf((*MockFullNode)(nil).ClientGetDealUpdates), arg0)
 }
 
+// ClientGetRetrievalUpdates mocks base method
+func (m *MockFullNode) ClientGetRetrievalUpdates(arg0 context.Context) (<-chan api.RetrievalInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientGetRetrievalUpdates", arg0)
+	ret0, _ := ret[0].(<-chan api.RetrievalInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientGetRetrievalUpdates indicates an expected call of ClientGetRetrievalUpdates
+func (mr *MockFullNodeMockRecorder) ClientGetRetrievalUpdates(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientGetRetrievalUpdates", reflect.TypeOf((*MockFullNode)(nil).ClientGetRetrievalUpdates), arg0)
+}
+
 // ClientHasLocal mocks base method
 func (m *MockFullNode) ClientHasLocal(arg0 context.Context, arg1 cid.Cid) (bool, error) {
 	m.ctrl.T.Helper()
@@ -653,6 +668,21 @@ func (m *MockFullNode) ClientListImports(arg0 context.Context) ([]api.Import, er
 func (mr *MockFullNodeMockRecorder) ClientListImports(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientListImports", reflect.TypeOf((*MockFullNode)(nil).ClientListImports), arg0)
+}
+
+// ClientListRetrievals mocks base method
+func (m *MockFullNode) ClientListRetrievals(arg0 context.Context) ([]api.RetrievalInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientListRetrievals", arg0)
+	ret0, _ := ret[0].([]api.RetrievalInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientListRetrievals indicates an expected call of ClientListRetrievals
+func (mr *MockFullNodeMockRecorder) ClientListRetrievals(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientListRetrievals", reflect.TypeOf((*MockFullNode)(nil).ClientListRetrievals), arg0)
 }
 
 // ClientMinerQueryOffer mocks base method

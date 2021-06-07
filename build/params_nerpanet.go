@@ -27,7 +27,7 @@ const UpgradeRefuelHeight = -3
 
 const UpgradeLiftoffHeight = -5
 
-const UpgradeActorsV2Height = 30 // critical: the network can bootstrap from v1 only
+const UpgradeAssemblyHeight = 30 // critical: the network can bootstrap from v1 only
 const UpgradeTapeHeight = 60
 
 const UpgradeKumquatHeight = 90
@@ -39,9 +39,10 @@ const UpgradeClausHeight = 250
 
 const UpgradeOrangeHeight = 300
 
-const UpgradeActorsV3Height = 600
+const UpgradeTrustHeight = 600
 const UpgradeNorwegianHeight = 201000
-const UpgradeActorsV4Height = 203000
+const UpgradeTurboHeight = 203000
+const UpgradeHyperdriveHeight = 999999999
 
 func init() {
 	// Minimum block production power is set to 4 TiB

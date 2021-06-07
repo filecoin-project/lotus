@@ -29,6 +29,26 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make{{.v}}(store adt.Store, networkName string) (State, error) {
+	out := state{{.v}}{store: store}
+	{{if (le .v 2)}}
+		mr, err := adt{{.v}}.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *init{{.v}}.ConstructState(mr, networkName)
+	{{else}}
+		s, err := init{{.v}}.ConstructState(store, networkName)
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *s
+	{{end}}
+	return &out, nil
+}
+
 type state{{.v}} struct {
 	init{{.v}}.State
 	store adt.Store
@@ -66,6 +86,11 @@ func (s *state{{.v}}) SetNetworkName(name string) error {
 	return nil
 }
 
+func (s *state{{.v}}) SetNextID(id abi.ActorID) error {
+	s.State.NextID = id
+	return nil
+}
+
 func (s *state{{.v}}) Remove(addrs ...address.Address) (err error) {
 	m, err := adt{{.v}}.AsMap(s.store, s.State.AddressMap{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
 	if err != nil {
@@ -84,6 +109,15 @@ func (s *state{{.v}}) Remove(addrs ...address.Address) (err error) {
 	return nil
 }
 
-func (s *state{{.v}}) addressMap() (adt.Map, error) {
-	return adt{{.v}}.AsMap(s.store, s.AddressMap{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+func (s *state{{.v}}) SetAddressMap(mcid cid.Cid) error {
+	s.State.AddressMap = mcid
+	return nil
+}
+
+func (s *state{{.v}}) AddressMap() (adt.Map, error) {
+	return adt{{.v}}.AsMap(s.store, s.State.AddressMap{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
 }

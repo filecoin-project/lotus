@@ -153,7 +153,7 @@ func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (
 	}, nil
 }
 
-func (tma *testMpoolAPI) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (tma *testMpoolAPI) StateAccountKeyAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 {
 		return address.Undef, fmt.Errorf("given address was not a key addr")
 	}
@@ -202,7 +202,7 @@ func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipS
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
 	t.Helper()
-	n, err := mp.GetNonce(context.Background(), addr, types.EmptyTSK)
+	n, err := mp.GetNonce(context.TODO(), addr, types.EmptyTSK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +214,7 @@ func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64
 
 func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 	t.Helper()
-	if err := mp.Add(msg); err != nil {
+	if err := mp.Add(context.TODO(), msg); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -296,9 +296,9 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 	tma.applyBlock(t, a)
 	tsa := mock.TipSet(a)
 
-	_, _ = mp.Pending()
+	_, _ = mp.Pending(context.TODO())
 
-	selm, _ := mp.SelectMessages(tsa, 1)
+	selm, _ := mp.SelectMessages(context.Background(), tsa, 1)
 	if len(selm) == 0 {
 		t.Fatal("should have returned the rest of the messages")
 	}
@@ -358,7 +358,7 @@ func TestRevertMessages(t *testing.T) {
 
 	assertNonce(t, mp, sender, 4)
 
-	p, _ := mp.Pending()
+	p, _ := mp.Pending(context.TODO())
 	fmt.Printf("%+v\n", p)
 	if len(p) != 3 {
 		t.Fatal("expected three messages in mempool")
@@ -399,14 +399,14 @@ func TestPruningSimple(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		smsg := mock.MkMessage(sender, target, uint64(i), w)
-		if err := mp.Add(smsg); err != nil {
+		if err := mp.Add(context.TODO(), smsg); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	for i := 10; i < 50; i++ {
 		smsg := mock.MkMessage(sender, target, uint64(i), w)
-		if err := mp.Add(smsg); err != nil {
+		if err := mp.Add(context.TODO(), smsg); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -416,7 +416,7 @@ func TestPruningSimple(t *testing.T) {
 
 	mp.Prune()
 
-	msgs, _ := mp.Pending()
+	msgs, _ := mp.Pending(context.TODO())
 	if len(msgs) != 5 {
 		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
 	}
@@ -458,7 +458,7 @@ func TestLoadLocal(t *testing.T) {
 	msgs := make(map[cid.Cid]struct{})
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		cid, err := mp.Push(m)
+		cid, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -474,7 +474,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pmsgs, _ := mp.Pending()
+	pmsgs, _ := mp.Pending(context.TODO())
 	if len(msgs) != len(pmsgs) {
 		t.Fatalf("expected %d messages, but got %d", len(msgs), len(pmsgs))
 	}
@@ -529,7 +529,7 @@ func TestClearAll(t *testing.T) {
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		_, err := mp.Push(m)
+		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -540,9 +540,9 @@ func TestClearAll(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	mp.Clear(true)
+	mp.Clear(context.Background(), true)
 
-	pending, _ := mp.Pending()
+	pending, _ := mp.Pending(context.TODO())
 	if len(pending) > 0 {
 		t.Fatalf("cleared the mpool, but got %d pending messages", len(pending))
 	}
@@ -584,7 +584,7 @@ func TestClearNonLocal(t *testing.T) {
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		_, err := mp.Push(m)
+		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -595,9 +595,9 @@ func TestClearNonLocal(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	mp.Clear(false)
+	mp.Clear(context.Background(), false)
 
-	pending, _ := mp.Pending()
+	pending, _ := mp.Pending(context.TODO())
 	if len(pending) != 10 {
 		t.Fatalf("expected 10 pending messages, but got %d instead", len(pending))
 	}
@@ -654,7 +654,7 @@ func TestUpdates(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		_, err := mp.Push(m)
+		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
 		}
