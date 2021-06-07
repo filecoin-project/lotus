@@ -6,13 +6,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var stepSimCommand = &cli.Command{
-	Name: "step",
+var runSimCommand = &cli.Command{
+	Name:        "run",
+	Description: "Run the simulation.",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "epochs",
-			Usage: "Advance at least the given number of epochs.",
-			Value: 1,
+			Usage: "Advance the given number of epochs then stop.",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -33,7 +33,7 @@ var stepSimCommand = &cli.Command{
 		}
 		fmt.Fprintln(cctx.App.Writer, "running simulation")
 		targetEpochs := cctx.Int("epochs")
-		for i := 0; i < targetEpochs; i++ {
+		for i := 0; targetEpochs == 0 || i < targetEpochs; i++ {
 			ts, err := sim.Step(cctx.Context)
 			if err != nil {
 				return err

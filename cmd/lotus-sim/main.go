@@ -15,7 +15,7 @@ var root []*cli.Command = []*cli.Command{
 	createSimCommand,
 	deleteSimCommand,
 	listSimCommand,
-	stepSimCommand,
+	runSimCommand,
 	upgradeCommand,
 }
 
