@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func PledgeSectors(t *testing.T, ctx context.Context, miner TestMiner, n, existing int, blockNotif <-chan struct{}) {
+func PledgeSectors(t *testing.T, ctx context.Context, miner TestMiner, n, existing int, blockNotif <-chan struct{}) { //nolint:golint
 	toCheck := StartPledge(t, ctx, miner, n, existing, blockNotif)
 
 	for len(toCheck) > 0 {
@@ -38,7 +38,7 @@ func PledgeSectors(t *testing.T, ctx context.Context, miner TestMiner, n, existi
 	}
 }
 
-func flushSealingBatches(t *testing.T, ctx context.Context, miner TestMiner) {
+func flushSealingBatches(t *testing.T, ctx context.Context, miner TestMiner) { //nolint:golint
 	pcb, err := miner.SectorPreCommitFlush(ctx)
 	require.NoError(t, err)
 	if pcb != nil {
@@ -52,7 +52,7 @@ func flushSealingBatches(t *testing.T, ctx context.Context, miner TestMiner) {
 	}
 }
 
-func StartPledge(t *testing.T, ctx context.Context, miner TestMiner, n, existing int, blockNotif <-chan struct{}) map[abi.SectorNumber]struct{} {
+func StartPledge(t *testing.T, ctx context.Context, miner TestMiner, n, existing int, blockNotif <-chan struct{}) map[abi.SectorNumber]struct{} { //nolint:golint
 	for i := 0; i < n; i++ {
 		if i%3 == 0 && blockNotif != nil {
 			<-blockNotif
