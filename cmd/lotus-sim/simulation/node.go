@@ -180,6 +180,13 @@ func (nd *Node) DeleteSim(ctx context.Context, name string) error {
 
 // CopySim copies a simulation.
 func (nd *Node) CopySim(ctx context.Context, oldName, newName string) error {
+	if strings.Contains(newName, "/") {
+		return xerrors.Errorf("simulation name %q cannot contain a '/'", newName)
+	}
+	if strings.Contains(oldName, "/") {
+		return xerrors.Errorf("simulation name %q cannot contain a '/'", oldName)
+	}
+
 	values := make(map[string][]byte)
 	for _, field := range simFields {
 		key := simulationPrefix.ChildString(field).ChildString(oldName)
