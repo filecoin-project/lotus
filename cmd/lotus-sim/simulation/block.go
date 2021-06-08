@@ -47,7 +47,7 @@ func (sim *Simulation) nextTicket() *types.Ticket {
 // This method does _not_ mutate local state (although it does add blocks to the datastore).
 func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message) (*types.TipSet, error) {
 	parentTs := sim.head
-	parentState, parentRec, err := sim.sm.TipSetState(ctx, parentTs)
+	parentState, parentRec, err := sim.StateManager.TipSetState(ctx, parentTs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute parent tipset: %w", err)
 	}
@@ -80,7 +80,7 @@ func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message
 		return nil, xerrors.Errorf("failed to create new tipset: %w", err)
 	}
 	now := time.Now()
-	_, _, err = sim.sm.TipSetState(ctx, newTipSet)
+	_, _, err = sim.StateManager.TipSetState(ctx, newTipSet)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute new tipset: %w", err)
 	}

@@ -98,7 +98,7 @@ func (nd *Node) LoadSim(ctx context.Context, name string) (*Simulation, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create upgrade schedule for simulation %s: %w", name, err)
 	}
-	sim.sm, err = stmgr.NewStateManagerWithUpgradeSchedule(nd.Chainstore, us)
+	sim.StateManager, err = stmgr.NewStateManagerWithUpgradeSchedule(nd.Chainstore, us)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create state manager for simulation %s: %w", name, err)
 	}
@@ -114,9 +114,9 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 		return nil, xerrors.Errorf("simulation name %q cannot contain a '/'", name)
 	}
 	sim := &Simulation{
-		name: name,
-		Node: nd,
-		sm:   stmgr.NewStateManager(nd.Chainstore),
+		name:         name,
+		Node:         nd,
+		StateManager: stmgr.NewStateManager(nd.Chainstore),
 	}
 	if has, err := nd.MetadataDS.Has(sim.key("head")); err != nil {
 		return nil, err

@@ -79,11 +79,11 @@ func (c *config) upgradeSchedule() (stmgr.UpgradeSchedule, error) {
 // Simulation specifies a lotus-sim simulation.
 type Simulation struct {
 	*Node
+	StateManager *stmgr.StateManager
 
 	name   string
 	config config
 	start  *types.TipSet
-	sm     *stmgr.StateManager
 
 	// head
 	st   *state.StateTree
@@ -125,11 +125,11 @@ func (sim *Simulation) saveConfig() error {
 // The state-tree is cached until the head is changed.
 func (sim *Simulation) stateTree(ctx context.Context) (*state.StateTree, error) {
 	if sim.st == nil {
-		st, _, err := sim.sm.TipSetState(ctx, sim.head)
+		st, _, err := sim.StateManager.TipSetState(ctx, sim.head)
 		if err != nil {
 			return nil, err
 		}
-		sim.st, err = sim.sm.StateTree(st)
+		sim.st, err = sim.StateManager.StateTree(st)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +204,7 @@ func (sim *Simulation) GetStart() *types.TipSet {
 
 // GetNetworkVersion returns the current network version for the simulation.
 func (sim *Simulation) GetNetworkVersion() network.Version {
-	return sim.sm.GetNtwkVersion(context.TODO(), sim.head.Height())
+	return sim.StateManager.GetNtwkVersion(context.TODO(), sim.head.Height())
 }
 
 // SetHead updates the current head of the simulation and stores it in the metadata store. This is
@@ -256,7 +256,7 @@ func (sim *Simulation) SetUpgradeHeight(nv network.Version, epoch abi.ChainEpoch
 		return err
 	}
 
-	sim.sm = sm
+	sim.StateManager = sm
 	return nil
 }
 

@@ -111,7 +111,7 @@ func (ss *simulationState) packProveCommitsMiner(
 		return res, false, err
 	}
 
-	nv := ss.sm.GetNtwkVersion(ctx, ss.nextEpoch())
+	nv := ss.StateManager.GetNtwkVersion(ctx, ss.nextEpoch())
 	for sealType, snos := range pending {
 		if nv >= network.Version13 {
 			for len(snos) > minProveCommitBatchSize {
@@ -260,7 +260,7 @@ func (ss *simulationState) loadProveCommitsMiner(ctx context.Context, addr addre
 	// Find all pending prove commits and group by proof type. Really, there should never
 	// (except during upgrades be more than one type.
 	nextEpoch := ss.nextEpoch()
-	nv := ss.sm.GetNtwkVersion(ctx, nextEpoch)
+	nv := ss.StateManager.GetNtwkVersion(ctx, nextEpoch)
 	av := actors.VersionForNetwork(nv)
 
 	var total, dropped int
@@ -294,7 +294,7 @@ func (ss *simulationState) filterProveCommits(ctx context.Context, minerAddr add
 	}
 
 	nextEpoch := ss.nextEpoch()
-	nv := ss.sm.GetNtwkVersion(ctx, nextEpoch)
+	nv := ss.StateManager.GetNtwkVersion(ctx, nextEpoch)
 	av := actors.VersionForNetwork(nv)
 
 	good := make([]abi.SectorNumber, 0, len(snos))
