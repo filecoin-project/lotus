@@ -579,7 +579,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 	if path != "" {
 		// if we have the unsealed file locally, return a reader that can be used to read the contents of the
 		// unsealed piece.
-		log.Infof("Read local %s (+%d,%d)", path, offset, size)
+		log.Debugf("Check local %s (+%d,%d)", path, offset, size)
 		ssize, err := s.ProofType.SectorSize()
 		if err != nil {
 			return nil, err

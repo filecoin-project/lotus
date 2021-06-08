@@ -581,6 +581,8 @@ func ConfigStorageMiner(c interface{}) Option {
 		if pricingConfig.External.Path == "" {
 			return Error(xerrors.New("retrieval pricing policy has been to set to external but external script path is empty"))
 		}
+	} else if pricingConfig.Strategy != config.DefaultRetrievalPricing {
+		return Error(xerrors.New("retrieval pricing policy must be either default or external"))
 	}
 
 	return Options(
