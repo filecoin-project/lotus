@@ -13,6 +13,7 @@ import (
 
 const beaconPrefix = "mockbeacon:"
 
+// nextBeaconEntries returns a fake beacon entries for the next block.
 func (sim *Simulation) nextBeaconEntries() []types.BeaconEntry {
 	parentBeacons := sim.head.Blocks()[0].BeaconEntries
 	lastBeacon := parentBeacons[len(parentBeacons)-1]
@@ -28,6 +29,7 @@ func (sim *Simulation) nextBeaconEntries() []types.BeaconEntry {
 	}}
 }
 
+// nextTicket returns a fake ticket for the next block.
 func (sim *Simulation) nextTicket() *types.Ticket {
 	newProof := sha256.Sum256(sim.head.MinTicket().VRFProof)
 	return &types.Ticket{
@@ -35,6 +37,14 @@ func (sim *Simulation) nextTicket() *types.Ticket {
 	}
 }
 
+// makeTipSet generates and executes the next tipset from the given messages. This method:
+//
+// 1. Stores the given messages in the Chainstore.
+// 2. Creates and persists a single block mined by f01000.
+// 3. Creates a tipset from this block and executes it.
+// 4. Returns the resulting tipset.
+//
+// This method does _not_ mutate local state (although it does add blocks to the datastore).
 func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message) (*types.TipSet, error) {
 	parentTs := sim.head
 	parentState, parentRec, err := sim.sm.TipSetState(ctx, parentTs)
