@@ -14,12 +14,14 @@ import (
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -258,6 +260,72 @@ func TestMessagePool(t *testing.T) {
 	tma.applyBlock(t, a)
 
 	assertNonce(t, mp, sender, 2)
+}
+
+func TestCheckMessageBig(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	assert.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	assert.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds, "mptest", nil)
+	assert.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(100),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 41<<10), // 41KiB payload
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
+		mustAdd(t, mp, sm)
+	}
+
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(100),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 64<<10), // 64KiB payload
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
+		err = mp.Add(context.TODO(), sm)
+		assert.ErrorIs(t, err, ErrMessageTooBig)
+	}
 }
 
 func TestMessagePoolMessagesInEachBlock(t *testing.T) {
