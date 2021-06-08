@@ -147,34 +147,42 @@ func (ss *simulationState) packProveCommitsMiner(
 					Params: enc,
 				}); err != nil {
 					// If we get a random error, or a fatal actor error, bail.
-					// Otherwise, just log it.
 					aerr, ok := err.(aerrors.ActorError)
 					if !ok || aerr.IsFatal() {
 						return res, false, err
 					}
+					// If we get a "not-found" error, try to remove any missing
+					// prove-commits and continue. This can happen either
+					// because:
+					//
+					// 1. The pre-commit failed on execution (but not when
+					// packing). This shouldn't happen, but we might as well
+					// gracefully handle it.
+					// 2. The pre-commit has expired. We'd have to be really
+					// backloged to hit this case, but we might as well handle
+					// it.
 					if aerr.RetCode() == exitcode.ErrNotFound {
-						good, expired, err := ss.filterProveCommits(ctx, minerAddr, batch)
+						// First, split into "good" and "missing"
+						good, err := ss.filterProveCommits(ctx, minerAddr, batch)
 						if err != nil {
 							log.Errorw("failed to filter prove commits", "miner", minerAddr, "error", err)
 							// fail with the original error.
 							return res, false, aerr
 						}
-						// If we've removed sectors (and kept some), try again.
-						// If we've removed all sectors, or no sectors, just
-						// move on and deliver the error.
-						if len(good) > 0 && len(expired) > 0 {
-							res.failed += len(expired)
+						removed := len(batch) - len(good)
+						// If they're all missing, skip. If they're all good, skip too (and log).
+						if len(good) > 0 && removed > 0 {
+							res.failed += removed
 
 							// update the pending sector numbers in-place to remove the expired ones.
-							snos = snos[len(expired):]
+							snos = snos[removed:]
 							copy(snos, good)
-							pending.finish(sealType, len(expired))
+							pending.finish(sealType, removed)
 
 							log.Errorw("failed to prove commit expired/missing pre-commits",
 								"error", aerr,
 								"miner", minerAddr,
-								"expired", expired,
-								"discarded", len(expired),
+								"discarded", removed,
 								"kept", len(good),
 								"epoch", ss.nextEpoch(),
 							)
@@ -278,33 +286,31 @@ func (ss *simulationState) loadProveCommitsMiner(ctx context.Context, addr addre
 	return nil
 }
 
-// filterProveCommits filters out expired prove-commits.
-func (ss *simulationState) filterProveCommits(ctx context.Context, minerAddr address.Address, snos []abi.SectorNumber) (good, expired []abi.SectorNumber, err error) {
+// filterProveCommits filters out expired and/or missing pre-commits.
+func (ss *simulationState) filterProveCommits(ctx context.Context, minerAddr address.Address, snos []abi.SectorNumber) ([]abi.SectorNumber, error) {
 	_, minerState, err := ss.getMinerState(ctx, minerAddr)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	nextEpoch := ss.nextEpoch()
 	nv := ss.sm.GetNtwkVersion(ctx, nextEpoch)
 	av := actors.VersionForNetwork(nv)
 
-	good = make([]abi.SectorNumber, 0, len(snos))
+	good := make([]abi.SectorNumber, 0, len(snos))
 	for _, sno := range snos {
 		info, err := minerState.GetPrecommittedSector(sno)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if info == nil {
-			expired = append(expired, sno)
 			continue
 		}
 		msd := policy.GetMaxProveCommitDuration(av, info.Info.SealProof)
 		if nextEpoch > info.PreCommitEpoch+msd {
-			expired = append(expired, sno)
 			continue
 		}
 		good = append(good, sno)
 	}
-	return good, expired, nil
+	return good, nil
 }
