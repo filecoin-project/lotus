@@ -7,6 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -34,6 +38,7 @@ type CommitBatcherApi interface {
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
+	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 }
 
 type AggregateInput struct {
@@ -369,16 +374,15 @@ func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, i
 
 // register commit, wait for batch message, return message CID
 func (b *CommitBatcher) AddCommit(ctx context.Context, s SectorInfo, in AggregateInput) (res sealiface.CommitBatchRes, err error) {
-	_, curEpoch, err := b.api.ChainHead(b.mctx)
-	if err != nil {
-		log.Errorf("getting chain head: %s", err)
-		return sealiface.CommitBatchRes{}, nil
-	}
-
 	sn := s.SectorNumber
 
+	cu, err := b.getCommitCutoff(s)
+	if err != nil {
+		return sealiface.CommitBatchRes{}, err
+	}
+
 	b.lk.Lock()
-	b.cutoffs[sn] = getSectorCutoff(curEpoch, s)
+	b.cutoffs[sn] = cu
 	b.todo[sn] = in
 
 	sent := make(chan sealiface.CommitBatchRes, 1)
@@ -452,8 +456,27 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 	}
 }
 
-func getSectorCutoff(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
-	cutoffEpoch := si.TicketEpoch + policy.MaxPreCommitRandomnessLookback
+func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
+	tok, curEpoch, err := b.api.ChainHead(b.mctx)
+	if err != nil {
+		log.Errorf("getting chain head: %s", err)
+		return time.Now(), nil
+	}
+
+	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	if err != nil {
+		log.Errorf("getting network version: %s", err)
+		return time.Now(), err
+	}
+
+	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, si.SectorNumber, tok)
+	if err != nil {
+		log.Errorf("getting precommit info: %s", err)
+		return time.Now(), err
+	}
+
+	cutoffEpoch := pci.PreCommitEpoch + policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), si.SectorType)
+
 	for _, p := range si.Pieces {
 		if p.DealInfo == nil {
 			continue
@@ -466,10 +489,10 @@ func getSectorCutoff(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
 	}
 
 	if cutoffEpoch <= curEpoch {
-		return time.Now()
+		return time.Now(), nil
 	}
 
-	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second)
+	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second), nil
 }
 
 func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok TipSetToken) (abi.TokenAmount, error) {
