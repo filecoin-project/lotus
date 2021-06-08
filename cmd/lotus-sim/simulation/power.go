@@ -32,6 +32,10 @@ func (sim *Simulation) loadClaims(ctx context.Context, height abi.ChainEpoch) (m
 		return nil, err
 	}
 	err = powerState.ForEachClaim(func(miner address.Address, claim power.Claim) error {
+		// skip miners without power
+		if claim.RawBytePower.IsZero() {
+			return nil
+		}
 		powerTable[miner] = claim
 		return nil
 	})
