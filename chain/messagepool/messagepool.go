@@ -665,7 +665,7 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 
 func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
-	if m.Size() > 32*1024 {
+	if m.Size() > 64*1024 {
 		return xerrors.Errorf("mpool message too large (%dB): %w", m.Size(), ErrMessageTooBig)
 	}
 
