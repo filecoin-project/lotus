@@ -14,7 +14,10 @@ import (
 var root []*cli.Command = []*cli.Command{
 	createSimCommand,
 	deleteSimCommand,
+	copySimCommand,
+	renameSimCommand,
 	listSimCommand,
+
 	runSimCommand,
 	infoSimCommand,
 	upgradeCommand,
