@@ -94,15 +94,7 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 	// Load everything.
 	epoch := ss.nextEpoch()
 	nv := ss.sm.GetNtwkVersion(ctx, epoch)
-	st, err := ss.stateTree(ctx)
-	if err != nil {
-		return 0, false, err
-	}
-	actor, err := st.GetActor(minerAddr)
-	if err != nil {
-		return 0, false, err
-	}
-	minerState, err := miner.Load(ss.Chainstore.ActorStore(ctx), actor)
+	actor, minerState, err := ss.getMinerState(ctx, minerAddr)
 	if err != nil {
 		return 0, false, err
 	}

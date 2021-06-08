@@ -63,13 +63,6 @@ func loadSimulationState(ctx context.Context, sim *Simulation) (*simulationState
 		return nil, err
 	}
 
-	// Now load miner state info.
-	store := sim.Chainstore.ActorStore(ctx)
-	st, err := sim.stateTree(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	type onboardingInfo struct {
 		addr           address.Address
 		onboardingRate uint64
@@ -86,12 +79,7 @@ func loadSimulationState(ctx context.Context, sim *Simulation) (*simulationState
 	state.commitQueue.advanceEpoch(state.nextEpoch())
 	for addr, claim := range currentPowerTable {
 		// Load the miner state.
-		minerActor, err := st.GetActor(addr)
-		if err != nil {
-			return nil, err
-		}
-
-		minerState, err := miner.Load(store, minerActor)
+		_, minerState, err := state.getMinerState(ctx, addr)
 		if err != nil {
 			return nil, err
 		}
@@ -176,15 +164,7 @@ func (ss *simulationState) nextEpoch() abi.ChainEpoch {
 func (ss *simulationState) getMinerInfo(ctx context.Context, addr address.Address) (*miner.MinerInfo, error) {
 	minerInfo, ok := ss.minerInfos[addr]
 	if !ok {
-		st, err := ss.stateTree(ctx)
-		if err != nil {
-			return nil, err
-		}
-		act, err := st.GetActor(addr)
-		if err != nil {
-			return nil, err
-		}
-		minerState, err := miner.Load(ss.Chainstore.ActorStore(ctx), act)
+		_, minerState, err := ss.getMinerState(ctx, addr)
 		if err != nil {
 			return nil, err
 		}
@@ -196,4 +176,21 @@ func (ss *simulationState) getMinerInfo(ctx context.Context, addr address.Addres
 		ss.minerInfos[addr] = minerInfo
 	}
 	return minerInfo, nil
+}
+
+// getMinerState loads the miner actor & state.
+func (ss *simulationState) getMinerState(ctx context.Context, addr address.Address) (*types.Actor, miner.State, error) {
+	st, err := ss.stateTree(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	act, err := st.GetActor(addr)
+	if err != nil {
+		return nil, nil, err
+	}
+	state, err := miner.Load(ss.Chainstore.ActorStore(ctx), act)
+	if err != nil {
+		return nil, nil, err
+	}
+	return act, state, err
 }
