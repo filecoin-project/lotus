@@ -6,9 +6,6 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 )
 
 var root []*cli.Command = []*cli.Command{
@@ -52,40 +49,4 @@ func main() {
 		os.Exit(1)
 		return
 	}
-}
-
-func run(cctx *cli.Context) error {
-	ctx := cctx.Context
-
-	node, err := open(cctx)
-	if err != nil {
-		return err
-	}
-	defer node.Close()
-
-	if err := node.Chainstore.Load(); err != nil {
-		return err
-	}
-
-	ts := node.Chainstore.GetHeaviestTipSet()
-
-	st, err := stmgr.NewStateManagerWithUpgradeSchedule(node.Chainstore, nil)
-	if err != nil {
-		return err
-	}
-
-	powerTableActor, err := st.LoadActor(ctx, power.Address, ts)
-	if err != nil {
-		return err
-	}
-	powerTable, err := power.Load(node.Chainstore.ActorStore(ctx), powerTableActor)
-	if err != nil {
-		return err
-	}
-	allMiners, err := powerTable.ListAllMiners()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("miner count: %d\n", len(allMiners))
-	return nil
 }
