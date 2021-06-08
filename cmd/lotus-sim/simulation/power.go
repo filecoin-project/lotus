@@ -22,7 +22,7 @@ func (sim *Simulation) loadClaims(ctx context.Context, height abi.ChainEpoch) (m
 		return nil, xerrors.Errorf("when projecting growth, failed to lookup lookback epoch: %w", err)
 	}
 
-	powerActor, err := sim.sm.LoadActor(ctx, power.Address, ts)
+	powerActor, err := sim.StateManager.LoadActor(ctx, power.Address, ts)
 	if err != nil {
 		return nil, err
 	}

@@ -78,8 +78,8 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 	// This isn't what the network does, but it makes things easier. Otherwise, we'd need to run
 	// migrations before this epoch and I'd rather not deal with that.
 	nextHeight := parentTs.Height() + 1
-	prevVer := ss.sm.GetNtwkVersion(ctx, nextHeight-1)
-	nextVer := ss.sm.GetNtwkVersion(ctx, nextHeight)
+	prevVer := ss.StateManager.GetNtwkVersion(ctx, nextHeight-1)
+	nextVer := ss.StateManager.GetNtwkVersion(ctx, nextHeight)
 	if nextVer != prevVer {
 		log.Warnw("packing no messages for version upgrade block",
 			"old", prevVer,
@@ -91,7 +91,7 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 
 	// Next, we compute the state for the parent tipset. In practice, this will likely be
 	// cached.
-	parentState, _, err := ss.sm.TipSetState(ctx, parentTs)
+	parentState, _, err := ss.StateManager.TipSetState(ctx, parentTs)
 	if err != nil {
 		return nil, err
 	}
@@ -102,17 +102,17 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 	// 1. We don't charge a fee.
 	// 2. The runtime has "fake" proof logic.
 	// 3. We don't actually save any of the results.
-	r := store.NewChainRand(ss.sm.ChainStore(), parentTs.Cids())
+	r := store.NewChainRand(ss.StateManager.ChainStore(), parentTs.Cids())
 	vmopt := &vm.VMOpts{
 		StateBase:      parentState,
 		Epoch:          nextHeight,
 		Rand:           r,
-		Bstore:         ss.sm.ChainStore().StateBlockstore(),
-		Syscalls:       ss.sm.ChainStore().VMSys(),
-		CircSupplyCalc: ss.sm.GetVMCirculatingSupply,
-		NtwkVersion:    ss.sm.GetNtwkVersion,
+		Bstore:         ss.StateManager.ChainStore().StateBlockstore(),
+		Syscalls:       ss.StateManager.ChainStore().VMSys(),
+		CircSupplyCalc: ss.StateManager.GetVMCirculatingSupply,
+		NtwkVersion:    ss.StateManager.GetNtwkVersion,
 		BaseFee:        abi.NewTokenAmount(0), // FREE!
-		LookbackState:  stmgr.LookbackStateGetterForTipset(ss.sm, parentTs),
+		LookbackState:  stmgr.LookbackStateGetterForTipset(ss.StateManager, parentTs),
 	}
 	vmi, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
