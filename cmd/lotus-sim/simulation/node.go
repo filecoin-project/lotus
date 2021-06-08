@@ -78,17 +78,15 @@ func (nd *Node) LoadSim(ctx context.Context, name string) (*Simulation, error) {
 		Node: nd,
 		name: name,
 	}
-	tskBytes, err := nd.MetadataDS.Get(sim.key("head"))
+
+	var err error
+	sim.head, err = sim.loadNamedTipSet("head")
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load simulation %s: %w", name, err)
+		return nil, err
 	}
-	tsk, err := types.TipSetKeyFromBytes(tskBytes)
+	sim.start, err = sim.loadNamedTipSet("start")
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parse simulation %s's tipset %v: %w", name, tskBytes, err)
-	}
-	sim.head, err = nd.Chainstore.LoadTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load simulation tipset %s: %w", tsk, err)
+		return nil, err
 	}
 
 	err = sim.loadConfig()
@@ -124,6 +122,10 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 		return nil, err
 	} else if has {
 		return nil, xerrors.Errorf("simulation named %s already exists", name)
+	}
+
+	if err := sim.storeNamedTipSet("start", head); err != nil {
+		return nil, xerrors.Errorf("failed to set simulation start: %w", err)
 	}
 
 	if err := sim.SetHead(head); err != nil {
@@ -169,6 +171,7 @@ func (nd *Node) DeleteSim(ctx context.Context, name string) error {
 	// TODO: make this a bit more generic?
 	keys := []datastore.Key{
 		simulationPrefix.ChildString("head").ChildString(name),
+		simulationPrefix.ChildString("start").ChildString(name),
 		simulationPrefix.ChildString("config").ChildString(name),
 	}
 	var err error

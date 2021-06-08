@@ -82,6 +82,7 @@ type Simulation struct {
 
 	name   string
 	config config
+	start  *types.TipSet
 	sm     *stmgr.StateManager
 
 	// head
@@ -159,6 +160,31 @@ func (sim *Simulation) key(subkey string) datastore.Key {
 	return simulationPrefix.ChildString(subkey).ChildString(sim.name)
 }
 
+// loadNamedTipSet the tipset with the given name (for this simulation)
+func (sim *Simulation) loadNamedTipSet(name string) (*types.TipSet, error) {
+	tskBytes, err := sim.MetadataDS.Get(sim.key(name))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load tipset %s/%s: %w", sim.name, name, err)
+	}
+	tsk, err := types.TipSetKeyFromBytes(tskBytes)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to parse tipste %v (%s/%s): %w", tskBytes, sim.name, name, err)
+	}
+	ts, err := sim.Chainstore.LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load tipset %s (%s/%s): %w", tsk, sim.name, name, err)
+	}
+	return ts, nil
+}
+
+// storeNamedTipSet stores the tipset at name (relative to the simulation).
+func (sim *Simulation) storeNamedTipSet(name string, ts *types.TipSet) error {
+	if err := sim.MetadataDS.Put(sim.key(name), ts.Key().Bytes()); err != nil {
+		return xerrors.Errorf("failed to store tipset (%s/%s): %w", sim.name, name, err)
+	}
+	return nil
+}
+
 // Load loads the simulation state. This will happen automatically on first use, but it can be
 // useful to preload for timing reasons.
 func (sim *Simulation) Load(ctx context.Context) error {
@@ -171,6 +197,11 @@ func (sim *Simulation) GetHead() *types.TipSet {
 	return sim.head
 }
 
+// GetStart returns simulation's parent tipset.
+func (sim *Simulation) GetStart() *types.TipSet {
+	return sim.start
+}
+
 // GetNetworkVersion returns the current network version for the simulation.
 func (sim *Simulation) GetNetworkVersion() network.Version {
 	return sim.sm.GetNtwkVersion(context.TODO(), sim.head.Height())
@@ -179,8 +210,8 @@ func (sim *Simulation) GetNetworkVersion() network.Version {
 // SetHead updates the current head of the simulation and stores it in the metadata store. This is
 // called for every Simulation.Step.
 func (sim *Simulation) SetHead(head *types.TipSet) error {
-	if err := sim.MetadataDS.Put(sim.key("head"), head.Key().Bytes()); err != nil {
-		return xerrors.Errorf("failed to store simulation head: %w", err)
+	if err := sim.storeNamedTipSet("head", head); err != nil {
+		return err
 	}
 	sim.st = nil // we'll compute this on-demand.
 	sim.head = head
