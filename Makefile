@@ -80,6 +80,9 @@ nerpanet: build-devnets
 butterflynet: GOFLAGS+=-tags=butterflynet
 butterflynet: build-devnets
 
+interopnet: GOFLAGS+=-tags=interopnet
+interopnet: build-devnets
+
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	go build $(GOFLAGS) -o lotus ./cmd/lotus

@@ -75,19 +75,7 @@ func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode,
 }
 
 func CreateClientFile(ctx context.Context, client api.FullNode, rseed, size int) (*api.ImportRes, []byte, error) {
-	if size == 0 {
-		size = 1600
-	}
-	data := make([]byte, size)
-	rand.New(rand.NewSource(int64(rseed))).Read(data)
-
-	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	path := filepath.Join(dir, "sourcefile.dat")
-	err = ioutil.WriteFile(path, data, 0644)
+	data, path, err := createRandomFile(rseed, size)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,6 +85,27 @@ func CreateClientFile(ctx context.Context, client api.FullNode, rseed, size int)
 		return nil, nil, err
 	}
 	return res, data, nil
+}
+
+func createRandomFile(rseed, size int) ([]byte, string, error) {
+	if size == 0 {
+		size = 1600
+	}
+	data := make([]byte, size)
+	rand.New(rand.NewSource(int64(rseed))).Read(data)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
+	if err != nil {
+		return nil, "", err
+	}
+
+	path := filepath.Join(dir, "sourcefile.dat")
+	err = ioutil.WriteFile(path, data, 0644)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return data, path, nil
 }
 
 func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
@@ -380,6 +389,79 @@ func TestZeroPricePerByteRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime
 	require.NoError(t, err)
 
 	MakeDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
+}
+
+func TestOfflineDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch, fastRet bool) {
+	s := setupOneClientOneMiner(t, b, blocktime)
+	defer s.blockMiner.Stop()
+
+	// Create a random file
+	data, path, err := createRandomFile(1, 0)
+	require.NoError(t, err)
+
+	// Import the file on the client
+	importRes, err := s.client.ClientImport(s.ctx, api.FileRef{Path: path})
+	require.NoError(t, err)
+
+	// Get the piece size and commP
+	fcid := importRes.Root
+	pieceInfo, err := s.client.ClientDealPieceCID(s.ctx, fcid)
+	require.NoError(t, err)
+	fmt.Println("FILE CID: ", fcid)
+
+	// Create a storage deal with the miner
+	maddr, err := s.miner.ActorAddress(s.ctx)
+	require.NoError(t, err)
+
+	addr, err := s.client.WalletDefaultAddress(s.ctx)
+	require.NoError(t, err)
+
+	// Manual storage deal (offline deal)
+	dataRef := &storagemarket.DataRef{
+		TransferType: storagemarket.TTManual,
+		Root:         fcid,
+		PieceCid:     &pieceInfo.PieceCID,
+		PieceSize:    pieceInfo.PieceSize.Unpadded(),
+	}
+
+	proposalCid, err := s.client.ClientStartDeal(s.ctx, &api.StartDealParams{
+		Data:              dataRef,
+		Wallet:            addr,
+		Miner:             maddr,
+		EpochPrice:        types.NewInt(1000000),
+		DealStartEpoch:    startEpoch,
+		MinBlocksDuration: uint64(build.MinDealDuration),
+		FastRetrieval:     fastRet,
+	})
+	require.NoError(t, err)
+
+	// Wait for the deal to reach StorageDealCheckForAcceptance on the client
+	cd, err := s.client.ClientGetDealInfo(s.ctx, *proposalCid)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		cd, _ := s.client.ClientGetDealInfo(s.ctx, *proposalCid)
+		return cd.State == storagemarket.StorageDealCheckForAcceptance
+	}, 30*time.Second, 1*time.Second, "actual deal status is %s", storagemarket.DealStates[cd.State])
+
+	// Create a CAR file from the raw file
+	carFileDir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-car")
+	require.NoError(t, err)
+	carFilePath := filepath.Join(carFileDir, "out.car")
+	err = s.client.ClientGenCar(s.ctx, api.FileRef{Path: path}, carFilePath)
+	require.NoError(t, err)
+
+	// Import the CAR file on the miner - this is the equivalent to
+	// transferring the file across the wire in a normal (non-offline) deal
+	err = s.miner.DealsImportData(s.ctx, *proposalCid, carFilePath)
+	require.NoError(t, err)
+
+	// Wait for the deal to be published
+	waitDealPublished(t, s.ctx, s.miner, proposalCid)
+
+	t.Logf("deal published, retrieving")
+
+	// Retrieve the deal
+	testRetrieval(t, s.ctx, s.client, fcid, &pieceInfo.PieceCID, false, data)
 }
 
 func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {

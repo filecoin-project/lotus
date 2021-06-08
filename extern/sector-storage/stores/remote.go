@@ -17,7 +17,6 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 
@@ -33,7 +32,7 @@ var FetchTempSubdir = "fetching"
 var CopyBuf = 1 << 20
 
 type Remote struct {
-	local *Local
+	local Store
 	index SectorIndex
 	auth  http.Header
 
@@ -41,6 +40,8 @@ type Remote struct {
 
 	fetchLk  sync.Mutex
 	fetching map[abi.SectorID]chan struct{}
+
+	pfHandler partialFileHandler
 }
 
 func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types storiface.SectorFileType) error {
@@ -51,7 +52,7 @@ func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types storifa
 	return r.local.RemoveCopies(ctx, s, types)
 }
 
-func NewRemote(local *Local, index SectorIndex, auth http.Header, fetchLimit int) *Remote {
+func NewRemote(local Store, index SectorIndex, auth http.Header, fetchLimit int, pfHandler partialFileHandler) *Remote {
 	return &Remote{
 		local: local,
 		index: index,
@@ -59,7 +60,8 @@ func NewRemote(local *Local, index SectorIndex, auth http.Header, fetchLimit int
 
 		limit: make(chan struct{}, fetchLimit),
 
-		fetching: map[abi.SectorID]chan struct{}{},
+		fetching:  map[abi.SectorID]chan struct{}{},
+		pfHandler: pfHandler,
 	}
 }
 
@@ -320,129 +322,6 @@ func (r *Remote) checkAllocated(ctx context.Context, url string, spt abi.Registe
 	}
 }
 
-func (r *Remote) readRemote(ctx context.Context, url string, spt abi.RegisteredSealProof, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
-	if len(r.limit) >= cap(r.limit) {
-		log.Infof("Throttling remote read, %d already running", len(r.limit))
-	}
-
-	// TODO: Smarter throttling
-	//  * Priority (just going sequentially is still pretty good)
-	//  * Per interface
-	//  * Aware of remote load
-	select {
-	case r.limit <- struct{}{}:
-		defer func() { <-r.limit }()
-	case <-ctx.Done():
-		return nil, xerrors.Errorf("context error while waiting for fetch limiter: %w", ctx.Err())
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, xerrors.Errorf("request: %w", err)
-	}
-	req.Header = r.auth.Clone()
-	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+size-1))
-	req = req.WithContext(ctx)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, xerrors.Errorf("do request: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
-		resp.Body.Close() // nolint
-		return nil, xerrors.Errorf("non-200 code: %d", resp.StatusCode)
-	}
-
-	return resp.Body, nil
-}
-
-// Reader gets a reader for unsealed file range. Can return nil in case the requested range isn't allocated in the file
-func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize, ft storiface.SectorFileType) (io.ReadCloser, error) {
-	if ft != storiface.FTUnsealed {
-		return nil, xerrors.Errorf("reader only supports unsealed files")
-	}
-
-	paths, _, err := r.local.AcquireSector(ctx, s, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
-	if err != nil {
-		return nil, xerrors.Errorf("acquire local: %w", err)
-	}
-
-	path := storiface.PathByType(paths, ft)
-	var rd io.ReadCloser
-	if path == "" {
-		si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(si) == 0 {
-			return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
-		}
-
-		sort.Slice(si, func(i, j int) bool {
-			return si[i].Weight < si[j].Weight
-		})
-
-	iloop:
-		for _, info := range si {
-			for _, url := range info.URLs {
-				ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
-				if err != nil {
-					log.Warnw("check if remote has piece", "url", url, "error", err)
-					continue
-				}
-				if !ok {
-					continue
-				}
-
-				rd, err = r.readRemote(ctx, url, s.ProofType, offset, size)
-				if err != nil {
-					log.Warnw("reading from remote", "url", url, "error", err)
-					continue
-				}
-				log.Infof("Read remote %s (+%d,%d)", url, offset, size)
-				break iloop
-			}
-		}
-	} else {
-		//
-		// magik(start): This part technically should live on the Local store
-		//
-		log.Infof("Read local %s (+%d,%d)", path, offset, size)
-		ssize, err := s.ProofType.SectorSize()
-		if err != nil {
-			return nil, err
-		}
-
-		pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
-		if err != nil {
-			return nil, xerrors.Errorf("opening partial file: %w", err)
-		}
-
-		has, err := pf.HasAllocated(storiface.UnpaddedByteIndex(offset.Unpadded()), size.Unpadded())
-		if err != nil {
-			return nil, xerrors.Errorf("has allocated: %w", err)
-		}
-
-		if !has {
-			if err := pf.Close(); err != nil {
-				return nil, xerrors.Errorf("close partial file: %w", err)
-			}
-
-			return nil, nil
-		}
-
-		return pf.Reader(storiface.PaddedByteIndex(offset), size)
-		//
-		// magik(end)
-		//
-	}
-
-	// note: rd can be nil
-	return rd, nil
-}
-
 func (r *Remote) MoveStorage(ctx context.Context, s storage.SectorRef, types storiface.SectorFileType) error {
 	// Make sure we have the data local
 	_, _, err := r.AcquireSector(ctx, s, types, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
@@ -563,6 +442,162 @@ func (r *Remote) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	defer resp.Body.Close() // nolint
 
 	return out, nil
+}
+
+func (r *Remote) readRemote(ctx context.Context, url string, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
+	if len(r.limit) >= cap(r.limit) {
+		log.Infof("Throttling remote read, %d already running", len(r.limit))
+	}
+
+	// TODO: Smarter throttling
+	//  * Priority (just going sequentially is still pretty good)
+	//  * Per interface
+	//  * Aware of remote load
+	select {
+	case r.limit <- struct{}{}:
+		defer func() { <-r.limit }()
+	case <-ctx.Done():
+		return nil, xerrors.Errorf("context error while waiting for fetch limiter: %w", ctx.Err())
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("request: %w", err)
+	}
+
+	if r.auth != nil {
+		req.Header = r.auth.Clone()
+	}
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+size-1))
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, xerrors.Errorf("do request: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		resp.Body.Close() // nolint
+		return nil, xerrors.Errorf("non-200 code: %d", resp.StatusCode)
+	}
+
+	return resp.Body, nil
+}
+
+// Reader returns a reader for an unsealed piece at the given offset in the given sector.
+// If the Miner has the unsealed piece locally, it will return a reader that reads from the local copy.
+// If the Miner does NOT have the unsealed piece locally, it will query all workers that have the unsealed sector file
+// to know if they have the unsealed piece and will then read the unsealed piece data from a worker that has it.
+//
+// Returns a nil reader if :
+// 1. no worker(local worker included) has an unsealed file for the given sector OR
+// 2. no worker(local worker included) has the unsealed piece in their unsealed sector file.
+// Will return a nil reader and a nil error in such a case.
+func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
+	ft := storiface.FTUnsealed
+
+	// check if we have the unsealed sector file locally
+	paths, _, err := r.local.AcquireSector(ctx, s, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+	if err != nil {
+		return nil, xerrors.Errorf("acquire local: %w", err)
+	}
+
+	path := storiface.PathByType(paths, ft)
+
+	if path != "" {
+		// if we have the unsealed file locally, return a reader that can be used to read the contents of the
+		// unsealed piece.
+		log.Infof("Read local %s (+%d,%d)", path, offset, size)
+		ssize, err := s.ProofType.SectorSize()
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("fetched sector size %s (+%d,%d)", path, offset, size)
+
+		// open the unsealed sector file for the given sector size located at the given path.
+		pf, err := r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+		if err != nil {
+			return nil, xerrors.Errorf("opening partial file: %w", err)
+		}
+		log.Debugf("local partial file opened %s (+%d,%d)", path, offset, size)
+
+		// even though we have an unsealed file for the given sector, we still need to determine if we have the unsealed piece
+		// in the unsealed sector file. That is what `HasAllocated` checks for.
+		has, err := r.pfHandler.HasAllocated(pf, storiface.UnpaddedByteIndex(offset.Unpadded()), size.Unpadded())
+		if err != nil {
+			return nil, xerrors.Errorf("has allocated: %w", err)
+		}
+		log.Debugf("check if partial file is allocated %s (+%d,%d)", path, offset, size)
+
+		if !has {
+			log.Debugf("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
+			if err := r.pfHandler.Close(pf); err != nil {
+				return nil, xerrors.Errorf("close partial file: %w", err)
+			}
+			return nil, nil
+		}
+
+		log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
+		return r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset), size)
+	}
+
+	// --- We don't have the unsealed sector file locally
+
+	// if we don't have the unsealed sector file locally, we'll first lookup the Miner Sector Store Index
+	// to determine which workers have the unsealed file and then query those workers to know
+	// if they have the unsealed piece in the unsealed sector file.
+	si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
+	if err != nil {
+		log.Debugf("Reader, did not find unsealed file on any of the workers %s (+%d,%d)", path, offset, size)
+		return nil, err
+	}
+
+	if len(si) == 0 {
+		return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
+	}
+
+	sort.Slice(si, func(i, j int) bool {
+		return si[i].Weight > si[j].Weight
+	})
+
+	var lastErr error
+	for _, info := range si {
+		for _, url := range info.URLs {
+			// checkAllocated makes a JSON RPC query to a remote worker to determine if it has
+			// unsealed piece in their unsealed sector file.
+			ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
+			if err != nil {
+				log.Warnw("check if remote has piece", "url", url, "error", err)
+				lastErr = err
+				continue
+			}
+			if !ok {
+				continue
+			}
+
+			// readRemote fetches a reader that we can use to read the unsealed piece from the remote worker.
+			// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
+			rd, err := r.readRemote(ctx, url, offset, size)
+			if err != nil {
+				log.Warnw("reading from remote", "url", url, "error", err)
+				lastErr = err
+				continue
+			}
+			log.Infof("Read remote %s (+%d,%d)", url, offset, size)
+			return rd, nil
+		}
+	}
+
+	// we couldn't find a unsealed file with the unsealed piece, will return a nil reader.
+	log.Debugf("returning nil reader, did not find unsealed piece for %+v (+%d,%d), last error=%s", s, offset, size, lastErr)
+	return nil, nil
+}
+
+func (r *Remote) Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
+	log.Warnf("reserve called on remote store, sectorID: %v", sid.ID)
+	return func() {
+
+	}, nil
 }
 
 var _ Store = &Remote{}

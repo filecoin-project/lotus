@@ -55,8 +55,7 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 	if err != nil && err != io.EOF {
 		return n, err
 	}
-
-	if n != int(todo) {
+	if n < int(todo) {
 		return 0, xerrors.Errorf("didn't read enough: %d / %d, left %d, out %d", n, todo, r.left, len(out))
 	}
 

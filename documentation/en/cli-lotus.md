@@ -377,6 +377,7 @@ COMMANDS:
      find              Find data in the network
      retrieve          Retrieve data from network
      cancel-retrieval  Cancel a retrieval deal by deal ID; this also cancels the associated transfer
+     list-retrievals   List retrieval market deals
    STORAGE:
      deal          Initialize storage deal with a miner
      query-ask     Find a miners ask
@@ -518,6 +519,27 @@ CATEGORY:
 OPTIONS:
    --deal-id value  specify retrieval deal by deal ID (default: 0)
    --help, -h       show help (default: false)
+   
+```
+
+### lotus client list-retrievals
+```
+NAME:
+   lotus client list-retrievals - List retrieval market deals
+
+USAGE:
+   lotus client list-retrievals [command options] [arguments...]
+
+CATEGORY:
+   RETRIEVAL
+
+OPTIONS:
+   --verbose, -v  print verbose deal details (default: false)
+   --color        use color in display output (default: true)
+   --show-failed  show failed/failing deals (default: true)
+   --completed    show completed retrievals (default: false)
+   --watch        watch deal updates in real-time, rather than a one time list (default: false)
+   --help, -h     show help (default: false)
    
 ```
 

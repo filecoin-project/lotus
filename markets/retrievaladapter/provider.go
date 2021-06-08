@@ -21,7 +21,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
 	specstorage "github.com/filecoin-project/specs-storage/storage"
+
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("retrievaladapter")
 
 type retrievalProviderNode struct {
 	maddr address.Address
@@ -70,7 +74,8 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 		commD = *si.CommD
 	}
 
-	// Read the piece into the pipe's writer, unsealing the piece if necessary
+	// Get a reader for the piece, unsealing the piece if necessary
+	log.Debugf("read piece in sector %d, offset %d, length %d from miner %d", sectorID, offset, length, mid)
 	r, unsealed, err := rpn.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.Ticket.Value, commD)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)

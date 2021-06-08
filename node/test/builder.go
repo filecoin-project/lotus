@@ -522,18 +522,15 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			fulls[i] = fullRpc(t, fulls[i])
 		}
 
-		mgr := mock.NewMockSectorMgr(nil)
-
 		fulls[i].Stb = storageBuilder(fulls[i], mn, node.Options(
-			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
-				return mgr, nil
+			node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
+				return mock.NewMockSectorMgr(nil), nil
 			}),
-			node.Override(new(sectorstorage.PieceProvider), func() (sectorstorage.PieceProvider, error) {
-				return mgr, nil
-			}),
-			node.Override(new(sectorstorage.Unsealer), func() (sectorstorage.Unsealer, error) {
-				return mgr, nil
-			}),
+
+			node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
+			node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
+			node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
+
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Override(new(ffiwrapper.Prover), mock.MockProver),
 			node.Unset(new(*sectorstorage.Manager)),
@@ -568,22 +565,20 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 				Number: sector.SectorID,
 			}
 		}
-		mgr := mock.NewMockSectorMgr(sectors)
 
 		opts := def.Opts
 		if opts == nil {
 			opts = node.Options()
 		}
 		storers[i] = CreateTestStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
-			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
-				return mgr, nil
+			node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
+				return mock.NewMockSectorMgr(sectors), nil
 			}),
-			node.Override(new(sectorstorage.PieceProvider), func() (sectorstorage.PieceProvider, error) {
-				return mgr, nil
-			}),
-			node.Override(new(sectorstorage.Unsealer), func() (sectorstorage.Unsealer, error) {
-				return mgr, nil
-			}),
+
+			node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
+			node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
+			node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
+
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Override(new(ffiwrapper.Prover), mock.MockProver),
 			node.Unset(new(*sectorstorage.Manager)),

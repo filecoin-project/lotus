@@ -433,12 +433,18 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 		tu.t.Fatal(err)
 	}
 
-	// TODO: some sort of timeout?
-	for n := range hc {
-		for _, c := range n {
-			if c.Val.Equals(target) {
-				return
+	timeout := time.After(5 * time.Second)
+
+	for {
+		select {
+		case n := <-hc:
+			for _, c := range n {
+				if c.Val.Equals(target) {
+					return
+				}
 			}
+		case <-timeout:
+			tu.t.Fatal("waitUntilSyncTarget timeout")
 		}
 	}
 }
@@ -575,15 +581,20 @@ func TestSyncFork(t *testing.T) {
 	tu.loadChainToNode(p1)
 	tu.loadChainToNode(p2)
 
-	phead := func() {
+	printHead := func() {
 		h1, err := tu.nds[1].ChainHead(tu.ctx)
 		require.NoError(tu.t, err)
 
 		h2, err := tu.nds[2].ChainHead(tu.ctx)
 		require.NoError(tu.t, err)
 
-		fmt.Println("Node 1: ", h1.Cids(), h1.Parents(), h1.Height())
-		fmt.Println("Node 2: ", h2.Cids(), h1.Parents(), h2.Height())
+		w1, err := tu.nds[1].(*impl.FullNodeAPI).ChainAPI.Chain.Weight(tu.ctx, h1)
+		require.NoError(tu.t, err)
+		w2, err := tu.nds[2].(*impl.FullNodeAPI).ChainAPI.Chain.Weight(tu.ctx, h2)
+		require.NoError(tu.t, err)
+
+		fmt.Println("Node 1: ", h1.Cids(), h1.Parents(), h1.Height(), w1)
+		fmt.Println("Node 2: ", h2.Cids(), h2.Parents(), h2.Height(), w2)
 		//time.Sleep(time.Second * 2)
 		fmt.Println()
 		fmt.Println()
@@ -591,7 +602,7 @@ func TestSyncFork(t *testing.T) {
 		fmt.Println()
 	}
 
-	phead()
+	printHead()
 
 	base := tu.g.CurTipset
 	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
@@ -611,6 +622,8 @@ func TestSyncFork(t *testing.T) {
 	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
 	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
 
+	printHead()
+
 	// Now for the fun part!!
 
 	require.NoError(t, tu.mn.LinkAll())
@@ -618,7 +631,7 @@ func TestSyncFork(t *testing.T) {
 	tu.waitUntilSyncTarget(p1, b.TipSet())
 	tu.waitUntilSyncTarget(p2, b.TipSet())
 
-	phead()
+	printHead()
 }
 
 // This test crafts a tipset with 2 blocks, A and B.

@@ -74,10 +74,12 @@ type ConsiderUnverifiedStorageDealsConfigFunc func() (bool, error)
 // disable or enable unverified storage deal acceptance.
 type SetConsiderUnverifiedStorageDealsConfigFunc func(bool) error
 
-// SetSealingDelay sets how long a sector waits for more deals before sealing begins.
+// SetSealingConfigFunc is a function which is used to
+// sets the sealing config.
 type SetSealingConfigFunc func(sealiface.Config) error
 
-// GetSealingDelay returns how long a sector waits for more deals before sealing begins.
+// GetSealingConfigFunc is a function which is used to
+// get the sealing config.
 type GetSealingConfigFunc func() (sealiface.Config, error)
 
 // SetExpectedSealDurationFunc is a function which is used to set how long sealing is expected to take.

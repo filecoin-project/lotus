@@ -331,7 +331,7 @@ jobs:
       - run: cd extern/filecoin-ffi && make
       - run:
           name: "go get lotus@master"
-          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../..
+          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../.. && go mod tidy
       - run:
           name: "build lotus-soup testplan"
           command: pushd testplans/lotus-soup && go build -tags=testground .
@@ -427,6 +427,41 @@ jobs:
           paths:
             - "~/.rustup"
             - "~/.cargo"
+
+  build-appimage:
+    machine:
+      image: ubuntu-2004:202104-01
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - run:
+          name: install appimage-builder
+          command: |
+            # docs: https://appimage-builder.readthedocs.io/en/latest/intro/install.html
+            sudo apt update
+            sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace
+            sudo curl -Lo /usr/local/bin/appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+            sudo chmod +x /usr/local/bin/appimagetool
+            sudo pip3 install appimage-builder
+      - run:
+          name: install lotus dependencies
+          command: sudo apt install ocl-icd-opencl-dev libhwloc-dev
+      - run:
+          name: build appimage
+          command: |
+            sed -i "s/version: latest/version: ${CIRCLE_TAG:-latest}/" AppImageBuilder.yml
+            make appimage
+      - run:
+          name: prepare workspace
+          command: |
+            mkdir appimage
+            mv Lotus-latest-x86_64.AppImage appimage
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - appimage
+
 
   gofmt:
     executor: golang
@@ -529,6 +564,34 @@ jobs:
       - run:
           name: Publish release
           command: ./scripts/publish-release.sh
+
+  publish-snapcraft:
+    description: build and push snapcraft
+    machine:
+      image: ubuntu-2004:202104-01
+    resource_class: 2xlarge
+    parameters:
+      channel:
+        type: string
+        default: "edge"
+        description: snapcraft channel
+    steps:
+      - checkout
+      - run:
+          name: install snapcraft
+          command: sudo snap install snapcraft --classic
+      - run:
+          name: create snapcraft config file
+          command: |
+            mkdir -p ~/.config/snapcraft
+            echo "$SNAPCRAFT_LOGIN_FILE" | base64 -d > ~/.config/snapcraft/snapcraft.cfg
+      - run:
+          name: build snap
+          command: snapcraft --use-lxd
+      - run:
+          name: publish snap
+          command: snapcraft push *.snap --release << parameters.channel >>
+
 
   build-and-push-image:
     description: build and push docker images to public AWS ECR registry
@@ -805,10 +868,21 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage:
+          requires:
+            - test-short
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
             - build-macos
+            - build-appimage
           filters:
             branches:
               ignore:
@@ -861,3 +935,26 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-snapcraft:
+          name: publish-snapcraft-stable
+          channel: stable
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - publish-snapcraft:
+          name: publish-snapcraft-nightly
+          channel: edge

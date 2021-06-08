@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/ipfs/go-cid"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
