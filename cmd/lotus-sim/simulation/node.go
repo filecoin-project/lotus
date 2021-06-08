@@ -164,19 +164,57 @@ func (nd *Node) ListSims(ctx context.Context) ([]string, error) {
 	}
 }
 
+var simFields = []string{"head", "start", "config"}
+
 // DeleteSim deletes a simulation and all related metadata.
 //
 // NOTE: This function does not delete associated messages, blocks, or chain state.
 func (nd *Node) DeleteSim(ctx context.Context, name string) error {
-	// TODO: make this a bit more generic?
-	keys := []datastore.Key{
-		simulationPrefix.ChildString("head").ChildString(name),
-		simulationPrefix.ChildString("start").ChildString(name),
-		simulationPrefix.ChildString("config").ChildString(name),
-	}
 	var err error
-	for _, key := range keys {
+	for _, field := range simFields {
+		key := simulationPrefix.ChildString(field).ChildString(name)
 		err = multierr.Append(err, nd.MetadataDS.Delete(key))
 	}
 	return err
+}
+
+// CopySim copies a simulation.
+func (nd *Node) CopySim(ctx context.Context, oldName, newName string) error {
+	values := make(map[string][]byte)
+	for _, field := range simFields {
+		key := simulationPrefix.ChildString(field).ChildString(oldName)
+		value, err := nd.MetadataDS.Get(key)
+		if err == datastore.ErrNotFound {
+			continue
+		} else if err != nil {
+			return err
+		}
+		values[field] = value
+	}
+
+	if _, ok := values["head"]; !ok {
+		return xerrors.Errorf("simulation named %s not found", oldName)
+	}
+
+	for _, field := range simFields {
+		key := simulationPrefix.ChildString(field).ChildString(newName)
+		var err error
+		if value, ok := values[field]; ok {
+			err = nd.MetadataDS.Put(key, value)
+		} else {
+			err = nd.MetadataDS.Delete(key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RenameSim renames a simulation.
+func (nd *Node) RenameSim(ctx context.Context, oldName, newName string) error {
+	if err := nd.CopySim(ctx, oldName, newName); err != nil {
+		return err
+	}
+	return nd.DeleteSim(ctx, oldName)
 }
