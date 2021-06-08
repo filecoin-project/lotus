@@ -246,10 +246,11 @@ func (ss *simulationState) packMessages(ctx context.Context, cb packFunc) error 
 	}
 
 	for _, mgen := range messageGenerators {
-		if full, err := mgen(ctx, cb); err != nil {
+		// We're intentionally ignoring the "full" signal so we can try to pack a few more
+		// messages.
+		_, err := mgen(ctx, cb)
+		if err != nil {
 			return xerrors.Errorf("when packing messages with %s: %w", functionName(mgen), err)
-		} else if full {
-			break
 		}
 	}
 	return nil
