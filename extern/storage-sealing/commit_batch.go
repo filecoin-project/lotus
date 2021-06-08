@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 const arp = abi.RegisteredAggregationProof_SnarkPackV1
@@ -53,7 +54,7 @@ type CommitBatcher struct {
 	maddr     address.Address
 	mctx      context.Context
 	addrSel   AddrSel
-	feeCfg    FeeConfig
+	feeCfg    config.MinerFeeConfig
 	getConfig GetSealingConfigFunc
 	prover    ffiwrapper.Prover
 
@@ -66,7 +67,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg FeeConfig, getConfig GetSealingConfigFunc, prov ffiwrapper.Prover) *CommitBatcher {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc, prov ffiwrapper.Prover) *CommitBatcher {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -291,6 +292,8 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
+	maxFee := b.feeCfg.MaxCommitBatchGasFee.FeeForSectors(len(infos))
+
 	bf, err := b.api.ChainBaseFee(b.mctx, tok)
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get base fee: %w", err)
@@ -304,14 +307,14 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	aggFee := policy.AggregateNetworkFee(nv, len(infos), bf)
 
-	goodFunds := big.Add(b.feeCfg.MaxCommitGasFee, big.Add(collateral, aggFee))
+	goodFunds := big.Add(maxFee, big.Add(collateral, aggFee))
 
 	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, collateral, b.feeCfg.MaxCommitGasFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, collateral, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -371,14 +374,14 @@ func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, i
 		return cid.Undef, err
 	}
 
-	goodFunds := big.Add(collateral, b.feeCfg.MaxCommitGasFee)
+	goodFunds := big.Add(collateral, big.Int(b.feeCfg.MaxCommitGasFee))
 
 	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("no good address to send commit message from: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitSector, collateral, b.feeCfg.MaxCommitGasFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitSector, collateral, big.Int(b.feeCfg.MaxCommitGasFee), enc.Bytes())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
 	}

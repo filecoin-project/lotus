@@ -148,12 +148,6 @@ func (m *Miner) Run(ctx context.Context) error {
 		return xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	fc := sealing.FeeConfig{
-		MaxPreCommitGasFee: abi.TokenAmount(m.feeCfg.MaxPreCommitGasFee),
-		MaxCommitGasFee:    abi.TokenAmount(m.feeCfg.MaxCommitGasFee),
-		MaxTerminateGasFee: abi.TokenAmount(m.feeCfg.MaxTerminateGasFee),
-	}
-
 	evts := events.NewEvents(ctx, m.api)
 	adaptedAPI := NewSealingAPIAdapter(m.api)
 	// TODO: Maybe we update this policy after actor upgrades?
@@ -163,7 +157,7 @@ func (m *Miner) Run(ctx context.Context) error {
 		return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
 	}
 
-	m.sealing = sealing.New(adaptedAPI, fc, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications, as)
+	m.sealing = sealing.New(adaptedAPI, m.feeCfg, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications, as)
 
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 
