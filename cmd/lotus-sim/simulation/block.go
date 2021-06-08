@@ -40,7 +40,7 @@ func (sim *Simulation) nextTicket() *types.Ticket {
 // makeTipSet generates and executes the next tipset from the given messages. This method:
 //
 // 1. Stores the given messages in the Chainstore.
-// 2. Creates and persists a single block mined by f01000.
+// 2. Creates and persists a single block mined by the same miner as the parent.
 // 3. Creates a tipset from this block and executes it.
 // 4. Returns the resulting tipset.
 //
