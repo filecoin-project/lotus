@@ -2,6 +2,7 @@ package stores
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 
 	"github.com/filecoin-project/specs-storage/storage"
 )
@@ -54,8 +56,6 @@ func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mux.HandleFunc("/remote/{type}/{id}/{spt}/allocated/{offset}/{size}", handler.remoteGetAllocated).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteGetSector).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteDeleteSector).Methods("DELETE")
-
-	mux.HandleFunc("/remote/{type}/{id}/{spt}/allocated/{offset}/{size}", handler.remoteGetAllocated).Methods("GET")
 
 	mux.ServeHTTP(w, r)
 }
@@ -101,40 +101,9 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(500)
 		return
 	}
-	if ft != storiface.FTUnsealed {
-		log.Errorf("/allocated only supports unsealed sector files")
-		w.WriteHeader(500)
-		return
-	}
-
-	spti, err := strconv.ParseInt(vars["spt"], 10, 64)
-	if err != nil {
-		log.Errorf("parsing spt: %+v", err)
-		w.WriteHeader(500)
-		return
-	}
-	spt := abi.RegisteredSealProof(spti)
-	ssize, err := spt.SectorSize()
-	if err != nil {
-		log.Errorf("%+v", err)
-		w.WriteHeader(500)
-		return
-	}
-
-	offi, err := strconv.ParseInt(vars["offset"], 10, 64)
-	if err != nil {
-		log.Errorf("parsing offset: %+v", err)
-		w.WriteHeader(500)
-		return
-	}
-	szi, err := strconv.ParseInt(vars["size"], 10, 64)
-	if err != nil {
-		log.Errorf("parsing spt: %+v", err)
-		w.WriteHeader(500)
-		return
-	}
 
 	// The caller has a lock on this sector already, no need to get one here
+
 	// passing 0 spt because we don't allocate anything
 	si := storage.SectorRef{
 		ID:        id,
@@ -143,10 +112,12 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	paths, _, err := handler.Local.AcquireSector(r.Context(), si, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
-		log.Errorf("AcquireSector: %+v", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
+
+	// TODO: reserve local storage here
 
 	path := storiface.PathByType(paths, ft)
 	if path == "" {
@@ -155,30 +126,37 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	pf, err := partialfile.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+	stat, err := os.Stat(path)
 	if err != nil {
-		log.Error("opening partial file: ", err)
+		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
 	}
-	defer func() {
-		if err := pf.Close(); err != nil {
-			log.Error("close partial file: ", err)
+
+	if stat.IsDir() {
+		if _, has := r.Header["Range"]; has {
+			log.Error("Range not supported on directories")
+			w.WriteHeader(500)
+			return
 		}
-	}()
 
-	has, err := pf.HasAllocated(storiface.UnpaddedByteIndex(offi), abi.UnpaddedPieceSize(szi))
-	if err != nil {
-		log.Error("has allocated: ", err)
-		w.WriteHeader(500)
-		return
-	}
+		rd, err := tarutil.TarDirectory(path)
+		if err != nil {
+			log.Errorf("%+v", err)
+			w.WriteHeader(500)
+			return
+		}
 
-	if has {
-		w.WriteHeader(http.StatusOK)
-		return
+		w.Header().Set("Content-Type", "application/x-tar")
+		w.WriteHeader(200)
+		if _, err := io.CopyBuffer(w, rd, make([]byte, CopyBuf)); err != nil {
+			log.Errorf("%+v", err)
+			return
+		}
+	} else {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		http.ServeFile(w, r, path)
 	}
-	w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 }
 
 func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.Request) {
