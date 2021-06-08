@@ -1,0 +1,81 @@
+package simulation
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"time"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
+	"golang.org/x/xerrors"
+)
+
+const beaconPrefix = "mockbeacon:"
+
+func (sim *Simulation) nextBeaconEntries() []types.BeaconEntry {
+	parentBeacons := sim.head.Blocks()[0].BeaconEntries
+	lastBeacon := parentBeacons[len(parentBeacons)-1]
+	beaconRound := lastBeacon.Round + 1
+
+	buf := make([]byte, len(beaconPrefix)+8)
+	copy(buf, beaconPrefix)
+	binary.BigEndian.PutUint64(buf[len(beaconPrefix):], beaconRound)
+	beaconRand := sha256.Sum256(buf)
+	return []types.BeaconEntry{{
+		Round: beaconRound,
+		Data:  beaconRand[:],
+	}}
+}
+
+func (sim *Simulation) nextTicket() *types.Ticket {
+	newProof := sha256.Sum256(sim.head.MinTicket().VRFProof)
+	return &types.Ticket{
+		VRFProof: newProof[:],
+	}
+}
+
+func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message) (*types.TipSet, error) {
+	parentTs := sim.head
+	parentState, parentRec, err := sim.sm.TipSetState(ctx, parentTs)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to compute parent tipset: %w", err)
+	}
+	msgsCid, err := sim.storeMessages(ctx, messages)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to store block messages: %w", err)
+	}
+
+	uts := parentTs.MinTimestamp() + build.BlockDelaySecs
+
+	blks := []*types.BlockHeader{{
+		Miner:                 parentTs.MinTicketBlock().Miner, // keep reusing the same miner.
+		Ticket:                sim.nextTicket(),
+		BeaconEntries:         sim.nextBeaconEntries(),
+		Parents:               parentTs.Cids(),
+		Height:                parentTs.Height() + 1,
+		ParentStateRoot:       parentState,
+		ParentMessageReceipts: parentRec,
+		Messages:              msgsCid,
+		ParentBaseFee:         baseFee,
+		Timestamp:             uts,
+		ElectionProof:         &types.ElectionProof{WinCount: 1},
+	}}
+	err = sim.Chainstore.PersistBlockHeaders(blks...)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to persist block headers: %w", err)
+	}
+	newTipSet, err := types.NewTipSet(blks)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create new tipset: %w", err)
+	}
+	now := time.Now()
+	_, _, err = sim.sm.TipSetState(ctx, newTipSet)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to compute new tipset: %w", err)
+	}
+	duration := time.Since(now)
+	log.Infow("computed tipset", "duration", duration, "height", newTipSet.Height())
+
+	return newTipSet, nil
+}

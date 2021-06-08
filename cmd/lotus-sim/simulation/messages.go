@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// toArray converts the given set of CIDs to an AMT. This is usually used to pack messages into blocks.
 func toArray(store blockadt.Store, cids []cid.Cid) (cid.Cid, error) {
 	arr := blockadt.MakeEmptyArray(store)
 	for i, c := range cids {
@@ -26,6 +27,8 @@ func toArray(store blockadt.Store, cids []cid.Cid) (cid.Cid, error) {
 	return arr.Root()
 }
 
+// storeMessages packs a set of messages into a types.MsgMeta and returns the resulting CID. The
+// resulting CID is valid for the BlocKHeader's Messages field.
 func (nd *Node) storeMessages(ctx context.Context, messages []*types.Message) (cid.Cid, error) {
 	var blsMessages, sekpMessages []cid.Cid
 	fakeSig := make([]byte, 32)

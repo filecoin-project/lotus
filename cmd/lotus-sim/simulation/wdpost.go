@@ -5,41 +5,29 @@ import (
 	"math"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-	"golang.org/x/xerrors"
 )
 
-func (ss *simulationState) getMinerInfo(ctx context.Context, addr address.Address) (*miner.MinerInfo, error) {
-	minerInfo, ok := ss.minerInfos[addr]
-	if !ok {
-		st, err := ss.stateTree(ctx)
-		if err != nil {
-			return nil, err
-		}
-		act, err := st.GetActor(addr)
-		if err != nil {
-			return nil, err
-		}
-		minerState, err := miner.Load(ss.Chainstore.ActorStore(ctx), act)
-		if err != nil {
-			return nil, err
-		}
-		info, err := minerState.Info()
-		if err != nil {
-			return nil, err
-		}
-		minerInfo = &info
-		ss.minerInfos[addr] = minerInfo
-	}
-	return minerInfo, nil
+// postChainCommitInfo returns th
+func (sim *Simulation) postChainCommitInfo(ctx context.Context, epoch abi.ChainEpoch) (abi.Randomness, error) {
+	commitRand, err := sim.Chainstore.GetChainRandomness(
+		ctx, sim.head.Cids(), crypto.DomainSeparationTag_PoStChainCommit, epoch, nil, true)
+	return commitRand, err
 }
 
+// packWindowPoSts packs window posts until either the block is full or all healty sectors
+// have been proven. It does not recover sectors.
 func (ss *simulationState) packWindowPoSts(ctx context.Context, cb packFunc) (full bool, _err error) {
 	// Push any new window posts into the queue.
 	if err := ss.queueWindowPoSts(ctx); err != nil {
@@ -84,7 +72,7 @@ func (ss *simulationState) packWindowPoSts(ctx context.Context, cb packFunc) (fu
 	return false, nil
 }
 
-// Enqueue all missing window posts for the current epoch for the given miner.
+// stepWindowPoStsMiner enqueues all missing window posts for the current epoch for the given miner.
 func (ss *simulationState) stepWindowPoStsMiner(
 	ctx context.Context,
 	addr address.Address, minerState miner.State,
@@ -198,7 +186,8 @@ func (ss *simulationState) stepWindowPoStsMiner(
 	return nil
 }
 
-// Enqueue missing window posts for all miners with deadlines opening at the current epoch.
+// queueWindowPoSts enqueues missing window posts for all miners with deadlines opening between the
+// last epoch in which this function was called and the current epoch (head+1).
 func (ss *simulationState) queueWindowPoSts(ctx context.Context) error {
 	targetHeight := ss.nextEpoch()
 

@@ -2,10 +2,7 @@ package simulation
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/binary"
 	"encoding/json"
-	"time"
 
 	"golang.org/x/xerrors"
 
@@ -13,9 +10,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -35,16 +30,23 @@ const (
 	maxProveCommitBatchSize = miner5.MaxAggregatedSectors
 )
 
+// config is the simulation's config, persisted to the local metadata store and loaded on start.
+//
+// See simulationState.loadConfig and simulationState.saveConfig.
 type config struct {
 	Upgrades map[network.Version]abi.ChainEpoch
 }
 
+// upgradeSchedule constructs an stmgr.StateManager upgrade schedule, overriding any network upgrade
+// epochs as specified in the config.
 func (c *config) upgradeSchedule() (stmgr.UpgradeSchedule, error) {
 	upgradeSchedule := stmgr.DefaultUpgradeSchedule()
 	expected := make(map[network.Version]struct{}, len(c.Upgrades))
 	for nv := range c.Upgrades {
 		expected[nv] = struct{}{}
 	}
+
+	// Update network upgrade epochs.
 	newUpgradeSchedule := upgradeSchedule[:0]
 	for _, upgrade := range upgradeSchedule {
 		if height, ok := c.Upgrades[upgrade.Network]; ok {
@@ -56,6 +58,8 @@ func (c *config) upgradeSchedule() (stmgr.UpgradeSchedule, error) {
 		}
 		newUpgradeSchedule = append(newUpgradeSchedule, upgrade)
 	}
+
+	// Make sure we didn't try to configure an unknown network version.
 	if len(expected) > 0 {
 		missing := make([]network.Version, 0, len(expected))
 		for nv := range expected {
@@ -63,9 +67,16 @@ func (c *config) upgradeSchedule() (stmgr.UpgradeSchedule, error) {
 		}
 		return nil, xerrors.Errorf("unknown network versions %v in config", missing)
 	}
+
+	// Finally, validate it. This ensures we don't change the order of the upgrade or anything
+	// like that.
+	if err := newUpgradeSchedule.Validate(); err != nil {
+		return nil, err
+	}
 	return newUpgradeSchedule, nil
 }
 
+// Simulation specifies a lotus-sim simulation.
 type Simulation struct {
 	*Node
 
@@ -82,6 +93,8 @@ type Simulation struct {
 	state *simulationState
 }
 
+// loadConfig loads a simulation's config from the datastore. This must be called on startup and may
+// be called to restore the config from-disk.
 func (sim *Simulation) loadConfig() error {
 	configBytes, err := sim.MetadataDS.Get(sim.key("config"))
 	if err == nil {
@@ -97,6 +110,18 @@ func (sim *Simulation) loadConfig() error {
 	return nil
 }
 
+// saveConfig saves the current config to the datastore. This must be called whenever the config is
+// changed.
+func (sim *Simulation) saveConfig() error {
+	buf, err := json.Marshal(sim.config)
+	if err != nil {
+		return err
+	}
+	return sim.MetadataDS.Put(sim.key("config"), buf)
+}
+
+// stateTree returns the current state-tree for the current head, computing the tipset if necessary.
+// The state-tree is cached until the head is changed.
 func (sim *Simulation) stateTree(ctx context.Context) (*state.StateTree, error) {
 	if sim.st == nil {
 		st, _, err := sim.sm.TipSetState(ctx, sim.head)
@@ -128,6 +153,8 @@ func (sim *Simulation) simState(ctx context.Context) (*simulationState, error) {
 
 var simulationPrefix = datastore.NewKey("/simulation")
 
+// key returns the the key in the form /simulation/<subkey>/<simulation-name>. For example,
+// /simulation/head/default.
 func (sim *Simulation) key(subkey string) datastore.Key {
 	return simulationPrefix.ChildString(subkey).ChildString(sim.name)
 }
@@ -139,14 +166,18 @@ func (sim *Simulation) Load(ctx context.Context) error {
 	return err
 }
 
+// GetHead returns the current simulation head.
 func (sim *Simulation) GetHead() *types.TipSet {
 	return sim.head
 }
 
+// GetNetworkVersion returns the current network version for the simulation.
 func (sim *Simulation) GetNetworkVersion() network.Version {
 	return sim.sm.GetNtwkVersion(context.TODO(), sim.head.Height())
 }
 
+// SetHead updates the current head of the simulation and stores it in the metadata store. This is
+// called for every Simulation.Step.
 func (sim *Simulation) SetHead(head *types.TipSet) error {
 	if err := sim.MetadataDS.Put(sim.key("head"), head.Key().Bytes()); err != nil {
 		return xerrors.Errorf("failed to store simulation head: %w", err)
@@ -156,85 +187,14 @@ func (sim *Simulation) SetHead(head *types.TipSet) error {
 	return nil
 }
 
+// Name returns the simulation's name.
 func (sim *Simulation) Name() string {
 	return sim.name
 }
 
-func (sim *Simulation) postChainCommitInfo(ctx context.Context, epoch abi.ChainEpoch) (abi.Randomness, error) {
-	commitRand, err := sim.Chainstore.GetChainRandomness(
-		ctx, sim.head.Cids(), crypto.DomainSeparationTag_PoStChainCommit, epoch, nil, true)
-	return commitRand, err
-}
-
-const beaconPrefix = "mockbeacon:"
-
-func (sim *Simulation) nextBeaconEntries() []types.BeaconEntry {
-	parentBeacons := sim.head.Blocks()[0].BeaconEntries
-	lastBeacon := parentBeacons[len(parentBeacons)-1]
-	beaconRound := lastBeacon.Round + 1
-
-	buf := make([]byte, len(beaconPrefix)+8)
-	copy(buf, beaconPrefix)
-	binary.BigEndian.PutUint64(buf[len(beaconPrefix):], beaconRound)
-	beaconRand := sha256.Sum256(buf)
-	return []types.BeaconEntry{{
-		Round: beaconRound,
-		Data:  beaconRand[:],
-	}}
-}
-
-func (sim *Simulation) nextTicket() *types.Ticket {
-	newProof := sha256.Sum256(sim.head.MinTicket().VRFProof)
-	return &types.Ticket{
-		VRFProof: newProof[:],
-	}
-}
-
-func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message) (*types.TipSet, error) {
-	parentTs := sim.head
-	parentState, parentRec, err := sim.sm.TipSetState(ctx, parentTs)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to compute parent tipset: %w", err)
-	}
-	msgsCid, err := sim.storeMessages(ctx, messages)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to store block messages: %w", err)
-	}
-
-	uts := parentTs.MinTimestamp() + build.BlockDelaySecs
-
-	blks := []*types.BlockHeader{{
-		Miner:                 parentTs.MinTicketBlock().Miner, // keep reusing the same miner.
-		Ticket:                sim.nextTicket(),
-		BeaconEntries:         sim.nextBeaconEntries(),
-		Parents:               parentTs.Cids(),
-		Height:                parentTs.Height() + 1,
-		ParentStateRoot:       parentState,
-		ParentMessageReceipts: parentRec,
-		Messages:              msgsCid,
-		ParentBaseFee:         baseFee,
-		Timestamp:             uts,
-		ElectionProof:         &types.ElectionProof{WinCount: 1},
-	}}
-	err = sim.Chainstore.PersistBlockHeaders(blks...)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to persist block headers: %w", err)
-	}
-	newTipSet, err := types.NewTipSet(blks)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to create new tipset: %w", err)
-	}
-	now := time.Now()
-	_, _, err = sim.sm.TipSetState(ctx, newTipSet)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to compute new tipset: %w", err)
-	}
-	duration := time.Since(now)
-	log.Infow("computed tipset", "duration", duration, "height", newTipSet.Height())
-
-	return newTipSet, nil
-}
-
+// SetUpgradeHeight sets the height of the given network version change (and saves the config).
+//
+// This fails if the specified epoch has already passed or the new upgrade schedule is invalid.
 func (sim *Simulation) SetUpgradeHeight(nv network.Version, epoch abi.ChainEpoch) (_err error) {
 	if epoch <= sim.head.Height() {
 		return xerrors.Errorf("cannot set upgrade height in the past (%d <= %d)", epoch, sim.head.Height())
@@ -269,6 +229,7 @@ func (sim *Simulation) SetUpgradeHeight(nv network.Version, epoch abi.ChainEpoch
 	return nil
 }
 
+// ListUpgrades returns any future network upgrades.
 func (sim *Simulation) ListUpgrades() (stmgr.UpgradeSchedule, error) {
 	upgrades, err := sim.config.upgradeSchedule()
 	if err != nil {
@@ -282,12 +243,4 @@ func (sim *Simulation) ListUpgrades() (stmgr.UpgradeSchedule, error) {
 		pending = append(pending, upgrade)
 	}
 	return pending, nil
-}
-
-func (sim *Simulation) saveConfig() error {
-	buf, err := json.Marshal(sim.config)
-	if err != nil {
-		return err
-	}
-	return sim.MetadataDS.Put(sim.key("config"), buf)
 }

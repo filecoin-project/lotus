@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 )
@@ -21,73 +22,10 @@ const (
 	mockPoStProofPrefix          = "valid post proof:"
 )
 
-func mockSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address) ([]byte, error) {
-	plen, err := proofType.ProofSize()
-	if err != nil {
-		return nil, err
-	}
-	proof := make([]byte, plen)
-	i := copy(proof, mockSealProofPrefix)
-	binary.BigEndian.PutUint64(proof[i:], uint64(proofType))
-	i += 8
-	i += copy(proof[i:], minerAddr.Bytes())
-	return proof, nil
-}
-
-func mockAggregateSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address, count int) ([]byte, error) {
-	proof := make([]byte, aggProofLen(count))
-	i := copy(proof, mockAggregateSealProofPrefix)
-	binary.BigEndian.PutUint64(proof[i:], uint64(proofType))
-	i += 8
-	binary.BigEndian.PutUint64(proof[i:], uint64(count))
-	i += 8
-	i += copy(proof[i:], minerAddr.Bytes())
-
-	return proof, nil
-}
-
-func mockWpostProof(proofType abi.RegisteredPoStProof, minerAddr address.Address) ([]byte, error) {
-	plen, err := proofType.ProofSize()
-	if err != nil {
-		return nil, err
-	}
-	proof := make([]byte, plen)
-	i := copy(proof, mockPoStProofPrefix)
-	i += copy(proof[i:], minerAddr.Bytes())
-	return proof, nil
-}
-
-// TODO: dedup
-func aggProofLen(nproofs int) int {
-	switch {
-	case nproofs <= 8:
-		return 11220
-	case nproofs <= 16:
-		return 14196
-	case nproofs <= 32:
-		return 17172
-	case nproofs <= 64:
-		return 20148
-	case nproofs <= 128:
-		return 23124
-	case nproofs <= 256:
-		return 26100
-	case nproofs <= 512:
-		return 29076
-	case nproofs <= 1024:
-		return 32052
-	case nproofs <= 2048:
-		return 35028
-	case nproofs <= 4096:
-		return 38004
-	case nproofs <= 8192:
-		return 40980
-	default:
-		panic("too many proofs")
-	}
-}
-
+// mockVerifier is a simple mock for verifying "fake" proofs.
 type mockVerifier struct{}
+
+var _ ffiwrapper.Verifier = mockVerifier{}
 
 func (mockVerifier) VerifySeal(proof proof5.SealVerifyInfo) (bool, error) {
 	addr, err := address.NewIDAddress(uint64(proof.Miner))
@@ -133,4 +71,75 @@ func (mockVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoSt
 
 func (mockVerifier) GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error) {
 	panic("should not be called")
+}
+
+// mockSealProof generates a mock "seal" proof tied to the specified proof type and the given miner.
+func mockSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address) ([]byte, error) {
+	plen, err := proofType.ProofSize()
+	if err != nil {
+		return nil, err
+	}
+	proof := make([]byte, plen)
+	i := copy(proof, mockSealProofPrefix)
+	binary.BigEndian.PutUint64(proof[i:], uint64(proofType))
+	i += 8
+	i += copy(proof[i:], minerAddr.Bytes())
+	return proof, nil
+}
+
+// mockAggregateSealProof generates a mock "seal" aggregate proof tied to the specified proof type,
+// the given miner, and the number of proven sectors.
+func mockAggregateSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address, count int) ([]byte, error) {
+	proof := make([]byte, aggProofLen(count))
+	i := copy(proof, mockAggregateSealProofPrefix)
+	binary.BigEndian.PutUint64(proof[i:], uint64(proofType))
+	i += 8
+	binary.BigEndian.PutUint64(proof[i:], uint64(count))
+	i += 8
+	i += copy(proof[i:], minerAddr.Bytes())
+
+	return proof, nil
+}
+
+// mockWpostProof generates a mock "window post" proof tied to the specified proof type, and the
+// given miner.
+func mockWpostProof(proofType abi.RegisteredPoStProof, minerAddr address.Address) ([]byte, error) {
+	plen, err := proofType.ProofSize()
+	if err != nil {
+		return nil, err
+	}
+	proof := make([]byte, plen)
+	i := copy(proof, mockPoStProofPrefix)
+	i += copy(proof[i:], minerAddr.Bytes())
+	return proof, nil
+}
+
+// TODO: dedup
+func aggProofLen(nproofs int) int {
+	switch {
+	case nproofs <= 8:
+		return 11220
+	case nproofs <= 16:
+		return 14196
+	case nproofs <= 32:
+		return 17172
+	case nproofs <= 64:
+		return 20148
+	case nproofs <= 128:
+		return 23124
+	case nproofs <= 256:
+		return 26100
+	case nproofs <= 512:
+		return 29076
+	case nproofs <= 1024:
+		return 32052
+	case nproofs <= 2048:
+		return 35028
+	case nproofs <= 4096:
+		return 38004
+	case nproofs <= 8192:
+		return 40980
+	default:
+		panic("too many proofs")
+	}
 }

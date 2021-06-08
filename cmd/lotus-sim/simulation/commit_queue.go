@@ -9,9 +9,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
+// pendingCommitTracker tracks pending commits per-miner for a single epohc.
 type pendingCommitTracker map[address.Address]minerPendingCommits
+
+// minerPendingCommits tracks a miner's pending commits during a single epoch (grouped by seal proof type).
 type minerPendingCommits map[abi.RegisteredSealProof][]abi.SectorNumber
 
+// finish markes count sectors of the given proof type as "prove-committed".
 func (m minerPendingCommits) finish(proof abi.RegisteredSealProof, count int) {
 	snos := m[proof]
 	if len(snos) < count {
@@ -23,10 +27,12 @@ func (m minerPendingCommits) finish(proof abi.RegisteredSealProof, count int) {
 	}
 }
 
+// empty returns true if there are no pending commits.
 func (m minerPendingCommits) empty() bool {
 	return len(m) == 0
 }
 
+// count returns the number of pending commits.
 func (m minerPendingCommits) count() int {
 	count := 0
 	for _, snos := range m {
@@ -35,12 +41,17 @@ func (m minerPendingCommits) count() int {
 	return count
 }
 
+// commitQueue is used to track pending prove-commits.
+//
+// Miners are processed in round-robin where _all_ commits from a given miner are finished before
+// moving on to the next. This is designed to maximize batching.
 type commitQueue struct {
 	minerQueue []address.Address
 	queue      []pendingCommitTracker
 	offset     abi.ChainEpoch
 }
 
+// ready returns the number of prove-commits ready to be proven at the current epoch. Useful for logging.
 func (q *commitQueue) ready() int {
 	if len(q.queue) == 0 {
 		return 0
@@ -52,6 +63,9 @@ func (q *commitQueue) ready() int {
 	return count
 }
 
+// nextMiner returns the next miner to be proved and the set of pending prove commits for that
+// miner. When some number of sectors have successfully been proven, call "finish" so we don't try
+// to prove them again.
 func (q *commitQueue) nextMiner() (address.Address, minerPendingCommits, bool) {
 	if len(q.queue) == 0 {
 		return address.Undef, nil, false
@@ -72,6 +86,8 @@ func (q *commitQueue) nextMiner() (address.Address, minerPendingCommits, bool) {
 	return address.Undef, nil, false
 }
 
+// advanceEpoch will advance to the next epoch. If some sectors were left unproven in the current
+// epoch, they will be "prepended" into the next epochs sector set.
 func (q *commitQueue) advanceEpoch(epoch abi.ChainEpoch) {
 	if epoch < q.offset {
 		panic("cannot roll epoch backwards")
@@ -146,6 +162,7 @@ func (q *commitQueue) advanceEpoch(epoch abi.ChainEpoch) {
 	})
 }
 
+// enquueProveCommit enqueues prove-commit for the given pre-commit for the given miner.
 func (q *commitQueue) enqueueProveCommit(addr address.Address, preCommitEpoch abi.ChainEpoch, info miner.SectorPreCommitInfo) error {
 	// Compute the epoch at which we can start trying to commit.
 	preCommitDelay := policy.GetPreCommitChallengeDelay()
@@ -176,12 +193,5 @@ func (q *commitQueue) enqueueProveCommit(addr address.Address, preCommitEpoch ab
 		tracker[addr] = minerPending
 	}
 	minerPending[info.SealProof] = append(minerPending[info.SealProof], info.SectorNumber)
-	return nil
-}
-
-func (q *commitQueue) head() pendingCommitTracker {
-	if len(q.queue) > 0 {
-		return q.queue[0]
-	}
 	return nil
 }

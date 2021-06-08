@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
+// Node represents the local lotus node, or at least the part of it we care about.
 type Node struct {
 	Repo       repo.LockedRepo
 	Blockstore blockstore.Blockstore
@@ -26,6 +27,7 @@ type Node struct {
 	Chainstore *store.ChainStore
 }
 
+// OpenNode opens the local lotus node for writing. This will fail if the node is online.
 func OpenNode(ctx context.Context, path string) (*Node, error) {
 	var node Node
 	r, err := repo.NewFS(path)
@@ -55,6 +57,7 @@ func OpenNode(ctx context.Context, path string) (*Node, error) {
 	return &node, nil
 }
 
+// Close cleanly close the node. Please call this on shutdown to make sure everything is flushed.
 func (nd *Node) Close() error {
 	var err error
 	if closer, ok := nd.Blockstore.(io.Closer); ok && closer != nil {
@@ -69,6 +72,7 @@ func (nd *Node) Close() error {
 	return err
 }
 
+// LoadSim loads
 func (nd *Node) LoadSim(ctx context.Context, name string) (*Simulation, error) {
 	sim := &Simulation{
 		Node: nd,
@@ -103,6 +107,10 @@ func (nd *Node) LoadSim(ctx context.Context, name string) (*Simulation, error) {
 	return sim, nil
 }
 
+// Create creates a new simulation.
+//
+// - This will fail if a simulation already exists with the given name.
+// - Name must not contain a '/'.
 func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) (*Simulation, error) {
 	if strings.Contains(name, "/") {
 		return nil, xerrors.Errorf("simulation name %q cannot contain a '/'", name)
@@ -125,6 +133,7 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 	return sim, nil
 }
 
+// ListSims lists all simulations.
 func (nd *Node) ListSims(ctx context.Context) ([]string, error) {
 	prefix := simulationPrefix.ChildString("head").String()
 	items, err := nd.MetadataDS.Query(query.Query{
@@ -153,6 +162,9 @@ func (nd *Node) ListSims(ctx context.Context) ([]string, error) {
 	}
 }
 
+// DeleteSim deletes a simulation and all related metadata.
+//
+// NOTE: This function does not delete associated messages, blocks, or chain state.
 func (nd *Node) DeleteSim(ctx context.Context, name string) error {
 	// TODO: make this a bit more generic?
 	keys := []datastore.Key{

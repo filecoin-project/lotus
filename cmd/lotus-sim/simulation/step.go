@@ -20,6 +20,8 @@ import (
 )
 
 const (
+	// The number of expected blocks in a tipset. We use this to determine how much gas a tipset
+	// has.
 	expectedBlocks = 5
 	// TODO: This will produce invalid blocks but it will accurately model the amount of gas
 	// we're willing to use per-tipset.
@@ -42,6 +44,7 @@ func (sim *Simulation) Step(ctx context.Context) (*types.TipSet, error) {
 	return ts, nil
 }
 
+// step steps the simulation state forward one step, producing and executing a new tipset.
 func (ss *simulationState) step(ctx context.Context) (*types.TipSet, error) {
 	log.Infow("step", "epoch", ss.head.Height()+1)
 	messages, err := ss.popNextMessages(ctx)
@@ -59,20 +62,25 @@ func (ss *simulationState) step(ctx context.Context) (*types.TipSet, error) {
 }
 
 type packFunc func(*types.Message) (full bool, err error)
-type messageGenerator func(ctx context.Context, cb packFunc) (full bool, err error)
 
+// popNextMessages generates/picks a set of messages to be included in the next block.
+//
+// - This function is destructive and should only be called once per epoch.
+// - This function does not store anything in the repo.
+// - This function handles all gas estimation. The returned messages should all fit in a single
+//   block.
 func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Message, error) {
 	parentTs := ss.head
-	parentState, _, err := ss.sm.TipSetState(ctx, parentTs)
-	if err != nil {
-		return nil, err
-	}
+
+	// First we make sure we don't have an upgrade at this epoch. If we do, we return no
+	// messages so we can just create an empty block at that epoch.
+	//
+	// This isn't what the network does, but it makes things easier. Otherwise, we'd need to run
+	// migrations before this epoch and I'd rather not deal with that.
 	nextHeight := parentTs.Height() + 1
 	prevVer := ss.sm.GetNtwkVersion(ctx, nextHeight-1)
 	nextVer := ss.sm.GetNtwkVersion(ctx, nextHeight)
 	if nextVer != prevVer {
-		// So... we _could_ actually run the migration, but that's a pain. It's easier to
-		// just have an empty block then let the state manager run the migration as normal.
 		log.Warnw("packing no messages for version upgrade block",
 			"old", prevVer,
 			"new", nextVer,
@@ -81,10 +89,20 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 		return nil, nil
 	}
 
-	// Then we need to execute messages till we run out of gas. Those messages will become the
-	// block's messages.
+	// Next, we compute the state for the parent tipset. In practice, this will likely be
+	// cached.
+	parentState, _, err := ss.sm.TipSetState(ctx, parentTs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Then we construct a VM to execute messages for gas estimation.
+	//
+	// Most parts of this VM are "real" except:
+	// 1. We don't charge a fee.
+	// 2. The runtime has "fake" proof logic.
+	// 3. We don't actually save any of the results.
 	r := store.NewChainRand(ss.sm.ChainStore(), parentTs.Cids())
-	// TODO: Factor this out maybe?
 	vmopt := &vm.VMOpts{
 		StateBase:      parentState,
 		Epoch:          nextHeight,
@@ -100,9 +118,15 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 	if err != nil {
 		return nil, err
 	}
-	// TODO: This is the wrong store and may not include important state for what we're doing
-	// here....
-	// Maybe we just track nonces separately? Yeah, probably better that way.
+
+	// Next we define a helper function for "pushing" messages. This is the function that will
+	// be passed to the "pack" functions.
+	//
+	// It.
+	//
+	// 1. Tries to execute the message on-top-of the already pushed message.
+	// 2. Is careful to revert messages on failure to avoid nasties like nonce-gaps.
+	// 3. Resolves IDs as necessary, fills in missing parts of the message, etc.
 	vmStore := vmi.ActorStore(ctx)
 	var gasTotal int64
 	var messages []*types.Message
@@ -181,16 +205,52 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 		messages = append(messages, msg)
 		return false, nil
 	}
-	for _, mgen := range []messageGenerator{ss.packWindowPoSts, ss.packProveCommits, ss.packPreCommits} {
-		if full, err := mgen(ctx, tryPushMsg); err != nil {
-			name := runtime.FuncForPC(reflect.ValueOf(mgen).Pointer()).Name()
-			lastDot := strings.LastIndexByte(name, '.')
-			fName := name[lastDot+1 : len(name)-3]
-			return nil, xerrors.Errorf("when packing messages with %s: %w", fName, err)
+
+	// Finally, we generate a set of messages to be included in
+	if err := ss.packMessages(ctx, tryPushMsg); err != nil {
+		return nil, err
+	}
+
+	return messages, nil
+}
+
+// functionName extracts the name of given function.
+func functionName(fn interface{}) string {
+	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	lastDot := strings.LastIndexByte(name, '.')
+	if lastDot >= 0 {
+		name = name[lastDot+1 : len(name)-3]
+	}
+	lastDash := strings.LastIndexByte(name, '-')
+	if lastDash > 0 {
+		name = name[:lastDash]
+	}
+	return name
+}
+
+// packMessages packs messages with the given packFunc until the block is full (packFunc returns
+// true).
+// TODO: Make this more configurable for other simulations.
+func (ss *simulationState) packMessages(ctx context.Context, cb packFunc) error {
+	type messageGenerator func(ctx context.Context, cb packFunc) (full bool, err error)
+
+	// We pack messages in-order:
+	// 1. Any window posts. We pack window posts as soon as the deadline opens to ensure we only
+	//    miss them if/when we run out of chain bandwidth.
+	// 2. Prove commits. We do this eagerly to ensure they don't expire.
+	// 3. Finally, we fill the rest of the space with pre-commits.
+	messageGenerators := []messageGenerator{
+		ss.packWindowPoSts,
+		ss.packProveCommits,
+		ss.packPreCommits,
+	}
+
+	for _, mgen := range messageGenerators {
+		if full, err := mgen(ctx, cb); err != nil {
+			return xerrors.Errorf("when packing messages with %s: %w", functionName(mgen), err)
 		} else if full {
 			break
 		}
 	}
-
-	return messages, nil
+	return nil
 }
