@@ -21,7 +21,10 @@ import (
 	power5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/power"
 )
 
+// packProveCOmmits packs all prove-commits for all "ready to be proven" sectors until it fills the
+// block or runs out.
 func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_full bool, _err error) {
+	// Roll the commitQueue forward.
 	ss.commitQueue.advanceEpoch(ss.nextEpoch())
 
 	var failed, done, unbatched, count int
@@ -64,6 +67,14 @@ type proveCommitResult struct {
 	done, failed, unbatched int
 }
 
+// sendAndFund "packs" the given message, funding the actor if necessary. It:
+//
+// 1. Tries to send the given message.
+// 2. If that fails, it checks to see if the exit code was ErrInsufficientFunds.
+// 3. If so, it sends 1K FIL from the "burnt funds actor" (because we need to send it from
+//    somewhere) and re-tries the message.0
+//
+// NOTE: If the message fails a second time, the funds won't be "unsent".
 func sendAndFund(send packFunc, msg *types.Message) (bool, error) {
 	full, err := send(msg)
 	aerr, ok := err.(aerrors.ActorError)
@@ -87,7 +98,10 @@ func sendAndFund(send packFunc, msg *types.Message) (bool, error) {
 	return send(msg)
 }
 
-// Enqueue a single prove commit from the given miner.
+// packProveCommitsMiner enqueues a prove commits from the given miner until it runs out of
+// available prove-commits, batching as much as possible.
+//
+// This function will fund as necessary from the "burnt funds actor" (look, it's convenient).
 func (ss *simulationState) packProveCommitsMiner(
 	ctx context.Context, cb packFunc, minerAddr address.Address,
 	pending minerPendingCommits,
@@ -200,7 +214,10 @@ func (ss *simulationState) packProveCommitsMiner(
 	return res, false, nil
 }
 
-// Enqueue all pending prove-commits for the given miner.
+// loadProveCommitsMiner enqueue all pending prove-commits for the given miner. This is called on
+// load to populate the commitQueue and should not need to be called later.
+//
+// It will drop any pre-commits that have already expired.
 func (ss *simulationState) loadProveCommitsMiner(ctx context.Context, addr address.Address, minerState miner.State) error {
 	// Find all pending prove commits and group by proof type. Really, there should never
 	// (except during upgrades be more than one type.

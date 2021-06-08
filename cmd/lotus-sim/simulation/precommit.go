@@ -20,15 +20,17 @@ import (
 	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 )
 
-func makeCommR(minerAddr address.Address, sno abi.SectorNumber) cid.Cid {
-	return tutils.MakeCID(fmt.Sprintf("%s:%d", minerAddr, sno), &miner5.SealedCIDPrefix)
-}
-
 var (
 	targetFunds = abi.TokenAmount(types.MustParseFIL("1000FIL"))
 	minFunds    = abi.TokenAmount(types.MustParseFIL("100FIL"))
 )
 
+// makeCommR generates a "fake" but valid CommR for a sector. It is unique for the given sector/miner.
+func makeCommR(minerAddr address.Address, sno abi.SectorNumber) cid.Cid {
+	return tutils.MakeCID(fmt.Sprintf("%s:%d", minerAddr, sno), &miner5.SealedCIDPrefix)
+}
+
+// packPreCommits packs pre-commit messages until the block is full.
 func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (full bool, _err error) {
 	var top1Count, top10Count, restCount int
 	defer func() {
@@ -50,6 +52,13 @@ func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (ful
 			minerAddr address.Address
 			count     *int
 		)
+
+		// We pre-commit for the top 1%, 10%, and the of the network 1/3rd of the time each.
+		// This won't yeild the most accurate distribution... but it'll give us a good
+		// enough distribution.
+
+		// NOTE: We submit at most _one_ 819 sector batch per-miner per-block. See the
+		// comment on packPreCommitsMiner for why. We should fix this.
 		switch {
 		case (i%3) <= 0 && top1Miners < ss.minerDist.top1.len():
 			count = &top1Count
@@ -67,6 +76,7 @@ func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (ful
 			// Well, we've run through all miners.
 			return false, nil
 		}
+
 		added, full, err := ss.packPreCommitsMiner(ctx, cb, minerAddr, maxProveCommitBatchSize)
 		if err != nil {
 			return false, xerrors.Errorf("failed to pack precommits for miner %s: %w", minerAddr, err)
@@ -78,7 +88,10 @@ func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (ful
 	}
 }
 
+// packPreCommitsMiner packs count pre-commits for the given miner. This should only be called once
+// per-miner, per-epoch to avoid packing multiple pre-commits with the same sector numbers.
 func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc, minerAddr address.Address, count int) (int, bool, error) {
+	// Load everything.
 	epoch := ss.nextEpoch()
 	nv := ss.sm.GetNtwkVersion(ctx, epoch)
 	st, err := ss.stateTree(ctx)
@@ -120,6 +133,7 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 		}
 	}
 
+	// Generate pre-commits.
 	sealType, err := miner.PreferredSealProofTypeFromWindowPoStType(
 		nv, minerInfo.WindowPoStProofType,
 	)
@@ -143,6 +157,8 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 			Expiration:    expiration,
 		}
 	}
+
+	// Commit the pre-commits.
 	added := 0
 	if nv >= network.Version13 {
 		targetBatchSize := maxPreCommitBatchSize
@@ -158,6 +174,8 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 			if err != nil {
 				return 0, false, err
 			}
+			// NOTE: just in-case, sendAndFund will "fund" and re-try for any message
+			// that fails due to "insufficient funds".
 			if full, err := sendAndFund(cb, &types.Message{
 				To:     minerAddr,
 				From:   minerInfo.Worker,

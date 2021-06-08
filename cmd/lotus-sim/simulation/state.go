@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"context"
-	"math/rand"
 	"sort"
 
 	"github.com/filecoin-project/go-address"
@@ -11,41 +10,19 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type perm struct {
-	miners []address.Address
-	offset int
-}
-
-func (p *perm) shuffle() {
-	rand.Shuffle(len(p.miners), func(i, j int) {
-		p.miners[i], p.miners[j] = p.miners[j], p.miners[i]
-	})
-}
-
-func (p *perm) next() address.Address {
-	next := p.miners[p.offset]
-	p.offset++
-	p.offset %= len(p.miners)
-	return next
-}
-
-func (p *perm) add(addr address.Address) {
-	p.miners = append(p.miners, addr)
-}
-
-func (p *perm) len() int {
-	return len(p.miners)
-}
-
+// simualtionState holds the "state" of the simulation. This is split from the Simulation type so we
+// can load it on-dempand if and when we need to actually _run_ the simualation. Loading the
+// simulation state requires walking all active miners.
 type simulationState struct {
 	*Simulation
 
+	// The tiers represent the top 1%, top 10%, and everyone else. When sealing sectors, we seal
+	// a group of sectors for the top 1%, a group (half that size) for the top 10%, and one
+	// sector for everyone else. We determine these rates by looking at two power tables.
 	// TODO Ideally we'd "learn" this distribution from the network. But this is good enough for
-	// now. The tiers represent the top 1%, top 10%, and everyone else. When sealing sectors, we
-	// seal a group of sectors for the top 1%, a group (half that size) for the top 10%, and one
-	// sector for everyone else. We really should pick a better algorithm.
+	// now.
 	minerDist struct {
-		top1, top10, rest perm
+		top1, top10, rest actorIter
 	}
 
 	// We track the window post periods per miner and assume that no new miners are ever added.
@@ -58,6 +35,9 @@ type simulationState struct {
 	pendingWposts  []*types.Message
 	nextWpostEpoch abi.ChainEpoch
 
+	// We track the set of pending commits. On simulation load, and when a new pre-commit is
+	// added to the chain, we put the commit in this queue. advanceEpoch(currentEpoch) should be
+	// called on this queue at every epoch before using it.
 	commitQueue commitQueue
 }
 
@@ -167,7 +147,7 @@ func loadSimulationState(ctx context.Context, sim *Simulation) (*simulationState
 	})
 
 	for i, oi := range sealList {
-		var dist *perm
+		var dist *actorIter
 		if i < len(sealList)/100 {
 			dist = &state.minerDist.top1
 		} else if i < len(sealList)/10 {
@@ -185,6 +165,35 @@ func loadSimulationState(ctx context.Context, sim *Simulation) (*simulationState
 	return state, nil
 }
 
+// nextEpoch returns the next epoch (head+1).
 func (ss *simulationState) nextEpoch() abi.ChainEpoch {
 	return ss.GetHead().Height() + 1
+}
+
+// getMinerInfo returns the miner's cached info.
+//
+// NOTE: we assume that miner infos won't change. We'll need to fix this if we start supporting arbitrary message.
+func (ss *simulationState) getMinerInfo(ctx context.Context, addr address.Address) (*miner.MinerInfo, error) {
+	minerInfo, ok := ss.minerInfos[addr]
+	if !ok {
+		st, err := ss.stateTree(ctx)
+		if err != nil {
+			return nil, err
+		}
+		act, err := st.GetActor(addr)
+		if err != nil {
+			return nil, err
+		}
+		minerState, err := miner.Load(ss.Chainstore.ActorStore(ctx), act)
+		if err != nil {
+			return nil, err
+		}
+		info, err := minerState.Info()
+		if err != nil {
+			return nil, err
+		}
+		minerInfo = &info
+		ss.minerInfos[addr] = minerInfo
+	}
+	return minerInfo, nil
 }

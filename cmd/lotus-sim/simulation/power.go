@@ -12,10 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 )
 
-type powerInfo struct {
-	powerLookback, powerNow abi.StoragePower
-}
-
 // Load all power claims at the given height.
 func (sim *Simulation) loadClaims(ctx context.Context, height abi.ChainEpoch) (map[address.Address]power.Claim, error) {
 	powerTable := make(map[address.Address]power.Claim)
