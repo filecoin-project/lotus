@@ -345,7 +345,7 @@ var StateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -385,7 +385,7 @@ var StateActiveSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil

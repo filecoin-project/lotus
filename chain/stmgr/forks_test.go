@@ -123,7 +123,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		cg.ChainStore(), UpgradeSchedule{{
 			Network: 1,
 			Height:  testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback,
+			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				cst := ipldcbor.NewCborStore(sm.ChainStore().StateBlockstore())
 
@@ -253,7 +253,7 @@ func TestForkRefuseCall(t *testing.T) {
 			Network:   1,
 			Expensive: true,
 			Height:    testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback,
+			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				return root, nil
 			}}})
@@ -363,7 +363,7 @@ func TestForkPreMigration(t *testing.T) {
 		cg.ChainStore(), UpgradeSchedule{{
 			Network: 1,
 			Height:  testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback,
+			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 
 				// Make sure the test that should be canceled, is canceled.

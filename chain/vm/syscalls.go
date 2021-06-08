@@ -267,7 +267,7 @@ func (ss *syscallShim) VerifySeal(info proof5.SealVerifyInfo) error {
 	proof := info.Proof
 	seed := []byte(info.InteractiveRandomness)
 
-	log.Debugf("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", info.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
+	log.Debugf("Verif r:%s; d:%s; m:%s; t:%x; s:%x; N:%d; p:%x", info.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
 
 	//func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber)
 	ok, err := ss.verifier.VerifySeal(info)
