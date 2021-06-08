@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 )
 
@@ -274,4 +276,56 @@ func (sim *Simulation) ListUpgrades() (stmgr.UpgradeSchedule, error) {
 		pending = append(pending, upgrade)
 	}
 	return pending, nil
+}
+
+type AppliedMessage struct {
+	types.Message
+	types.MessageReceipt
+}
+
+// Walk walks the simulation's chain from the current head back to the first tipset.
+func (sim *Simulation) Walk(
+	ctx context.Context,
+	cb func(sm *stmgr.StateManager,
+		ts *types.TipSet,
+		stCid cid.Cid,
+		messages []*AppliedMessage) error,
+) error {
+	store := sim.Chainstore.ActorStore(ctx)
+	ts := sim.head
+	stCid, recCid, err := sim.StateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return err
+	}
+	for !ts.Equals(sim.start) {
+		msgs, err := sim.Chainstore.MessagesForTipset(ts)
+		if err != nil {
+			return err
+		}
+
+		recs, err := blockadt.AsArray(store, recCid)
+		if err != nil {
+			return xerrors.Errorf("amt load: %w", err)
+		}
+		applied := make([]*AppliedMessage, len(msgs))
+		var rec types.MessageReceipt
+		err = recs.ForEach(&rec, func(i int64) error {
+			applied[i] = &AppliedMessage{
+				Message:        *msgs[i].VMMessage(),
+				MessageReceipt: rec,
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		if err := cb(sim.StateManager, ts, stCid, applied); err != nil {
+			return err
+		}
+
+		stCid = ts.MinTicketBlock().ParentStateRoot
+		recCid = ts.MinTicketBlock().ParentMessageReceipts
+	}
+	return nil
 }
