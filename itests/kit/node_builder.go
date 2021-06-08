@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
@@ -628,13 +629,18 @@ func CreateRPCServer(t *testing.T, handler http.Handler) (*httptest.Server, mult
 }
 
 func fullRpc(t *testing.T, nd TestFullNode) TestFullNode {
+	tok, err := nd.AuthNew(context.Background(), []auth.Permission{"admin", "read", "write", "sign"})
+	require.NoError(t, err)
+
 	handler, err := node.FullNodeHandler(nd.FullNode)
 	require.NoError(t, err)
 
 	srv, maddr := CreateRPCServer(t, handler)
 
 	var ret TestFullNode
-	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), srv.Listener.Addr().String()+"/rpc/v1", nil)
+	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", map[string][]string{
+		"Authorization": {"Bearer " + string(tok)},
+	})
 	require.NoError(t, err)
 	t.Cleanup(stop)
 	ret.ListenAddr, ret.FullNode = maddr, cl
@@ -643,13 +649,18 @@ func fullRpc(t *testing.T, nd TestFullNode) TestFullNode {
 }
 
 func storerRpc(t *testing.T, nd TestMiner) TestMiner {
+	tok, err := nd.AuthNew(context.Background(), []auth.Permission{"admin", "read", "write"})
+	require.NoError(t, err)
+
 	handler, err := node.MinerHandler(nd.StorageMiner)
 	require.NoError(t, err)
 
 	srv, maddr := CreateRPCServer(t, handler)
 
 	var ret TestMiner
-	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), srv.Listener.Addr().String()+"/rpc/v0", nil)
+	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v0", map[string][]string{
+		"Authorization": {"Bearer " + string(tok)},
+	})
 	require.NoError(t, err)
 	t.Cleanup(stop)
 
