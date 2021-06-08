@@ -191,11 +191,6 @@ func (ss *simulationState) stepWindowPoStsMiner(
 func (ss *simulationState) queueWindowPoSts(ctx context.Context) error {
 	targetHeight := ss.nextEpoch()
 
-	st, err := ss.stateTree(ctx)
-	if err != nil {
-		return err
-	}
-
 	now := time.Now()
 	was := len(ss.pendingWposts)
 	count := 0
@@ -220,14 +215,8 @@ func (ss *simulationState) queueWindowPoSts(ctx context.Context) error {
 			return err
 		}
 
-		store := ss.Chainstore.ActorStore(ctx)
-
 		for _, addr := range ss.wpostPeriods[int(ss.nextWpostEpoch%miner.WPoStChallengeWindow)] {
-			minerActor, err := st.GetActor(addr)
-			if err != nil {
-				return err
-			}
-			minerState, err := miner.Load(store, minerActor)
+			_, minerState, err := ss.getMinerState(ctx, addr)
 			if err != nil {
 				return err
 			}
