@@ -129,6 +129,8 @@ func (q *commitQueue) advanceEpoch(epoch abi.ChainEpoch) {
 				currPending[ty] = append(currSnos, nextSnos...)
 			}
 		}
+		// Now replace next with the merged curr.
+		q.queue[0] = curr
 	}
 	q.offset = epoch
 	if len(q.queue) == 0 {

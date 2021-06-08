@@ -171,7 +171,7 @@ func (ss *simulationState) packProveCommitsMiner(
 							pending.finish(sealType, len(expired))
 
 							log.Errorw("failed to prove commit expired/missing pre-commits",
-								"error", err,
+								"error", aerr,
 								"miner", minerAddr,
 								"expired", expired,
 								"discarded", len(expired),
