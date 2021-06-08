@@ -11,7 +11,9 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -35,7 +37,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		}
 
 		// todo: return to the sealing queue (this is extremely unlikely to happen)
-		pp.accepted(sector.SectorNumber, 0, xerrors.Errorf("sector entered packing state early"))
+		pp.accepted(sector.SectorNumber, 0, xerrors.Errorf("sector %d entered packing state early", sector.SectorNumber))
 	}
 
 	delete(m.openSectors, m.minerSectorID(sector.SectorNumber))
@@ -99,8 +101,8 @@ func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, exi
 	return out, nil
 }
 
-func checkTicketExpired(sector SectorInfo, epoch abi.ChainEpoch) bool {
-	return epoch-sector.TicketEpoch > MaxTicketAge // TODO: allow configuring expected seal durations
+func checkTicketExpired(ticket, head abi.ChainEpoch) bool {
+	return head-ticket > MaxTicketAge // TODO: allow configuring expected seal durations
 }
 
 func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, error) {
@@ -124,7 +126,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 	if pci != nil {
 		ticketEpoch = pci.Info.SealRandEpoch
 
-		if checkTicketExpired(sector, ticketEpoch) {
+		if checkTicketExpired(ticketEpoch, epoch) {
 			return nil, 0, xerrors.Errorf("ticket expired for precommitted sector")
 		}
 	}
@@ -186,7 +188,7 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		return nil
 	}
 
-	if checkTicketExpired(sector, height) {
+	if checkTicketExpired(sector.TicketEpoch, height) {
 		return ctx.Send(SectorOldTicket{}) // go get new ticket
 	}
 
@@ -224,56 +226,50 @@ func (m *Sealing) remarkForUpgrade(sid abi.SectorNumber) {
 	}
 }
 
-func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
+func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitInfo, big.Int, TipSetToken, error) {
 	tok, height, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
-		return nil
-	}
-
-	mi, err := m.api.StateMinerInfo(ctx.Context(), m.maddr, tok)
-	if err != nil {
-		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
-		return nil
+		return nil, big.Zero(), nil, nil
 	}
 
 	if err := checkPrecommit(ctx.Context(), m.Address(), sector, tok, height, m.api); err != nil {
 		switch err := err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
-			return nil
+			return nil, big.Zero(), nil, nil
 		case *ErrBadCommD: // TODO: Should this just back to packing? (not really needed since handlePreCommit1 will do that too)
-			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
+			return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
-			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired: %w", err)})
+			return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired: %w", err)})
 		case *ErrBadTicket:
-			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
+			return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
 		case *ErrInvalidDeals:
 			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
-			return ctx.Send(SectorInvalidDealIDs{Return: RetPreCommitting})
+			return nil, big.Zero(), nil, ctx.Send(SectorInvalidDealIDs{Return: RetPreCommitting})
 		case *ErrExpiredDeals:
-			return ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
+			return nil, big.Zero(), nil, ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
 		case *ErrPrecommitOnChain:
-			return ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
+			return nil, big.Zero(), nil, ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
 		case *ErrSectorNumberAllocated:
 			log.Errorf("handlePreCommitFailed: sector number already allocated, not proceeding: %+v", err)
 			// TODO: check if the sector is committed (not sure how we'd end up here)
-			return nil
+			return nil, big.Zero(), nil, nil
 		default:
-			return xerrors.Errorf("checkPrecommit sanity check error: %w", err)
+			return nil, big.Zero(), nil, xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
 	}
 
 	expiration, err := m.pcp.Expiration(ctx.Context(), sector.Pieces...)
 	if err != nil {
-		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
+		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
 	}
 
 	// Sectors must last _at least_ MinSectorExpiration + MaxSealDuration.
 	// TODO: The "+10" allows the pre-commit to take 10 blocks to be accepted.
 	nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
 	if err != nil {
-		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
+		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
 	}
 
 	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
@@ -295,17 +291,49 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 	depositMinimum := m.tryUpgradeSector(ctx.Context(), params)
 
+	collateral, err := m.api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, tok)
+	if err != nil {
+		return nil, big.Zero(), nil, xerrors.Errorf("getting initial pledge collateral: %w", err)
+	}
+
+	deposit := big.Max(depositMinimum, collateral)
+
+	return params, deposit, tok, nil
+}
+
+func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+
+	if cfg.BatchPreCommits {
+		nv, err := m.api.StateNetworkVersion(ctx.Context(), nil)
+		if err != nil {
+			return xerrors.Errorf("getting network version: %w", err)
+		}
+
+		if nv >= network.Version13 {
+			return ctx.Send(SectorPreCommitBatch{})
+		}
+	}
+
+	params, deposit, tok, err := m.preCommitParams(ctx, sector)
+	if params == nil || err != nil {
+		return err
+	}
+
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})
 	}
 
-	collateral, err := m.api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, tok)
+	mi, err := m.api.StateMinerInfo(ctx.Context(), m.maddr, tok)
 	if err != nil {
-		return xerrors.Errorf("getting initial pledge collateral: %w", err)
+		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
+		return nil
 	}
 
-	deposit := big.Max(depositMinimum, collateral)
 	goodFunds := big.Add(deposit, m.feeCfg.MaxPreCommitGasFee)
 
 	from, _, err := m.addrSel(ctx.Context(), mi, api.PreCommitAddr, goodFunds, deposit)
@@ -323,6 +351,32 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: deposit, PreCommitInfo: *params})
+}
+
+func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.CommD == nil || sector.CommR == nil {
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("sector had nil commR or commD")})
+	}
+
+	params, deposit, _, err := m.preCommitParams(ctx, sector)
+	if params == nil || err != nil {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
+	}
+
+	res, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)
+	if err != nil {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("queuing precommit batch failed: %w", err)})
+	}
+
+	if res.Error != "" {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("precommit batch error: %s", res.Error)})
+	}
+
+	if res.Msg == nil {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("batch message was nil")})
+	}
+
+	return ctx.Send(SectorPreCommitBatchSent{*res.Msg})
 }
 
 func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {
@@ -452,6 +506,22 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo) error {
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+
+	if cfg.AggregateCommits {
+		nv, err := m.api.StateNetworkVersion(ctx.Context(), nil)
+		if err != nil {
+			return xerrors.Errorf("getting network version: %w", err)
+		}
+
+		if nv >= network.Version13 {
+			return ctx.Send(SectorSubmitCommitAggregate{})
+		}
+	}
+
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
@@ -512,6 +582,41 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 	return ctx.Send(SectorCommitSubmitted{
 		Message: mcid,
 	})
+}
+
+func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.CommD == nil || sector.CommR == nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
+	}
+
+	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
+		info: proof.AggregateSealVerifyInfo{
+			Number:                sector.SectorNumber,
+			Randomness:            sector.TicketValue,
+			InteractiveRandomness: sector.SeedValue,
+			SealedCID:             *sector.CommR,
+			UnsealedCID:           *sector.CommD,
+		},
+		proof: sector.Proof, // todo: this correct??
+		spt:   sector.SectorType,
+	})
+	if err != nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})
+	}
+
+	if res.Error != "" {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("aggregate error: %s", res.Error)})
+	}
+
+	if e, found := res.FailedSectors[sector.SectorNumber]; found {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector failed in aggregate processing: %s", e)})
+	}
+
+	if res.Msg == nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("aggregate message was nil")})
+	}
+
+	return ctx.Send(SectorCommitAggregateSent{*res.Msg})
 }
 
 func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) error {

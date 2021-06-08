@@ -23,6 +23,12 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make4(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
+	out := state4{store: store}
+	out.State = *reward4.ConstructState(currRealizedPower)
+	return &out, nil
+}
+
 type state4 struct {
 	reward4.State
 	store adt.Store
@@ -85,4 +91,8 @@ func (s *state4) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate,
 			VelocityEstimate: networkQAPower.VelocityEstimate,
 		},
 		sectorWeight), nil
+}
+
+func (s *state4) GetState() interface{} {
+	return &s.State
 }

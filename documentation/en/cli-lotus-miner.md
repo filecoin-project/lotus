@@ -1310,6 +1310,7 @@ COMMANDS:
    seal               Manually start sealing a sector (filling any unused space with junk)
    set-seal-delay     Set the time, in minutes, that a new sector waits for deals before sealing starts
    get-cc-collateral  Get the collateral required to pledge a committed capacity sector
+   batching           manage batch sector operations
    help, h            Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1520,6 +1521,53 @@ USAGE:
 OPTIONS:
    --expiration value  the epoch when the sector will expire (default: 0)
    --help, -h          show help (default: false)
+   
+```
+
+### lotus-miner sectors batching
+```
+NAME:
+   lotus-miner sectors batching - manage batch sector operations
+
+USAGE:
+   lotus-miner sectors batching command [command options] [arguments...]
+
+COMMANDS:
+   commit     list sectors waiting in commit batch queue
+   precommit  list sectors waiting in precommit batch queue
+   help, h    Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+#### lotus-miner sectors batching commit
+```
+NAME:
+   lotus-miner sectors batching commit - list sectors waiting in commit batch queue
+
+USAGE:
+   lotus-miner sectors batching commit [command options] [arguments...]
+
+OPTIONS:
+   --publish-now  send a batch now (default: false)
+   --help, -h     show help (default: false)
+   
+```
+
+#### lotus-miner sectors batching precommit
+```
+NAME:
+   lotus-miner sectors batching precommit - list sectors waiting in precommit batch queue
+
+USAGE:
+   lotus-miner sectors batching precommit [command options] [arguments...]
+
+OPTIONS:
+   --publish-now  send a batch now (default: false)
+   --help, -h     show help (default: false)
    
 ```
 

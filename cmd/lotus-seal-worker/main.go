@@ -63,9 +63,10 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:    "lotus-worker",
-		Usage:   "Remote miner worker",
-		Version: build.UserVersion(),
+		Name:                 "lotus-worker",
+		Usage:                "Remote miner worker",
+		Version:              build.UserVersion(),
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWorkerRepo,
@@ -227,7 +228,7 @@ var runCmd = &cli.Command{
 		}
 
 		if cctx.Bool("commit") {
-			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(ssize)); err != nil {
+			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
 				return xerrors.Errorf("get params: %w", err)
 			}
 		}

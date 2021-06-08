@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -59,7 +61,7 @@ func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode,
 
 func mkStorageDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool, startEpoch abi.ChainEpoch) ([]byte,
 	*api.DealInfo, cid.Cid) {
-	res, data, err := CreateClientFile(ctx, client, rseed)
+	res, data, err := CreateClientFile(ctx, client, rseed, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +73,7 @@ func mkStorageDeal(t *testing.T, ctx context.Context, rseed int, client api.Full
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-	waitDealSealed(t, ctx, miner, client, deal, false)
+	waitDealSealed(t, ctx, miner, client, deal, false, false, nil)
 
 	// Retrieval
 	info, err := client.ClientGetDealInfo(ctx, *deal)
@@ -80,17 +82,8 @@ func mkStorageDeal(t *testing.T, ctx context.Context, rseed int, client api.Full
 	return data, info, fcid
 }
 
-func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
-	data := make([]byte, 1600)
-	rand.New(rand.NewSource(int64(rseed))).Read(data)
-
-	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	path := filepath.Join(dir, "sourcefile.dat")
-	err = ioutil.WriteFile(path, data, 0644)
+func CreateClientFile(ctx context.Context, client api.FullNode, rseed, size int) (*api.ImportRes, []byte, error) {
+	data, path, err := createRandomFile(rseed, size)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,6 +93,27 @@ func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api
 		return nil, nil, err
 	}
 	return res, data, nil
+}
+
+func createRandomFile(rseed, size int) ([]byte, string, error) {
+	if size == 0 {
+		size = 1600
+	}
+	data := make([]byte, size)
+	rand.New(rand.NewSource(int64(rseed))).Read(data)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
+	if err != nil {
+		return nil, "", err
+	}
+
+	path := filepath.Join(dir, "sourcefile.dat")
+	err = ioutil.WriteFile(path, data, 0644)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return data, path, nil
 }
 
 func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
@@ -127,7 +141,7 @@ func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duratio
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
+		res, _, err := CreateClientFile(s.ctx, s.client, rseed, 0)
 		require.NoError(t, err)
 
 		upds, err := client.ClientGetDealUpdates(s.ctx)
@@ -194,68 +208,109 @@ func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duratio
 }
 
 func TestBatchDealInput(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-	publishPeriod := 10 * time.Second
-	maxDealsPerMsg := uint64(4)
+	run := func(piece, deals, expectSectors int) func(t *testing.T) {
+		return func(t *testing.T) {
+			publishPeriod := 10 * time.Second
+			maxDealsPerMsg := uint64(deals)
 
-	// Set max deals per publish deals message to maxDealsPerMsg
-	minerDef := []StorageMiner{{
-		Full: 0,
-		Opts: node.Options(
-			node.Override(
-				new(*storageadapter.DealPublisher),
-				storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
-					Period:         publishPeriod,
-					MaxDealsPerMsg: maxDealsPerMsg,
-				})),
-			node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
-				return func() (sealiface.Config, error) {
-					return sealiface.Config{
-						MaxWaitDealsSectors:       1,
-						MaxSealingSectors:         1,
-						MaxSealingSectorsForDeals: 2,
-						AlwaysKeepUnsealedCopy:    true,
-					}, nil
-				}, nil
-			}),
-		),
-		Preseal: PresealGenesis,
-	}}
+			// Set max deals per publish deals message to maxDealsPerMsg
+			minerDef := []StorageMiner{{
+				Full: 0,
+				Opts: node.Options(
+					node.Override(
+						new(*storageadapter.DealPublisher),
+						storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
+							Period:         publishPeriod,
+							MaxDealsPerMsg: maxDealsPerMsg,
+						})),
+					node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
+						return func() (sealiface.Config, error) {
+							return sealiface.Config{
+								MaxWaitDealsSectors:       2,
+								MaxSealingSectors:         1,
+								MaxSealingSectorsForDeals: 3,
+								AlwaysKeepUnsealedCopy:    true,
+								WaitDealsDelay:            time.Hour,
+							}, nil
+						}, nil
+					}),
+				),
+				Preseal: PresealGenesis,
+			}}
 
-	// Create a connect client and miner node
-	n, sn := b(t, OneFull, minerDef)
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-	s := connectAndStartMining(t, b, blocktime, client, miner)
-	defer s.blockMiner.Stop()
+			// Create a connect client and miner node
+			n, sn := b(t, OneFull, minerDef)
+			client := n[0].FullNode.(*impl.FullNodeAPI)
+			miner := sn[0]
+			s := connectAndStartMining(t, b, blocktime, client, miner)
+			defer s.blockMiner.Stop()
 
-	// Starts a deal and waits until it's published
-	runDealTillSeal := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
-		require.NoError(t, err)
+			err := miner.MarketSetAsk(s.ctx, big.Zero(), big.Zero(), 200, 128, 32<<30)
+			require.NoError(t, err)
 
-		dc := startDeal(t, s.ctx, s.miner, s.client, res.Root, false, startEpoch)
-		waitDealSealed(t, s.ctx, s.miner, s.client, dc, false)
+			checkNoPadding := func() {
+				sl, err := sn[0].SectorsList(s.ctx)
+				require.NoError(t, err)
+
+				sort.Slice(sl, func(i, j int) bool {
+					return sl[i] < sl[j]
+				})
+
+				for _, snum := range sl {
+					si, err := sn[0].SectorsStatus(s.ctx, snum, false)
+					require.NoError(t, err)
+
+					// fmt.Printf("S %d: %+v %s\n", snum, si.Deals, si.State)
+
+					for _, deal := range si.Deals {
+						if deal == 0 {
+							fmt.Printf("sector %d had a padding piece!\n", snum)
+						}
+					}
+				}
+			}
+
+			// Starts a deal and waits until it's published
+			runDealTillSeal := func(rseed int) {
+				res, _, err := CreateClientFile(s.ctx, s.client, rseed, piece)
+				require.NoError(t, err)
+
+				dc := startDeal(t, s.ctx, s.miner, s.client, res.Root, false, startEpoch)
+				waitDealSealed(t, s.ctx, s.miner, s.client, dc, false, true, checkNoPadding)
+			}
+
+			// Run maxDealsPerMsg deals in parallel
+			done := make(chan struct{}, maxDealsPerMsg)
+			for rseed := 0; rseed < int(maxDealsPerMsg); rseed++ {
+				rseed := rseed
+				go func() {
+					runDealTillSeal(rseed)
+					done <- struct{}{}
+				}()
+			}
+
+			// Wait for maxDealsPerMsg of the deals to be published
+			for i := 0; i < int(maxDealsPerMsg); i++ {
+				<-done
+			}
+
+			checkNoPadding()
+
+			sl, err := sn[0].SectorsList(s.ctx)
+			require.NoError(t, err)
+			require.Equal(t, len(sl), expectSectors)
+		}
 	}
 
-	// Run maxDealsPerMsg+1 deals in parallel
-	done := make(chan struct{}, maxDealsPerMsg+1)
-	for rseed := 1; rseed <= int(maxDealsPerMsg+1); rseed++ {
-		rseed := rseed
-		go func() {
-			runDealTillSeal(rseed)
-			done <- struct{}{}
-		}()
-	}
+	t.Run("4-p1600B", run(1600, 4, 4))
+	t.Run("4-p513B", run(513, 4, 2))
+	if !testing.Short() {
+		t.Run("32-p257B", run(257, 32, 8))
+		t.Run("32-p10B", run(10, 32, 2))
 
-	// Wait for maxDealsPerMsg of the deals to be published
-	for i := 0; i < int(maxDealsPerMsg); i++ {
-		<-done
+		// fixme: this appears to break data-transfer / markets in some really creative ways
+		//t.Run("128-p10B", run(10, 128, 8))
 	}
-
-	sl, err := sn[0].SectorsList(s.ctx)
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(sl), 4)
-	require.LessOrEqual(t, len(sl), 5)
 }
 
 func TestFastRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
@@ -311,12 +366,12 @@ func TestSecondDealRetrieval(t *testing.T, b APIBuilder, blocktime time.Duration
 
 		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 		time.Sleep(time.Second)
-		waitDealSealed(t, s.ctx, s.miner, s.client, deal1, true)
+		waitDealSealed(t, s.ctx, s.miner, s.client, deal1, true, false, nil)
 
 		deal2 := startDeal(t, s.ctx, s.miner, s.client, fcid2, true, 0)
 
 		time.Sleep(time.Second)
-		waitDealSealed(t, s.ctx, s.miner, s.client, deal2, false)
+		waitDealSealed(t, s.ctx, s.miner, s.client, deal2, false, false, nil)
 
 		// Retrieval
 		info, err := s.client.ClientGetDealInfo(s.ctx, *deal2)
@@ -417,6 +472,79 @@ func TestZeroPricePerByteRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime
 	MakeDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
 }
 
+func TestOfflineDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch, fastRet bool) {
+	s := setupOneClientOneMiner(t, b, blocktime)
+	defer s.blockMiner.Stop()
+
+	// Create a random file
+	data, path, err := createRandomFile(1, 0)
+	require.NoError(t, err)
+
+	// Import the file on the client
+	importRes, err := s.client.ClientImport(s.ctx, api.FileRef{Path: path})
+	require.NoError(t, err)
+
+	// Get the piece size and commP
+	fcid := importRes.Root
+	pieceInfo, err := s.client.ClientDealPieceCID(s.ctx, fcid)
+	require.NoError(t, err)
+	fmt.Println("FILE CID: ", fcid)
+
+	// Create a storage deal with the miner
+	maddr, err := s.miner.ActorAddress(s.ctx)
+	require.NoError(t, err)
+
+	addr, err := s.client.WalletDefaultAddress(s.ctx)
+	require.NoError(t, err)
+
+	// Manual storage deal (offline deal)
+	dataRef := &storagemarket.DataRef{
+		TransferType: storagemarket.TTManual,
+		Root:         fcid,
+		PieceCid:     &pieceInfo.PieceCID,
+		PieceSize:    pieceInfo.PieceSize.Unpadded(),
+	}
+
+	proposalCid, err := s.client.ClientStartDeal(s.ctx, &api.StartDealParams{
+		Data:              dataRef,
+		Wallet:            addr,
+		Miner:             maddr,
+		EpochPrice:        types.NewInt(1000000),
+		DealStartEpoch:    startEpoch,
+		MinBlocksDuration: uint64(build.MinDealDuration),
+		FastRetrieval:     fastRet,
+	})
+	require.NoError(t, err)
+
+	// Wait for the deal to reach StorageDealCheckForAcceptance on the client
+	cd, err := s.client.ClientGetDealInfo(s.ctx, *proposalCid)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		cd, _ := s.client.ClientGetDealInfo(s.ctx, *proposalCid)
+		return cd.State == storagemarket.StorageDealCheckForAcceptance
+	}, 30*time.Second, 1*time.Second, "actual deal status is %s", storagemarket.DealStates[cd.State])
+
+	// Create a CAR file from the raw file
+	carFileDir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-car")
+	require.NoError(t, err)
+	carFilePath := filepath.Join(carFileDir, "out.car")
+	err = s.client.ClientGenCar(s.ctx, api.FileRef{Path: path}, carFilePath)
+	require.NoError(t, err)
+
+	// Import the CAR file on the miner - this is the equivalent to
+	// transferring the file across the wire in a normal (non-offline) deal
+	err = s.miner.DealsImportData(s.ctx, *proposalCid, carFilePath)
+	require.NoError(t, err)
+
+	// Wait for the deal to be published
+	waitDealPublished(t, s.ctx, s.miner, proposalCid)
+
+	t.Logf("deal published, retrieving")
+
+	// Retrieve the deal
+	testRetrieval(t, s.ctx, s.client, fcid, &pieceInfo.PieceCID, false, data)
+}
+
 func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
@@ -445,7 +573,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 	return deal
 }
 
-func waitDealSealed(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, deal *cid.Cid, noseal bool) {
+func waitDealSealed(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, deal *cid.Cid, noseal, noSealStart bool, cb func()) {
 loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
@@ -457,7 +585,9 @@ loop:
 			if noseal {
 				return
 			}
-			startSealingWaiting(t, ctx, miner)
+			if !noSealStart {
+				startSealingWaiting(t, ctx, miner)
+			}
 		case storagemarket.StorageDealProposalRejected:
 			t.Fatal("deal rejected")
 		case storagemarket.StorageDealFailing:
@@ -468,8 +598,25 @@ loop:
 			fmt.Println("COMPLETE", di)
 			break loop
 		}
-		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
+
+		mds, err := miner.MarketListIncompleteDeals(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var minerState storagemarket.StorageDealStatus
+		for _, md := range mds {
+			if md.DealID == di.DealID {
+				minerState = md.State
+				break
+			}
+		}
+
+		fmt.Printf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
 		time.Sleep(time.Second / 2)
+		if cb != nil {
+			cb()
+		}
 	}
 }
 
@@ -511,11 +658,13 @@ func startSealingWaiting(t *testing.T, ctx context.Context, miner TestStorageNod
 		si, err := miner.SectorsStatus(ctx, snum, false)
 		require.NoError(t, err)
 
-		t.Logf("Sector state: %s", si.State)
+		t.Logf("Sector %d state: %s", snum, si.State)
 		if si.State == api.SectorState(sealing.WaitDeals) {
 			require.NoError(t, miner.SectorStartSealing(ctx, snum))
 		}
 	}
+
+	flushSealingBatches(t, ctx, miner)
 }
 
 func testRetrieval(t *testing.T, ctx context.Context, client api.FullNode, fcid cid.Cid, piece *cid.Cid, carExport bool, data []byte) {

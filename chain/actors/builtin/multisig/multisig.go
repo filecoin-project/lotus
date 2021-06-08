@@ -12,7 +12,8 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 
-	msig4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/multisig"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	msig5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/multisig"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -21,6 +22,8 @@ import (
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -45,6 +48,10 @@ func init() {
 	builtin.RegisterActorState(builtin4.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load4(store, root)
 	})
+
+	builtin.RegisterActorState(builtin5.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load5(store, root)
+	})
 }
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -62,8 +69,56 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	case builtin4.MultisigActorCodeID:
 		return load4(store, act.Head)
 
+	case builtin5.MultisigActorCodeID:
+		return load5(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av actors.Version, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
+	switch av {
+
+	case actors.Version0:
+		return make0(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actors.Version2:
+		return make2(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actors.Version3:
+		return make3(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actors.Version4:
+		return make4(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actors.Version5:
+		return make5(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+
+	case actors.Version0:
+		return builtin0.MultisigActorCodeID, nil
+
+	case actors.Version2:
+		return builtin2.MultisigActorCodeID, nil
+
+	case actors.Version3:
+		return builtin3.MultisigActorCodeID, nil
+
+	case actors.Version4:
+		return builtin4.MultisigActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.MultisigActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
@@ -81,11 +136,12 @@ type State interface {
 
 	transactions() (adt.Map, error)
 	decodeTransaction(val *cbg.Deferred) (Transaction, error)
+	GetState() interface{}
 }
 
-type Transaction = msig4.Transaction
+type Transaction = msig0.Transaction
 
-var Methods = builtin4.MethodsMultisig
+var Methods = builtin5.MethodsMultisig
 
 func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
@@ -101,6 +157,9 @@ func Message(version actors.Version, from address.Address) MessageBuilder {
 
 	case actors.Version4:
 		return message4{message0{from}}
+
+	case actors.Version5:
+		return message5{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -124,12 +183,12 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig4.ProposalHashData
-type ProposeReturn = msig4.ProposeReturn
-type ProposeParams = msig4.ProposeParams
+type ProposalHashData = msig5.ProposalHashData
+type ProposeReturn = msig5.ProposeReturn
+type ProposeParams = msig5.ProposeParams
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig4.TxnIDParams{ID: msig4.TxnID(id)}
+	params := msig5.TxnIDParams{ID: msig5.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)

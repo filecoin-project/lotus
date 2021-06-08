@@ -384,6 +384,7 @@ var MinerNode = Options(
 
 	// Sector storage: Proofs
 	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
+	Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
 	Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
 
 	// Sealing
@@ -407,6 +408,7 @@ var MinerNode = Options(
 	Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
 	// Markets (retrieval)
+	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 	Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(config.DealmakingConfig{
 		RetrievalPricing: &config.RetrievalPricing{
 			Strategy: config.DefaultRetrievalPricing,

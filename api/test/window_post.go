@@ -3,14 +3,11 @@ package test
 import (
 	"context"
 	"fmt"
-	"sort"
-	"sync/atomic"
-
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -18,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	proof3 "github.com/filecoin-project/specs-actors/v3/actors/runtime/proof"
@@ -29,180 +25,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	minerActor "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	bminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl"
 )
-
-func TestSDRUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	n, sn := b(t, []FullNodeOpts{FullNodeWithSDRAt(500, 1000)}, OneMiner)
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-
-	addrinfo, err := client.NetAddrsListen(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := miner.NetConnect(ctx, addrinfo); err != nil {
-		t.Fatal(err)
-	}
-	build.Clock.Sleep(time.Second)
-
-	pledge := make(chan struct{})
-	mine := int64(1)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		round := 0
-		for atomic.LoadInt64(&mine) != 0 {
-			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
-
-			}}); err != nil {
-				t.Error(err)
-			}
-
-			// 3 sealing rounds: before, during after.
-			if round >= 3 {
-				continue
-			}
-
-			head, err := client.ChainHead(ctx)
-			assert.NoError(t, err)
-
-			// rounds happen every 100 blocks, with a 50 block offset.
-			if head.Height() >= abi.ChainEpoch(round*500+50) {
-				round++
-				pledge <- struct{}{}
-
-				ver, err := client.StateNetworkVersion(ctx, head.Key())
-				assert.NoError(t, err)
-				switch round {
-				case 1:
-					assert.Equal(t, network.Version6, ver)
-				case 2:
-					assert.Equal(t, network.Version7, ver)
-				case 3:
-					assert.Equal(t, network.Version8, ver)
-				}
-			}
-
-		}
-	}()
-
-	// before.
-	pledgeSectors(t, ctx, miner, 9, 0, pledge)
-
-	s, err := miner.SectorsList(ctx)
-	require.NoError(t, err)
-	sort.Slice(s, func(i, j int) bool {
-		return s[i] < s[j]
-	})
-
-	for i, id := range s {
-		info, err := miner.SectorsStatus(ctx, id, true)
-		require.NoError(t, err)
-		expectProof := abi.RegisteredSealProof_StackedDrg2KiBV1
-		if i >= 3 {
-			// after
-			expectProof = abi.RegisteredSealProof_StackedDrg2KiBV1_1
-		}
-		assert.Equal(t, expectProof, info.SealProof, "sector %d, id %d", i, id)
-	}
-
-	atomic.StoreInt64(&mine, 0)
-	<-done
-}
-
-func TestPledgeSector(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	n, sn := b(t, OneFull, OneMiner)
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-
-	addrinfo, err := client.NetAddrsListen(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := miner.NetConnect(ctx, addrinfo); err != nil {
-		t.Fatal(err)
-	}
-	build.Clock.Sleep(time.Second)
-
-	mine := int64(1)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for atomic.LoadInt64(&mine) != 0 {
-			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
-
-			}}); err != nil {
-				t.Error(err)
-			}
-		}
-	}()
-
-	pledgeSectors(t, ctx, miner, nSectors, 0, nil)
-
-	atomic.StoreInt64(&mine, 0)
-	<-done
-}
-
-func pledgeSectors(t *testing.T, ctx context.Context, miner TestStorageNode, n, existing int, blockNotif <-chan struct{}) {
-	for i := 0; i < n; i++ {
-		if i%3 == 0 && blockNotif != nil {
-			<-blockNotif
-			log.Errorf("WAIT")
-		}
-		log.Errorf("PLEDGING %d", i)
-		_, err := miner.PledgeSector(ctx)
-		require.NoError(t, err)
-	}
-
-	for {
-		s, err := miner.SectorsList(ctx) // Note - the test builder doesn't import genesis sectors into FSM
-		require.NoError(t, err)
-		fmt.Printf("Sectors: %d\n", len(s))
-		if len(s) >= n+existing {
-			break
-		}
-
-		build.Clock.Sleep(100 * time.Millisecond)
-	}
-
-	fmt.Printf("All sectors is fsm\n")
-
-	s, err := miner.SectorsList(ctx)
-	require.NoError(t, err)
-
-	toCheck := map[abi.SectorNumber]struct{}{}
-	for _, number := range s {
-		toCheck[number] = struct{}{}
-	}
-
-	for len(toCheck) > 0 {
-		for n := range toCheck {
-			st, err := miner.SectorsStatus(ctx, n, false)
-			require.NoError(t, err)
-			if st.State == api.SectorState(sealing.Proving) {
-				delete(toCheck, n)
-			}
-			if strings.Contains(string(st.State), "Fail") {
-				t.Fatal("sector in a failed state", st.State)
-			}
-		}
-
-		build.Clock.Sleep(100 * time.Millisecond)
-		fmt.Printf("WaitSeal: %d\n", len(s))
-	}
-}
 
 func TestWindowPost(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
 	for _, height := range []abi.ChainEpoch{
@@ -719,7 +543,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 	for {
 		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
-		if di.Index == evilSectorLoc.Deadline {
+		if di.Index == evilSectorLoc.Deadline && di.CurrentEpoch-di.PeriodStart > 1 {
 			break
 		}
 		build.Clock.Sleep(blocktime)
@@ -816,7 +640,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 	for {
 		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
-		if di.Index == evilSectorLoc.Deadline {
+		if di.Index == evilSectorLoc.Deadline && di.CurrentEpoch-di.PeriodStart > 1 {
 			break
 		}
 		build.Clock.Sleep(blocktime)
@@ -1023,4 +847,156 @@ waitForProof:
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to dispute valid post (RetCode=16)")
 	}
+}
+
+func TestWindowPostBaseFeeNoBurn(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	och := build.UpgradeClausHeight
+	build.UpgradeClausHeight = 10
+	n, sn := b(t, DefaultFullOpts(1), OneMiner)
+
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	{
+		addrinfo, err := client.NetAddrsListen(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := miner.NetConnect(ctx, addrinfo); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	build.Clock.Sleep(time.Second)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for ctx.Err() == nil {
+			build.Clock.Sleep(blocktime)
+			if err := miner.MineOne(ctx, MineNext); err != nil {
+				if ctx.Err() != nil {
+					// context was canceled, ignore the error.
+					return
+				}
+				t.Error(err)
+			}
+		}
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+
+	pledgeSectors(t, ctx, miner, 10, 0, nil)
+	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en := wact.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof:
+	for {
+		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en {
+			break waitForProof
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr, err := client.StateReplay(ctx, types.EmptyTSK, slm[0])
+	require.NoError(t, err)
+
+	require.Equal(t, pmr.GasCost.BaseFeeBurn, big.Zero())
+
+	build.UpgradeClausHeight = och
+}
+
+func TestWindowPostBaseFeeBurn(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, OneMiner)
+
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	{
+		addrinfo, err := client.NetAddrsListen(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := miner.NetConnect(ctx, addrinfo); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	build.Clock.Sleep(time.Second)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for ctx.Err() == nil {
+			build.Clock.Sleep(blocktime)
+			if err := miner.MineOne(ctx, MineNext); err != nil {
+				if ctx.Err() != nil {
+					// context was canceled, ignore the error.
+					return
+				}
+				t.Error(err)
+			}
+		}
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+
+	pledgeSectors(t, ctx, miner, 10, 0, nil)
+	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en := wact.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof:
+	for {
+		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en {
+			break waitForProof
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr, err := client.StateReplay(ctx, types.EmptyTSK, slm[0])
+	require.NoError(t, err)
+
+	require.NotEqual(t, pmr.GasCost.BaseFeeBurn, big.Zero())
 }

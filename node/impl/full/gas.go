@@ -267,7 +267,7 @@ func gasEstimateGasLimit(
 		return -1, xerrors.Errorf("getting key address: %w", err)
 	}
 
-	pending, ts := mpool.PendingFor(fromA)
+	pending, ts := mpool.PendingFor(ctx, fromA)
 	priorMsgs := make([]types.ChainMsg, 0, len(pending))
 	for _, m := range pending {
 		if m.Message.Nonce == msg.Nonce {

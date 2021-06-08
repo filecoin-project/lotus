@@ -6,6 +6,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
@@ -112,6 +114,30 @@ type SealingConfig struct {
 	WaitDealsDelay Duration
 
 	AlwaysKeepUnsealedCopy bool
+
+	// enable / disable precommit batching (takes effect after nv13)
+	BatchPreCommits bool
+	// maximum precommit batch size - batches will be sent immediately above this size
+	MaxPreCommitBatch int
+	MinPreCommitBatch int
+	// how long to wait before submitting a batch after crossing the minimum batch size
+	PreCommitBatchWait Duration
+	// time buffer for forceful batch submission before sectors in batch would start expiring
+	PreCommitBatchSlack Duration
+
+	// enable / disable commit aggregation (takes effect after nv13)
+	AggregateCommits bool
+	// maximum batched commit size - batches will be sent immediately above this size
+	MinCommitBatch int
+	MaxCommitBatch int
+	// how long to wait before submitting a batch after crossing the minimum batch size
+	CommitBatchWait Duration
+	// time buffer for forceful batch submission before sectors in batch would start expiring
+	CommitBatchSlack Duration
+
+	TerminateBatchMax  uint64
+	TerminateBatchMin  uint64
+	TerminateBatchWait Duration
 
 	// Keep this many sectors in sealing pipeline, start CC if needed
 	// todo TargetSealingSectors uint64
@@ -268,6 +294,22 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxSealingSectorsForDeals: 0,
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
+
+			BatchPreCommits:     true,
+			MinPreCommitBatch:   1,                                  // we must have at least one proof to aggregate
+			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize, //
+			PreCommitBatchWait:  Duration(24 * time.Hour),           // this can be up to 6 days
+			PreCommitBatchSlack: Duration(3 * time.Hour),
+
+			AggregateCommits: true,
+			MinCommitBatch:   miner5.MinAggregatedSectors, // we must have at least four proofs to aggregate
+			MaxCommitBatch:   miner5.MaxAggregatedSectors, // this is the maximum aggregation per FIP13
+			CommitBatchWait:  Duration(24 * time.Hour),    // this can be up to 6 days
+			CommitBatchSlack: Duration(1 * time.Hour),
+
+			TerminateBatchMin:  1,
+			TerminateBatchMax:  100,
+			TerminateBatchWait: Duration(5 * time.Minute),
 		},
 
 		Storage: sectorstorage.SealerConfig{

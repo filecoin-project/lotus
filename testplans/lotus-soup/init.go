@@ -42,7 +42,7 @@ func init() {
 	// deadline when the challenge is available.
 	//
 	// This will auto-scale the proving period.
-	policy.SetWPoStChallengeWindow(abi.ChainEpoch(5))
+	// policy.SetWPoStChallengeWindow(abi.ChainEpoch(5)) // commented-out until we enable PoSt faults tests
 
 	// Number of epochs between publishing the precommit and when the challenge for interactive PoRep is drawn
 	// used to ensure it is not predictable by miner.
@@ -59,5 +59,5 @@ func init() {
 	build.UpgradeLiftoffHeight = -3
 	// We need to _run_ this upgrade because genesis doesn't support v2, so
 	// we run it at height 0.
-	build.UpgradeActorsV2Height = 0
+	build.UpgradeAssemblyHeight = 0
 }

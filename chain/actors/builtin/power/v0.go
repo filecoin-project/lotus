@@ -26,6 +26,24 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make0(store adt.Store) (State, error) {
+	out := state0{store: store}
+
+	em, err := adt0.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	emm, err := adt0.MakeEmptyMultimap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *power0.ConstructState(em, emm)
+
+	return &out, nil
+}
+
 type state0 struct {
 	power0.State
 	store adt.Store
@@ -126,6 +144,30 @@ func (s *state0) ClaimsChanged(other State) (bool, error) {
 		return true, nil
 	}
 	return !s.State.Claims.Equals(other0.State.Claims), nil
+}
+
+func (s *state0) SetTotalQualityAdjPower(p abi.StoragePower) error {
+	s.State.TotalQualityAdjPower = p
+	return nil
+}
+
+func (s *state0) SetTotalRawBytePower(p abi.StoragePower) error {
+	s.State.TotalRawBytePower = p
+	return nil
+}
+
+func (s *state0) SetThisEpochQualityAdjPower(p abi.StoragePower) error {
+	s.State.ThisEpochQualityAdjPower = p
+	return nil
+}
+
+func (s *state0) SetThisEpochRawBytePower(p abi.StoragePower) error {
+	s.State.ThisEpochRawBytePower = p
+	return nil
+}
+
+func (s *state0) GetState() interface{} {
+	return &s.State
 }
 
 func (s *state0) claims() (adt.Map, error) {

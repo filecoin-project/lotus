@@ -58,6 +58,12 @@ func TestAPIDealFlow(t *testing.T) {
 	t.Run("TestPublishDealsBatching", func(t *testing.T) {
 		test.TestPublishDealsBatching(t, builder.MockSbBuilder, blockTime, dealStartEpoch)
 	})
+	t.Run("TestOfflineDealFlow", func(t *testing.T) {
+		test.TestOfflineDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch, false)
+	})
+	t.Run("TestOfflineDealFlowFastRetrieval", func(t *testing.T) {
+		test.TestOfflineDealFlow(t, builder.MockSbBuilder, blockTime, dealStartEpoch, true)
+	})
 }
 
 func TestBatchDealInput(t *testing.T) {
@@ -66,6 +72,7 @@ func TestBatchDealInput(t *testing.T) {
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
+	logging.SetLogLevel("sectors", "DEBUG")
 
 	blockTime := 10 * time.Millisecond
 
@@ -170,6 +177,15 @@ func TestPledgeSectors(t *testing.T) {
 	})
 }
 
+func TestPledgeBatching(t *testing.T) {
+	t.Run("100", func(t *testing.T) {
+		test.TestPledgeBatching(t, builder.MockSbBuilder, 50*time.Millisecond, 100)
+	})
+	t.Run("100-before-nv13", func(t *testing.T) {
+		test.TestPledgeBeforeNv13(t, builder.MockSbBuilder, 50*time.Millisecond, 100)
+	})
+}
+
 func TestTapeFix(t *testing.T) {
 	logging.SetLogLevel("miner", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
@@ -186,6 +202,7 @@ func TestWindowedPost(t *testing.T) {
 	}
 
 	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
@@ -234,6 +251,7 @@ func TestWindowPostDispute(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
@@ -247,6 +265,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
@@ -255,15 +274,50 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	test.TestWindowPostDisputeFails(t, builder.MockSbBuilder, 2*time.Millisecond)
 }
 
+func TestWindowPostBaseFeeNoBurn(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestWindowPostBaseFeeNoBurn(t, builder.MockSbBuilder, 2*time.Millisecond)
+}
+
+func TestWindowPostBaseFeeBurn(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	test.TestWindowPostBaseFeeBurn(t, builder.MockSbBuilder, 2*time.Millisecond)
+}
+
 func TestDeadlineToggling(t *testing.T) {
 	if os.Getenv("LOTUS_TEST_DEADLINE_TOGGLING") != "1" {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_DEADLINE_TOGGLING=1 to run")
 	}
 	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
 	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "FATAL")
 
 	test.TestDeadlineToggling(t, builder.MockSbBuilder, 2*time.Millisecond)
+}
+
+func TestVerifiedClientTopUp(t *testing.T) {
+	logging.SetLogLevel("storageminer", "FATAL")
+	logging.SetLogLevel("chain", "ERROR")
+	test.AddVerifiedClient(t, builder.MockSbBuilder)
 }

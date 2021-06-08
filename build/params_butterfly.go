@@ -23,7 +23,7 @@ const UpgradeSmokeHeight = -2
 const UpgradeIgnitionHeight = -3
 const UpgradeRefuelHeight = -4
 
-var UpgradeActorsV2Height = abi.ChainEpoch(30)
+var UpgradeAssemblyHeight = abi.ChainEpoch(30)
 
 const UpgradeTapeHeight = 60
 const UpgradeLiftoffHeight = -5
@@ -32,9 +32,10 @@ const UpgradeCalicoHeight = 120
 const UpgradePersianHeight = 150
 const UpgradeClausHeight = 180
 const UpgradeOrangeHeight = 210
-const UpgradeActorsV3Height = 240
-const UpgradeNorwegianHeight = UpgradeActorsV3Height + (builtin2.EpochsInHour * 12)
-const UpgradeActorsV4Height = 8922
+const UpgradeTrustHeight = 240
+const UpgradeNorwegianHeight = UpgradeTrustHeight + (builtin2.EpochsInHour * 12)
+const UpgradeTurboHeight = 8922
+const UpgradeHyperdriveHeight = 9999999
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))

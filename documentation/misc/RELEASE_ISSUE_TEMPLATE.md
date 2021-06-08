@@ -20,6 +20,8 @@ We're happy to announce Lotus X.Y.Z...
 
 ## ✅ Release Checklist
 
+**Note for whomever is owning the release:** please capture notes as comments in this issue for anything you noticed that could be improved for future releases.  There is a *Post Release* step below for incorporating changes back into the [RELEASE_ISSUE_TEMPLATE](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md), and this is easier done by collecting notes from along the way rather than just thinking about it at the end.
+
 First steps:
 
   - [ ] Fork a new branch (`release/vX.Y.Z`) from `master` and make any further release related changes to this branch. If any "non-trivial" changes get added to the release, uncheck all the checkboxes and return to this stage.
@@ -40,6 +42,9 @@ Testing an RC:
     - [ ] Testground tests
 
 - [ ] **Stage 1 - Internal Testing**
+  - Binaries
+    - [ ] Ensure the RC release has downloadable binaries
+    - [ ] Validate the binary is able to run on at least one platform  
   - Upgrade our testnet infra
     - [ ] 1 bootstrap node
     - [ ] 1 miner
@@ -99,8 +104,9 @@ Testing an RC:
         - [ ] Inform node provides (Protofire, Digital Ocean..)
 
 - [ ] **Post-Release**
-  - [ ] Merge the `releases` branch back into `master`, ignoring the changes to `version.go` (keep the `-dev` version from master).
-  - [ ] Create an issue using this release issue template for the _next_ release.
+  - [ ] Merge the `releases` branch back into `master`, ignoring the changes to `version.go` (keep the `-dev` version from master). Do NOT delete the `releases` branch when doing so!
+  - [ ] Update [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with any improvements determined from this latest release iteration.
+  - [ ] Create an issue using [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) for the _next_ release.
 
 ## ❤️ Contributors
 
