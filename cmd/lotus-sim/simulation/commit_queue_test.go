@@ -115,4 +115,12 @@ func TestCommitQueue(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, sectors.count(), 2)
 	require.EqualValues(t, []abi.SectorNumber{5, 6}, sectors[proofType])
+
+	// 8
+	epoch += 2
+	q.advanceEpoch(epoch)
+	_, sectors, ok = q.nextMiner()
+	require.True(t, ok)
+	require.Equal(t, sectors.count(), 2)
+	require.EqualValues(t, []abi.SectorNumber{5, 6}, sectors[proofType])
 }
