@@ -283,7 +283,7 @@ func startNodes(
 
 				// Create a gateway client API that connects to the gateway server
 				var gapi api.Gateway
-				gapi, closer, err = client.NewGatewayRPCV1(ctx, srv.Listener.Addr().String()+"/rpc/v1", nil)
+				gapi, closer, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 				require.NoError(t, err)
 
 				// Provide the gateway API to dependency injection
