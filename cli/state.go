@@ -281,17 +281,26 @@ var StatePowerCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
 		var maddr address.Address
 		if cctx.Args().Present() {
 			maddr, err = address.NewFromString(cctx.Args().First())
 			if err != nil {
 				return err
 			}
-		}
 
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
+			ma, err := api.StateGetActor(ctx, maddr, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			if !builtin.IsStorageMinerActor(ma.Code) {
+				return xerrors.New("provided address does not correspond to a miner actor")
+			}
 		}
 
 		power, err := api.StateMinerPower(ctx, maddr, ts.Key())
@@ -345,7 +354,7 @@ var StateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -385,7 +394,7 @@ var StateActiveSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
