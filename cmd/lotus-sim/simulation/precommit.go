@@ -31,8 +31,11 @@ func makeCommR(minerAddr address.Address, sno abi.SectorNumber) cid.Cid {
 }
 
 // packPreCommits packs pre-commit messages until the block is full.
-func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (full bool, _err error) {
-	var top1Count, top10Count, restCount int
+func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (_err error) {
+	var (
+		full                             bool
+		top1Count, top10Count, restCount int
+	)
 	defer func() {
 		if _err != nil {
 			return
@@ -74,16 +77,20 @@ func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (ful
 			restMiners++
 		default:
 			// Well, we've run through all miners.
-			return false, nil
+			return nil
 		}
 
-		added, full, err := ss.packPreCommitsMiner(ctx, cb, minerAddr, maxProveCommitBatchSize)
+		var (
+			added int
+			err   error
+		)
+		added, full, err = ss.packPreCommitsMiner(ctx, cb, minerAddr, maxProveCommitBatchSize)
 		if err != nil {
-			return false, xerrors.Errorf("failed to pack precommits for miner %s: %w", minerAddr, err)
+			return xerrors.Errorf("failed to pack precommits for miner %s: %w", minerAddr, err)
 		}
 		*count += added
 		if full {
-			return true, nil
+			return nil
 		}
 	}
 }
@@ -111,17 +118,15 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 	}
 
 	if big.Cmp(minerBalance, minFunds) < 0 {
-		full, err := cb(&types.Message{
+		if _, err := cb(&types.Message{
 			From:   builtin.BurntFundsActorAddr,
 			To:     minerAddr,
 			Value:  targetFunds,
 			Method: builtin.MethodSend,
-		})
-		if err != nil {
-			return 0, false, xerrors.Errorf("failed to fund miner %s: %w", minerAddr, err)
-		}
-		if full {
+		}); err == ErrOutOfGas {
 			return 0, true, nil
+		} else if err != nil {
+			return 0, false, xerrors.Errorf("failed to fund miner %s: %w", minerAddr, err)
 		}
 	}
 
@@ -168,18 +173,18 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 			}
 			// NOTE: just in-case, sendAndFund will "fund" and re-try for any message
 			// that fails due to "insufficient funds".
-			if full, err := sendAndFund(cb, &types.Message{
+			if _, err := sendAndFund(cb, &types.Message{
 				To:     minerAddr,
 				From:   minerInfo.Worker,
 				Value:  abi.NewTokenAmount(0),
 				Method: miner.Methods.PreCommitSectorBatch,
 				Params: enc,
-			}); err != nil {
-				return 0, false, err
-			} else if full {
+			}); err == ErrOutOfGas {
 				// try again with a smaller batch.
 				targetBatchSize /= 2
 				continue
+			} else if err != nil {
+				return 0, false, err
 			}
 
 			for _, info := range batch {
@@ -196,14 +201,16 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 		if err != nil {
 			return 0, false, err
 		}
-		if full, err := sendAndFund(cb, &types.Message{
+		if _, err := sendAndFund(cb, &types.Message{
 			To:     minerAddr,
 			From:   minerInfo.Worker,
 			Value:  abi.NewTokenAmount(0),
 			Method: miner.Methods.PreCommitSector,
 			Params: enc,
-		}); full || err != nil {
-			return added, full, err
+		}); err == ErrOutOfGas {
+			return added, true, nil
+		} else if err != nil {
+			return added, false, err
 		}
 
 		if err := ss.commitQueue.enqueueProveCommit(minerAddr, epoch, info); err != nil {

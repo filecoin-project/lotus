@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"runtime"
 	"strings"
@@ -61,7 +62,13 @@ func (ss *simulationState) step(ctx context.Context) (*types.TipSet, error) {
 	return head, nil
 }
 
-type packFunc func(*types.Message) (full bool, err error)
+var ErrOutOfGas = errors.New("out of gas")
+
+// packFunc takes a message and attempts to pack it into a block.
+//
+// - If the block is full, returns the error ErrOutOfGas.
+// - If message execution fails, check if error is an ActorError to get the return code.
+type packFunc func(*types.Message) (*types.MessageReceipt, error)
 
 // popNextMessages generates/picks a set of messages to be included in the next block.
 //
@@ -130,9 +137,9 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 	vmStore := vmi.ActorStore(ctx)
 	var gasTotal int64
 	var messages []*types.Message
-	tryPushMsg := func(msg *types.Message) (bool, error) {
+	tryPushMsg := func(msg *types.Message) (*types.MessageReceipt, error) {
 		if gasTotal >= targetGas {
-			return true, nil
+			return nil, ErrOutOfGas
 		}
 
 		// Copy the message before we start mutating it.
@@ -142,17 +149,17 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 
 		actor, err := st.GetActor(msg.From)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		msg.Nonce = actor.Nonce
 		if msg.From.Protocol() == address.ID {
 			state, err := account.Load(vmStore, actor)
 			if err != nil {
-				return false, err
+				return nil, err
 			}
 			msg.From, err = state.PubkeyAddress()
 			if err != nil {
-				return false, err
+				return nil, err
 			}
 		}
 
@@ -172,17 +179,17 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 		ret, err := vmi.ApplyMessage(ctx, msg)
 		if err != nil {
 			_ = st.Revert()
-			return false, err
+			return nil, err
 		}
 		if ret.ActorErr != nil {
 			_ = st.Revert()
-			return false, ret.ActorErr
+			return nil, ret.ActorErr
 		}
 
 		// Sometimes there are bugs. Let's catch them.
 		if ret.GasUsed == 0 {
 			_ = st.Revert()
-			return false, xerrors.Errorf("used no gas",
+			return nil, xerrors.Errorf("used no gas",
 				"msg", msg,
 				"ret", ret,
 			)
@@ -195,7 +202,7 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 		newTotal := gasTotal + ret.GasUsed
 		if newTotal > targetGas {
 			_ = st.Revert()
-			return true, nil
+			return nil, ErrOutOfGas
 		}
 		gasTotal = newTotal
 
@@ -203,7 +210,7 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 		msg.GasLimit = ret.GasUsed
 
 		messages = append(messages, msg)
-		return false, nil
+		return &ret.MessageReceipt, nil
 	}
 
 	// Finally, we generate a set of messages to be included in
@@ -232,7 +239,7 @@ func functionName(fn interface{}) string {
 // true).
 // TODO: Make this more configurable for other simulations.
 func (ss *simulationState) packMessages(ctx context.Context, cb packFunc) error {
-	type messageGenerator func(ctx context.Context, cb packFunc) (full bool, err error)
+	type messageGenerator func(ctx context.Context, cb packFunc) error
 
 	// We pack messages in-order:
 	// 1. Any window posts. We pack window posts as soon as the deadline opens to ensure we only
@@ -248,8 +255,7 @@ func (ss *simulationState) packMessages(ctx context.Context, cb packFunc) error 
 	for _, mgen := range messageGenerators {
 		// We're intentionally ignoring the "full" signal so we can try to pack a few more
 		// messages.
-		_, err := mgen(ctx, cb)
-		if err != nil {
+		if err := mgen(ctx, cb); err != nil && !xerrors.Is(err, ErrOutOfGas) {
 			return xerrors.Errorf("when packing messages with %s: %w", functionName(mgen), err)
 		}
 	}
