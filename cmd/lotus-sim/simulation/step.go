@@ -244,10 +244,12 @@ func (ss *simulationState) packMessages(ctx context.Context, cb packFunc) error 
 	// We pack messages in-order:
 	// 1. Any window posts. We pack window posts as soon as the deadline opens to ensure we only
 	//    miss them if/when we run out of chain bandwidth.
-	// 2. Prove commits. We do this eagerly to ensure they don't expire.
-	// 3. Finally, we fill the rest of the space with pre-commits.
+	// 2. We then move funds to our "funding" account, if it's running low.
+	// 3. Prove commits. We do this eagerly to ensure they don't expire.
+	// 4. Finally, we fill the rest of the space with pre-commits.
 	messageGenerators := []messageGenerator{
 		ss.packWindowPoSts,
+		ss.packFunding,
 		ss.packProveCommits,
 		ss.packPreCommits,
 	}

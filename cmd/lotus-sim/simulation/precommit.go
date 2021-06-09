@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -118,15 +117,12 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 	}
 
 	if big.Cmp(minerBalance, minFunds) < 0 {
-		if _, err := cb(&types.Message{
-			From:   builtin.BurntFundsActorAddr,
-			To:     minerAddr,
-			Value:  targetFunds,
-			Method: builtin.MethodSend,
-		}); err == ErrOutOfGas {
-			return 0, true, nil
-		} else if err != nil {
-			return 0, false, xerrors.Errorf("failed to fund miner %s: %w", minerAddr, err)
+		err := fund(cb, minerAddr)
+		if err != nil {
+			if err == ErrOutOfGas {
+				return 0, true, nil
+			}
+			return 0, false, err
 		}
 	}
 
