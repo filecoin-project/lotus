@@ -179,6 +179,8 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 		if si.State == api.SectorState(sealing.WaitDeals) {
 			require.NoError(dh.t, dh.miner.SectorStartSealing(ctx, snum))
 		}
+
+		flushSealingBatches(dh.t, ctx, dh.miner)
 	}
 }
 
