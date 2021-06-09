@@ -334,6 +334,7 @@ func (b *PreCommitBatcher) Stop(ctx context.Context) error {
 	}
 }
 
+// TODO: If this returned epochs, it would make testing much easier
 func getPreCommitCutoff(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
 	cutoffEpoch := si.TicketEpoch + policy.MaxPreCommitRandomnessLookback
 	for _, p := range si.Pieces {

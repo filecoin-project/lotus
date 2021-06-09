@@ -456,17 +456,17 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 	}
 }
 
+// TODO: If this returned epochs, it would make testing much easier
 func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 	tok, curEpoch, err := b.api.ChainHead(b.mctx)
 	if err != nil {
-		log.Errorf("getting chain head: %s", err)
-		return time.Now(), nil
+		return time.Now(), xerrors.Errorf("getting chain head: %s", err)
 	}
 
 	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
 	if err != nil {
 		log.Errorf("getting network version: %s", err)
-		return time.Now(), err
+		return time.Now(), xerrors.Errorf("getting network version: %s", err)
 	}
 
 	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, si.SectorNumber, tok)
