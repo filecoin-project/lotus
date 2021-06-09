@@ -1,4 +1,4 @@
-package itests
+package kit
 
 import (
 	"fmt"
