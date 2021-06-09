@@ -286,7 +286,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
-	maxFee := b.feeCfg.MaxPreCommitBatchGasFee.FeeForSectors(len(infos))
+	maxFee := b.feeCfg.MaxCommitBatchGasFee.FeeForSectors(len(infos))
 	goodFunds := big.Add(maxFee, collateral)
 
 	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
