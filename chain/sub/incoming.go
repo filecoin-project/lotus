@@ -557,7 +557,7 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 		return pubsub.ValidationIgnore
 	}
 
-	if m.Size() > 32*1024 {
+	if m.Size() > messagepool.MaxMessageSize {
 		log.Warnf("local message is too large! (%dB)", m.Size())
 		recordFailure(ctx, metrics.MessageValidationFailure, "oversize")
 		return pubsub.ValidationIgnore
