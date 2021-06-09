@@ -155,7 +155,7 @@ func TestWindowPostDispute(t *testing.T) {
 	for {
 		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
-		if di.Index == evilSectorLoc.Deadline && di.CurrentEpoch-di.PeriodStart > 1 {
+		if di.Index != evilSectorLoc.Deadline {
 			break
 		}
 		build.Clock.Sleep(blocktime)
