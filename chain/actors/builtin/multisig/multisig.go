@@ -185,6 +185,7 @@ type MessageBuilder interface {
 // this type is the same between v0 and v2
 type ProposalHashData = msig5.ProposalHashData
 type ProposeReturn = msig5.ProposeReturn
+type ApproveReturn = msig5.ApproveReturn
 type ProposeParams = msig5.ProposeParams
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
