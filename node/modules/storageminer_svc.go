@@ -42,8 +42,6 @@ func connectMinerService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lif
 				}
 
 				if !v.APIVersion.EqMajorMinor(api.MinerAPIVersion0) {
-					// TODO(anteva): Is MinerAPIVersion0 correct???
-					// we should probably bump it up
 					return xerrors.Errorf("remote service API version didn't match (expected %s, remote %s)", api.MinerAPIVersion0, v.APIVersion)
 				}
 

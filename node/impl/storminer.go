@@ -50,7 +50,7 @@ type StorageMinerAPI struct {
 
 	Full        api.FullNode
 	LocalStore  *stores.Local
-	ReboteStore *stores.Remote
+	RemoteStore *stores.Remote
 
 	// Markets
 	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
@@ -291,7 +291,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 }
 
 func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
-	return sm.ReboteStore.FsStat(ctx, id)
+	return sm.RemoteStore.FsStat(ctx, id)
 }
 
 func (sm *StorageMinerAPI) SectorStartSealing(ctx context.Context, number abi.SectorNumber) error {

@@ -38,7 +38,6 @@ func checkApiInfo(ctx context.Context, ai string) (string, error) {
 		return "", xerrors.Errorf("checking version: %w", err)
 	}
 
-	//TODO(anteva): bump api version?
 	if !v.APIVersion.EqMajorMinor(lapi.MinerAPIVersion0) {
 		return "", xerrors.Errorf("remote service API version didn't match (expected %s, remote %s)", lapi.MinerAPIVersion0, v.APIVersion)
 	}

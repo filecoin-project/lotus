@@ -103,7 +103,6 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	}
 
 	// The caller has a lock on this sector already, no need to get one here
-
 	// passing 0 spt because we don't allocate anything
 	si := storage.SectorRef{
 		ID:        id,
@@ -112,7 +111,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	paths, _, err := handler.Local.AcquireSector(r.Context(), si, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("AcquireSector: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -128,7 +127,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	stat, err := os.Stat(path)
 	if err != nil {
-		log.Errorf("%+v", err)
+		log.Errorf("os.Stat: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -155,8 +154,11 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		}
 	} else {
 		w.Header().Set("Content-Type", "application/octet-stream")
+		// will do a ranged read over the file at the given path if the caller has asked for a ranged read in the request headers.
 		http.ServeFile(w, r, path)
 	}
+
+	log.Debugf("served sector file/dir, sectorID=%+v, fileType=%s, path=%s", id, ft, path)
 }
 
 func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.Request) {

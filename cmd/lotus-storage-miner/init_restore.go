@@ -52,7 +52,6 @@ func restore(ctx context.Context, cctx *cli.Context, manageConfig func(*config.S
 		return err
 	}
 
-	//TODO(anteva): bump api version?
 	if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion1) {
 		return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion1, v.APIVersion)
 	}
