@@ -7,6 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -41,9 +44,9 @@ type PreCommitBatcher struct {
 	feeCfg    config.MinerFeeConfig
 	getConfig GetSealingConfigFunc
 
-	deadlines map[abi.SectorNumber]time.Time
-	todo      map[abi.SectorNumber]*preCommitEntry
-	waiting   map[abi.SectorNumber][]chan sealiface.PreCommitBatchRes
+	cutoffs map[abi.SectorNumber]time.Time
+	todo    map[abi.SectorNumber]*preCommitEntry
+	waiting map[abi.SectorNumber][]chan sealiface.PreCommitBatchRes
 
 	notify, stop, stopped chan struct{}
 	force                 chan chan []sealiface.PreCommitBatchRes
@@ -59,9 +62,9 @@ func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCom
 		feeCfg:    feeCfg,
 		getConfig: getConfig,
 
-		deadlines: map[abi.SectorNumber]time.Time{},
-		todo:      map[abi.SectorNumber]*preCommitEntry{},
-		waiting:   map[abi.SectorNumber][]chan sealiface.PreCommitBatchRes{},
+		cutoffs: map[abi.SectorNumber]time.Time{},
+		todo:    map[abi.SectorNumber]*preCommitEntry{},
+		waiting: map[abi.SectorNumber][]chan sealiface.PreCommitBatchRes{},
 
 		notify:  make(chan struct{}, 1),
 		force:   make(chan chan []sealiface.PreCommitBatchRes),
@@ -121,30 +124,30 @@ func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.T
 		return nil
 	}
 
-	var deadline time.Time
+	var cutoff time.Time
 	for sn := range b.todo {
-		sectorDeadline := b.deadlines[sn]
-		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
-			deadline = sectorDeadline
+		sectorCutoff := b.cutoffs[sn]
+		if cutoff.IsZero() || (!sectorCutoff.IsZero() && sectorCutoff.Before(cutoff)) {
+			cutoff = sectorCutoff
 		}
 	}
 	for sn := range b.waiting {
-		sectorDeadline := b.deadlines[sn]
-		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
-			deadline = sectorDeadline
+		sectorCutoff := b.cutoffs[sn]
+		if cutoff.IsZero() || (!sectorCutoff.IsZero() && sectorCutoff.Before(cutoff)) {
+			cutoff = sectorCutoff
 		}
 	}
 
-	if deadline.IsZero() {
+	if cutoff.IsZero() {
 		return time.After(maxWait)
 	}
 
-	deadline = deadline.Add(-slack)
-	if deadline.Before(now) {
+	cutoff = cutoff.Add(-slack)
+	if cutoff.Before(now) {
 		return time.After(time.Nanosecond) // can't return 0
 	}
 
-	wait := deadline.Sub(now)
+	wait := cutoff.Sub(now)
 	if wait > maxWait {
 		wait = maxWait
 	}
@@ -192,7 +195,7 @@ func (b *PreCommitBatcher) maybeStartBatch(notif, after bool) ([]sealiface.PreCo
 
 			delete(b.waiting, sn)
 			delete(b.todo, sn)
-			delete(b.deadlines, sn)
+			delete(b.cutoffs, sn)
 		}
 	}
 
@@ -256,7 +259,7 @@ func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, depos
 	sn := s.SectorNumber
 
 	b.lk.Lock()
-	b.deadlines[sn] = getSectorDeadline(curEpoch, s)
+	b.cutoffs[sn] = getPreCommitCutoff(curEpoch, s)
 	b.todo[sn] = &preCommitEntry{
 		deposit: deposit,
 		pci:     in,
@@ -331,4 +334,25 @@ func (b *PreCommitBatcher) Stop(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// TODO: If this returned epochs, it would make testing much easier
+func getPreCommitCutoff(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
+	cutoffEpoch := si.TicketEpoch + policy.MaxPreCommitRandomnessLookback
+	for _, p := range si.Pieces {
+		if p.DealInfo == nil {
+			continue
+		}
+
+		startEpoch := p.DealInfo.DealSchedule.StartEpoch
+		if startEpoch < cutoffEpoch {
+			cutoffEpoch = startEpoch
+		}
+	}
+
+	if cutoffEpoch <= curEpoch {
+		return time.Now()
+	}
+
+	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second)
 }
