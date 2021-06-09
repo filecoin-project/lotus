@@ -35,6 +35,7 @@ type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
+	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
@@ -290,7 +291,20 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
-	goodFunds := big.Add(b.feeCfg.MaxCommitGasFee, collateral)
+	bf, err := b.api.ChainBaseFee(b.mctx, tok)
+	if err != nil {
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get base fee: %w", err)
+	}
+
+	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	if err != nil {
+		log.Errorf("getting network version: %s", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
+	}
+
+	aggFee := policy.AggregateNetworkFee(nv, len(infos), bf)
+
+	goodFunds := big.Add(b.feeCfg.MaxCommitGasFee, big.Add(collateral, aggFee))
 
 	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
