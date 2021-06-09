@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-bitfield"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -12,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -66,36 +64,6 @@ func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_
 type proveCommitResult struct {
 	done, failed, unbatched int
 	full                    bool
-}
-
-// sendAndFund "packs" the given message, funding the actor if necessary. It:
-//
-// 1. Tries to send the given message.
-// 2. If that fails, it checks to see if the exit code was ErrInsufficientFunds.
-// 3. If so, it sends 1K FIL from the "burnt funds actor" (because we need to send it from
-//    somewhere) and re-tries the message.0
-//
-// NOTE: If the message fails a second time, the funds won't be "unsent".
-func sendAndFund(send packFunc, msg *types.Message) (*types.MessageReceipt, error) {
-	res, err := send(msg)
-	aerr, ok := err.(aerrors.ActorError)
-	if !ok || aerr.RetCode() != exitcode.ErrInsufficientFunds {
-		return res, err
-	}
-	// Ok, insufficient funds. Let's fund this miner and try again.
-	_, err = send(&types.Message{
-		From:   builtin.BurntFundsActorAddr,
-		To:     msg.To,
-		Value:  targetFunds,
-		Method: builtin.MethodSend,
-	})
-	if err != nil {
-		if err != ErrOutOfGas {
-			err = xerrors.Errorf("failed to fund %s: %w", msg.To, err)
-		}
-		return nil, err
-	}
-	return send(msg)
 }
 
 // packProveCommitsMiner enqueues a prove commits from the given miner until it runs out of
