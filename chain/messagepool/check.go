@@ -243,7 +243,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool, flexi
 			},
 		}
 
-		if len(bytes) > 32*1024-128 { // 128 bytes to account for signature size
+		if len(bytes) > MaxMessageSize-128 { // 128 bytes to account for signature size
 			check.OK = false
 			check.Err = "message too big"
 		} else {
