@@ -3,6 +3,8 @@ package policy
 import (
 	"sort"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -240,6 +242,21 @@ func GetDeclarationsMax(nwVer network.Version) int {
                 return miner{{.}}.AddressedPartitionsMax
             {{else}}
                 return miner{{.}}.DeclarationsMax
+            {{end}}
+        {{end}}
+	default:
+		panic("unsupported network version")
+	}
+}
+
+func AggregateNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) abi.TokenAmount {
+    switch actors.VersionForNetwork(nwVer) {
+	    {{range .versions}}
+	    case actors.Version{{.}}:
+            {{if (le . 4)}}
+                return big.Zero()
+            {{else}}
+                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee)
             {{end}}
         {{end}}
 	default:

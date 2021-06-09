@@ -360,6 +360,20 @@ func (s SealingAPIAdapter) ChainHead(ctx context.Context) (sealing.TipSetToken, 
 	return head.Key().Bytes(), head.Height(), nil
 }
 
+func (s SealingAPIAdapter) ChainBaseFee(ctx context.Context, tok sealing.TipSetToken) (abi.TokenAmount, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	ts, err := s.delegate.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	return ts.Blocks()[0].ParentBaseFee, nil
+}
+
 func (s SealingAPIAdapter) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
 	return s.delegate.ChainGetMessage(ctx, mc)
 }
