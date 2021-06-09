@@ -6,6 +6,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -114,9 +116,23 @@ type SealingConfig struct {
 	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
 }
 
+type BatchFeeConfig struct {
+	Base      types.FIL
+	PerSector types.FIL
+}
+
+func (b *BatchFeeConfig) FeeForSectors(nSectors int) abi.TokenAmount {
+	return big.Add(big.Int(b.Base), big.Mul(big.NewInt(int64(nSectors)), big.Int(b.PerSector)))
+}
+
 type MinerFeeConfig struct {
-	MaxPreCommitGasFee     types.FIL
-	MaxCommitGasFee        types.FIL
+	MaxPreCommitGasFee types.FIL
+	MaxCommitGasFee    types.FIL
+
+	// maxBatchFee = maxBase + maxPerSector * nSectors
+	MaxPreCommitBatchGasFee BatchFeeConfig
+	MaxCommitBatchGasFee    BatchFeeConfig
+
 	MaxTerminateGasFee     types.FIL
 	MaxWindowPoStGasFee    types.FIL
 	MaxPublishDealsFee     types.FIL
@@ -309,8 +325,18 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Fees: MinerFeeConfig{
-			MaxPreCommitGasFee:     types.MustParseFIL("0.025"),
-			MaxCommitGasFee:        types.MustParseFIL("0.05"),
+			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
+			MaxCommitGasFee:    types.MustParseFIL("0.05"),
+
+			MaxPreCommitBatchGasFee: BatchFeeConfig{
+				Base:      types.MustParseFIL("0.025"), // todo: come up with good values
+				PerSector: types.MustParseFIL("0.025"),
+			},
+			MaxCommitBatchGasFee: BatchFeeConfig{
+				Base:      types.MustParseFIL("0.05"),
+				PerSector: types.MustParseFIL("0.05"),
+			},
+
 			MaxTerminateGasFee:     types.MustParseFIL("0.5"),
 			MaxWindowPoStGasFee:    types.MustParseFIL("5"),
 			MaxPublishDealsFee:     types.MustParseFIL("0.05"),
