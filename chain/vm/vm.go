@@ -439,6 +439,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			GasCosts: &gasOutputs,
 			Duration: time.Since(start),
+			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid,
+				"message gas limit does not cover on-chain gas costs"),
 		}, nil
 	}
 
