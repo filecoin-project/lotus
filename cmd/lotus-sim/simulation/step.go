@@ -111,7 +111,7 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 		Syscalls:       ss.StateManager.ChainStore().VMSys(),
 		CircSupplyCalc: ss.StateManager.GetVMCirculatingSupply,
 		NtwkVersion:    ss.StateManager.GetNtwkVersion,
-		BaseFee:        abi.NewTokenAmount(0), // FREE!
+		BaseFee:        baseFee, // FREE!
 		LookbackState:  stmgr.LookbackStateGetterForTipset(ss.StateManager, parentTs),
 	}
 	vmi, err := vm.NewVM(ctx, vmopt)
