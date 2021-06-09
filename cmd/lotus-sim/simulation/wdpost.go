@@ -28,10 +28,10 @@ func (sim *Simulation) postChainCommitInfo(ctx context.Context, epoch abi.ChainE
 
 // packWindowPoSts packs window posts until either the block is full or all healty sectors
 // have been proven. It does not recover sectors.
-func (ss *simulationState) packWindowPoSts(ctx context.Context, cb packFunc) (full bool, _err error) {
+func (ss *simulationState) packWindowPoSts(ctx context.Context, cb packFunc) (_err error) {
 	// Push any new window posts into the queue.
 	if err := ss.queueWindowPoSts(ctx); err != nil {
-		return false, err
+		return err
 	}
 	done := 0
 	failed := 0
@@ -50,9 +50,9 @@ func (ss *simulationState) packWindowPoSts(ctx context.Context, cb packFunc) (fu
 	// Then pack as many as we can.
 	for len(ss.pendingWposts) > 0 {
 		next := ss.pendingWposts[0]
-		if full, err := cb(next); err != nil {
+		if _, err := cb(next); err != nil {
 			if aerr, ok := err.(aerrors.ActorError); !ok || aerr.IsFatal() {
-				return false, err
+				return err
 			}
 			log.Errorw("failed to submit windowed post",
 				"error", err,
@@ -60,8 +60,6 @@ func (ss *simulationState) packWindowPoSts(ctx context.Context, cb packFunc) (fu
 				"epoch", ss.nextEpoch(),
 			)
 			failed++
-		} else if full {
-			return true, nil
 		} else {
 			done++
 		}
@@ -69,7 +67,7 @@ func (ss *simulationState) packWindowPoSts(ctx context.Context, cb packFunc) (fu
 		ss.pendingWposts = ss.pendingWposts[1:]
 	}
 	ss.pendingWposts = nil
-	return false, nil
+	return nil
 }
 
 // stepWindowPoStsMiner enqueues all missing window posts for the current epoch for the given miner.

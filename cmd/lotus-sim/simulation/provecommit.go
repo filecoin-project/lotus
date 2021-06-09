@@ -23,11 +23,11 @@ import (
 
 // packProveCOmmits packs all prove-commits for all "ready to be proven" sectors until it fills the
 // block or runs out.
-func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_full bool, _err error) {
+func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_err error) {
 	// Roll the commitQueue forward.
 	ss.commitQueue.advanceEpoch(ss.nextEpoch())
 
-	var failed, done, unbatched, count int
+	var full, failed, done, unbatched, count int
 	defer func() {
 		if _err != nil {
 			return
@@ -39,32 +39,33 @@ func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_
 			"failed", failed,
 			"unbatched", unbatched,
 			"miners-processed", count,
-			"filled-block", _full,
+			"filled-block", full,
 		)
 	}()
 
 	for {
 		addr, pending, ok := ss.commitQueue.nextMiner()
 		if !ok {
-			return false, nil
+			return nil
 		}
 
-		res, full, err := ss.packProveCommitsMiner(ctx, cb, addr, pending)
+		res, err := ss.packProveCommitsMiner(ctx, cb, addr, pending)
 		if err != nil {
-			return false, err
+			return err
 		}
 		failed += res.failed
 		done += res.done
 		unbatched += res.unbatched
 		count++
-		if full {
-			return true, nil
+		if res.full {
+			return nil
 		}
 	}
 }
 
 type proveCommitResult struct {
 	done, failed, unbatched int
+	full                    bool
 }
 
 // sendAndFund "packs" the given message, funding the actor if necessary. It:
@@ -75,25 +76,24 @@ type proveCommitResult struct {
 //    somewhere) and re-tries the message.0
 //
 // NOTE: If the message fails a second time, the funds won't be "unsent".
-func sendAndFund(send packFunc, msg *types.Message) (bool, error) {
-	full, err := send(msg)
+func sendAndFund(send packFunc, msg *types.Message) (*types.MessageReceipt, error) {
+	res, err := send(msg)
 	aerr, ok := err.(aerrors.ActorError)
 	if !ok || aerr.RetCode() != exitcode.ErrInsufficientFunds {
-		return full, err
+		return res, err
 	}
 	// Ok, insufficient funds. Let's fund this miner and try again.
-	full, err = send(&types.Message{
+	_, err = send(&types.Message{
 		From:   builtin.BurntFundsActorAddr,
 		To:     msg.To,
 		Value:  targetFunds,
 		Method: builtin.MethodSend,
 	})
 	if err != nil {
-		return false, xerrors.Errorf("failed to fund %s: %w", msg.To, err)
-	}
-	// ok, nothing's going to work.
-	if full {
-		return true, nil
+		if err != ErrOutOfGas {
+			err = xerrors.Errorf("failed to fund %s: %w", msg.To, err)
+		}
+		return nil, err
 	}
 	return send(msg)
 }
@@ -105,10 +105,10 @@ func sendAndFund(send packFunc, msg *types.Message) (bool, error) {
 func (ss *simulationState) packProveCommitsMiner(
 	ctx context.Context, cb packFunc, minerAddr address.Address,
 	pending minerPendingCommits,
-) (res proveCommitResult, full bool, _err error) {
+) (res proveCommitResult, _err error) {
 	info, err := ss.getMinerInfo(ctx, minerAddr)
 	if err != nil {
-		return res, false, err
+		return res, err
 	}
 
 	nv := ss.StateManager.GetNtwkVersion(ctx, ss.nextEpoch())
@@ -123,7 +123,7 @@ func (ss *simulationState) packProveCommitsMiner(
 
 				proof, err := mockAggregateSealProof(sealType, minerAddr, batchSize)
 				if err != nil {
-					return res, false, err
+					return res, err
 				}
 
 				params := miner5.ProveCommitAggregateParams{
@@ -136,24 +136,27 @@ func (ss *simulationState) packProveCommitsMiner(
 
 				enc, err := actors.SerializeParams(&params)
 				if err != nil {
-					return res, false, err
+					return res, err
 				}
 
-				if full, err := sendAndFund(cb, &types.Message{
+				if _, err := sendAndFund(cb, &types.Message{
 					From:   info.Worker,
 					To:     minerAddr,
 					Value:  abi.NewTokenAmount(0),
 					Method: miner.Methods.ProveCommitAggregate,
 					Params: enc,
-				}); err != nil {
+				}); err == nil {
+					res.done += len(batch)
+				} else if err == ErrOutOfGas {
+					res.full = true
+					return res, nil
+				} else if aerr, ok := err.(aerrors.ActorError); !ok || aerr.IsFatal() {
 					// If we get a random error, or a fatal actor error, bail.
-					aerr, ok := err.(aerrors.ActorError)
-					if !ok || aerr.IsFatal() {
-						return res, false, err
-					}
-					// If we get a "not-found" error, try to remove any missing
-					// prove-commits and continue. This can happen either
-					// because:
+					return res, err
+				} else if aerr.RetCode() == exitcode.ErrNotFound || aerr.RetCode() == exitcode.ErrIllegalArgument {
+					// If we get a "not-found" or illegal argument error, try to
+					// remove any missing prove-commits and continue. This can
+					// happen either because:
 					//
 					// 1. The pre-commit failed on execution (but not when
 					// packing). This shouldn't happen, but we might as well
@@ -161,34 +164,56 @@ func (ss *simulationState) packProveCommitsMiner(
 					// 2. The pre-commit has expired. We'd have to be really
 					// backloged to hit this case, but we might as well handle
 					// it.
-					if aerr.RetCode() == exitcode.ErrNotFound {
-						// First, split into "good" and "missing"
-						good, err := ss.filterProveCommits(ctx, minerAddr, batch)
-						if err != nil {
-							log.Errorw("failed to filter prove commits", "miner", minerAddr, "error", err)
-							// fail with the original error.
-							return res, false, aerr
-						}
-						removed := len(batch) - len(good)
-						// If they're all missing, skip. If they're all good, skip too (and log).
-						if len(good) > 0 && removed > 0 {
-							res.failed += removed
-
-							// update the pending sector numbers in-place to remove the expired ones.
-							snos = snos[removed:]
-							copy(snos, good)
-							pending.finish(sealType, removed)
-
-							log.Errorw("failed to prove commit expired/missing pre-commits",
-								"error", aerr,
-								"miner", minerAddr,
-								"discarded", removed,
-								"kept", len(good),
-								"epoch", ss.nextEpoch(),
-							)
-							continue
-						}
+					// First, split into "good" and "missing"
+					good, err := ss.filterProveCommits(ctx, minerAddr, batch)
+					if err != nil {
+						log.Errorw("failed to filter prove commits", "miner", minerAddr, "error", err)
+						// fail with the original error.
+						return res, aerr
 					}
+					removed := len(batch) - len(good)
+					if removed == 0 {
+						log.Errorw("failed to prove-commit for unknown reasons",
+							"error", aerr,
+							"miner", minerAddr,
+							"sectors", batch,
+							"epoch", ss.nextEpoch(),
+						)
+						res.failed += len(batch)
+					} else if len(good) == 0 {
+						log.Errorw("failed to prove commit missing pre-commits",
+							"error", aerr,
+							"miner", minerAddr,
+							"discarded", removed,
+							"epoch", ss.nextEpoch(),
+						)
+						res.failed += len(batch)
+					} else {
+						// update the pending sector numbers in-place to remove the expired ones.
+						snos = snos[removed:]
+						copy(snos, good)
+						pending.finish(sealType, removed)
+
+						log.Errorw("failed to prove commit expired/missing pre-commits",
+							"error", aerr,
+							"miner", minerAddr,
+							"discarded", removed,
+							"kept", len(good),
+							"epoch", ss.nextEpoch(),
+						)
+						res.failed += removed
+
+						// Then try again.
+						continue
+					}
+					log.Errorw("failed to prove commit missing sector(s)",
+						"error", err,
+						"miner", minerAddr,
+						"sectors", batch,
+						"epoch", ss.nextEpoch(),
+					)
+					res.failed += len(batch)
+				} else {
 					log.Errorw("failed to prove commit sector(s)",
 						"error", err,
 						"miner", minerAddr,
@@ -196,13 +221,9 @@ func (ss *simulationState) packProveCommitsMiner(
 						"epoch", ss.nextEpoch(),
 					)
 					res.failed += len(batch)
-				} else if full {
-					return res, true, nil
-				} else {
-					res.done += len(batch)
 				}
-				pending.finish(sealType, batchSize)
-				snos = snos[batchSize:]
+				pending.finish(sealType, len(batch))
+				snos = snos[len(batch):]
 			}
 		}
 		for len(snos) > 0 && res.unbatched < power5.MaxMinerProveCommitsPerEpoch {
@@ -211,7 +232,7 @@ func (ss *simulationState) packProveCommitsMiner(
 
 			proof, err := mockSealProof(sealType, minerAddr)
 			if err != nil {
-				return res, false, err
+				return res, err
 			}
 			params := miner.ProveCommitSectorParams{
 				SectorNumber: sno,
@@ -219,18 +240,23 @@ func (ss *simulationState) packProveCommitsMiner(
 			}
 			enc, err := actors.SerializeParams(&params)
 			if err != nil {
-				return res, false, err
+				return res, err
 			}
-			if full, err := sendAndFund(cb, &types.Message{
+			if _, err := sendAndFund(cb, &types.Message{
 				From:   info.Worker,
 				To:     minerAddr,
 				Value:  abi.NewTokenAmount(0),
 				Method: miner.Methods.ProveCommitSector,
 				Params: enc,
-			}); err != nil {
-				if aerr, ok := err.(aerrors.ActorError); !ok || aerr.IsFatal() {
-					return res, false, err
-				}
+			}); err == nil {
+				res.unbatched++
+				res.done++
+			} else if err == ErrOutOfGas {
+				res.full = true
+				return res, nil
+			} else if aerr, ok := err.(aerrors.ActorError); !ok || aerr.IsFatal() {
+				return res, err
+			} else {
 				log.Errorw("failed to prove commit sector(s)",
 					"error", err,
 					"miner", minerAddr,
@@ -238,18 +264,13 @@ func (ss *simulationState) packProveCommitsMiner(
 					"epoch", ss.nextEpoch(),
 				)
 				res.failed++
-			} else if full {
-				return res, true, nil
-			} else {
-				res.unbatched++
-				res.done++
 			}
 			// mark it as "finished" regardless so we skip it.
 			pending.finish(sealType, 1)
 		}
 		// if we get here, we can't pre-commit anything more.
 	}
-	return res, false, nil
+	return res, nil
 }
 
 // loadProveCommitsMiner enqueue all pending prove-commits for the given miner. This is called on
