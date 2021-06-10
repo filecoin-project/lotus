@@ -62,7 +62,7 @@ func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, f
 	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
 	require.NoError(dh.t, err)
 
-	dh.TestRetrieval(ctx, fcid, &info.PieceCID, carExport, data)
+	dh.PerformRetrieval(ctx, fcid, &info.PieceCID, carExport, data)
 }
 
 func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
@@ -184,7 +184,7 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	}
 }
 
-func (dh *DealHarness) TestRetrieval(ctx context.Context, fcid cid.Cid, piece *cid.Cid, carExport bool, expect []byte) {
+func (dh *DealHarness) PerformRetrieval(ctx context.Context, fcid cid.Cid, piece *cid.Cid, carExport bool, expect []byte) {
 	offers, err := dh.client.ClientFindData(ctx, fcid, piece)
 	if err != nil {
 		dh.t.Fatal(err)
