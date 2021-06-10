@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.10.0-rc1 / 2021-06-02
+# 1.10.0-rc2 / 2021-06-09
 
-This is the first release candidate for Lotus v1.10.0, an upcoming mandatory release of Lotus that will introduce Filecoin network v13. Included in the new network version are the following FIPs:
+This is the second release candidate for Lotus v1.10.0, an upcoming mandatory release of Lotus that will introduce Filecoin network v13. Included in the new network version are the following FIPs:
 
 - [FIP-0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.md): Add miner batched sector pre-commit method
 - [FIP-0011](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0011.md): Remove reward auction from reporting consensus faults
@@ -10,7 +10,7 @@ This is the first release candidate for Lotus v1.10.0, an upcoming mandatory rel
 - [FIP-0013](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013.md): Add ProveCommitSectorAggregated method to reduce on-chain congestion
 - [FIP-0015](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0015.md): Revert FIP-0009(Exempt Window PoSts from BaseFee burn)
 
-This release candidate does not set the upgrade epochs for any of the networks, including test networks. It is primarily intended for node operators to begin integration work, especially miners wishing to get familiar with the new `ProveCommit` aggregation.
+This release candidate does not set the upgrade epochs for mainnet, but does set the upgrade epoch for the calibration network to 321519.
 
 Note that this release is built on top of Lotus v1.9.0. Enterprising users can use the `master` branch of Lotus to get the latest functionality, including all changes in this release candidate.
 
