@@ -101,6 +101,12 @@ var infoSimCommand = &cli.Command{
 var infoCommitGasSimCommand = &cli.Command{
 	Name:        "commit-gas",
 	Description: "Output information about the gas for committs",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "lookback",
+			Value: 0,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		log := func(f string, i ...interface{}) {
 			fmt.Fprintf(os.Stderr, f, i...)
@@ -119,38 +125,39 @@ var infoCommitGasSimCommand = &cli.Command{
 		var gasAgg, proofsAgg uint64
 		var gasAggMax, proofsAggMax uint64
 
-		sim.Walk(cctx.Context, func(sm *stmgr.StateManager, ts *types.TipSet, stCid cid.Cid,
-			messages []*simulation.AppliedMessage) error {
-			for _, m := range messages {
-				if m.ExitCode != exitcode.Ok {
-					continue
-				}
-				if m.Method == builtin.MethodsMiner.ProveCommitAggregate {
-					param := miner.ProveCommitAggregateParams{}
-					err := param.UnmarshalCBOR(bytes.NewReader(m.Params))
-					if err != nil {
-						log("failed to decode params: %+v", err)
-						return nil
+		sim.Walk(cctx.Context, cctx.Int64("lookback"),
+			func(sm *stmgr.StateManager, ts *types.TipSet, stCid cid.Cid,
+				messages []*simulation.AppliedMessage) error {
+				for _, m := range messages {
+					if m.ExitCode != exitcode.Ok {
+						continue
 					}
-					c, err := param.SectorNumbers.Count()
-					if err != nil {
-						log("failed to count sectors")
-						return nil
+					if m.Method == builtin.MethodsMiner.ProveCommitAggregate {
+						param := miner.ProveCommitAggregateParams{}
+						err := param.UnmarshalCBOR(bytes.NewReader(m.Params))
+						if err != nil {
+							log("failed to decode params: %+v", err)
+							return nil
+						}
+						c, err := param.SectorNumbers.Count()
+						if err != nil {
+							log("failed to count sectors")
+							return nil
+						}
+						gasAgg += uint64(m.GasUsed)
+						proofsAgg += c
+						if c == 819 {
+							gasAggMax += uint64(m.GasUsed)
+							proofsAggMax += c
+						}
 					}
-					gasAgg += uint64(m.GasUsed)
-					proofsAgg += c
-					if c == 819 {
-						gasAggMax += uint64(m.GasUsed)
-						proofsAggMax += c
+
+					if m.Method == builtin.MethodsMiner.ProveCommitSector {
 					}
 				}
 
-				if m.Method == builtin.MethodsMiner.ProveCommitSector {
-				}
-			}
-
-			return nil
-		})
+				return nil
+			})
 		idealGassUsed := float64(gasAggMax) / float64(proofsAggMax) * float64(proofsAgg)
 
 		fmt.Printf("Gas usage efficiency in comparison to all 819: %f%%\n", 100*idealGassUsed/float64(gasAgg))
