@@ -93,7 +93,7 @@ func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn *TestFullNode, cb f
 
 		if success {
 			// Wait until it shows up on the given full nodes ChainHead
-			nloops := 50
+			nloops := 200
 			for i := 0; i < nloops; i++ {
 				ts, err := fn.ChainHead(ctx)
 				require.NoError(bm.t, err)

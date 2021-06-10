@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io/ioutil"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -20,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/node/impl"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
@@ -29,12 +26,12 @@ import (
 
 type DealHarness struct {
 	t      *testing.T
-	client api.FullNode
+	client *TestFullNode
 	miner  *TestMiner
 }
 
 // NewDealHarness creates a test harness that contains testing utilities for deals.
-func NewDealHarness(t *testing.T, client api.FullNode, miner *TestMiner) *DealHarness {
+func NewDealHarness(t *testing.T, client *TestFullNode, miner *TestMiner) *DealHarness {
 	return &DealHarness{
 		t:      t,
 		client: client,
@@ -42,24 +39,18 @@ func NewDealHarness(t *testing.T, client api.FullNode, miner *TestMiner) *DealHa
 	}
 }
 
-func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, rseed int, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	res, _, data, err := CreateImportFile(ctx, dh.client, rseed, 0)
-	require.NoError(dh.t, err)
+func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, rseed int, fastRet bool, startEpoch abi.ChainEpoch) (deal *cid.Cid, res *api.ImportRes, path string) {
+	res, path = dh.client.CreateImportFile(ctx, rseed, 0)
 
-	fcid := res.Root
-	dh.t.Logf("FILE CID: %s", fcid)
+	dh.t.Logf("FILE CID: %s", res.Root)
 
-	deal := dh.StartDeal(ctx, fcid, fastRet, startEpoch)
+	deal = dh.StartDeal(ctx, res.Root, fastRet, startEpoch)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 	dh.WaitDealSealed(ctx, deal, false, false, nil)
 
-	// Retrieval
-	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
-	require.NoError(dh.t, err)
-
-	dh.PerformRetrieval(ctx, fcid, &info.PieceCID, carExport, data)
+	return deal, res, path
 }
 
 func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
@@ -177,22 +168,25 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	}
 }
 
-func (dh *DealHarness) PerformRetrieval(ctx context.Context, fcid cid.Cid, piece *cid.Cid, carExport bool, expect []byte) {
-	offers, err := dh.client.ClientFindData(ctx, fcid, piece)
+func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root cid.Cid, carExport bool) (path string) {
+	// perform retrieval.
+	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
 	require.NoError(dh.t, err)
 
+	offers, err := dh.client.ClientFindData(ctx, root, &info.PieceCID)
+	require.NoError(dh.t, err)
 	require.NotEmpty(dh.t, offers, "no offers")
 
-	rpath, err := ioutil.TempDir("", "lotus-retrieve-test-")
+	tmpfile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
 	require.NoError(dh.t, err)
 
-	defer os.RemoveAll(rpath) //nolint:errcheck
+	defer tmpfile.Close()
 
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
 
 	ref := &api.FileRef{
-		Path:  filepath.Join(rpath, "ret"),
+		Path:  tmpfile.Name(),
 		IsCAR: carExport,
 	}
 
@@ -203,19 +197,17 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, fcid cid.Cid, piece
 		require.Emptyf(dh.t, update.Err, "retrieval failed: %s", update.Err)
 	}
 
-	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))
+	rdata, err := ioutil.ReadFile(tmpfile.Name())
 	require.NoError(dh.t, err)
 
 	if carExport {
-		rdata = dh.ExtractCarData(ctx, rdata, rpath)
+		rdata = dh.ExtractFileFromCAR(ctx, rdata)
 	}
 
-	if !bytes.Equal(rdata, expect) {
-		dh.t.Fatal("wrong expect retrieved")
-	}
+	return tmpfile.Name()
 }
 
-func (dh *DealHarness) ExtractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
+func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, rdata []byte) []byte {
 	bserv := dstest.Bserv()
 	ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
 	require.NoError(dh.t, err)
@@ -230,21 +222,18 @@ func (dh *DealHarness) ExtractCarData(ctx context.Context, rdata []byte, rpath s
 	fil, err := unixfile.NewUnixfsFile(ctx, dserv, nd)
 	require.NoError(dh.t, err)
 
-	outPath := filepath.Join(rpath, "retLoadedCAR")
-	err = files.WriteTo(fil, outPath)
+	tmpfile, err := ioutil.TempFile(dh.t.TempDir(), "file-in-car")
 	require.NoError(dh.t, err)
 
-	rdata, err = ioutil.ReadFile(outPath)
+	defer tmpfile.Close()
+
+	err = files.WriteTo(fil, tmpfile.Name())
+	require.NoError(dh.t, err)
+
+	rdata, err = ioutil.ReadFile(tmpfile.Name())
 	require.NoError(dh.t, err)
 
 	return rdata
-}
-
-type DealsScaffold struct {
-	Ctx        context.Context
-	Client     *impl.FullNodeAPI
-	Miner      TestMiner
-	BlockMiner *BlockMiner
 }
 
 func ConnectAndStartMining(t *testing.T, blocktime time.Duration, miner *TestMiner, clients ...api.FullNode) *BlockMiner {

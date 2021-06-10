@@ -1,11 +1,14 @@
 package kit
 
 import (
+	"context"
 	"testing"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/stretchr/testify/require"
 )
 
 type TestFullNode struct {
@@ -19,4 +22,11 @@ type TestFullNode struct {
 	DefaultKey *wallet.Key
 
 	options NodeOpts
+}
+
+func (f *TestFullNode) CreateImportFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, path string) {
+	path = CreateRandomFile(f.t, rseed, size)
+	res, err := f.ClientImport(ctx, api.FileRef{Path: path})
+	require.NoError(f.t, err)
+	return res, path
 }
