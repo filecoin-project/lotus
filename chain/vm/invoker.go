@@ -16,9 +16,10 @@ import (
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
-	vmr "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
 	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
+	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
+	vmr "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -66,6 +67,7 @@ func NewActorRegistry() *ActorRegistry {
 	inv.Register(ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
 	inv.Register(ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
 	inv.Register(ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
+	inv.Register(ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
 
 	return inv
 }
@@ -153,7 +155,7 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 				"vmr.Runtime, <parameter>")
 		}
 		if !runtimeType.Implements(t.In(0)) {
-			return nil, newErr("first arguemnt should be vmr.Runtime")
+			return nil, newErr("first argument should be vmr.Runtime")
 		}
 		if t.In(1).Kind() != reflect.Ptr {
 			return nil, newErr("second argument should be of kind reflect.Ptr")

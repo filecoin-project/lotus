@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -633,17 +632,12 @@ func CreateRPCServer(t *testing.T, handler http.Handler) (*httptest.Server, mult
 }
 
 func fullRpc(t *testing.T, f *TestFullNode) *TestFullNode {
-	tok, err := f.FullNode.AuthNew(context.Background(), []auth.Permission{"admin", "read", "write", "sign"})
-	require.NoError(t, err)
-
-	handler, err := node.FullNodeHandler(f.FullNode)
+	handler, err := node.FullNodeHandler(f.FullNode, false)
 	require.NoError(t, err)
 
 	srv, maddr := CreateRPCServer(t, handler)
 
-	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", map[string][]string{
-		"Authorization": {"Bearer " + string(tok)},
-	})
+	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
 	f.ListenAddr, f.FullNode = maddr, cl
@@ -652,17 +646,12 @@ func fullRpc(t *testing.T, f *TestFullNode) *TestFullNode {
 }
 
 func minerRpc(t *testing.T, m *TestMiner) *TestMiner {
-	tok, err := m.StorageMiner.AuthNew(context.Background(), []auth.Permission{"admin", "read", "write"})
-	require.NoError(t, err)
-
-	handler, err := node.MinerHandler(m.StorageMiner)
+	handler, err := node.MinerHandler(m.StorageMiner, false)
 	require.NoError(t, err)
 
 	srv, maddr := CreateRPCServer(t, handler)
 
-	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v0", map[string][]string{
-		"Authorization": {"Bearer " + string(tok)},
-	})
+	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v0", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
 
@@ -671,11 +660,12 @@ func minerRpc(t *testing.T, m *TestMiner) *TestMiner {
 }
 
 func LatestActorsAt(upgradeHeight abi.ChainEpoch) node.Option {
-	if upgradeHeight == -1 {
-		upgradeHeight = 3
-	}
+	// Attention: Update this when introducing new actor versions or your tests will be sad
+	return NetworkUpgradeAt(network.Version13, upgradeHeight)
+}
 
-	return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
+func NetworkUpgradeAt(version network.Version, upgradeHeight abi.ChainEpoch) node.Option {
+	fullSchedule := stmgr.UpgradeSchedule{{
 		// prepare for upgrade.
 		Network:   network.Version9,
 		Height:    1,
@@ -686,9 +676,28 @@ func LatestActorsAt(upgradeHeight abi.ChainEpoch) node.Option {
 		Migration: stmgr.UpgradeActorsV3,
 	}, {
 		Network:   network.Version12,
-		Height:    upgradeHeight,
+		Height:    3,
 		Migration: stmgr.UpgradeActorsV4,
-	}})
+	}, {
+		Network:   network.Version13,
+		Height:    4,
+		Migration: stmgr.UpgradeActorsV5,
+	}}
+
+	schedule := stmgr.UpgradeSchedule{}
+	for _, upgrade := range fullSchedule {
+		if upgrade.Network > version {
+			break
+		}
+
+		schedule = append(schedule, upgrade)
+	}
+
+	if upgradeHeight > 0 {
+		schedule[len(schedule)-1].Height = upgradeHeight
+	}
+
+	return node.Override(new(stmgr.UpgradeSchedule), schedule)
 }
 
 func SDRUpgradeAt(calico, persian abi.ChainEpoch) node.Option {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"net"
 	"os"
 
@@ -15,8 +17,12 @@ import (
 
 	manet "github.com/multiformats/go-multiaddr/net"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
@@ -30,6 +36,7 @@ func main() {
 
 	local := []*cli.Command{
 		runCmd,
+		checkCmd,
 	}
 
 	app := &cli.App{
@@ -49,9 +56,58 @@ func main() {
 	app.Setup()
 
 	if err := app.Run(os.Args); err != nil {
-		log.Warnf("%+v", err)
+		log.Errorf("%+v", err)
+		os.Exit(1)
 		return
 	}
+}
+
+var checkCmd = &cli.Command{
+	Name:      "check",
+	Usage:     "performs a simple check to verify that a connection can be made to a gateway",
+	ArgsUsage: "[apiInfo]",
+	Description: `Any valid value for FULLNODE_API_INFO is a valid argument to the check command.
+
+   Examples
+   - ws://127.0.0.1:2346
+   - http://127.0.0.1:2346
+   - /ip4/127.0.0.1/tcp/2346`,
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		ainfo := cliutil.ParseApiInfo(cctx.Args().First())
+
+		darg, err := ainfo.DialArgs("v1")
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := client.NewFullNodeRPCV1(ctx, darg, nil)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+
+		addr, err := address.NewIDAddress(100)
+		if err != nil {
+			return err
+		}
+
+		laddr, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		if laddr != addr {
+			return fmt.Errorf("looked up addresses does not match returned address, %s != %s", addr, laddr)
+		}
+
+		return nil
+	},
 }
 
 var runCmd = &cli.Command{

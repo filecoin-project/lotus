@@ -32,6 +32,12 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make0(store adt.Store) (State, error) {
+	out := state0{store: store}
+	out.State = miner0.State{}
+	return &out, nil
+}
+
 type state0 struct {
 	miner0.State
 	store adt.Store
@@ -242,6 +248,10 @@ func (s *state0) IsAllocated(num abi.SectorNumber) (bool, error) {
 	return allocatedSectors.IsSet(uint64(num))
 }
 
+func (s *state0) GetProvingPeriodStart() (abi.ChainEpoch, error) {
+	return s.State.ProvingPeriodStart, nil
+}
+
 func (s *state0) LoadDeadline(idx uint64) (Deadline, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -363,6 +373,13 @@ func (s *state0) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 	return fromV0SectorPreCommitOnChainInfo(sp), nil
 }
 
+func (s *state0) EraseAllUnproven() error {
+
+	// field doesn't exist until v2
+
+	return nil
+}
+
 func (d *deadline0) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
 	if err != nil {
@@ -425,4 +442,8 @@ func fromV0SectorPreCommitOnChainInfo(v0 miner0.SectorPreCommitOnChainInfo) Sect
 
 	return (SectorPreCommitOnChainInfo)(v0)
 
+}
+
+func (s *state0) GetState() interface{} {
+	return &s.State
 }

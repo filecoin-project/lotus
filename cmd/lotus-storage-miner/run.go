@@ -155,7 +155,7 @@ var runCmd = &cli.Command{
 		log.Infof("Remote version %s", v)
 
 		// Instantiate the miner node handler.
-		handler, err := node.MinerHandler(minerapi)
+		handler, err := node.MinerHandler(minerapi, true)
 		if err != nil {
 			return xerrors.Errorf("failed to instantiate rpc handler: %w", err)
 		}

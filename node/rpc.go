@@ -62,32 +62,40 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 }
 
 // FullNodeHandler returns a full node handler, to be mounted as-is on the server.
-func FullNodeHandler(a v1api.FullNode, opts ...jsonrpc.ServerOption) (http.Handler, error) {
+func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.ServerOption) (http.Handler, error) {
 	m := mux.NewRouter()
 
 	serveRpc := func(path string, hnd interface{}) {
 		rpcServer := jsonrpc.NewServer(opts...)
 		rpcServer.Register("Filecoin", hnd)
 
-		ah := &auth.Handler{
-			Verify: a.AuthVerify,
-			Next:   rpcServer.ServeHTTP,
+		var handler http.Handler = rpcServer
+		if permissioned {
+			handler = &auth.Handler{Verify: a.AuthVerify, Next: rpcServer.ServeHTTP}
 		}
 
-		m.Handle(path, ah)
+		m.Handle(path, handler)
 	}
 
-	pma := api.PermissionedFullAPI(metrics.MetricedFullAPI(a))
-
-	serveRpc("/rpc/v1", pma)
-	serveRpc("/rpc/v0", &v0api.WrapperV1Full{FullNode: pma})
-
-	importAH := &auth.Handler{
-		Verify: a.AuthVerify,
-		Next:   handleImport(a.(*impl.FullNodeAPI)),
+	fnapi := metrics.MetricedFullAPI(a)
+	if permissioned {
+		fnapi = api.PermissionedFullAPI(fnapi)
 	}
 
-	m.Handle("/rest/v0/import", importAH)
+	serveRpc("/rpc/v1", fnapi)
+	serveRpc("/rpc/v0", &v0api.WrapperV1Full{FullNode: fnapi})
+
+	// Import handler
+	handleImportFunc := handleImport(a.(*impl.FullNodeAPI))
+	if permissioned {
+		importAH := &auth.Handler{
+			Verify: a.AuthVerify,
+			Next:   handleImportFunc,
+		}
+		m.Handle("/rest/v0/import", importAH)
+	} else {
+		m.HandleFunc("/rest/v0/import", handleImportFunc)
+	}
 
 	// debugging
 	m.Handle("/debug/metrics", metrics.Exporter())
@@ -101,11 +109,16 @@ func FullNodeHandler(a v1api.FullNode, opts ...jsonrpc.ServerOption) (http.Handl
 }
 
 // MinerHandler returns a miner handler, to be mounted as-is on the server.
-func MinerHandler(a api.StorageMiner) (http.Handler, error) {
+func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 	m := mux.NewRouter()
 
+	mapi := metrics.MetricedStorMinerAPI(a)
+	if permissioned {
+		mapi = api.PermissionedStorMinerAPI(mapi)
+	}
+
 	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(metrics.MetricedStorMinerAPI(a)))
+	rpcServer.Register("Filecoin", mapi)
 
 	m.Handle("/rpc/v0", rpcServer)
 	m.PathPrefix("/remote").HandlerFunc(a.(*impl.StorageMinerAPI).ServeRemote)
@@ -114,11 +127,14 @@ func MinerHandler(a api.StorageMiner) (http.Handler, error) {
 	m.Handle("/debug/metrics", metrics.Exporter())
 	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
+	if !permissioned {
+		return rpcServer, nil
+	}
+
 	ah := &auth.Handler{
 		Verify: a.AuthVerify,
 		Next:   m.ServeHTTP,
 	}
-
 	return ah, nil
 }
 

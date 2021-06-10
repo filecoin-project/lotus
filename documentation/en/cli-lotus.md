@@ -15,12 +15,12 @@ COMMANDS:
    version  Print version
    help, h  Shows a list of commands or help for one command
    BASIC:
-     send      Send funds between accounts
-     wallet    Manage wallet
-     client    Make deals, store data, retrieve data
-     msig      Interact with a multisig wallet
-     verifreg  Interact with the verified registry actor
-     paych     Manage payment channels
+     send     Send funds between accounts
+     wallet   Manage wallet
+     client   Make deals, store data, retrieve data
+     msig     Interact with a multisig wallet
+     filplus  Interact with the verified registry actor used by Filplus
+     paych    Manage payment channels
    DEVELOPER:
      auth          Manage RPC permissions
      mpool         Manage message pool
@@ -377,6 +377,7 @@ COMMANDS:
      find              Find data in the network
      retrieve          Retrieve data from network
      cancel-retrieval  Cancel a retrieval deal by deal ID; this also cancels the associated transfer
+     list-retrievals   List retrieval market deals
    STORAGE:
      deal          Initialize storage deal with a miner
      query-ask     Find a miners ask
@@ -518,6 +519,27 @@ CATEGORY:
 OPTIONS:
    --deal-id value  specify retrieval deal by deal ID (default: 0)
    --help, -h       show help (default: false)
+   
+```
+
+### lotus client list-retrievals
+```
+NAME:
+   lotus client list-retrievals - List retrieval market deals
+
+USAGE:
+   lotus client list-retrievals [command options] [arguments...]
+
+CATEGORY:
+   RETRIEVAL
+
+OPTIONS:
+   --verbose, -v  print verbose deal details (default: false)
+   --color        use color in display output (default: true)
+   --show-failed  show failed/failing deals (default: true)
+   --completed    show completed retrievals (default: false)
+   --watch        watch deal updates in real-time, rather than a one time list (default: false)
+   --help, -h     show help (default: false)
    
 ```
 
@@ -1035,21 +1057,21 @@ OPTIONS:
    
 ```
 
-## lotus verifreg
+## lotus filplus
 ```
 NAME:
-   lotus verifreg - Interact with the verified registry actor
+   lotus filplus - Interact with the verified registry actor used by Filplus
 
 USAGE:
-   lotus verifreg command [command options] [arguments...]
+   lotus filplus command [command options] [arguments...]
 
 COMMANDS:
-   verify-client   give allowance to the specified verified client address
-   list-verifiers  list all verifiers
-   list-clients    list all verified clients
-   check-client    check verified client remaining bytes
-   check-verifier  check verifiers remaining bytes
-   help, h         Shows a list of commands or help for one command
+   grant-datacap           give allowance to the specified verified client address
+   list-notaries           list all notaries
+   list-clients            list all verified clients
+   check-client-datacap    check verified client remaining bytes
+   check-notaries-datacap  check notaries remaining bytes
+   help, h                 Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1057,66 +1079,66 @@ OPTIONS:
    
 ```
 
-### lotus verifreg verify-client
+### lotus filplus grant-datacap
 ```
 NAME:
-   lotus verifreg verify-client - give allowance to the specified verified client address
+   lotus filplus grant-datacap - give allowance to the specified verified client address
 
 USAGE:
-   lotus verifreg verify-client [command options] [arguments...]
+   lotus filplus grant-datacap [command options] [arguments...]
 
 OPTIONS:
-   --from value  specify your verifier address to send the message from
+   --from value  specify your notary address to send the message from
    --help, -h    show help (default: false)
    
 ```
 
-### lotus verifreg list-verifiers
+### lotus filplus list-notaries
 ```
 NAME:
-   lotus verifreg list-verifiers - list all verifiers
+   lotus filplus list-notaries - list all notaries
 
 USAGE:
-   lotus verifreg list-verifiers [command options] [arguments...]
+   lotus filplus list-notaries [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-### lotus verifreg list-clients
+### lotus filplus list-clients
 ```
 NAME:
-   lotus verifreg list-clients - list all verified clients
+   lotus filplus list-clients - list all verified clients
 
 USAGE:
-   lotus verifreg list-clients [command options] [arguments...]
+   lotus filplus list-clients [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-### lotus verifreg check-client
+### lotus filplus check-client-datacap
 ```
 NAME:
-   lotus verifreg check-client - check verified client remaining bytes
+   lotus filplus check-client-datacap - check verified client remaining bytes
 
 USAGE:
-   lotus verifreg check-client [command options] [arguments...]
+   lotus filplus check-client-datacap [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-### lotus verifreg check-verifier
+### lotus filplus check-notaries-datacap
 ```
 NAME:
-   lotus verifreg check-verifier - check verifiers remaining bytes
+   lotus filplus check-notaries-datacap - check notaries remaining bytes
 
 USAGE:
-   lotus verifreg check-verifier [command options] [arguments...]
+   lotus filplus check-notaries-datacap [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1756,13 +1778,14 @@ NAME:
    lotus state call - Invoke a method on an actor locally
 
 USAGE:
-   lotus state call [command options] [toAddress methodId <param1 param2 ...> (optional)]
+   lotus state call [command options] [toAddress methodId params (optional)]
 
 OPTIONS:
-   --from value   (default: "f00")
-   --value value  specify value field for invocation (default: "0")
-   --ret value    specify how to parse output (auto, raw, addr, big) (default: "auto")
-   --help, -h     show help (default: false)
+   --from value      (default: "f00")
+   --value value     specify value field for invocation (default: "0")
+   --ret value       specify how to parse output (raw, decoded, base64, hex) (default: "decoded")
+   --encoding value  specify params encoding to parse (base64, hex) (default: "base64")
+   --help, -h        show help (default: false)
    
 ```
 

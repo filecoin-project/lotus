@@ -81,13 +81,13 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := FetchMessagesByCids(ctx, ses, blk.BlsMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, src)
+				log.Errorf("failed to fetch all bls messages for block received over pubsub: %s; source: %s", err, src)
 				return
 			}
 
 			smsgs, err := FetchSignedMessagesByCids(ctx, ses, blk.SecpkMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; source: %s", err, src)
+				log.Errorf("failed to fetch all secpk messages for block received over pubsub: %s; source: %s", err, src)
 				return
 			}
 
@@ -516,7 +516,7 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		return pubsub.ValidationReject
 	}
 
-	if err := mv.mpool.Add(m); err != nil {
+	if err := mv.mpool.Add(ctx, m); err != nil {
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		ctx, _ = tag.New(
 			ctx,
@@ -557,7 +557,7 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 		return pubsub.ValidationIgnore
 	}
 
-	if m.Size() > 32*1024 {
+	if m.Size() > messagepool.MaxMessageSize {
 		log.Warnf("local message is too large! (%dB)", m.Size())
 		recordFailure(ctx, metrics.MessageValidationFailure, "oversize")
 		return pubsub.ValidationIgnore

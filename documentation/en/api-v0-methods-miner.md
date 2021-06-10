@@ -98,9 +98,13 @@
   * [SealingAbort](#SealingAbort)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
+  * [SectorCommitFlush](#SectorCommitFlush)
+  * [SectorCommitPending](#SectorCommitPending)
   * [SectorGetExpectedSealDuration](#SectorGetExpectedSealDuration)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
+  * [SectorPreCommitFlush](#SectorPreCommitFlush)
+  * [SectorPreCommitPending](#SectorPreCommitPending)
   * [SectorRemove](#SectorRemove)
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
   * [SectorSetSealDelay](#SectorSetSealDelay)
@@ -885,8 +889,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -1035,8 +1039,8 @@ Inputs:
 ```json
 [
   {
-    "Addrs": null,
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": []
   }
 ]
 ```
@@ -1086,8 +1090,8 @@ Inputs:
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -1556,6 +1560,27 @@ Response: `{}`
 ## Sector
 
 
+### SectorCommitFlush
+SectorCommitFlush immediately sends a Commit message with sectors aggregated for Commit.
+Returns null if message wasn't sent
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
+### SectorCommitPending
+SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
 ### SectorGetExpectedSealDuration
 SectorGetExpectedSealDuration gets the expected time for a sector to seal
 
@@ -1590,6 +1615,27 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SectorPreCommitFlush
+SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
+Returns null if message wasn't sent
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
+### SectorPreCommitPending
+SectorPreCommitPending returns a list of pending PreCommit sectors to be sent in the next batch message
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
 
 ### SectorRemove
 SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can

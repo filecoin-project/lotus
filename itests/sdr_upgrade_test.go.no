@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/itests/kit"
 	bminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -21,11 +20,11 @@ import (
 func TestSDRUpgrade(t *testing.T) {
 	kit.QuietMiningLogs()
 
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
+	// oldDelay := policy.GetPreCommitChallengeDelay()
+	// policy.SetPreCommitChallengeDelay(5)
+	// t.Cleanup(func() {
+	// 	policy.SetPreCommitChallengeDelay(oldDelay)
+	// })
 
 	blocktime := 50 * time.Millisecond
 

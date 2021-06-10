@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 
@@ -259,4 +261,114 @@ func testWindowPostUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Durati
 
 	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
 	require.Equal(t, nSectors+kit.GenesisPreseals-2+1, int(sectors)) // -2 not recovered sectors + 1 just pledged
+}
+
+func TestWindowPostBaseFeeNoBurn(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+
+	kit.QuietMiningLogs()
+
+	var (
+		blocktime = 2 * time.Millisecond
+		nSectors  = 10
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	och := build.UpgradeClausHeight
+	build.UpgradeClausHeight = 10
+
+	n, sn := kit.MockMinerBuilder(t, kit.DefaultFullOpts(1), kit.OneMiner)
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+	bm := kit.ConnectAndStartMining(t, blocktime, miner, client)
+	t.Cleanup(bm.Stop)
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	kit.PledgeSectors(t, ctx, miner, nSectors, 0, nil)
+	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en := wact.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof:
+	for {
+		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en {
+			break waitForProof
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr, err := client.StateReplay(ctx, types.EmptyTSK, slm[0])
+	require.NoError(t, err)
+
+	require.Equal(t, pmr.GasCost.BaseFeeBurn, big.Zero())
+
+	build.UpgradeClausHeight = och
+}
+
+func TestWindowPostBaseFeeBurn(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
+		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
+	}
+
+	kit.QuietMiningLogs()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blocktime := 2 * time.Millisecond
+
+	n, sn := kit.MockMinerBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)}, kit.OneMiner)
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+	bm := kit.ConnectAndStartMining(t, blocktime, miner, client)
+	t.Cleanup(bm.Stop)
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	kit.PledgeSectors(t, ctx, miner, 10, 0, nil)
+	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en := wact.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof:
+	for {
+		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en {
+			break waitForProof
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr, err := client.StateReplay(ctx, types.EmptyTSK, slm[0])
+	require.NoError(t, err)
+
+	require.NotEqual(t, pmr.GasCost.BaseFeeBurn, big.Zero())
 }

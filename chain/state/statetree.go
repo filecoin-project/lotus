@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -25,6 +24,7 @@ import (
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	states3 "github.com/filecoin-project/specs-actors/v3/actors/states"
 	states4 "github.com/filecoin-project/specs-actors/v4/actors/states"
+	states5 "github.com/filecoin-project/specs-actors/v5/actors/states"
 )
 
 var log = logging.Logger("statetree")
@@ -142,11 +142,21 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 
 // VersionForNetwork returns the state tree version for the given network
 // version.
-func VersionForNetwork(ver network.Version) types.StateTreeVersion {
-	if actors.VersionForNetwork(ver) == actors.Version0 {
-		return types.StateTreeVersion0
+func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
+	switch ver {
+	case network.Version0, network.Version1, network.Version2, network.Version3:
+		return types.StateTreeVersion0, nil
+	case network.Version4, network.Version5, network.Version6, network.Version7, network.Version8, network.Version9:
+		return types.StateTreeVersion1, nil
+	case network.Version10, network.Version11:
+		return types.StateTreeVersion2, nil
+	case network.Version12:
+		return types.StateTreeVersion3, nil
+	case network.Version13:
+		return types.StateTreeVersion4, nil
+	default:
+		panic(fmt.Sprintf("unsupported network version %d", ver))
 	}
-	return types.StateTreeVersion1
 }
 
 func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, error) {
@@ -154,7 +164,7 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 	switch ver {
 	case types.StateTreeVersion0:
 		// info is undefined
-	case types.StateTreeVersion1, types.StateTreeVersion2, types.StateTreeVersion3:
+	case types.StateTreeVersion1, types.StateTreeVersion2, types.StateTreeVersion3, types.StateTreeVersion4:
 		var err error
 		info, err = cst.Put(context.TODO(), new(types.StateInfo0))
 		if err != nil {
@@ -187,6 +197,12 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 		hamt = tree.Map
 	case types.StateTreeVersion3:
 		tree, err := states4.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
+	case types.StateTreeVersion4:
+		tree, err := states5.NewTree(store)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create state tree: %w", err)
 		}
@@ -243,6 +259,12 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 	case types.StateTreeVersion3:
 		var tree *states4.Tree
 		tree, err = states4.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
+		}
+	case types.StateTreeVersion4:
+		var tree *states5.Tree
+		tree, err = states5.LoadTree(store, root.Actors)
 		if tree != nil {
 			hamt = tree.Map
 		}

@@ -3,6 +3,8 @@ package kit
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
+	"strings"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
@@ -22,4 +24,9 @@ func init() {
 		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
 	}
 	build.InsecurePoStValidation = true
+
+	debug.PrintStack()
+
+	fmt.Println(strings.HasSuffix(os.Args[0], ".test"))
+
 }

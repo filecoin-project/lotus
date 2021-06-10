@@ -232,7 +232,7 @@ var DaemonCmd = &cli.Command{
 		freshRepo := err != repo.ErrRepoExists
 
 		if !isLite {
-			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
+			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), build.SrsJSON(), 0); err != nil {
 				return xerrors.Errorf("fetching proof parameters: %w", err)
 			}
 		}
@@ -363,7 +363,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// Instantiate the full node handler.
-		h, err := node.FullNodeHandler(api, serverOptions...)
+		h, err := node.FullNodeHandler(api, true, serverOptions...)
 		if err != nil {
 			return fmt.Errorf("failed to instantiate rpc handler: %s", err)
 		}

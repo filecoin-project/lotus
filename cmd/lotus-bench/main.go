@@ -243,7 +243,7 @@ var sealBenchCmd = &cli.Command{
 		// Only fetch parameters if actually needed
 		skipc2 := c.Bool("skip-commit2")
 		if !skipc2 {
-			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), uint64(sectorSize)); err != nil {
+			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), build.SrsJSON(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 		}
@@ -738,7 +738,7 @@ var proveCmd = &cli.Command{
 			return xerrors.Errorf("unmarshalling input file: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), c2in.SectorSize); err != nil {
+		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), build.SrsJSON(), c2in.SectorSize); err != nil {
 			return xerrors.Errorf("getting params: %w", err)
 		}
 

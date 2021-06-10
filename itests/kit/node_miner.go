@@ -3,12 +3,13 @@ package kit
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -20,7 +21,7 @@ import (
 )
 
 type TestMiner struct {
-	lapi.StorageMiner
+	api.StorageMiner
 
 	t *testing.T
 
@@ -49,19 +50,44 @@ var MineNext = miner.MineReq{
 	Done:        func(bool, abi.ChainEpoch, error) {},
 }
 
-func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNotif <-chan struct{}) { //nolint:golint
+func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNotif <-chan struct{}) {
+	toCheck := tm.StartPledge(ctx, n, existing, blockNotif)
+
+	for len(toCheck) > 0 {
+		tm.FlushSealingBatches(ctx)
+
+		states := map[api.SectorState]int{}
+		for n := range toCheck {
+			st, err := tm.StorageMiner.SectorsStatus(ctx, n, false)
+			require.NoError(tm.t, err)
+			states[st.State]++
+			if st.State == api.SectorState(sealing.Proving) {
+				delete(toCheck, n)
+			}
+			if strings.Contains(string(st.State), "Fail") {
+				tm.t.Fatal("sector in a failed state", st.State)
+			}
+		}
+
+		build.Clock.Sleep(100 * time.Millisecond)
+		fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
+	}
+
+}
+
+func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNotif <-chan struct{}) map[abi.SectorNumber]struct{} {
 	for i := 0; i < n; i++ {
 		if i%3 == 0 && blockNotif != nil {
 			<-blockNotif
 			tm.t.Log("WAIT")
 		}
 		tm.t.Logf("PLEDGING %d", i)
-		_, err := tm.PledgeSector(ctx)
+		_, err := tm.StorageMiner.PledgeSector(ctx)
 		require.NoError(tm.t, err)
 	}
 
 	for {
-		s, err := tm.SectorsList(ctx) // Note - the test builder doesn't import genesis sectors into FSM
+		s, err := tm.StorageMiner.SectorsList(ctx) // Note - the test builder doesn't import genesis sectors into FSM
 		require.NoError(tm.t, err)
 		fmt.Printf("Sectors: %d\n", len(s))
 		if len(s) >= n+existing {
@@ -73,7 +99,7 @@ func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNo
 
 	fmt.Printf("All sectors is fsm\n")
 
-	s, err := tm.SectorsList(ctx)
+	s, err := tm.StorageMiner.SectorsList(ctx)
 	require.NoError(tm.t, err)
 
 	toCheck := map[abi.SectorNumber]struct{}{}
@@ -81,17 +107,19 @@ func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNo
 		toCheck[number] = struct{}{}
 	}
 
-	for len(toCheck) > 0 {
-		for n := range toCheck {
-			st, err := tm.SectorsStatus(ctx, n, false)
-			require.NoError(tm.t, err)
-			if st.State == lapi.SectorState(sealing.Proving) {
-				delete(toCheck, n)
-			}
-			require.NotContains(tm.t, string(st.State), "Fail", "sector in a failed state")
-		}
+	return toCheck
+}
 
-		build.Clock.Sleep(100 * time.Millisecond)
-		fmt.Printf("WaitSeal: %d\n", len(s))
+func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
+	pcb, err := tm.StorageMiner.SectorPreCommitFlush(ctx)
+	require.NoError(tm.t, err)
+	if pcb != nil {
+		fmt.Printf("PRECOMMIT BATCH: %+v\n", pcb)
+	}
+
+	cb, err := tm.StorageMiner.SectorCommitFlush(ctx)
+	require.NoError(tm.t, err)
+	if cb != nil {
+		fmt.Printf("COMMIT BATCH: %+v\n", cb)
 	}
 }

@@ -76,7 +76,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := cs.GetChainRandomness(context.TODO(), last.Cids(), crypto.DomainSeparationTag_SealRandomness, 500, nil)
+		_, err := cs.GetChainRandomnessLookingBack(context.TODO(), last.Cids(), crypto.DomainSeparationTag_SealRandomness, 500, nil)
 		if err != nil {
 			b.Fatal(err)
 		}

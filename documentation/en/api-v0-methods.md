@@ -44,11 +44,13 @@
   * [ClientGetDealInfo](#ClientGetDealInfo)
   * [ClientGetDealStatus](#ClientGetDealStatus)
   * [ClientGetDealUpdates](#ClientGetDealUpdates)
+  * [ClientGetRetrievalUpdates](#ClientGetRetrievalUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
   * [ClientListDataTransfers](#ClientListDataTransfers)
   * [ClientListDeals](#ClientListDeals)
   * [ClientListImports](#ClientListImports)
+  * [ClientListRetrievals](#ClientListRetrievals)
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
@@ -1197,6 +1199,54 @@ Response:
 }
 ```
 
+### ClientGetRetrievalUpdates
+ClientGetRetrievalUpdates returns status of updated retrieval deals
+
+
+Perms: write
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "PayloadCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "ID": 5,
+  "PieceCID": null,
+  "PricePerByte": "0",
+  "UnsealPrice": "0",
+  "Status": 0,
+  "Message": "string value",
+  "Provider": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "BytesReceived": 42,
+  "BytesPaidFor": 42,
+  "TotalPaid": "0",
+  "TransferChannelID": {
+    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": 3
+  },
+  "DataTransfer": {
+    "TransferID": 3,
+    "Status": 1,
+    "BaseCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "IsInitiator": true,
+    "IsSender": true,
+    "Voucher": "string value",
+    "Message": "string value",
+    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
+  }
+}
+```
+
 ### ClientHasLocal
 ClientHasLocal indicates whether a certain CID is locally stored.
 
@@ -1270,6 +1320,17 @@ Inputs: `null`
 
 Response: `null`
 
+### ClientListRetrievals
+ClientQueryAsk returns a signed StorageAsk from the specified miner.
+ClientListRetrievals returns information about retrievals made by the local client
+
+
+Perms: write
+
+Inputs: `null`
+
+Response: `null`
+
 ### ClientMinerQueryOffer
 ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
 
@@ -1310,7 +1371,6 @@ Response:
 ```
 
 ### ClientQueryAsk
-ClientQueryAsk returns a signed StorageAsk from the specified miner.
 
 
 Perms: read
@@ -2781,8 +2841,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -2931,8 +2991,8 @@ Inputs:
 ```json
 [
   {
-    "Addrs": null,
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": []
   }
 ]
 ```
@@ -2982,8 +3042,8 @@ Inputs:
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -4551,7 +4611,7 @@ Inputs:
 ]
 ```
 
-Response: `11`
+Response: `13`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
