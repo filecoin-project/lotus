@@ -286,6 +286,7 @@ type AppliedMessage struct {
 // Walk walks the simulation's chain from the current head back to the first tipset.
 func (sim *Simulation) Walk(
 	ctx context.Context,
+	maxLookback int64,
 	cb func(sm *stmgr.StateManager,
 		ts *types.TipSet,
 		stCid cid.Cid,
@@ -297,7 +298,12 @@ func (sim *Simulation) Walk(
 	if err != nil {
 		return err
 	}
-	for !ts.Equals(sim.start) && ctx.Err() == nil {
+	minEpoch := abi.ChainEpoch(0)
+	if maxLookback != 0 {
+		minEpoch = ts.Height() - abi.ChainEpoch(maxLookback)
+	}
+
+	for !ts.Equals(sim.start) && ctx.Err() == nil && ts.Height() > minEpoch {
 		msgs, err := sim.Chainstore.MessagesForTipset(ts)
 		if err != nil {
 			return err
