@@ -48,7 +48,7 @@ func (ts *apiSuite) testVersion(t *testing.T) {
 		lapi.RunningNodeType = lapi.NodeUnknown
 	})
 
-	full, _, _ := kit.EnsembleMinimum(t, ts.opts...)
+	full, _, _ := kit.EnsembleMinimal(t, ts.opts...)
 
 	v, err := full.Version(context.Background())
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func (ts *apiSuite) testVersion(t *testing.T) {
 func (ts *apiSuite) testID(t *testing.T) {
 	ctx := context.Background()
 
-	full, _, _ := kit.EnsembleMinimum(t, ts.opts...)
+	full, _, _ := kit.EnsembleMinimal(t, ts.opts...)
 
 	id, err := full.ID(ctx)
 	if err != nil {
@@ -73,7 +73,7 @@ func (ts *apiSuite) testID(t *testing.T) {
 func (ts *apiSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
 
-	one, two, _, ens := kit.EnsembleTwo(t, ts.opts...)
+	one, two, _, ens := kit.EnsembleTwoOne(t, ts.opts...)
 
 	p, err := one.NetPeers(ctx)
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func (ts *apiSuite) testConnectTwo(t *testing.T) {
 func (ts *apiSuite) testSearchMsg(t *testing.T) {
 	ctx := context.Background()
 
-	full, _, ens := kit.EnsembleMinimum(t, ts.opts...)
+	full, _, ens := kit.EnsembleMinimal(t, ts.opts...)
 
 	senderAddr, err := full.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
@@ -127,7 +127,7 @@ func (ts *apiSuite) testSearchMsg(t *testing.T) {
 func (ts *apiSuite) testMining(t *testing.T) {
 	ctx := context.Background()
 
-	full, miner, _ := kit.EnsembleMinimum(t, ts.opts...)
+	full, miner, _ := kit.EnsembleMinimal(t, ts.opts...)
 
 	newHeads, err := full.ChainNotify(ctx)
 	require.NoError(t, err)
@@ -170,7 +170,7 @@ func (ts *apiSuite) testMiningReal(t *testing.T) {
 func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
 
-	full, genesisMiner, ens := kit.EnsembleMinimum(t, ts.opts...)
+	full, genesisMiner, ens := kit.EnsembleMinimal(t, ts.opts...)
 
 	ens.BeginMining(4 * time.Millisecond)
 

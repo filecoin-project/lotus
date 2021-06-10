@@ -123,9 +123,11 @@ type NodeOpts struct {
 	extraNodeOpts []node.Option
 }
 
+const DefaultPresealsPerBootstrapMiner = 2
+
 var DefaultNodeOpts = NodeOpts{
 	balance: big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
-	sectors: 2,
+	sectors: DefaultPresealsPerBootstrapMiner,
 }
 
 type NodeOpt func(opts *NodeOpts) error
@@ -215,7 +217,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		n.genesis.accounts = append(n.genesis.accounts, genacc)
 	}
 
-	*full = TestFullNode{options: options, DefaultKey: key}
+	*full = TestFullNode{t: n.t, options: options, DefaultKey: key}
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
 	return n
 }
@@ -280,6 +282,7 @@ func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) 
 	}
 
 	*miner = TestMiner{
+		t:          n.t,
 		ActorAddr:  actorAddr,
 		OwnerKey:   ownerKey,
 		FullNode:   full,

@@ -3,11 +3,9 @@ package itests
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
@@ -92,13 +90,10 @@ func TestPublishDealsBatching(t *testing.T) {
 		}),
 	)
 
-	client, miner, ens := kit.EnsembleMinimum(t, kit.MockProofs(), kit.ExtraNodeOpts(opts))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ExtraNodeOpts(opts))
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
 	dh := kit.NewDealHarness(t, client, miner)
-
-	fmt.Println("***********************")
-	spew.Dump(client.NetPeers(context.Background()))
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
@@ -168,135 +163,70 @@ func TestPublishDealsBatching(t *testing.T) {
 	}
 }
 
-//
-// func TestDealMining(t *testing.T) {
-// 	// test making a deal with a fresh miner, and see if it starts to mine.
-// 	if testing.Short() {
-// 		t.Skip("skipping test in short mode")
-// 	}
-//
-// 	kit.QuietMiningLogs()
-//
-// 	b := kit.MockMinerBuilder
-// 	blocktime := 50 * time.Millisecond
-//
-// 	ctx := context.Background()
-// 	fulls, miners := b(t,
-// 		kit.OneFull,
-// 		[]kit.StorageMiner{
-// 			{Full: 0, Preseal: kit.PresealGenesis},
-// 			{Full: 0, Preseal: 0}, // TODO: Add support for miners on non-first full node
-// 		})
-// 	client := fulls[0].FullNode.(*impl.FullNodeAPI)
-// 	genesisMiner := miners[0]
-// 	provider := miners[1]
-//
-// 	addrinfo, err := client.NetAddrsListen(ctx)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-//
-// 	if err := provider.NetConnect(ctx, addrinfo); err != nil {
-// 		t.Fatal(err)
-// 	}
-//
-// 	if err := genesisMiner.NetConnect(ctx, addrinfo); err != nil {
-// 		t.Fatal(err)
-// 	}
-//
-// 	time.Sleep(time.Second)
-//
-// 	data := make([]byte, 600)
-// 	rand.New(rand.NewSource(5)).Read(data)
-//
-// 	r := bytes.NewReader(data)
-// 	fcid, err := client.ClientImportLocal(ctx, r)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-//
-// 	fmt.Println("FILE CID: ", fcid)
-//
-// 	var mine int32 = 1
-// 	done := make(chan struct{})
-// 	minedTwo := make(chan struct{})
-//
-// 	m2addr, err := miners[1].ActorAddress(context.TODO())
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-//
-// 	go func() {
-// 		defer close(done)
-//
-// 		complChan := minedTwo
-// 		for atomic.LoadInt32(&mine) != 0 {
-// 			wait := make(chan int)
-// 			mdone := func(mined bool, _ abi.ChainEpoch, err error) {
-// 				n := 0
-// 				if mined {
-// 					n = 1
-// 				}
-// 				wait <- n
-// 			}
-//
-// 			if err := miners[0].MineOne(ctx, miner.MineReq{Done: mdone}); err != nil {
-// 				t.Error(err)
-// 			}
-//
-// 			if err := miners[1].MineOne(ctx, miner.MineReq{Done: mdone}); err != nil {
-// 				t.Error(err)
-// 			}
-//
-// 			expect := <-wait
-// 			expect += <-wait
-//
-// 			time.Sleep(blocktime)
-// 			if expect == 0 {
-// 				// null block
-// 				continue
-// 			}
-//
-// 			var nodeOneMined bool
-// 			for _, node := range miners {
-// 				mb, err := node.MiningBase(ctx)
-// 				if err != nil {
-// 					t.Error(err)
-// 					return
-// 				}
-//
-// 				for _, b := range mb.Blocks() {
-// 					if b.Miner == m2addr {
-// 						nodeOneMined = true
-// 						break
-// 					}
-// 				}
-//
-// 			}
-//
-// 			if nodeOneMined && complChan != nil {
-// 				close(complChan)
-// 				complChan = nil
-// 			}
-//
-// 		}
-// 	}()
-//
-// 	dh := kit.NewDealHarness(t, client, provider)
-//
-// 	deal := dh.StartDeal(ctx, fcid, false, 0)
-//
-// 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-// 	time.Sleep(time.Second)
-//
-// 	dh.WaitDealSealed(ctx, deal, false, false, nil)
-//
-// 	<-minedTwo
-//
-// 	atomic.StoreInt32(&mine, 0)
-// 	fmt.Println("shutting down mining")
-// 	<-done
-// }
+func TestFirstDealEnablesMining(t *testing.T) {
+	// test making a deal with a fresh miner, and see if it starts to mine.
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	kit.QuietMiningLogs()
+
+	var (
+		client   kit.TestFullNode
+		genMiner kit.TestMiner // bootstrap
+		provider kit.TestMiner // no sectors, will need to create one
+	)
+
+	ens := kit.NewEnsemble(t)
+	ens.FullNode(&client, kit.MockProofs())
+	ens.Miner(&genMiner, &client, kit.MockProofs())
+	ens.Miner(&provider, &client, kit.MockProofs(), kit.PresealSectors(0))
+	ens.Start().InterconnectAll().BeginMining(50 * time.Millisecond)
+
+	ctx := context.Background()
+
+	dh := kit.NewDealHarness(t, client, &provider)
+
+	ref, _, _, err := kit.CreateImportFile(ctx, client, 5, 0)
+	require.NoError(t, err)
+
+	t.Log("FILE CID:", ref.Root)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// start a goroutine to monitor head changes from the client
+	// once the provider has mined a block, thanks to the power acquired from the deal,
+	// we pass the test.
+	providerMined := make(chan struct{})
+	heads, err := client.ChainNotify(ctx)
+	go func() {
+		for chg := range heads {
+			for _, c := range chg {
+				if c.Type != "apply" {
+					continue
+				}
+				for _, b := range c.Val.Blocks() {
+					if b.Miner == provider.ActorAddr {
+						close(providerMined)
+						return
+					}
+				}
+			}
+		}
+	}()
+
+	// now perform the deal.
+	deal := dh.StartDeal(ctx, ref.Root, false, 0)
+
+	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
+	time.Sleep(time.Second)
+
+	dh.WaitDealSealed(ctx, deal, false, false, nil)
+
+	<-providerMined
+}
+
 //
 // func TestOfflineDealFlow(t *testing.T) {
 // 	blocktime := 10 * time.Millisecond
@@ -390,7 +320,7 @@ func TestPublishDealsBatching(t *testing.T) {
 // }
 //
 // func runFullDealCycles(t *testing.T, n int, b kit.APIBuilder, blocktime time.Duration, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-// 	full, _, ens := kit.EnsembleMinimum(t)
+// 	full, _, ens := kit.EnsembleMinimal(t)
 // 	ens.BeginMining()
 // 	dh := kit.NewDealHarness(t, client, miner)
 //
