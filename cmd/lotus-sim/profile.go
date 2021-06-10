@@ -68,7 +68,7 @@ func profileOnSignal(cctx *cli.Context, signals ...os.Signal) {
 	signal.Notify(ch, signals...)
 	defer signal.Stop(ch)
 
-	for range ch {
+	for {
 		select {
 		case <-ch:
 			fname, err := takeProfiles(cctx.Context)
