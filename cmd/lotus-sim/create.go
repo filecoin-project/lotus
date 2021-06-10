@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/urfave/cli/v2"
 )
 
 var createSimCommand = &cli.Command{
