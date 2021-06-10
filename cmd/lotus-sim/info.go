@@ -83,6 +83,7 @@ var infoSimCommand = &cli.Command{
 	Description: "Output information about the simulation.",
 	Subcommands: []*cli.Command{
 		infoCommitGasSimCommand,
+		infoWindowPostBandwidthSimCommand,
 	},
 	Action: func(cctx *cli.Context) error {
 		node, err := open(cctx)
@@ -96,6 +97,54 @@ var infoSimCommand = &cli.Command{
 			return err
 		}
 		return printInfo(cctx.Context, sim, cctx.App.Writer)
+	},
+}
+
+var infoWindowPostBandwidthSimCommand = &cli.Command{
+	Name: "post-bandwidth",
+	Action: func(cctx *cli.Context) error {
+		node, err := open(cctx)
+		if err != nil {
+			return err
+		}
+		defer node.Close()
+
+		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
+		if err != nil {
+			return err
+		}
+
+		var postGas, totalGas int64
+		printStats := func() {
+			fmt.Fprintf(cctx.App.Writer, "%.4f%%\n", float64(100*postGas)/float64(totalGas))
+		}
+		idx := 0
+		err = sim.Walk(cctx.Context, 0, func(
+			sm *stmgr.StateManager, ts *types.TipSet, stCid cid.Cid,
+			messages []*simulation.AppliedMessage,
+		) error {
+			for _, m := range messages {
+				totalGas += m.GasUsed
+				if m.ExitCode != exitcode.Ok {
+					continue
+				}
+				if m.Method == builtin.MethodsMiner.SubmitWindowedPoSt {
+					postGas += m.GasUsed
+				}
+			}
+			idx++
+			idx %= builtin.EpochsInDay
+			if idx == 0 {
+				printStats()
+				postGas = 0
+				totalGas = 0
+			}
+			return nil
+		})
+		if idx > 0 {
+			printStats()
+		}
+		return err
 	},
 }
 
