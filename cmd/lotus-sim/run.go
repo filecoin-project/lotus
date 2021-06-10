@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"syscall"
 
 	"github.com/urfave/cli/v2"
 )
@@ -21,6 +22,8 @@ var runSimCommand = &cli.Command{
 			return err
 		}
 		defer node.Close()
+
+		go profileOnSignal(cctx, syscall.SIGUSR2)
 
 		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
 		if err != nil {
