@@ -17,6 +17,7 @@ import (
 	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -170,7 +171,7 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 			}
 			enc, err := actors.SerializeParams(&params)
 			if err != nil {
-				return 0, false, err
+				return added, false, err
 			}
 			// NOTE: just in-case, sendAndFund will "fund" and re-try for any message
 			// that fails due to "insufficient funds".
@@ -184,13 +185,22 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 				// try again with a smaller batch.
 				targetBatchSize /= 2
 				continue
+			} else if aerr, ok := err.(aerrors.ActorError); ok && !aerr.IsFatal() {
+				// Log the error and move on. No reason to stop.
+				log.Errorw("failed to pre-commit for unknown reasons",
+					"error", aerr,
+					"miner", minerAddr,
+					"sectors", batch,
+					"epoch", ss.nextEpoch(),
+				)
+				return added, false, nil
 			} else if err != nil {
-				return 0, false, err
+				return added, false, err
 			}
 
 			for _, info := range batch {
 				if err := ss.commitQueue.enqueueProveCommit(minerAddr, epoch, info); err != nil {
-					return 0, false, err
+					return added, false, err
 				}
 				added++
 			}
@@ -215,7 +225,7 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 		}
 
 		if err := ss.commitQueue.enqueueProveCommit(minerAddr, epoch, info); err != nil {
-			return 0, false, err
+			return added, false, err
 		}
 		added++
 	}
