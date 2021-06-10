@@ -101,7 +101,8 @@ var infoSimCommand = &cli.Command{
 }
 
 var infoWindowPostBandwidthSimCommand = &cli.Command{
-	Name: "post-bandwidth",
+	Name:        "post-bandwidth",
+	Description: "List average chain bandwidth used by window posts for each day of the simulation.",
 	Action: func(cctx *cli.Context) error {
 		node, err := open(cctx)
 		if err != nil {
@@ -150,7 +151,7 @@ var infoWindowPostBandwidthSimCommand = &cli.Command{
 
 var infoCommitGasSimCommand = &cli.Command{
 	Name:        "commit-gas",
-	Description: "Output information about the gas for committs",
+	Description: "Output information about the gas for commits",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "lookback",
