@@ -3,6 +3,7 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -35,6 +36,7 @@ func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (_er
 		full                             bool
 		top1Count, top10Count, restCount int
 	)
+	start := time.Now()
 	defer func() {
 		if _err != nil {
 			return
@@ -45,6 +47,7 @@ func (ss *simulationState) packPreCommits(ctx context.Context, cb packFunc) (_er
 			"top10", top10Count,
 			"rest", restCount,
 			"filled-block", full,
+			"duration", time.Since(start),
 		)
 	}()
 

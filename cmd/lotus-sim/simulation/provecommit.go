@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-bitfield"
 
@@ -25,6 +26,7 @@ func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_
 	// Roll the commitQueue forward.
 	ss.commitQueue.advanceEpoch(ss.nextEpoch())
 
+	start := time.Now()
 	var full, failed, done, unbatched, count int
 	defer func() {
 		if _err != nil {
@@ -38,6 +40,7 @@ func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_
 			"unbatched", unbatched,
 			"miners-processed", count,
 			"filled-block", full,
+			"duration", time.Since(start),
 		)
 	}()
 
