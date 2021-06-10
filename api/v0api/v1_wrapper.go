@@ -19,6 +19,10 @@ type WrapperV1Full struct {
 	v1api.FullNode
 }
 
+type WrapperV1Gateway struct {
+	v1api.Gateway
+}
+
 func (w *WrapperV1Full) StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error) {
 	return w.FullNode.StateSearchMsg(ctx, types.EmptyTSK, msg, api.LookbackNoLimit, true)
 }

@@ -7,6 +7,9 @@ import (
 type FullNode = api.FullNode
 type FullNodeStruct = api.FullNodeStruct
 
+type Gateway = api.Gateway
+type GatewayStruct = api.GatewayStruct
+
 func PermissionedFullAPI(a FullNode) FullNode {
 	return api.PermissionedFullAPI(a)
 }
