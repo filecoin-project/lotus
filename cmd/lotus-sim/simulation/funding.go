@@ -90,6 +90,10 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 
 	var targets []*actor
 	err = st.ForEach(func(addr address.Address, act *types.Actor) error {
+		// Don't steal from ourselves!
+		if addr == fundAccount {
+			return nil
+		}
 		if act.Balance.LessThan(taxMin) {
 			return nil
 		}
