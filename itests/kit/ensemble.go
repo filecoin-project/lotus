@@ -114,12 +114,13 @@ func NewEnsemble(t *testing.T, opts ...BuilderOpt) *Ensemble {
 }
 
 type NodeOpts struct {
-	balance    abi.TokenAmount
-	lite       bool
-	sectors    int
-	mockProofs bool
-	rpc        bool
-	ownerKey   *wallet.Key
+	balance       abi.TokenAmount
+	lite          bool
+	sectors       int
+	mockProofs    bool
+	rpc           bool
+	ownerKey      *wallet.Key
+	extraNodeOpts []node.Option
 }
 
 var DefaultNodeOpts = NodeOpts{
@@ -178,6 +179,13 @@ func ThroughRPC() NodeOpt {
 func OwnerAddr(wk *wallet.Key) NodeOpt {
 	return func(opts *NodeOpts) error {
 		opts.ownerKey = wk
+		return nil
+	}
+}
+
+func ExtraNodeOpts(extra ...node.Option) NodeOpt {
+	return func(opts *NodeOpts) error {
+		opts.extraNodeOpts = extra
 		return nil
 	}
 }
@@ -300,6 +308,10 @@ func (n *Ensemble) Start() *Ensemble {
 		n.mn = mocknet.New(ctx)
 	}
 
+	// ---------------------
+	//  FULL NODES
+	// ---------------------
+
 	// Create all inactive full nodes.
 	for i, full := range n.inactive.fullnodes {
 		opts := []node.Option{
@@ -313,6 +325,9 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
 		}
 
+		// append any node builder options.
+		opts = append(opts, full.options.extraNodeOpts...)
+
 		// Either generate the genesis or inject it.
 		if i == 0 && !n.bootstrapped {
 			opts = append(opts, node.Override(new(modules.Genesis), testing2.MakeGenesisMem(&n.genesisBlock, *gtempl)))
@@ -322,7 +337,10 @@ func (n *Ensemble) Start() *Ensemble {
 
 		// Are we mocking proofs?
 		if full.options.mockProofs {
-			opts = append(opts, node.Override(new(ffiwrapper.Verifier), mock.MockVerifier))
+			opts = append(opts,
+				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
+				node.Override(new(ffiwrapper.Prover), mock.MockProver),
+			)
 		}
 
 		// Construct the full node.
@@ -355,6 +373,10 @@ func (n *Ensemble) Start() *Ensemble {
 	// Link all the nodes.
 	err := n.mn.LinkAll()
 	require.NoError(n.t, err)
+
+	// ---------------------
+	//  MINERS
+	// ---------------------
 
 	// Create all inactive miners.
 	for i, m := range n.inactive.miners {
@@ -469,23 +491,35 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 		}
 
+		// append any node builder options.
+		opts = append(opts, m.options.extraNodeOpts...)
+
 		idAddr, err := address.IDFromAddress(m.ActorAddr)
 		require.NoError(n.t, err)
 
-		if !n.bootstrapped && m.options.mockProofs {
-			s := n.genesis.miners[i].Sectors
-			sectors := make([]abi.SectorID, len(s))
-			for i, sector := range s {
-				sectors[i] = abi.SectorID{
+		// preload preseals if the network still hasn't bootstrapped.
+		var presealSectors []abi.SectorID
+		if !n.bootstrapped {
+			sectors := n.genesis.miners[i].Sectors
+			for _, sector := range sectors {
+				presealSectors = append(presealSectors, abi.SectorID{
 					Miner:  abi.ActorID(idAddr),
 					Number: sector.SectorID,
-				}
+				})
 			}
+		}
+
+		if m.options.mockProofs {
 			opts = append(opts,
-				node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
-					return mock.NewMockSectorMgr(sectors), nil
+				node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
+					return mock.NewMockSectorMgr(presealSectors), nil
 				}),
+				node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
+				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
+				node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
+
 				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
+				node.Override(new(ffiwrapper.Prover), mock.MockProver),
 				node.Unset(new(*sectorstorage.Manager)),
 			)
 		}
@@ -532,9 +566,7 @@ func (n *Ensemble) Start() *Ensemble {
 	require.NoError(n.t, err)
 
 	if !n.bootstrapped && len(n.active.miners) > 0 {
-		// We have *just* bootstrapped, so
-		// mine 2 blocks to setup some CE stuff
-		// in some actors
+		// We have *just* bootstrapped, so mine 2 blocks to setup some CE stuff in some actors
 		var wait sync.Mutex
 		wait.Lock()
 
@@ -557,22 +589,32 @@ func (n *Ensemble) Start() *Ensemble {
 	return n
 }
 
-// InterconnectAll connects all full nodes one to another. We do not need to
-// take action with miners, because miners only stay connected to their full
-// nodes over JSON-RPC.
+// InterconnectAll connects all miners and full nodes to one another.
 func (n *Ensemble) InterconnectAll() *Ensemble {
+	// connect full nodes to miners.
+	for _, from := range n.active.fullnodes {
+		for _, to := range n.active.miners {
+			// []*TestMiner to []api.CommonAPI type coercion not possible
+			// so cannot use variadic form.
+			n.Connect(from, to)
+		}
+	}
+
+	// connect full nodes between each other, skipping ourselves.
 	last := len(n.active.fullnodes) - 1
 	for i, from := range n.active.fullnodes {
 		if i == last {
 			continue
 		}
-		n.Connect(from, n.active.fullnodes[i+1:]...)
+		for _, to := range n.active.fullnodes[i+1:] {
+			n.Connect(from, to)
+		}
 	}
 	return n
 }
 
 // Connect connects one full node to the provided full nodes.
-func (n *Ensemble) Connect(from *TestFullNode, to ...*TestFullNode) *Ensemble {
+func (n *Ensemble) Connect(from api.Common, to ...api.Common) *Ensemble {
 	addr, err := from.NetAddrsListen(context.Background())
 	require.NoError(n.t, err)
 
@@ -584,7 +626,8 @@ func (n *Ensemble) Connect(from *TestFullNode, to ...*TestFullNode) *Ensemble {
 }
 
 // BeginMining kicks off mining for the specified miners. If nil or 0-length,
-// it will kick off mining for all enrolled and active miners.
+// it will kick off mining for all enrolled and active miners. It also adds a
+// cleanup function to stop all mining operations on test teardown.
 func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []*BlockMiner {
 	ctx := context.Background()
 
@@ -601,6 +644,8 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 	for _, m := range miners {
 		bm := NewBlockMiner(n.t, m)
 		bm.MineBlocks(ctx, blocktime)
+		n.t.Cleanup(bm.Stop)
+
 		bms = append(bms, bm)
 	}
 
