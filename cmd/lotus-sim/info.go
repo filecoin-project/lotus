@@ -126,7 +126,7 @@ var infoCommitGasSimCommand = &cli.Command{
 		var gasAggMax, proofsAggMax uint64
 		var gasSingle, proofsSingle uint64
 
-		sim.Walk(cctx.Context, cctx.Int64("lookback"), func(
+		err = sim.Walk(cctx.Context, cctx.Int64("lookback"), func(
 			sm *stmgr.StateManager, ts *types.TipSet, stCid cid.Cid,
 			messages []*simulation.AppliedMessage,
 		) error {
@@ -162,6 +162,9 @@ var infoCommitGasSimCommand = &cli.Command{
 
 			return nil
 		})
+		if err != nil {
+			return err
+		}
 		idealGassUsed := float64(gasAggMax) / float64(proofsAggMax) * float64(proofsAgg+proofsSingle)
 
 		fmt.Printf("Gas usage efficiency in comparison to all 819: %f%%\n", 100*idealGassUsed/float64(gasAgg+gasSingle))
