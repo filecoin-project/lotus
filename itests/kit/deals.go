@@ -3,7 +3,6 @@ package kit
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -48,7 +47,7 @@ func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, f
 	require.NoError(dh.t, err)
 
 	fcid := res.Root
-	fmt.Println("FILE CID: ", fcid)
+	dh.t.Logf("FILE CID: %s", fcid)
 
 	deal := dh.StartDeal(ctx, fcid, fastRet, startEpoch)
 
@@ -109,7 +108,7 @@ loop:
 		case storagemarket.StorageDealError:
 			dh.t.Fatal("deal errored", di.Message)
 		case storagemarket.StorageDealActive:
-			fmt.Println("COMPLETE", di)
+			dh.t.Log("COMPLETE", di)
 			break loop
 		}
 
@@ -124,7 +123,7 @@ loop:
 			}
 		}
 
-		fmt.Printf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
+		dh.t.Logf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
 		time.Sleep(time.Second / 2)
 		if cb != nil {
 			cb()
@@ -153,10 +152,10 @@ func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 				case storagemarket.StorageDealError:
 					dh.t.Fatal("deal errored", di.Message)
 				case storagemarket.StorageDealFinalizing, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive:
-					fmt.Println("COMPLETE", di)
+					dh.t.Log("COMPLETE", di)
 					return
 				}
-				fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
+				dh.t.Log("Deal state: ", storagemarket.DealStates[di.State])
 			}
 		}
 	}
@@ -183,9 +182,7 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, fcid cid.Cid, piece
 	offers, err := dh.client.ClientFindData(ctx, fcid, piece)
 	require.NoError(dh.t, err)
 
-	if len(offers) < 1 {
-		dh.t.Fatal("no offers")
-	}
+	require.NotEmpty(dh.t, offers, "no offers")
 
 	rpath, err := ioutil.TempDir("", "lotus-retrieve-test-")
 	require.NoError(dh.t, err)
