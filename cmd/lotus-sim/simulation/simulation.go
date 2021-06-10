@@ -326,6 +326,10 @@ func (sim *Simulation) Walk(
 
 		stCid = ts.MinTicketBlock().ParentStateRoot
 		recCid = ts.MinTicketBlock().ParentMessageReceipts
+		ts, err = sim.Chainstore.LoadTipSet(ts.Parents())
+		if err != nil {
+			return xerrors.Errorf("loading parent: %w", err)
+		}
 	}
 	return nil
 }
