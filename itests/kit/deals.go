@@ -45,9 +45,7 @@ func NewDealHarness(t *testing.T, client api.FullNode, miner *TestMiner) *DealHa
 
 func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
 	res, _, data, err := CreateImportFile(ctx, dh.client, rseed, 0)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
 
 	fcid := res.Root
 	fmt.Println("FILE CID: ", fcid)
@@ -67,14 +65,11 @@ func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, f
 
 func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
 	maddr, err := dh.miner.ActorAddress(ctx)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
 
 	addr, err := dh.client.WalletDefaultAddress(ctx)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	deal, err := dh.client.ClientStartDeal(ctx, &api.StartDealParams{
 		Data: &storagemarket.DataRef{
 			TransferType: storagemarket.TTGraphsync,
@@ -140,10 +135,10 @@ loop:
 func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	updates, err := dh.miner.MarketGetDealUpdates(subCtx)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -186,43 +181,34 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 
 func (dh *DealHarness) PerformRetrieval(ctx context.Context, fcid cid.Cid, piece *cid.Cid, carExport bool, expect []byte) {
 	offers, err := dh.client.ClientFindData(ctx, fcid, piece)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
 
 	if len(offers) < 1 {
 		dh.t.Fatal("no offers")
 	}
 
 	rpath, err := ioutil.TempDir("", "lotus-retrieve-test-")
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	defer os.RemoveAll(rpath) //nolint:errcheck
 
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
 
 	ref := &api.FileRef{
 		Path:  filepath.Join(rpath, "ret"),
 		IsCAR: carExport,
 	}
+
 	updates, err := dh.client.ClientRetrieveWithEvents(ctx, offers[0].Order(caddr), ref)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	for update := range updates {
-		if update.Err != "" {
-			dh.t.Fatalf("retrieval failed: %s", update.Err)
-		}
+		require.Emptyf(dh.t, update.Err, "retrieval failed: %s", update.Err)
 	}
 
 	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
 
 	if carExport {
 		rdata = dh.ExtractCarData(ctx, rdata, rpath)
@@ -236,30 +222,25 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, fcid cid.Cid, piece
 func (dh *DealHarness) ExtractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
 	bserv := dstest.Bserv()
 	ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	b, err := bserv.GetBlock(ctx, ch.Roots[0])
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	nd, err := ipld.Decode(b)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	dserv := dag.NewDAGService(bserv)
 	fil, err := unixfile.NewUnixfsFile(ctx, dserv, nd)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	outPath := filepath.Join(rpath, "retLoadedCAR")
-	if err := files.WriteTo(fil, outPath); err != nil {
-		dh.t.Fatal(err)
-	}
+	err = files.WriteTo(fil, outPath)
+	require.NoError(dh.t, err)
+
 	rdata, err = ioutil.ReadFile(outPath)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	return rdata
 }
 
