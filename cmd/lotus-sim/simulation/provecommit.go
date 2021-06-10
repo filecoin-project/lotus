@@ -27,7 +27,7 @@ func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_
 	ss.commitQueue.advanceEpoch(ss.nextEpoch())
 
 	start := time.Now()
-	var full, failed, done, unbatched, count int
+	var failed, done, unbatched, count int
 	defer func() {
 		if _err != nil {
 			return
@@ -39,7 +39,6 @@ func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_
 			"failed", failed,
 			"unbatched", unbatched,
 			"miners-processed", count,
-			"filled-block", full,
 			"duration", time.Since(start),
 		)
 	}()
