@@ -124,6 +124,7 @@ var infoCommitGasSimCommand = &cli.Command{
 
 		var gasAgg, proofsAgg uint64
 		var gasAggMax, proofsAggMax uint64
+		var gasSingle, proofsSingle uint64
 
 		sim.Walk(cctx.Context, cctx.Int64("lookback"),
 			func(sm *stmgr.StateManager, ts *types.TipSet, stCid cid.Cid,
@@ -153,14 +154,16 @@ var infoCommitGasSimCommand = &cli.Command{
 					}
 
 					if m.Method == builtin.MethodsMiner.ProveCommitSector {
+						gasSingle += uint64(m.GasUsed)
+						proofsSingle++
 					}
 				}
 
 				return nil
 			})
-		idealGassUsed := float64(gasAggMax) / float64(proofsAggMax) * float64(proofsAgg)
+		idealGassUsed := float64(gasAggMax) / float64(proofsAggMax) * float64(proofsAgg+proofsSingle)
 
-		fmt.Printf("Gas usage efficiency in comparison to all 819: %f%%\n", 100*idealGassUsed/float64(gasAgg))
+		fmt.Printf("Gas usage efficiency in comparison to all 819: %f%%\n", 100*idealGassUsed/float64(gasAgg+gasSingle))
 
 		return nil
 	},
