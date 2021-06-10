@@ -10,8 +10,12 @@ import (
 )
 
 var runSimCommand = &cli.Command{
-	Name:        "run",
-	Description: "Run the simulation.",
+	Name: "run",
+	Description: `Run the simulation.
+
+Signals:
+- SIGUSR1: Print information about the current simulation (equivalent to 'lotus-sim info').
+- SIGUSR2: Write a pprof profile to pprof-simulation-$DATE.tar`,
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "epochs",
