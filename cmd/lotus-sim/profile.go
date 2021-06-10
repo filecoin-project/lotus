@@ -1,12 +1,11 @@
 package main
 
 import (
-	"archive/tar"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime/pprof"
 	"time"
 
@@ -14,32 +13,35 @@ import (
 )
 
 func takeProfiles(ctx context.Context) (fname string, _err error) {
-	file, err := os.CreateTemp(".", ".profiles*.tar")
+	dir, err := os.MkdirTemp(".", ".profiles-temp*")
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
 
-	if err := writeProfiles(ctx, file); err != nil {
-		_ = os.Remove(file.Name())
+	if err := writeProfiles(ctx, dir); err != nil {
+		_ = os.RemoveAll(dir)
 		return "", err
 	}
 
-	fname = fmt.Sprintf("pprof-simulation-%s.tar", time.Now())
-	if err := os.Rename(file.Name(), fname); err != nil {
-		_ = os.Remove(file.Name())
+	fname = fmt.Sprintf("pprof-simulation-%s", time.Now().Format(time.RFC3339))
+	if err := os.Rename(dir, fname); err != nil {
+		_ = os.RemoveAll(dir)
 		return "", err
 	}
 	return fname, nil
 }
 
-func writeProfiles(ctx context.Context, w io.Writer) error {
-	tw := tar.NewWriter(w)
+func writeProfiles(ctx context.Context, dir string) error {
 	for _, profile := range pprof.Profiles() {
-		if err := tw.WriteHeader(&tar.Header{Name: profile.Name()}); err != nil {
+		file, err := os.Create(filepath.Join(dir, profile.Name()+".pprof.gz"))
+		if err != nil {
 			return err
 		}
-		if err := profile.WriteTo(tw, 0); err != nil {
+		if err := profile.WriteTo(file, 0); err != nil {
+			_ = file.Close()
+			return err
+		}
+		if err := file.Close(); err != nil {
 			return err
 		}
 		if err := ctx.Err(); err != nil {
@@ -47,20 +49,25 @@ func writeProfiles(ctx context.Context, w io.Writer) error {
 		}
 	}
 
-	if err := tw.WriteHeader(&tar.Header{Name: "cpu"}); err != nil {
+	file, err := os.Create(filepath.Join(dir, "cpu.pprof.gz"))
+	if err != nil {
 		return err
 	}
-	if err := pprof.StartCPUProfile(tw); err != nil {
+
+	if err := pprof.StartCPUProfile(file); err != nil {
+		_ = file.Close()
 		return err
 	}
 	select {
 	case <-time.After(30 * time.Second):
 	case <-ctx.Done():
-		pprof.StopCPUProfile()
-		return ctx.Err()
 	}
 	pprof.StopCPUProfile()
-	return tw.Close()
+	err = file.Close()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return err
 }
 
 func profileOnSignal(cctx *cli.Context, signals ...os.Signal) {

@@ -15,7 +15,7 @@ var runSimCommand = &cli.Command{
 
 Signals:
 - SIGUSR1: Print information about the current simulation (equivalent to 'lotus-sim info').
-- SIGUSR2: Write a pprof profile to pprof-simulation-$DATE.tar`,
+- SIGUSR2: Write pprof profiles to ./pprof-simulation-$DATE/`,
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "epochs",
