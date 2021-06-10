@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// packProveCOmmits packs all prove-commits for all "ready to be proven" sectors until it fills the
+// packProveCommits packs all prove-commits for all "ready to be proven" sectors until it fills the
 // block or runs out.
 func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_err error) {
 	// Roll the commitQueue forward.
