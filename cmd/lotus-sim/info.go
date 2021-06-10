@@ -1,15 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"text/tabwriter"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/specs-actors/v5/actors/builtin"
+	"github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -74,6 +80,9 @@ func printInfo(ctx context.Context, sim *simulation.Simulation, out io.Writer) e
 var infoSimCommand = &cli.Command{
 	Name:        "info",
 	Description: "Output information about the simulation.",
+	Subcommands: []*cli.Command{
+		infoCommitGasSimCommand,
+	},
 	Action: func(cctx *cli.Context) error {
 		node, err := open(cctx)
 		if err != nil {
@@ -86,5 +95,66 @@ var infoSimCommand = &cli.Command{
 			return err
 		}
 		return printInfo(cctx.Context, sim, cctx.App.Writer)
+	},
+}
+
+var infoCommitGasSimCommand = &cli.Command{
+	Name:        "commit-gas",
+	Description: "Output information about the gas for committs",
+	Action: func(cctx *cli.Context) error {
+		log := func(f string, i ...interface{}) {
+			fmt.Fprintf(os.Stderr, f, i...)
+		}
+		node, err := open(cctx)
+		if err != nil {
+			return err
+		}
+		defer node.Close()
+
+		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
+		if err != nil {
+			return err
+		}
+
+		var gasAgg, proofsAgg uint64
+		var gasAggMax, proofsAggMax uint64
+
+		sim.Walk(cctx.Context, func(sm *stmgr.StateManager, ts *types.TipSet, stCid cid.Cid,
+			messages []*simulation.AppliedMessage) error {
+			for _, m := range messages {
+				if m.ExitCode != exitcode.Ok {
+					continue
+				}
+				if m.Method == builtin.MethodsMiner.ProveCommitAggregate {
+					param := miner.ProveCommitAggregateParams{}
+					err := param.UnmarshalCBOR(bytes.NewReader(m.Params))
+					if err != nil {
+						log("failed to decode params: %+v", err)
+						return nil
+					}
+					c, err := param.SectorNumbers.Count()
+					if err != nil {
+						log("failed to count sectors")
+						return nil
+					}
+					gasAgg += uint64(m.GasUsed)
+					proofsAgg += c
+					if c == 819 {
+						gasAggMax += uint64(m.GasUsed)
+						proofsAggMax += c
+					}
+				}
+
+				if m.Method == builtin.MethodsMiner.ProveCommitSector {
+				}
+			}
+
+			return nil
+		})
+		idealGassUsed := float64(gasAggMax) / float64(proofsAggMax) * float64(proofsAgg)
+
+		fmt.Printf("Gas usage efficiency in comparison to all 819: %f%%\n", 100*idealGassUsed/float64(gasAgg))
+
+		return nil
 	},
 }
