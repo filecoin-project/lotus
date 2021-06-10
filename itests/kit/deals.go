@@ -42,7 +42,7 @@ func NewDealHarness(t *testing.T, client api.FullNode, miner *TestMiner) *DealHa
 	}
 }
 
-func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
+func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, rseed int, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
 	res, _, data, err := CreateImportFile(ctx, dh.client, rseed, 0)
 	require.NoError(dh.t, err)
 
