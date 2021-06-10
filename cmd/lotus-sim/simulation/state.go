@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -125,6 +126,10 @@ func loadSimulationState(ctx context.Context, sim *Simulation) (*simulationState
 			sealList = append(sealList, onboardingInfo{addr, uint64(sectorsAdded)})
 		}
 	}
+	if len(sealList) == 0 {
+		return nil, xerrors.Errorf("simulation has no miners")
+	}
+
 	// We're already done loading for the _next_ epoch.
 	// Next time, we need to load for the next, next epoch.
 	// TODO: fix this insanity.
