@@ -54,9 +54,11 @@ var runSimCommand = &cli.Command{
 			// Print
 			select {
 			case <-ch:
+				fmt.Fprintln(cctx.App.Writer, "---------------------")
 				if err := printInfo(cctx.Context, sim, cctx.App.Writer); err != nil {
 					fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to print info: %s\n", err)
 				}
+				fmt.Fprintln(cctx.App.Writer, "---------------------")
 			case <-cctx.Context.Done():
 				return cctx.Err()
 			default:
