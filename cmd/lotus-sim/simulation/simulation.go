@@ -297,7 +297,7 @@ func (sim *Simulation) Walk(
 	if err != nil {
 		return err
 	}
-	for !ts.Equals(sim.start) {
+	for !ts.Equals(sim.start) && ctx.Err() == nil {
 		msgs, err := sim.Chainstore.MessagesForTipset(ts)
 		if err != nil {
 			return err
@@ -331,5 +331,5 @@ func (sim *Simulation) Walk(
 			return xerrors.Errorf("loading parent: %w", err)
 		}
 	}
-	return nil
+	return ctx.Err()
 }
