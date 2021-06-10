@@ -122,7 +122,7 @@ func (ss *simulationState) packPreCommitsMiner(ctx context.Context, cb packFunc,
 	}
 
 	if big.Cmp(minerBalance, minFunds) < 0 {
-		err := fund(cb, minerAddr)
+		err := fund(cb, minerAddr, 1)
 		if err != nil {
 			if err == ErrOutOfGas {
 				return 0, true, nil

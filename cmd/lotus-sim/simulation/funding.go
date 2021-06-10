@@ -33,11 +33,18 @@ var (
 	taxMin           = abi.TokenAmount(types.MustParseFIL("1000FIL"))
 )
 
-func fund(send packFunc, target address.Address) error {
+func fund(send packFunc, target address.Address, times int) error {
+	amt := targetFunds
+	if times >= 1 {
+		if times >= 8 {
+			times = 8 // cap
+		}
+		amt = big.Lsh(amt, uint(times))
+	}
 	_, err := send(&types.Message{
 		From:   fundAccount,
 		To:     target,
-		Value:  targetFunds,
+		Value:  amt,
 		Method: builtin.MethodSend,
 	})
 	return err
@@ -49,23 +56,26 @@ func fund(send packFunc, target address.Address) error {
 // 2. If that fails, it checks to see if the exit code was ErrInsufficientFunds.
 // 3. If so, it sends 1K FIL from the "burnt funds actor" (because we need to send it from
 //    somewhere) and re-tries the message.0
-//
-// NOTE: If the message fails a second time, the funds won't be "unsent".
-func sendAndFund(send packFunc, msg *types.Message) (*types.MessageReceipt, error) {
-	res, err := send(msg)
-	aerr, ok := err.(aerrors.ActorError)
-	if !ok || aerr.RetCode() != exitcode.ErrInsufficientFunds {
-		return res, err
-	}
-	// Ok, insufficient funds. Let's fund this miner and try again.
-	err = fund(send, msg.To)
-	if err != nil {
-		if err != ErrOutOfGas {
-			err = xerrors.Errorf("failed to fund %s: %w", msg.To, err)
+func sendAndFund(send packFunc, msg *types.Message) (res *types.MessageReceipt, err error) {
+	for i := 0; i < 10; i++ {
+		res, err = send(msg)
+		if err != nil {
+			return res, nil
 		}
-		return nil, err
+		aerr, ok := err.(aerrors.ActorError)
+		if !ok || aerr.RetCode() != exitcode.ErrInsufficientFunds {
+			return nil, err
+		}
+
+		// Ok, insufficient funds. Let's fund this miner and try again.
+		if err := fund(send, msg.To, i); err != nil {
+			if err != ErrOutOfGas {
+				err = xerrors.Errorf("failed to fund %s: %w", msg.To, err)
+			}
+			return nil, err
+		}
 	}
-	return send(msg)
+	return res, err
 }
 
 func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err error) {
