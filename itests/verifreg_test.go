@@ -1,10 +1,13 @@
-package test
+package itests
 
 import (
 	"context"
 	"strings"
+	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/itests/kit"
 
 	lapi "github.com/filecoin-project/lotus/api"
 
@@ -13,18 +16,14 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
 
-	"testing"
-	"time"
-
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func AddVerifiedClient(t *testing.T, b APIBuilder) {
+func TestVerifiedClientTopUp(t *testing.T) {
 	test := func(nv network.Version, shouldWork bool) func(*testing.T) {
 		return func(t *testing.T) {
-
-			nodes, miners := b(t, []FullNodeOpts{FullNodeWithNetworkUpgradeAt(nv, -1)}, OneMiner)
+			nodes, miners := kit.MockMinerBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithNetworkUpgradeAt(nv, -1)}, kit.OneMiner)
 			api := nodes[0].FullNode.(*impl.FullNodeAPI)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -53,9 +52,9 @@ func AddVerifiedClient(t *testing.T, b APIBuilder) {
 				Value:  big.Zero(),
 			}
 
-			bm := NewBlockMiner(ctx, t, miners[0], 100*time.Millisecond)
-			bm.MineBlocks()
-			defer bm.Stop()
+			bm := kit.NewBlockMiner(t, miners[0])
+			bm.MineBlocks(ctx, 100*time.Millisecond)
+			t.Cleanup(bm.Stop)
 
 			sm, err := api.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {

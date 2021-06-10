@@ -1,4 +1,4 @@
-package test
+package kit
 
 import (
 	"context"
@@ -9,12 +9,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api/test"
-	test2 "github.com/filecoin-project/lotus/node/test"
 )
 
-func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) (test.TestNode, address.Address) {
-	n, sn := test2.RPCMockSbBuilder(t, test.OneFull, test.OneMiner)
+func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) (TestFullNode, address.Address) {
+	n, sn := RPCMockMinerBuilder(t, OneFull, OneMiner)
 
 	full := n[0]
 	miner := sn[0]
@@ -30,8 +28,8 @@ func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Dura
 	}
 
 	// Start mining blocks
-	bm := test.NewBlockMiner(ctx, t, miner, blocktime)
-	bm.MineBlocks()
+	bm := NewBlockMiner(t, miner)
+	bm.MineBlocks(ctx, blocktime)
 	t.Cleanup(bm.Stop)
 
 	// Get the full node's wallet address
@@ -44,8 +42,8 @@ func StartOneNodeOneMiner(ctx context.Context, t *testing.T, blocktime time.Dura
 	return full, fullAddr
 }
 
-func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]test.TestNode, []address.Address) {
-	n, sn := test2.RPCMockSbBuilder(t, test.TwoFull, test.OneMiner)
+func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Duration) ([]TestFullNode, []address.Address) {
+	n, sn := RPCMockMinerBuilder(t, TwoFull, OneMiner)
 
 	fullNode1 := n[0]
 	fullNode2 := n[1]
@@ -66,8 +64,8 @@ func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Dur
 	}
 
 	// Start mining blocks
-	bm := test.NewBlockMiner(ctx, t, miner, blocktime)
-	bm.MineBlocks()
+	bm := NewBlockMiner(t, miner)
+	bm.MineBlocks(ctx, blocktime)
 	t.Cleanup(bm.Stop)
 
 	// Send some funds to register the second node
@@ -76,7 +74,7 @@ func StartTwoNodesOneMiner(ctx context.Context, t *testing.T, blocktime time.Dur
 		t.Fatal(err)
 	}
 
-	test.SendFunds(ctx, t, fullNode1, fullNodeAddr2, abi.NewTokenAmount(1e18))
+	SendFunds(ctx, t, fullNode1, fullNodeAddr2, abi.NewTokenAmount(1e18))
 
 	// Get the first node's address
 	fullNodeAddr1, err := fullNode1.WalletDefaultAddress(ctx)

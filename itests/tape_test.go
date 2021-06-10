@@ -1,4 +1,4 @@
-package test
+package itests
 
 import (
 	"context"
@@ -11,18 +11,24 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/stretchr/testify/require"
 )
 
-func TestTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration) {
+func TestTapeFix(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	var blocktime = 2 * time.Millisecond
+
 	// The "before" case is disabled, because we need the builder to mock 32 GiB sectors to accurately repro this case
 	// TODO: Make the mock sector size configurable and reenable this
-	//t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
-	t.Run("after", func(t *testing.T) { testTapeFix(t, b, blocktime, true) })
+	// t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
+	t.Run("after", func(t *testing.T) { testTapeFix(t, kit.MockMinerBuilder, blocktime, true) })
 }
-func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool) {
+
+func testTapeFix(t *testing.T, b kit.APIBuilder, blocktime time.Duration, after bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -38,9 +44,9 @@ func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool
 		})
 	}
 
-	n, sn := b(t, []FullNodeOpts{{Opts: func(_ []TestNode) node.Option {
+	n, sn := b(t, []kit.FullNodeOpts{{Opts: func(_ []kit.TestFullNode) node.Option {
 		return node.Override(new(stmgr.UpgradeSchedule), upgradeSchedule)
-	}}}, OneMiner)
+	}}}, kit.OneMiner)
 
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
@@ -60,7 +66,7 @@ func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool
 		defer close(done)
 		for ctx.Err() == nil {
 			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, MineNext); err != nil {
+			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
 				if ctx.Err() != nil {
 					// context was canceled, ignore the error.
 					return
@@ -97,5 +103,4 @@ func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool
 		build.Clock.Sleep(100 * time.Millisecond)
 		fmt.Println("WaitSeal")
 	}
-
 }

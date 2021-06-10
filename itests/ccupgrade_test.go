@@ -1,4 +1,4 @@
-package test
+package itests
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -15,7 +16,9 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
-func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
+func TestCCUpgrade(t *testing.T) {
+	kit.QuietMiningLogs()
+
 	for _, height := range []abi.ChainEpoch{
 		-1,   // before
 		162,  // while sealing
@@ -24,14 +27,14 @@ func TestCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	} {
 		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			testCCUpgrade(t, b, blocktime, height)
+			runTestCCUpgrade(t, kit.MockMinerBuilder, 5*time.Millisecond, height)
 		})
 	}
 }
 
-func testCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeHeight abi.ChainEpoch) {
+func runTestCCUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Duration, upgradeHeight abi.ChainEpoch) {
 	ctx := context.Background()
-	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(upgradeHeight)}, OneMiner)
+	n, sn := b(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(upgradeHeight)}, kit.OneMiner)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 
@@ -51,7 +54,7 @@ func testCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeH
 		defer close(done)
 		for atomic.LoadInt64(&mine) == 1 {
 			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, MineNext); err != nil {
+			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
 				t.Error(err)
 			}
 		}
@@ -62,10 +65,10 @@ func testCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeH
 		t.Fatal(err)
 	}
 
-	CC := abi.SectorNumber(GenesisPreseals + 1)
+	CC := abi.SectorNumber(kit.GenesisPreseals + 1)
 	Upgraded := CC + 1
 
-	pledgeSectors(t, ctx, miner, 1, 0, nil)
+	kit.PledgeSectors(t, ctx, miner, 1, 0, nil)
 
 	sl, err := miner.SectorsList(ctx)
 	if err != nil {
@@ -89,7 +92,9 @@ func testCCUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration, upgradeH
 		t.Fatal(err)
 	}
 
-	MakeDeal(t, ctx, 6, client, miner, false, false, 0)
+	dh := kit.NewDealHarness(t, client, miner)
+
+	dh.MakeFullDeal(context.Background(), 6, false, false, 0)
 
 	// Validate upgrade
 

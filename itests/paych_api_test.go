@@ -1,14 +1,14 @@
-package test
+package itests
 
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -26,9 +26,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
+func TestPaymentChannelsAPI(t *testing.T) {
+	kit.QuietMiningLogs()
+
 	ctx := context.Background()
-	n, sn := b(t, TwoFull, OneMiner)
+	n, sn := kit.MockMinerBuilder(t, kit.TwoFull, kit.OneMiner)
 
 	paymentCreator := n[0]
 	paymentReceiver := n[1]
@@ -49,8 +51,9 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	}
 
 	// start mining blocks
-	bm := NewBlockMiner(ctx, t, miner, blocktime)
-	bm.MineBlocks()
+	bm := kit.NewBlockMiner(t, miner)
+	bm.MineBlocks(ctx, 5*time.Millisecond)
+	t.Cleanup(bm.Stop)
 
 	// send some funds to register the receiver
 	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
@@ -58,7 +61,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		t.Fatal(err)
 	}
 
-	SendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
+	kit.SendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
 
 	// setup the payment channel
 	createrAddr, err := paymentCreator.WalletDefaultAddress(ctx)
@@ -173,7 +176,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 
 	select {
 	case <-finished:
-	case <-time.After(time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("Timed out waiting for receiver to submit vouchers")
 	}
 
@@ -265,7 +268,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	bm.Stop()
 }
 
-func waitForBlocks(ctx context.Context, t *testing.T, bm *BlockMiner, paymentReceiver TestNode, receiverAddr address.Address, count int) {
+func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymentReceiver kit.TestFullNode, receiverAddr address.Address, count int) {
 	// We need to add null blocks in batches, if we add too many the chain can't sync
 	batchSize := 60
 	for i := 0; i < count; i += batchSize {
@@ -274,8 +277,8 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *BlockMiner, paymentRec
 			size = count - i
 		}
 
-		// Add a batch of null blocks
-		atomic.StoreInt64(&bm.nulls, int64(size-1))
+		// Add a batch of null blocks to advance the chain quicker through finalities.
+		bm.InjectNulls(abi.ChainEpoch(size - 1))
 
 		// Add a real block
 		m, err := paymentReceiver.MpoolPushMessage(ctx, &types.Message{
@@ -294,7 +297,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *BlockMiner, paymentRec
 	}
 }
 
-func waitForMessage(ctx context.Context, t *testing.T, paymentCreator TestNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
+func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
 	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 

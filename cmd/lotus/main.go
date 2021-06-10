@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
@@ -15,6 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+var log = logging.Logger("main")
 
 var AdvanceBlockCmd *cli.Command
 

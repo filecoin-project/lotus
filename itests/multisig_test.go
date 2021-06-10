@@ -1,24 +1,37 @@
-package test
+package itests
 
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
-	lcli "github.com/urfave/cli/v2"
 )
 
-func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNode) {
-	ctx := context.Background()
+// TestMultisig does a basic test to exercise the multisig CLI commands
+func TestMultisig(t *testing.T) {
+	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	kit.QuietMiningLogs()
 
+	blocktime := 5 * time.Millisecond
+	ctx := context.Background()
+	clientNode, _ := kit.StartOneNodeOneMiner(ctx, t, blocktime)
+
+	runMultisigTests(t, clientNode)
+}
+
+func runMultisigTests(t *testing.T, clientNode kit.TestFullNode) {
 	// Create mock CLI
-	mockCLI := NewMockCLI(ctx, t, cmds)
+	ctx := context.Background()
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
 	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
 	// Create some wallets on the node to use for testing multisig
@@ -29,7 +42,7 @@ func RunMultisigTest(t *testing.T, cmds []*lcli.Command, clientNode test.TestNod
 
 		walletAddrs = append(walletAddrs, addr)
 
-		test.SendFunds(ctx, t, clientNode, addr, types.NewInt(1e15))
+		kit.SendFunds(ctx, t, clientNode, addr, types.NewInt(1e15))
 	}
 
 	// Create an msig with three of the addresses and threshold of two sigs

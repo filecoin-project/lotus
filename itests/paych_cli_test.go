@@ -1,4 +1,4 @@
-package cli
+package itests
 
 import (
 	"context"
@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	clitest "github.com/filecoin-project/lotus/cli/test"
+	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/itests/kit"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -20,7 +21,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -35,20 +35,20 @@ func init() {
 
 // TestPaymentChannels does a basic test to exercise the payment channel CLI
 // commands
-func TestPaymentChannels(t *testing.T) {
+func TestPaymentChannelsBasic(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
+	nodes, addrs := kit.StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	paymentReceiver := nodes[1]
 	creatorAddr := addrs[0]
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 
@@ -89,17 +89,17 @@ type voucherSpec struct {
 // TestPaymentChannelStatus tests the payment channel status CLI command
 func TestPaymentChannelStatus(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
+	nodes, addrs := kit.StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	creatorAddr := addrs[0]
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych status-by-from-to <creator> <receiver>
@@ -168,18 +168,18 @@ func TestPaymentChannelStatus(t *testing.T) {
 // channel voucher commands
 func TestPaymentChannelVouchers(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
+	nodes, addrs := kit.StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	paymentReceiver := nodes[1]
 	creatorAddr := addrs[0]
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 
@@ -300,17 +300,17 @@ func TestPaymentChannelVouchers(t *testing.T) {
 // is greater than what's left in the channel, voucher create fails
 func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	clitest.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := clitest.StartTwoNodesOneMiner(ctx, t, blocktime)
+	nodes, addrs := kit.StartTwoNodesOneMiner(ctx, t, blocktime)
 	paymentCreator := nodes[0]
 	creatorAddr := addrs[0]
 	receiverAddr := addrs[1]
 
 	// Create mock CLI
-	mockCLI := clitest.NewMockCLI(ctx, t, Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych add-funds <creator> <receiver> <amount>
@@ -378,7 +378,7 @@ func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 }
 
 // waitForHeight waits for the node to reach the given chain epoch
-func waitForHeight(ctx context.Context, t *testing.T, node test.TestNode, height abi.ChainEpoch) {
+func waitForHeight(ctx context.Context, t *testing.T, node kit.TestFullNode, height abi.ChainEpoch) {
 	atHeight := make(chan struct{})
 	chainEvents := events.NewEvents(ctx, node)
 	err := chainEvents.ChainAt(func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
@@ -396,7 +396,7 @@ func waitForHeight(ctx context.Context, t *testing.T, node test.TestNode, height
 }
 
 // getPaychState gets the state of the payment channel with the given address
-func getPaychState(ctx context.Context, t *testing.T, node test.TestNode, chAddr address.Address) paych.State {
+func getPaychState(ctx context.Context, t *testing.T, node kit.TestFullNode, chAddr address.Address) paych.State {
 	act, err := node.StateGetActor(ctx, chAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
