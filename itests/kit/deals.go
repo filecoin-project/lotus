@@ -81,9 +81,8 @@ func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool
 		MinBlocksDuration: uint64(build.MinDealDuration),
 		FastRetrieval:     fastRet,
 	})
-	if err != nil {
-		dh.t.Fatalf("%+v", err)
-	}
+	require.NoError(dh.t, err)
+
 	return deal
 }
 
