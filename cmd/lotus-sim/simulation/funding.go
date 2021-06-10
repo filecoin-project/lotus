@@ -59,7 +59,7 @@ func fund(send packFunc, target address.Address, times int) error {
 func sendAndFund(send packFunc, msg *types.Message) (res *types.MessageReceipt, err error) {
 	for i := 0; i < 10; i++ {
 		res, err = send(msg)
-		if err != nil {
+		if err == nil {
 			return res, nil
 		}
 		aerr, ok := err.(aerrors.ActorError)
