@@ -6,9 +6,10 @@ import (
 	"encoding/binary"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"golang.org/x/xerrors"
 )
 
 const beaconPrefix = "mockbeacon:"

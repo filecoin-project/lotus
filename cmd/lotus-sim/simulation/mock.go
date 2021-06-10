@@ -8,9 +8,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
 
 // Ideally, we'd use extern/sector-storage/mock. Unfortunately, those mocks are a bit _too_ accurate

@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
+
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
-
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
-	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 )
 
 var (
