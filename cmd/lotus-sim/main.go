@@ -29,9 +29,11 @@ func main() {
 		_ = logging.SetLogLevel("simulation", "DEBUG")
 	}
 	app := &cli.App{
-		Name:     "lotus-sim",
-		Usage:    "A tool to simulate a network.",
-		Commands: root,
+		Name:      "lotus-sim",
+		Usage:     "A tool to simulate a network.",
+		Commands:  root,
+		Writer:    os.Stdout,
+		ErrWriter: os.Stderr,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
