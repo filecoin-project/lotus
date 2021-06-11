@@ -1,18 +1,14 @@
-package kit
+package kit2
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"math/rand"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -43,7 +39,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 
 	// Create a deal (non-interactive)
 	// client deal --start-epoch=<start epoch> <cid> <Miner addr> 1000000attofil <duration>
-	res, _, _, err := CreateImportFile(ctx, clientNode, 1, 0)
+	res, _ := clientNode.CreateImportFile(ctx, 1, 0)
 
 	require.NoError(t, err)
 	startEpoch := fmt.Sprintf("--start-epoch=%d", 2<<12)
@@ -60,7 +56,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	// <miner addr>
 	// "no" (verified Client)
 	// "yes" (confirm deal)
-	res, _, _, err = CreateImportFile(ctx, clientNode, 2, 0)
+	res, _ = clientNode.CreateImportFile(ctx, 2, 0)
 	require.NoError(t, err)
 	dataCid2 := res.Root
 	duration = fmt.Sprintf("%d", build.MinDealDuration/builtin.EpochsInDay)
@@ -103,44 +99,9 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 
 	// Retrieve the first file from the Miner
 	// client retrieve <cid> <file path>
-	tmpdir, err := ioutil.TempDir(os.TempDir(), "test-cli-Client")
-	require.NoError(t, err)
+	tmpdir := t.TempDir()
 	path := filepath.Join(tmpdir, "outfile.dat")
 	out = clientCLI.RunCmd("client", "retrieve", dataCid.String(), path)
 	fmt.Println("retrieve:\n", out)
 	require.Regexp(t, regexp.MustCompile("Success"), out)
-}
-
-func CreateImportFile(ctx context.Context, client api.FullNode, rseed int, size int) (res *api.ImportRes, path string, data []byte, err error) {
-	data, path, err = createRandomFile(rseed, size)
-	if err != nil {
-		return nil, "", nil, err
-	}
-
-	res, err = client.ClientImport(ctx, api.FileRef{Path: path})
-	if err != nil {
-		return nil, "", nil, err
-	}
-	return res, path, data, nil
-}
-
-func createRandomFile(rseed, size int) ([]byte, string, error) {
-	if size == 0 {
-		size = 1600
-	}
-	data := make([]byte, size)
-	rand.New(rand.NewSource(int64(rseed))).Read(data)
-
-	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
-	if err != nil {
-		return nil, "", err
-	}
-
-	path := filepath.Join(dir, "sourcefile.dat")
-	err = ioutil.WriteFile(path, data, 0644)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return data, path, nil
 }

@@ -1,4 +1,4 @@
-package kit
+package kit2
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestFullNode represents a full node enrolled in an Ensemble.
 type TestFullNode struct {
 	v1api.FullNode
 
@@ -21,9 +22,11 @@ type TestFullNode struct {
 	ListenAddr multiaddr.Multiaddr
 	DefaultKey *wallet.Key
 
-	options NodeOpts
+	options nodeOpts
 }
 
+// CreateImportFile creates a random file with the specified seed and size, and
+// imports it into the full node.
 func (f *TestFullNode) CreateImportFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, path string) {
 	path = CreateRandomFile(f.t, rseed, size)
 	res, err := f.ClientImport(ctx, api.FileRef{Path: path})

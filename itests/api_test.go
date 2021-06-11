@@ -12,7 +12,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,16 +21,16 @@ func TestAPI(t *testing.T) {
 		runAPITest(t)
 	})
 	t.Run("rpc", func(t *testing.T) {
-		runAPITest(t, kit.ThroughRPC())
+		runAPITest(t, kit2.ThroughRPC())
 	})
 }
 
 type apiSuite struct {
-	opts []kit.NodeOpt
+	opts []kit2.NodeOpt
 }
 
 // runAPITest is the entry point to API test suite
-func runAPITest(t *testing.T, opts ...kit.NodeOpt) {
+func runAPITest(t *testing.T, opts ...kit2.NodeOpt) {
 	ts := apiSuite{opts: opts}
 
 	t.Run("version", ts.testVersion)
@@ -48,7 +48,7 @@ func (ts *apiSuite) testVersion(t *testing.T) {
 		lapi.RunningNodeType = lapi.NodeUnknown
 	})
 
-	full, _, _ := kit.EnsembleMinimal(t, ts.opts...)
+	full, _, _ := kit2.EnsembleMinimal(t, ts.opts...)
 
 	v, err := full.Version(context.Background())
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func (ts *apiSuite) testVersion(t *testing.T) {
 func (ts *apiSuite) testID(t *testing.T) {
 	ctx := context.Background()
 
-	full, _, _ := kit.EnsembleMinimal(t, ts.opts...)
+	full, _, _ := kit2.EnsembleMinimal(t, ts.opts...)
 
 	id, err := full.ID(ctx)
 	if err != nil {
@@ -73,7 +73,7 @@ func (ts *apiSuite) testID(t *testing.T) {
 func (ts *apiSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
 
-	one, two, _, ens := kit.EnsembleTwoOne(t, ts.opts...)
+	one, two, _, ens := kit2.EnsembleTwoOne(t, ts.opts...)
 
 	p, err := one.NetPeers(ctx)
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func (ts *apiSuite) testConnectTwo(t *testing.T) {
 func (ts *apiSuite) testSearchMsg(t *testing.T) {
 	ctx := context.Background()
 
-	full, _, ens := kit.EnsembleMinimal(t, ts.opts...)
+	full, _, ens := kit2.EnsembleMinimal(t, ts.opts...)
 
 	senderAddr, err := full.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
@@ -127,7 +127,7 @@ func (ts *apiSuite) testSearchMsg(t *testing.T) {
 func (ts *apiSuite) testMining(t *testing.T) {
 	ctx := context.Background()
 
-	full, miner, _ := kit.EnsembleMinimal(t, ts.opts...)
+	full, miner, _ := kit2.EnsembleMinimal(t, ts.opts...)
 
 	newHeads, err := full.ChainNotify(ctx)
 	require.NoError(t, err)
@@ -138,7 +138,7 @@ func (ts *apiSuite) testMining(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(h1.Height()), int64(baseHeight))
 
-	bm := kit.NewBlockMiner(t, miner)
+	bm := kit2.NewBlockMiner(t, miner)
 	bm.MineUntilBlock(ctx, full, nil)
 	require.NoError(t, err)
 
@@ -170,7 +170,7 @@ func (ts *apiSuite) testMiningReal(t *testing.T) {
 func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
 
-	full, genesisMiner, ens := kit.EnsembleMinimal(t, ts.opts...)
+	full, genesisMiner, ens := kit2.EnsembleMinimal(t, ts.opts...)
 
 	ens.BeginMining(4 * time.Millisecond)
 
@@ -180,8 +180,8 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	_, err = full.StateMinerInfo(ctx, gaa, types.EmptyTSK)
 	require.NoError(t, err)
 
-	var newMiner kit.TestMiner
-	ens.Miner(&newMiner, full, kit.OwnerAddr(full.DefaultKey)).Start()
+	var newMiner kit2.TestMiner
+	ens.Miner(&newMiner, full, kit2.OwnerAddr(full.DefaultKey)).Start()
 
 	ta, err := newMiner.ActorAddress(ctx)
 	require.NoError(t, err)

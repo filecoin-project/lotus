@@ -1,4 +1,4 @@
-package kit
+package kit2
 
 import (
 	"bytes"
@@ -31,8 +31,9 @@ func CreateRandomFile(t *testing.T, rseed, size int) (path string) {
 	return file.Name()
 }
 
-// FilesEqual compares two files by blake2b hash equality.
-func FilesEqual(t *testing.T, left, right string) bool {
+// AssertFilesEqual compares two files by blake2b hash equality and
+// fails the test if unequal.
+func AssertFilesEqual(t *testing.T, left, right string) {
 	// initialize hashes.
 	leftH, rightH := blake2b.New256(), blake2b.New256()
 
@@ -53,5 +54,5 @@ func FilesEqual(t *testing.T, left, right string) bool {
 	// compute digests.
 	leftD, rightD := leftH.Sum(nil), rightH.Sum(nil)
 
-	return bytes.Equal(leftD, rightD)
+	require.True(t, bytes.Equal(leftD, rightD))
 }

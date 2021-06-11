@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
@@ -23,38 +23,30 @@ import (
 )
 
 func TestDealCyclesConcurrent(t *testing.T) {
-	kit.QuietMiningLogs()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	kit2.QuietMiningLogs()
 
 	blockTime := 10 * time.Millisecond
 
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
 	// so that the deal starts sealing in time
-	dealStartEpoch := abi.ChainEpoch(2 << 12)
+	startEpoch := abi.ChainEpoch(2 << 12)
 
 	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
+		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs())
 		ens.InterconnectAll().BeginMining(blockTime)
-		dh := kit.NewDealHarness(t, client, miner)
+		dh := kit2.NewDealHarness(t, client, miner)
 
-		errgrp, _ := errgroup.WithContext(context.Background())
-		for i := 0; i < n; i++ {
-			i := i
-			errgrp.Go(func() (err error) {
-				defer func() {
-					// This is necessary because we use require, which invokes t.Fatal,
-					// and that's not
-					if r := recover(); r != nil {
-						err = fmt.Errorf("deal failed: %s", r)
-					}
-				}()
-				deal, res, inPath := dh.MakeOnlineDeal(context.Background(), 5+i, fastRetrieval, dealStartEpoch)
-				outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, carExport)
-				kit.FilesEqual(t, inPath, outPath)
-				return nil
-			})
-		}
-		require.NoError(t, errgrp.Wait())
+		runConcurrentDeals(t, dh, fullDealCyclesOpts{
+			n:             n,
+			fastRetrieval: fastRetrieval,
+			carExport:     carExport,
+			startEpoch:    startEpoch,
+		})
 	}
 
 	cycles := []int{1, 2, 4, 8}
@@ -67,32 +59,60 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	}
 }
 
-// func TestAPIDealFlowReal(t *testing.T) {
-// 	if testing.Short() {
-// 		t.Skip("skipping test in short mode")
-// 	}
-//
-// 	kit.QuietMiningLogs()
-//
-// 	// TODO: just set this globally?
-// 	oldDelay := policy.GetPreCommitChallengeDelay()
-// 	policy.SetPreCommitChallengeDelay(5)
-// 	t.Cleanup(func() {
-// 		policy.SetPreCommitChallengeDelay(oldDelay)
-// 	})
-//
-// 	t.Run("basic", func(t *testing.T) {
-// 		runFullDealCycles(t, 1, kit.FullNodeBuilder, time.Second, false, false, 0)
-// 	})
-//
-// 	t.Run("fast-retrieval", func(t *testing.T) {
-// 		runFullDealCycles(t, 1, kit.FullNodeBuilder, time.Second, false, true, 0)
-// 	})
-//
-// 	t.Run("retrieval-second", func(t *testing.T) {
-// 		runSecondDealRetrievalTest(t, kit.FullNodeBuilder, time.Second)
-// 	})
-// }
+type fullDealCyclesOpts struct {
+	n             int
+	fastRetrieval bool
+	carExport     bool
+	startEpoch    abi.ChainEpoch
+}
+
+func runConcurrentDeals(t *testing.T, dh *kit2.DealHarness, opts fullDealCyclesOpts) {
+	errgrp, _ := errgroup.WithContext(context.Background())
+	for i := 0; i < opts.n; i++ {
+		i := i
+		errgrp.Go(func() (err error) {
+			defer func() {
+				// This is necessary because golang can't deal with test
+				// failures being reported from children goroutines ¯\_(ツ)_/¯
+				if r := recover(); r != nil {
+					err = fmt.Errorf("deal failed: %s", r)
+				}
+			}()
+			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), 5+i, opts.fastRetrieval, opts.startEpoch)
+			outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, opts.carExport)
+			kit2.AssertFilesEqual(t, inPath, outPath)
+			return nil
+		})
+	}
+	require.NoError(t, errgrp.Wait())
+}
+
+func TestDealsWithSealingAndRPC(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	kit2.QuietMiningLogs()
+
+	var blockTime = 1 * time.Second
+
+	client, miner, ens := kit2.EnsembleMinimal(t, kit2.ThroughRPC()) // no mock proofs.
+	ens.InterconnectAll().BeginMining(blockTime)
+	dh := kit2.NewDealHarness(t, client, miner)
+
+	t.Run("stdretrieval", func(t *testing.T) {
+		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1})
+	})
+
+	t.Run("fastretrieval", func(t *testing.T) {
+		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
+	})
+
+	t.Run("fastretrieval-twodeals-sequential", func(t *testing.T) {
+		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
+		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
+	})
+}
 
 func TestPublishDealsBatching(t *testing.T) {
 	var (
@@ -102,7 +122,7 @@ func TestPublishDealsBatching(t *testing.T) {
 		startEpoch     = abi.ChainEpoch(2 << 12)
 	)
 
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
 	opts := node.Override(new(*storageadapter.DealPublisher),
 		storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
@@ -111,10 +131,10 @@ func TestPublishDealsBatching(t *testing.T) {
 		}),
 	)
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ExtraNodeOpts(opts))
+	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), kit2.ConstructorOpts(opts))
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	dh := kit.NewDealHarness(t, client, miner)
+	dh := kit2.NewDealHarness(t, client, miner)
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
@@ -189,23 +209,23 @@ func TestFirstDealEnablesMining(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
 	var (
-		client   kit.TestFullNode
-		genMiner kit.TestMiner // bootstrap
-		provider kit.TestMiner // no sectors, will need to create one
+		client   kit2.TestFullNode
+		genMiner kit2.TestMiner // bootstrap
+		provider kit2.TestMiner // no sectors, will need to create one
 	)
 
-	ens := kit.NewEnsemble(t)
-	ens.FullNode(&client, kit.MockProofs())
-	ens.Miner(&genMiner, &client, kit.MockProofs())
-	ens.Miner(&provider, &client, kit.MockProofs(), kit.PresealSectors(0))
+	ens := kit2.NewEnsemble(t, kit2.MockProofs())
+	ens.FullNode(&client)
+	ens.Miner(&genMiner, &client)
+	ens.Miner(&provider, &client, kit2.PresealSectors(0))
 	ens.Start().InterconnectAll().BeginMining(50 * time.Millisecond)
 
 	ctx := context.Background()
 
-	dh := kit.NewDealHarness(t, &client, &provider)
+	dh := kit2.NewDealHarness(t, &client, &provider)
 
 	ref, _ := client.CreateImportFile(ctx, 5, 0)
 
@@ -258,10 +278,10 @@ func TestOfflineDealFlow(t *testing.T) {
 
 	runTest := func(t *testing.T, fastRet bool) {
 		ctx := context.Background()
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
+		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs())
 		ens.InterconnectAll().BeginMining(blocktime)
 
-		dh := kit.NewDealHarness(t, client, miner)
+		dh := kit2.NewDealHarness(t, client, miner)
 
 		// Create a random file and import on the client.
 		res, inFile := client.CreateImportFile(ctx, 1, 0)
@@ -325,49 +345,13 @@ func TestOfflineDealFlow(t *testing.T) {
 		// Retrieve the deal
 		outFile := dh.PerformRetrieval(ctx, proposalCid, rootCid, false)
 
-		equal := kit.FilesEqual(t, inFile, outFile)
-		require.True(t, equal)
+		kit2.AssertFilesEqual(t, inFile, outFile)
 	}
 
-	t.Run("NormalRetrieval", func(t *testing.T) { runTest(t, false) })
-	t.Run("FastRetrieval", func(t *testing.T) { runTest(t, true) })
+	t.Run("stdretrieval", func(t *testing.T) { runTest(t, false) })
+	t.Run("fastretrieval", func(t *testing.T) { runTest(t, true) })
 }
 
-//
-// func runFastRetrievalDealFlowT(t *testing.T, b kit.APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-// 	ctx := context.Background()
-//
-// 	var (
-// 		nb    = kit.NewNodeBuilder(t)
-// 		full  = nb.FullNode()
-// 		miner = nb.Miner(full)
-// 	)
-//
-// 	nb.Create()
-//
-// 	kit.ConnectAndStartMining(t, blocktime, miner, full)
-//
-// 	dh := kit.NewDealHarness(t, full, miner)
-// 	data := make([]byte, 1600)
-// 	rand.New(rand.NewSource(int64(8))).Read(data)
-//
-// 	r := bytes.NewReader(data)
-// 	fcid, err := full.FullNode.(*impl.FullNodeAPI).ClientImportLocal(ctx, r)
-// 	require.NoError(t, err)
-//
-// 	fmt.Println("FILE CID: ", fcid)
-//
-// 	deal := dh.StartDeal(ctx, fcid, true, startEpoch)
-// 	dh.WaitDealPublished(ctx, deal)
-//
-// 	fmt.Println("deal published, retrieving")
-//
-// 	// Retrieval
-// 	info, err := full.ClientGetDealInfo(ctx, *deal)
-// 	require.NoError(t, err)
-//
-// 	dh.PerformRetrieval(ctx, fcid, &info.PieceCID, false, data)
-// }
 //
 // func runSecondDealRetrievalTest(t *testing.T, b kit.APIBuilder, blocktime time.Duration) {
 // 	ctx := context.Background()

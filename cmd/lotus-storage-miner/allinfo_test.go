@@ -40,7 +40,7 @@ func TestMinerAllInfo(t *testing.T) {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
 
-	n, sn := kit.FullNodeBuilder(t, kit.OneFull, kit.OneMiner)
+	n, sn := kit.Builder(t, kit.OneFull, kit.OneMiner)
 	client, miner := n[0].FullNode, sn[0]
 	kit.ConnectAndStartMining(t, time.Second, miner, client.(*impl.FullNodeAPI))
 
@@ -61,7 +61,7 @@ func TestMinerAllInfo(t *testing.T) {
 	t.Run("pre-info-all", run)
 
 	dh := kit.NewDealHarness(t, client, miner)
-	dh.MakeOnlineDeal(context.Background(), 6, false, false, 0)
+	dh.MakeFullDeal(context.Background(), 6, false, false, 0)
 
 	t.Run("post-info-all", run)
 }

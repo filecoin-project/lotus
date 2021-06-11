@@ -1,12 +1,10 @@
-package kit
+package kit2
 
 import (
 	"bytes"
 	"context"
 	"crypto/rand"
 	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -15,10 +13,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -28,7 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/messagepool"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
@@ -49,8 +44,6 @@ import (
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,33 +54,51 @@ func init() {
 	messagepool.HeadChangeCoalesceMergeInterval = 100 * time.Nanosecond
 }
 
-type BuilderOpt func(opts *BuilderOpts) error
-
-type BuilderOpts struct {
-	pastOffset time.Duration
-	spt        abi.RegisteredSealProof
-}
-
-var DefaultBuilderOpts = BuilderOpts{
-	pastOffset: 10000 * time.Second,
-	spt:        abi.RegisteredSealProof_StackedDrg2KiBV1,
-}
-
-func ProofType(proofType abi.RegisteredSealProof) BuilderOpt {
-	return func(opts *BuilderOpts) error {
-		opts.spt = proofType
-		return nil
-	}
-}
-
-// Ensemble is a collection of nodes instantiated within a test. Ensemble
-// supports building full nodes and miners.
+// Ensemble is a collection of nodes instantiated within a test.
+//
+// Create a new ensemble with:
+//
+//   ens := kit.NewEnsemble()
+//
+// Create full nodes and miners:
+//
+//   var full TestFullNode
+//   var miner TestMiner
+//   ens.FullNode(&full, opts...)       // populates a full node
+//   ens.Miner(&miner, &full, opts...)  // populates a miner, using the full node as its chain daemon
+//
+// It is possible to pass functional options to set initial balances,
+// presealed sectors, owner keys, etc.
+//
+// After the initial nodes are added, call `ens.Start()` to forge genesis
+// and start the network. Mining will NOT be started automatically. It needs
+// to be started explicitly by calling `BeginMining`.
+//
+// Nodes also need to be connected with one another, either via `ens.Connect()`
+// or `ens.InterconnectAll()`. A common inchantation for simple tests is to do:
+//
+//   ens.InterconnectAll().BeginMining(blocktime)
+//
+// You can continue to add more nodes, but you must always follow with
+// `ens.Start()` to activate the new nodes.
+//
+// The API is chainable, so it's possible to do a lot in a very succinct way:
+//
+//   kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
+//
+// You can also find convenient fullnode:miner presets, such as 1:1, 1:2,
+// and 2:1, e.g.:
+//
+//   kit.EnsembleMinimal()
+//   kit.EnsembleOneTwo()
+//   kit.EnsembleTwoOne()
+//
 type Ensemble struct {
 	t            *testing.T
 	bootstrapped bool
 	genesisBlock bytes.Buffer
 	mn           mocknet.Mocknet
-	options      *BuilderOpts
+	options      *ensembleOpts
 
 	inactive struct {
 		fullnodes []*TestFullNode
@@ -103,93 +114,15 @@ type Ensemble struct {
 	}
 }
 
-// NewEnsemble
-func NewEnsemble(t *testing.T, opts ...BuilderOpt) *Ensemble {
-	options := DefaultBuilderOpts
+// NewEnsemble instantiates a new blank Ensemble. This enables you to
+// programmatically
+func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
+	options := DefaultEnsembleOpts
 	for _, o := range opts {
 		err := o(&options)
 		require.NoError(t, err)
 	}
 	return &Ensemble{t: t, options: &options}
-}
-
-type NodeOpts struct {
-	balance       abi.TokenAmount
-	lite          bool
-	sectors       int
-	mockProofs    bool
-	rpc           bool
-	ownerKey      *wallet.Key
-	extraNodeOpts []node.Option
-}
-
-const DefaultPresealsPerBootstrapMiner = 2
-
-var DefaultNodeOpts = NodeOpts{
-	balance: big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
-	sectors: DefaultPresealsPerBootstrapMiner,
-}
-
-type NodeOpt func(opts *NodeOpts) error
-
-// OwnerBalance specifies the balance to be attributed to a miner's owner account.
-//
-// Only used when creating a miner.
-func OwnerBalance(balance abi.TokenAmount) NodeOpt {
-	return func(opts *NodeOpts) error {
-		opts.balance = balance
-		return nil
-	}
-}
-
-// LiteNode specifies that this node will be a lite node.
-//
-// Only used when creating a fullnode.
-func LiteNode() NodeOpt {
-	return func(opts *NodeOpts) error {
-		opts.lite = true
-		return nil
-	}
-}
-
-// PresealSectors specifies the amount of preseal sectors to give to a miner
-// at genesis.
-//
-// Only used when creating a miner.
-func PresealSectors(sectors int) NodeOpt {
-	return func(opts *NodeOpts) error {
-		opts.sectors = sectors
-		return nil
-	}
-}
-
-// MockProofs activates mock proofs for the entire ensemble.
-func MockProofs() NodeOpt {
-	return func(opts *NodeOpts) error {
-		opts.mockProofs = true
-		return nil
-	}
-}
-
-func ThroughRPC() NodeOpt {
-	return func(opts *NodeOpts) error {
-		opts.rpc = true
-		return nil
-	}
-}
-
-func OwnerAddr(wk *wallet.Key) NodeOpt {
-	return func(opts *NodeOpts) error {
-		opts.ownerKey = wk
-		return nil
-	}
-}
-
-func ExtraNodeOpts(extra ...node.Option) NodeOpt {
-	return func(opts *NodeOpts) error {
-		opts.extraNodeOpts = extra
-		return nil
-	}
 }
 
 // FullNode enrolls a new full node.
@@ -256,7 +189,7 @@ func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) 
 		)
 
 		// create the preseal commitment.
-		if options.mockProofs {
+		if n.options.mockProofs {
 			genm, k, err = mockstorage.PreSeal(abi.RegisteredSealProof_StackedDrg2KiBV1, actorAddr, sectors)
 		} else {
 			genm, k, err = seed.PreSeal(actorAddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, sectors, tdir, []byte("make genesis mem random"), nil, true)
@@ -339,7 +272,7 @@ func (n *Ensemble) Start() *Ensemble {
 		}
 
 		// Are we mocking proofs?
-		if full.options.mockProofs {
+		if n.options.mockProofs {
 			opts = append(opts,
 				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 				node.Override(new(ffiwrapper.Prover), mock.MockProver),
@@ -389,7 +322,7 @@ func (n *Ensemble) Start() *Ensemble {
 			params, aerr := actors.SerializeParams(&power2.CreateMinerParams{
 				Owner:         m.OwnerKey.Address,
 				Worker:        m.OwnerKey.Address,
-				SealProofType: n.options.spt,
+				SealProofType: n.options.proofType,
 				Peer:          abi.PeerID(m.Libp2p.PeerID),
 			})
 			require.NoError(n.t, aerr)
@@ -512,7 +445,7 @@ func (n *Ensemble) Start() *Ensemble {
 			}
 		}
 
-		if m.options.mockProofs {
+		if n.options.mockProofs {
 			opts = append(opts,
 				node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
 					return mock.NewMockSectorMgr(presealSectors), nil
@@ -532,7 +465,7 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		// using real proofs, therefore need real sectors.
-		if !n.bootstrapped && !m.options.mockProofs {
+		if !n.bootstrapped && !n.options.mockProofs {
 			err := m.StorageAddLocal(ctx, m.PresealDir)
 			require.NoError(n.t, err)
 		}
@@ -666,100 +599,4 @@ func (n *Ensemble) generateGenesis() *genesis.Template {
 	}
 
 	return templ
-}
-
-func CreateRPCServer(t *testing.T, handler http.Handler) (*httptest.Server, multiaddr.Multiaddr) {
-	testServ := httptest.NewServer(handler)
-	t.Cleanup(testServ.Close)
-	t.Cleanup(testServ.CloseClientConnections)
-
-	addr := testServ.Listener.Addr()
-	maddr, err := manet.FromNetAddr(addr)
-	require.NoError(t, err)
-	return testServ, maddr
-}
-
-func fullRpc(t *testing.T, f *TestFullNode) *TestFullNode {
-	handler, err := node.FullNodeHandler(f.FullNode, false)
-	require.NoError(t, err)
-
-	srv, maddr := CreateRPCServer(t, handler)
-
-	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
-	require.NoError(t, err)
-	t.Cleanup(stop)
-	f.ListenAddr, f.FullNode = maddr, cl
-
-	return f
-}
-
-func minerRpc(t *testing.T, m *TestMiner) *TestMiner {
-	handler, err := node.MinerHandler(m.StorageMiner, false)
-	require.NoError(t, err)
-
-	srv, maddr := CreateRPCServer(t, handler)
-
-	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v0", nil)
-	require.NoError(t, err)
-	t.Cleanup(stop)
-
-	m.ListenAddr, m.StorageMiner = maddr, cl
-	return m
-}
-
-func LatestActorsAt(upgradeHeight abi.ChainEpoch) node.Option {
-	// Attention: Update this when introducing new actor versions or your tests will be sad
-	return NetworkUpgradeAt(network.Version13, upgradeHeight)
-}
-
-func NetworkUpgradeAt(version network.Version, upgradeHeight abi.ChainEpoch) node.Option {
-	fullSchedule := stmgr.UpgradeSchedule{{
-		// prepare for upgrade.
-		Network:   network.Version9,
-		Height:    1,
-		Migration: stmgr.UpgradeActorsV2,
-	}, {
-		Network:   network.Version10,
-		Height:    2,
-		Migration: stmgr.UpgradeActorsV3,
-	}, {
-		Network:   network.Version12,
-		Height:    3,
-		Migration: stmgr.UpgradeActorsV4,
-	}, {
-		Network:   network.Version13,
-		Height:    4,
-		Migration: stmgr.UpgradeActorsV5,
-	}}
-
-	schedule := stmgr.UpgradeSchedule{}
-	for _, upgrade := range fullSchedule {
-		if upgrade.Network > version {
-			break
-		}
-
-		schedule = append(schedule, upgrade)
-	}
-
-	if upgradeHeight > 0 {
-		schedule[len(schedule)-1].Height = upgradeHeight
-	}
-
-	return node.Override(new(stmgr.UpgradeSchedule), schedule)
-}
-
-func SDRUpgradeAt(calico, persian abi.ChainEpoch) node.Option {
-	return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
-		Network:   network.Version6,
-		Height:    1,
-		Migration: stmgr.UpgradeActorsV2,
-	}, {
-		Network:   network.Version7,
-		Height:    calico,
-		Migration: stmgr.UpgradeCalico,
-	}, {
-		Network: network.Version8,
-		Height:  persian,
-	}})
-
 }

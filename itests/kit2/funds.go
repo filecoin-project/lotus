@@ -1,10 +1,11 @@
-package kit
+package kit2
 
 import (
 	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -15,9 +16,7 @@ import (
 // to the recipient address.
 func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, recipient address.Address, amount abi.TokenAmount) {
 	senderAddr, err := sender.WalletDefaultAddress(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	msg := &types.Message{
 		From:  senderAddr,
@@ -26,14 +25,10 @@ func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, recipient
 	}
 
 	sm, err := sender.MpoolPushMessage(ctx, msg, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	res, err := sender.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Receipt.ExitCode != 0 {
-		t.Fatal("did not successfully send money")
-	}
+	require.NoError(t, err)
+
+	require.Equal(t, 0, res.Receipt.ExitCode, "did not successfully send funds")
 }

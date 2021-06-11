@@ -1,4 +1,4 @@
-package kit
+package kit2
 
 import (
 	"context"
@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestMiner represents a miner enrolled in an Ensemble.
 type TestMiner struct {
 	api.StorageMiner
 
@@ -42,12 +43,7 @@ type TestMiner struct {
 		PrivKey libp2pcrypto.PrivKey
 	}
 
-	options NodeOpts
-}
-
-var MineNext = miner.MineReq{
-	InjectNulls: 0,
-	Done:        func(bool, abi.ChainEpoch, error) {},
+	options nodeOpts
 }
 
 func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNotif <-chan struct{}) {

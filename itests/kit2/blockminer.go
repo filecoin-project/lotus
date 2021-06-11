@@ -1,4 +1,4 @@
-package kit
+package kit2
 
 import (
 	"context"
@@ -15,14 +15,14 @@ import (
 // BlockMiner is a utility that makes a test miner Mine blocks on a timer.
 type BlockMiner struct {
 	t     *testing.T
-	miner TestMiner
+	miner *TestMiner
 
 	nextNulls int64
 	wg        sync.WaitGroup
 	cancel    context.CancelFunc
 }
 
-func NewBlockMiner(t *testing.T, miner TestMiner) *BlockMiner {
+func NewBlockMiner(t *testing.T, miner *TestMiner) *BlockMiner {
 	return &BlockMiner{
 		t:      t,
 		miner:  miner,
@@ -69,7 +69,7 @@ func (bm *BlockMiner) InjectNulls(rounds abi.ChainEpoch) {
 	atomic.AddInt64(&bm.nextNulls, int64(rounds))
 }
 
-func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn TestFullNode, cb func(abi.ChainEpoch)) {
+func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn *TestFullNode, cb func(abi.ChainEpoch)) {
 	for i := 0; i < 1000; i++ {
 		var (
 			success bool
@@ -93,7 +93,7 @@ func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn TestFullNode, cb fu
 
 		if success {
 			// Wait until it shows up on the given full nodes ChainHead
-			nloops := 50
+			nloops := 200
 			for i := 0; i < nloops; i++ {
 				ts, err := fn.ChainHead(ctx)
 				require.NoError(bm.t, err)
