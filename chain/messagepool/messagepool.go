@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
 	"github.com/raulk/clock"
@@ -577,7 +578,7 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 	return nil
 }
 
-// verifyMsgBeforeAdd verifies that the message meets the minimum criteria for block inclusio
+// verifyMsgBeforeAdd verifies that the message meets the minimum criteria for block inclusion
 // and whether the message has enough funds to be included in the next 20 blocks.
 // If the message is not valid for block inclusion, it returns an error.
 // For local messages, if the message can be included in the next 20 blocks, it returns true to
@@ -631,6 +632,9 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 }
 
 func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
+	done := metrics.Timer(ctx, metrics.MpoolPushDuration)
+	defer done()
+
 	err := mp.checkMessage(m)
 	if err != nil {
 		return cid.Undef, err
@@ -697,6 +701,9 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 }
 
 func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
+	done := metrics.Timer(ctx, metrics.MpoolAddDuration)
+	defer done()
+
 	err := mp.checkMessage(m)
 	if err != nil {
 		return err
@@ -752,7 +759,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 }
 
 func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage, curTs *types.TipSet) error {
-	balance, err := mp.getStateBalance(m.Message.From, curTs)
+	balance, err := mp.getStateBalance(ctx, m.Message.From, curTs)
 	if err != nil {
 		return xerrors.Errorf("failed to check sender balance: %s: %w", err, ErrSoftValidationFailure)
 	}
@@ -785,7 +792,10 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 }
 
 func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs *types.TipSet, local, untrusted bool) (bool, error) {
-	snonce, err := mp.getStateNonce(m.Message.From, curTs)
+	done := metrics.Timer(ctx, metrics.MpoolAddTsDuration)
+	defer done()
+
+	snonce, err := mp.getStateNonce(ctx, m.Message.From, curTs)
 	if err != nil {
 		return false, xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
 	}
@@ -833,7 +843,7 @@ func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) er
 		return xerrors.Errorf("current tipset not loaded")
 	}
 
-	snonce, err := mp.getStateNonce(m.Message.From, curTs)
+	snonce, err := mp.getStateNonce(ctx, m.Message.From, curTs)
 	if err != nil {
 		return xerrors.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
 	}
@@ -885,7 +895,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	}
 
 	if !ok {
-		nonce, err := mp.getStateNonce(m.Message.From, mp.curTs)
+		nonce, err := mp.getStateNonce(ctx, m.Message.From, mp.curTs)
 		if err != nil {
 			return xerrors.Errorf("failed to get initial actor nonce: %w", err)
 		}
@@ -939,7 +949,7 @@ func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address) (uint
 }
 
 func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address, curTs *types.TipSet) (uint64, error) {
-	stateNonce, err := mp.getStateNonce(addr, curTs) // sanity check
+	stateNonce, err := mp.getStateNonce(ctx, addr, curTs) // sanity check
 	if err != nil {
 		return 0, err
 	}
@@ -963,7 +973,10 @@ func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address,
 	return stateNonce, nil
 }
 
-func (mp *MessagePool) getStateNonce(addr address.Address, curTs *types.TipSet) (uint64, error) {
+func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, curTs *types.TipSet) (uint64, error) {
+	done := metrics.Timer(ctx, metrics.MpoolGetNonceDuration)
+	defer done()
+
 	act, err := mp.api.GetActorAfter(addr, curTs)
 	if err != nil {
 		return 0, err
@@ -972,7 +985,10 @@ func (mp *MessagePool) getStateNonce(addr address.Address, curTs *types.TipSet) 
 	return act.Nonce, nil
 }
 
-func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (types.BigInt, error) {
+func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (types.BigInt, error) {
+	done := metrics.Timer(ctx, metrics.MpoolGetBalanceDuration)
+	defer done()
+
 	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return types.EmptyInt, err
