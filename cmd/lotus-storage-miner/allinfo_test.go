@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/node/impl"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -12,11 +15,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
-	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 func TestMinerAllInfo(t *testing.T) {
@@ -32,12 +32,7 @@ func TestMinerAllInfo(t *testing.T) {
 
 	_test = true
 
-	lotuslog.SetupLogLevels()
-	logging.SetLogLevel("miner", "ERROR")
-	logging.SetLogLevel("chainstore", "ERROR")
-	logging.SetLogLevel("chain", "ERROR")
-	logging.SetLogLevel("sub", "ERROR")
-	logging.SetLogLevel("storageminer", "ERROR")
+	kit.QuietMiningLogs()
 
 	oldDelay := policy.GetPreCommitChallengeDelay()
 	policy.SetPreCommitChallengeDelay(5)
@@ -45,8 +40,9 @@ func TestMinerAllInfo(t *testing.T) {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
 
-	var n []test.TestNode
-	var sn []test.TestStorageNode
+	n, sn := kit.Builder(t, kit.OneFull, kit.OneMiner)
+	client, miner := n[0].FullNode, sn[0]
+	kit.ConnectAndStartMining(t, time.Second, miner, client.(*impl.FullNodeAPI))
 
 	run := func(t *testing.T) {
 		app := cli.NewApp()
@@ -62,15 +58,10 @@ func TestMinerAllInfo(t *testing.T) {
 		require.NoError(t, infoAllCmd.Action(cctx))
 	}
 
-	bp := func(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-		n, sn = builder.Builder(t, fullOpts, storage)
+	t.Run("pre-info-all", run)
 
-		t.Run("pre-info-all", run)
-
-		return n, sn
-	}
-
-	test.TestDealFlow(t, bp, time.Second, false, false, 0)
+	dh := kit.NewDealHarness(t, client, miner)
+	dh.MakeFullDeal(context.Background(), 6, false, false, 0)
 
 	t.Run("post-info-all", run)
 }

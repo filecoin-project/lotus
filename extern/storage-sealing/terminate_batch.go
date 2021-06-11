@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 type TerminateBatcherApi interface {
@@ -34,7 +35,7 @@ type TerminateBatcher struct {
 	maddr     address.Address
 	mctx      context.Context
 	addrSel   AddrSel
-	feeCfg    FeeConfig
+	feeCfg    config.MinerFeeConfig
 	getConfig GetSealingConfigFunc
 
 	todo map[SectorLocation]*bitfield.BitField // MinerSectorLocation -> BitField
@@ -46,7 +47,7 @@ type TerminateBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddrSel, feeCfg FeeConfig, getConfig GetSealingConfigFunc) *TerminateBatcher {
+func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc) *TerminateBatcher {
 	b := &TerminateBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -214,12 +215,12 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
-	from, _, err := b.addrSel(b.mctx, mi, api.TerminateSectorsAddr, b.feeCfg.MaxTerminateGasFee, b.feeCfg.MaxTerminateGasFee)
+	from, _, err := b.addrSel(b.mctx, mi, api.TerminateSectorsAddr, big.Int(b.feeCfg.MaxTerminateGasFee), big.Int(b.feeCfg.MaxTerminateGasFee))
 	if err != nil {
 		return nil, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.TerminateSectors, big.Zero(), b.feeCfg.MaxTerminateGasFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.TerminateSectors, big.Zero(), big.Int(b.feeCfg.MaxTerminateGasFee), enc.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("sending message failed: %w", err)
 	}
