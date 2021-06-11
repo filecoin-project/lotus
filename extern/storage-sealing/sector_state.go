@@ -65,10 +65,10 @@ const (
 	SubmitPreCommitBatch SectorState = "SubmitPreCommitBatch"
 	PreCommitBatchWait   SectorState = "PreCommitBatchWait"
 
-	WaitSeed   SectorState = "WaitSeed"   // waiting for seed
-	Committing SectorState = "Committing" // compute PoRep
-	CommitFinalize SectorState = "CommitFinalize" // cleanup sector metadata before submitting the proof (early finalize)
-	CommitFinalizeFailed       SectorState = "CommitFinalizeFailed"
+	WaitSeed             SectorState = "WaitSeed"       // waiting for seed
+	Committing           SectorState = "Committing"     // compute PoRep
+	CommitFinalize       SectorState = "CommitFinalize" // cleanup sector metadata before submitting the proof (early finalize)
+	CommitFinalizeFailed SectorState = "CommitFinalizeFailed"
 
 	// single commit
 	SubmitCommit SectorState = "SubmitCommit" // send commit message to the chain

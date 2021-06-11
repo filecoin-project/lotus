@@ -154,6 +154,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryComputeProof{}, Committing),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 	),
+	CommitFinalizeFailed: planOne(
+		on(SectorRetryFinalize{}, CommitFinalizeFailed),
+	),
 	CommitFailed: planOne(
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorRetryWaitSeed{}, WaitSeed),
@@ -392,6 +395,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleComputeProofFailed, processed, nil
 	case CommitFailed:
 		return m.handleCommitFailed, processed, nil
+	case CommitFinalizeFailed:
+		fallthrough
 	case FinalizeFailed:
 		return m.handleFinalizeFailed, processed, nil
 	case PackingFailed: // DEPRECATED: remove this for the next reset
