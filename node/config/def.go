@@ -282,7 +282,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxSealingSectorsForDeals: 0,
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
-			FinalizeEarly:             true,
+			FinalizeEarly:             false,
 
 			BatchPreCommits:     true,
 			MinPreCommitBatch:   1,                                  // we must have at least one precommit to batch
