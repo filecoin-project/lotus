@@ -504,12 +504,37 @@ func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) erro
 }
 
 func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error {
+	// Walk through layers, if any.
+	seen := make(map[address.Address]struct{})
+	for i := len(st.snaps.layers) - 1; i >= 0; i-- {
+		for addr, op := range st.snaps.layers[i].actors {
+			if _, ok := seen[addr]; ok {
+				continue
+			}
+			seen[addr] = struct{}{}
+			if op.Delete {
+				continue
+			}
+			if err := f(addr, &op.Act); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	// Now walk through the saved actors.
 	var act types.Actor
 	return st.root.ForEach(&act, func(k string) error {
 		act := act // copy
 		addr, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return xerrors.Errorf("invalid address (%x) found in state tree key: %w", []byte(k), err)
+		}
+
+		// no need to record anything here, there are no duplicates in the actors HAMT
+		// iself.
+		if _, ok := seen[addr]; ok {
+			return nil
 		}
 
 		return f(addr, &act)
