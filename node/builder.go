@@ -616,6 +616,10 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
 			If(cfg.EnableSplitstore,
+				If(cfg.Splitstore.ColdStoreType == "universal",
+					Override(new(dtypes.ColdBlockstore), From(new(dtypes.UniversalBlockstore)))),
+				If(cfg.Splitstore.ColdStoreType == "noop",
+					Override(new(dtypes.ColdBlockstore), modules.NoopColdBlockstore)),
 				If(cfg.Splitstore.HotStoreType == "badger",
 					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
 				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(cfg)),
