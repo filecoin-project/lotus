@@ -102,6 +102,10 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
 	Committing: planCommitting,
+	CommitFinalize: planOne(
+		on(SectorFinalized{}, SubmitCommit),
+		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
+	),
 	SubmitCommit: planOne(
 		on(SectorCommitSubmitted{}, CommitWait),
 		on(SectorSubmitCommitAggregate{}, SubmitCommitAggregate),
@@ -372,6 +376,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		fallthrough
 	case CommitWait:
 		return m.handleCommitWait, processed, nil
+	case CommitFinalize:
+		fallthrough
 	case FinalizeSector:
 		return m.handleFinalizeSector, processed, nil
 
@@ -474,6 +480,9 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 		case SectorCommitted: // the normal case
 			e.apply(state)
 			state.State = SubmitCommit
+		case SectorProofReady: // early finalize
+			e.apply(state)
+			state.State = CommitFinalize
 		case SectorSeedReady: // seed changed :/
 			if e.SeedEpoch == state.SeedEpoch && bytes.Equal(e.SeedValue, state.SeedValue) {
 				log.Warnf("planCommitting: got SectorSeedReady, but the seed didn't change")

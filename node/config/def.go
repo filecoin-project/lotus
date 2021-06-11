@@ -86,6 +86,9 @@ type SealingConfig struct {
 
 	AlwaysKeepUnsealedCopy bool
 
+	// Run sector finalization before submitting sector proof to the chain
+	FinalizeEarly bool
+
 	// enable / disable precommit batching (takes effect after nv13)
 	BatchPreCommits bool
 	// maximum precommit batch size - batches will be sent immediately above this size
@@ -279,6 +282,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxSealingSectorsForDeals: 0,
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
+			FinalizeEarly:             true,
 
 			BatchPreCommits:     true,
 			MinPreCommitBatch:   1,                                  // we must have at least one precommit to batch
