@@ -257,16 +257,16 @@ type AppliedMessage struct {
 // Walk walks the simulation's chain from the current head back to the first tipset.
 func (sim *Simulation) Walk(
 	ctx context.Context,
-	maxLookback int64,
+	lookback int64,
 	cb func(sm *stmgr.StateManager,
 		ts *types.TipSet,
 		stCid cid.Cid,
 		messages []*AppliedMessage) error,
 ) error {
 	store := sim.Chainstore.ActorStore(ctx)
-	minEpoch := abi.ChainEpoch(0)
-	if maxLookback != 0 {
-		minEpoch = sim.head.Height() - abi.ChainEpoch(maxLookback)
+	minEpoch := sim.start.Height()
+	if lookback != 0 {
+		minEpoch = sim.head.Height() - abi.ChainEpoch(lookback)
 	}
 
 	// Given tha loading messages and receipts can be a little bit slow, we do this in parallel.
@@ -314,7 +314,7 @@ func (sim *Simulation) Walk(
 			return err
 		}
 		i := 0
-		for !ts.Equals(sim.start) && ctx.Err() == nil && ts.Height() > minEpoch {
+		for ctx.Err() == nil && ts.Height() > minEpoch {
 			select {
 			case workQs[i] <- &work{ts, stCid, recCid}:
 			case <-ctx.Done():
