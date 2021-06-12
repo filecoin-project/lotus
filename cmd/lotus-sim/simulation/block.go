@@ -8,6 +8,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -68,7 +69,7 @@ func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message
 		ParentStateRoot:       parentState,
 		ParentMessageReceipts: parentRec,
 		Messages:              msgsCid,
-		ParentBaseFee:         baseFee,
+		ParentBaseFee:         abi.NewTokenAmount(0),
 		Timestamp:             uts,
 		ElectionProof:         &types.ElectionProof{WinCount: 1},
 	}}

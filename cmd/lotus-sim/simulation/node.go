@@ -16,6 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/mock"
+	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/stages"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -53,7 +55,7 @@ func OpenNode(ctx context.Context, path string) (*Node, error) {
 		return nil, err
 	}
 
-	node.Chainstore = store.NewChainStore(node.Blockstore, node.Blockstore, node.MetadataDS, vm.Syscalls(mockVerifier{}), nil)
+	node.Chainstore = store.NewChainStore(node.Blockstore, node.Blockstore, node.MetadataDS, vm.Syscalls(mock.Verifier), nil)
 	return &node, nil
 }
 
@@ -74,12 +76,16 @@ func (nd *Node) Close() error {
 
 // LoadSim loads
 func (nd *Node) LoadSim(ctx context.Context, name string) (*Simulation, error) {
+	stages, err := stages.DefaultPipeline()
+	if err != nil {
+		return nil, err
+	}
 	sim := &Simulation{
-		Node: nd,
-		name: name,
+		Node:   nd,
+		name:   name,
+		stages: stages,
 	}
 
-	var err error
 	sim.head, err = sim.loadNamedTipSet("head")
 	if err != nil {
 		return nil, err
@@ -113,10 +119,15 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 	if strings.Contains(name, "/") {
 		return nil, xerrors.Errorf("simulation name %q cannot contain a '/'", name)
 	}
+	stages, err := stages.DefaultPipeline()
+	if err != nil {
+		return nil, err
+	}
 	sim := &Simulation{
 		name:         name,
 		Node:         nd,
 		StateManager: stmgr.NewStateManager(nd.Chainstore),
+		stages:       stages,
 	}
 	if has, err := nd.MetadataDS.Has(sim.key("head")); err != nil {
 		return nil, err

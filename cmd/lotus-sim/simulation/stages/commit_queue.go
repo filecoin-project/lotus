@@ -1,4 +1,4 @@
-package simulation
+package stages
 
 import (
 	"sort"

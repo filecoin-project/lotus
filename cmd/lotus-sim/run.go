@@ -35,12 +35,6 @@ Signals:
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(cctx.App.Writer, "loading simulation")
-		err = sim.Load(cctx.Context)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(cctx.App.Writer, "running simulation")
 		targetEpochs := cctx.Int("epochs")
 
 		ch := make(chan os.Signal, 1)
