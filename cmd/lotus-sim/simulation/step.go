@@ -2,74 +2,29 @@ package simulation
 
 import (
 	"context"
-	"errors"
-	"reflect"
-	"runtime"
-	"strings"
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/blockbuilder"
 )
-
-const (
-	// The number of expected blocks in a tipset. We use this to determine how much gas a tipset
-	// has.
-	expectedBlocks = 5
-	// TODO: This will produce invalid blocks but it will accurately model the amount of gas
-	// we're willing to use per-tipset.
-	// A more correct approach would be to produce 5 blocks. We can do that later.
-	targetGas = build.BlockGasTarget * expectedBlocks
-)
-
-var baseFee = abi.NewTokenAmount(0)
 
 // Step steps the simulation forward one step. This may move forward by more than one epoch.
 func (sim *Simulation) Step(ctx context.Context) (*types.TipSet, error) {
-	state, err := sim.simState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	ts, err := state.step(ctx)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to step simulation: %w", err)
-	}
-	return ts, nil
-}
-
-// step steps the simulation state forward one step, producing and executing a new tipset.
-func (ss *simulationState) step(ctx context.Context) (*types.TipSet, error) {
-	log.Infow("step", "epoch", ss.head.Height()+1)
-	messages, err := ss.popNextMessages(ctx)
+	log.Infow("step", "epoch", sim.head.Height()+1)
+	messages, err := sim.popNextMessages(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to select messages for block: %w", err)
 	}
-	head, err := ss.makeTipSet(ctx, messages)
+	head, err := sim.makeTipSet(ctx, messages)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to make tipset: %w", err)
 	}
-	if err := ss.SetHead(head); err != nil {
+	if err := sim.SetHead(head); err != nil {
 		return nil, xerrors.Errorf("failed to update head: %w", err)
 	}
 	return head, nil
 }
-
-var ErrOutOfGas = errors.New("out of gas")
-
-// packFunc takes a message and attempts to pack it into a block.
-//
-// - If the block is full, returns the error ErrOutOfGas.
-// - If message execution fails, check if error is an ActorError to get the return code.
-type packFunc func(*types.Message) (*types.MessageReceipt, error)
 
 // popNextMessages generates/picks a set of messages to be included in the next block.
 //
@@ -77,8 +32,8 @@ type packFunc func(*types.Message) (*types.MessageReceipt, error)
 // - This function does not store anything in the repo.
 // - This function handles all gas estimation. The returned messages should all fit in a single
 //   block.
-func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Message, error) {
-	parentTs := ss.head
+func (sim *Simulation) popNextMessages(ctx context.Context) ([]*types.Message, error) {
+	parentTs := sim.head
 
 	// First we make sure we don't have an upgrade at this epoch. If we do, we return no
 	// messages so we can just create an empty block at that epoch.
@@ -86,8 +41,8 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 	// This isn't what the network does, but it makes things easier. Otherwise, we'd need to run
 	// migrations before this epoch and I'd rather not deal with that.
 	nextHeight := parentTs.Height() + 1
-	prevVer := ss.StateManager.GetNtwkVersion(ctx, nextHeight-1)
-	nextVer := ss.StateManager.GetNtwkVersion(ctx, nextHeight)
+	prevVer := sim.StateManager.GetNtwkVersion(ctx, nextHeight-1)
+	nextVer := sim.StateManager.GetNtwkVersion(ctx, nextHeight)
 	if nextVer != prevVer {
 		log.Warnw("packing no messages for version upgrade block",
 			"old", prevVer,
@@ -97,170 +52,20 @@ func (ss *simulationState) popNextMessages(ctx context.Context) ([]*types.Messag
 		return nil, nil
 	}
 
-	// Next, we compute the state for the parent tipset. In practice, this will likely be
-	// cached.
-	parentState, _, err := ss.StateManager.TipSetState(ctx, parentTs)
+	bb, err := blockbuilder.NewBlockBuilder(
+		ctx, log.With("simulation", sim.name),
+		sim.StateManager, parentTs,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	// Then we construct a VM to execute messages for gas estimation.
-	//
-	// Most parts of this VM are "real" except:
-	// 1. We don't charge a fee.
-	// 2. The runtime has "fake" proof logic.
-	// 3. We don't actually save any of the results.
-	r := store.NewChainRand(ss.StateManager.ChainStore(), parentTs.Cids())
-	vmopt := &vm.VMOpts{
-		StateBase:      parentState,
-		Epoch:          nextHeight,
-		Rand:           r,
-		Bstore:         ss.StateManager.ChainStore().StateBlockstore(),
-		Syscalls:       ss.StateManager.ChainStore().VMSys(),
-		CircSupplyCalc: ss.StateManager.GetVMCirculatingSupply,
-		NtwkVersion:    ss.StateManager.GetNtwkVersion,
-		BaseFee:        baseFee, // FREE!
-		LookbackState:  stmgr.LookbackStateGetterForTipset(ss.StateManager, parentTs),
-	}
-	vmi, err := vm.NewVM(ctx, vmopt)
-	if err != nil {
-		return nil, err
-	}
-
-	// Next we define a helper function for "pushing" messages. This is the function that will
-	// be passed to the "pack" functions.
-	//
-	// It.
-	//
-	// 1. Tries to execute the message on-top-of the already pushed message.
-	// 2. Is careful to revert messages on failure to avoid nasties like nonce-gaps.
-	// 3. Resolves IDs as necessary, fills in missing parts of the message, etc.
-	vmStore := vmi.ActorStore(ctx)
-	var gasTotal int64
-	var messages []*types.Message
-	tryPushMsg := func(msg *types.Message) (*types.MessageReceipt, error) {
-		if gasTotal >= targetGas {
-			return nil, ErrOutOfGas
-		}
-
-		// Copy the message before we start mutating it.
-		msgCpy := *msg
-		msg = &msgCpy
-		st := vmi.StateTree().(*state.StateTree)
-
-		actor, err := st.GetActor(msg.From)
-		if err != nil {
-			return nil, err
-		}
-		msg.Nonce = actor.Nonce
-		if msg.From.Protocol() == address.ID {
-			state, err := account.Load(vmStore, actor)
-			if err != nil {
-				return nil, err
-			}
-			msg.From, err = state.PubkeyAddress()
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// TODO: Our gas estimation is broken for payment channels due to horrible hacks in
-		// gasEstimateGasLimit.
-		if msg.Value == types.EmptyInt {
-			msg.Value = abi.NewTokenAmount(0)
-		}
-		msg.GasPremium = abi.NewTokenAmount(0)
-		msg.GasFeeCap = abi.NewTokenAmount(0)
-		msg.GasLimit = build.BlockGasLimit
-
-		// We manually snapshot so we can revert nonce changes, etc. on failure.
-		st.Snapshot(ctx)
-		defer st.ClearSnapshot()
-
-		ret, err := vmi.ApplyMessage(ctx, msg)
-		if err != nil {
-			_ = st.Revert()
-			return nil, err
-		}
-		if ret.ActorErr != nil {
-			_ = st.Revert()
-			return nil, ret.ActorErr
-		}
-
-		// Sometimes there are bugs. Let's catch them.
-		if ret.GasUsed == 0 {
-			_ = st.Revert()
-			return nil, xerrors.Errorf("used no gas",
-				"msg", msg,
-				"ret", ret,
-			)
-		}
-
-		// TODO: consider applying overestimation? We're likely going to "over pack" here by
-		// ~25% because we're too accurate.
-
-		// Did we go over? Yes, revert.
-		newTotal := gasTotal + ret.GasUsed
-		if newTotal > targetGas {
-			_ = st.Revert()
-			return nil, ErrOutOfGas
-		}
-		gasTotal = newTotal
-
-		// Update the gas limit.
-		msg.GasLimit = ret.GasUsed
-
-		messages = append(messages, msg)
-		return &ret.MessageReceipt, nil
-	}
-
-	// Finally, we generate a set of messages to be included in
-	if err := ss.packMessages(ctx, tryPushMsg); err != nil {
-		return nil, err
-	}
-
-	return messages, nil
-}
-
-// functionName extracts the name of given function.
-func functionName(fn interface{}) string {
-	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
-	lastDot := strings.LastIndexByte(name, '.')
-	if lastDot >= 0 {
-		name = name[lastDot+1 : len(name)-3]
-	}
-	lastDash := strings.LastIndexByte(name, '-')
-	if lastDash > 0 {
-		name = name[:lastDash]
-	}
-	return name
-}
-
-// packMessages packs messages with the given packFunc until the block is full (packFunc returns
-// true).
-// TODO: Make this more configurable for other simulations.
-func (ss *simulationState) packMessages(ctx context.Context, cb packFunc) error {
-	type messageGenerator func(ctx context.Context, cb packFunc) error
-
-	// We pack messages in-order:
-	// 1. Any window posts. We pack window posts as soon as the deadline opens to ensure we only
-	//    miss them if/when we run out of chain bandwidth.
-	// 2. We then move funds to our "funding" account, if it's running low.
-	// 3. Prove commits. We do this eagerly to ensure they don't expire.
-	// 4. Finally, we fill the rest of the space with pre-commits.
-	messageGenerators := []messageGenerator{
-		ss.packWindowPoSts,
-		ss.packFunding,
-		ss.packProveCommits,
-		ss.packPreCommits,
-	}
-
-	for _, mgen := range messageGenerators {
+	for _, stage := range sim.stages {
 		// We're intentionally ignoring the "full" signal so we can try to pack a few more
 		// messages.
-		if err := mgen(ctx, cb); err != nil && !xerrors.Is(err, ErrOutOfGas) {
-			return xerrors.Errorf("when packing messages with %s: %w", functionName(mgen), err)
+		if err := stage.PackMessages(ctx, bb); err != nil && !blockbuilder.IsOutOfGas(err) {
+			return nil, xerrors.Errorf("when packing messages with %s: %w", stage.Name(), err)
 		}
 	}
-	return nil
+	return bb.Messages(), nil
 }

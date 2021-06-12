@@ -1,4 +1,4 @@
-package simulation
+package stages
 
 import (
 	"bytes"
@@ -13,41 +13,44 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/blockbuilder"
 )
 
 var (
-	fundAccount = func() address.Address {
-		addr, err := address.NewIDAddress(100)
-		if err != nil {
-			panic(err)
-		}
-		return addr
-	}()
-	minFundAcctFunds = abi.TokenAmount(types.MustParseFIL("1000000FIL"))
-	maxFundAcctFunds = abi.TokenAmount(types.MustParseFIL("100000000FIL"))
-	taxMin           = abi.TokenAmount(types.MustParseFIL("1000FIL"))
+	TargetFunds  = abi.TokenAmount(types.MustParseFIL("1000FIL"))
+	MinimumFunds = abi.TokenAmount(types.MustParseFIL("100FIL"))
 )
 
-func fund(send packFunc, target address.Address, times int) error {
-	amt := targetFunds
-	if times >= 1 {
-		if times >= 8 {
-			times = 8 // cap
-		}
-		amt = big.Lsh(amt, uint(times))
+type FundingStage struct {
+	fundAccount        address.Address
+	taxMin             abi.TokenAmount
+	minFunds, maxFunds abi.TokenAmount
+}
+
+func NewFundingStage() (*FundingStage, error) {
+	// TODO: make all this configurable.
+	addr, err := address.NewIDAddress(100)
+	if err != nil {
+		return nil, err
 	}
-	_, err := send(&types.Message{
-		From:   fundAccount,
-		To:     target,
-		Value:  amt,
-		Method: builtin.MethodSend,
-	})
-	return err
+	return &FundingStage{
+		fundAccount: addr,
+		taxMin:      abi.TokenAmount(types.MustParseFIL("1000FIL")),
+		minFunds:    abi.TokenAmount(types.MustParseFIL("1000000FIL")),
+		maxFunds:    abi.TokenAmount(types.MustParseFIL("100000000FIL")),
+	}, nil
+}
+
+func (*FundingStage) Name() string {
+	return "funding"
+}
+
+func (fs *FundingStage) Fund(bb *blockbuilder.BlockBuilder, target address.Address) error {
+	return fs.fund(bb, target, 0)
 }
 
 // sendAndFund "packs" the given message, funding the actor if necessary. It:
@@ -56,9 +59,9 @@ func fund(send packFunc, target address.Address, times int) error {
 // 2. If that fails, it checks to see if the exit code was ErrInsufficientFunds.
 // 3. If so, it sends 1K FIL from the "burnt funds actor" (because we need to send it from
 //    somewhere) and re-tries the message.0
-func sendAndFund(send packFunc, msg *types.Message) (res *types.MessageReceipt, err error) {
+func (fs *FundingStage) SendAndFund(bb *blockbuilder.BlockBuilder, msg *types.Message) (res *types.MessageReceipt, err error) {
 	for i := 0; i < 10; i++ {
-		res, err = send(msg)
+		res, err = bb.PushMessage(msg)
 		if err == nil {
 			return res, nil
 		}
@@ -68,8 +71,8 @@ func sendAndFund(send packFunc, msg *types.Message) (res *types.MessageReceipt, 
 		}
 
 		// Ok, insufficient funds. Let's fund this miner and try again.
-		if err := fund(send, msg.To, i); err != nil {
-			if err != ErrOutOfGas {
+		if err := fs.fund(bb, msg.To, i); err != nil {
+			if !blockbuilder.IsOutOfGas(err) {
 				err = xerrors.Errorf("failed to fund %s: %w", msg.To, err)
 			}
 			return nil, err
@@ -78,16 +81,30 @@ func sendAndFund(send packFunc, msg *types.Message) (res *types.MessageReceipt, 
 	return res, err
 }
 
-func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err error) {
-	st, err := ss.stateTree(ctx)
+func (fs *FundingStage) fund(bb *blockbuilder.BlockBuilder, target address.Address, times int) error {
+	amt := TargetFunds
+	if times > 0 {
+		if times >= 8 {
+			times = 8 // cap
+		}
+		amt = big.Lsh(amt, uint(times))
+	}
+	_, err := bb.PushMessage(&types.Message{
+		From:   fs.fundAccount,
+		To:     target,
+		Value:  amt,
+		Method: builtin.MethodSend,
+	})
+	return err
+}
+
+func (fs *FundingStage) PackMessages(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
+	st := bb.StateTree()
+	fundAccActor, err := st.GetActor(fs.fundAccount)
 	if err != nil {
 		return err
 	}
-	fundAccActor, err := st.GetActor(fundAccount)
-	if err != nil {
-		return err
-	}
-	if minFundAcctFunds.LessThan(fundAccActor.Balance) {
+	if fs.minFunds.LessThan(fundAccActor.Balance) {
 		return nil
 	}
 
@@ -102,10 +119,10 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 	var targets []*actor
 	err = st.ForEach(func(addr address.Address, act *types.Actor) error {
 		// Don't steal from ourselves!
-		if addr == fundAccount {
+		if addr == fs.fundAccount {
 			return nil
 		}
-		if act.Balance.LessThan(taxMin) {
+		if act.Balance.LessThan(fs.taxMin) {
 			return nil
 		}
 		if !(builtin.IsAccountActor(act.Code) || builtin.IsMultisigActor(act.Code)) {
@@ -124,19 +141,16 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 		return targets[i].Balance.GreaterThan(targets[j].Balance)
 	})
 
-	store := ss.Chainstore.ActorStore(ctx)
-
-	epoch := ss.nextEpoch()
-
-	nv := ss.StateManager.GetNtwkVersion(ctx, epoch)
-	actorsVersion := actors.VersionForNetwork(nv)
+	store := bb.ActorStore()
+	epoch := bb.Height()
+	actorsVersion := bb.ActorsVersion()
 
 	var accounts, multisigs int
 	defer func() {
 		if _err != nil {
 			return
 		}
-		log.Infow("finished funding the simulation",
+		bb.L().Infow("finished funding the simulation",
 			"duration", time.Since(start),
 			"targets", len(targets),
 			"epoch", epoch,
@@ -150,11 +164,11 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 	for _, actor := range targets {
 		switch {
 		case builtin.IsAccountActor(actor.Code):
-			if _, err := cb(&types.Message{
+			if _, err := bb.PushMessage(&types.Message{
 				From:  actor.Address,
-				To:    fundAccount,
+				To:    fs.fundAccount,
 				Value: actor.Balance,
-			}); err == ErrOutOfGas {
+			}); blockbuilder.IsOutOfGas(err) {
 				return nil
 			} else if err != nil {
 				return err
@@ -172,7 +186,7 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 			}
 
 			if threshold > 16 {
-				log.Debugw("ignoring multisig with high threshold",
+				bb.L().Debugw("ignoring multisig with high threshold",
 					"multisig", actor.Address,
 					"threshold", threshold,
 					"max", 16,
@@ -185,7 +199,7 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 				return err
 			}
 
-			if locked.LessThan(taxMin) {
+			if locked.LessThan(fs.taxMin) {
 				continue // not worth it.
 			}
 
@@ -217,15 +231,15 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 			var txnId uint64
 			{
 				msg, err := multisig.Message(actorsVersion, signers[0]).Propose(
-					actor.Address, fundAccount, available,
+					actor.Address, fs.fundAccount, available,
 					builtin.MethodSend, nil,
 				)
 				if err != nil {
 					return err
 				}
-				res, err := cb(msg)
+				res, err := bb.PushMessage(msg)
 				if err != nil {
-					if err == ErrOutOfGas {
+					if blockbuilder.IsOutOfGas(err) {
 						err = nil
 					}
 					return err
@@ -237,7 +251,7 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 				}
 				if ret.Applied {
 					if !ret.Code.IsSuccess() {
-						log.Errorw("failed to tax multisig",
+						bb.L().Errorw("failed to tax multisig",
 							"multisig", actor.Address,
 							"exitcode", ret.Code,
 						)
@@ -252,9 +266,9 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 				if err != nil {
 					return err
 				}
-				res, err := cb(msg)
+				res, err := bb.PushMessage(msg)
 				if err != nil {
-					if err == ErrOutOfGas {
+					if blockbuilder.IsOutOfGas(err) {
 						err = nil
 					}
 					return err
@@ -271,7 +285,7 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 
 			}
 			if !ret.Applied {
-				log.Errorw("failed to apply multisig transaction",
+				bb.L().Errorw("failed to apply multisig transaction",
 					"multisig", actor.Address,
 					"txnid", txnId,
 					"signers", len(signers),
@@ -280,7 +294,7 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 				continue
 			}
 			if !ret.Code.IsSuccess() {
-				log.Errorw("failed to tax multisig",
+				bb.L().Errorw("failed to tax multisig",
 					"multisig", actor.Address,
 					"txnid", txnId,
 					"exitcode", ret.Code,
@@ -292,7 +306,7 @@ func (ss *simulationState) packFunding(ctx context.Context, cb packFunc) (_err e
 			panic("impossible case")
 		}
 		balance = big.Int{Int: balance.Add(balance.Int, actor.Balance.Int)}
-		if balance.GreaterThanEqual(maxFundAcctFunds) {
+		if balance.GreaterThanEqual(fs.maxFunds) {
 			// There's no need to get greedy.
 			// Well, really, we're trying to avoid messing with state _too_ much.
 			return nil

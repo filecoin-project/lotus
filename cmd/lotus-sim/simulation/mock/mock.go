@@ -1,4 +1,4 @@
-package simulation
+package mock
 
 import (
 	"bytes"
@@ -8,8 +8,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
 
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
@@ -26,14 +29,14 @@ const (
 // mockVerifier is a simple mock for verifying "fake" proofs.
 type mockVerifier struct{}
 
-var _ ffiwrapper.Verifier = mockVerifier{}
+var Verifier ffiwrapper.Verifier = mockVerifier{}
 
 func (mockVerifier) VerifySeal(proof proof5.SealVerifyInfo) (bool, error) {
 	addr, err := address.NewIDAddress(uint64(proof.Miner))
 	if err != nil {
 		return false, err
 	}
-	mockProof, err := mockSealProof(proof.SealProof, addr)
+	mockProof, err := MockSealProof(proof.SealProof, addr)
 	if err != nil {
 		return false, err
 	}
@@ -45,7 +48,7 @@ func (mockVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyPro
 	if err != nil {
 		return false, err
 	}
-	mockProof, err := mockAggregateSealProof(aggregate.SealProof, addr, len(aggregate.Infos))
+	mockProof, err := MockAggregateSealProof(aggregate.SealProof, addr, len(aggregate.Infos))
 	if err != nil {
 		return false, err
 	}
@@ -63,7 +66,7 @@ func (mockVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoSt
 	if err != nil {
 		return false, err
 	}
-	mockProof, err := mockWpostProof(proof.PoStProof, addr)
+	mockProof, err := MockWindowPoStProof(proof.PoStProof, addr)
 	if err != nil {
 		return false, err
 	}
@@ -74,8 +77,8 @@ func (mockVerifier) GenerateWinningPoStSectorChallenge(context.Context, abi.Regi
 	panic("should not be called")
 }
 
-// mockSealProof generates a mock "seal" proof tied to the specified proof type and the given miner.
-func mockSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address) ([]byte, error) {
+// MockSealProof generates a mock "seal" proof tied to the specified proof type and the given miner.
+func MockSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address) ([]byte, error) {
 	plen, err := proofType.ProofSize()
 	if err != nil {
 		return nil, err
@@ -88,9 +91,9 @@ func mockSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address)
 	return proof, nil
 }
 
-// mockAggregateSealProof generates a mock "seal" aggregate proof tied to the specified proof type,
+// MockAggregateSealProof generates a mock "seal" aggregate proof tied to the specified proof type,
 // the given miner, and the number of proven sectors.
-func mockAggregateSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address, count int) ([]byte, error) {
+func MockAggregateSealProof(proofType abi.RegisteredSealProof, minerAddr address.Address, count int) ([]byte, error) {
 	proof := make([]byte, aggProofLen(count))
 	i := copy(proof, mockAggregateSealProofPrefix)
 	binary.BigEndian.PutUint64(proof[i:], uint64(proofType))
@@ -102,9 +105,9 @@ func mockAggregateSealProof(proofType abi.RegisteredSealProof, minerAddr address
 	return proof, nil
 }
 
-// mockWpostProof generates a mock "window post" proof tied to the specified proof type, and the
+// MockWindowPoStProof generates a mock "window post" proof tied to the specified proof type, and the
 // given miner.
-func mockWpostProof(proofType abi.RegisteredPoStProof, minerAddr address.Address) ([]byte, error) {
+func MockWindowPoStProof(proofType abi.RegisteredPoStProof, minerAddr address.Address) ([]byte, error) {
 	plen, err := proofType.ProofSize()
 	if err != nil {
 		return nil, err
@@ -113,6 +116,11 @@ func mockWpostProof(proofType abi.RegisteredPoStProof, minerAddr address.Address
 	i := copy(proof, mockPoStProofPrefix)
 	i += copy(proof[i:], minerAddr.Bytes())
 	return proof, nil
+}
+
+// makeCommR generates a "fake" but valid CommR for a sector. It is unique for the given sector/miner.
+func MockCommR(minerAddr address.Address, sno abi.SectorNumber) cid.Cid {
+	return tutils.MakeCID(fmt.Sprintf("%s:%d", minerAddr, sno), &miner5.SealedCIDPrefix)
 }
 
 // TODO: dedup

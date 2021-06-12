@@ -1,4 +1,4 @@
-package simulation
+package stages
 
 import (
 	"context"
@@ -16,15 +16,50 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/blockbuilder"
+	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/mock"
 )
+
+const (
+	minProveCommitBatchSize = 4
+	maxProveCommitBatchSize = miner5.MaxAggregatedSectors
+)
+
+type ProveCommitStage struct {
+	funding Funding
+	// We track the set of pending commits. On simulation load, and when a new pre-commit is
+	// added to the chain, we put the commit in this queue. advanceEpoch(currentEpoch) should be
+	// called on this queue at every epoch before using it.
+	commitQueue commitQueue
+	initialized bool
+}
+
+func NewProveCommitStage(funding Funding) (*ProveCommitStage, error) {
+	return &ProveCommitStage{
+		funding: funding,
+	}, nil
+}
+
+func (*ProveCommitStage) Name() string {
+	return "prove-commit"
+}
+
+func (stage *ProveCommitStage) EnqueueProveCommit(
+	minerAddr address.Address, preCommitEpoch abi.ChainEpoch, info miner.SectorPreCommitInfo,
+) error {
+	return stage.commitQueue.enqueueProveCommit(minerAddr, preCommitEpoch, info)
+}
 
 // packProveCommits packs all prove-commits for all "ready to be proven" sectors until it fills the
 // block or runs out.
-func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_err error) {
+func (stage *ProveCommitStage) PackMessages(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
+	if !stage.initialized {
+	}
 	// Roll the commitQueue forward.
-	ss.commitQueue.advanceEpoch(ss.nextEpoch())
+	stage.commitQueue.advanceEpoch(bb.Height())
 
 	start := time.Now()
 	var failed, done, unbatched, count int
@@ -32,8 +67,8 @@ func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_
 		if _err != nil {
 			return
 		}
-		remaining := ss.commitQueue.ready()
-		log.Debugw("packed prove commits",
+		remaining := stage.commitQueue.ready()
+		bb.L().Debugw("packed prove commits",
 			"remaining", remaining,
 			"done", done,
 			"failed", failed,
@@ -44,12 +79,12 @@ func (ss *simulationState) packProveCommits(ctx context.Context, cb packFunc) (_
 	}()
 
 	for {
-		addr, pending, ok := ss.commitQueue.nextMiner()
+		addr, pending, ok := stage.commitQueue.nextMiner()
 		if !ok {
 			return nil
 		}
 
-		res, err := ss.packProveCommitsMiner(ctx, cb, addr, pending)
+		res, err := stage.packProveCommitsMiner(ctx, bb, addr, pending)
 		if err != nil {
 			return err
 		}
@@ -72,16 +107,26 @@ type proveCommitResult struct {
 // available prove-commits, batching as much as possible.
 //
 // This function will fund as necessary from the "burnt funds actor" (look, it's convenient).
-func (ss *simulationState) packProveCommitsMiner(
-	ctx context.Context, cb packFunc, minerAddr address.Address,
+func (stage *ProveCommitStage) packProveCommitsMiner(
+	ctx context.Context, bb *blockbuilder.BlockBuilder, minerAddr address.Address,
 	pending minerPendingCommits,
 ) (res proveCommitResult, _err error) {
-	info, err := ss.getMinerInfo(ctx, minerAddr)
+	minerActor, err := bb.StateTree().GetActor(minerAddr)
+	if err != nil {
+		return res, err
+	}
+	minerState, err := miner.Load(bb.ActorStore(), minerActor)
+	if err != nil {
+		return res, err
+	}
+	info, err := minerState.Info()
 	if err != nil {
 		return res, err
 	}
 
-	nv := ss.StateManager.GetNtwkVersion(ctx, ss.nextEpoch())
+	log := bb.L().With("miner", minerAddr)
+
+	nv := bb.NetworkVersion()
 	for sealType, snos := range pending {
 		if nv >= network.Version13 {
 			for len(snos) > minProveCommitBatchSize {
@@ -91,7 +136,7 @@ func (ss *simulationState) packProveCommitsMiner(
 				}
 				batch := snos[:batchSize]
 
-				proof, err := mockAggregateSealProof(sealType, minerAddr, batchSize)
+				proof, err := mock.MockAggregateSealProof(sealType, minerAddr, batchSize)
 				if err != nil {
 					return res, err
 				}
@@ -109,7 +154,7 @@ func (ss *simulationState) packProveCommitsMiner(
 					return res, err
 				}
 
-				if _, err := sendAndFund(cb, &types.Message{
+				if _, err := stage.funding.SendAndFund(bb, &types.Message{
 					From:   info.Worker,
 					To:     minerAddr,
 					Value:  abi.NewTokenAmount(0),
@@ -117,7 +162,7 @@ func (ss *simulationState) packProveCommitsMiner(
 					Params: enc,
 				}); err == nil {
 					res.done += len(batch)
-				} else if err == ErrOutOfGas {
+				} else if blockbuilder.IsOutOfGas(err) {
 					res.full = true
 					return res, nil
 				} else if aerr, ok := err.(aerrors.ActorError); !ok || aerr.IsFatal() {
@@ -135,9 +180,9 @@ func (ss *simulationState) packProveCommitsMiner(
 					// backloged to hit this case, but we might as well handle
 					// it.
 					// First, split into "good" and "missing"
-					good, err := ss.filterProveCommits(ctx, minerAddr, batch)
+					good, err := stage.filterProveCommits(ctx, bb, minerAddr, batch)
 					if err != nil {
-						log.Errorw("failed to filter prove commits", "miner", minerAddr, "error", err)
+						log.Errorw("failed to filter prove commits", "error", err)
 						// fail with the original error.
 						return res, aerr
 					}
@@ -145,17 +190,13 @@ func (ss *simulationState) packProveCommitsMiner(
 					if removed == 0 {
 						log.Errorw("failed to prove-commit for unknown reasons",
 							"error", aerr,
-							"miner", minerAddr,
 							"sectors", batch,
-							"epoch", ss.nextEpoch(),
 						)
 						res.failed += len(batch)
 					} else if len(good) == 0 {
 						log.Errorw("failed to prove commit missing pre-commits",
 							"error", aerr,
-							"miner", minerAddr,
 							"discarded", removed,
-							"epoch", ss.nextEpoch(),
 						)
 						res.failed += len(batch)
 					} else {
@@ -166,10 +207,8 @@ func (ss *simulationState) packProveCommitsMiner(
 
 						log.Errorw("failed to prove commit expired/missing pre-commits",
 							"error", aerr,
-							"miner", minerAddr,
 							"discarded", removed,
 							"kept", len(good),
-							"epoch", ss.nextEpoch(),
 						)
 						res.failed += removed
 
@@ -178,17 +217,13 @@ func (ss *simulationState) packProveCommitsMiner(
 					}
 					log.Errorw("failed to prove commit missing sector(s)",
 						"error", err,
-						"miner", minerAddr,
 						"sectors", batch,
-						"epoch", ss.nextEpoch(),
 					)
 					res.failed += len(batch)
 				} else {
 					log.Errorw("failed to prove commit sector(s)",
 						"error", err,
-						"miner", minerAddr,
 						"sectors", batch,
-						"epoch", ss.nextEpoch(),
 					)
 					res.failed += len(batch)
 				}
@@ -200,7 +235,7 @@ func (ss *simulationState) packProveCommitsMiner(
 			sno := snos[0]
 			snos = snos[1:]
 
-			proof, err := mockSealProof(sealType, minerAddr)
+			proof, err := mock.MockSealProof(sealType, minerAddr)
 			if err != nil {
 				return res, err
 			}
@@ -212,7 +247,7 @@ func (ss *simulationState) packProveCommitsMiner(
 			if err != nil {
 				return res, err
 			}
-			if _, err := sendAndFund(cb, &types.Message{
+			if _, err := stage.funding.SendAndFund(bb, &types.Message{
 				From:   info.Worker,
 				To:     minerAddr,
 				Value:  abi.NewTokenAmount(0),
@@ -221,7 +256,7 @@ func (ss *simulationState) packProveCommitsMiner(
 			}); err == nil {
 				res.unbatched++
 				res.done++
-			} else if err == ErrOutOfGas {
+			} else if blockbuilder.IsOutOfGas(err) {
 				res.full = true
 				return res, nil
 			} else if aerr, ok := err.(aerrors.ActorError); !ok || aerr.IsFatal() {
@@ -229,9 +264,7 @@ func (ss *simulationState) packProveCommitsMiner(
 			} else {
 				log.Errorw("failed to prove commit sector(s)",
 					"error", err,
-					"miner", minerAddr,
 					"sectors", []abi.SectorNumber{sno},
-					"epoch", ss.nextEpoch(),
 				)
 				res.failed++
 			}
@@ -243,32 +276,35 @@ func (ss *simulationState) packProveCommitsMiner(
 	return res, nil
 }
 
-// loadProveCommitsMiner enqueue all pending prove-commits for the given miner. This is called on
-// load to populate the commitQueue and should not need to be called later.
+// loadMiner enqueue all pending prove-commits for the given miner. This is called on load to
+// populate the commitQueue and should not need to be called later.
 //
 // It will drop any pre-commits that have already expired.
-func (ss *simulationState) loadProveCommitsMiner(ctx context.Context, addr address.Address, minerState miner.State) error {
+func (stage *ProveCommitStage) loadMiner(ctx context.Context, bb *blockbuilder.BlockBuilder, addr address.Address) error {
+	epoch := bb.Height()
+	av := bb.ActorsVersion()
+	minerState, err := loadMiner(bb.ActorStore(), bb.ParentStateTree(), addr)
+	if err != nil {
+		return err
+	}
+
 	// Find all pending prove commits and group by proof type. Really, there should never
 	// (except during upgrades be more than one type.
-	nextEpoch := ss.nextEpoch()
-	nv := ss.StateManager.GetNtwkVersion(ctx, nextEpoch)
-	av := actors.VersionForNetwork(nv)
-
 	var total, dropped int
-	err := minerState.ForEachPrecommittedSector(func(info miner.SectorPreCommitOnChainInfo) error {
+	err = minerState.ForEachPrecommittedSector(func(info miner.SectorPreCommitOnChainInfo) error {
 		total++
 		msd := policy.GetMaxProveCommitDuration(av, info.Info.SealProof)
-		if nextEpoch > info.PreCommitEpoch+msd {
+		if epoch > info.PreCommitEpoch+msd {
 			dropped++
 			return nil
 		}
-		return ss.commitQueue.enqueueProveCommit(addr, info.PreCommitEpoch, info.Info)
+		return stage.commitQueue.enqueueProveCommit(addr, info.PreCommitEpoch, info.Info)
 	})
 	if err != nil {
 		return err
 	}
 	if dropped > 0 {
-		log.Warnw("dropped expired pre-commits on load",
+		bb.L().Warnw("dropped expired pre-commits on load",
 			"miner", addr,
 			"total", total,
 			"expired", dropped,
@@ -278,15 +314,22 @@ func (ss *simulationState) loadProveCommitsMiner(ctx context.Context, addr addre
 }
 
 // filterProveCommits filters out expired and/or missing pre-commits.
-func (ss *simulationState) filterProveCommits(ctx context.Context, minerAddr address.Address, snos []abi.SectorNumber) ([]abi.SectorNumber, error) {
-	_, minerState, err := ss.getMinerState(ctx, minerAddr)
+func (stage *ProveCommitStage) filterProveCommits(
+	ctx context.Context, bb *blockbuilder.BlockBuilder,
+	minerAddr address.Address, snos []abi.SectorNumber,
+) ([]abi.SectorNumber, error) {
+	act, err := bb.StateTree().GetActor(minerAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	nextEpoch := ss.nextEpoch()
-	nv := ss.StateManager.GetNtwkVersion(ctx, nextEpoch)
-	av := actors.VersionForNetwork(nv)
+	minerState, err := miner.Load(bb.ActorStore(), act)
+	if err != nil {
+		return nil, err
+	}
+
+	nextEpoch := bb.Height()
+	av := bb.ActorsVersion()
 
 	good := make([]abi.SectorNumber, 0, len(snos))
 	for _, sno := range snos {
@@ -304,4 +347,20 @@ func (ss *simulationState) filterProveCommits(ctx context.Context, minerAddr add
 		good = append(good, sno)
 	}
 	return good, nil
+}
+
+func (stage *ProveCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilder) error {
+	powerState, err := loadPower(bb.ActorStore(), bb.ParentStateTree())
+	if err != nil {
+		return err
+	}
+
+	return powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
+		// TODO: If we want to finish pre-commits for "new" miners, we'll need to change
+		// this.
+		if claim.RawBytePower.IsZero() {
+			return nil
+		}
+		return stage.loadMiner(ctx, bb, minerAddr)
+	})
 }

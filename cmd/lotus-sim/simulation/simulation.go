@@ -15,28 +15,21 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/stages"
 )
 
 var log = logging.Logger("simulation")
 
 const onboardingProjectionLookback = 2 * 7 * builtin.EpochsInDay // lookback two weeks
 
-const (
-	minPreCommitBatchSize   = 1
-	maxPreCommitBatchSize   = miner5.PreCommitSectorBatchMaxSize
-	minProveCommitBatchSize = 4
-	maxProveCommitBatchSize = miner5.MaxAggregatedSectors
-)
-
 // config is the simulation's config, persisted to the local metadata store and loaded on start.
 //
-// See simulationState.loadConfig and simulationState.saveConfig.
+// See Simulation.loadConfig and Simulation.saveConfig.
 type config struct {
 	Upgrades map[network.Version]abi.ChainEpoch
 }
@@ -93,9 +86,7 @@ type Simulation struct {
 	st   *state.StateTree
 	head *types.TipSet
 
-	// lazy-loaded state
-	// access through `simState(ctx)` to load on-demand.
-	state *simulationState
+	stages []stages.Stage
 }
 
 // loadConfig loads a simulation's config from the datastore. This must be called on startup and may
@@ -141,21 +132,6 @@ func (sim *Simulation) stateTree(ctx context.Context) (*state.StateTree, error) 
 	return sim.st, nil
 }
 
-// Loads the simulation state. The state is memoized so this will be fast except the first time.
-func (sim *Simulation) simState(ctx context.Context) (*simulationState, error) {
-	if sim.state == nil {
-		log.Infow("loading simulation")
-		state, err := loadSimulationState(ctx, sim)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load simulation state: %w", err)
-		}
-		sim.state = state
-		log.Infow("simulation loaded", "miners", len(sim.state.minerInfos))
-	}
-
-	return sim.state, nil
-}
-
 var simulationPrefix = datastore.NewKey("/simulation")
 
 // key returns the the key in the form /simulation/<subkey>/<simulation-name>. For example,
@@ -187,13 +163,6 @@ func (sim *Simulation) storeNamedTipSet(name string, ts *types.TipSet) error {
 		return xerrors.Errorf("failed to store tipset (%s/%s): %w", sim.name, name, err)
 	}
 	return nil
-}
-
-// Load loads the simulation state. This will happen automatically on first use, but it can be
-// useful to preload for timing reasons.
-func (sim *Simulation) Load(ctx context.Context) error {
-	_, err := sim.simState(ctx)
-	return err
 }
 
 // GetHead returns the current simulation head.
