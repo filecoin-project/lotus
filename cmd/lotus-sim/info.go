@@ -38,32 +38,40 @@ func getTotalPower(ctx context.Context, sm *stmgr.StateManager, ts *types.TipSet
 }
 
 func printInfo(ctx context.Context, sim *simulation.Simulation, out io.Writer) error {
-	powerNow, err := getTotalPower(ctx, sim.StateManager, sim.GetHead())
+	head := sim.GetHead()
+	start := sim.GetStart()
+
+	powerNow, err := getTotalPower(ctx, sim.StateManager, head)
 	if err != nil {
 		return err
 	}
-	powerStart, err := getTotalPower(ctx, sim.StateManager, sim.GetStart())
+	powerLookbackEpoch := head.Height() - builtin.EpochsInDay
+	if powerLookbackEpoch < start.Height() {
+		powerLookbackEpoch = start.Height()
+	}
+	lookbackTs, err := sim.Chainstore.GetTipsetByHeight(ctx, powerLookbackEpoch, head, false)
 	if err != nil {
 		return err
 	}
-	powerGrowth := big.Sub(powerNow.RawBytePower, powerStart.RawBytePower)
+	powerLookback, err := getTotalPower(ctx, sim.StateManager, lookbackTs)
+	if err != nil {
+		return err
+	}
+	// growth rate in size/day
+	growthRate := big.Div(
+		big.Mul(big.Sub(powerNow.RawBytePower, powerLookback.RawBytePower),
+			big.NewInt(builtin.EpochsInDay)),
+		big.NewInt(int64(head.Height()-lookbackTs.Height())),
+	)
 
 	tw := tabwriter.NewWriter(out, 8, 8, 1, ' ', 0)
 
-	head := sim.GetHead()
-	start := sim.GetStart()
 	headEpoch := head.Height()
 	firstEpoch := start.Height() + 1
 
 	headTime := time.Unix(int64(head.MinTimestamp()), 0)
 	startTime := time.Unix(int64(start.MinTimestamp()), 0)
 	duration := headTime.Sub(startTime)
-
-	// growth rate in size/day
-	growthRate := big.Div(
-		big.Mul(powerGrowth, big.NewInt(int64(24*time.Hour))),
-		big.NewInt(int64(duration)),
-	)
 
 	fmt.Fprintf(tw, "Name:\t%s\n", sim.Name())
 	fmt.Fprintf(tw, "Head:\t%s\n", head)
@@ -74,8 +82,7 @@ func printInfo(ctx context.Context, sim *simulation.Simulation, out io.Writer) e
 	fmt.Fprintf(tw, "End Date:\t%s\n", headTime)
 	fmt.Fprintf(tw, "Duration:\t%.2f day(s)\n", duration.Hours()/24)
 	fmt.Fprintf(tw, "Power:\t%s\n", types.SizeStr(powerNow.RawBytePower))
-	fmt.Fprintf(tw, "Power Growth:\t%s\n", types.SizeStr(powerGrowth))
-	fmt.Fprintf(tw, "Power Growth Rate:\t%s/day\n", types.SizeStr(growthRate))
+	fmt.Fprintf(tw, "Daily Power Growth:\t%s/day\n", types.SizeStr(growthRate))
 	fmt.Fprintf(tw, "Network Version:\t%d\n", sim.GetNetworkVersion())
 	return tw.Flush()
 }
