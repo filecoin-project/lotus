@@ -93,6 +93,7 @@ var infoSimCommand = &cli.Command{
 	Subcommands: []*cli.Command{
 		infoCommitGasSimCommand,
 		infoWindowPostBandwidthSimCommand,
+		infoCapacityGrowthSimCommand,
 	},
 	Action: func(cctx *cli.Context) error {
 		node, err := open(cctx)
@@ -155,6 +156,57 @@ var infoWindowPostBandwidthSimCommand = &cli.Command{
 			printStats()
 		}
 		return err
+	},
+}
+
+var infoCapacityGrowthSimCommand = &cli.Command{
+	Name:        "capacity-growth",
+	Description: "List daily capacity growth over the course of the simulation starting at the end.",
+	Action: func(cctx *cli.Context) error {
+		node, err := open(cctx)
+		if err != nil {
+			return err
+		}
+		defer node.Close()
+
+		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
+		if err != nil {
+			return err
+		}
+
+		firstEpoch := sim.GetStart().Height()
+		ts := sim.GetHead()
+		lastPower, err := getTotalPower(cctx.Context, sim.StateManager, ts)
+		if err != nil {
+			return err
+		}
+		lastHeight := ts.Height()
+
+		for ts.Height() > firstEpoch && cctx.Err() == nil {
+			ts, err = sim.Chainstore.LoadTipSet(ts.Parents())
+			if err != nil {
+				return err
+			}
+			newEpoch := ts.Height()
+			if newEpoch != firstEpoch && newEpoch+builtin.EpochsInDay > lastHeight {
+				continue
+			}
+
+			newPower, err := getTotalPower(cctx.Context, sim.StateManager, ts)
+			if err != nil {
+				return err
+			}
+
+			growthRate := big.Div(
+				big.Mul(big.Sub(lastPower.RawBytePower, newPower.RawBytePower),
+					big.NewInt(builtin.EpochsInDay)),
+				big.NewInt(int64(lastHeight-newEpoch)),
+			)
+			lastPower = newPower
+			lastHeight = newEpoch
+			fmt.Fprintf(cctx.App.Writer, "%s/day\n", types.SizeStr(growthRate))
+		}
+		return cctx.Err()
 	},
 }
 
