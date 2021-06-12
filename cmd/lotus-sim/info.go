@@ -45,7 +45,7 @@ func printInfo(ctx context.Context, sim *simulation.Simulation, out io.Writer) e
 	if err != nil {
 		return err
 	}
-	powerLookbackEpoch := head.Height() - builtin.EpochsInDay
+	powerLookbackEpoch := head.Height() - builtin.EpochsInDay*2
 	if powerLookbackEpoch < start.Height() {
 		powerLookbackEpoch = start.Height()
 	}
