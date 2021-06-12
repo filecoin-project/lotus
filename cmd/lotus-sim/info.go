@@ -81,8 +81,8 @@ func printInfo(ctx context.Context, sim *simulation.Simulation, out io.Writer) e
 	fmt.Fprintf(tw, "Start Date:\t%s\n", startTime)
 	fmt.Fprintf(tw, "End Date:\t%s\n", headTime)
 	fmt.Fprintf(tw, "Duration:\t%.2f day(s)\n", duration.Hours()/24)
-	fmt.Fprintf(tw, "Power:\t%s\n", types.SizeStr(powerNow.RawBytePower))
-	fmt.Fprintf(tw, "Daily Power Growth:\t%s/day\n", types.SizeStr(growthRate))
+	fmt.Fprintf(tw, "Capacity:\t%s\n", types.SizeStr(powerNow.RawBytePower))
+	fmt.Fprintf(tw, "Daily Capacity Growth:\t%s/day\n", types.SizeStr(growthRate))
 	fmt.Fprintf(tw, "Network Version:\t%d\n", sim.GetNetworkVersion())
 	return tw.Flush()
 }
