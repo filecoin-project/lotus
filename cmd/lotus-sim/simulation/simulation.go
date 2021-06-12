@@ -401,12 +401,11 @@ func (sim *Simulation) Walk(
 	grp.Go(func() error {
 		qs := resultQs
 		for len(qs) > 0 {
-			if err := ctx.Err(); err != nil {
-				return ctx.Err()
-			}
-
 			newQs := qs[:0]
 			for _, q := range qs {
+				if err := ctx.Err(); err != nil {
+					return ctx.Err()
+				}
 				select {
 				case r, ok := <-q:
 					if !ok {
