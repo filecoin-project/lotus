@@ -314,7 +314,11 @@ func (sim *Simulation) Walk(
 			return err
 		}
 		i := 0
-		for ctx.Err() == nil && ts.Height() > minEpoch {
+		for ts.Height() > minEpoch {
+			if err := ctx.Err(); err != nil {
+				return ctx.Err()
+			}
+
 			select {
 			case workQs[i] <- &work{ts, stCid, recCid}:
 			case <-ctx.Done():
@@ -340,7 +344,23 @@ func (sim *Simulation) Walk(
 		workQ := workQs[i]
 		resultQ := resultQs[i]
 		grp.Go(func() error {
-			for job := range workQ {
+			for {
+				if err := ctx.Err(); err != nil {
+					return ctx.Err()
+				}
+
+				var job *work
+				var ok bool
+				select {
+				case job, ok = <-workQ:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+
+				if !ok {
+					break
+				}
+
 				msgs, err := sim.Chainstore.MessagesForTipset(job.ts)
 				if err != nil {
 					return err
@@ -381,6 +401,10 @@ func (sim *Simulation) Walk(
 	grp.Go(func() error {
 		qs := resultQs
 		for len(qs) > 0 {
+			if err := ctx.Err(); err != nil {
+				return ctx.Err()
+			}
+
 			newQs := qs[:0]
 			for _, q := range qs {
 				select {
