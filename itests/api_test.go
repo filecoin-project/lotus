@@ -87,11 +87,11 @@ func (ts *apiSuite) testConnectTwo(t *testing.T) {
 
 	peers, err := one.NetPeers(ctx)
 	require.NoError(t, err)
-	require.Lenf(t, peers, 1, "node one doesn't have 1 peer")
+	require.Lenf(t, peers, 2, "node one doesn't have 2 peers")
 
 	peers, err = two.NetPeers(ctx)
 	require.NoError(t, err)
-	require.Lenf(t, peers, 1, "node two doesn't have 1 peer")
+	require.Lenf(t, peers, 2, "node two doesn't have 2 peers")
 }
 
 func (ts *apiSuite) testSearchMsg(t *testing.T) {
