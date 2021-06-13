@@ -352,75 +352,33 @@ func TestOfflineDealFlow(t *testing.T) {
 	t.Run("fastretrieval", func(t *testing.T) { runTest(t, true) })
 }
 
-//
-// func runSecondDealRetrievalTest(t *testing.T, b kit.APIBuilder, blocktime time.Duration) {
-// 	ctx := context.Background()
-//
-// 	fulls, miners := b(t, kit.OneFull, kit.OneMiner)
-// 	client, miner := fulls[0].FullNode.(*impl.FullNodeAPI), miners[0]
-//
-// 	kit.ConnectAndStartMining(t, blocktime, miner, client)
-//
-// 	dh := kit.NewDealHarness(t, client, miner)
-//
-// 	{
-// 		data1 := make([]byte, 800)
-// 		rand.New(rand.NewSource(int64(3))).Read(data1)
-// 		r := bytes.NewReader(data1)
-//
-// 		fcid1, err := client.ClientImportLocal(ctx, r)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-//
-// 		data2 := make([]byte, 800)
-// 		rand.New(rand.NewSource(int64(9))).Read(data2)
-// 		r2 := bytes.NewReader(data2)
-//
-// 		fcid2, err := client.ClientImportLocal(ctx, r2)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-//
-// 		deal1 := dh.StartDeal(ctx, fcid1, true, 0)
-//
-// 		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-// 		time.Sleep(time.Second)
-// 		dh.WaitDealSealed(ctx, deal1, true, false, nil)
-//
-// 		deal2 := dh.StartDeal(ctx, fcid2, true, 0)
-//
-// 		time.Sleep(time.Second)
-// 		dh.WaitDealSealed(ctx, deal2, false, false, nil)
-//
-// 		// Retrieval
-// 		info, err := client.ClientGetDealInfo(ctx, *deal2)
-// 		require.NoError(t, err)
-//
-// 		rf, _ := miner.SectorsRefs(ctx)
-// 		fmt.Printf("refs: %+v\n", rf)
-//
-// 		dh.PerformRetrieval(ctx, fcid2, &info.PieceCID, false, data2)
-// 	}
-// }
-//
-// func runZeroPricePerByteRetrievalDealFlow(t *testing.T, b kit.APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
-// 	ctx := context.Background()
-//
-// 	fulls, miners := b(t, kit.OneFull, kit.OneMiner)
-// 	client, miner := fulls[0].FullNode.(*impl.FullNodeAPI), miners[0]
-//
-// 	kit.ConnectAndStartMining(t, blocktime, miner, client)
-//
-// 	dh := kit.NewDealHarness(t, client, miner)
-//
-// 	// Set price-per-byte to zero
-// 	ask, err := miner.MarketGetRetrievalAsk(ctx)
-// 	require.NoError(t, err)
-//
-// 	ask.PricePerByte = abi.NewTokenAmount(0)
-// 	err = miner.MarketSetRetrievalAsk(ctx, ask)
-// 	require.NoError(t, err)
-//
-// 	dh.MakeOnlineDeal(ctx, 6, false, false, startEpoch)
-// }
+func TestZeroPricePerByteRetrieval(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	kit2.QuietMiningLogs()
+
+	var (
+		blockTime  = 10 * time.Millisecond
+		startEpoch = abi.ChainEpoch(2 << 12)
+	)
+
+	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx := context.Background()
+
+	ask, err := miner.MarketGetRetrievalAsk(ctx)
+	require.NoError(t, err)
+
+	ask.PricePerByte = abi.NewTokenAmount(0)
+	err = miner.MarketSetRetrievalAsk(ctx, ask)
+	require.NoError(t, err)
+
+	dh := kit2.NewDealHarness(t, client, miner)
+	runConcurrentDeals(t, dh, fullDealCyclesOpts{
+		n:          1,
+		startEpoch: startEpoch,
+	})
+}

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"

@@ -26,11 +26,11 @@ func TestAPI(t *testing.T) {
 }
 
 type apiSuite struct {
-	opts []kit2.NodeOpt
+	opts []interface{}
 }
 
 // runAPITest is the entry point to API test suite
-func runAPITest(t *testing.T, opts ...kit2.NodeOpt) {
+func runAPITest(t *testing.T, opts ...interface{}) {
 	ts := apiSuite{opts: opts}
 
 	t.Run("version", ts.testVersion)
