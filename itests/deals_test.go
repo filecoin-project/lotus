@@ -51,6 +51,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 
 	cycles := []int{1, 2, 4, 8}
 	for _, n := range cycles {
+		n := n
 		ns := fmt.Sprintf("%d", n)
 		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
 		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })

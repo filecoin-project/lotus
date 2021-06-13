@@ -1,9 +1,9 @@
 package kit2
 
 import (
-	"bytes"
 	"context"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -128,7 +128,7 @@ loop:
 	}
 }
 
-// WaitDealSealed waits until the deal is published.
+// WaitDealPublished waits until the deal is published.
 func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -185,16 +185,16 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 	require.NoError(dh.t, err)
 	require.NotEmpty(dh.t, offers, "no offers")
 
-	tmpfile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
+	carFile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
 	require.NoError(dh.t, err)
 
-	defer tmpfile.Close()
+	defer carFile.Close() //nolint:errcheck
 
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
 
 	ref := &api.FileRef{
-		Path:  tmpfile.Name(),
+		Path:  carFile.Name(),
 		IsCAR: carExport,
 	}
 
@@ -205,19 +205,19 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 		require.Emptyf(dh.t, update.Err, "retrieval failed: %s", update.Err)
 	}
 
-	rdata, err := ioutil.ReadFile(tmpfile.Name())
-	require.NoError(dh.t, err)
-
+	ret := carFile.Name()
 	if carExport {
-		rdata = dh.ExtractFileFromCAR(ctx, rdata)
+		actualFile := dh.ExtractFileFromCAR(ctx, carFile)
+		ret = actualFile.Name()
+		_ = actualFile.Close() //nolint:errcheck
 	}
 
-	return tmpfile.Name()
+	return ret
 }
 
-func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, rdata []byte) []byte {
+func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (out *os.File) {
 	bserv := dstest.Bserv()
-	ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
+	ch, err := car.LoadCar(bserv.Blockstore(), file)
 	require.NoError(dh.t, err)
 
 	b, err := bserv.GetBlock(ctx, ch.Roots[0])
@@ -233,13 +233,10 @@ func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, rdata []byte) []b
 	tmpfile, err := ioutil.TempFile(dh.t.TempDir(), "file-in-car")
 	require.NoError(dh.t, err)
 
-	defer tmpfile.Close()
+	defer tmpfile.Close() //nolint:errcheck
 
 	err = files.WriteTo(fil, tmpfile.Name())
 	require.NoError(dh.t, err)
 
-	rdata, err = ioutil.ReadFile(tmpfile.Name())
-	require.NoError(dh.t, err)
-
-	return rdata
+	return tmpfile
 }
