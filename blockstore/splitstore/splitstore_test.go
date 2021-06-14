@@ -132,8 +132,8 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Errorf("expected %d blocks, but got %d", 2, coldCnt)
 	}
 
-	if hotCnt != 5 {
-		t.Errorf("expected %d blocks, but got %d", 5, hotCnt)
+	if hotCnt != 6 {
+		t.Errorf("expected %d blocks, but got %d", 6, hotCnt)
 	}
 
 	// trigger a compaction
@@ -149,8 +149,8 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Errorf("expected %d cold blocks, but got %d", 7, coldCnt)
 	}
 
-	if hotCnt != 5 {
-		t.Errorf("expected %d hot blocks, but got %d", 5, hotCnt)
+	if hotCnt != 6 {
+		t.Errorf("expected %d hot blocks, but got %d", 6, hotCnt)
 	}
 
 	// Make sure we can revert without panicking.
