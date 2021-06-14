@@ -78,11 +78,8 @@ func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.Locked
 		}
 
 		cfg := &splitstore.Config{
-			TrackingStoreType:    cfg.Splitstore.TrackingStoreType,
-			MarkSetType:          cfg.Splitstore.MarkSetType,
-			EnableFullCompaction: cfg.Splitstore.EnableFullCompaction,
-			EnableGC:             cfg.Splitstore.EnableGC,
-			Archival:             cfg.Splitstore.Archival,
+			TrackingStoreType: cfg.Splitstore.TrackingStoreType,
+			MarkSetType:       cfg.Splitstore.MarkSetType,
 		}
 		ss, err := splitstore.Open(path, ds, hot, cold, cfg)
 		if err != nil {
