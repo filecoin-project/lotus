@@ -16,10 +16,10 @@ import (
 
 const (
 	// RetrievalPricingDefault configures the node to use the default retrieval pricing policy.
-	RetrievalPricingDefault = "default"
+	RetrievalPricingDefaultMode = "default"
 	// RetrievalPricingExternal configures the node to use the external retrieval pricing script
 	// configured by the user.
-	RetrievalPricingExternal = "external"
+	RetrievalPricingExternalMode = "external"
 )
 
 // Common is common config between full node and miner
@@ -355,7 +355,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxProviderCollateralMultiplier: 2,
 
 			RetrievalPricing: &RetrievalPricing{
-				Strategy: DefaultRetrievalPricing,
+				Strategy: RetrievalPricingDefaultMode,
 				Default: &RetrievalPricingDefault{
 					VerifiedDealsFreeTransfer: true,
 				},

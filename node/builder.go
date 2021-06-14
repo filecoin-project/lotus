@@ -411,7 +411,7 @@ var MinerNode = Options(
 	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 	Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(config.DealmakingConfig{
 		RetrievalPricing: &config.RetrievalPricing{
-			Strategy: config.DefaultRetrievalPricing,
+			Strategy: config.RetrievalPricingDefaultMode,
 			Default:  &config.RetrievalPricingDefault{},
 		},
 	})),
@@ -573,7 +573,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	}
 
 	pricingConfig := cfg.Dealmaking.RetrievalPricing
-	if pricingConfig.Strategy == config.ExternalRetrievalPricing {
+	if pricingConfig.Strategy == config.RetrievalPricingExternalMode {
 		if pricingConfig.External == nil {
 			return Error(xerrors.New("retrieval pricing policy has been to set to external but external policy config is nil"))
 		}
@@ -581,7 +581,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		if pricingConfig.External.Path == "" {
 			return Error(xerrors.New("retrieval pricing policy has been to set to external but external script path is empty"))
 		}
-	} else if pricingConfig.Strategy != config.DefaultRetrievalPricing {
+	} else if pricingConfig.Strategy != config.RetrievalPricingDefaultMode {
 		return Error(xerrors.New("retrieval pricing policy must be either default or external"))
 	}
 

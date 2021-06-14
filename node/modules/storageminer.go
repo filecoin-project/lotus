@@ -641,7 +641,7 @@ func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnl
 
 	return func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
 		_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
-		if cfg.RetrievalPricing.Strategy == config.ExternalRetrievalPricing {
+		if cfg.RetrievalPricing.Strategy == config.RetrievalPricingExternalMode {
 			return pricing.ExternalRetrievalPricingFunc(cfg.RetrievalPricing.External.Path)
 		}
 
