@@ -123,15 +123,9 @@ func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.S
 	return rpn.pp.IsUnsealed(ctx, ref, storiface.UnpaddedByteIndex(offset), length)
 }
 
-// `storageDeals` param here is the list of storage deals made for the `payloadCID` the retrieval client is looking for.
-//
-// `pieceCID` is the CID of the specific Piece we want to retrieve the payload from. The client can either mandate that
-// we retrieve the payload from a specific piece or we choose a Piece to retrieve the payload from, prioritizing
-// a Piece for which an unsealed sector file already exists if possible.
-//
-// 1. For the `VerifiedDeal` flag in the response `PricingInput`, we are looking to answer the question "does there exist any verified storage deal for this `payloadCID`" ?
-//
-// 2. We also want to ensure that we return the `PieceSize` for the actual piece we want to retrieve the deal from.
+// GetRetrievalPricingInput takes a set of candidate storage deals that can serve a retrieval request,
+// and returns an minimally populated PricingInput. This PricingInput should be enhanced
+// with more data, and passed to the pricing function to determine the final quoted price.
 func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, pieceCID cid.Cid, storageDeals []abi.DealID) (retrievalmarket.PricingInput, error) {
 	resp := retrievalmarket.PricingInput{}
 
@@ -154,13 +148,17 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 			resp.PieceSize = ds.Proposal.PieceSize.Unpadded()
 		}
 
+		// If we've discovered a verified deal with the required PieceCID, we don't need
+		// to lookup more deals and we're done.
 		if resp.VerifiedDeal && resp.PieceSize != 0 {
 			break
 		}
 	}
 
+	// Note: The piece size can never actually be zero. We only use it to here
+	// to assert that we didn't find a matching piece.
 	if resp.PieceSize == 0 {
-		return resp, xerrors.New("failed to find matching piece, PieceSize is zero")
+		return resp, xerrors.New("failed to find matching piece")
 	}
 
 	return resp, nil

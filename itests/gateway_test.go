@@ -206,7 +206,14 @@ func TestGatewayDealFlow(t *testing.T) {
 	dealStartEpoch := abi.ChainEpoch(2 << 12)
 
 	dh := kit.NewDealHarness(t, nodes.lite, nodes.miner)
-	dh.MakeFullDeal(ctx, 6, false, false, dealStartEpoch)
+	dh.MakeFullDeal(kit.MakeFullDealParams{
+		Ctx:         ctx,
+		Rseed:       6,
+		CarExport:   false,
+		FastRet:     false,
+		StartEpoch:  dealStartEpoch,
+		DoRetrieval: true,
+	})
 }
 
 func TestGatewayCLIDealFlow(t *testing.T) {

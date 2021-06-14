@@ -106,10 +106,24 @@ func runQuotePriceForUnsealedRetrieval(t *testing.T, b kit.APIBuilder, blocktime
 
 	dh := kit.NewDealHarness(t, client, miner)
 
-	_, info, fcid := dh.MakeFullDealNoRetrieval(ctx, 6, false, startEpoch)
+	_, info, fcid := dh.MakeFullDeal(kit.MakeFullDealParams{
+		Ctx:         ctx,
+		Rseed:       6,
+		CarExport:   false,
+		FastRet:     false,
+		StartEpoch:  startEpoch,
+		DoRetrieval: false,
+	})
 
 	// one more storage deal for the same data
-	_, _, fcid2 := dh.MakeFullDealNoRetrieval(ctx, 6, false, startEpoch)
+	_, _, fcid2 := dh.MakeFullDeal(kit.MakeFullDealParams{
+		Ctx:         ctx,
+		Rseed:       6,
+		CarExport:   false,
+		FastRet:     false,
+		StartEpoch:  startEpoch,
+		DoRetrieval: false,
+	})
 	require.Equal(t, fcid, fcid2)
 
 	// fetch quote -> zero for unsealed price since unsealed file already exists.
@@ -495,7 +509,14 @@ func runFullDealCycles(t *testing.T, n int, b kit.APIBuilder, blocktime time.Dur
 
 	baseseed := 6
 	for i := 0; i < n; i++ {
-		dh.MakeFullDeal(context.Background(), baseseed+i, carExport, fastRet, startEpoch)
+		_, _, _ = dh.MakeFullDeal(kit.MakeFullDealParams{
+			Ctx:         context.Background(),
+			Rseed:       baseseed + i,
+			CarExport:   carExport,
+			FastRet:     fastRet,
+			StartEpoch:  startEpoch,
+			DoRetrieval: true,
+		})
 	}
 }
 
@@ -601,5 +622,12 @@ func runZeroPricePerByteRetrievalDealFlow(t *testing.T, b kit.APIBuilder, blockt
 	err = miner.MarketSetRetrievalAsk(ctx, ask)
 	require.NoError(t, err)
 
-	dh.MakeFullDeal(ctx, 6, false, false, startEpoch)
+	_, _, _ = dh.MakeFullDeal(kit.MakeFullDealParams{
+		Ctx:         ctx,
+		Rseed:       6,
+		CarExport:   false,
+		FastRet:     false,
+		StartEpoch:  startEpoch,
+		DoRetrieval: true,
+	})
 }
