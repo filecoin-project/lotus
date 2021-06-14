@@ -863,6 +863,10 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bo
 			if err := s.walkLinks(hdr.Messages, walked, f); err != nil {
 				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 			}
+
+			if err := s.walkLinks(hdr.ParentMessageReceipts, walked, f); err != nil {
+				return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
+			}
 		}
 
 		if err := s.walkLinks(hdr.ParentStateRoot, walked, f); err != nil {
