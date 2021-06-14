@@ -613,15 +613,15 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 	}
 
 	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
-		info: proof.AggregateSealVerifyInfo{
+		Info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
 			Randomness:            sector.TicketValue,
 			InteractiveRandomness: sector.SeedValue,
 			SealedCID:             *sector.CommR,
 			UnsealedCID:           *sector.CommD,
 		},
-		proof: sector.Proof, // todo: this correct??
-		spt:   sector.SectorType,
+		Proof: sector.Proof, // todo: this correct??
+		Spt:   sector.SectorType,
 	})
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})
