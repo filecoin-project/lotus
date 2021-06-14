@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -15,12 +17,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/fatih/color"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
@@ -29,7 +32,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
@@ -73,6 +75,50 @@ var StateCmd = &cli.Command{
 		StateMarketCmd,
 		StateExecTraceCmd,
 		StateNtwkVersionCmd,
+		StateMinerProvingDeadlineCmd,
+	},
+}
+
+var StateMinerProvingDeadlineCmd = &cli.Command{
+	Name:      "miner-proving-deadline",
+	Usage:     "Retrieve information about a given miner's proving deadline",
+	ArgsUsage: "[minerAddress]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify miner to get information for")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		cd, err := api.StateMinerProvingDeadline(ctx, addr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		fmt.Printf("Period Start:\t%s\n", cd.PeriodStart)
+		fmt.Printf("Index:\t\t%d\n", cd.Index)
+		fmt.Printf("Open:\t\t%s\n", cd.Open)
+		fmt.Printf("Close:\t\t%s\n", cd.Close)
+		fmt.Printf("Challenge:\t%s\n", cd.Challenge)
+		fmt.Printf("FaultCutoff:\t%s\n", cd.FaultCutoff)
+
+		return nil
 	},
 }
 
@@ -178,16 +224,19 @@ func ParseTipSetString(ts string) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func LoadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*types.TipSet, error) {
+// LoadTipSet gets the tipset from the context, or the head from the API.
+//
+// It always gets the head from the API so commands use a consistent tipset even if time pases.
+func LoadTipSet(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*types.TipSet, error) {
 	tss := cctx.String("tipset")
 	if tss == "" {
-		return nil, nil
+		return api.ChainHead(ctx)
 	}
 
 	return ParseTipSetRef(ctx, api, tss)
 }
 
-func ParseTipSetRef(ctx context.Context, api api.FullNode, tss string) (*types.TipSet, error) {
+func ParseTipSetRef(ctx context.Context, api v0api.FullNode, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
 		if tss == "@head" {
 			return api.ChainHead(ctx)
@@ -232,17 +281,26 @@ var StatePowerCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
 		var maddr address.Address
 		if cctx.Args().Present() {
 			maddr, err = address.NewFromString(cctx.Args().First())
 			if err != nil {
 				return err
 			}
-		}
 
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
+			ma, err := api.StateGetActor(ctx, maddr, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			if !builtin.IsStorageMinerActor(ma.Code) {
+				return xerrors.New("provided address does not correspond to a miner actor")
+			}
 		}
 
 		power, err := api.StateMinerPower(ctx, maddr, ts.Key())
@@ -296,7 +354,7 @@ var StateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -336,7 +394,7 @@ var StateActiveSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -574,7 +632,7 @@ var StateListMinersCmd = &cli.Command{
 	},
 }
 
-func getDealsCounts(ctx context.Context, lapi api.FullNode) (map[address.Address]int, error) {
+func getDealsCounts(ctx context.Context, lapi v0api.FullNode) (map[address.Address]int, error) {
 	allDeals, err := lapi.StateMarketDeals(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -848,14 +906,6 @@ var StateListMessagesCmd = &cli.Command{
 			return err
 		}
 
-		if ts == nil {
-			head, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-			ts = head
-		}
-
 		windowSize := abi.ChainEpoch(100)
 
 		cur := ts
@@ -955,13 +1005,6 @@ var StateComputeStateCmd = &cli.Command{
 		}
 
 		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
-		if ts == nil {
-			head, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-			ts = head
-		}
 		if h == 0 {
 			h = ts.Height()
 		}
@@ -1443,7 +1486,7 @@ var StateSearchMsgCmd = &cli.Command{
 	},
 }
 
-func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message, r types.MessageReceipt) error {
+func printReceiptReturn(ctx context.Context, api v0api.FullNode, m *types.Message, r types.MessageReceipt) error {
 	if len(r.Return) == 0 {
 		return nil
 	}
@@ -1463,8 +1506,7 @@ func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message,
 	return nil
 }
 
-func printMsg(ctx context.Context, api api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
-
+func printMsg(ctx context.Context, api v0api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
 	if mw == nil {
 		fmt.Println("message was not found on chain")
 		return nil
@@ -1488,7 +1530,7 @@ func printMsg(ctx context.Context, api api.FullNode, msg cid.Cid, mw *lapi.MsgLo
 var StateCallCmd = &cli.Command{
 	Name:      "call",
 	Usage:     "Invoke a method on an actor locally",
-	ArgsUsage: "[toAddress methodId <param1 param2 ...> (optional)]",
+	ArgsUsage: "[toAddress methodId params (optional)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -1502,8 +1544,13 @@ var StateCallCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "ret",
-			Usage: "specify how to parse output (auto, raw, addr, big)",
-			Value: "auto",
+			Usage: "specify how to parse output (raw, decoded, base64, hex)",
+			Value: "decoded",
+		},
+		&cli.StringFlag{
+			Name:  "encoding",
+			Value: "base64",
+			Usage: "specify params encoding to parse (base64, hex)",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1544,14 +1591,23 @@ var StateCallCmd = &cli.Command{
 			return fmt.Errorf("failed to parse 'value': %s", err)
 		}
 
-		act, err := api.StateGetActor(ctx, toa, ts.Key())
-		if err != nil {
-			return fmt.Errorf("failed to lookup target actor: %s", err)
-		}
-
-		params, err := parseParamsForMethod(act.Code, method, cctx.Args().Slice()[2:])
-		if err != nil {
-			return fmt.Errorf("failed to parse params: %s", err)
+		var params []byte
+		// If params were passed in, decode them
+		if cctx.Args().Len() > 2 {
+			switch cctx.String("encoding") {
+			case "base64":
+				params, err = base64.StdEncoding.DecodeString(cctx.Args().Get(2))
+				if err != nil {
+					return xerrors.Errorf("decoding base64 value: %w", err)
+				}
+			case "hex":
+				params, err = hex.DecodeString(cctx.Args().Get(2))
+				if err != nil {
+					return xerrors.Errorf("decoding hex value: %w", err)
+				}
+			default:
+				return xerrors.Errorf("unrecognized encoding: %s", cctx.String("encoding"))
+			}
 		}
 
 		ret, err := api.StateCall(ctx, &types.Message{
@@ -1562,135 +1618,40 @@ var StateCallCmd = &cli.Command{
 			Params: params,
 		}, ts.Key())
 		if err != nil {
-			return fmt.Errorf("state call failed: %s", err)
+			return fmt.Errorf("state call failed: %w", err)
 		}
 
 		if ret.MsgRct.ExitCode != 0 {
 			return fmt.Errorf("invocation failed (exit: %d, gasUsed: %d): %s", ret.MsgRct.ExitCode, ret.MsgRct.GasUsed, ret.Error)
 		}
 
-		s, err := formatOutput(cctx.String("ret"), ret.MsgRct.Return)
-		if err != nil {
-			return fmt.Errorf("failed to format output: %s", err)
-		}
+		fmt.Println("Call receipt:")
+		fmt.Printf("Exit code: %d\n", ret.MsgRct.ExitCode)
+		fmt.Printf("Gas Used: %d\n", ret.MsgRct.GasUsed)
 
-		fmt.Printf("gas used: %d\n", ret.MsgRct.GasUsed)
-		fmt.Printf("return: %s\n", s)
+		switch cctx.String("ret") {
+		case "decoded":
+			act, err := api.StateGetActor(ctx, toa, ts.Key())
+			if err != nil {
+				return xerrors.Errorf("getting actor: %w", err)
+			}
+
+			retStr, err := jsonReturn(act.Code, abi.MethodNum(method), ret.MsgRct.Return)
+			if err != nil {
+				return xerrors.Errorf("decoding return: %w", err)
+			}
+
+			fmt.Printf("Return:\n%s\n", retStr)
+		case "raw":
+			fmt.Printf("Return: \n%s\n", ret.MsgRct.Return)
+		case "hex":
+			fmt.Printf("Return: \n%x\n", ret.MsgRct.Return)
+		case "base64":
+			fmt.Printf("Return: \n%s\n", base64.StdEncoding.EncodeToString(ret.MsgRct.Return))
+		}
 
 		return nil
 	},
-}
-
-func formatOutput(t string, val []byte) (string, error) {
-	switch t {
-	case "raw", "hex":
-		return fmt.Sprintf("%x", val), nil
-	case "address", "addr", "a":
-		a, err := address.NewFromBytes(val)
-		if err != nil {
-			return "", err
-		}
-		return a.String(), nil
-	case "big", "int", "bigint":
-		bi := types.BigFromBytes(val)
-		return bi.String(), nil
-	case "fil":
-		bi := types.FIL(types.BigFromBytes(val))
-		return bi.String(), nil
-	case "pid", "peerid", "peer":
-		pid, err := peer.IDFromBytes(val)
-		if err != nil {
-			return "", err
-		}
-
-		return pid.Pretty(), nil
-	case "auto":
-		if len(val) == 0 {
-			return "", nil
-		}
-
-		a, err := address.NewFromBytes(val)
-		if err == nil {
-			return "address: " + a.String(), nil
-		}
-
-		pid, err := peer.IDFromBytes(val)
-		if err == nil {
-			return "peerID: " + pid.Pretty(), nil
-		}
-
-		bi := types.BigFromBytes(val)
-		return "bigint: " + bi.String(), nil
-	default:
-		return "", fmt.Errorf("unrecognized output type: %q", t)
-	}
-}
-
-func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, error) {
-	if len(args) == 0 {
-		return nil, nil
-	}
-
-	// TODO: consider moving this to a dedicated helper
-	actMeta, ok := stmgr.MethodsMap[act]
-	if !ok {
-		return nil, fmt.Errorf("unknown actor %s", act)
-	}
-
-	methodMeta, ok := actMeta[abi.MethodNum(method)]
-	if !ok {
-		return nil, fmt.Errorf("unknown method %d for actor %s", method, act)
-	}
-
-	paramObj := methodMeta.Params.Elem()
-	if paramObj.NumField() != len(args) {
-		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
-	}
-
-	p := reflect.New(paramObj)
-	for i := 0; i < len(args); i++ {
-		switch paramObj.Field(i).Type {
-		case reflect.TypeOf(address.Address{}):
-			a, err := address.NewFromString(args[i])
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse address: %s", err)
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(a))
-		case reflect.TypeOf(uint64(0)):
-			val, err := strconv.ParseUint(args[i], 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(val))
-		case reflect.TypeOf(abi.ChainEpoch(0)):
-			val, err := strconv.ParseInt(args[i], 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(abi.ChainEpoch(val)))
-		case reflect.TypeOf(big.Int{}):
-			val, err := big.FromString(args[i])
-			if err != nil {
-				return nil, err
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(val))
-		case reflect.TypeOf(peer.ID("")):
-			pid, err := peer.Decode(args[i])
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse peer ID: %s", err)
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(pid))
-		default:
-			return nil, fmt.Errorf("unsupported type for call (TODO): %s", paramObj.Field(i).Type)
-		}
-	}
-
-	m := p.Interface().(cbg.CBORMarshaler)
-	buf := new(bytes.Buffer)
-	if err := m.MarshalCBOR(buf); err != nil {
-		return nil, fmt.Errorf("failed to marshal param object: %s", err)
-	}
-	return buf.Bytes(), nil
 }
 
 var StateCircSupplyCmd = &cli.Command{
@@ -1762,13 +1723,6 @@ var StateSectorCmd = &cli.Command{
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
-		}
-
-		if ts == nil {
-			ts, err = api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
 		}
 
 		maddr, err := address.NewFromString(cctx.Args().Get(0))

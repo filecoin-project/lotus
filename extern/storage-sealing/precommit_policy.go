@@ -40,7 +40,10 @@ type BasicPreCommitPolicy struct {
 	duration        abi.ChainEpoch
 }
 
-// NewBasicPreCommitPolicy produces a BasicPreCommitPolicy
+// NewBasicPreCommitPolicy produces a BasicPreCommitPolicy.
+//
+// The provided duration is used as the default sector expiry when the sector
+// contains no deals. The proving boundary is used to adjust/align the sector's expiration.
 func NewBasicPreCommitPolicy(api Chain, duration abi.ChainEpoch, provingBoundary abi.ChainEpoch) BasicPreCommitPolicy {
 	return BasicPreCommitPolicy{
 		api:             api,

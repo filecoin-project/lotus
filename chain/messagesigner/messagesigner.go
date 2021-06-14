@@ -23,7 +23,8 @@ const dsKeyActorNonce = "ActorNextNonce"
 var log = logging.Logger("messagesigner")
 
 type MpoolNonceAPI interface {
-	GetNonce(context.Context, address.Address) (uint64, error)
+	GetNonce(context.Context, address.Address, types.TipSetKey) (uint64, error)
+	GetActor(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
 }
 
 // MessageSigner keeps track of nonces per address, and increments the nonce
@@ -97,7 +98,7 @@ func (ms *MessageSigner) nextNonce(ctx context.Context, addr address.Address) (u
 	// that have mempool nonces, so first check the mempool for a nonce for
 	// this address. Note that the mempool returns the actor state's nonce
 	// by default.
-	nonce, err := ms.mpool.GetNonce(ctx, addr)
+	nonce, err := ms.mpool.GetNonce(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to get nonce from mempool: %w", err)
 	}

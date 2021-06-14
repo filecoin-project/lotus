@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"go/ast"
 	"net"
-	"os"
 	"reflect"
 
 	"github.com/alecthomas/jsonschema"
@@ -14,16 +13,6 @@ import (
 	"github.com/ipfs/go-cid"
 	meta_schema "github.com/open-rpc/meta-schema"
 )
-
-// Comments holds API method comments collected by AST parsing.
-var Comments map[string]string
-
-// GroupDocs holds documentation for documentation groups.
-var GroupDocs map[string]string
-
-func init() {
-	Comments, GroupDocs = docgen.ParseApiASTInfo(os.Args[1], os.Args[2])
-}
 
 // schemaDictEntry represents a type association passed to the jsonschema reflector.
 type schemaDictEntry struct {
@@ -94,7 +83,7 @@ func OpenRPCSchemaTypeMapper(ty reflect.Type) *jsonschema.Type {
 }
 
 // NewLotusOpenRPCDocument defines application-specific documentation and configuration for its OpenRPC document.
-func NewLotusOpenRPCDocument() *go_openrpc_reflect.Document {
+func NewLotusOpenRPCDocument(Comments, GroupDocs map[string]string) *go_openrpc_reflect.Document {
 	d := &go_openrpc_reflect.Document{}
 
 	// Register "Meta" document fields.

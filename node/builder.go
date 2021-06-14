@@ -333,6 +333,7 @@ var ChainNode = Options(
 
 	// Lite node API
 	ApplyIf(isLiteNode,
+		Override(new(messagepool.Provider), messagepool.NewProviderLite),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
 		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
 		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
@@ -343,6 +344,7 @@ var ChainNode = Options(
 
 	// Full node API / service startup
 	ApplyIf(isFullNode,
+		Override(new(messagepool.Provider), messagepool.NewProvider),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
@@ -373,9 +375,12 @@ var MinerNode = Options(
 	Override(new(*stores.Index), stores.NewIndex),
 	Override(new(stores.SectorIndex), From(new(*stores.Index))),
 	Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+	Override(new(*stores.Local), modules.LocalStorage),
+	Override(new(*stores.Remote), modules.RemoteStorage),
 	Override(new(*sectorstorage.Manager), modules.SectorStorage),
 	Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 	Override(new(storiface.WorkerReturn), From(new(sectorstorage.SectorManager))),
+	Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 
 	// Sector storage: Proofs
 	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
@@ -403,6 +408,7 @@ var MinerNode = Options(
 	Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
 	// Markets (retrieval)
+	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 	Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 	Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 	Override(HandleRetrievalKey, modules.HandleRetrieval),

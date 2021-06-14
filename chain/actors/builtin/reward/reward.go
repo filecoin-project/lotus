@@ -2,6 +2,7 @@ package reward
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -73,6 +74,51 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.StoragePower) (State, error) {
+	switch av {
+
+	case actors.Version0:
+		return make0(store, currRealizedPower)
+
+	case actors.Version2:
+		return make2(store, currRealizedPower)
+
+	case actors.Version3:
+		return make3(store, currRealizedPower)
+
+	case actors.Version4:
+		return make4(store, currRealizedPower)
+
+	case actors.Version5:
+		return make5(store, currRealizedPower)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+
+	case actors.Version0:
+		return builtin0.RewardActorCodeID, nil
+
+	case actors.Version2:
+		return builtin2.RewardActorCodeID, nil
+
+	case actors.Version3:
+		return builtin3.RewardActorCodeID, nil
+
+	case actors.Version4:
+		return builtin4.RewardActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.RewardActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type State interface {
 	cbor.Marshaler
 
@@ -90,6 +136,7 @@ type State interface {
 
 	InitialPledgeForPower(abi.StoragePower, abi.TokenAmount, *builtin.FilterEstimate, abi.TokenAmount) (abi.TokenAmount, error)
 	PreCommitDepositForPower(builtin.FilterEstimate, abi.StoragePower) (abi.TokenAmount, error)
+	GetState() interface{}
 }
 
 type AwardBlockRewardParams = reward0.AwardBlockRewardParams

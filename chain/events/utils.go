@@ -3,6 +3,8 @@ package events
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -22,12 +24,16 @@ func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd 
 			return false, true, nil
 		}
 
-		rec, err := me.cs.StateGetReceipt(ctx, smsg.VMMessage().Cid(), ts.Key())
+		ml, err := me.cs.StateSearchMsg(me.ctx, ts.Key(), msg.Cid(), stmgr.LookbackNoLimit, true)
 		if err != nil {
 			return false, true, xerrors.Errorf("getting receipt in CheckMsg: %w", err)
 		}
 
-		more, err = hnd(msg, rec, ts, ts.Height())
+		if ml == nil {
+			more, err = hnd(msg, nil, ts, ts.Height())
+		} else {
+			more, err = hnd(msg, &ml.Receipt, ts, ts.Height())
+		}
 
 		return true, more, err
 	}

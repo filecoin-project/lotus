@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -91,7 +90,7 @@ type StorageMinerAPI struct {
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
-	if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
+	if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 		w.WriteHeader(401)
 		_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 		return
@@ -246,13 +245,13 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 		return nil, err
 	}
 
-	out := make([]abi.SectorNumber, len(sectors))
-	for i, sector := range sectors {
+	out := make([]abi.SectorNumber, 0, len(sectors))
+	for _, sector := range sectors {
 		if sector.State == sealing.UndefinedSectorState {
 			continue // sector ID not set yet
 		}
 
-		out[i] = sector.SectorNumber
+		out = append(out, sector.SectorNumber)
 	}
 	return out, nil
 }

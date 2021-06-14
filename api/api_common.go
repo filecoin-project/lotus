@@ -15,6 +15,17 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 )
 
+//                       MODIFYING THE API INTERFACE
+//
+// When adding / changing methods in this file:
+// * Do the change here
+// * Adjust implementation in `node/impl/`
+// * Run `make gen` - this will:
+//  * Generate proxy structs
+//  * Generate mocks
+//  * Generate markdown docs
+//  * Generate openrpc blobs
+
 type Common interface {
 
 	// MethodGroup: Auth

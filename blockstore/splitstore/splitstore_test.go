@@ -27,7 +27,7 @@ func init() {
 }
 
 func testSplitStore(t *testing.T, cfg *Config) {
-	chain := &mockChain{}
+	chain := &mockChain{t: t}
 	// genesis
 	genBlock := mock.MkBlock(nil, 0, 0)
 	genTs := mock.TipSet(genBlock)
@@ -169,6 +169,9 @@ func testSplitStore(t *testing.T, cfg *Config) {
 			t.Errorf("expected %d hot blocks, but got %d", 7, hotCnt)
 		}
 	}
+
+	// Make sure we can revert without panicking.
+	chain.revert(2)
 }
 
 func TestSplitStoreSimpleCompaction(t *testing.T) {
@@ -191,6 +194,8 @@ func TestSplitStoreFullCompactionWithGC(t *testing.T) {
 }
 
 type mockChain struct {
+	t testing.TB
+
 	sync.Mutex
 	tipsets  []*types.TipSet
 	listener func(revert []*types.TipSet, apply []*types.TipSet) error
@@ -204,7 +209,26 @@ func (c *mockChain) push(ts *types.TipSet) {
 	if c.listener != nil {
 		err := c.listener(nil, []*types.TipSet{ts})
 		if err != nil {
-			log.Errorf("mockchain: error dispatching listener: %s", err)
+			c.t.Errorf("mockchain: error dispatching listener: %s", err)
+		}
+	}
+}
+
+func (c *mockChain) revert(count int) {
+	c.Lock()
+	revert := make([]*types.TipSet, count)
+	if count > len(c.tipsets) {
+		c.Unlock()
+		c.t.Fatalf("not enough tipsets to revert")
+	}
+	copy(revert, c.tipsets[len(c.tipsets)-count:])
+	c.tipsets = c.tipsets[:len(c.tipsets)-count]
+	c.Unlock()
+
+	if c.listener != nil {
+		err := c.listener(revert, nil)
+		if err != nil {
+			c.t.Errorf("mockchain: error dispatching listener: %s", err)
 		}
 	}
 }

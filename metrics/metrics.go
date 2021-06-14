@@ -83,6 +83,13 @@ var (
 	PubsubDropRPC                       = stats.Int64("pubsub/drop_rpc", "Counter for total dropped RPCs", stats.UnitDimensionless)
 	VMFlushCopyDuration                 = stats.Float64("vm/flush_copy_ms", "Time spent in VM Flush Copy", stats.UnitMilliseconds)
 	VMFlushCopyCount                    = stats.Int64("vm/flush_copy_count", "Number of copied objects", stats.UnitDimensionless)
+	VMApplyBlocksTotal                  = stats.Float64("vm/applyblocks_total_ms", "Time spent applying block state", stats.UnitMilliseconds)
+	VMApplyMessages                     = stats.Float64("vm/applyblocks_messages", "Time spent applying block messages", stats.UnitMilliseconds)
+	VMApplyEarly                        = stats.Float64("vm/applyblocks_early", "Time spent in early apply-blocks (null cron, upgrades)", stats.UnitMilliseconds)
+	VMApplyCron                         = stats.Float64("vm/applyblocks_cron", "Time spent in cron", stats.UnitMilliseconds)
+	VMApplyFlush                        = stats.Float64("vm/applyblocks_flush", "Time spent flushing vm state", stats.UnitMilliseconds)
+	VMSends                             = stats.Int64("vm/sends", "Counter for sends processed by the VM", stats.UnitDimensionless)
+	VMApplied                           = stats.Int64("vm/applied", "Counter for messages (including internal messages) processed by the VM", stats.UnitDimensionless)
 
 	// miner
 	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
@@ -240,6 +247,34 @@ var (
 		Measure:     VMFlushCopyCount,
 		Aggregation: view.Sum(),
 	}
+	VMApplyBlocksTotalView = &view.View{
+		Measure:     VMApplyBlocksTotal,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	VMApplyMessagesView = &view.View{
+		Measure:     VMApplyMessages,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	VMApplyEarlyView = &view.View{
+		Measure:     VMApplyEarly,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	VMApplyCronView = &view.View{
+		Measure:     VMApplyCron,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	VMApplyFlushView = &view.View{
+		Measure:     VMApplyFlush,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	VMSendsView = &view.View{
+		Measure:     VMSends,
+		Aggregation: view.LastValue(),
+	}
+	VMAppliedView = &view.View{
+		Measure:     VMApplied,
+		Aggregation: view.LastValue(),
+	}
 
 	// miner
 	WorkerCallsStartedView = &view.View{
@@ -330,6 +365,13 @@ var ChainNodeViews = append([]*view.View{
 	SplitstoreCompactionHotView,
 	SplitstoreCompactionColdView,
 	SplitstoreCompactionDeadView,
+	VMApplyBlocksTotalView,
+	VMApplyMessagesView,
+	VMApplyEarlyView,
+	VMApplyCronView,
+	VMApplyFlushView,
+	VMSendsView,
+	VMAppliedView,
 }, DefaultViews...)
 
 var MinerNodeViews = append([]*view.View{

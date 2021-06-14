@@ -36,7 +36,7 @@ type FundManagerAPI struct {
 type fundManagerAPI interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (api.MarketBalance, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 }
 
 // FundManager keeps track of funds in a set of addresses
@@ -721,6 +721,6 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 }
 
 func (env *fundManagerEnvironment) WaitMsg(ctx context.Context, c cid.Cid) error {
-	_, err := env.api.StateWaitMsg(ctx, c, build.MessageConfidence)
+	_, err := env.api.StateWaitMsg(ctx, c, build.MessageConfidence, api.LookbackNoLimit, true)
 	return err
 }

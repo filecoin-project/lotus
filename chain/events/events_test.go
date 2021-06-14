@@ -54,7 +54,7 @@ func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*ty
 	return fcs.tipsets[key], nil
 }
 
-func (fcs *fakeCS) StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error) {
+func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
 	return nil, nil
 }
 
@@ -229,7 +229,7 @@ func (fcs *fakeCS) notifDone() {
 	fcs.sync.Unlock()
 }
 
-var _ eventAPI = &fakeCS{}
+var _ EventAPI = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	fcs := &fakeCS{

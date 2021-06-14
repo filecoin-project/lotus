@@ -55,7 +55,8 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
-	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -116,14 +117,14 @@ func MinerID(ma dtypes.MinerAddress) (dtypes.MinerID, error) {
 	return dtypes.MinerID(id), err
 }
 
-func StorageNetworkName(ctx helpers.MetricsCtx, a lapi.FullNode) (dtypes.NetworkName, error) {
+func StorageNetworkName(ctx helpers.MetricsCtx, a v1api.FullNode) (dtypes.NetworkName, error) {
 	if !build.Devnet {
 		return "testnetnet", nil
 	}
 	return a.StateNetworkName(ctx)
 }
 
-func SealProofType(maddr dtypes.MinerAddress, fnapi lapi.FullNode) (abi.RegisteredSealProof, error) {
+func SealProofType(maddr dtypes.MinerAddress, fnapi v1api.FullNode) (abi.RegisteredSealProof, error) {
 	mi, err := fnapi.StateMinerInfo(context.TODO(), address.Address(maddr), types.EmptyTSK)
 	if err != nil {
 		return 0, err
@@ -196,7 +197,7 @@ type StorageMinerParams struct {
 
 	Lifecycle          fx.Lifecycle
 	MetricsCtx         helpers.MetricsCtx
-	API                lapi.FullNode
+	API                v1api.FullNode
 	Host               host.Host
 	MetadataDS         dtypes.MetadataDS
 	Sealer             sectorstorage.SectorManager
@@ -439,7 +440,7 @@ func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Stagi
 	return gs
 }
 
-func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*lotusminer.Miner, error) {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api v1api.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*lotusminer.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -462,7 +463,7 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api lapi.FullNode
 	return m, nil
 }
 
-func NewStorageAsk(ctx helpers.MetricsCtx, fapi lapi.FullNode, ds dtypes.MetadataDS, minerAddress dtypes.MinerAddress, spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
+func NewStorageAsk(ctx helpers.MetricsCtx, fapi v1api.FullNode, ds dtypes.MetadataDS, minerAddress dtypes.MinerAddress, spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
 
 	mi, err := fapi.StateMinerInfo(ctx, address.Address(minerAddress), types.EmptyTSK)
 	if err != nil {
@@ -636,17 +637,15 @@ func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dt
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
 func RetrievalProvider(h host.Host,
 	miner *storage.Miner,
-	sealer sectorstorage.SectorManager,
-	full lapi.FullNode,
+	full v1api.FullNode,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
 	mds dtypes.StagingMultiDstore,
 	dt dtypes.ProviderDataTransfer,
-	onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
+	pieceProvider sectorstorage.PieceProvider,
 	userFilter dtypes.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
-	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
+	adapter := retrievaladapter.NewRetrievalProviderNode(miner, pieceProvider, full)
 
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
@@ -662,13 +661,22 @@ func RetrievalProvider(h host.Host,
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
 var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
+func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, urls sectorstorage.URLs) (*stores.Local, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	return stores.NewLocal(ctx, ls, si, urls)
+}
+
+func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.StorageAuth, sc sectorstorage.SealerConfig) *stores.Remote {
+	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &stores.DefaultPartialFileHandler{})
+}
+
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
 	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sectorstorage.New(ctx, ls, si, sc, urls, sa, wsts, smsts)
+	sst, err := sectorstorage.New(ctx, lstor, stor, ls, si, sc, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}
@@ -680,7 +688,7 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStor
 	return sst, nil
 }
 
-func StorageAuth(ctx helpers.MetricsCtx, ca lapi.Common) (sectorstorage.StorageAuth, error) {
+func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
 	token, err := ca.AuthNew(ctx, []auth.Permission{"admin"})
 	if err != nil {
 		return nil, xerrors.Errorf("creating storage auth header: %w", err)

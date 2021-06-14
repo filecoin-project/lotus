@@ -5,6 +5,8 @@ import (
 	"math"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -66,7 +68,7 @@ type queuedEvent struct {
 // Manages chain head change events, which may be forward (new tipset added to
 // chain) or backward (chain branch discarded in favour of heavier branch)
 type hcEvents struct {
-	cs           eventAPI
+	cs           EventAPI
 	tsc          *tipSetCache
 	ctx          context.Context
 	gcConfidence uint64
@@ -93,7 +95,7 @@ type hcEvents struct {
 	watcherEvents
 }
 
-func newHCEvents(ctx context.Context, cs eventAPI, tsc *tipSetCache, gcConfidence uint64) *hcEvents {
+func newHCEvents(ctx context.Context, cs EventAPI, tsc *tipSetCache, gcConfidence uint64) *hcEvents {
 	e := hcEvents{
 		ctx:          ctx,
 		cs:           cs,
@@ -355,14 +357,14 @@ type headChangeAPI interface {
 // watcherEvents watches for a state change
 type watcherEvents struct {
 	ctx   context.Context
-	cs    eventAPI
+	cs    EventAPI
 	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
 	matchers map[triggerID]StateMatchFunc
 }
 
-func newWatcherEvents(ctx context.Context, hcAPI headChangeAPI, cs eventAPI) watcherEvents {
+func newWatcherEvents(ctx context.Context, hcAPI headChangeAPI, cs EventAPI) watcherEvents {
 	return watcherEvents{
 		ctx:      ctx,
 		cs:       cs,
@@ -457,14 +459,14 @@ func (we *watcherEvents) StateChanged(check CheckFunc, scHnd StateChangeHandler,
 // messageEvents watches for message calls to actors
 type messageEvents struct {
 	ctx   context.Context
-	cs    eventAPI
+	cs    EventAPI
 	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
 	matchers map[triggerID]MsgMatchFunc
 }
 
-func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs eventAPI) messageEvents {
+func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs EventAPI) messageEvents {
 	return messageEvents{
 		ctx:      ctx,
 		cs:       cs,
@@ -585,12 +587,16 @@ func (me *messageEvents) Called(check CheckFunc, msgHnd MsgHandler, rev RevertHa
 			panic("expected msg")
 		}
 
-		rec, err := me.cs.StateGetReceipt(me.ctx, msg.Cid(), ts.Key())
+		ml, err := me.cs.StateSearchMsg(me.ctx, ts.Key(), msg.Cid(), stmgr.LookbackNoLimit, true)
 		if err != nil {
 			return false, err
 		}
 
-		return msgHnd(msg, rec, ts, height)
+		if ml == nil {
+			return msgHnd(msg, nil, ts, height)
+		}
+
+		return msgHnd(msg, &ml.Receipt, ts, height)
 	}
 
 	id, err := me.hcAPI.onHeadChanged(check, hnd, rev, confidence, timeout)

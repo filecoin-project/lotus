@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
@@ -64,9 +63,10 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:    "lotus-worker",
-		Usage:   "Remote miner worker",
-		Version: build.UserVersion(),
+		Name:                 "lotus-worker",
+		Usage:                "Remote miner worker",
+		Version:              build.UserVersion(),
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWorkerRepo,
@@ -211,8 +211,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if v.APIVersion != api.MinerAPIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.MinerAPIVersion})
+		if v.APIVersion != api.MinerAPIVersion0 {
+			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.MinerAPIVersion0})
 		}
 		log.Infof("Remote version %s", v)
 
@@ -362,11 +362,12 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
 
-		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"))
+		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"),
+			&stores.DefaultPartialFileHandler{})
 
-		fh := &stores.FetchHandler{Local: localStore}
+		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
 		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
-			if !auth.HasPerm(r.Context(), nil, apistruct.PermAdmin) {
+			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 				w.WriteHeader(401)
 				_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing admin permission"})
 				return
@@ -394,7 +395,7 @@ var runCmd = &cli.Command{
 
 		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 		rpcServer := jsonrpc.NewServer(readerServerOpt)
-		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(metrics.MetricedWorkerAPI(workerApi)))
+		rpcServer.Register("Filecoin", api.PermissionedWorkerAPI(metrics.MetricedWorkerAPI(workerApi)))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)

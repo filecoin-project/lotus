@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-address"
 
@@ -318,7 +320,7 @@ func doExtractMessage(opts extractOpts) error {
 
 // resolveFromChain queries the chain for the provided message, using the block CID to
 // speed up the query, if provided
-func resolveFromChain(ctx context.Context, api api.FullNode, mcid cid.Cid, block string) (msg *types.Message, execTs *types.TipSet, incTs *types.TipSet, err error) {
+func resolveFromChain(ctx context.Context, api v0api.FullNode, mcid cid.Cid, block string) (msg *types.Message, execTs *types.TipSet, incTs *types.TipSet, err error) {
 	// Extract the full message.
 	msg, err = api.ChainGetMessage(ctx, mcid)
 	if err != nil {
@@ -373,7 +375,7 @@ func resolveFromChain(ctx context.Context, api api.FullNode, mcid cid.Cid, block
 // as the previous tipset. In the context of vector generation, the target
 // tipset is the one where a message was executed, and the previous tipset is
 // the one where the message was included.
-func fetchThisAndPrevTipset(ctx context.Context, api api.FullNode, target types.TipSetKey) (targetTs *types.TipSet, prevTs *types.TipSet, err error) {
+func fetchThisAndPrevTipset(ctx context.Context, api v0api.FullNode, target types.TipSetKey) (targetTs *types.TipSet, prevTs *types.TipSet, err error) {
 	// get the tipset on which this message was "executed" on.
 	// https://github.com/filecoin-project/lotus/issues/2847
 	targetTs, err = api.ChainGetTipSet(ctx, target)

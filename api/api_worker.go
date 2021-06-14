@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"io"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -13,6 +12,17 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/specs-storage/storage"
 )
+
+//                       MODIFYING THE API INTERFACE
+//
+// When adding / changing methods in this file:
+// * Do the change here
+// * Adjust implementation in `node/impl/`
+// * Run `make gen` - this will:
+//  * Generate proxy structs
+//  * Generate mocks
+//  * Generate markdown docs
+//  * Generate openrpc blobs
 
 type Worker interface {
 	Version(context.Context) (Version, error) //perm:admin
@@ -32,7 +42,6 @@ type Worker interface {
 	ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (storiface.CallID, error)                                                                                 //perm:admin
 	MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error)                                                                                 //perm:admin
 	UnsealPiece(context.Context, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (storiface.CallID, error)                                           //perm:admin
-	ReadPiece(context.Context, io.Writer, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize) (storiface.CallID, error)                                                               //perm:admin
 	Fetch(context.Context, storage.SectorRef, storiface.SectorFileType, storiface.PathType, storiface.AcquireMode) (storiface.CallID, error)                                                             //perm:admin
 
 	TaskDisable(ctx context.Context, tt sealtasks.TaskType) error //perm:admin

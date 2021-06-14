@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.15.6
+ARG GO_VERSION=1.16.3
 
 FROM golang:${GO_VERSION}-buster as downloader
 
@@ -8,11 +8,11 @@ FROM golang:${GO_VERSION}-buster as downloader
 ## 3. Trigger the download.
 ## Output will be in /var/tmp/filecoin-proof-parameters.
 
-RUN go get github.com/filecoin-project/go-paramfetch/paramfetch
+RUN go get github.com/filecoin-project/go-paramfetch/paramfetch@master
 COPY /proof-parameters.json /
 RUN paramfetch 8388608 /proof-parameters.json
 
-ARG LOTUS_COMMIT=b4ad2e5e93dc710d985eb9cf3ee04142efb47bf0
+ARG LOTUS_COMMIT=b8deee048eaf850113e8626a73f64b17ba69a9f6
 
 ## for debug purposes
 RUN apt update && apt install -y mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config libhwloc-dev curl && git clone https://github.com/filecoin-project/lotus.git && cd lotus/ && git checkout ${LOTUS_COMMIT} && make clean && make all && make install

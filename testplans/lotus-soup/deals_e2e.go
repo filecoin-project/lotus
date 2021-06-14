@@ -4,19 +4,19 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	mbig "math/big"
 	"math/rand"
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/testground/sdk-go/sync"
 
-	mbig "math/big"
-
+	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-
 	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 )
 
@@ -39,6 +39,8 @@ import (
 // Then we create a genesis block that allocates some funds to each node and collects
 // the presealed sectors.
 func dealsE2E(t *testkit.TestEnvironment) error {
+	t.RecordMessage("running node with role '%s'", t.Role)
+
 	// Dispatch/forward non-client roles to defaults.
 	if t.Role != "client" {
 		return testkit.HandleDefaultRole(t)
@@ -75,9 +77,11 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	// give some time to the miner, otherwise, we get errors like:
 	// deal errored deal failed: (State=26) error calling node: publishing deal: GasEstimateMessageGas
 	// error: estimating gas used: message execution failed: exit 19, reason: failed to lock balance: failed to lock client funds: not enough balance to lock for addr t0102: escrow balance 0 < locked 0 + required 640297000 (RetCode=19)
-	time.Sleep(50 * time.Second)
+	time.Sleep(40 * time.Second)
 
-	// generate 1600 bytes of random data
+	time.Sleep(time.Duration(t.GlobalSeq) * 5 * time.Second)
+
+	// generate 5000000 bytes of random data
 	data := make([]byte, 5000000)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
 
@@ -97,6 +101,15 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 		return err
 	}
 	t.RecordMessage("file cid: %s", fcid)
+
+	// Check if we should bounce the connection during data transfers
+	if t.BooleanParam("bounce_conn_data_transfers") {
+		t.RecordMessage("Will bounce connection during push and pull data-transfers")
+		err = bounceConnInTransfers(ctx, t, client, minerAddr.MinerNetAddrs.ID)
+		if err != nil {
+			return err
+		}
+	}
 
 	// start deal
 	t1 := time.Now()
@@ -131,6 +144,55 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	return nil
 }
 
+func bounceConnInTransfers(ctx context.Context, t *testkit.TestEnvironment, client api.FullNode, minerPeerID peer.ID) error {
+	storageConnBroken := false
+	retrievalConnBroken := false
+	upds, err := client.ClientDataTransferUpdates(ctx)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for upd := range upds {
+			dir := "push"
+			if !upd.IsSender {
+				dir = "pull"
+			}
+
+			t.RecordMessage("%s data transfer status: %s, transferred: %d", dir, datatransfer.Statuses[upd.Status], upd.Transferred)
+
+			// Bounce the connection after the first block is sent for the storage deal
+			if upd.IsSender && upd.Transferred > 0 && !storageConnBroken {
+				storageConnBroken = true
+				bounceConnection(ctx, t, client, minerPeerID)
+			}
+
+			// Bounce the connection after the first block is received for the retrieval deal
+			if !upd.IsSender && upd.Transferred > 0 && !retrievalConnBroken {
+				retrievalConnBroken = true
+				bounceConnection(ctx, t, client, minerPeerID)
+			}
+		}
+	}()
+
+	return nil
+}
+
+func bounceConnection(ctx context.Context, t *testkit.TestEnvironment, client api.FullNode, minerPeerID peer.ID) {
+	t.RecordMessage("disconnecting peer %s", minerPeerID)
+	client.NetBlockAdd(ctx, api.NetBlockList{
+		Peers: []peer.ID{minerPeerID},
+	})
+
+	go func() {
+		time.Sleep(3 * time.Second)
+		t.RecordMessage("reconnecting to peer %s", minerPeerID)
+		client.NetBlockRemove(ctx, api.NetBlockList{
+			Peers: []peer.ID{minerPeerID},
+		})
+	}()
+}
+
 // filToAttoFil converts a fractional filecoin value into AttoFIL, rounding if necessary
 func filToAttoFil(f float64) big.Int {
 	a := mbig.NewFloat(f)
@@ -158,7 +220,7 @@ func initPaymentChannel(t *testkit.TestEnvironment, ctx context.Context, cl *tes
 	t.RecordMessage("waiting for payment channel message to appear on chain")
 
 	// wait for the channel creation message to appear on chain.
-	_, err = cl.FullApi.StateWaitMsg(ctx, channel.WaitSentinel, 2)
+	_, err = cl.FullApi.StateWaitMsg(ctx, channel.WaitSentinel, 2, api.LookbackNoLimit, true)
 	if err != nil {
 		return fmt.Errorf("failed while waiting for payment channel creation msg to appear on chain: %w", err)
 	}

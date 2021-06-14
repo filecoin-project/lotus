@@ -1,34 +1,27 @@
 package main
 
 import (
-	"context"
-	"net"
-	"net/http"
+	"fmt"
 	_ "net/http/pprof"
 	"os"
-	"os/signal"
-	"syscall"
 
-	mux "github.com/gorilla/mux"
+	"github.com/filecoin-project/lotus/api/v1api"
+
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -64,25 +57,29 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("getting full node api: %w", err)
-		}
-		defer ncloser()
-
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.BuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),
 		)
 		// Register all metric views
-		if err = view.Register(
+		if err := view.Register(
 			metrics.MinerNodeViews...,
 		); err != nil {
 			log.Fatalf("Cannot register the view: %v", err)
 		}
 		// Set the metric to one so it is published to the exporter
 		stats.Record(ctx, metrics.LotusInfo.M(1))
+
+		if err := checkV1ApiSupport(ctx, cctx); err != nil {
+			return err
+		}
+
+		nodeApi, ncloser, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting full node api: %w", err)
+		}
+		defer ncloser()
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
@@ -95,14 +92,14 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		if v.APIVersion != api.FullAPIVersion {
-			return xerrors.Errorf("lotus-daemon API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.FullAPIVersion})
+		if v.APIVersion != api.FullAPIVersion1 {
+			return xerrors.Errorf("lotus-daemon API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.FullAPIVersion1})
 		}
 
 		log.Info("Checking full node sync status")
 
 		if !cctx.Bool("nosync") {
-			if err := lcli.SyncWait(ctx, nodeApi, false); err != nil {
+			if err := lcli.SyncWait(ctx, &v0api.WrapperV1Full{FullNode: nodeApi}, false); err != nil {
 				return xerrors.Errorf("sync wait: %w", err)
 			}
 		}
@@ -134,7 +131,7 @@ var runCmd = &cli.Command{
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("miner-api"))
 				})),
-			node.Override(new(api.FullNode), nodeApi),
+			node.Override(new(v1api.FullNode), nodeApi),
 		)
 		if err != nil {
 			return xerrors.Errorf("creating node: %w", err)
@@ -157,54 +154,25 @@ var runCmd = &cli.Command{
 
 		log.Infof("Remote version %s", v)
 
-		lst, err := manet.Listen(endpoint)
+		// Instantiate the miner node handler.
+		handler, err := node.MinerHandler(minerapi, true)
 		if err != nil {
-			return xerrors.Errorf("could not listen: %w", err)
+			return xerrors.Errorf("failed to instantiate rpc handler: %w", err)
 		}
 
-		mux := mux.NewRouter()
-
-		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(metrics.MetricedStorMinerAPI(minerapi)))
-
-		mux.Handle("/rpc/v0", rpcServer)
-		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
-		mux.Handle("/debug/metrics", metrics.Exporter())
-		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
-
-		ah := &auth.Handler{
-			Verify: minerapi.AuthVerify,
-			Next:   mux.ServeHTTP,
+		// Serve the RPC.
+		rpcStopper, err := node.ServeRPC(handler, "lotus-miner", endpoint)
+		if err != nil {
+			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 		}
 
-		srv := &http.Server{
-			Handler: ah,
-			BaseContext: func(listener net.Listener) context.Context {
-				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-miner"))
-				return ctx
-			},
-		}
+		// Monitor for shutdown.
+		finishCh := node.MonitorShutdown(shutdownChan,
+			node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
+			node.ShutdownHandler{Component: "miner", StopFunc: stop},
+		)
 
-		sigChan := make(chan os.Signal, 2)
-		go func() {
-			select {
-			case sig := <-sigChan:
-				log.Warnw("received shutdown", "signal", sig)
-			case <-shutdownChan:
-				log.Warn("received shutdown")
-			}
-
-			log.Warn("Shutting down...")
-			if err := stop(context.TODO()); err != nil {
-				log.Errorf("graceful shutting down failed: %s", err)
-			}
-			if err := srv.Shutdown(context.TODO()); err != nil {
-				log.Errorf("shutting down RPC server failed: %s", err)
-			}
-			log.Warn("Graceful shutdown successful")
-		}()
-		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-
-		return srv.Serve(manet.NetListener(lst))
+		<-finishCh
+		return nil
 	},
 }

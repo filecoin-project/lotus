@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/api"
-
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -16,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -254,7 +253,7 @@ var filplusCheckNotaryCmd = &cli.Command{
 	},
 }
 
-func checkNotary(ctx context.Context, api api.FullNode, vaddr address.Address) (bool, abi.StoragePower, error) {
+func checkNotary(ctx context.Context, api v0api.FullNode, vaddr address.Address) (bool, abi.StoragePower, error) {
 	vid, err := api.StateLookupID(ctx, vaddr, types.EmptyTSK)
 	if err != nil {
 		return false, big.Zero(), err

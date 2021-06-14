@@ -34,7 +34,7 @@ func GetFullNodeServices(ctx *cli.Context) (ServicesAPI, error) {
 		return tn.(ServicesAPI), nil
 	}
 
-	api, c, err := GetFullNodeAPI(ctx)
+	api, c, err := GetFullNodeAPIV1(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +50,7 @@ var DaemonContext = cliutil.DaemonContext
 var ReqContext = cliutil.ReqContext
 
 var GetFullNodeAPI = cliutil.GetFullNodeAPI
+var GetFullNodeAPIV1 = cliutil.GetFullNodeAPIV1
 var GetGatewayAPI = cliutil.GetGatewayAPI
 
 var GetStorageMinerAPI = cliutil.GetStorageMinerAPI
@@ -81,6 +82,7 @@ var Commands = []*cli.Command{
 	WithCategory("developer", FetchParamCmd),
 	WithCategory("network", NetCmd),
 	WithCategory("network", SyncCmd),
+	WithCategory("status", StatusCmd),
 	PprofCmd,
 	VersionCmd,
 }
