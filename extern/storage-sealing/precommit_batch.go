@@ -243,7 +243,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.PreCo
 
 	res.Msg = &mcid
 
-	log.Infow("Sent ProveCommitAggregate message", "cid", mcid, "from", from, "sectors", len(b.todo))
+	log.Infow("Sent PreCommitBatch message", "cid", mcid, "from", from, "sectors", len(b.todo))
 
 	return []sealiface.PreCommitBatchRes{res}, nil
 }
