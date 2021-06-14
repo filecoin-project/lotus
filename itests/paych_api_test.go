@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -24,36 +23,30 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/itests/kit2"
 )
 
 func TestPaymentChannelsAPI(t *testing.T) {
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
 	ctx := context.Background()
-	n, sn := kit.MockMinerBuilder(t, kit.TwoFull, kit.OneMiner)
+	blockTime := 5 * time.Millisecond
 
-	paymentCreator := n[0]
-	paymentReceiver := n[1]
-	miner := sn[0]
+	var (
+		paymentCreator  kit2.TestFullNode
+		paymentReceiver kit2.TestFullNode
+		miner           kit2.TestMiner
+	)
 
-	// get everyone connected
-	addrs, err := paymentCreator.NetAddrsListen(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := paymentReceiver.NetConnect(ctx, addrs); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := miner.NetConnect(ctx, addrs); err != nil {
-		t.Fatal(err)
-	}
-
-	// start mining blocks
-	bm := kit.NewBlockMiner(t, miner)
-	bm.MineBlocks(ctx, 5*time.Millisecond)
-	t.Cleanup(bm.Stop)
+	//n, sn := kit2.MockMinerBuilder(t, kit2.TwoFull, kit2.OneMiner)
+	ens := kit2.NewEnsemble(t, kit2.MockProofs()).
+		FullNode(&paymentCreator).
+		FullNode(&paymentReceiver).
+		Miner(&miner, &paymentCreator).
+		Start().
+		InterconnectAll()
+	bms := ens.BeginMining(blockTime, &miner)
+	bm := bms[0]
 
 	// send some funds to register the receiver
 	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
@@ -61,7 +54,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	kit.SendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
+	kit2.SendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
 
 	// setup the payment channel
 	createrAddr, err := paymentCreator.WalletDefaultAddress(ctx)
@@ -263,12 +256,9 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	if !delta.Equals(abi.NewTokenAmount(expectedRefund)) {
 		t.Fatalf("did not send correct funds from creator: expected %d, got %d", expectedRefund, delta)
 	}
-
-	// shut down mining
-	bm.Stop()
 }
 
-func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymentReceiver kit.TestFullNode, receiverAddr address.Address, count int) {
+func waitForBlocks(ctx context.Context, t *testing.T, bm *kit2.BlockMiner, paymentReceiver kit2.TestFullNode, receiverAddr address.Address, count int) {
 	// We need to add null blocks in batches, if we add too many the chain can't sync
 	batchSize := 60
 	for i := 0; i < count; i += batchSize {
@@ -297,7 +287,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymen
 	}
 }
 
-func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
+func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit2.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
 	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 
