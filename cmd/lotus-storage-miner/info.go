@@ -195,7 +195,7 @@ func infoCmdAct(cctx *cli.Context) error {
 			)
 
 			// Geometric distribution calculated as described in https://en.wikipedia.org/wiki/Geometric_distribution#Probability_Outcomes_Examples
-			// https://www.wolframalpha.com/input/?i=c%3D99%3B+p%3D188809111007232%3B+n%3D5740343177447735296%3B+%281-%284.99*p%2Fn%29%29%5E%28t*2880%29%3D%281-%28c%2F100%29%29
+			// https://www.wolframalpha.com/input/?i=t+%3E+0%3B+p+%3E+0%3B+p+%3C+1%3B+%281-%28p%29%29%5Et%3D%281-%28c%2F100%29%29%3B+solve+t
 			fmt.Print("Projected block win with ")
 			color.Green(
 				"99.9%% probability every %s",
