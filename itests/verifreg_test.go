@@ -6,25 +6,29 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/itests/kit"
-
-	lapi "github.com/filecoin-project/lotus/api"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
-	"github.com/filecoin-project/lotus/node/impl"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
 
-	"github.com/filecoin-project/go-state-types/big"
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/node/impl"
 )
 
 func TestVerifiedClientTopUp(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+
 	test := func(nv network.Version, shouldWork bool) func(*testing.T) {
 		return func(t *testing.T) {
-			nodes, miners := kit.MockMinerBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithNetworkUpgradeAt(nv, -1)}, kit.OneMiner)
-			api := nodes[0].FullNode.(*impl.FullNodeAPI)
+			nopts := kit2.ConstructorOpts(kit2.NetworkUpgradeAt(nv, -1))
+
+			node, _, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), nopts)
+			ens.InterconnectAll().BeginMining(blockTime)
+
+			api := node.FullNode.(*impl.FullNodeAPI)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -51,10 +55,6 @@ func TestVerifiedClientTopUp(t *testing.T) {
 				Params: params,
 				Value:  big.Zero(),
 			}
-
-			bm := kit.NewBlockMiner(t, miners[0])
-			bm.MineBlocks(ctx, 100*time.Millisecond)
-			t.Cleanup(bm.Stop)
 
 			sm, err := api.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {
