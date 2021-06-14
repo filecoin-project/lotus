@@ -55,7 +55,7 @@ var (
 
 	// SyncGapTime is the time delay from a tipset's min timestamp before we decide
 	// there is a sync gap
-	SyncGapTime = 5 * time.Minute
+	SyncGapTime = time.Minute
 )
 
 var (
