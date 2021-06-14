@@ -246,6 +246,8 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 			break
 		}
 
+		res.Sectors = append(res.Sectors, id)
+
 		sc, err := b.getSectorCollateral(id, tok)
 		if err != nil {
 			res.FailedSectors[id] = err.Error()
@@ -254,7 +256,6 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 		collateral = big.Add(collateral, sc)
 
-		res.Sectors = append(res.Sectors, id)
 		params.SectorNumbers.Set(uint64(id))
 		infos = append(infos, p.info)
 	}
