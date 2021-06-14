@@ -18,6 +18,8 @@ type Config struct {
 
 	AlwaysKeepUnsealedCopy bool
 
+	FinalizeEarly bool
+
 	BatchPreCommits     bool
 	MaxPreCommitBatch   int
 	MinPreCommitBatch   int
