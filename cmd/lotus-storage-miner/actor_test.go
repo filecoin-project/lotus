@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,13 +17,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/repo"
-	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 func TestWorkerKeyChange(t *testing.T) {
@@ -41,20 +38,16 @@ func TestWorkerKeyChange(t *testing.T) {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 
-	lotuslog.SetupLogLevels()
-	logging.SetLogLevel("miner", "ERROR")
-	logging.SetLogLevel("chainstore", "ERROR")
-	logging.SetLogLevel("chain", "ERROR")
-	logging.SetLogLevel("pubsub", "ERROR")
-	logging.SetLogLevel("sub", "ERROR")
-	logging.SetLogLevel("storageminer", "ERROR")
+	kit.QuietMiningLogs()
 
 	blocktime := 1 * time.Millisecond
 
-	n, sn := builder.MockSbBuilder(t, []test.FullNodeOpts{test.FullNodeWithLatestActorsAt(-1), test.FullNodeWithLatestActorsAt(-1)}, test.OneMiner)
+	clients, miners := kit.MockMinerBuilder(t,
+		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1), kit.FullNodeWithLatestActorsAt(-1)},
+		kit.OneMiner)
 
-	client1 := n[0]
-	client2 := n[1]
+	client1 := clients[0]
+	client2 := clients[1]
 
 	// Connect the nodes.
 	addrinfo, err := client1.NetAddrsListen(ctx)
@@ -67,8 +60,8 @@ func TestWorkerKeyChange(t *testing.T) {
 		app := cli.NewApp()
 		app.Metadata = map[string]interface{}{
 			"repoType":         repo.StorageMiner,
-			"testnode-full":    n[0],
-			"testnode-storage": sn[0],
+			"testnode-full":    clients[0],
+			"testnode-storage": miners[0],
 		}
 		app.Writer = output
 		api.RunningNodeType = api.NodeMiner
@@ -85,29 +78,14 @@ func TestWorkerKeyChange(t *testing.T) {
 		return cmd.Action(cctx)
 	}
 
-	// setup miner
-	mine := int64(1)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for atomic.LoadInt64(&mine) == 1 {
-			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, test.MineNext); err != nil {
-				t.Error(err)
-			}
-		}
-	}()
-	defer func() {
-		atomic.AddInt64(&mine, -1)
-		fmt.Println("shutting down mining")
-		<-done
-	}()
+	// start mining
+	kit.ConnectAndStartMining(t, blocktime, miners[0], client1, client2)
 
 	newKey, err := client1.WalletNew(ctx, types.KTBLS)
 	require.NoError(t, err)
 
 	// Initialize wallet.
-	test.SendFunds(ctx, t, client1, newKey, abi.NewTokenAmount(0))
+	kit.SendFunds(ctx, t, client1, newKey, abi.NewTokenAmount(0))
 
 	require.NoError(t, run(actorProposeChangeWorker, "--really-do-it", newKey.String()))
 
