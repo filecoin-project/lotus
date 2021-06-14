@@ -15,7 +15,7 @@ type ensembleOpts struct {
 }
 
 var DefaultEnsembleOpts = ensembleOpts{
-	pastOffset: 10000 * time.Second,
+	pastOffset: 100000 * time.Second, // time sufficiently in the past to trigger catch-up mining.
 	proofType:  abi.RegisteredSealProof_StackedDrg2KiBV1,
 }
 

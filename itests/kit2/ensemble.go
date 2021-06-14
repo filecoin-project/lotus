@@ -114,8 +114,7 @@ type Ensemble struct {
 	}
 }
 
-// NewEnsemble instantiates a new blank Ensemble. This enables you to
-// programmatically
+// NewEnsemble instantiates a new blank Ensemble.
 func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	options := DefaultEnsembleOpts
 	for _, o := range opts {
@@ -593,7 +592,7 @@ func (n *Ensemble) generateGenesis() *genesis.Template {
 		Accounts:         n.genesis.accounts,
 		Miners:           n.genesis.miners,
 		NetworkName:      "test",
-		Timestamp:        uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
+		Timestamp:        uint64(time.Now().Unix() - int64(n.options.pastOffset.Seconds())),
 		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
