@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	// DefaultRetrievalPricing configures the node to use the default retrieval pricing policy.
-	DefaultRetrievalPricing = "default"
-	// ExternalRetrievalPricing configures the node to use the external retrieval pricing script
+	// RetrievalPricingDefault configures the node to use the default retrieval pricing policy.
+	RetrievalPricingDefault = "default"
+	// RetrievalPricingExternal configures the node to use the external retrieval pricing script
 	// configured by the user.
-	ExternalRetrievalPricing = "external"
+	RetrievalPricingExternal = "external"
 )
 
 // Common is common config between full node and miner
