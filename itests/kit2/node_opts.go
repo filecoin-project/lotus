@@ -23,6 +23,7 @@ type nodeOpts struct {
 	rpc           bool
 	ownerKey      *wallet.Key
 	extraNodeOpts []node.Option
+	optBuilders   []OptBuilder
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -30,6 +31,10 @@ var DefaultNodeOpts = nodeOpts{
 	balance: big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
 	sectors: DefaultPresealsPerBootstrapMiner,
 }
+
+// OptBuilder is used to create an option after some other node is already
+// active. Takes all active nodes as a parameter.
+type OptBuilder func(activeNodes []*TestFullNode) node.Option
 
 // NodeOpt is a functional option for test nodes.
 type NodeOpt func(opts *nodeOpts) error
@@ -84,6 +89,15 @@ func OwnerAddr(wk *wallet.Key) NodeOpt {
 func ConstructorOpts(extra ...node.Option) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.extraNodeOpts = extra
+		return nil
+	}
+}
+
+// AddOptBuilder adds an OptionBuilder to a node. It is used to add Lotus node
+// constructor options after some nodes are already active.
+func AddOptBuilder(optBuilder OptBuilder) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.optBuilders = append(opts.optBuilders, optBuilder)
 		return nil
 	}
 }

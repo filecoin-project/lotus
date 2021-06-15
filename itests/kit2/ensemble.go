@@ -279,6 +279,11 @@ func (n *Ensemble) Start() *Ensemble {
 			)
 		}
 
+		// Call option builders, passing active nodes as the parameter
+		for _, bopt := range full.options.optBuilders {
+			opts = append(opts, bopt(n.active.fullnodes))
+		}
+
 		// Construct the full node.
 		stop, err := node.New(ctx, opts...)
 

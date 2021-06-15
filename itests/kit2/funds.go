@@ -30,5 +30,5 @@ func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, recipient
 	res, err := sender.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 
-	require.Equal(t, 0, res.Receipt.ExitCode, "did not successfully send funds")
+	require.EqualValues(t, 0, res.Receipt.ExitCode, "did not successfully send funds")
 }
