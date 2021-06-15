@@ -59,6 +59,7 @@ func main() {
 		signaturesCmd,
 		actorCmd,
 		minerTypesCmd,
+		minerMultisigsCmd,
 	}
 
 	app := &cli.App{

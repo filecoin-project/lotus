@@ -629,7 +629,7 @@ type FullNode interface {
 	// proposal. This method of approval can be used to ensure you only approve
 	// exactly the transaction you think you are.
 	// It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
-	// <sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
+	// <sender address of the approve msg>, <method to call in the approved message>, <params to include in the proposed message>
 	MsigApproveTxnHash(context.Context, address.Address, uint64, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error) //perm:sign
 
 	// MsigCancel cancels a previously-proposed multisig message
