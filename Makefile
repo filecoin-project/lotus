@@ -330,6 +330,15 @@ api-gen:
 	goimports -w api/apistruct
 .PHONY: api-gen
 
+appimage: lotus
+	rm -rf appimage-builder-cache || true
+	rm AppDir/io.filecoin.lotus.desktop || true
+	rm AppDir/icon.svg || true
+	rm Appdir/AppRun || true
+	mkdir -p AppDir/usr/bin
+	cp ./lotus AppDir/usr/bin/
+	appimage-builder
+
 docsgen: docsgen-md docsgen-openrpc
 
 docsgen-md-bin: actors-gen
