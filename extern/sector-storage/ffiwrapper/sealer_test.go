@@ -882,11 +882,11 @@ func setupLogger(t *testing.T) *bytes.Buffer {
 }
 
 func TestMulticoreSDR(t *testing.T) {
-	rustLogger := setupLogger(t)
-
 	if os.Getenv("TEST_RUSTPROOFS_LOGS") != "1" {
 		t.Skip("skipping test without TEST_RUSTPROOFS_LOGS=1")
 	}
+
+	rustLogger := setupLogger(t)
 
 	getGrothParamFileAndVerifyingKeys(sectorSize)
 
