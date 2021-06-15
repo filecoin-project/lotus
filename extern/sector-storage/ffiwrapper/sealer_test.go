@@ -883,8 +883,8 @@ func TestAddPiece512MPadded(t *testing.T) {
 }
 
 func TestMulticoreSDR(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode")
+	if os.Getenv("TEST_RUSTPROOFS_LOGS") != "1" {
+		t.Skip("skipping test without TEST_RUSTPROOFS_LOGS=1")
 	}
 
 	getGrothParamFileAndVerifyingKeys(sectorSize)
