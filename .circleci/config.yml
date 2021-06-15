@@ -428,7 +428,7 @@ jobs:
             - "~/.rustup"
             - "~/.cargo"
 
-    build-appimage:
+  build-appimage:
     machine:
       image: ubuntu-2004:202104-01
     steps:
