@@ -39,34 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 )
 
-var rustLogger = func() *bytes.Buffer {
-	os.Setenv("RUST_LOG", "info")
-
-	var bb bytes.Buffer
-	r, w, err := os.Pipe()
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		_, _ = io.Copy(&bb, r)
-		runtime.KeepAlive(w)
-	}()
-
-	resp := generated.FilInitLogFd(int32(w.Fd()))
-	resp.Deref()
-
-	defer generated.FilDestroyInitLogFdResponse(resp)
-
-	if resp.StatusCode != generated.FCPResponseStatusFCPNoError {
-		panic(generated.RawString(resp.ErrorMsg).Copy())
-	}
-
-	return &bb
-}()
-
 func init() {
-	rustLogger.Reset()
 	logging.SetLogLevel("*", "DEBUG") //nolint: errcheck
 }
 
@@ -882,7 +855,35 @@ func TestAddPiece512MPadded(t *testing.T) {
 	require.Equal(t, "baga6ea4seaqonenxyku4o7hr5xkzbqsceipf6xgli3on54beqbk6k246sbooobq", c.PieceCID.String())
 }
 
+func setupLogger(t *testing.T) *bytes.Buffer {
+	_ = os.Setenv("RUST_LOG", "info")
+
+	var bb bytes.Buffer
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		_, _ = io.Copy(&bb, r)
+		runtime.KeepAlive(w)
+	}()
+
+	resp := generated.FilInitLogFd(int32(w.Fd()))
+	resp.Deref()
+
+	defer generated.FilDestroyInitLogFdResponse(resp)
+
+	if resp.StatusCode != generated.FCPResponseStatusFCPNoError {
+		t.Fatal(generated.RawString(resp.ErrorMsg).Copy())
+	}
+
+	return &bb
+}
+
 func TestMulticoreSDR(t *testing.T) {
+	rustLogger := setupLogger(t)
+
 	if os.Getenv("TEST_RUSTPROOFS_LOGS") != "1" {
 		t.Skip("skipping test without TEST_RUSTPROOFS_LOGS=1")
 	}
