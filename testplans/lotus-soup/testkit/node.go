@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/metrics"
@@ -245,7 +246,7 @@ func collectStats(t *TestEnvironment, ctx context.Context, api api.FullNode) err
 	go func() {
 		time.Sleep(15 * time.Second)
 		t.RecordMessage("calling tstats.Collect")
-		tstats.Collect(context.Background(), api, influx, influxDb, height, headlag)
+		tstats.Collect(context.Background(), &v0api.WrapperV1Full{FullNode: api}, influx, influxDb, height, headlag)
 	}()
 
 	return nil

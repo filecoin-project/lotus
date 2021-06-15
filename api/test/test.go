@@ -19,7 +19,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -39,7 +40,7 @@ func init() {
 type StorageBuilder func(context.Context, *testing.T, abi.RegisteredSealProof, address.Address) TestStorageNode
 
 type TestNode struct {
-	api.FullNode
+	v1api.FullNode
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node
 	ListenAddr multiaddr.Multiaddr
@@ -48,7 +49,7 @@ type TestNode struct {
 }
 
 type TestStorageNode struct {
-	api.StorageMiner
+	lapi.StorageMiner
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node
 	ListenAddr multiaddr.Multiaddr
@@ -200,9 +201,9 @@ var MineNext = miner.MineReq{
 }
 
 func (ts *testSuite) testVersion(t *testing.T) {
-	api.RunningNodeType = api.NodeFull
+	lapi.RunningNodeType = lapi.NodeFull
 	t.Cleanup(func() {
-		api.RunningNodeType = api.NodeUnknown
+		lapi.RunningNodeType = lapi.NodeUnknown
 	})
 
 	ctx := context.Background()
@@ -244,7 +245,7 @@ func (ts *testSuite) testSearchMsg(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1)
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +253,7 @@ func (ts *testSuite) testSearchMsg(t *testing.T) {
 		t.Fatal("did not successfully send message")
 	}
 
-	searchRes, err := api.StateSearchMsg(ctx, sm.Cid())
+	searchRes, err := api.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
 	if err != nil {
 		t.Fatal(err)
 	}

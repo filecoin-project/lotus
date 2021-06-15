@@ -10,14 +10,14 @@ import (
 
 	"github.com/filecoin-project/test-vectors/schema"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
 type RecordingRand struct {
 	reporter Reporter
-	api      api.FullNode
+	api      v0api.FullNode
 
 	// once guards the loading of the head tipset.
 	// can be removed when https://github.com/filecoin-project/lotus/issues/4223
@@ -33,7 +33,7 @@ var _ vm.Rand = (*RecordingRand)(nil)
 // NewRecordingRand returns a vm.Rand implementation that proxies calls to a
 // full Lotus node via JSON-RPC, and records matching rules and responses so
 // they can later be embedded in test vectors.
-func NewRecordingRand(reporter Reporter, api api.FullNode) *RecordingRand {
+func NewRecordingRand(reporter Reporter, api v0api.FullNode) *RecordingRand {
 	return &RecordingRand{reporter: reporter, api: api}
 }
 

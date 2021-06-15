@@ -201,7 +201,7 @@ func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipS
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
 	t.Helper()
-	n, err := mp.GetNonce(context.TODO(), addr)
+	n, err := mp.GetNonce(context.Background(), addr, types.EmptyTSK)
 	if err != nil {
 		t.Fatal(err)
 	}

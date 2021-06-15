@@ -37,7 +37,7 @@ func (mp *mockMpool) setNonce(addr address.Address, nonce uint64) {
 	mp.nonces[addr] = nonce
 }
 
-func (mp *mockMpool) GetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+func (mp *mockMpool) GetNonce(_ context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.lk.RLock()
 	defer mp.lk.RUnlock()
 

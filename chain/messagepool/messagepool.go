@@ -938,7 +938,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	return nil
 }
 
-func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 

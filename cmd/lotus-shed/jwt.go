@@ -15,7 +15,8 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/lotus/api/apistruct"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules"
 )
@@ -98,19 +99,19 @@ var jwtTokenCmd = &cli.Command{
 		perms := []auth.Permission{}
 
 		if cctx.Bool("read") {
-			perms = append(perms, apistruct.PermRead)
+			perms = append(perms, api.PermRead)
 		}
 
 		if cctx.Bool("write") {
-			perms = append(perms, apistruct.PermWrite)
+			perms = append(perms, api.PermWrite)
 		}
 
 		if cctx.Bool("sign") {
-			perms = append(perms, apistruct.PermSign)
+			perms = append(perms, api.PermSign)
 		}
 
 		if cctx.Bool("admin") {
-			perms = append(perms, apistruct.PermAdmin)
+			perms = append(perms, api.PermAdmin)
 		}
 
 		p := modules.JwtPayload{
@@ -152,7 +153,7 @@ var jwtNewCmd = &cli.Command{
 		}
 
 		p := modules.JwtPayload{
-			Allow: apistruct.AllPermissions,
+			Allow: api.AllPermissions,
 		}
 
 		token, err := jwt.Sign(&p, jwt.NewHS256(keyInfo.PrivateKey))

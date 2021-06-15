@@ -20,12 +20,12 @@ func SetupRemoteWallet(info string) func(mctx helpers.MetricsCtx, lc fx.Lifecycl
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (*RemoteWallet, error) {
 		ai := cliutil.ParseApiInfo(info)
 
-		url, err := ai.DialArgs()
+		url, err := ai.DialArgs("v0")
 		if err != nil {
 			return nil, err
 		}
 
-		wapi, closer, err := client.NewWalletRPC(mctx, url, ai.AuthHeader())
+		wapi, closer, err := client.NewWalletRPCV0(mctx, url, ai.AuthHeader())
 		if err != nil {
 			return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
 		}

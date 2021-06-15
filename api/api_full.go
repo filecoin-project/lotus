@@ -39,6 +39,22 @@ type ChainIO interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 }
 
+const LookbackNoLimit = abi.ChainEpoch(-1)
+
+//                       MODIFYING THE API INTERFACE
+//
+// NOTE: This is the V1 (Unstable) API - to add methods to the V0 (Stable) API
+// you'll have to add those methods to interfaces in `api/v0api`
+//
+// When adding / changing methods in this file:
+// * Do the change here
+// * Adjust implementation in `node/impl/`
+// * Run `make gen` - this will:
+//  * Generate proxy structs
+//  * Generate mocks
+//  * Generate markdown docs
+//  * Generate openrpc blobs
+
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common
@@ -430,7 +446,7 @@ type FullNode interface {
 	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorExpiration, error) //perm:read
 	// StateSectorPartition finds deadline/partition with the specified sector
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error) //perm:read
-	// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
+	// StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
 	//
 	// NOTE: If a replacing message is found on chain, this method will return
 	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
@@ -438,48 +454,16 @@ type FullNode interface {
 	// result of the execution of the replacing message.
 	//
 	// If the caller wants to ensure that exactly the requested message was executed,
-	// they MUST check that MsgLookup.Message is equal to the provided 'cid'.
-	// Without this check both the requested and original message may appear as
+	// they must check that MsgLookup.Message is equal to the provided 'cid', or set the
+	// `allowReplaced` parameter to false. Without this check, and with `allowReplaced`
+	// set to true, both the requested and original message may appear as
 	// successfully executed on-chain, which may look like a double-spend.
 	//
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error) //perm:read
-	// StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
-	//
-	// NOTE: If a replacing message is found on chain, this method will return
-	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
-	// CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
-	// result of the execution of the replacing message.
-	//
-	// If the caller wants to ensure that exactly the requested message was executed,
-	// they MUST check that MsgLookup.Message is equal to the provided 'cid'.
-	// Without this check both the requested and original message may appear as
-	// successfully executed on-chain, which may look like a double-spend.
-	//
-	// A replacing message is a message with a different CID, any of Gas values, and
-	// different signature, but with all other parameters matching (source/destination,
-	// nonce, params, etc.)
-	StateSearchMsgLimited(ctx context.Context, msg cid.Cid, limit abi.ChainEpoch) (*MsgLookup, error) //perm:read
-	// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
-	// message arrives on chain, and gets to the indicated confidence depth.
-	//
-	// NOTE: If a replacing message is found on chain, this method will return
-	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
-	// CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
-	// result of the execution of the replacing message.
-	//
-	// If the caller wants to ensure that exactly the requested message was executed,
-	// they MUST check that MsgLookup.Message is equal to the provided 'cid'.
-	// Without this check both the requested and original message may appear as
-	// successfully executed on-chain, which may look like a double-spend.
-	//
-	// A replacing message is a message with a different CID, any of Gas values, and
-	// different signature, but with all other parameters matching (source/destination,
-	// nonce, params, etc.)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*MsgLookup, error) //perm:read
-	// StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error) //perm:read
+	// StateWaitMsg looks back up to limit epochs in the chain for a message.
 	// If not found, it blocks until the message arrives on chain, and gets to the
 	// indicated confidence depth.
 	//
@@ -489,14 +473,15 @@ type FullNode interface {
 	// result of the execution of the replacing message.
 	//
 	// If the caller wants to ensure that exactly the requested message was executed,
-	// they MUST check that MsgLookup.Message is equal to the provided 'cid'.
-	// Without this check both the requested and original message may appear as
+	// they must check that MsgLookup.Message is equal to the provided 'cid', or set the
+	// `allowReplaced` parameter to false. Without this check, and with `allowReplaced`
+	// set to true, both the requested and original message may appear as
 	// successfully executed on-chain, which may look like a double-spend.
 	//
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateWaitMsgLimited(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch) (*MsgLookup, error) //perm:read
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error) //perm:read
 	// StateListMiners returns the addresses of every miner that has claimed power in the Power Actor
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error) //perm:read
 	// StateListActors returns the addresses of every actor in the state
@@ -516,16 +501,6 @@ type FullNode interface {
 	// StateChangedActors returns all the actors whose states change between the two given state CIDs
 	// TODO: Should this take tipset keys instead?
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error) //perm:read
-	// StateGetReceipt returns the message receipt for the given message or for a
-	// matching gas-repriced replacing message
-	//
-	// NOTE: If the requested message was replaced, this method will return the receipt
-	// for the replacing message - if the caller needs the receipt for exactly the
-	// requested message, use StateSearchMsg().Receipt, and check that MsgLookup.Message
-	// is matching the requested CID
-	//
-	// DEPRECATED: Use StateSearchMsg, this method won't be supported in v1 API
-	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error) //perm:read
 	// StateMinerSectorCount returns the number of sectors in a miner's sector set and proving set
 	StateMinerSectorCount(context.Context, address.Address, types.TipSetKey) (MinerSectors, error) //perm:read
 	// StateCompute is a flexible command that applies the given messages on the given tipset.
@@ -1038,11 +1013,12 @@ type DealCollateralBounds struct {
 }
 
 type CirculatingSupply struct {
-	FilVested      abi.TokenAmount
-	FilMined       abi.TokenAmount
-	FilBurnt       abi.TokenAmount
-	FilLocked      abi.TokenAmount
-	FilCirculating abi.TokenAmount
+	FilVested           abi.TokenAmount
+	FilMined            abi.TokenAmount
+	FilBurnt            abi.TokenAmount
+	FilLocked           abi.TokenAmount
+	FilCirculating      abi.TokenAmount
+	FilReserveDisbursed abi.TokenAmount
 }
 
 type MiningBaseInfo struct {

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -72,7 +72,7 @@ var runCmd = &cli.Command{
 	},
 }
 
-func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Address, rate, limit int) error {
+func sendSmallFundsTxs(ctx context.Context, api v0api.FullNode, from address.Address, rate, limit int) error {
 	var sendSet []address.Address
 	for i := 0; i < 20; i++ {
 		naddr, err := api.WalletNew(ctx, types.KTSecp256k1)

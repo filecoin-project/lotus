@@ -33,19 +33,19 @@ type heightHandler struct {
 	revert RevertHandler
 }
 
-type eventAPI interface {
+type EventAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainHead(context.Context) (*types.TipSet, error)
-	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) // optional / for CalledMsg
 }
 
 type Events struct {
-	api eventAPI
+	api EventAPI
 
 	tsc *tipSetCache
 	lk  sync.Mutex
@@ -59,7 +59,7 @@ type Events struct {
 	observers []TipSetObserver
 }
 
-func NewEventsWithConfidence(ctx context.Context, api eventAPI, gcConfidence abi.ChainEpoch) *Events {
+func NewEventsWithConfidence(ctx context.Context, api EventAPI, gcConfidence abi.ChainEpoch) *Events {
 	tsc := newTSCache(gcConfidence, api)
 
 	e := &Events{
@@ -93,7 +93,7 @@ func NewEventsWithConfidence(ctx context.Context, api eventAPI, gcConfidence abi
 	return e
 }
 
-func NewEvents(ctx context.Context, api eventAPI) *Events {
+func NewEvents(ctx context.Context, api EventAPI) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 	return NewEventsWithConfidence(ctx, api, gcConfidence)
 }

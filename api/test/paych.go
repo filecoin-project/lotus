@@ -235,7 +235,7 @@ func TestPaymentChannels(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err = paymentReceiver.StateWaitMsg(ctx, collectMsg, 3)
+	res, err = paymentReceiver.StateWaitMsg(ctx, collectMsg, 3, api.LookbackNoLimit, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *BlockMiner, paymentRec
 			t.Fatal(err)
 		}
 
-		_, err = paymentReceiver.StateWaitMsg(ctx, m.Cid(), 1)
+		_, err = paymentReceiver.StateWaitMsg(ctx, m.Cid(), 1, api.LookbackNoLimit, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -299,7 +299,7 @@ func waitForMessage(ctx context.Context, t *testing.T, paymentCreator TestNode, 
 	defer cancel()
 
 	fmt.Println("Waiting for", desc)
-	res, err := paymentCreator.StateWaitMsg(ctx, msgCid, 1)
+	res, err := paymentCreator.StateWaitMsg(ctx, msgCid, 1, api.LookbackNoLimit, true)
 	if err != nil {
 		fmt.Println("Error waiting for", desc, err)
 		t.Fatal(err)

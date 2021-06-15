@@ -590,7 +590,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 		require.NoError(t, err)
 
 		fmt.Println("waiting dispute")
-		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
+		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "dispute not accepted: %s", rec.Receipt.ExitCode.Error())
 	}
@@ -631,7 +631,7 @@ func TestWindowPostDispute(t *testing.T, b APIBuilder, blocktime time.Duration) 
 		sm, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(t, err)
 
-		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
+		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "recovery not accepted: %s", rec.Receipt.ExitCode.Error())
 	}
@@ -710,7 +710,7 @@ func submitBadProof(
 		return err
 	}
 
-	rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence)
+	rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return err
 	}

@@ -10,12 +10,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func parseTipSet(ctx context.Context, api api.FullNode, vals []string) (*types.TipSet, error) {
+func parseTipSet(ctx context.Context, api v0api.FullNode, vals []string) (*types.TipSet, error) {
 	var headers []*types.BlockHeader
 	for _, c := range vals {
 		blkc, err := cid.Decode(c)
