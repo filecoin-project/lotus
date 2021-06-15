@@ -376,6 +376,8 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 }
 
 func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSealProof) error {
+	m.startupWait.Wait()
+
 	cfg, err := m.getConfig()
 	if err != nil {
 		return xerrors.Errorf("getting storage config: %w", err)
@@ -422,6 +424,8 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 }
 
 func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
+	m.startupWait.Wait()
+
 	return m.sectors.Send(uint64(sid), SectorStartPacking{})
 }
 
