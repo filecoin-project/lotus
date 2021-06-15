@@ -522,6 +522,8 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 }
 
 func (m *Sealing) restartSectors(ctx context.Context) error {
+	defer m.startupWait.Done()
+
 	trackedSectors, err := m.ListSectors()
 	if err != nil {
 		log.Errorf("loading sector list: %+v", err)
@@ -539,6 +541,7 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 }
 
 func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state SectorState) error {
+	m.startupWait.Wait()
 	return m.sectors.Send(id, SectorForceState{state})
 }
 
