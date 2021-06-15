@@ -38,14 +38,13 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		miner           kit2.TestMiner
 	)
 
-	//n, sn := kit2.MockMinerBuilder(t, kit2.TwoFull, kit2.OneMiner)
 	ens := kit2.NewEnsemble(t, kit2.MockProofs()).
 		FullNode(&paymentCreator).
 		FullNode(&paymentReceiver).
 		Miner(&miner, &paymentCreator).
 		Start().
 		InterconnectAll()
-	bms := ens.BeginMining(blockTime, &miner)
+	bms := ens.BeginMining(blockTime)
 	bm := bms[0]
 
 	// send some funds to register the receiver
