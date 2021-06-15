@@ -734,6 +734,8 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID,
 	return retval.IDAddress, nil
 }
 
+// checkV1ApiSupport uses v0 api version to signal support for v1 API
+// trying to query the v1 api on older lotus versions would get a 404, which can happen for any number of other reasons
 func checkV1ApiSupport(ctx context.Context, cctx *cli.Context) error {
 	// check v0 api version to make sure it supports v1 api
 	api0, closer, err := lcli.GetFullNodeAPI(cctx)
