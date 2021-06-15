@@ -618,17 +618,21 @@ func (i *MinerInfo) MarshalPlainText() ([]byte, error) {
 		fmt.Fprintf(w, "Below minimum power threshold, no blocks will be won\n")
 	} else {
 
-		winRatio := new(corebig.Rat).Mul(
-			new(corebig.Rat).SetFrac(
-				types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(build.BlocksPerEpoch)).Int,
-				pow.TotalPower.QualityAdjPower.Int,
-			),
-			// decrease the rate ever-so-slightly to very roughly account for the multi-win poisson distribution
-			// FIXME - this is not a scientifically derived number... like at all
-			corebig.NewRat(99997, 100000),
+		winRatio := new(corebig.Rat).SetFrac(
+			types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(build.BlocksPerEpoch)).Int,
+			pow.TotalPower.QualityAdjPower.Int,
 		)
 
 		if winRatioFloat, _ := winRatio.Float64(); winRatioFloat > 0 {
+
+			// if the corresponding poisson distribution isn't infinitely small then
+			// throw it into the mix as well, accounting for multi-wins
+			winRationWithPoissonFloat := -math.Expm1(-winRatioFloat)
+			winRationWithPoisson := new(corebig.Rat).SetFloat64(winRationWithPoissonFloat)
+			if winRationWithPoisson != nil {
+				winRatio = winRationWithPoisson
+				winRatioFloat = winRationWithPoissonFloat
+			}
 
 			weekly, _ := new(corebig.Rat).Mul(
 				winRatio,
@@ -645,8 +649,11 @@ func (i *MinerInfo) MarshalPlainText() ([]byte, error) {
 				(time.Second * time.Duration(avgDuration)).Truncate(time.Second).String(),
 			)
 
-			// Geometric distribution calculated as described in https://en.wikipedia.org/wiki/Geometric_distribution#Probability_Outcomes_Examples
-			// https://www.wolframalpha.com/input/?i=c%3D99%3B+p%3D188809111007232%3B+n%3D5740343177447735296%3B+%281-%284.99*p%2Fn%29%29%5E%28t*2880%29%3D%281-%28c%2F100%29%29
+			// Geometric distribution of P(Y < k) calculated as described in https://en.wikipedia.org/wiki/Geometric_distribution#Probability_Outcomes_Examples
+			// https://www.wolframalpha.com/input/?i=t+%3E+0%3B+p+%3E+0%3B+p+%3C+1%3B+c+%3E+0%3B+c+%3C1%3B+1-%281-p%29%5E%28t%29%3Dc%3B+solve+t
+			// t == how many dice-rolls (epochs) before win
+			// p == winRate == ( minerPower / netPower )
+			// c == target probability of win ( 99.9% in this case )
 			fmt.Fprintf(w, "Projected block win with 99.9%% probability every %s\n",
 				(time.Second * time.Duration(
 					builtin.EpochDurationSeconds*math.Log(1-0.999)/
