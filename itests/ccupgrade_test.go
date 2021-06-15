@@ -19,10 +19,10 @@ func TestCCUpgrade(t *testing.T) {
 	kit2.QuietMiningLogs()
 
 	for _, height := range []abi.ChainEpoch{
-		-1, // before
-		//162,  // while sealing
-		//530,  // after upgrade deal
-		//5000, // after
+		-1,   // before
+		162,  // while sealing
+		530,  // after upgrade deal
+		5000, // after
 	} {
 		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
@@ -38,33 +38,6 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), kit2.LatestActorsAt(upgradeHeight))
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	//b := kit.MockMinerBuilder
-	//n, sn := b(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(upgradeHeight)}, kit.OneMiner)
-	//client := n[0].FullNode.(*impl.FullNodeAPI)
-	//miner := sn[0]
-
-	//addrinfo, err := client.NetAddrsListen(ctx)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//
-	//if err := miner.NetConnect(ctx, addrinfo); err != nil {
-	//	t.Fatal(err)
-	//}
-	//time.Sleep(time.Second)
-	//
-	//mine := int64(1)
-	//done := make(chan struct{})
-	//go func() {
-	//	defer close(done)
-	//	for atomic.LoadInt64(&mine) == 1 {
-	//		time.Sleep(blocktime)
-	//		if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
-	//			t.Error(err)
-	//		}
-	//	}
-	//}()
-
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -76,16 +49,9 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	miner.PledgeSectors(ctx, 1, 0, nil)
 
 	sl, err := miner.SectorsList(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(sl) != 1 {
-		t.Fatal("expected 1 sector")
-	}
-
-	if sl[0] != CC {
-		t.Fatal("bad")
-	}
+	require.NoError(t, err)
+	require.Len(t, sl, 1, "expected 1 sector")
+	require.Equal(t, CC, sl[0], "unexpected sector number")
 
 	{
 		si, err := client.StateSectorGetInfo(ctx, maddr, CC, types.EmptyTSK)
@@ -93,9 +59,8 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 		require.Less(t, 50000, int(si.Expiration))
 	}
 
-	if err := miner.SectorMarkForUpgrade(ctx, sl[0]); err != nil {
-		t.Fatal(err)
-	}
+	err = miner.SectorMarkForUpgrade(ctx, sl[0])
+	require.NoError(t, err)
 
 	dh := kit2.NewDealHarness(t, client, miner)
 
