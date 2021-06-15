@@ -835,6 +835,16 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage:
+          requires:
+            - test-short
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
@@ -848,7 +858,6 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
 
-      - build-appimage
       - build-and-push-image:
           dockerfile: Dockerfile.lotus
           path: .
