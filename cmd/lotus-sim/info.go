@@ -87,6 +87,7 @@ var infoSimCommand = &cli.Command{
 		infoCommitGasSimCommand,
 		infoWindowPostBandwidthSimCommand,
 		infoCapacityGrowthSimCommand,
+		infoStateGrowthSimCommand,
 	},
 	Action: func(cctx *cli.Context) error {
 		node, err := open(cctx)
