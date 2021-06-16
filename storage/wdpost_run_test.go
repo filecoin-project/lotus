@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/journal"
@@ -185,8 +186,8 @@ func TestWDPostDoPost(t *testing.T) {
 	// Work out the number of partitions that can be included in a message
 	// without exceeding the message sector limit
 
+	partitionsPerMsg, err := policy.GetMaxPoStPartitions(network.Version13, proofType)
 	require.NoError(t, err)
-	partitionsPerMsg := int(miner5.AddressedSectorsMax / sectorsPerPartition)
 	if partitionsPerMsg > miner5.AddressedPartitionsMax {
 		partitionsPerMsg = miner5.AddressedPartitionsMax
 	}

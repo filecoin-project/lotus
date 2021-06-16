@@ -695,7 +695,7 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition, nv net
 	// sectors per partition    3:  ooo
 	// partitions per message   2:  oooOOO
 	//                              <1><2> (3rd doesn't fit)
-	partitionsPerMsg, err := policy.GetMaxPoStPartitions(s.proofType)
+	partitionsPerMsg, err := policy.GetMaxPoStPartitions(nv, s.proofType)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
 	}
