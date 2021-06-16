@@ -492,13 +492,6 @@ func (s *SplitStore) warmup(curTs *types.TipSet) error {
 		log.Infow("warm up done", "took", time.Since(start))
 	}()
 
-	// save the warmup epoch
-	s.warmupEpoch = curTs.Height()
-	err = s.ds.Put(warmupEpochKey, epochToBytes(s.warmupEpoch))
-	if err != nil {
-		return xerrors.Errorf("error saving warm up epoch: %w")
-	}
-
 	return nil
 }
 
@@ -640,6 +633,13 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	if err != nil {
 		log.Warnf("error saving mark set size: %s", err)
 	}
+
+	// save the warmup epoch
+	err = s.ds.Put(warmupEpochKey, epochToBytes(epoch))
+	if err != nil {
+		return xerrors.Errorf("error saving warm up epoch: %w", err)
+	}
+	s.warmupEpoch = epoch
 
 	return nil
 }
