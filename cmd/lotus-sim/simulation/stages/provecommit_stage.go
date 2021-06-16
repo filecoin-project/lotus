@@ -57,6 +57,9 @@ func (stage *ProveCommitStage) EnqueueProveCommit(
 // block or runs out.
 func (stage *ProveCommitStage) PackMessages(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
 	if !stage.initialized {
+		if err := stage.load(ctx, bb); err != nil {
+			return err
+		}
 	}
 	// Roll the commitQueue forward.
 	stage.commitQueue.advanceEpoch(bb.Height())
