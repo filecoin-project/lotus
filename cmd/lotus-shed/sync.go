@@ -172,12 +172,13 @@ var syncScrapePowerCmd = &cli.Command{
 			return err
 		}
 
-		qpercI := types.BigDiv(types.BigMul(totalWonPower.QualityAdjPower, types.NewInt(1000000)), totalPower.TotalPower.QualityAdjPower)
-
 		fmt.Println("Number of winning miners: ", len(miners))
 		fmt.Println("QAdjPower of winning miners: ", totalWonPower.QualityAdjPower)
 		fmt.Println("QAdjPower of all miners: ", totalPower.TotalPower.QualityAdjPower)
-		fmt.Println("Percentage of winning QAdjPower: ", float64(qpercI.Int64())/10000)
+		fmt.Println("Percentage of winning QAdjPower: ", types.BigDivFloat(
+			types.BigMul(totalWonPower.QualityAdjPower, big.NewInt(100)),
+			totalPower.TotalPower.QualityAdjPower,
+		))
 
 		return nil
 	},

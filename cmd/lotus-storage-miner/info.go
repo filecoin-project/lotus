@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
+	corebig "math/big"
 	"sort"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -120,19 +123,23 @@ func infoCmdAct(cctx *cli.Context) error {
 		return err
 	}
 
-	rpercI := types.BigDiv(types.BigMul(pow.MinerPower.RawBytePower, types.NewInt(1000000)), pow.TotalPower.RawBytePower)
-	qpercI := types.BigDiv(types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
-
 	fmt.Printf("Power: %s / %s (%0.4f%%)\n",
 		color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
 		types.DeciStr(pow.TotalPower.QualityAdjPower),
-		float64(qpercI.Int64())/10000)
+		types.BigDivFloat(
+			types.BigMul(pow.MinerPower.QualityAdjPower, big.NewInt(100)),
+			pow.TotalPower.QualityAdjPower,
+		),
+	)
 
 	fmt.Printf("\tRaw: %s / %s (%0.4f%%)\n",
 		color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
 		types.SizeStr(pow.TotalPower.RawBytePower),
-		float64(rpercI.Int64())/10000)
-
+		types.BigDivFloat(
+			types.BigMul(pow.MinerPower.RawBytePower, big.NewInt(100)),
+			pow.TotalPower.RawBytePower,
+		),
+	)
 	secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return err
@@ -146,7 +153,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	} else {
 		var faultyPercentage float64
 		if secCounts.Live != 0 {
-			faultyPercentage = float64(10000*nfaults/secCounts.Live) / 100.
+			faultyPercentage = float64(100*nfaults) / float64(secCounts.Live)
 		}
 		fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
 			types.SizeStr(types.BigMul(types.NewInt(proving), types.NewInt(uint64(mi.SectorSize)))),
@@ -157,16 +164,54 @@ func infoCmdAct(cctx *cli.Context) error {
 	if !pow.HasMinPower {
 		fmt.Print("Below minimum power threshold, no blocks will be won")
 	} else {
-		expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000
-		if expWinChance > 0 {
-			if expWinChance > 1 {
-				expWinChance = 1
-			}
-			winRate := time.Duration(float64(time.Second*time.Duration(build.BlockDelaySecs)) / expWinChance)
-			winPerDay := float64(time.Hour*24) / float64(winRate)
 
-			fmt.Print("Expected block win rate: ")
-			color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))
+		winRatio := new(corebig.Rat).SetFrac(
+			types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(build.BlocksPerEpoch)).Int,
+			pow.TotalPower.QualityAdjPower.Int,
+		)
+
+		if winRatioFloat, _ := winRatio.Float64(); winRatioFloat > 0 {
+
+			// if the corresponding poisson distribution isn't infinitely small then
+			// throw it into the mix as well, accounting for multi-wins
+			winRationWithPoissonFloat := -math.Expm1(-winRatioFloat)
+			winRationWithPoisson := new(corebig.Rat).SetFloat64(winRationWithPoissonFloat)
+			if winRationWithPoisson != nil {
+				winRatio = winRationWithPoisson
+				winRatioFloat = winRationWithPoissonFloat
+			}
+
+			weekly, _ := new(corebig.Rat).Mul(
+				winRatio,
+				new(corebig.Rat).SetInt64(7*builtin.EpochsInDay),
+			).Float64()
+
+			avgDuration, _ := new(corebig.Rat).Mul(
+				new(corebig.Rat).SetInt64(builtin.EpochDurationSeconds),
+				new(corebig.Rat).Inv(winRatio),
+			).Float64()
+
+			fmt.Print("Projected average block win rate: ")
+			color.Blue(
+				"%.02f/week (every %s)",
+				weekly,
+				(time.Second * time.Duration(avgDuration)).Truncate(time.Second).String(),
+			)
+
+			// Geometric distribution of P(Y < k) calculated as described in https://en.wikipedia.org/wiki/Geometric_distribution#Probability_Outcomes_Examples
+			// https://www.wolframalpha.com/input/?i=t+%3E+0%3B+p+%3E+0%3B+p+%3C+1%3B+c+%3E+0%3B+c+%3C1%3B+1-%281-p%29%5E%28t%29%3Dc%3B+solve+t
+			// t == how many dice-rolls (epochs) before win
+			// p == winRate == ( minerPower / netPower )
+			// c == target probability of win ( 99.9% in this case )
+			fmt.Print("Projected block win with ")
+			color.Green(
+				"99.9%% probability every %s",
+				(time.Second * time.Duration(
+					builtin.EpochDurationSeconds*math.Log(1-0.999)/
+						math.Log(1-winRatioFloat),
+				)).Truncate(time.Second).String(),
+			)
+			fmt.Println("(projections DO NOT account for future network and miner growth)")
 		}
 	}
 
