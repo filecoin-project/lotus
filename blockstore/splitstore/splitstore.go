@@ -892,7 +892,9 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bo
 			}
 		}
 
-		toWalk = append(toWalk, hdr.Parents...)
+		if hdr.Height > 0 {
+			toWalk = append(toWalk, hdr.Parents...)
+		}
 		return nil
 	}
 
