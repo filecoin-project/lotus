@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
@@ -26,6 +27,8 @@ const (
 	mockPoStProofPrefix          = "valid post proof:"
 )
 
+var log = logging.Logger("simulation-mock")
+
 // mockVerifier is a simple mock for verifying "fake" proofs.
 type mockVerifier struct{}
 
@@ -40,7 +43,11 @@ func (mockVerifier) VerifySeal(proof proof5.SealVerifyInfo) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return bytes.Equal(proof.Proof, mockProof), nil
+	if bytes.Equal(proof.Proof, mockProof) {
+		return true, nil
+	}
+	log.Debugw("invalid seal proof", "expected", mockProof, "actual", proof.Proof, "miner", addr)
+	return false, nil
 }
 
 func (mockVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
@@ -52,7 +59,16 @@ func (mockVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyPro
 	if err != nil {
 		return false, err
 	}
-	return bytes.Equal(aggregate.Proof, mockProof), nil
+	if bytes.Equal(aggregate.Proof, mockProof) {
+		return true, nil
+	}
+	log.Debugw("invalid aggregate seal proof",
+		"expected", mockProof,
+		"actual", aggregate.Proof,
+		"count", len(aggregate.Infos),
+		"miner", addr,
+	)
+	return false, nil
 }
 func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
 	panic("should not be called")
@@ -70,7 +86,16 @@ func (mockVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoSt
 	if err != nil {
 		return false, err
 	}
-	return bytes.Equal(proof.ProofBytes, mockProof), nil
+	if bytes.Equal(proof.ProofBytes, mockProof) {
+		return true, nil
+	}
+
+	log.Debugw("invalid window post proof",
+		"expected", mockProof,
+		"actual", info.Proofs[0],
+		"miner", addr,
+	)
+	return false, nil
 }
 
 func (mockVerifier) GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error) {
