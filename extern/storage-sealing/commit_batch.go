@@ -32,6 +32,8 @@ import (
 
 const arp = abi.RegisteredAggregationProof_SnarkPackV1
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_commit_batcher.go -package=mocks . CommitBatcherApi
+
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
@@ -44,9 +46,9 @@ type CommitBatcherApi interface {
 }
 
 type AggregateInput struct {
-	spt   abi.RegisteredSealProof
-	info  proof5.AggregateSealVerifyInfo
-	proof []byte
+	Spt   abi.RegisteredSealProof
+	Info  proof5.AggregateSealVerifyInfo
+	Proof []byte
 }
 
 type CommitBatcher struct {
@@ -246,6 +248,8 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 			break
 		}
 
+		res.Sectors = append(res.Sectors, id)
+
 		sc, err := b.getSectorCollateral(id, tok)
 		if err != nil {
 			res.FailedSectors[id] = err.Error()
@@ -254,9 +258,8 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 		collateral = big.Add(collateral, sc)
 
-		res.Sectors = append(res.Sectors, id)
 		params.SectorNumbers.Set(uint64(id))
-		infos = append(infos, p.info)
+		infos = append(infos, p.Info)
 	}
 
 	sort.Slice(infos, func(i, j int) bool {
@@ -264,7 +267,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	})
 
 	for _, info := range infos {
-		proofs = append(proofs, b.todo[info.Number].proof)
+		proofs = append(proofs, b.todo[info.Number].Proof)
 	}
 
 	mid, err := address.IDFromAddress(b.maddr)
@@ -274,7 +277,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	params.AggregateProof, err = b.prover.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{
 		Miner:          abi.ActorID(mid),
-		SealProof:      b.todo[infos[0].Number].spt,
+		SealProof:      b.todo[infos[0].Number].Spt,
 		AggregateProof: arp,
 		Infos:          infos,
 	}, proofs)
@@ -362,7 +365,7 @@ func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, i
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
-		Proof:        info.proof,
+		Proof:        info.Proof,
 	}
 
 	if err := params.MarshalCBOR(enc); err != nil {
@@ -447,7 +450,7 @@ func (b *CommitBatcher) Pending(ctx context.Context) ([]abi.SectorID, error) {
 	for _, s := range b.todo {
 		res = append(res, abi.SectorID{
 			Miner:  abi.ActorID(mid),
-			Number: s.info.Number,
+			Number: s.Info.Number,
 		})
 	}
 
