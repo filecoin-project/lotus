@@ -40,7 +40,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			require.NoError(t, err)
 
 			node, _, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(),
-				kit2.VerifierRootKey(rootKey, abi.NewTokenAmount(bal.Int64())),
+				kit2.RootVerifier(rootKey, abi.NewTokenAmount(bal.Int64())),
 				kit2.Account(verifierKey, abi.NewTokenAmount(bal.Int64())), // assign some balance to the verifier so they can send an AddClient message.
 				kit2.ConstructorOpts(kit2.InstantaneousNetworkVersion(nv)))
 

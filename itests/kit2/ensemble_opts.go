@@ -42,10 +42,9 @@ func MockProofs() EnsembleOpt {
 	}
 }
 
-// VerifierRootKey specifies the key to be enlisted as the verified clients
-// registry root, as well as the initial balance to be attributed during
-// genesis.
-func VerifierRootKey(key *wallet.Key, balance abi.TokenAmount) EnsembleOpt {
+// RootVerifier specifies the key to be enlisted as the verified registry root,
+// as well as the initial balance to be attributed during genesis.
+func RootVerifier(key *wallet.Key, balance abi.TokenAmount) EnsembleOpt {
 	return func(opts *ensembleOpts) error {
 		opts.verifiedRoot.key = key
 		opts.verifiedRoot.initialBalance = balance
