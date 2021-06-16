@@ -218,11 +218,6 @@ func (stage *ProveCommitStage) packProveCommitsMiner(
 						// Then try again.
 						continue
 					}
-					log.Errorw("failed to prove commit missing sector(s)",
-						"error", err,
-						"sectors", batch,
-					)
-					res.failed += len(batch)
 				} else {
 					log.Errorw("failed to prove commit sector(s)",
 						"error", err,
