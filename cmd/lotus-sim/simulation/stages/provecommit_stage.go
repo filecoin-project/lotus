@@ -348,14 +348,14 @@ func (stage *ProveCommitStage) filterProveCommits(
 }
 
 func (stage *ProveCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilder) error {
-	stage.commitQueue.advanceEpoch(bb.Height())
-
+	stage.initialized = false // in case something failes while we're doing this.
+	stage.commitQueue = commitQueue{offset: bb.Height()}
 	powerState, err := loadPower(bb.ActorStore(), bb.ParentStateTree())
 	if err != nil {
 		return err
 	}
 
-	return powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
+	err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
 		// TODO: If we want to finish pre-commits for "new" miners, we'll need to change
 		// this.
 		if claim.RawBytePower.IsZero() {
@@ -363,4 +363,10 @@ func (stage *ProveCommitStage) load(ctx context.Context, bb *blockbuilder.BlockB
 		}
 		return stage.loadMiner(ctx, bb, minerAddr)
 	})
+	if err != nil {
+		return err
+	}
+
+	stage.initialized = true
+	return nil
 }
