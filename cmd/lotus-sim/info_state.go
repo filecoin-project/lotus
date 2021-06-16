@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"runtime"
 	"sync"
 	"sync/atomic"
 
