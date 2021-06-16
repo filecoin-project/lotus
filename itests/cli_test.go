@@ -1,22 +1,21 @@
 package itests
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/kit2"
 )
 
 // TestClient does a basic test to exercise the client CLI commands.
 func TestClient(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
-	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
-	clientNode, _ := kit.StartOneNodeOneMiner(ctx, t, blocktime)
-	kit.RunClientTest(t, cli.Commands, clientNode)
+	blockTime := 5 * time.Millisecond
+	client, _, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), kit2.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+	kit2.RunClientTest(t, cli.Commands, *client)
 }

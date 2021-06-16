@@ -133,6 +133,9 @@ jobs:
       deadline-test:
         type: string
         default: "0"
+      proofs-log-test:
+        type: string
+        default: "0"
       test-suite-name:
         type: string
         default: unit
@@ -167,6 +170,7 @@ jobs:
           environment:
             LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
             LOTUS_TEST_DEADLINE_TOGGLING: << parameters.deadline-test >>
+            TEST_RUSTPROOFS_LOGS: << parameters.proofs-log-test >>
             SKIP_CONFORMANCE: "1"
           command: |
             mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
@@ -211,6 +215,8 @@ jobs:
   test-deadline-toggling:
     <<: *test
   test-terminate:
+    <<: *test
+  check-proofs-multicore-sdr:
     <<: *test
   test-conformance:
     description: |
@@ -815,6 +821,12 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - check-proofs-multicore-sdr:
+          codecov-upload: true
+          go-test-flags: "-run=TestMulticoreSDR"
+          test-suite-name: multicore-sdr-check
+          packages: "./extern/sector-storage/ffiwrapper"
+          proofs-log-test: "1"
       - test-conformance:
           test-suite-name: conformance
           packages: "./conformance"

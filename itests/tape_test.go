@@ -2,7 +2,6 @@ package itests
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -11,24 +10,23 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTapeFix(t *testing.T) {
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
 	var blocktime = 2 * time.Millisecond
 
 	// The "before" case is disabled, because we need the builder to mock 32 GiB sectors to accurately repro this case
 	// TODO: Make the mock sector size configurable and reenable this
 	// t.Run("before", func(t *testing.T) { testTapeFix(t, b, blocktime, false) })
-	t.Run("after", func(t *testing.T) { testTapeFix(t, kit.MockMinerBuilder, blocktime, true) })
+	t.Run("after", func(t *testing.T) { testTapeFix(t, blocktime, true) })
 }
 
-func testTapeFix(t *testing.T, b kit.APIBuilder, blocktime time.Duration, after bool) {
+func testTapeFix(t *testing.T, blocktime time.Duration, after bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -44,46 +42,14 @@ func testTapeFix(t *testing.T, b kit.APIBuilder, blocktime time.Duration, after 
 		})
 	}
 
-	n, sn := b(t, []kit.FullNodeOpts{{Opts: func(_ []kit.TestFullNode) node.Option {
-		return node.Override(new(stmgr.UpgradeSchedule), upgradeSchedule)
-	}}}, kit.OneMiner)
-
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-
-	addrinfo, err := client.NetAddrsListen(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := miner.NetConnect(ctx, addrinfo); err != nil {
-		t.Fatal(err)
-	}
-	build.Clock.Sleep(time.Second)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for ctx.Err() == nil {
-			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
-				if ctx.Err() != nil {
-					// context was canceled, ignore the error.
-					return
-				}
-				t.Error(err)
-			}
-		}
-	}()
-	defer func() {
-		cancel()
-		<-done
-	}()
+	nopts := kit2.ConstructorOpts(node.Override(new(stmgr.UpgradeSchedule), upgradeSchedule))
+	_, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), nopts)
+	ens.InterconnectAll().BeginMining(blocktime)
 
 	sid, err := miner.PledgeSector(ctx)
 	require.NoError(t, err)
 
-	fmt.Printf("All sectors is fsm\n")
+	t.Log("All sectors is fsm")
 
 	// If before, we expect the precommit to fail
 	successState := api.SectorState(sealing.CommitFailed)
@@ -101,6 +67,6 @@ func testTapeFix(t *testing.T, b kit.APIBuilder, blocktime time.Duration, after 
 		}
 		require.NotEqual(t, failureState, st.State)
 		build.Clock.Sleep(100 * time.Millisecond)
-		fmt.Println("WaitSeal")
+		t.Log("WaitSeal")
 	}
 }
