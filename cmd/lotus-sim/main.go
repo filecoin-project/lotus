@@ -27,6 +27,7 @@ var root []*cli.Command = []*cli.Command{
 func main() {
 	if _, set := os.LookupEnv("GOLOG_LOG_LEVEL"); !set {
 		_ = logging.SetLogLevel("simulation", "DEBUG")
+		_ = logging.SetLogLevel("simulation-mock", "DEBUG")
 	}
 	app := &cli.App{
 		Name:      "lotus-sim",
