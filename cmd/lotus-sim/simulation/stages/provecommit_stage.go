@@ -348,6 +348,8 @@ func (stage *ProveCommitStage) filterProveCommits(
 }
 
 func (stage *ProveCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilder) error {
+	stage.commitQueue.advanceEpoch(bb.Height())
+
 	powerState, err := loadPower(bb.ActorStore(), bb.ParentStateTree())
 	if err != nil {
 		return err
