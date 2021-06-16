@@ -2,6 +2,7 @@ package blockbuilder
 
 import (
 	"context"
+	"math"
 
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
@@ -23,9 +24,12 @@ import (
 )
 
 const (
+	// 0.25 is the default, but the number below is from the network.
+	gasOverestimation = 1.0 / 0.808
 	// The number of expected blocks in a tipset. We use this to determine how much gas a tipset
 	// has.
-	expectedBlocks = 5
+	// 5 per tipset, but we effectively get 4 blocks worth of messages.
+	expectedBlocks = 4
 	// TODO: This will produce invalid blocks but it will accurately model the amount of gas
 	// we're willing to use per-tipset.
 	// A more correct approach would be to produce 5 blocks. We can do that later.
@@ -143,7 +147,7 @@ func (bb *BlockBuilder) PushMessage(msg *types.Message) (*types.MessageReceipt, 
 	}
 	msg.GasPremium = abi.NewTokenAmount(0)
 	msg.GasFeeCap = abi.NewTokenAmount(0)
-	msg.GasLimit = build.BlockGasLimit
+	msg.GasLimit = build.BlockGasTarget
 
 	// We manually snapshot so we can revert nonce changes, etc. on failure.
 	st.Snapshot(bb.ctx)
@@ -162,25 +166,19 @@ func (bb *BlockBuilder) PushMessage(msg *types.Message) (*types.MessageReceipt, 
 	// Sometimes there are bugs. Let's catch them.
 	if ret.GasUsed == 0 {
 		_ = st.Revert()
-		return nil, xerrors.Errorf("used no gas",
-			"msg", msg,
-			"ret", ret,
-		)
+		return nil, xerrors.Errorf("used no gas %v -> %v", msg, ret)
 	}
 
-	// TODO: consider applying overestimation? We're likely going to "over pack" here by
-	// ~25% because we're too accurate.
+	// Update the gas limit taking overestimation into account.
+	msg.GasLimit = int64(math.Ceil(float64(ret.GasUsed) * gasOverestimation))
 
 	// Did we go over? Yes, revert.
-	newTotal := bb.gasTotal + ret.GasUsed
+	newTotal := bb.gasTotal + msg.GasLimit
 	if newTotal > targetGas {
 		_ = st.Revert()
-		return nil, &ErrOutOfGas{Available: targetGas - bb.gasTotal, Required: ret.GasUsed}
+		return nil, &ErrOutOfGas{Available: targetGas - bb.gasTotal, Required: msg.GasLimit}
 	}
 	bb.gasTotal = newTotal
-
-	// Update the gas limit.
-	msg.GasLimit = ret.GasUsed
 
 	bb.messages = append(bb.messages, msg)
 	return &ret.MessageReceipt, nil
