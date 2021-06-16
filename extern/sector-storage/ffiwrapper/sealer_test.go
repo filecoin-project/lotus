@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/filecoin-ffi/generated"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
@@ -852,4 +853,88 @@ func TestAddPiece512MPadded(t *testing.T) {
 	}
 
 	require.Equal(t, "baga6ea4seaqonenxyku4o7hr5xkzbqsceipf6xgli3on54beqbk6k246sbooobq", c.PieceCID.String())
+}
+
+func setupLogger(t *testing.T) *bytes.Buffer {
+	_ = os.Setenv("RUST_LOG", "info")
+
+	var bb bytes.Buffer
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		_, _ = io.Copy(&bb, r)
+		runtime.KeepAlive(w)
+	}()
+
+	resp := generated.FilInitLogFd(int32(w.Fd()))
+	resp.Deref()
+
+	defer generated.FilDestroyInitLogFdResponse(resp)
+
+	if resp.StatusCode != generated.FCPResponseStatusFCPNoError {
+		t.Fatal(generated.RawString(resp.ErrorMsg).Copy())
+	}
+
+	return &bb
+}
+
+func TestMulticoreSDR(t *testing.T) {
+	if os.Getenv("TEST_RUSTPROOFS_LOGS") != "1" {
+		t.Skip("skipping test without TEST_RUSTPROOFS_LOGS=1")
+	}
+
+	rustLogger := setupLogger(t)
+
+	getGrothParamFileAndVerifyingKeys(sectorSize)
+
+	dir, err := ioutil.TempDir("", "sbtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	miner := abi.ActorID(123)
+
+	sp := &basicfs.Provider{
+		Root: dir,
+	}
+	sb, err := New(sp)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	cleanup := func() {
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", dir)
+			return
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}
+	defer cleanup()
+
+	si := storage.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
+
+	s := seal{ref: si}
+
+	// check multicore
+	_ = os.Setenv("FIL_PROOFS_USE_MULTICORE_SDR", "1")
+	rustLogger.Reset()
+	s.precommit(t, sb, si, func() {})
+
+	ok := false
+	for _, s := range strings.Split(rustLogger.String(), "\n") {
+		if strings.Contains(s, "create_label::multi") {
+			ok = true
+			break
+		}
+	}
+
+	require.True(t, ok)
 }

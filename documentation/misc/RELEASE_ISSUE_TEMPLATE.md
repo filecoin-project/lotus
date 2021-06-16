@@ -25,7 +25,6 @@ We're happy to announce Lotus X.Y.Z...
 First steps:
 
   - [ ] Fork a new branch (`release/vX.Y.Z`) from `master` and make any further release related changes to this branch. If any "non-trivial" changes get added to the release, uncheck all the checkboxes and return to this stage.
-  - [ ] Prep the changelog using `scripts/mkreleaselog`, and add it to `CHANGELOG.md`
   - [ ] Bump the version in `version.go` in the `master` branch to `vX.(Y+1).0-dev`.
     
 Prepping an RC:
@@ -93,7 +92,7 @@ Testing an RC:
   - [ ] Final preparation
     - [ ] Verify that version string in [`version.go`](https://github.com/ipfs/go-ipfs/tree/master/version.go) has been updated.
     - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
-    - [ ] Ensure that [README.md](https://github.com/filecoin-project/lotus/blob/master/README.md) is up to date
+    - [ ] Prep the changelog using `scripts/mkreleaselog`, and add it to `CHANGELOG.md`
     - [ ] Merge `release-vX.Y.Z` into the `releases` branch.
     - [ ] Tag this merge commit (on the `releases` branch) with `vX.Y.Z`
     - [ ] Cut the release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true&target=releases).

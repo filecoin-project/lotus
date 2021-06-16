@@ -45,7 +45,8 @@ const UpgradeNorwegianHeight = 114000
 
 const UpgradeTurboHeight = 193789
 
-const UpgradeHyperdriveHeight = 9999999
+// 2021-06-11T14:30:00Z
+const UpgradeHyperdriveHeight = 321519
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(32 << 30))

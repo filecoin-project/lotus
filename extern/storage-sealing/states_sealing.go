@@ -334,7 +334,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return nil
 	}
 
-	goodFunds := big.Add(deposit, m.feeCfg.MaxPreCommitGasFee)
+	goodFunds := big.Add(deposit, big.Int(m.feeCfg.MaxPreCommitGasFee))
 
 	from, _, err := m.addrSel(ctx.Context(), mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
@@ -342,7 +342,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	log.Infof("submitting precommit for sector %d (deposit: %s): ", sector.SectorNumber, deposit)
-	mcid, err := m.api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.PreCommitSector, deposit, m.feeCfg.MaxPreCommitGasFee, enc.Bytes())
+	mcid, err := m.api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.PreCommitSector, deposit, big.Int(m.feeCfg.MaxPreCommitGasFee), enc.Bytes())
 	if err != nil {
 		if params.ReplaceCapacity {
 			m.remarkForUpgrade(params.ReplaceSectorNumber)
@@ -478,6 +478,11 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		}
 	}
 
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+
 	log.Info("scheduling seal proof computation...")
 
 	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorNumber, sector.TicketValue, sector.TicketEpoch, sector.SeedValue, sector.SeedEpoch, sector.pieceInfos(), sector.CommR, sector.CommD)
@@ -498,6 +503,24 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	proof, err := m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
+	}
+
+	{
+		tok, _, err := m.api.ChainHead(ctx.Context())
+		if err != nil {
+			log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+			return nil
+		}
+
+		if err := m.checkCommit(ctx.Context(), sector, proof, tok); err != nil {
+			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("commit check error: %w", err)})
+		}
+	}
+
+	if cfg.FinalizeEarly {
+		return ctx.Send(SectorProofReady{
+			Proof: proof,
+		})
 	}
 
 	return ctx.Send(SectorCommitted{
@@ -524,7 +547,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 
 	tok, _, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
-		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+		log.Errorf("handleSubmitCommit: api error, not proceeding: %+v", err)
 		return nil
 	}
 
@@ -566,7 +589,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 		collateral = big.Zero()
 	}
 
-	goodFunds := big.Add(collateral, m.feeCfg.MaxCommitGasFee)
+	goodFunds := big.Add(collateral, big.Int(m.feeCfg.MaxCommitGasFee))
 
 	from, _, err := m.addrSel(ctx.Context(), mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
@@ -574,7 +597,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 	}
 
 	// TODO: check seed / ticket / deals are up to date
-	mcid, err := m.api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.ProveCommitSector, collateral, m.feeCfg.MaxCommitGasFee, enc.Bytes())
+	mcid, err := m.api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.ProveCommitSector, collateral, big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
@@ -590,15 +613,15 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 	}
 
 	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
-		info: proof.AggregateSealVerifyInfo{
+		Info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
 			Randomness:            sector.TicketValue,
 			InteractiveRandomness: sector.SeedValue,
 			SealedCID:             *sector.CommR,
 			UnsealedCID:           *sector.CommD,
 		},
-		proof: sector.Proof, // todo: this correct??
-		spt:   sector.SectorType,
+		Proof: sector.Proof, // todo: this correct??
+		Spt:   sector.SectorType,
 	})
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})
