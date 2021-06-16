@@ -2,13 +2,17 @@ package itests
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
+	"github.com/stretchr/testify/require"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -23,101 +27,102 @@ func TestVerifiedClientTopUp(t *testing.T) {
 
 	test := func(nv network.Version, shouldWork bool) func(*testing.T) {
 		return func(t *testing.T) {
-			nopts := kit2.ConstructorOpts(kit2.NetworkUpgradeAt(nv, -1))
+			rootKey, err := wallet.GenerateKey(types.KTSecp256k1)
+			require.NoError(t, err)
 
-			node, _, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), nopts)
+			verifierKey, err := wallet.GenerateKey(types.KTSecp256k1)
+			require.NoError(t, err)
+
+			verifiedClientKey, err := wallet.GenerateKey(types.KTBLS)
+			require.NoError(t, err)
+
+			bal, err := types.ParseFIL("100fil")
+			require.NoError(t, err)
+
+			node, _, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(),
+				kit2.VerifierRootKey(rootKey, abi.NewTokenAmount(bal.Int64())),
+				kit2.Account(verifierKey, abi.NewTokenAmount(bal.Int64())), // assign some balance to the verifier so they can send an AddClient message.
+				kit2.ConstructorOpts(kit2.InstantaneousNetworkVersion(nv)))
+
 			ens.InterconnectAll().BeginMining(blockTime)
 
 			api := node.FullNode.(*impl.FullNodeAPI)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			//Get VRH
+			// get VRH
 			vrh, err := api.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
-			if err != nil {
-				t.Fatal(err)
-			}
+			fmt.Println(vrh.String())
+			require.NoError(t, err)
 
-			//Add verifier
-			verifier, err := api.WalletDefaultAddress(ctx)
-			if err != nil {
-				t.Fatal(err)
-			}
+			// import the root key.
+			rootAddr, err := api.WalletImport(ctx, &rootKey.KeyInfo)
+			require.NoError(t, err)
 
-			params, err := actors.SerializeParams(&verifreg4.AddVerifierParams{Address: verifier, Allowance: big.NewInt(100000000000)})
-			if err != nil {
-				t.Fatal(err)
-			}
+			// import the verifier's key.
+			verifierAddr, err := api.WalletImport(ctx, &verifierKey.KeyInfo)
+			require.NoError(t, err)
+
+			// import the verified client's key.
+			verifiedClientAddr, err := api.WalletImport(ctx, &verifiedClientKey.KeyInfo)
+			require.NoError(t, err)
+
+			params, err := actors.SerializeParams(&verifreg4.AddVerifierParams{Address: verifierAddr, Allowance: big.NewInt(100000000000)})
+			require.NoError(t, err)
+
 			msg := &types.Message{
+				From:   rootAddr,
 				To:     verifreg.Address,
-				From:   vrh,
 				Method: verifreg.Methods.AddVerifier,
 				Params: params,
 				Value:  big.Zero(),
 			}
 
 			sm, err := api.MpoolPushMessage(ctx, msg, nil)
-			if err != nil {
-				t.Fatal("AddVerifier failed: ", err)
-			}
+			require.NoError(t, err, "AddVerifier failed")
+
 			res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if res.Receipt.ExitCode != 0 {
-				t.Fatal("did not successfully send message")
-			}
+			require.NoError(t, err)
+			require.EqualValues(t, 0, res.Receipt.ExitCode)
 
-			//Assign datacap to a client
+			// assign datacap to a client
 			datacap := big.NewInt(10000)
-			clientAddress, err := api.WalletNew(ctx, types.KTBLS)
-			if err != nil {
-				t.Fatal(err)
-			}
 
-			params, err = actors.SerializeParams(&verifreg4.AddVerifiedClientParams{Address: clientAddress, Allowance: datacap})
-			if err != nil {
-				t.Fatal(err)
-			}
+			params, err = actors.SerializeParams(&verifreg4.AddVerifiedClientParams{Address: verifiedClientAddr, Allowance: datacap})
+			require.NoError(t, err)
 
 			msg = &types.Message{
+				From:   verifierAddr,
 				To:     verifreg.Address,
-				From:   verifier,
 				Method: verifreg.Methods.AddVerifiedClient,
 				Params: params,
 				Value:  big.Zero(),
 			}
 
 			sm, err = api.MpoolPushMessage(ctx, msg, nil)
-			if err != nil {
-				t.Fatal("AddVerifiedClient faield: ", err)
-			}
-			res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if res.Receipt.ExitCode != 0 {
-				t.Fatal("did not successfully send message")
-			}
+			require.NoError(t, err)
 
-			//check datacap balance
-			dcap, err := api.StateVerifiedClientStatus(ctx, clientAddress, types.EmptyTSK)
-			if err != nil {
-				t.Fatal(err)
-			}
+			res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+			require.NoError(t, err)
+			require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+			// check datacap balance
+			dcap, err := api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
+			require.NoError(t, err)
+
 			if !dcap.Equals(datacap) {
 				t.Fatal("")
 			}
 
-			//try to assign datacap to the same client should fail for actor v4 and below
-			params, err = actors.SerializeParams(&verifreg4.AddVerifiedClientParams{Address: clientAddress, Allowance: datacap})
+			// try to assign datacap to the same client should fail for actor v4 and below
+			params, err = actors.SerializeParams(&verifreg4.AddVerifiedClientParams{Address: verifiedClientAddr, Allowance: datacap})
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			msg = &types.Message{
+				From:   verifierAddr,
 				To:     verifreg.Address,
-				From:   verifier,
 				Method: verifreg.Methods.AddVerifiedClient,
 				Params: params,
 				Value:  big.Zero(),
