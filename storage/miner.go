@@ -157,7 +157,7 @@ func (m *Miner) Run(ctx context.Context) error {
 		return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
 	}
 
-	m.sealing = sealing.New(adaptedAPI, m.feeCfg, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications, as)
+	m.sealing = sealing.New(ctx, adaptedAPI, m.feeCfg, NewEventsAdapter(evts), m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, sealing.GetSealingConfigFunc(m.getSealConfig), m.handleSealingNotifications, as)
 
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 
