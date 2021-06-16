@@ -14,6 +14,17 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
+//                       MODIFYING THE API INTERFACE
+//
+// When adding / changing methods in this file:
+// * Do the change here
+// * Adjust implementation in `node/impl/`
+// * Run `make gen` - this will:
+//  * Generate proxy structs
+//  * Generate mocks
+//  * Generate markdown docs
+//  * Generate openrpc blobs
+
 type Worker interface {
 	Version(context.Context) (Version, error) //perm:admin
 

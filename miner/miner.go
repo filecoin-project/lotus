@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/api/v1api"
+
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -57,7 +59,7 @@ func randTimeOffset(width time.Duration) time.Duration {
 
 // NewMiner instantiates a miner with a concrete WinningPoStProver and a miner
 // address (which can be different from the worker's address).
-func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter, j journal.Journal) *Miner {
+func NewMiner(api v1api.FullNode, epp gen.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter, j journal.Journal) *Miner {
 	arc, err := lru.NewARC(10000)
 	if err != nil {
 		panic(err)
@@ -101,7 +103,7 @@ func NewMiner(api api.FullNode, epp gen.WinningPoStProver, addr address.Address,
 //
 // Refer to the godocs on mineOne and mine methods for more detail.
 type Miner struct {
-	api api.FullNode
+	api v1api.FullNode
 
 	epp gen.WinningPoStProver
 

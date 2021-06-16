@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 )
 
@@ -240,7 +241,7 @@ var SyncCheckpointCmd = &cli.Command{
 	},
 }
 
-func SyncWait(ctx context.Context, napi api.FullNode, watch bool) error {
+func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 	tick := time.Second / 4
 
 	lastLines := 0

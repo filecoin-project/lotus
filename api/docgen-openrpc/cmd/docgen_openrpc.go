@@ -7,7 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/filecoin-project/lotus/api/apistruct"
+	"github.com/filecoin-project/lotus/api/docgen"
+
 	docgen_openrpc "github.com/filecoin-project/lotus/api/docgen-openrpc"
 )
 
@@ -29,16 +30,12 @@ Use:
 */
 
 func main() {
-	doc := docgen_openrpc.NewLotusOpenRPCDocument()
+	Comments, GroupDocs := docgen.ParseApiASTInfo(os.Args[1], os.Args[2], os.Args[3], os.Args[4])
 
-	switch os.Args[2] {
-	case "FullNode":
-		doc.RegisterReceiverName("Filecoin", &apistruct.FullNodeStruct{})
-	case "StorageMiner":
-		doc.RegisterReceiverName("Filecoin", &apistruct.StorageMinerStruct{})
-	case "Worker":
-		doc.RegisterReceiverName("Filecoin", &apistruct.WorkerStruct{})
-	}
+	doc := docgen_openrpc.NewLotusOpenRPCDocument(Comments, GroupDocs)
+
+	i, _, _, _ := docgen.GetAPIType(os.Args[2], os.Args[3])
+	doc.RegisterReceiverName("Filecoin", i)
 
 	out, err := doc.Discover()
 	if err != nil {
@@ -52,7 +49,7 @@ func main() {
 	// Could use flags package to handle this more cleanly, but that requires changes elsewhere
 	// the scope of which just isn't warranted by this one use case which will usually be run
 	// programmatically anyways.
-	if len(os.Args) > 3 && os.Args[3] == "-gzip" {
+	if len(os.Args) > 5 && os.Args[5] == "-gzip" {
 		jsonOut, err = json.Marshal(out)
 		if err != nil {
 			log.Fatalln(err)

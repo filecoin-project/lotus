@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -26,10 +26,10 @@ type Syncer struct {
 	lookbackLimit uint64
 
 	headerLk sync.Mutex
-	node     api.FullNode
+	node     v0api.FullNode
 }
 
-func NewSyncer(db *sql.DB, node api.FullNode, lookbackLimit uint64) *Syncer {
+func NewSyncer(db *sql.DB, node v0api.FullNode, lookbackLimit uint64) *Syncer {
 	return &Syncer{
 		db:            db,
 		node:          node,

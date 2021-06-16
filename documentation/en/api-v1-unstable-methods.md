@@ -153,7 +153,6 @@
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
-  * [StateGetReceipt](#StateGetReceipt)
   * [StateListActors](#StateListActors)
   * [StateListMessages](#StateListMessages)
   * [StateListMiners](#StateListMiners)
@@ -181,7 +180,6 @@
   * [StateReadState](#StateReadState)
   * [StateReplay](#StateReplay)
   * [StateSearchMsg](#StateSearchMsg)
-  * [StateSearchMsgLimited](#StateSearchMsgLimited)
   * [StateSectorExpiration](#StateSectorExpiration)
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
@@ -191,7 +189,6 @@
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
-  * [StateWaitMsgLimited](#StateWaitMsgLimited)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
@@ -276,7 +273,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 66048,
+  "APIVersion": 131328,
   "BlockDelay": 42
 }
 ```
@@ -3780,46 +3777,6 @@ Response:
 }
 ```
 
-### StateGetReceipt
-StateGetReceipt returns the message receipt for the given message or for a
-matching gas-repriced replacing message
-
-NOTE: If the requested message was replaced, this method will return the receipt
-for the replacing message - if the caller needs the receipt for exactly the
-requested message, use StateSearchMsg().Receipt, and check that MsgLookup.Message
-is matching the requested CID
-
-DEPRECATED: Use StateSearchMsg, this method won't be supported in v1 API
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-{
-  "ExitCode": 0,
-  "Return": "Ynl0ZSBhcnJheQ==",
-  "GasUsed": 9
-}
-```
-
 ### StateListActors
 StateListActors returns the addresses of every actor in the state
 
@@ -4660,7 +4617,7 @@ Response:
 ```
 
 ### StateSearchMsg
-StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
+StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
 
 NOTE: If a replacing message is found on chain, this method will return
 a MsgLookup for the replacing message - the MsgLookup.Message will be a different
@@ -4668,8 +4625,9 @@ CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
 result of the execution of the replacing message.
 
 If the caller wants to ensure that exactly the requested message was executed,
-they MUST check that MsgLookup.Message is equal to the provided 'cid'.
-Without this check both the requested and original message may appear as
+they must check that MsgLookup.Message is equal to the provided 'cid', or set the
+`allowReplaced` parameter to false. Without this check, and with `allowReplaced`
+set to true, both the requested and original message may appear as
 successfully executed on-chain, which may look like a double-spend.
 
 A replacing message is a message with a different CID, any of Gas values, and
@@ -4682,25 +4640,7 @@ Perms: read
 Inputs:
 ```json
 [
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "Receipt": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
-  "ReturnDec": {},
-  "TipSet": [
+  [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -4708,37 +4648,11 @@ Response:
       "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
     }
   ],
-  "Height": 10101
-}
-```
-
-### StateSearchMsgLimited
-StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
-
-NOTE: If a replacing message is found on chain, this method will return
-a MsgLookup for the replacing message - the MsgLookup.Message will be a different
-CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
-result of the execution of the replacing message.
-
-If the caller wants to ensure that exactly the requested message was executed,
-they MUST check that MsgLookup.Message is equal to the provided 'cid'.
-Without this check both the requested and original message may appear as
-successfully executed on-chain, which may look like a double-spend.
-
-A replacing message is a message with a different CID, any of Gas values, and
-different signature, but with all other parameters matching (source/destination,
-nonce, params, etc.)
-
-
-Perms: read
-
-Inputs:
-```json
-[
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  10101
+  10101,
+  true
 ]
 ```
 
@@ -4943,7 +4857,8 @@ Response:
   "FilMined": "0",
   "FilBurnt": "0",
   "FilLocked": "0",
-  "FilCirculating": "0"
+  "FilCirculating": "0",
+  "FilReserveDisbursed": "0"
 }
 ```
 
@@ -5020,62 +4935,7 @@ Inputs:
 Response: `"0"`
 
 ### StateWaitMsg
-StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
-message arrives on chain, and gets to the indicated confidence depth.
-
-NOTE: If a replacing message is found on chain, this method will return
-a MsgLookup for the replacing message - the MsgLookup.Message will be a different
-CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
-result of the execution of the replacing message.
-
-If the caller wants to ensure that exactly the requested message was executed,
-they MUST check that MsgLookup.Message is equal to the provided 'cid'.
-Without this check both the requested and original message may appear as
-successfully executed on-chain, which may look like a double-spend.
-
-A replacing message is a message with a different CID, any of Gas values, and
-different signature, but with all other parameters matching (source/destination,
-nonce, params, etc.)
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  42
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "Receipt": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
-  "ReturnDec": {},
-  "TipSet": [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
-  "Height": 10101
-}
-```
-
-### StateWaitMsgLimited
-StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
+StateWaitMsg looks back up to limit epochs in the chain for a message.
 If not found, it blocks until the message arrives on chain, and gets to the
 indicated confidence depth.
 
@@ -5085,8 +4945,9 @@ CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
 result of the execution of the replacing message.
 
 If the caller wants to ensure that exactly the requested message was executed,
-they MUST check that MsgLookup.Message is equal to the provided 'cid'.
-Without this check both the requested and original message may appear as
+they must check that MsgLookup.Message is equal to the provided 'cid', or set the
+`allowReplaced` parameter to false. Without this check, and with `allowReplaced`
+set to true, both the requested and original message may appear as
 successfully executed on-chain, which may look like a double-spend.
 
 A replacing message is a message with a different CID, any of Gas values, and
@@ -5103,7 +4964,8 @@ Inputs:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   42,
-  10101
+  10101,
+  true
 ]
 ```
 

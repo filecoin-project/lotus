@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
 	"github.com/filecoin-project/lotus/lib/parmap"
@@ -28,7 +28,7 @@ var log = logging.Logger("processor")
 type Processor struct {
 	db *sql.DB
 
-	node     api.FullNode
+	node     v0api.FullNode
 	ctxStore *cw_util.APIIpldStore
 
 	genesisTs *types.TipSet
@@ -52,7 +52,7 @@ type actorInfo struct {
 	state string
 }
 
-func NewProcessor(ctx context.Context, db *sql.DB, node api.FullNode, batch int) *Processor {
+func NewProcessor(ctx context.Context, db *sql.DB, node v0api.FullNode, batch int) *Processor {
 	ctxStore := cw_util.NewAPIIpldStore(ctx, node)
 	return &Processor{
 		db:       db,

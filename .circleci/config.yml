@@ -444,7 +444,7 @@ jobs:
       - run: make deps
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
-      - run: go generate ./...
+      - run: make type-gen
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet
 
@@ -453,6 +453,7 @@ jobs:
     steps:
       - install-deps
       - prepare
+      - run: go install golang.org/x/tools/cmd/goimports
       - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
       - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
       - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker

@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -1026,7 +1026,7 @@ func (p *Processor) storeMinersPower(miners []minerActorInfo) error {
 }
 
 // load the power actor state clam as an adt.Map at the tipset `ts`.
-func getPowerActorState(ctx context.Context, api api.FullNode, ts types.TipSetKey) (power.State, error) {
+func getPowerActorState(ctx context.Context, api v0api.FullNode, ts types.TipSetKey) (power.State, error) {
 	powerActor, err := api.StateGetActor(ctx, power.Address, ts)
 	if err != nil {
 		return nil, err
