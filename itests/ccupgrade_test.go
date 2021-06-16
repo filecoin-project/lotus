@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/stretchr/testify/require"
 
@@ -44,7 +43,7 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 		t.Fatal(err)
 	}
 
-	CC := abi.SectorNumber(kit.GenesisPreseals + 1)
+	CC := abi.SectorNumber(kit2.DefaultPresealsPerBootstrapMiner + 1)
 	Upgraded := CC + 1
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
