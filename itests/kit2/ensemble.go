@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -114,15 +115,26 @@ type Ensemble struct {
 	}
 }
 
-// NewEnsemble instantiates a new blank Ensemble. This enables you to
-// programmatically
+// NewEnsemble instantiates a new blank Ensemble.
 func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	options := DefaultEnsembleOpts
 	for _, o := range opts {
 		err := o(&options)
 		require.NoError(t, err)
 	}
-	return &Ensemble{t: t, options: &options}
+
+	n := &Ensemble{t: t, options: &options}
+
+	// add accounts from ensemble options to genesis.
+	for _, acc := range options.accounts {
+		n.genesis.accounts = append(n.genesis.accounts, genesis.Actor{
+			Type:    genesis.TAccount,
+			Balance: acc.initialBalance,
+			Meta:    (&genesis.AccountMeta{Owner: acc.key.Address}).ActorMeta(),
+		})
+	}
+
+	return n
 }
 
 // FullNode enrolls a new full node.
@@ -135,8 +147,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 
 	var key *wallet.Key
 	if !n.bootstrapped && !options.balance.IsZero() {
-		// create a key+ddress, and assign it some FIL.
-		// this will be set as the default wallet.
+		// create a key+address, and assign it some FIL; this will be set as the default wallet.
 		var err error
 		key, err = wallet.GenerateKey(types.KTBLS)
 		require.NoError(n.t, err)
@@ -594,12 +605,22 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 }
 
 func (n *Ensemble) generateGenesis() *genesis.Template {
+	var verifRoot = gen.DefaultVerifregRootkeyActor
+	if k := n.options.verifiedRoot.key; k != nil {
+		verifRoot = genesis.Actor{
+			Type:    genesis.TAccount,
+			Balance: n.options.verifiedRoot.initialBalance,
+			Meta:    (&genesis.AccountMeta{Owner: k.Address}).ActorMeta(),
+		}
+	}
+
 	templ := &genesis.Template{
+		NetworkVersion:   network.Version0,
 		Accounts:         n.genesis.accounts,
 		Miners:           n.genesis.miners,
 		NetworkName:      "test",
-		Timestamp:        uint64(time.Now().Unix() - 10000), // some time sufficiently far in the past
-		VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
+		Timestamp:        uint64(time.Now().Unix() - int64(n.options.pastOffset.Seconds())),
+		VerifregRootKey:  verifRoot,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
 

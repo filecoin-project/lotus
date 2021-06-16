@@ -43,6 +43,7 @@ func main() {
 		minerCmd,
 		mpoolStatsCmd,
 		exportChainCmd,
+		exportCarCmd,
 		consensusCmd,
 		storageStatsCmd,
 		syncCmd,
@@ -58,6 +59,7 @@ func main() {
 		signaturesCmd,
 		actorCmd,
 		minerTypesCmd,
+		minerMultisigsCmd,
 	}
 
 	app := &cli.App{

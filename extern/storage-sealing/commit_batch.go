@@ -7,6 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -23,23 +27,28 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 const arp = abi.RegisteredAggregationProof_SnarkPackV1
+
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_commit_batcher.go -package=mocks . CommitBatcherApi
 
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
+	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
+	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 }
 
 type AggregateInput struct {
-	spt   abi.RegisteredSealProof
-	info  proof5.AggregateSealVerifyInfo
-	proof []byte
+	Spt   abi.RegisteredSealProof
+	Info  proof5.AggregateSealVerifyInfo
+	Proof []byte
 }
 
 type CommitBatcher struct {
@@ -47,20 +56,20 @@ type CommitBatcher struct {
 	maddr     address.Address
 	mctx      context.Context
 	addrSel   AddrSel
-	feeCfg    FeeConfig
+	feeCfg    config.MinerFeeConfig
 	getConfig GetSealingConfigFunc
 	prover    ffiwrapper.Prover
 
-	deadlines map[abi.SectorNumber]time.Time
-	todo      map[abi.SectorNumber]AggregateInput
-	waiting   map[abi.SectorNumber][]chan sealiface.CommitBatchRes
+	cutoffs map[abi.SectorNumber]time.Time
+	todo    map[abi.SectorNumber]AggregateInput
+	waiting map[abi.SectorNumber][]chan sealiface.CommitBatchRes
 
 	notify, stop, stopped chan struct{}
 	force                 chan chan []sealiface.CommitBatchRes
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg FeeConfig, getConfig GetSealingConfigFunc, prov ffiwrapper.Prover) *CommitBatcher {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc, prov ffiwrapper.Prover) *CommitBatcher {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -70,9 +79,9 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		getConfig: getConfig,
 		prover:    prov,
 
-		deadlines: map[abi.SectorNumber]time.Time{},
-		todo:      map[abi.SectorNumber]AggregateInput{},
-		waiting:   map[abi.SectorNumber][]chan sealiface.CommitBatchRes{},
+		cutoffs: map[abi.SectorNumber]time.Time{},
+		todo:    map[abi.SectorNumber]AggregateInput{},
+		waiting: map[abi.SectorNumber][]chan sealiface.CommitBatchRes{},
 
 		notify:  make(chan struct{}, 1),
 		force:   make(chan chan []sealiface.CommitBatchRes),
@@ -132,30 +141,30 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.Time
 		return nil
 	}
 
-	var deadline time.Time
+	var cutoff time.Time
 	for sn := range b.todo {
-		sectorDeadline := b.deadlines[sn]
-		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
-			deadline = sectorDeadline
+		sectorCutoff := b.cutoffs[sn]
+		if cutoff.IsZero() || (!sectorCutoff.IsZero() && sectorCutoff.Before(cutoff)) {
+			cutoff = sectorCutoff
 		}
 	}
 	for sn := range b.waiting {
-		sectorDeadline := b.deadlines[sn]
-		if deadline.IsZero() || (!sectorDeadline.IsZero() && sectorDeadline.Before(deadline)) {
-			deadline = sectorDeadline
+		sectorCutoff := b.cutoffs[sn]
+		if cutoff.IsZero() || (!sectorCutoff.IsZero() && sectorCutoff.Before(cutoff)) {
+			cutoff = sectorCutoff
 		}
 	}
 
-	if deadline.IsZero() {
+	if cutoff.IsZero() {
 		return time.After(maxWait)
 	}
 
-	deadline = deadline.Add(-slack)
-	if deadline.Before(now) {
+	cutoff = cutoff.Add(-slack)
+	if cutoff.Before(now) {
 		return time.After(time.Nanosecond) // can't return 0
 	}
 
-	wait := deadline.Sub(now)
+	wait := cutoff.Sub(now)
 	if wait > maxWait {
 		wait = maxWait
 	}
@@ -208,7 +217,7 @@ func (b *CommitBatcher) maybeStartBatch(notif, after bool) ([]sealiface.CommitBa
 
 			delete(b.waiting, sn)
 			delete(b.todo, sn)
-			delete(b.deadlines, sn)
+			delete(b.cutoffs, sn)
 		}
 	}
 
@@ -239,6 +248,8 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 			break
 		}
 
+		res.Sectors = append(res.Sectors, id)
+
 		sc, err := b.getSectorCollateral(id, tok)
 		if err != nil {
 			res.FailedSectors[id] = err.Error()
@@ -247,9 +258,8 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 		collateral = big.Add(collateral, sc)
 
-		res.Sectors = append(res.Sectors, id)
 		params.SectorNumbers.Set(uint64(id))
-		infos = append(infos, p.info)
+		infos = append(infos, p.Info)
 	}
 
 	sort.Slice(infos, func(i, j int) bool {
@@ -257,7 +267,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	})
 
 	for _, info := range infos {
-		proofs = append(proofs, b.todo[info.Number].proof)
+		proofs = append(proofs, b.todo[info.Number].Proof)
 	}
 
 	mid, err := address.IDFromAddress(b.maddr)
@@ -267,7 +277,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	params.AggregateProof, err = b.prover.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{
 		Miner:          abi.ActorID(mid),
-		SealProof:      b.todo[infos[0].Number].spt,
+		SealProof:      b.todo[infos[0].Number].Spt,
 		AggregateProof: arp,
 		Infos:          infos,
 	}, proofs)
@@ -285,14 +295,29 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
-	goodFunds := big.Add(b.feeCfg.MaxCommitGasFee, collateral)
+	maxFee := b.feeCfg.MaxCommitBatchGasFee.FeeForSectors(len(infos))
+
+	bf, err := b.api.ChainBaseFee(b.mctx, tok)
+	if err != nil {
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get base fee: %w", err)
+	}
+
+	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	if err != nil {
+		log.Errorf("getting network version: %s", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
+	}
+
+	aggFee := policy.AggregateNetworkFee(nv, len(infos), bf)
+
+	goodFunds := big.Add(maxFee, big.Add(collateral, aggFee))
 
 	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, collateral, b.feeCfg.MaxCommitGasFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, collateral, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -340,7 +365,7 @@ func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, i
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
-		Proof:        info.proof,
+		Proof:        info.Proof,
 	}
 
 	if err := params.MarshalCBOR(enc); err != nil {
@@ -352,14 +377,14 @@ func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, i
 		return cid.Undef, err
 	}
 
-	goodFunds := big.Add(collateral, b.feeCfg.MaxCommitGasFee)
+	goodFunds := big.Add(collateral, big.Int(b.feeCfg.MaxCommitGasFee))
 
 	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("no good address to send commit message from: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitSector, collateral, b.feeCfg.MaxCommitGasFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitSector, collateral, big.Int(b.feeCfg.MaxCommitGasFee), enc.Bytes())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -369,16 +394,15 @@ func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, i
 
 // register commit, wait for batch message, return message CID
 func (b *CommitBatcher) AddCommit(ctx context.Context, s SectorInfo, in AggregateInput) (res sealiface.CommitBatchRes, err error) {
-	_, curEpoch, err := b.api.ChainHead(b.mctx)
-	if err != nil {
-		log.Errorf("getting chain head: %s", err)
-		return sealiface.CommitBatchRes{}, nil
-	}
-
 	sn := s.SectorNumber
 
+	cu, err := b.getCommitCutoff(s)
+	if err != nil {
+		return sealiface.CommitBatchRes{}, err
+	}
+
 	b.lk.Lock()
-	b.deadlines[sn] = getSectorDeadline(curEpoch, s)
+	b.cutoffs[sn] = cu
 	b.todo[sn] = in
 
 	sent := make(chan sealiface.CommitBatchRes, 1)
@@ -426,7 +450,7 @@ func (b *CommitBatcher) Pending(ctx context.Context) ([]abi.SectorID, error) {
 	for _, s := range b.todo {
 		res = append(res, abi.SectorID{
 			Miner:  abi.ActorID(mid),
-			Number: s.info.Number,
+			Number: s.Info.Number,
 		})
 	}
 
@@ -452,24 +476,43 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 	}
 }
 
-func getSectorDeadline(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
-	deadlineEpoch := si.TicketEpoch + policy.MaxPreCommitRandomnessLookback
+// TODO: If this returned epochs, it would make testing much easier
+func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
+	tok, curEpoch, err := b.api.ChainHead(b.mctx)
+	if err != nil {
+		return time.Now(), xerrors.Errorf("getting chain head: %s", err)
+	}
+
+	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	if err != nil {
+		log.Errorf("getting network version: %s", err)
+		return time.Now(), xerrors.Errorf("getting network version: %s", err)
+	}
+
+	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, si.SectorNumber, tok)
+	if err != nil {
+		log.Errorf("getting precommit info: %s", err)
+		return time.Now(), err
+	}
+
+	cutoffEpoch := pci.PreCommitEpoch + policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), si.SectorType)
+
 	for _, p := range si.Pieces {
 		if p.DealInfo == nil {
 			continue
 		}
 
 		startEpoch := p.DealInfo.DealSchedule.StartEpoch
-		if startEpoch < deadlineEpoch {
-			deadlineEpoch = startEpoch
+		if startEpoch < cutoffEpoch {
+			cutoffEpoch = startEpoch
 		}
 	}
 
-	if deadlineEpoch <= curEpoch {
-		return time.Now()
+	if cutoffEpoch <= curEpoch {
+		return time.Now(), nil
 	}
 
-	return time.Now().Add(time.Duration(deadlineEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second)
+	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second), nil
 }
 
 func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok TipSetToken) (abi.TokenAmount, error) {

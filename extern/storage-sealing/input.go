@@ -394,6 +394,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 }
 
 func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSealProof) error {
+	m.startupWait.Wait()
 	if m.creating != nil {
 		return nil // new sector is being created right now
 	}
@@ -446,7 +447,9 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 }
 
 func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
+	m.startupWait.Wait()
 	log.Infow("starting to seal deal sector", "sector", sid, "trigger", "user")
+
 	return m.sectors.Send(uint64(sid), SectorStartPacking{})
 }
 
