@@ -128,8 +128,6 @@ type SplitStore struct {
 	cold    bstore.Blockstore
 	tracker TrackingStore
 
-	genesis, genesisStateRoot cid.Cid
-
 	env MarkSetEnv
 
 	markSetSize int64
@@ -329,60 +327,6 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	s.chain = chain
 	s.curTs = chain.GetHeaviestTipSet()
 
-	// make sure the genesis and its state root are hot
-	gb, err := chain.GetGenesis()
-	if err != nil {
-		return xerrors.Errorf("error getting genesis: %w", err)
-	}
-
-	s.genesis = gb.Cid()
-	s.genesisStateRoot = gb.ParentStateRoot
-
-	has, err := s.hot.Has(s.genesis)
-	if err != nil {
-		return xerrors.Errorf("error checking hotstore for genesis: %w", err)
-	}
-
-	if !has {
-		blk, err := gb.ToStorageBlock()
-		if err != nil {
-			return xerrors.Errorf("error converting genesis block to storage block: %w", err)
-		}
-
-		err = s.hot.Put(blk)
-		if err != nil {
-			return xerrors.Errorf("error putting genesis block to hotstore: %w", err)
-		}
-	}
-
-	err = s.walkLinks(s.genesisStateRoot, cid.NewSet(), func(c cid.Cid) error {
-		has, err = s.hot.Has(c)
-		if err != nil {
-			return xerrors.Errorf("error checking hotstore for genesis state root: %w", err)
-		}
-
-		if !has {
-			blk, err := s.cold.Get(c)
-			if err != nil {
-				if err == bstore.ErrNotFound {
-					return nil
-				}
-
-				return xerrors.Errorf("error retrieving genesis state linked object from coldstore: %w", err)
-			}
-
-			err = s.hot.Put(blk)
-			if err != nil {
-				return xerrors.Errorf("error putting genesis state linked object to hotstore: %w", err)
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return xerrors.Errorf("error walking genesis state root links: %w", err)
-	}
-
 	// load base epoch from metadata ds
 	// if none, then use current epoch because it's a fresh start
 	bs, err := s.ds.Get(baseEpochKey)
@@ -415,6 +359,12 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		s.warm = true
 
 	case dstore.ErrNotFound:
+		// the hotstore hasn't warmed up, load the genesis into the hotstore
+		err = s.loadGenesisState()
+		if err != nil {
+			return xerrors.Errorf("error loading genesis state: %w", err)
+		}
+
 	default:
 		return xerrors.Errorf("error loading warmup epoch: %w", err)
 	}
@@ -529,6 +479,65 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	} else {
 		// no compaction necessary
 		atomic.StoreInt32(&s.compacting, 0)
+	}
+
+	return nil
+}
+
+func (s *SplitStore) loadGenesisState() error {
+	// makes sure the genesis and its state root are hot
+	gb, err := s.chain.GetGenesis()
+	if err != nil {
+		return xerrors.Errorf("error getting genesis: %w", err)
+	}
+
+	genesis := gb.Cid()
+	genesisStateRoot := gb.ParentStateRoot
+
+	has, err := s.hot.Has(genesis)
+	if err != nil {
+		return xerrors.Errorf("error checking hotstore for genesis: %w", err)
+	}
+
+	if !has {
+		blk, err := gb.ToStorageBlock()
+		if err != nil {
+			return xerrors.Errorf("error converting genesis block to storage block: %w", err)
+		}
+
+		err = s.hot.Put(blk)
+		if err != nil {
+			return xerrors.Errorf("error putting genesis block to hotstore: %w", err)
+		}
+	}
+
+	err = s.walkLinks(genesisStateRoot, cid.NewSet(), func(c cid.Cid) error {
+		has, err = s.hot.Has(c)
+		if err != nil {
+			return xerrors.Errorf("error checking hotstore for genesis state root: %w", err)
+		}
+
+		if !has {
+			blk, err := s.cold.Get(c)
+			if err != nil {
+				if err == bstore.ErrNotFound {
+					return nil
+				}
+
+				return xerrors.Errorf("error retrieving genesis state linked object from coldstore: %w", err)
+			}
+
+			err = s.hot.Put(blk)
+			if err != nil {
+				return xerrors.Errorf("error putting genesis state linked object to hotstore: %w", err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return xerrors.Errorf("error walking genesis state root links: %w", err)
 	}
 
 	return nil
