@@ -96,6 +96,11 @@ type Config struct {
 	//
 	// Supported values are: "bloom" (default if omitted), "bolt".
 	MarkSetType string
+
+	// HotHeaders indicates whether to keep chain block headers in hotstore or not.
+	// This is necessary, and automatically set by DI in lotus node construction, if
+	// you are running with a noop coldstore.
+	HotHeaders bool
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -111,6 +116,8 @@ type SplitStore struct {
 	compacting  int32 // compaction (or warmp up) in progress
 	critsection int32 // compaction critical section
 	closing     int32 // the split store is closing
+
+	cfg *Config
 
 	baseEpoch    abi.ChainEpoch
 	syncGapEpoch abi.ChainEpoch
@@ -154,6 +161,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 
 	// and now we can make a SplitStore
 	ss := &SplitStore{
+		cfg:     cfg,
 		ds:      ds,
 		hot:     hot,
 		cold:    cold,
@@ -859,8 +867,8 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bo
 			return xerrors.Errorf("error unmarshaling block header (cid: %s): %w", c, err)
 		}
 
-		// don't walk under the boundary
-		if hdr.Height < boundary {
+		// don't walk under the boundary, unless we are keeping the headers hot
+		if hdr.Height < boundary && !s.cfg.HotHeaders {
 			return nil
 		}
 
@@ -868,18 +876,20 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bo
 			return err
 		}
 
-		if inclMsgs {
-			if err := s.walkLinks(hdr.Messages, walked, f); err != nil {
-				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
+		if hdr.Height >= boundary {
+			if inclMsgs {
+				if err := s.walkLinks(hdr.Messages, walked, f); err != nil {
+					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
+				}
+
+				if err := s.walkLinks(hdr.ParentMessageReceipts, walked, f); err != nil {
+					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
+				}
 			}
 
-			if err := s.walkLinks(hdr.ParentMessageReceipts, walked, f); err != nil {
-				return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
+			if err := s.walkLinks(hdr.ParentStateRoot, walked, f); err != nil {
+				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
-		}
-
-		if err := s.walkLinks(hdr.ParentStateRoot, walked, f); err != nil {
-			return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 		}
 
 		toWalk = append(toWalk, hdr.Parents...)
