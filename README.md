@@ -77,7 +77,7 @@ wget -c https://golang.org/dl/go1.16.2.linux-amd64.tar.gz -O - | sudo tar -xz -C
 
 #### Go
 
-To build Lotus, you need a working installation of [Go 1.15.5 or higher](https://golang.org/dl/):
+To build Lotus, you need a working installation of [Go 1.16.1 or higher](https://golang.org/dl/):
 
 ```bash
 wget -c https://golang.org/dl/go1.16.2.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
