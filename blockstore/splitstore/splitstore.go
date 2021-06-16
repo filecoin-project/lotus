@@ -439,6 +439,9 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 		if err != nil {
 			log.Warnf("error saving sync gap epoch: %s", err)
 		}
+
+		// don't attempt compaction before we have caught up syncing
+		return nil
 	}
 
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
