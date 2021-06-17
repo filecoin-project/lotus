@@ -522,7 +522,7 @@ func (s *SplitStore) background() {
 func (s *SplitStore) warmup(curTs *types.TipSet) error {
 	err := s.loadGenesisState()
 	if err != nil {
-		return xerrors.Errorf("error loading genesis state: %w")
+		return xerrors.Errorf("error loading genesis state: %w", err)
 	}
 
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
