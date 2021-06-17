@@ -3,7 +3,6 @@ package itests
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -22,7 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/filecoin-project/lotus/node/impl"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
@@ -75,21 +74,26 @@ func TestDeadlineToggling(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := kit.MockMinerBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithNetworkUpgradeAt(network.Version12, upgradeH)}, kit.OneMiner)
+	var (
+		client kit2.TestFullNode
+		minerA kit2.TestMiner
+		minerB kit2.TestMiner
+		minerC kit2.TestMiner
+		minerD kit2.TestMiner
+		minerE kit2.TestMiner
+	)
+	opts := []kit2.NodeOpt{kit2.ConstructorOpts(kit2.NetworkUpgradeAt(network.Version12, upgradeH))}
+	ens := kit2.NewEnsemble(t, kit2.MockProofs()).
+		FullNode(&client, opts...).
+		Miner(&minerA, &client, opts...).
+		Start().
+		InterconnectAll()
+	ens.BeginMining(blocktime)
 
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	minerA := sn[0]
-
-	{
-		addrinfo, err := client.NetAddrsListen(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if err := minerA.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
-	}
+	opts = append(opts, kit2.OwnerAddr(client.DefaultKey))
+	ens.Miner(&minerB, &client, opts...).
+		Miner(&minerC, &client, opts...).
+		Start()
 
 	defaultFrom, err := client.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
@@ -98,28 +102,6 @@ func TestDeadlineToggling(t *testing.T) {
 	require.NoError(t, err)
 
 	build.Clock.Sleep(time.Second)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for ctx.Err() == nil {
-			build.Clock.Sleep(blocktime)
-			if err := minerA.MineOne(ctx, kit.MineNext); err != nil {
-				if ctx.Err() != nil {
-					// context was canceled, ignore the error.
-					return
-				}
-				t.Error(err)
-			}
-		}
-	}()
-	defer func() {
-		cancel()
-		<-done
-	}()
-
-	minerB := n[0].Stb(ctx, t, kit.TestSpt, defaultFrom)
-	minerC := n[0].Stb(ctx, t, kit.TestSpt, defaultFrom)
 
 	maddrB, err := minerB.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -131,20 +113,20 @@ func TestDeadlineToggling(t *testing.T) {
 
 	// pledge sectors on C, go through a PP, check for power
 	{
-		kit.PledgeSectors(t, ctx, minerC, sectorsC, 0, nil)
+		minerC.PledgeSectors(ctx, sectorsC, 0, nil)
 
 		di, err := client.StateMinerProvingDeadline(ctx, maddrC, types.EmptyTSK)
 		require.NoError(t, err)
 
-		fmt.Printf("Running one proving period (miner C)\n")
-		fmt.Printf("End for head.Height > %d\n", di.PeriodStart+di.WPoStProvingPeriod*2)
+		t.Log("Running one proving period (miner C)")
+		t.Logf("End for head.Height > %d", di.PeriodStart+di.WPoStProvingPeriod*2)
 
 		for {
 			head, err := client.ChainHead(ctx)
 			require.NoError(t, err)
 
 			if head.Height() > di.PeriodStart+provingPeriod*2 {
-				fmt.Printf("Now head.Height = %d\n", head.Height())
+				t.Logf("Now head.Height = %d", head.Height())
 				break
 			}
 			build.Clock.Sleep(blocktime)
@@ -165,7 +147,7 @@ func TestDeadlineToggling(t *testing.T) {
 		require.NoError(t, err)
 
 		if head.Height() > upgradeH+provingPeriod {
-			fmt.Printf("Now head.Height = %d\n", head.Height())
+			t.Logf("Now head.Height = %d", head.Height())
 			break
 		}
 		build.Clock.Sleep(blocktime)
@@ -216,8 +198,9 @@ func TestDeadlineToggling(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, nv, network.Version12)
 
-	minerD := n[0].Stb(ctx, t, kit.TestSpt, defaultFrom)
-	minerE := n[0].Stb(ctx, t, kit.TestSpt, defaultFrom)
+	ens.Miner(&minerD, &client, opts...).
+		Miner(&minerE, &client, opts...).
+		Start()
 
 	maddrD, err := minerD.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -225,7 +208,7 @@ func TestDeadlineToggling(t *testing.T) {
 	require.NoError(t, err)
 
 	// first round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.GenesisPreseals), true, true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit2.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(uint64(ssz)*sectorsC), true, true, types.EmptyTSK)
 
 	checkMiner(maddrB, types.NewInt(0), false, false, types.EmptyTSK)
@@ -233,10 +216,10 @@ func TestDeadlineToggling(t *testing.T) {
 	checkMiner(maddrE, types.NewInt(0), false, false, types.EmptyTSK)
 
 	// pledge sectors on minerB/minerD, stop post on minerC
-	kit.PledgeSectors(t, ctx, minerB, sectorsB, 0, nil)
+	minerB.PledgeSectors(ctx, sectorsB, 0, nil)
 	checkMiner(maddrB, types.NewInt(0), true, true, types.EmptyTSK)
 
-	kit.PledgeSectors(t, ctx, minerD, sectorsD, 0, nil)
+	minerD.PledgeSectors(ctx, sectorsD, 0, nil)
 	checkMiner(maddrD, types.NewInt(0), true, true, types.EmptyTSK)
 
 	minerC.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).Fail()
@@ -252,7 +235,7 @@ func TestDeadlineToggling(t *testing.T) {
 		params := &miner.SectorPreCommitInfo{
 			Expiration:   2880 * 300,
 			SectorNumber: 22,
-			SealProof:    kit.TestSpt,
+			SealProof:    kit2.TestSpt,
 
 			SealedCID:     cr,
 			SealRandEpoch: head.Height() - 200,
@@ -281,7 +264,7 @@ func TestDeadlineToggling(t *testing.T) {
 		require.NoError(t, err)
 
 		if head.Height() > upgradeH+provingPeriod+(provingPeriod/2) {
-			fmt.Printf("Now head.Height = %d\n", head.Height())
+			t.Logf("Now head.Height = %d", head.Height())
 			break
 		}
 		build.Clock.Sleep(blocktime)
@@ -295,14 +278,14 @@ func TestDeadlineToggling(t *testing.T) {
 		require.NoError(t, err)
 
 		if head.Height() > upgradeH+(provingPeriod*3) {
-			fmt.Printf("Now head.Height = %d\n", head.Height())
+			t.Logf("Now head.Height = %d", head.Height())
 			break
 		}
 		build.Clock.Sleep(blocktime)
 	}
 
 	// second round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.GenesisPreseals), true, true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit2.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(0), true, true, types.EmptyTSK)
 	checkMiner(maddrB, types.NewInt(uint64(ssz)*sectorsB), true, true, types.EmptyTSK)
 	checkMiner(maddrD, types.NewInt(uint64(ssz)*sectorsD), true, true, types.EmptyTSK)
@@ -351,7 +334,7 @@ func TestDeadlineToggling(t *testing.T) {
 		}, nil)
 		require.NoError(t, err)
 
-		fmt.Println("sent termination message:", smsg.Cid())
+		t.Log("sent termination message:", smsg.Cid())
 
 		r, err := client.StateWaitMsg(ctx, smsg.Cid(), 2, api.LookbackNoLimit, true)
 		require.NoError(t, err)
@@ -367,13 +350,13 @@ func TestDeadlineToggling(t *testing.T) {
 		require.NoError(t, err)
 
 		if head.Height() > upgradeH+(provingPeriod*5) {
-			fmt.Printf("Now head.Height = %d\n", head.Height())
+			t.Logf("Now head.Height = %d", head.Height())
 			break
 		}
 		build.Clock.Sleep(blocktime)
 	}
 
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.GenesisPreseals), true, true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit2.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(0), true, true, types.EmptyTSK)
 	checkMiner(maddrB, types.NewInt(0), true, true, types.EmptyTSK)
 	checkMiner(maddrD, types.NewInt(0), false, false, types.EmptyTSK)
