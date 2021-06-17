@@ -490,7 +490,7 @@ func (s *SplitStore) updateWriteEpoch() {
 
 	dt := time.Since(timestamp)
 	if dt < 0 {
-		writeEpoch := curTs.Height()
+		writeEpoch := curTs.Height() + 1
 		if writeEpoch > s.writeEpoch {
 			s.writeEpoch = writeEpoch
 		}
@@ -498,7 +498,7 @@ func (s *SplitStore) updateWriteEpoch() {
 		return
 	}
 
-	writeEpoch := curTs.Height() + abi.ChainEpoch(dt.Seconds())/builtin.EpochDurationSeconds
+	writeEpoch := curTs.Height() + abi.ChainEpoch(dt.Seconds())/builtin.EpochDurationSeconds + 1
 	if writeEpoch > s.writeEpoch {
 		s.writeEpoch = writeEpoch
 	}
