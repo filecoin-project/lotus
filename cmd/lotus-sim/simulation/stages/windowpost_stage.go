@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/blockbuilder"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/mock"
@@ -122,6 +123,11 @@ func (stage *WindowPoStStage) queueMiner(
 		return err
 	}
 
+	poStBatchSize, err := policy.GetMaxPoStPartitions(bb.NetworkVersion(), minerInfo.WindowPoStProofType)
+	if err != nil {
+		return err
+	}
+
 	var (
 		partitions      []miner.PoStPartition
 		partitionGroups [][]miner.PoStPartition
@@ -131,9 +137,8 @@ func (stage *WindowPoStStage) queueMiner(
 		if proven[idx] {
 			return nil
 		}
-		// TODO: set this to the actual limit from specs-actors.
 		// NOTE: We're mimicing the behavior of wdpost_run.go here.
-		if len(partitions) > 0 && idx%4 == 0 {
+		if len(partitions) > 0 && idx%uint64(poStBatchSize) == 0 {
 			partitionGroups = append(partitionGroups, partitions)
 			partitions = nil
 
