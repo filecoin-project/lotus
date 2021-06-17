@@ -35,10 +35,11 @@ var (
 	//
 	//        |················· CompactionThreshold ··················|
 	//        |                                                        |
-	// =======‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖|------------------------»
-	//        |                               |   chain -->             ↑__ current epoch
-	//        |       archived epochs         |
-	//                                        ↑________ CompactionBoundary
+	// =======‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖----------|------------------------»
+	//        |                    |          |   chain -->             ↑__ current epoch
+	//        | archived epochs ___↑          |
+	//                             |          ↑________ CompactionBoundary
+	//                             ↑__ CompactionSlack
 	//
 	// === :: cold (already archived)
 	// ≡≡≡ :: to be archived in this compaction
@@ -48,6 +49,10 @@ var (
 	// CompactionBoundary is the number of epochs from the current epoch at which
 	// we will walk the chain for live objects.
 	CompactionBoundary = 2 * build.Finality
+
+	// CompactionSlack is the number of epochs from the compaction boundary to the beginning
+	// of the cold epoch.
+	CompactionSlack = build.Finality
 
 	// SyncGapTime is the time delay from a tipset's min timestamp before we decide
 	// there is a sync gap
@@ -738,7 +743,7 @@ func (s *SplitStore) estimateMarkSetSize(curTs *types.TipSet) error {
 func (s *SplitStore) doCompact(curTs *types.TipSet, syncGapEpoch abi.ChainEpoch) error {
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
-	coldEpoch := boundaryEpoch - 1
+	coldEpoch := boundaryEpoch - CompactionSlack
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "coldEpoch", coldEpoch, "boundaryEpoch", boundaryEpoch)
 
