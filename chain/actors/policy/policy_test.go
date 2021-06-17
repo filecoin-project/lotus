@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -67,4 +68,13 @@ func TestPartitionSizes(t *testing.T) {
 		}
 		require.Equal(t, sizeOld, sizeNew)
 	}
+}
+
+func TestPoStSize(t *testing.T) {
+	v12PoStSize, err := GetMaxPoStPartitions(network.Version12, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1)
+	require.Equal(t, 4, v12PoStSize)
+	require.NoError(t, err)
+	v13PoStSize, err := GetMaxPoStPartitions(network.Version13, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1)
+	require.NoError(t, err)
+	require.Equal(t, 10, v13PoStSize)
 }
