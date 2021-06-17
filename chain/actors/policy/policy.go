@@ -278,13 +278,13 @@ func GetMaxSectorExpirationExtension() abi.ChainEpoch {
 	return miner5.MaxSectorExpirationExtension
 }
 
-// TODO: we'll probably need to abstract over this better in the future.
-func GetMaxPoStPartitions(p abi.RegisteredPoStProof) (int, error) {
+func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {
 	sectorsPerPart, err := builtin5.PoStProofWindowPoStPartitionSectors(p)
 	if err != nil {
 		return 0, err
 	}
-	return int(miner5.AddressedSectorsMax / sectorsPerPart), nil
+	maxSectors := uint64(GetAddressedSectorsMax(nv))
+	return int(maxSectors / sectorsPerPart), nil
 }
 
 func GetDefaultSectorSize() abi.SectorSize {
