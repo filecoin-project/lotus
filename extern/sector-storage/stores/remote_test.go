@@ -152,7 +152,7 @@ func TestReader(t *testing.T) {
 		},
 
 		// --- nil reader when local unsealed file does NOT have unsealed piece
-		"nil reader when local unsealed file does not have the piece": {
+		"nil reader when local unsealed file does not have the unsealed piece and remote sector also dosen't have the unsealed piece": {
 			storeFnc: func(l *mocks.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
@@ -163,7 +163,20 @@ func TestReader(t *testing.T) {
 					false, nil)
 
 				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
+
 			},
+
+			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+				si := stores.SectorStorageInfo{
+					URLs: []string{url},
+				}
+
+				in.EXPECT().StorageFindSector(gomock.Any(), sectorRef.ID, storiface.FTUnsealed, gomock.Any(),
+					false).Return([]stores.SectorStorageInfo{si}, nil).Times(1)
+			},
+
+			needHttpServer:         true,
+			getAllocatedReturnCode: 500,
 		},
 
 		// ---- nil reader when none of the remote unsealed file has unsealed piece
@@ -232,6 +245,37 @@ func TestReader(t *testing.T) {
 		},
 
 		// --- Success for remote unsealed file
+		// --- Success for remote unsealed file
+		"successfully fetches reader from remote unsealed piece when local unsealed file does NOT have the unsealed Piece": {
+			storeFnc: func(l *mocks.MockStore) {
+				mockSectorAcquire(l, sectorRef, pfPath, nil)
+			},
+
+			pfFunc: func(pf *mocks.MockpartialFileHandler) {
+				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
+				mockCheckAllocation(pf, offset, size, emptyPartialFile,
+					false, nil)
+
+				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
+
+			},
+
+			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+				si := stores.SectorStorageInfo{
+					URLs: []string{url},
+				}
+
+				in.EXPECT().StorageFindSector(gomock.Any(), sectorRef.ID, storiface.FTUnsealed, gomock.Any(),
+					false).Return([]stores.SectorStorageInfo{si}, nil).Times(1)
+			},
+
+			needHttpServer:         true,
+			getSectorReturnCode:    200,
+			getAllocatedReturnCode: 200,
+			expectedSectorBytes:    bz,
+			expectedNonNilReader:   true,
+		},
+
 		"successfully fetches reader for piece from remote unsealed piece": {
 			storeFnc: func(l *mocks.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
@@ -439,7 +483,7 @@ func TestCheckIsUnsealed(t *testing.T) {
 		},
 
 		// false when local unsealed file does NOT have unsealed piece
-		"false when local unsealed file does not have the piece": {
+		"false when local unsealed file does not have the piece and remote sector too dosen't have the piece": {
 			storeFnc: func(l *mocks.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
@@ -451,6 +495,18 @@ func TestCheckIsUnsealed(t *testing.T) {
 
 				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
 			},
+
+			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+				si := stores.SectorStorageInfo{
+					URLs: []string{url},
+				}
+
+				in.EXPECT().StorageFindSector(gomock.Any(), sectorRef.ID, storiface.FTUnsealed, gomock.Any(),
+					false).Return([]stores.SectorStorageInfo{si}, nil).Times(1)
+			},
+
+			needHttpServer:         true,
+			getAllocatedReturnCode: 500,
 		},
 
 		"false when none of the worker has the unsealed piece": {
@@ -489,9 +545,36 @@ func TestCheckIsUnsealed(t *testing.T) {
 		},
 
 		// --- Success for remote unsealed file
-		"successfully fetches reader for piece from remote unsealed piece": {
+		"true if we have a  remote unsealed piece": {
 			storeFnc: func(l *mocks.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
+			},
+
+			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+				si := stores.SectorStorageInfo{
+					URLs: []string{url},
+				}
+
+				in.EXPECT().StorageFindSector(gomock.Any(), sectorRef.ID, storiface.FTUnsealed, gomock.Any(),
+					false).Return([]stores.SectorStorageInfo{si}, nil).Times(1)
+			},
+
+			needHttpServer:         true,
+			getAllocatedReturnCode: 200,
+			expectedIsUnealed:      true,
+		},
+
+		"true when local unsealed file does NOT have the unsealed Piece but remote sector has the unsealed piece": {
+			storeFnc: func(l *mocks.MockStore) {
+				mockSectorAcquire(l, sectorRef, pfPath, nil)
+			},
+
+			pfFunc: func(pf *mocks.MockpartialFileHandler) {
+				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
+				mockCheckAllocation(pf, offset, size, emptyPartialFile,
+					false, nil)
+
+				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
 			},
 
 			indexFnc: func(in *mocks.MockSectorIndex, url string) {

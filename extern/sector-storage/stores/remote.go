@@ -518,12 +518,21 @@ func (r *Remote) CheckIsUnsealed(ctx context.Context, s storage.SectorRef, offse
 			return false, xerrors.Errorf("has allocated: %w", err)
 		}
 
+		// close the local unsealed file.
 		if err := r.pfHandler.Close(pf); err != nil {
 			return false, xerrors.Errorf("failed to close partial file: %s", err)
 		}
 		log.Debugf("checked if local partial file has the piece %s (+%d,%d), returning answer=%t", path, offset, size, has)
-		return has, nil
+
+		// Sector files can technically not have a piece unsealed locally, but have it unsealed in remote storage, so we probably
+		// want to return only if has is true
+		if has {
+			return has, nil
+		}
 	}
+
+	// --- We don't have the unsealed piece in an unsealed sector file locally
+	// Check if we have it in a remote cluster.
 
 	si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
 	if err != nil {
@@ -601,19 +610,18 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		}
 		log.Debugf("check if partial file is allocated %s (+%d,%d)", path, offset, size)
 
-		if !has {
-			log.Debugf("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
-			if err := r.pfHandler.Close(pf); err != nil {
-				return nil, xerrors.Errorf("close partial file: %w", err)
-			}
-			return nil, nil
+		if has {
+			log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
+			return r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset), size)
 		}
 
-		log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
-		return r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset), size)
+		log.Debugf("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
+		if err := r.pfHandler.Close(pf); err != nil {
+			return nil, xerrors.Errorf("close partial file: %w", err)
+		}
 	}
 
-	// --- We don't have the unsealed sector file locally
+	// --- We don't have the unsealed piece in an unsealed sector file locally
 
 	// if we don't have the unsealed sector file locally, we'll first lookup the Miner Sector Store Index
 	// to determine which workers have the unsealed file and then query those workers to know
