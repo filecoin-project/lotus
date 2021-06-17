@@ -9,8 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -60,7 +58,7 @@ func TestPledgeBatching(t *testing.T) {
 		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
 		ens.InterconnectAll().BeginMining(blockTime)
 
-		waitTillChainHeight(ctx, t, client, 10)
+		kit2.WaitTillChainHeight(ctx, t, client, blockTime, 10)
 
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 
@@ -117,7 +115,7 @@ func TestPledgeBeforeNv13(t *testing.T) {
 		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
 		ens.InterconnectAll().BeginMining(blocktime)
 
-		waitTillChainHeight(ctx, t, client, 10)
+		kit2.WaitTillChainHeight(ctx, t, client, blocktime, 10)
 
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 
@@ -144,14 +142,4 @@ func TestPledgeBeforeNv13(t *testing.T) {
 	t.Run("100-before-nv13", func(t *testing.T) {
 		runTest(t, 100)
 	})
-}
-
-func waitTillChainHeight(ctx context.Context, t *testing.T, node *kit2.TestFullNode, height int) {
-	for {
-		h, err := node.ChainHead(ctx)
-		require.NoError(t, err)
-		if h.Height() > abi.ChainEpoch(height) {
-			return
-		}
-	}
 }
