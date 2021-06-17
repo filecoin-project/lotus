@@ -22,6 +22,7 @@ import (
 func init() {
 	CompactionThreshold = 5
 	CompactionBoundary = 2
+	CompactionSlack = 2
 	logging.SetLogLevel("splitstore", "DEBUG")
 }
 
@@ -144,12 +145,12 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	coldCnt = countBlocks(cold)
 	hotCnt = countBlocks(hot)
 
-	if coldCnt != 8 {
-		t.Errorf("expected %d cold blocks, but got %d", 8, coldCnt)
+	if coldCnt != 6 {
+		t.Errorf("expected %d cold blocks, but got %d", 6, coldCnt)
 	}
 
-	if hotCnt != 5 {
-		t.Errorf("expected %d hot blocks, but got %d", 5, hotCnt)
+	if hotCnt != 7 {
+		t.Errorf("expected %d hot blocks, but got %d", 7, hotCnt)
 	}
 
 	// Make sure we can revert without panicking.
