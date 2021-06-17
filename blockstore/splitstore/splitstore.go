@@ -505,7 +505,7 @@ func (s *SplitStore) updateWriteEpoch() {
 }
 
 func (s *SplitStore) background() {
-	ticker := time.NewTicker(time.Duration(builtin.EpochDurationSeconds) * time.Second)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
