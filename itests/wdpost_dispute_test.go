@@ -2,7 +2,6 @@ package itests
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -16,8 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	minerActor "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/itests/kit2"
 	proof3 "github.com/filecoin-project/specs-actors/v3/actors/runtime/proof"
 	"github.com/stretchr/testify/require"
 )
@@ -27,28 +25,29 @@ func TestWindowPostDispute(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
-	b := kit.MockMinerBuilder
 	blocktime := 2 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	var (
+		client     kit2.TestFullNode
+		chainMiner kit2.TestMiner
+		evilMiner  kit2.TestMiner
+	)
+
 	// First, we configure two miners. After sealing, we're going to turn off the first miner so
 	// it doesn't submit proofs.
 	//
 	// Then we're going to manually submit bad proofs.
-	n, sn := b(t,
-		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)},
-		[]kit.StorageMiner{
-			{Full: 0, Preseal: kit.PresealGenesis},
-			{Full: 0},
-		})
-
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	chainMiner := sn[0]
-	evilMiner := sn[1]
+	opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
+	ens := kit2.NewEnsemble(t, kit2.MockProofs()).
+		FullNode(&client, opts).
+		Miner(&chainMiner, &client, opts).
+		Miner(&evilMiner, &client, opts, kit2.PresealSectors(0)).
+		Start()
 
 	{
 		addrinfo, err := client.NetAddrsListen(ctx)
@@ -68,32 +67,13 @@ func TestWindowPostDispute(t *testing.T) {
 	defaultFrom, err := client.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
 
-	build.Clock.Sleep(time.Second)
-
 	// Mine with the _second_ node (the good one).
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for ctx.Err() == nil {
-			build.Clock.Sleep(blocktime)
-			if err := chainMiner.MineOne(ctx, kit.MineNext); err != nil {
-				if ctx.Err() != nil {
-					// context was canceled, ignore the error.
-					return
-				}
-				t.Error(err)
-			}
-		}
-	}()
-	defer func() {
-		cancel()
-		<-done
-	}()
+	ens.BeginMining(blocktime, &chainMiner)
 
 	// Give the chain miner enough sectors to win every block.
-	kit.PledgeSectors(t, ctx, chainMiner, 10, 0, nil)
+	chainMiner.PledgeSectors(ctx, 10, 0, nil)
 	// And the evil one 1 sector. No cookie for you.
-	kit.PledgeSectors(t, ctx, evilMiner, 1, 0, nil)
+	evilMiner.PledgeSectors(ctx, 1, 0, nil)
 
 	// Let the evil miner's sectors gain power.
 	evilMinerAddr, err := evilMiner.ActorAddress(ctx)
@@ -102,19 +82,13 @@ func TestWindowPostDispute(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	fmt.Printf("Running one proving period\n")
-	fmt.Printf("End for head.Height > %d\n", di.PeriodStart+di.WPoStProvingPeriod*2)
+	t.Logf("Running one proving period\n")
 
-	for {
-		head, err := client.ChainHead(ctx)
-		require.NoError(t, err)
+	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2
+	t.Logf("End for head.Height > %d", waitUntil)
 
-		if head.Height() > di.PeriodStart+di.WPoStProvingPeriod*2 {
-			fmt.Printf("Now head.Height = %d\n", head.Height())
-			break
-		}
-		build.Clock.Sleep(blocktime)
-	}
+	height := kit2.WaitTillChainHeight(ctx, t, &client, blocktime, int(waitUntil))
+	t.Logf("Now head.Height = %d", height)
 
 	p, err := client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -131,12 +105,12 @@ func TestWindowPostDispute(t *testing.T) {
 	evilSectorLoc, err := client.StateSectorPartition(ctx, evilMinerAddr, evilSectorNo, types.EmptyTSK)
 	require.NoError(t, err)
 
-	fmt.Println("evil miner stopping")
+	t.Log("evil miner stopping")
 
 	// Now stop the evil miner, and start manually submitting bad proofs.
 	require.NoError(t, evilMiner.Stop(ctx))
 
-	fmt.Println("evil miner stopped")
+	t.Log("evil miner stopped")
 
 	// Wait until we need to prove our sector.
 	for {
@@ -161,7 +135,7 @@ func TestWindowPostDispute(t *testing.T) {
 		build.Clock.Sleep(blocktime)
 	}
 
-	fmt.Println("accepted evil proof")
+	t.Log("accepted evil proof")
 
 	// Make sure the evil node didn't lose any power.
 	p, err = client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
@@ -188,7 +162,7 @@ func TestWindowPostDispute(t *testing.T) {
 		sm, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(t, err)
 
-		fmt.Println("waiting dispute")
+		t.Log("waiting dispute")
 		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "dispute not accepted: %s", rec.Receipt.ExitCode.Error())
@@ -258,29 +232,16 @@ func TestWindowPostDisputeFails(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
-	b := kit.MockMinerBuilder
 	blocktime := 2 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := b(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)}, kit.OneMiner)
-
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-
-	{
-		addrinfo, err := client.NetAddrsListen(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if err := miner.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
-	}
+	opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
+	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+	ens.InterconnectAll().BeginMining(blocktime)
 
 	defaultFrom, err := client.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
@@ -290,48 +251,21 @@ func TestWindowPostDisputeFails(t *testing.T) {
 
 	build.Clock.Sleep(time.Second)
 
-	// Mine with the _second_ node (the good one).
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for ctx.Err() == nil {
-			build.Clock.Sleep(blocktime)
-			if err := miner.MineOne(ctx, kit.MineNext); err != nil {
-				if ctx.Err() != nil {
-					// context was canceled, ignore the error.
-					return
-				}
-				t.Error(err)
-			}
-		}
-	}()
-	defer func() {
-		cancel()
-		<-done
-	}()
-
-	kit.PledgeSectors(t, ctx, miner, 10, 0, nil)
+	miner.PledgeSectors(ctx, 10, 0, nil)
 
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	fmt.Printf("Running one proving period\n")
-	fmt.Printf("End for head.Height > %d\n", di.PeriodStart+di.WPoStProvingPeriod*2)
+	t.Log("Running one proving period")
+	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2
+	t.Logf("End for head.Height > %d", waitUntil)
 
-	for {
-		head, err := client.ChainHead(ctx)
-		require.NoError(t, err)
-
-		if head.Height() > di.PeriodStart+di.WPoStProvingPeriod*2 {
-			fmt.Printf("Now head.Height = %d\n", head.Height())
-			break
-		}
-		build.Clock.Sleep(blocktime)
-	}
+	height := kit2.WaitTillChainHeight(ctx, t, client, blocktime, int(waitUntil))
+	t.Logf("Now head.Height = %d", height)
 
 	ssz, err := miner.ActorSectorSize(ctx, maddr)
 	require.NoError(t, err)
-	expectedPower := types.NewInt(uint64(ssz) * (kit.GenesisPreseals + 10))
+	expectedPower := types.NewInt(uint64(ssz) * (kit2.DefaultPresealsPerBootstrapMiner + 10))
 
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
