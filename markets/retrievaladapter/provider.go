@@ -99,3 +99,67 @@ func (rpn *retrievalProviderNode) GetChainHead(ctx context.Context) (shared.TipS
 
 	return head.Key().Bytes(), head.Height(), nil
 }
+
+func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
+	si, err := rpn.miner.GetSectorInfo(sectorID)
+	if err != nil {
+		return false, xerrors.Errorf("failed to get sectorinfo, err=%s", err)
+	}
+
+	mid, err := address.IDFromAddress(rpn.miner.Address())
+	if err != nil {
+		return false, err
+	}
+
+	ref := specstorage.SectorRef{
+		ID: abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: sectorID,
+		},
+		ProofType: si.SectorType,
+	}
+
+	log.Debugf("will call IsUnsealed now sector=%+v, offset=%d, size=%d", sectorID, offset, length)
+	return rpn.pp.IsUnsealed(ctx, ref, storiface.UnpaddedByteIndex(offset), length)
+}
+
+// GetRetrievalPricingInput takes a set of candidate storage deals that can serve a retrieval request,
+// and returns an minimally populated PricingInput. This PricingInput should be enhanced
+// with more data, and passed to the pricing function to determine the final quoted price.
+func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, pieceCID cid.Cid, storageDeals []abi.DealID) (retrievalmarket.PricingInput, error) {
+	resp := retrievalmarket.PricingInput{}
+
+	head, err := rpn.full.ChainHead(ctx)
+	if err != nil {
+		return resp, xerrors.Errorf("failed to get chain head: %w", err)
+	}
+	tsk := head.Key()
+
+	for _, dealID := range storageDeals {
+		ds, err := rpn.full.StateMarketStorageDeal(ctx, dealID, tsk)
+		if err != nil {
+			return resp, xerrors.Errorf("failed to look up deal %d on chain: err=%w", dealID, err)
+		}
+		if ds.Proposal.VerifiedDeal {
+			resp.VerifiedDeal = true
+		}
+
+		if ds.Proposal.PieceCID.Equals(pieceCID) {
+			resp.PieceSize = ds.Proposal.PieceSize.Unpadded()
+		}
+
+		// If we've discovered a verified deal with the required PieceCID, we don't need
+		// to lookup more deals and we're done.
+		if resp.VerifiedDeal && resp.PieceSize != 0 {
+			break
+		}
+	}
+
+	// Note: The piece size can never actually be zero. We only use it to here
+	// to assert that we didn't find a matching piece.
+	if resp.PieceSize == 0 {
+		return resp, xerrors.New("failed to find matching piece")
+	}
+
+	return resp, nil
+}

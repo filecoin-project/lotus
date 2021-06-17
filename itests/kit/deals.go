@@ -34,6 +34,15 @@ type DealHarness struct {
 	miner  TestMiner
 }
 
+type MakeFullDealParams struct {
+	Ctx         context.Context
+	Rseed       int
+	CarExport   bool
+	FastRet     bool
+	StartEpoch  abi.ChainEpoch
+	DoRetrieval bool
+}
+
 // NewDealHarness creates a test harness that contains testing utilities for deals.
 func NewDealHarness(t *testing.T, client api.FullNode, miner TestMiner) *DealHarness {
 	return &DealHarness{
@@ -43,8 +52,9 @@ func NewDealHarness(t *testing.T, client api.FullNode, miner TestMiner) *DealHar
 	}
 }
 
-func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	res, _, data, err := CreateImportFile(ctx, dh.client, rseed, 0)
+func (dh *DealHarness) MakeFullDeal(params MakeFullDealParams) ([]byte,
+	*api.DealInfo, cid.Cid) {
+	res, _, data, err := CreateImportFile(params.Ctx, dh.client, params.Rseed, 0)
 	if err != nil {
 		dh.t.Fatal(err)
 	}
@@ -52,17 +62,21 @@ func (dh *DealHarness) MakeFullDeal(ctx context.Context, rseed int, carExport, f
 	fcid := res.Root
 	fmt.Println("FILE CID: ", fcid)
 
-	deal := dh.StartDeal(ctx, fcid, fastRet, startEpoch)
+	deal := dh.StartDeal(params.Ctx, fcid, params.FastRet, params.StartEpoch)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-	dh.WaitDealSealed(ctx, deal, false, false, nil)
+	dh.WaitDealSealed(params.Ctx, deal, false, false, nil)
 
 	// Retrieval
-	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
+	info, err := dh.client.ClientGetDealInfo(params.Ctx, *deal)
 	require.NoError(dh.t, err)
 
-	dh.TestRetrieval(ctx, fcid, &info.PieceCID, carExport, data)
+	if params.DoRetrieval {
+		dh.TestRetrieval(params.Ctx, fcid, &info.PieceCID, params.CarExport, data)
+	}
+
+	return data, info, fcid
 }
 
 func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {

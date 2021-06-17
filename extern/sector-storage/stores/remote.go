@@ -484,6 +484,87 @@ func (r *Remote) readRemote(ctx context.Context, url string, offset, size abi.Pa
 	return resp.Body, nil
 }
 
+// CheckIsUnsealed checks if we have an unsealed piece at the given offset in an already unsealed sector file for the given piece
+// either locally or on any of the workers.
+// Returns true if we have the unsealed piece, false otherwise.
+func (r *Remote) CheckIsUnsealed(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize) (bool, error) {
+	ft := storiface.FTUnsealed
+
+	paths, _, err := r.local.AcquireSector(ctx, s, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+	if err != nil {
+		return false, xerrors.Errorf("acquire local: %w", err)
+	}
+
+	path := storiface.PathByType(paths, ft)
+	if path != "" {
+		// if we have the unsealed file locally, check if it has the unsealed piece.
+		log.Infof("Read local %s (+%d,%d)", path, offset, size)
+		ssize, err := s.ProofType.SectorSize()
+		if err != nil {
+			return false, err
+		}
+
+		// open the unsealed sector file for the given sector size located at the given path.
+		pf, err := r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+		if err != nil {
+			return false, xerrors.Errorf("opening partial file: %w", err)
+		}
+		log.Debugf("local partial file opened %s (+%d,%d)", path, offset, size)
+
+		// even though we have an unsealed file for the given sector, we still need to determine if we have the unsealed piece
+		// in the unsealed sector file. That is what `HasAllocated` checks for.
+		has, err := r.pfHandler.HasAllocated(pf, storiface.UnpaddedByteIndex(offset.Unpadded()), size.Unpadded())
+		if err != nil {
+			return false, xerrors.Errorf("has allocated: %w", err)
+		}
+
+		// close the local unsealed file.
+		if err := r.pfHandler.Close(pf); err != nil {
+			return false, xerrors.Errorf("failed to close partial file: %s", err)
+		}
+		log.Debugf("checked if local partial file has the piece %s (+%d,%d), returning answer=%t", path, offset, size, has)
+
+		// Sector files can technically not have a piece unsealed locally, but have it unsealed in remote storage, so we probably
+		// want to return only if has is true
+		if has {
+			return has, nil
+		}
+	}
+
+	// --- We don't have the unsealed piece in an unsealed sector file locally
+	// Check if we have it in a remote cluster.
+
+	si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
+	if err != nil {
+		return false, xerrors.Errorf("StorageFindSector: %s", err)
+	}
+
+	if len(si) == 0 {
+		return false, nil
+	}
+
+	sort.Slice(si, func(i, j int) bool {
+		return si[i].Weight < si[j].Weight
+	})
+
+	for _, info := range si {
+		for _, url := range info.URLs {
+			ok, err := r.checkAllocated(ctx, url, s.ProofType, offset, size)
+			if err != nil {
+				log.Warnw("check if remote has piece", "url", url, "error", err)
+				continue
+			}
+			if !ok {
+				continue
+			}
+
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 // Reader returns a reader for an unsealed piece at the given offset in the given sector.
 // If the Miner has the unsealed piece locally, it will return a reader that reads from the local copy.
 // If the Miner does NOT have the unsealed piece locally, it will query all workers that have the unsealed sector file
@@ -507,7 +588,7 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 	if path != "" {
 		// if we have the unsealed file locally, return a reader that can be used to read the contents of the
 		// unsealed piece.
-		log.Infof("Read local %s (+%d,%d)", path, offset, size)
+		log.Debugf("Check local %s (+%d,%d)", path, offset, size)
 		ssize, err := s.ProofType.SectorSize()
 		if err != nil {
 			return nil, err
@@ -529,19 +610,18 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 		}
 		log.Debugf("check if partial file is allocated %s (+%d,%d)", path, offset, size)
 
-		if !has {
-			log.Debugf("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
-			if err := r.pfHandler.Close(pf); err != nil {
-				return nil, xerrors.Errorf("close partial file: %w", err)
-			}
-			return nil, nil
+		if has {
+			log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
+			return r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset), size)
 		}
 
-		log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
-		return r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset), size)
+		log.Debugf("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
+		if err := r.pfHandler.Close(pf); err != nil {
+			return nil, xerrors.Errorf("close partial file: %w", err)
+		}
 	}
 
-	// --- We don't have the unsealed sector file locally
+	// --- We don't have the unsealed piece in an unsealed sector file locally
 
 	// if we don't have the unsealed sector file locally, we'll first lookup the Miner Sector Store Index
 	// to determine which workers have the unsealed file and then query those workers to know

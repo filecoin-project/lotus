@@ -61,7 +61,14 @@ func TestMinerAllInfo(t *testing.T) {
 	t.Run("pre-info-all", run)
 
 	dh := kit.NewDealHarness(t, client, miner)
-	dh.MakeFullDeal(context.Background(), 6, false, false, 0)
+	_, _, _ = dh.MakeFullDeal(kit.MakeFullDealParams{
+		Ctx:         context.Background(),
+		Rseed:       6,
+		CarExport:   false,
+		FastRet:     false,
+		StartEpoch:  0,
+		DoRetrieval: true,
+	})
 
 	t.Run("post-info-all", run)
 }
