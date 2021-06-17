@@ -85,6 +85,7 @@ var infoSimCommand = &cli.Command{
 	Description: "Output information about the simulation.",
 	Subcommands: []*cli.Command{
 		infoCommitGasSimCommand,
+		infoMessageSizeSimCommand,
 		infoWindowPostBandwidthSimCommand,
 		infoCapacityGrowthSimCommand,
 		infoStateGrowthSimCommand,
