@@ -8,33 +8,30 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/impl"
-	"github.com/stretchr/testify/assert"
+	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAPI(t *testing.T) {
 	t.Run("direct", func(t *testing.T) {
-		runAPITest(t, kit.Builder)
+		runAPITest(t)
 	})
 	t.Run("rpc", func(t *testing.T) {
-		runAPITest(t, kit.RPCBuilder)
+		runAPITest(t, kit2.ThroughRPC())
 	})
 }
 
 type apiSuite struct {
-	makeNodes kit.APIBuilder
+	opts []interface{}
 }
 
 // runAPITest is the entry point to API test suite
-func runAPITest(t *testing.T, b kit.APIBuilder) {
-	ts := apiSuite{
-		makeNodes: b,
-	}
+func runAPITest(t *testing.T, opts ...interface{}) {
+	ts := apiSuite{opts: opts}
 
 	t.Run("version", ts.testVersion)
 	t.Run("id", ts.testID)
@@ -51,145 +48,114 @@ func (ts *apiSuite) testVersion(t *testing.T) {
 		lapi.RunningNodeType = lapi.NodeUnknown
 	})
 
-	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
-	napi := apis[0]
+	full, _, _ := kit2.EnsembleMinimal(t, ts.opts...)
 
-	v, err := napi.Version(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	v, err := full.Version(context.Background())
+	require.NoError(t, err)
+
 	versions := strings.Split(v.Version, "+")
-	if len(versions) <= 0 {
-		t.Fatal("empty version")
-	}
+	require.NotZero(t, len(versions), "empty version")
 	require.Equal(t, versions[0], build.BuildVersion)
 }
 
-func (ts *apiSuite) testSearchMsg(t *testing.T) {
-	apis, miners := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
+func (ts *apiSuite) testID(t *testing.T) {
+	ctx := context.Background()
 
-	api := apis[0]
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	senderAddr, err := api.WalletDefaultAddress(ctx)
+	full, _, _ := kit2.EnsembleMinimal(t, ts.opts...)
+
+	id, err := full.ID(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	require.Regexp(t, "^12", id.Pretty())
+}
+
+func (ts *apiSuite) testConnectTwo(t *testing.T) {
+	ctx := context.Background()
+
+	one, two, _, ens := kit2.EnsembleTwoOne(t, ts.opts...)
+
+	p, err := one.NetPeers(ctx)
+	require.NoError(t, err)
+	require.Empty(t, p, "node one has peers")
+
+	p, err = two.NetPeers(ctx)
+	require.NoError(t, err)
+	require.Empty(t, p, "node two has peers")
+
+	ens.InterconnectAll()
+
+	peers, err := one.NetPeers(ctx)
+	require.NoError(t, err)
+	require.Lenf(t, peers, 2, "node one doesn't have 2 peers")
+
+	peers, err = two.NetPeers(ctx)
+	require.NoError(t, err)
+	require.Lenf(t, peers, 2, "node two doesn't have 2 peers")
+}
+
+func (ts *apiSuite) testSearchMsg(t *testing.T) {
+	ctx := context.Background()
+
+	full, _, ens := kit2.EnsembleMinimal(t, ts.opts...)
+
+	senderAddr, err := full.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
 
 	msg := &types.Message{
 		From:  senderAddr,
 		To:    senderAddr,
 		Value: big.Zero(),
 	}
-	bm := kit.NewBlockMiner(t, miners[0])
-	bm.MineBlocks(ctx, 100*time.Millisecond)
-	defer bm.Stop()
 
-	sm, err := api.MpoolPushMessage(ctx, msg, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Receipt.ExitCode != 0 {
-		t.Fatal("did not successfully send message")
-	}
+	ens.BeginMining(100 * time.Millisecond)
 
-	searchRes, err := api.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	sm, err := full.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
 
-	if searchRes.TipSet != res.TipSet {
-		t.Fatalf("search ts: %s, different from wait ts: %s", searchRes.TipSet, res.TipSet)
-	}
+	res, err := full.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
 
-}
+	require.Equal(t, exitcode.Ok, res.Receipt.ExitCode, "message not successful")
 
-func (ts *apiSuite) testID(t *testing.T) {
-	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
-	api := apis[0]
+	searchRes, err := full.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
 
-	id, err := api.ID(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Regexp(t, "^12", id.Pretty())
-}
-
-func (ts *apiSuite) testConnectTwo(t *testing.T) {
-	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, kit.TwoFull, kit.OneMiner)
-
-	p, err := apis[0].NetPeers(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(p) != 0 {
-		t.Error("Node 0 has a peer")
-	}
-
-	p, err = apis[1].NetPeers(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(p) != 0 {
-		t.Error("Node 1 has a peer")
-	}
-
-	addrs, err := apis[1].NetAddrsListen(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := apis[0].NetConnect(ctx, addrs); err != nil {
-		t.Fatal(err)
-	}
-
-	p, err = apis[0].NetPeers(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(p) != 1 {
-		t.Error("Node 0 doesn't have 1 peer")
-	}
-
-	p, err = apis[1].NetPeers(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(p) != 1 {
-		t.Error("Node 0 doesn't have 1 peer")
-	}
+	require.Equalf(t, res.TipSet, searchRes.TipSet, "search ts: %s, different from wait ts: %s", searchRes.TipSet, res.TipSet)
 }
 
 func (ts *apiSuite) testMining(t *testing.T) {
 	ctx := context.Background()
-	fulls, miners := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
-	api := fulls[0]
 
-	newHeads, err := api.ChainNotify(ctx)
+	full, miner, _ := kit2.EnsembleMinimal(t, ts.opts...)
+
+	newHeads, err := full.ChainNotify(ctx)
 	require.NoError(t, err)
 	initHead := (<-newHeads)[0]
 	baseHeight := initHead.Val.Height()
 
-	h1, err := api.ChainHead(ctx)
+	h1, err := full.ChainHead(ctx)
 	require.NoError(t, err)
 	require.Equal(t, int64(h1.Height()), int64(baseHeight))
 
-	bm := kit.NewBlockMiner(t, miners[0])
-	bm.MineUntilBlock(ctx, fulls[0], nil)
+	bm := kit2.NewBlockMiner(t, miner)
+	bm.MineUntilBlock(ctx, full, nil)
 	require.NoError(t, err)
 
 	<-newHeads
 
-	h2, err := api.ChainHead(ctx)
+	h2, err := full.ChainHead(ctx)
 	require.NoError(t, err)
 	require.Greater(t, int64(h2.Height()), int64(h1.Height()))
+
+	bm.MineUntilBlock(ctx, full, nil)
+	require.NoError(t, err)
+
+	<-newHeads
+
+	h3, err := full.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Greater(t, int64(h3.Height()), int64(h2.Height()))
 }
 
 func (ts *apiSuite) testMiningReal(t *testing.T) {
@@ -198,66 +164,26 @@ func (ts *apiSuite) testMiningReal(t *testing.T) {
 		build.InsecurePoStValidation = true
 	}()
 
-	ctx := context.Background()
-	fulls, miners := ts.makeNodes(t, kit.OneFull, kit.OneMiner)
-	api := fulls[0]
-
-	newHeads, err := api.ChainNotify(ctx)
-	require.NoError(t, err)
-	at := (<-newHeads)[0].Val.Height()
-
-	h1, err := api.ChainHead(ctx)
-	require.NoError(t, err)
-	require.Equal(t, int64(at), int64(h1.Height()))
-
-	bm := kit.NewBlockMiner(t, miners[0])
-
-	bm.MineUntilBlock(ctx, fulls[0], nil)
-	require.NoError(t, err)
-
-	<-newHeads
-
-	h2, err := api.ChainHead(ctx)
-	require.NoError(t, err)
-	require.Greater(t, int64(h2.Height()), int64(h1.Height()))
-
-	bm.MineUntilBlock(ctx, fulls[0], nil)
-	require.NoError(t, err)
-
-	<-newHeads
-
-	h3, err := api.ChainHead(ctx)
-	require.NoError(t, err)
-	require.Greater(t, int64(h3.Height()), int64(h2.Height()))
+	ts.testMining(t)
 }
 
 func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
-	n, sn := ts.makeNodes(t,
-		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)},
-		[]kit.StorageMiner{{Full: 0, Preseal: kit.PresealGenesis}},
-	)
 
-	full, ok := n[0].FullNode.(*impl.FullNodeAPI)
-	if !ok {
-		t.Skip("not testing with a full node")
-		return
-	}
-	genesisMiner := sn[0]
+	full, genesisMiner, ens := kit2.EnsembleMinimal(t, ts.opts...)
 
-	bm := kit.NewBlockMiner(t, genesisMiner)
-	bm.MineBlocks(ctx, 4*time.Millisecond)
-	t.Cleanup(bm.Stop)
+	ens.BeginMining(4 * time.Millisecond)
 
 	gaa, err := genesisMiner.ActorAddress(ctx)
 	require.NoError(t, err)
 
-	gmi, err := full.StateMinerInfo(ctx, gaa, types.EmptyTSK)
+	_, err = full.StateMinerInfo(ctx, gaa, types.EmptyTSK)
 	require.NoError(t, err)
 
-	testm := n[0].Stb(ctx, t, kit.TestSpt, gmi.Owner)
+	var newMiner kit2.TestMiner
+	ens.Miner(&newMiner, full, kit2.OwnerAddr(full.DefaultKey)).Start()
 
-	ta, err := testm.ActorAddress(ctx)
+	ta, err := newMiner.ActorAddress(ctx)
 	require.NoError(t, err)
 
 	tid, err := address.IDFromAddress(ta)
