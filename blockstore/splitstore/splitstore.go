@@ -35,20 +35,15 @@ var (
 	//
 	//        |················· CompactionThreshold ··················|
 	//        |                                                        |
-	// =======‖≡≡≡≡≡≡≡‖-----------------------|------------------------»
-	//        |       |                       |   chain -->             ↑__ current epoch
-	//        |·······|                       |
-	//            ↑________ CompactionCold    ↑________ CompactionBoundary
+	// =======‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖|------------------------»
+	//        |                               |   chain -->             ↑__ current epoch
+	//        |       archived epochs         |
+	//                                        ↑________ CompactionBoundary
 	//
 	// === :: cold (already archived)
 	// ≡≡≡ :: to be archived in this compaction
 	// --- :: hot
 	CompactionThreshold = 3 * build.Finality
-
-	// CompactionCold is the number of epochs that will be archived to the
-	// cold store on compaction. See diagram on CompactionThreshold for a
-	// better sense.
-	CompactionCold = build.Finality
 
 	// CompactionBoundary is the number of epochs from the current epoch at which
 	// we will walk the chain for live objects.
@@ -741,9 +736,9 @@ func (s *SplitStore) estimateMarkSetSize(curTs *types.TipSet) error {
 }
 
 func (s *SplitStore) doCompact(curTs *types.TipSet, syncGapEpoch abi.ChainEpoch) error {
-	coldEpoch := s.baseEpoch + CompactionCold
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
+	coldEpoch := boundaryEpoch - 1
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "coldEpoch", coldEpoch, "boundaryEpoch", boundaryEpoch)
 
