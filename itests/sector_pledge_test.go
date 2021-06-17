@@ -58,7 +58,7 @@ func TestPledgeBatching(t *testing.T) {
 		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
 		ens.InterconnectAll().BeginMining(blockTime)
 
-		kit2.WaitTillChainHeight(ctx, t, client, blockTime, 10)
+		client.WaitTillChain(ctx, kit2.HeightAtLeast(10))
 
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 
@@ -115,7 +115,7 @@ func TestPledgeBeforeNv13(t *testing.T) {
 		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
 		ens.InterconnectAll().BeginMining(blocktime)
 
-		kit2.WaitTillChainHeight(ctx, t, client, blocktime, 10)
+		client.WaitTillChain(ctx, kit2.HeightAtLeast(10))
 
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 
