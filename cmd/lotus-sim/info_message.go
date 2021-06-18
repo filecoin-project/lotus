@@ -22,12 +22,16 @@ var infoMessageSizeSimCommand = &cli.Command{
 			Value: 0,
 		},
 	},
-	Action: func(cctx *cli.Context) error {
+	Action: func(cctx *cli.Context) (err error) {
 		node, err := open(cctx)
 		if err != nil {
 			return err
 		}
-		defer node.Close()
+		defer func() {
+			if cerr := node.Close(); err == nil {
+				err = cerr
+			}
+		}()
 
 		go profileOnSignal(cctx, syscall.SIGUSR2)
 
