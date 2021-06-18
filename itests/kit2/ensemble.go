@@ -145,13 +145,13 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		require.NoError(n.t, err)
 	}
 
-	var key *wallet.Key
-	if !n.bootstrapped && !options.balance.IsZero() {
-		// create a key+address, and assign it some FIL; this will be set as the default wallet.
-		var err error
-		key, err = wallet.GenerateKey(types.KTBLS)
-		require.NoError(n.t, err)
+	key, err := wallet.GenerateKey(types.KTBLS)
+	require.NoError(n.t, err)
 
+	if !n.bootstrapped && !options.balance.IsZero() {
+		// if we still haven't forged genesis, create a key+address, and assign
+		// it some FIL; this will be set as the default wallet when the node is
+		// started.
 		genacc := genesis.Actor{
 			Type:    genesis.TAccount,
 			Balance: options.balance,
@@ -298,7 +298,6 @@ func (n *Ensemble) Start() *Ensemble {
 		// Construct the full node.
 		stop, err := node.New(ctx, opts...)
 
-		// fullOpts[i].Opts(fulls),
 		require.NoError(n.t, err)
 
 		addr, err := full.WalletImport(context.Background(), &full.DefaultKey.KeyInfo)

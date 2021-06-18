@@ -428,7 +428,7 @@ func startPaychCreatorReceiverMiner(ctx context.Context, t *testing.T, paymentCr
 	// Send some funds to the second node
 	receiverAddr, err := paymentReceiver.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
-	kit2.SendFunds(ctx, t, *paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
+	kit2.SendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
 
 	// Get the first node's address
 	creatorAddr, err := paymentCreator.WalletDefaultAddress(ctx)
