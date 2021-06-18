@@ -67,20 +67,12 @@ sudo dnf -y install gcc make git bzr jq pkgconfig mesa-libOpenCL mesa-libOpenCL-
 
 For other distributions you can find the required dependencies [here.](https://docs.filecoin.io/get-started/lotus/installation/#system-specific) For instructions specific to macOS, you can find them [here.](https://docs.filecoin.io/get-started/lotus/installation/#macos)
 
-#### Rustup
-
-Lotus needs [rustup](https://rustup.rs). The easiest way to install it is:
-
-```bash
-wget -c https://golang.org/dl/go1.16.2.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
-```
-
 #### Go
 
-To build Lotus, you need a working installation of [Go 1.16.1 or higher](https://golang.org/dl/):
+To build Lotus, you need a working installation of [Go 1.16.4 or higher](https://golang.org/dl/):
 
 ```bash
-wget -c https://golang.org/dl/go1.16.2.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+wget -c https://golang.org/dl/go1.16.4.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
 ```
 
 **TIP:**
@@ -102,6 +94,8 @@ Once all the dependencies are installed, you can build and install the Lotus sui
    git clone https://github.com/filecoin-project/lotus.git
    cd lotus/
    ```
+   
+Note: The default branch `master` is the dev branch where the latest new features, bug fixes and improvement are in. However, if you want to run lotus on Filecoin mainnet and want to run a production-ready lotus, get the latest release[ here](https://github.com/filecoin-project/lotus/releases).
 
 2. To join mainnet, checkout the [latest release](https://github.com/filecoin-project/lotus/releases).
 
@@ -118,30 +112,12 @@ Once all the dependencies are installed, you can build and install the Lotus sui
    Currently, the latest code on the _master_ branch corresponds to mainnet.
 
 3. If you are in China, see "[Lotus: tips when running in China](https://docs.filecoin.io/get-started/lotus/tips-running-in-china/)".
-4. Depending on your CPU model, you will want to export additional environment variables:
-
-   If you have **an AMD Zen or Intel Ice Lake CPU (or later)**, enable the use of SHA extensions by adding these two environment variables:
-
-   ```sh
-   export RUSTFLAGS="-C target-cpu=native -g"
-   export FFI_BUILD_FROM_SOURCE=1
-   ```
-
-   See the [Native Filecoin FFI section](https://docs.filecoin.io/get-started/lotus/installation/#native-filecoin-ffi) for more details about this process.
-
-   Some older Intel and AMD processors without the ADX instruction support may panic with illegal instruction errors. To fix this, add the `CGO_CFLAGS` environment variable:
-
-   ```sh
-   export CGO_CFLAGS_ALLOW="-D__BLST_PORTABLE__"
-   export CGO_CFLAGS="-D__BLST_PORTABLE__"
-   ```
-
-   This is due to a Lotus bug that prevents Lotus from running on a processor without `adx` instruction support, and should be fixed soon.
+4. This build instruction uses the prebuilt proofs binaries. If you want to build the proof binaries from source check the [complete instructions](https://docs.filecoin.io/get-started/lotus/installation/#build-and-install-lotus). Note, if you are building the proof binaries from source, [installing rustup](https://docs.filecoin.io/get-started/lotus/installation/#rustup) is also needed.
 
 5. Build and install Lotus:
 
    ```sh
-   make clean all
+   make clean all #mainnet
 
    # Or to join a testnet or devnet:
    make clean calibnet # Calibration with min 32GiB sectors
