@@ -313,11 +313,10 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	totalFilAllocated := big.Zero()
 
-	// flush as ForEach works on the HAMT
-	if _, err := state.Flush(ctx); err != nil {
-		return nil, nil, err
-	}
 	err = state.ForEach(func(addr address.Address, act *types.Actor) error {
+		if act.Balance.Nil() {
+			panic(fmt.Sprintf("actor %s (%s) has nil balance", addr, builtin.ActorNameByCode(act.Code)))
+		}
 		totalFilAllocated = big.Add(totalFilAllocated, act.Balance)
 		return nil
 	})
