@@ -37,7 +37,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		}
 
 		// todo: return to the sealing queue (this is extremely unlikely to happen)
-		pp.accepted(sector.SectorNumber, 0, xerrors.Errorf("sector entered packing state early"))
+		pp.accepted(sector.SectorNumber, 0, xerrors.Errorf("sector %d entered packing state early", sector.SectorNumber))
 	}
 
 	delete(m.openSectors, m.minerSectorID(sector.SectorNumber))

@@ -245,13 +245,13 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 		return nil, err
 	}
 
-	out := make([]abi.SectorNumber, len(sectors))
-	for i, sector := range sectors {
+	out := make([]abi.SectorNumber, 0, len(sectors))
+	for _, sector := range sectors {
 		if sector.State == sealing.UndefinedSectorState {
 			continue // sector ID not set yet
 		}
 
-		out[i] = sector.SectorNumber
+		out = append(out, sector.SectorNumber)
 	}
 	return out, nil
 }
