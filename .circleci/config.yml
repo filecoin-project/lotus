@@ -845,6 +845,7 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage
       - publish:
           requires:
             - build-all
