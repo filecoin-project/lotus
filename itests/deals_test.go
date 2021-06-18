@@ -239,23 +239,10 @@ func TestFirstDealEnablesMining(t *testing.T) {
 	// once the provider has mined a block, thanks to the power acquired from the deal,
 	// we pass the test.
 	providerMined := make(chan struct{})
-	heads, err := client.ChainNotify(ctx)
-	require.NoError(t, err)
 
 	go func() {
-		for chg := range heads {
-			for _, c := range chg {
-				if c.Type != "apply" {
-					continue
-				}
-				for _, b := range c.Val.Blocks() {
-					if b.Miner == provider.ActorAddr {
-						close(providerMined)
-						return
-					}
-				}
-			}
-		}
+		_ = client.WaitTillChain(ctx, kit2.BlockMinedBy(provider.ActorAddr))
+		close(providerMined)
 	}()
 
 	// now perform the deal.

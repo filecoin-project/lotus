@@ -4,70 +4,38 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/itests/kit"
-	bminer "github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/impl"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/lotus/itests/kit2"
 )
 
 func TestPledgeSectors(t *testing.T) {
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
-	runTest := func(t *testing.T, b kit.APIBuilder, blocktime time.Duration, nSectors int) {
+	blockTime := 50 * time.Millisecond
+
+	runTest := func(t *testing.T, nSectors int) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		n, sn := b(t, kit.OneFull, kit.OneMiner)
-		client := n[0].FullNode.(*impl.FullNodeAPI)
-		miner := sn[0]
+		_, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs())
+		ens.InterconnectAll().BeginMining(blockTime)
 
-		addrinfo, err := client.NetAddrsListen(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if err := miner.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
-		build.Clock.Sleep(time.Second)
-
-		mine := int64(1)
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			for atomic.LoadInt64(&mine) != 0 {
-				build.Clock.Sleep(blocktime)
-				if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
-
-				}}); err != nil {
-					t.Error(err)
-				}
-			}
-		}()
-
-		kit.PledgeSectors(t, ctx, miner, nSectors, 0, nil)
-
-		atomic.StoreInt64(&mine, 0)
-		<-done
+		miner.PledgeSectors(ctx, nSectors, 0, nil)
 	}
 
 	t.Run("1", func(t *testing.T) {
-		runTest(t, kit.MockMinerBuilder, 50*time.Millisecond, 1)
+		runTest(t, 1)
 	})
 
 	t.Run("100", func(t *testing.T) {
-		runTest(t, kit.MockMinerBuilder, 50*time.Millisecond, 100)
+		runTest(t, 100)
 	})
 
 	t.Run("1000", func(t *testing.T) {
@@ -75,52 +43,24 @@ func TestPledgeSectors(t *testing.T) {
 			t.Skip("skipping test in short mode")
 		}
 
-		runTest(t, kit.MockMinerBuilder, 50*time.Millisecond, 1000)
+		runTest(t, 1000)
 	})
 }
 
 func TestPledgeBatching(t *testing.T) {
-	runTest := func(t *testing.T, b kit.APIBuilder, blocktime time.Duration, nSectors int) {
+	blockTime := 50 * time.Millisecond
+
+	runTest := func(t *testing.T, nSectors int) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		n, sn := b(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)}, kit.OneMiner)
-		client := n[0].FullNode.(*impl.FullNodeAPI)
-		miner := sn[0]
+		opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
+		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+		ens.InterconnectAll().BeginMining(blockTime)
 
-		addrinfo, err := client.NetAddrsListen(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		client.WaitTillChain(ctx, kit2.HeightAtLeast(10))
 
-		if err := miner.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
-		build.Clock.Sleep(time.Second)
-
-		mine := int64(1)
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			for atomic.LoadInt64(&mine) != 0 {
-				build.Clock.Sleep(blocktime)
-				if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
-
-				}}); err != nil {
-					t.Error(err)
-				}
-			}
-		}()
-
-		for {
-			h, err := client.ChainHead(ctx)
-			require.NoError(t, err)
-			if h.Height() > 10 {
-				break
-			}
-		}
-
-		toCheck := kit.StartPledge(t, ctx, miner, nSectors, 0, nil)
+		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 
 		for len(toCheck) > 0 {
 			states := map[api.SectorState]int{}
@@ -157,80 +97,27 @@ func TestPledgeBatching(t *testing.T) {
 			build.Clock.Sleep(100 * time.Millisecond)
 			fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
 		}
-
-		atomic.StoreInt64(&mine, 0)
-		<-done
 	}
 
 	t.Run("100", func(t *testing.T) {
-		runTest(t, kit.MockMinerBuilder, 50*time.Millisecond, 100)
+		runTest(t, 100)
 	})
 }
 
 func TestPledgeBeforeNv13(t *testing.T) {
-	runTest := func(t *testing.T, b kit.APIBuilder, blocktime time.Duration, nSectors int) {
+	blocktime := 50 * time.Millisecond
+
+	runTest := func(t *testing.T, nSectors int) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		n, sn := b(t, []kit.FullNodeOpts{
-			{
-				Opts: func(nodes []kit.TestFullNode) node.Option {
-					return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
-						Network:   network.Version9,
-						Height:    1,
-						Migration: stmgr.UpgradeActorsV2,
-					}, {
-						Network:   network.Version10,
-						Height:    2,
-						Migration: stmgr.UpgradeActorsV3,
-					}, {
-						Network:   network.Version12,
-						Height:    3,
-						Migration: stmgr.UpgradeActorsV4,
-					}, {
-						Network:   network.Version13,
-						Height:    1000000000,
-						Migration: stmgr.UpgradeActorsV5,
-					}})
-				},
-			},
-		}, kit.OneMiner)
-		client := n[0].FullNode.(*impl.FullNodeAPI)
-		miner := sn[0]
+		opts := kit2.ConstructorOpts(kit2.LatestActorsAt(1000000000))
+		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+		ens.InterconnectAll().BeginMining(blocktime)
 
-		addrinfo, err := client.NetAddrsListen(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		client.WaitTillChain(ctx, kit2.HeightAtLeast(10))
 
-		if err := miner.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
-		build.Clock.Sleep(time.Second)
-
-		mine := int64(1)
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			for atomic.LoadInt64(&mine) != 0 {
-				build.Clock.Sleep(blocktime)
-				if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
-
-				}}); err != nil {
-					t.Error(err)
-				}
-			}
-		}()
-
-		for {
-			h, err := client.ChainHead(ctx)
-			require.NoError(t, err)
-			if h.Height() > 10 {
-				break
-			}
-		}
-
-		toCheck := kit.StartPledge(t, ctx, miner, nSectors, 0, nil)
+		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 
 		for len(toCheck) > 0 {
 			states := map[api.SectorState]int{}
@@ -250,12 +137,9 @@ func TestPledgeBeforeNv13(t *testing.T) {
 			build.Clock.Sleep(100 * time.Millisecond)
 			fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
 		}
-
-		atomic.StoreInt64(&mine, 0)
-		<-done
 	}
 
 	t.Run("100-before-nv13", func(t *testing.T) {
-		runTest(t, kit.MockMinerBuilder, 50*time.Millisecond, 100)
+		runTest(t, 100)
 	})
 }
