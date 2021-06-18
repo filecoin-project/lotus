@@ -515,7 +515,8 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 			if op.Delete {
 				continue
 			}
-			if err := f(addr, &op.Act); err != nil {
+			act := op.Act // copy
+			if err := f(addr, &act); err != nil {
 				return err
 			}
 		}
