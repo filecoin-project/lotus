@@ -131,7 +131,7 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 	if !permissioned {
-		return rpcServer, nil
+		return m, nil
 	}
 
 	ah := &auth.Handler{

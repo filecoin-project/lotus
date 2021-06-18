@@ -23,6 +23,9 @@ type nodeOpts struct {
 	rpc           bool
 	ownerKey      *wallet.Key
 	extraNodeOpts []node.Option
+
+	subsystems MinerSubsystem
+	mainMiner  *TestMiner
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -33,6 +36,31 @@ var DefaultNodeOpts = nodeOpts{
 
 // NodeOpt is a functional option for test nodes.
 type NodeOpt func(opts *nodeOpts) error
+
+func WithAllSubsystems() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.subsystems = opts.subsystems.Add(SStorageMarket)
+		opts.subsystems = opts.subsystems.Add(SMining)
+		opts.subsystems = opts.subsystems.Add(SSealing)
+		opts.subsystems = opts.subsystems.Add(SSectorStorage)
+
+		return nil
+	}
+}
+
+func WithSubsystem(single MinerSubsystem) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.subsystems = opts.subsystems.Add(single)
+		return nil
+	}
+}
+
+func MainMiner(m *TestMiner) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.mainMiner = m
+		return nil
+	}
+}
 
 // OwnerBalance specifies the balance to be attributed to a miner's owner
 // account. Only relevant when creating a miner.

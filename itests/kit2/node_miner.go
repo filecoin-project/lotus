@@ -3,6 +3,7 @@ package kit2
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,35 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 )
+
+type MinerSubsystem int
+
+const (
+	SStorageMarket MinerSubsystem = 1 << iota
+	SMining
+	SSealing
+	SSectorStorage
+
+	MinerSubsystems = iota
+)
+
+func (ms MinerSubsystem) Add(single MinerSubsystem) MinerSubsystem {
+	return ms | single
+}
+
+func (ms MinerSubsystem) Has(single MinerSubsystem) bool {
+	return ms&single == single
+}
+
+func (ms MinerSubsystem) All() [MinerSubsystems]bool {
+	var out [MinerSubsystems]bool
+
+	for i := range out {
+		out[i] = ms&(1<<i) > 0
+	}
+
+	return out
+}
 
 // TestMiner represents a miner enrolled in an Ensemble.
 type TestMiner struct {
@@ -42,6 +72,8 @@ type TestMiner struct {
 		PeerID  peer.ID
 		PrivKey libp2pcrypto.PrivKey
 	}
+
+	RemoteListener net.Listener
 
 	options nodeOpts
 }

@@ -62,7 +62,7 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	err = miner.SectorMarkForUpgrade(ctx, sl[0])
 	require.NoError(t, err)
 
-	dh := kit2.NewDealHarness(t, client, miner)
+	dh := kit2.NewDealHarness(t, client, miner, miner)
 
 	dh.MakeOnlineDeal(context.Background(), 6, false, 0)
 

@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"io/ioutil"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -28,12 +30,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	"github.com/filecoin-project/lotus/genesis"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
@@ -191,6 +193,10 @@ func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) 
 	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(minerCnt))
 	require.NoError(n.t, err)
 
+	if options.mainMiner != nil {
+		actorAddr = options.mainMiner.ActorAddr
+	}
+
 	ownerKey := options.ownerKey
 	if !n.bootstrapped {
 		var (
@@ -225,13 +231,17 @@ func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) 
 		require.NotNil(n.t, ownerKey, "worker key can't be null if initializing a miner after genesis")
 	}
 
+	rl, err := net.Listen("tcp", "127.0.0.1:")
+	require.NoError(n.t, err)
+
 	*miner = TestMiner{
-		t:          n.t,
-		ActorAddr:  actorAddr,
-		OwnerKey:   ownerKey,
-		FullNode:   full,
-		PresealDir: tdir,
-		options:    options,
+		t:              n.t,
+		ActorAddr:      actorAddr,
+		OwnerKey:       ownerKey,
+		FullNode:       full,
+		PresealDir:     tdir,
+		options:        options,
+		RemoteListener: rl,
 	}
 
 	miner.Libp2p.PeerID = peerId
@@ -328,39 +338,59 @@ func (n *Ensemble) Start() *Ensemble {
 	// Create all inactive miners.
 	for i, m := range n.inactive.miners {
 		if n.bootstrapped {
-			// this is a miner created after genesis, so it won't have a preseal.
-			// we need to create it on chain.
-			params, aerr := actors.SerializeParams(&power2.CreateMinerParams{
-				Owner:         m.OwnerKey.Address,
-				Worker:        m.OwnerKey.Address,
-				SealProofType: n.options.proofType,
-				Peer:          abi.PeerID(m.Libp2p.PeerID),
-			})
-			require.NoError(n.t, aerr)
+			if m.options.mainMiner == nil {
+				// this is a miner created after genesis, so it won't have a preseal.
+				// we need to create it on chain.
+				params, aerr := actors.SerializeParams(&power2.CreateMinerParams{
+					Owner:         m.OwnerKey.Address,
+					Worker:        m.OwnerKey.Address,
+					SealProofType: n.options.proofType,
+					Peer:          abi.PeerID(m.Libp2p.PeerID),
+				})
+				require.NoError(n.t, aerr)
 
-			createStorageMinerMsg := &types.Message{
-				From:  m.OwnerKey.Address,
-				To:    power.Address,
-				Value: big.Zero(),
+				createStorageMinerMsg := &types.Message{
+					From:  m.OwnerKey.Address,
+					To:    power.Address,
+					Value: big.Zero(),
 
-				Method: power.Methods.CreateMiner,
-				Params: params,
+					Method: power.Methods.CreateMiner,
+					Params: params,
 
-				GasLimit:   0,
-				GasPremium: big.NewInt(5252),
+					GasLimit:   0,
+					GasPremium: big.NewInt(5252),
+				}
+				signed, err := m.FullNode.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
+				require.NoError(n.t, err)
+
+				mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+				require.NoError(n.t, err)
+				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
+
+				var retval power2.CreateMinerReturn
+				err = retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return))
+				require.NoError(n.t, err, "failed to create miner")
+
+				m.ActorAddr = retval.IDAddress
+			} else {
+				params, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(m.Libp2p.PeerID)})
+				require.NoError(n.t, err)
+
+				msg := &types.Message{
+					To:     m.options.mainMiner.ActorAddr,
+					From:   m.options.mainMiner.OwnerKey.Address,
+					Method: miner.Methods.ChangePeerID,
+					Params: params,
+					Value:  types.NewInt(0),
+				}
+
+				signed, err2 := m.FullNode.FullNode.MpoolPushMessage(ctx, msg, nil)
+				require.NoError(n.t, err2)
+
+				mw, err2 := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+				require.NoError(n.t, err2)
+				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 			}
-			signed, err := m.FullNode.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
-			require.NoError(n.t, err)
-
-			mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
-			require.NoError(n.t, err)
-			require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
-
-			var retval power2.CreateMinerReturn
-			err = retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return))
-			require.NoError(n.t, err, "failed to create miner")
-
-			m.ActorAddr = retval.IDAddress
 		}
 
 		has, err := m.FullNode.WalletHas(ctx, m.OwnerKey.Address)
@@ -380,6 +410,33 @@ func (n *Ensemble) Start() *Ensemble {
 		r := repo.NewMemory(nil)
 
 		lr, err := r.Lock(repo.StorageMiner)
+		require.NoError(n.t, err)
+
+		c, err := lr.Config()
+		require.NoError(n.t, err)
+
+		cfg, ok := c.(*config.StorageMiner)
+		if !ok {
+			n.t.Fatalf("invalid config from repo, got: %T", c)
+		}
+		cfg.Common.API.RemoteListenAddress = m.RemoteListener.Addr().String()
+		cfg.Subsystems.EnableStorageMarket = m.options.subsystems.Has(SStorageMarket)
+		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
+		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
+		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
+
+		if m.options.mainMiner != nil {
+			token, err := m.options.mainMiner.FullNode.AuthNew(ctx, api.AllPermissions[:3])
+			require.NoError(n.t, err)
+
+			cfg.Subsystems.SectorIndexApiInfo = fmt.Sprintf("%s:%s", token, m.options.mainMiner.ListenAddr)
+			cfg.Subsystems.SealerApiInfo = fmt.Sprintf("%s:%s", token, m.options.mainMiner.ListenAddr)
+		}
+
+		err = lr.SetConfig(func(raw interface{}) {
+			rcfg := raw.(*config.StorageMiner)
+			*rcfg = *cfg
+		})
 		require.NoError(n.t, err)
 
 		ks, err := lr.KeyStore()
@@ -411,19 +468,21 @@ func (n *Ensemble) Start() *Ensemble {
 		err = lr.Close()
 		require.NoError(n.t, err)
 
-		enc, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(m.Libp2p.PeerID)})
-		require.NoError(n.t, err)
+		if m.options.mainMiner == nil {
+			enc, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(m.Libp2p.PeerID)})
+			require.NoError(n.t, err)
 
-		msg := &types.Message{
-			From:   m.OwnerKey.Address,
-			To:     m.ActorAddr,
-			Method: miner.Methods.ChangePeerID,
-			Params: enc,
-			Value:  types.NewInt(0),
+			msg := &types.Message{
+				From:   m.OwnerKey.Address,
+				To:     m.ActorAddr,
+				Method: miner.Methods.ChangePeerID,
+				Params: enc,
+				Value:  types.NewInt(0),
+			}
+
+			_, err2 := m.FullNode.MpoolPushMessage(ctx, msg, nil)
+			require.NoError(n.t, err2)
 		}
-
-		_, err = m.FullNode.MpoolPushMessage(ctx, msg, nil)
-		require.NoError(n.t, err)
 
 		var mineBlock = make(chan lotusminer.MineReq)
 		opts := []node.Option{
@@ -458,16 +517,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		if n.options.mockProofs {
 			opts = append(opts,
-				node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
-					return mock.NewMockSectorMgr(presealSectors), nil
-				}),
-				node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
-				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
-				node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
-
 				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 				node.Override(new(ffiwrapper.Prover), mock.MockProver),
-				node.Unset(new(*sectorstorage.Manager)),
 			)
 		}
 
