@@ -10,14 +10,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/itests/kit"
 	bminer "github.com/filecoin-project/lotus/miner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSDRUpgrade(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	// oldDelay := policy.GetPreCommitChallengeDelay()
 	// policy.SetPreCommitChallengeDelay(5)
@@ -30,8 +30,8 @@ func TestSDRUpgrade(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := kit2.ConstructorOpts(kit2.SDRUpgradeAt(500, 1000))
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+	opts := kit.ConstructorOpts(kit.SDRUpgradeAt(500, 1000))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 	ens.InterconnectAll()
 
 	build.Clock.Sleep(time.Second)

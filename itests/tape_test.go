@@ -10,13 +10,13 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTapeFix(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var blocktime = 2 * time.Millisecond
 
@@ -42,8 +42,8 @@ func testTapeFix(t *testing.T, blocktime time.Duration, after bool) {
 		})
 	}
 
-	nopts := kit2.ConstructorOpts(node.Override(new(stmgr.UpgradeSchedule), upgradeSchedule))
-	_, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), nopts)
+	nopts := kit.ConstructorOpts(node.Override(new(stmgr.UpgradeSchedule), upgradeSchedule))
+	_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), nopts)
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	sid, err := miner.PledgeSector(ctx)

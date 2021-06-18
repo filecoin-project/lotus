@@ -1,4 +1,4 @@
-package kit2
+package kit
 
 import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"

@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
-	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
@@ -57,7 +57,7 @@ func TestDeadlineToggling(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_DEADLINE_TOGGLING=1 to run")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	const sectorsC, sectorsD, sectorsB = 10, 9, 8
 
@@ -71,22 +71,22 @@ func TestDeadlineToggling(t *testing.T) {
 	defer cancel()
 
 	var (
-		client kit2.TestFullNode
-		minerA kit2.TestMiner
-		minerB kit2.TestMiner
-		minerC kit2.TestMiner
-		minerD kit2.TestMiner
-		minerE kit2.TestMiner
+		client kit.TestFullNode
+		minerA kit.TestMiner
+		minerB kit.TestMiner
+		minerC kit.TestMiner
+		minerD kit.TestMiner
+		minerE kit.TestMiner
 	)
-	opts := []kit2.NodeOpt{kit2.ConstructorOpts(kit2.NetworkUpgradeAt(network.Version12, upgradeH))}
-	ens := kit2.NewEnsemble(t, kit2.MockProofs()).
+	opts := []kit.NodeOpt{kit.ConstructorOpts(kit.NetworkUpgradeAt(network.Version12, upgradeH))}
+	ens := kit.NewEnsemble(t, kit.MockProofs()).
 		FullNode(&client, opts...).
 		Miner(&minerA, &client, opts...).
 		Start().
 		InterconnectAll()
 	ens.BeginMining(blocktime)
 
-	opts = append(opts, kit2.OwnerAddr(client.DefaultKey))
+	opts = append(opts, kit.OwnerAddr(client.DefaultKey))
 	ens.Miner(&minerB, &client, opts...).
 		Miner(&minerC, &client, opts...).
 		Start()
@@ -204,7 +204,7 @@ func TestDeadlineToggling(t *testing.T) {
 	require.NoError(t, err)
 
 	// first round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit2.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(uint64(ssz)*sectorsC), true, true, types.EmptyTSK)
 
 	checkMiner(maddrB, types.NewInt(0), false, false, types.EmptyTSK)
@@ -231,7 +231,7 @@ func TestDeadlineToggling(t *testing.T) {
 		params := &miner.SectorPreCommitInfo{
 			Expiration:   2880 * 300,
 			SectorNumber: 22,
-			SealProof:    kit2.TestSpt,
+			SealProof:    kit.TestSpt,
 
 			SealedCID:     cr,
 			SealRandEpoch: head.Height() - 200,
@@ -281,7 +281,7 @@ func TestDeadlineToggling(t *testing.T) {
 	}
 
 	// second round of miner checks
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit2.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(0), true, true, types.EmptyTSK)
 	checkMiner(maddrB, types.NewInt(uint64(ssz)*sectorsB), true, true, types.EmptyTSK)
 	checkMiner(maddrD, types.NewInt(uint64(ssz)*sectorsD), true, true, types.EmptyTSK)
@@ -352,7 +352,7 @@ func TestDeadlineToggling(t *testing.T) {
 		build.Clock.Sleep(blocktime)
 	}
 
-	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit2.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
+	checkMiner(maddrA, types.NewInt(uint64(ssz)*kit.DefaultPresealsPerBootstrapMiner), true, true, types.EmptyTSK)
 	checkMiner(maddrC, types.NewInt(0), true, true, types.EmptyTSK)
 	checkMiner(maddrB, types.NewInt(0), true, true, types.EmptyTSK)
 	checkMiner(maddrD, types.NewInt(0), false, false, types.EmptyTSK)

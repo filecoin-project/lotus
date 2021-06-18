@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/gateway"
-	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/filecoin-project/lotus/node"
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
@@ -44,7 +44,7 @@ func init() {
 // TestGatewayWalletMsig tests that API calls to wallet and msig can be made on a lite
 // node that is connected through a gateway to a full API node
 func TestGatewayWalletMsig(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -176,7 +176,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 // TestGatewayMsigCLI tests that msig CLI calls can be made
 // on a lite node that is connected through a gateway to a full API node
 func TestGatewayMsigCLI(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -188,7 +188,7 @@ func TestGatewayMsigCLI(t *testing.T) {
 }
 
 func TestGatewayDealFlow(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -202,26 +202,26 @@ func TestGatewayDealFlow(t *testing.T) {
 	// so that the deal starts sealing in time
 	dealStartEpoch := abi.ChainEpoch(2 << 12)
 
-	dh := kit2.NewDealHarness(t, nodes.lite, nodes.miner)
+	dh := kit.NewDealHarness(t, nodes.lite, nodes.miner)
 	dealCid, res, _ := dh.MakeOnlineDeal(ctx, 6, false, dealStartEpoch)
 	dh.PerformRetrieval(ctx, dealCid, res.Root, false)
 }
 
 func TestGatewayCLIDealFlow(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
 	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
 
-	kit2.RunClientTest(t, cli.Commands, nodes.lite)
+	kit.RunClientTest(t, cli.Commands, nodes.lite)
 }
 
 type testNodes struct {
-	lite   *kit2.TestFullNode
-	full   *kit2.TestFullNode
-	miner  *kit2.TestMiner
+	lite   *kit.TestFullNode
+	full   *kit.TestFullNode
+	miner  *kit.TestMiner
 	closer jsonrpc.ClientCloser
 }
 
@@ -259,9 +259,9 @@ func startNodes(
 	var closer jsonrpc.ClientCloser
 
 	var (
-		full  *kit2.TestFullNode
-		miner *kit2.TestMiner
-		lite  kit2.TestFullNode
+		full  *kit.TestFullNode
+		miner *kit.TestMiner
+		lite  kit.TestFullNode
 	)
 
 	// - Create one full node and one lite node
@@ -270,8 +270,8 @@ func startNodes(
 	// - Connect lite node -> gateway server -> full node
 
 	// create the full node and the miner.
-	var ens *kit2.Ensemble
-	full, miner, ens = kit2.EnsembleMinimal(t, kit2.MockProofs())
+	var ens *kit.Ensemble
+	full, miner, ens = kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	// Create a gateway server in front of the full node
@@ -279,7 +279,7 @@ func startNodes(
 	handler, err := gateway.Handler(gwapi)
 	require.NoError(t, err)
 
-	srv, _ := kit2.CreateRPCServer(t, handler)
+	srv, _ := kit.CreateRPCServer(t, handler)
 
 	// Create a gateway client API that connects to the gateway server
 	var gapi api.Gateway
@@ -287,9 +287,9 @@ func startNodes(
 	require.NoError(t, err)
 
 	ens.FullNode(&lite,
-		kit2.LiteNode(),
-		kit2.ThroughRPC(),
-		kit2.ConstructorOpts(
+		kit.LiteNode(),
+		kit.ThroughRPC(),
+		kit.ConstructorOpts(
 			node.Override(new(api.Gateway), gapi),
 		),
 	).Start().InterconnectAll()
@@ -297,7 +297,7 @@ func startNodes(
 	return &testNodes{lite: &lite, full: full, miner: miner, closer: closer}
 }
 
-func sendFunds(ctx context.Context, fromNode *kit2.TestFullNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
+func sendFunds(ctx context.Context, fromNode *kit.TestFullNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
 	msg := &types.Message{
 		From:  fromAddr,
 		To:    toAddr,

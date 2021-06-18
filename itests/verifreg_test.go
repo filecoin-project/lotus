@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/itests/kit"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
 	"github.com/stretchr/testify/require"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
@@ -39,10 +39,10 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			bal, err := types.ParseFIL("100fil")
 			require.NoError(t, err)
 
-			node, _, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(),
-				kit2.RootVerifier(rootKey, abi.NewTokenAmount(bal.Int64())),
-				kit2.Account(verifierKey, abi.NewTokenAmount(bal.Int64())), // assign some balance to the verifier so they can send an AddClient message.
-				kit2.ConstructorOpts(kit2.InstantaneousNetworkVersion(nv)))
+			node, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+				kit.RootVerifier(rootKey, abi.NewTokenAmount(bal.Int64())),
+				kit.Account(verifierKey, abi.NewTokenAmount(bal.Int64())), // assign some balance to the verifier so they can send an AddClient message.
+				kit.ConstructorOpts(kit.InstantaneousNetworkVersion(nv)))
 
 			ens.InterconnectAll().BeginMining(blockTime)
 

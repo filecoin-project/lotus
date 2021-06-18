@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ func TestTerminate(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	const blocktime = 2 * time.Millisecond
 
@@ -28,8 +28,8 @@ func TestTerminate(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	maddr, err := miner.ActorAddress(ctx)
@@ -57,7 +57,7 @@ func TestTerminate(t *testing.T) {
 		waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 2
 		t.Logf("End for head.Height > %d", waitUntil)
 
-		ts := client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+		ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 		t.Logf("Now head.Height = %d", ts.Height())
 	}
 
@@ -140,7 +140,7 @@ loop:
 
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 2
 	t.Logf("End for head.Height > %d", waitUntil)
-	ts := client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)

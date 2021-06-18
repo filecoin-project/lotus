@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	minerActor "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/itests/kit"
 	proof3 "github.com/filecoin-project/specs-actors/v3/actors/runtime/proof"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestWindowPostDispute(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 2 * time.Millisecond
 
@@ -33,20 +33,20 @@ func TestWindowPostDispute(t *testing.T) {
 	defer cancel()
 
 	var (
-		client     kit2.TestFullNode
-		chainMiner kit2.TestMiner
-		evilMiner  kit2.TestMiner
+		client     kit.TestFullNode
+		chainMiner kit.TestMiner
+		evilMiner  kit.TestMiner
 	)
 
 	// First, we configure two miners. After sealing, we're going to turn off the first miner so
 	// it doesn't submit proofs.
 	//
 	// Then we're going to manually submit bad proofs.
-	opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
-	ens := kit2.NewEnsemble(t, kit2.MockProofs()).
+	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
+	ens := kit.NewEnsemble(t, kit.MockProofs()).
 		FullNode(&client, opts).
 		Miner(&chainMiner, &client, opts).
-		Miner(&evilMiner, &client, opts, kit2.PresealSectors(0)).
+		Miner(&evilMiner, &client, opts, kit.PresealSectors(0)).
 		Start()
 
 	{
@@ -87,7 +87,7 @@ func TestWindowPostDispute(t *testing.T) {
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	ts := client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err := client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
@@ -232,15 +232,15 @@ func TestWindowPostDisputeFails(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blocktime := 2 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	defaultFrom, err := client.WalletDefaultAddress(ctx)
@@ -260,12 +260,12 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	ts := client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
 	ssz, err := miner.ActorSectorSize(ctx, maddr)
 	require.NoError(t, err)
-	expectedPower := types.NewInt(uint64(ssz) * (kit2.DefaultPresealsPerBootstrapMiner + 10))
+	expectedPower := types.NewInt(uint64(ssz) * (kit.DefaultPresealsPerBootstrapMiner + 10))
 
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
