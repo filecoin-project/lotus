@@ -87,8 +87,8 @@ func TestWindowPostDispute(t *testing.T) {
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	height := kit2.WaitTillChainHeight(ctx, t, &client, blocktime, int(waitUntil))
-	t.Logf("Now head.Height = %d", height)
+	ts := client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err := client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestWindowPostDispute(t *testing.T) {
 		build.Clock.Sleep(blocktime)
 	}
 
-	err = submitBadProof(ctx, client, evilMinerAddr, di, evilSectorLoc.Deadline, evilSectorLoc.Partition)
+	err = submitBadProof(ctx, client, evilMiner.OwnerKey.Address, evilMinerAddr, di, evilSectorLoc.Deadline, evilSectorLoc.Partition)
 	require.NoError(t, err, "evil proof not accepted")
 
 	// Wait until after the proving period.
@@ -220,7 +220,7 @@ func TestWindowPostDispute(t *testing.T) {
 	}
 
 	// Now try to be evil again
-	err = submitBadProof(ctx, client, evilMinerAddr, di, evilSectorLoc.Deadline, evilSectorLoc.Partition)
+	err = submitBadProof(ctx, client, evilMiner.OwnerKey.Address, evilMinerAddr, di, evilSectorLoc.Deadline, evilSectorLoc.Partition)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "message execution failed: exit 16, reason: window post failed: invalid PoSt")
 
@@ -260,8 +260,8 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	height := kit2.WaitTillChainHeight(ctx, t, client, blocktime, int(waitUntil))
-	t.Logf("Now head.Height = %d", height)
+	ts := client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
 
 	ssz, err := miner.ActorSectorSize(ctx, maddr)
 	require.NoError(t, err)
@@ -327,7 +327,7 @@ waitForProof:
 
 func submitBadProof(
 	ctx context.Context,
-	client api.FullNode, maddr address.Address,
+	client api.FullNode, owner address.Address, maddr address.Address,
 	di *dline.Info, dlIdx, partIdx uint64,
 ) error {
 	head, err := client.ChainHead(ctx)
