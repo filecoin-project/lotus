@@ -335,7 +335,7 @@ api-gen:
 	goimports -w api/apistruct
 .PHONY: api-gen
 
-appimage:
+appimage: $(BUILD_DEPS)
 	rm -rf appimage-builder-cache || true
 	rm AppDir/io.filecoin.lotus.desktop || true
 	rm AppDir/icon.svg || true
