@@ -145,8 +145,8 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	waitUntil = di.PeriodStart + di.WPoStProvingPeriod + 2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	height = kit2.WaitTillChainHeight(ctx, t, client, blocktime, int(waitUntil))
-	t.Logf("Now head.Height = %d", height)
+	ts = client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -167,8 +167,8 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	waitUntil = di.PeriodStart + di.WPoStProvingPeriod + 2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	height = kit2.WaitTillChainHeight(ctx, t, client, blocktime, int(waitUntil))
-	t.Logf("Now head.Height = %d", height)
+	ts = client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -190,8 +190,8 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 2
 		t.Logf("End for head.Height > %d\n", waitUntil)
 
-		height = kit2.WaitTillChainHeight(ctx, t, client, blocktime, int(waitUntil))
-		t.Logf("Now head.Height = %d", height)
+		ts := client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+		t.Logf("Now head.Height = %d", ts.Height())
 	}
 
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
