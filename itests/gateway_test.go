@@ -5,11 +5,9 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -21,10 +19,11 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/gateway"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/filecoin-project/lotus/node"
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
@@ -45,8 +44,7 @@ func init() {
 // TestGatewayWalletMsig tests that API calls to wallet and msig can be made on a lite
 // node that is connected through a gateway to a full API node
 func TestGatewayWalletMsig(t *testing.T) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -111,7 +109,6 @@ func TestGatewayWalletMsig(t *testing.T) {
 			if err != nil {
 				return cid.Undef, err
 			}
-
 			return lite.MpoolPush(ctx, sm)
 		}
 
@@ -179,8 +176,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 // TestGatewayMsigCLI tests that msig CLI calls can be made
 // on a lite node that is connected through a gateway to a full API node
 func TestGatewayMsigCLI(t *testing.T) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
@@ -192,39 +188,40 @@ func TestGatewayMsigCLI(t *testing.T) {
 }
 
 func TestGatewayDealFlow(t *testing.T) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
 	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
+
+	time.Sleep(5 * time.Second)
 
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
 	// so that the deal starts sealing in time
 	dealStartEpoch := abi.ChainEpoch(2 << 12)
 
-	dh := kit.NewDealHarness(t, nodes.lite, nodes.miner)
-	dh.MakeFullDeal(ctx, 6, false, false, dealStartEpoch)
+	dh := kit2.NewDealHarness(t, nodes.lite, nodes.miner)
+	dealCid, res, _ := dh.MakeOnlineDeal(ctx, 6, false, dealStartEpoch)
+	dh.PerformRetrieval(ctx, dealCid, res.Root, false)
 }
 
 func TestGatewayCLIDealFlow(t *testing.T) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
-	kit.QuietMiningLogs()
+	kit2.QuietMiningLogs()
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
 	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 	defer nodes.closer()
 
-	kit.RunClientTest(t, cli.Commands, nodes.lite)
+	kit2.RunClientTest(t, cli.Commands, nodes.lite)
 }
 
 type testNodes struct {
-	lite   kit.TestFullNode
-	full   kit.TestFullNode
-	miner  kit.TestMiner
+	lite   *kit2.TestFullNode
+	full   *kit2.TestFullNode
+	miner  *kit2.TestMiner
 	closer jsonrpc.ClientCloser
 }
 
@@ -241,8 +238,8 @@ func startNodesWithFunds(
 	fullWalletAddr, err := nodes.full.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
 
-	// Create a wallet on the lite node
-	liteWalletAddr, err := nodes.lite.WalletNew(ctx, types.KTSecp256k1)
+	// Get the lite node default wallet address.
+	liteWalletAddr, err := nodes.lite.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
 
 	// Send some funds from the full node to the lite node
@@ -261,66 +258,46 @@ func startNodes(
 ) *testNodes {
 	var closer jsonrpc.ClientCloser
 
-	// Create one miner and two full nodes.
+	var (
+		full  *kit2.TestFullNode
+		miner *kit2.TestMiner
+		lite  kit2.TestFullNode
+	)
+
+	// - Create one full node and one lite node
 	// - Put a gateway server in front of full node 1
 	// - Start full node 2 in lite mode
 	// - Connect lite node -> gateway server -> full node
-	opts := append(
-		// Full node
-		kit.OneFull,
-		// Lite node
-		kit.FullNodeOpts{
-			Lite: true,
-			Opts: func(nodes []kit.TestFullNode) node.Option {
-				fullNode := nodes[0]
 
-				// Create a gateway server in front of the full node
-				gwapi := gateway.NewNode(fullNode, lookbackCap, stateWaitLookbackLimit)
-				handler, err := gateway.Handler(gwapi)
-				require.NoError(t, err)
+	// create the full node and the miner.
+	var ens *kit2.Ensemble
+	full, miner, ens = kit2.EnsembleMinimal(t, kit2.MockProofs())
+	ens.InterconnectAll().BeginMining(blocktime)
 
-				srv, _ := kit.CreateRPCServer(t, handler)
-
-				// Create a gateway client API that connects to the gateway server
-				var gapi api.Gateway
-				gapi, closer, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
-				require.NoError(t, err)
-
-				// Provide the gateway API to dependency injection
-				return node.Override(new(api.Gateway), gapi)
-			},
-		},
-	)
-	n, sn := kit.RPCMockMinerBuilder(t, opts, kit.OneMiner)
-
-	full := n[0]
-	lite := n[1]
-	miner := sn[0]
-
-	// Get the listener address for the full node
-	fullAddr, err := full.NetAddrsListen(ctx)
+	// Create a gateway server in front of the full node
+	gwapi := gateway.NewNode(full, lookbackCap, stateWaitLookbackLimit)
+	handler, err := gateway.Handler(gwapi)
 	require.NoError(t, err)
 
-	// Connect the miner and the full node
-	err = miner.NetConnect(ctx, fullAddr)
+	srv, _ := kit2.CreateRPCServer(t, handler)
+
+	// Create a gateway client API that connects to the gateway server
+	var gapi api.Gateway
+	gapi, closer, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 	require.NoError(t, err)
 
-	// Connect the miner and the lite node (so that the lite node can send
-	// data to the miner)
-	liteAddr, err := lite.NetAddrsListen(ctx)
-	require.NoError(t, err)
-	err = miner.NetConnect(ctx, liteAddr)
-	require.NoError(t, err)
+	ens.FullNode(&lite,
+		kit2.LiteNode(),
+		kit2.ThroughRPC(),
+		kit2.ConstructorOpts(
+			node.Override(new(api.Gateway), gapi),
+		),
+	).Start().InterconnectAll()
 
-	// Start mining blocks
-	bm := kit.NewBlockMiner(t, miner)
-	bm.MineBlocks(ctx, blocktime)
-	t.Cleanup(bm.Stop)
-
-	return &testNodes{lite: lite, full: full, miner: miner, closer: closer}
+	return &testNodes{lite: &lite, full: full, miner: miner, closer: closer}
 }
 
-func sendFunds(ctx context.Context, fromNode kit.TestFullNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
+func sendFunds(ctx context.Context, fromNode *kit2.TestFullNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
 	msg := &types.Message{
 		From:  fromAddr,
 		To:    toAddr,

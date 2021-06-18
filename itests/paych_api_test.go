@@ -51,7 +51,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
 	require.NoError(t, err)
 
-	kit2.SendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
+	kit2.SendFunds(ctx, t, &paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
 
 	// setup the payment channel
 	createrAddr, err := paymentCreator.WalletDefaultAddress(ctx)

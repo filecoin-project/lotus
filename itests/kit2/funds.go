@@ -14,7 +14,7 @@ import (
 
 // SendFunds sends funds from the default wallet of the specified sender node
 // to the recipient address.
-func SendFunds(ctx context.Context, t *testing.T, sender TestFullNode, recipient address.Address, amount abi.TokenAmount) {
+func SendFunds(ctx context.Context, t *testing.T, sender *TestFullNode, recipient address.Address, amount abi.TokenAmount) {
 	senderAddr, err := sender.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
 
