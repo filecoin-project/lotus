@@ -26,7 +26,6 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,11 +56,8 @@ func TestDeadlineToggling(t *testing.T) {
 	if os.Getenv("LOTUS_TEST_DEADLINE_TOGGLING") != "1" {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_DEADLINE_TOGGLING=1 to run")
 	}
-	_ = logging.SetLogLevel("miner", "ERROR")
-	_ = logging.SetLogLevel("chainstore", "ERROR")
-	_ = logging.SetLogLevel("chain", "ERROR")
-	_ = logging.SetLogLevel("sub", "ERROR")
-	_ = logging.SetLogLevel("storageminer", "FATAL")
+
+	kit2.QuietMiningLogs()
 
 	const sectorsC, sectorsD, sectorsB = 10, 9, 8
 
