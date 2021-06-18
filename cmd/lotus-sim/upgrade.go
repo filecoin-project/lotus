@@ -17,6 +17,7 @@ var upgradeCommand = &cli.Command{
 	Description: "Modifies network upgrade heights.",
 	Subcommands: []*cli.Command{
 		upgradeSetCommand,
+		upgradeList,
 	},
 }
 
@@ -26,12 +27,16 @@ var upgradeList = &cli.Command{
 	Subcommands: []*cli.Command{
 		upgradeSetCommand,
 	},
-	Action: func(cctx *cli.Context) error {
+	Action: func(cctx *cli.Context) (err error) {
 		node, err := open(cctx)
 		if err != nil {
 			return err
 		}
-		defer node.Close()
+		defer func() {
+			if cerr := node.Close(); err == nil {
+				err = cerr
+			}
+		}()
 
 		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
 		if err != nil {
@@ -61,7 +66,7 @@ var upgradeSetCommand = &cli.Command{
 	Name:        "set",
 	ArgsUsage:   "<network-version> [+]<epochs>",
 	Description: "Set a network upgrade height. Prefix with '+' to set it relative to the last epoch.",
-	Action: func(cctx *cli.Context) error {
+	Action: func(cctx *cli.Context) (err error) {
 		args := cctx.Args()
 		if args.Len() != 2 {
 			return fmt.Errorf("expected 2 arguments")
@@ -86,7 +91,11 @@ var upgradeSetCommand = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer node.Close()
+		defer func() {
+			if cerr := node.Close(); err == nil {
+				err = cerr
+			}
+		}()
 
 		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
 		if err != nil {

@@ -14,12 +14,16 @@ import (
 var infoCapacityGrowthSimCommand = &cli.Command{
 	Name:        "capacity-growth",
 	Description: "List daily capacity growth over the course of the simulation starting at the end.",
-	Action: func(cctx *cli.Context) error {
+	Action: func(cctx *cli.Context) (err error) {
 		node, err := open(cctx)
 		if err != nil {
 			return err
 		}
-		defer node.Close()
+		defer func() {
+			if cerr := node.Close(); err == nil {
+				err = cerr
+			}
+		}()
 
 		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
 		if err != nil {

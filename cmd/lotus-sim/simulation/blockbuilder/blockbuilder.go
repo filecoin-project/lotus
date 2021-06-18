@@ -150,7 +150,10 @@ func (bb *BlockBuilder) PushMessage(msg *types.Message) (*types.MessageReceipt, 
 	msg.GasLimit = build.BlockGasTarget
 
 	// We manually snapshot so we can revert nonce changes, etc. on failure.
-	st.Snapshot(bb.ctx)
+	err = st.Snapshot(bb.ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to take a snapshot while estimating message gas: %w", err)
+	}
 	defer st.ClearSnapshot()
 
 	ret, err := bb.vm.ApplyMessage(bb.ctx, msg)

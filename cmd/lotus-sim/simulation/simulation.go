@@ -16,7 +16,6 @@ import (
 
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -24,8 +23,6 @@ import (
 )
 
 var log = logging.Logger("simulation")
-
-const onboardingProjectionLookback = 2 * 7 * builtin.EpochsInDay // lookback two weeks
 
 // config is the simulation's config, persisted to the local metadata store and loaded on start.
 //

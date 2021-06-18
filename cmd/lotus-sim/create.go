@@ -12,12 +12,16 @@ import (
 var createSimCommand = &cli.Command{
 	Name:      "create",
 	ArgsUsage: "[tipset]",
-	Action: func(cctx *cli.Context) error {
+	Action: func(cctx *cli.Context) (err error) {
 		node, err := open(cctx)
 		if err != nil {
 			return err
 		}
-		defer node.Close()
+		defer func() {
+			if cerr := node.Close(); err == nil {
+				err = cerr
+			}
+		}()
 
 		var ts *types.TipSet
 		switch cctx.NArg() {

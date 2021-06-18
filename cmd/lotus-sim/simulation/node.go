@@ -39,19 +39,19 @@ func OpenNode(ctx context.Context, path string) (*Node, error) {
 
 	node.Repo, err = r.Lock(repo.FullNode)
 	if err != nil {
-		node.Close()
+		_ = node.Close()
 		return nil, err
 	}
 
 	node.Blockstore, err = node.Repo.Blockstore(ctx, repo.UniversalBlockstore)
 	if err != nil {
-		node.Close()
+		_ = node.Close()
 		return nil, err
 	}
 
 	node.MetadataDS, err = node.Repo.Datastore(ctx, "/metadata")
 	if err != nil {
-		node.Close()
+		_ = node.Close()
 		return nil, err
 	}
 
@@ -157,7 +157,9 @@ func (nd *Node) ListSims(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to list simulations: %w", err)
 	}
-	defer items.Close()
+
+	defer func() { _ = items.Close() }()
+
 	var names []string
 	for {
 		select {

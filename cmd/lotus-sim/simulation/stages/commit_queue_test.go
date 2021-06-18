@@ -68,7 +68,7 @@ func TestCommitQueue(t *testing.T) {
 	require.EqualValues(t, []abi.SectorNumber{1}, sectors[proofType])
 
 	// 1 : non-empty + non-empty
-	epoch += 1
+	epoch++
 	q.advanceEpoch(epoch)
 	addr, sectors, ok = q.nextMiner()
 	require.True(t, ok)
@@ -79,13 +79,13 @@ func TestCommitQueue(t *testing.T) {
 	require.Equal(t, sectors.count(), 0)
 
 	// 2 : empty + empty
-	epoch += 1
+	epoch++
 	q.advanceEpoch(epoch)
 	_, _, ok = q.nextMiner()
 	require.False(t, ok)
 
 	// 3 : empty + non-empty
-	epoch += 1
+	epoch++
 	q.advanceEpoch(epoch)
 	_, sectors, ok = q.nextMiner()
 	require.True(t, ok)
@@ -93,7 +93,7 @@ func TestCommitQueue(t *testing.T) {
 	require.EqualValues(t, []abi.SectorNumber{4}, sectors[proofType])
 
 	// 4 : non-empty + non-empty
-	epoch += 1
+	epoch++
 	q.advanceEpoch(epoch)
 	_, sectors, ok = q.nextMiner()
 	require.True(t, ok)
@@ -101,7 +101,7 @@ func TestCommitQueue(t *testing.T) {
 	require.EqualValues(t, []abi.SectorNumber{4, 5}, sectors[proofType])
 
 	// 5 : empty + non-empty
-	epoch += 1
+	epoch++
 	q.advanceEpoch(epoch)
 	_, sectors, ok = q.nextMiner()
 	require.True(t, ok)
@@ -111,7 +111,7 @@ func TestCommitQueue(t *testing.T) {
 	require.EqualValues(t, []abi.SectorNumber{5}, sectors[proofType])
 
 	// 6
-	epoch += 1
+	epoch++
 	q.advanceEpoch(epoch)
 	_, sectors, ok = q.nextMiner()
 	require.True(t, ok)

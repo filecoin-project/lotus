@@ -672,7 +672,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 }
 
 // Get the buffered blockstore associated with the VM. This includes any temporary blocks produced
-// during thsi VM's execution.
+// during this VM's execution.
 func (vm *VM) ActorStore(ctx context.Context) adt.Store {
 	return adt.WrapStore(ctx, vm.cst)
 }

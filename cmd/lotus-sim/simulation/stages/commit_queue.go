@@ -16,7 +16,7 @@ type pendingCommitTracker map[address.Address]minerPendingCommits
 // minerPendingCommits tracks a miner's pending commits during a single epoch (grouped by seal proof type).
 type minerPendingCommits map[abi.RegisteredSealProof][]abi.SectorNumber
 
-// finish markes count sectors of the given proof type as "prove-committed".
+// finish marks count sectors of the given proof type as "prove-committed".
 func (m minerPendingCommits) finish(proof abi.RegisteredSealProof, count int) {
 	snos := m[proof]
 	if len(snos) < count {
