@@ -288,7 +288,7 @@ func (stage *WindowPoStStage) tick(ctx context.Context, bb *blockbuilder.BlockBu
 	store := bb.ActorStore()
 
 	// Perform a bit of catch up. This lets us do things like skip blocks at upgrades then catch
-	// up to make the simualtion easier.
+	// up to make the simulation easier.
 	for ; stage.nextWpostEpoch <= targetHeight; stage.nextWpostEpoch++ {
 		if stage.nextWpostEpoch+miner.WPoStChallengeWindow < targetHeight {
 			bb.L().Warnw("skipping old window post", "deadline-open", stage.nextWpostEpoch)

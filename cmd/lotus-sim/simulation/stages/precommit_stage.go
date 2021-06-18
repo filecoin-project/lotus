@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	minPreCommitBatchSize = 1
-	maxPreCommitBatchSize = miner5.PreCommitSectorBatchMaxSize
+	minPreCommitBatchSize        = 1
+	maxPreCommitBatchSize        = miner5.PreCommitSectorBatchMaxSize
+	onboardingProjectionLookback = 2 * 7 * builtin.EpochsInDay // lookback two weeks
 )
 
 type PreCommitStage struct {
@@ -89,7 +90,7 @@ func (stage *PreCommitStage) PackMessages(ctx context.Context, bb *blockbuilder.
 		)
 
 		// We pre-commit for the top 1%, 10%, and the of the network 1/3rd of the time each.
-		// This won't yeild the most accurate distribution... but it'll give us a good
+		// This won't yield the most accurate distribution... but it'll give us a good
 		// enough distribution.
 		switch {
 		case (i%3) <= 0 && top1Miners < stage.top1.len():
@@ -237,7 +238,7 @@ func (stage *PreCommitStage) packMiner(
 		}
 	}
 	for _, info := range infos {
-		enc, err := actors.SerializeParams(&info)
+		enc, err := actors.SerializeParams(&info) //nolint
 		if err != nil {
 			return 0, false, err
 		}
@@ -261,7 +262,7 @@ func (stage *PreCommitStage) packMiner(
 	return added, false, nil
 }
 
-func (ps *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
+func (stage *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
 	bb.L().Infow("loading miner power for pre-commits")
 	start := time.Now()
 	defer func() {
@@ -270,12 +271,12 @@ func (ps *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilde
 		}
 		bb.L().Infow("loaded miner power for pre-commits",
 			"duration", time.Since(start),
-			"top1", ps.top1.len(),
-			"top10", ps.top10.len(),
-			"rest", ps.rest.len(),
+			"top1", stage.top1.len(),
+			"top10", stage.top10.len(),
+			"rest", stage.rest.len(),
 		)
 	}()
-	lookbackEpoch := bb.Height() - (14 * builtin.EpochsInDay)
+	lookbackEpoch := bb.Height() - onboardingProjectionLookback
 	lookbackPowerTable, err := loadClaims(ctx, bb, lookbackEpoch)
 	if err != nil {
 		return xerrors.Errorf("failed to load claims from lookback epoch %d: %w", lookbackEpoch, err)
@@ -334,26 +335,26 @@ func (ps *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilde
 	})
 
 	// reset, just in case.
-	ps.top1 = actorIter{}
-	ps.top10 = actorIter{}
-	ps.rest = actorIter{}
+	stage.top1 = actorIter{}
+	stage.top10 = actorIter{}
+	stage.rest = actorIter{}
 
 	for i, oi := range sealList {
 		var dist *actorIter
 		if i < len(sealList)/100 {
-			dist = &ps.top1
+			dist = &stage.top1
 		} else if i < len(sealList)/10 {
-			dist = &ps.top10
+			dist = &stage.top10
 		} else {
-			dist = &ps.rest
+			dist = &stage.rest
 		}
 		dist.add(oi.addr)
 	}
 
-	ps.top1.shuffle()
-	ps.top10.shuffle()
-	ps.rest.shuffle()
+	stage.top1.shuffle()
+	stage.top10.shuffle()
+	stage.rest.shuffle()
 
-	ps.initialized = true
+	stage.initialized = true
 	return nil
 }

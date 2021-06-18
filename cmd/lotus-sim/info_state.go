@@ -21,12 +21,16 @@ import (
 var infoStateGrowthSimCommand = &cli.Command{
 	Name:        "state-size",
 	Description: "List daily state size over the course of the simulation starting at the end.",
-	Action: func(cctx *cli.Context) error {
+	Action: func(cctx *cli.Context) (err error) {
 		node, err := open(cctx)
 		if err != nil {
 			return err
 		}
-		defer node.Close()
+		defer func() {
+			if cerr := node.Close(); err == nil {
+				err = cerr
+			}
+		}()
 
 		sim, err := node.LoadSim(cctx.Context, cctx.String("simulation"))
 		if err != nil {
@@ -58,14 +62,13 @@ var infoStateGrowthSimCommand = &cli.Command{
 				var totalSize uint64
 				if err := store.View(c, func(data []byte) error {
 					totalSize += uint64(len(data))
-					cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
+					return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 						if c.Prefix().Codec != cid.DagCBOR {
 							return
 						}
 
 						links = append(links, c)
 					})
-					return nil
 				}); err != nil {
 					return 0, err
 				}

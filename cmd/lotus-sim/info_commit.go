@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-
-	"github.com/ipfs/go-cid"
-	"github.com/streadway/quantile"
-	"github.com/urfave/cli/v2"
 	"syscall"
 
+	"github.com/streadway/quantile"
+	"github.com/urfave/cli/v2"
+
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -28,7 +28,7 @@ var infoCommitGasSimCommand = &cli.Command{
 			Value: 0,
 		},
 	},
-	Action: func(cctx *cli.Context) error {
+	Action: func(cctx *cli.Context) (err error) {
 		log := func(f string, i ...interface{}) {
 			fmt.Fprintf(os.Stderr, f, i...)
 		}
@@ -36,7 +36,11 @@ var infoCommitGasSimCommand = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer node.Close()
+		defer func() {
+			if cerr := node.Close(); err == nil {
+				err = cerr
+			}
+		}()
 
 		go profileOnSignal(cctx, syscall.SIGUSR2)
 
