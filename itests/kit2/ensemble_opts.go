@@ -23,8 +23,8 @@ type ensembleOpts struct {
 }
 
 var DefaultEnsembleOpts = ensembleOpts{
-	pastOffset: 100000 * time.Second, // time sufficiently in the past to trigger catch-up mining.
-	proofType:  abi.RegisteredSealProof_StackedDrg2KiBV1,
+	pastOffset: 10000000 * time.Second,                     // time sufficiently in the past to trigger catch-up mining.
+	proofType:  abi.RegisteredSealProof_StackedDrg2KiBV1_1, // default _concrete_ proof type for non-genesis miners (notice the _1).
 }
 
 func ProofType(proofType abi.RegisteredSealProof) EnsembleOpt {

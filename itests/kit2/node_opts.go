@@ -14,6 +14,8 @@ import (
 // PresealSectors option.
 const DefaultPresealsPerBootstrapMiner = 2
 
+const TestSpt = abi.RegisteredSealProof_StackedDrg2KiBV1_1
+
 // nodeOpts is an options accumulating struct, where functional options are
 // merged into.
 type nodeOpts struct {

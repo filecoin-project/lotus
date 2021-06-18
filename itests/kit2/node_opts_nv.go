@@ -58,10 +58,8 @@ func InstantaneousNetworkVersion(version network.Version) node.Option {
 }
 
 func NetworkUpgradeAt(version network.Version, upgradeHeight abi.ChainEpoch) node.Option {
-	fullSchedule := stmgr.UpgradeSchedule{}
-
 	schedule := stmgr.UpgradeSchedule{}
-	for _, upgrade := range fullSchedule {
+	for _, upgrade := range DefaultTestUpgradeSchedule {
 		if upgrade.Network > version {
 			break
 		}
@@ -89,5 +87,4 @@ func SDRUpgradeAt(calico, persian abi.ChainEpoch) node.Option {
 		Network: network.Version8,
 		Height:  persian,
 	}})
-
 }
