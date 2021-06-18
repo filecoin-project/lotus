@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/state"
 
@@ -366,7 +367,20 @@ func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 // internal state as our new head, if and only if it is heavier than the current
 // head and does not exceed the maximum fork length.
 func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipSet) error {
-	cs.heaviestLk.Lock()
+	for {
+		cs.heaviestLk.Lock()
+		if len(cs.reorgCh) < reorgChBuf/2 {
+			break
+		}
+		cs.heaviestLk.Unlock()
+		log.Errorf("reorg channel is heavily backlogged, waiting a bit before trying to take process new tipsets")
+		select {
+		case <-time.After(time.Second / 2):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
 	defer cs.heaviestLk.Unlock()
 	w, err := cs.Weight(ctx, ts)
 	if err != nil {
@@ -483,8 +497,10 @@ type reorg struct {
 	new *types.TipSet
 }
 
+const reorgChBuf = 32
+
 func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNotifee) chan<- reorg {
-	out := make(chan reorg, 32)
+	out := make(chan reorg, reorgChBuf)
 	notifees := make([]ReorgNotifee, len(initialNotifees))
 	copy(notifees, initialNotifees)
 
