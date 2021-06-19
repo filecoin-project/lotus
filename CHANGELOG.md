@@ -1,10 +1,10 @@
 # Lotus changelog
 
-# 1.10.0-rc5 / 2021-06-16
+# 1.10.0-rc6 / 2021-06-18
 
 > Note: If you are running a lotus miner, check out the doc [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#precommitsectorsbatch) for new lotus miner configurations explanations of the new features!
 
-This is the 5th release candidate for Lotus v1.10.0, an upcoming mandatory release of Lotus that will introduce Filecoin network v13. Included in the new network version are the following FIPs:
+This is the 6th release candidate for Lotus v1.10.0, an upcoming mandatory release of Lotus that will introduce Filecoin network v13. Use this release for syncing with the [reset calibration net](https://github.com/filecoin-project/community/discussions/74#discussioncomment-885580). In addition, included in the new network version are the following FIPs:
 
 - [FIP-0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.md): Add miner batched sector pre-commit method
 - [FIP-0011](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0011.md): Remove reward auction from reporting consensus faults
