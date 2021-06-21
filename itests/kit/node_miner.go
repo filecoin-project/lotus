@@ -107,7 +107,6 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 }
 
 func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
-	fmt.Println("FLUSH SEALING BATCHES***************")
 	pcb, err := tm.StorageMiner.SectorPreCommitFlush(ctx)
 	require.NoError(tm.t, err)
 	if pcb != nil {
