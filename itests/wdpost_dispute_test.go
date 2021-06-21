@@ -335,11 +335,6 @@ func submitBadProof(
 		return err
 	}
 
-	from, err := client.WalletDefaultAddress(ctx)
-	if err != nil {
-		return err
-	}
-
 	minerInfo, err := client.StateMinerInfo(ctx, maddr, head.Key())
 	if err != nil {
 		return err
@@ -374,7 +369,7 @@ func submitBadProof(
 		Method: minerActor.Methods.SubmitWindowedPoSt,
 		Params: enc,
 		Value:  types.NewInt(0),
-		From:   from,
+		From:   owner,
 	}
 	sm, err := client.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
