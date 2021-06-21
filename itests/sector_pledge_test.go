@@ -118,7 +118,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		defer cancel()
 
 		opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+		client, full, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs(), opts)
 		ens.InterconnectAll().BeginMining(blockTime)
 		m, ok := miner.StorageMiner.(*impl.StorageMinerAPI)
 		require.True(t, ok)
@@ -176,7 +176,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		}
 
 		// Ensure that max aggregate message has propagated to the other node by checking current state
-		sectorInfosAfter, err := client.StateMinerSectors(ctx, miner.ActorAddr, nil, types.EmptyTSK)
+		sectorInfosAfter, err := full.StateMinerSectors(ctx, miner.ActorAddr, nil, types.EmptyTSK)
 		require.NoError(t, err)
 		assert.Equal(t, miner5.MaxAggregatedSectors+kit.DefaultPresealsPerBootstrapMiner, len(sectorInfosAfter))
 	}
