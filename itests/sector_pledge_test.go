@@ -129,11 +129,6 @@ func TestPledgeMaxBatching(t *testing.T) {
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
-		// Gather number of sector infos before committing to account for preseal impact on total count
-		sectorInfosBefore, err := client.StateMinerSectors(ctx, miner.ActorAddr, nil, types.EmptyTSK)
-		presealCount := len(sectorInfosBefore)
-		require.NoError(t, err)
-
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 		var lastSectorNo abi.SectorNumber
 
@@ -183,7 +178,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		// Ensure that max aggregate message has propagated to the other node by checking current state
 		sectorInfosAfter, err := client.StateMinerSectors(ctx, miner.ActorAddr, nil, types.EmptyTSK)
 		require.NoError(t, err)
-		assert.Equal(t, miner5.MaxAggregatedSectors, presealCount+len(sectorInfosAfter))
+		assert.Equal(t, miner5.MaxAggregatedSectors+kit.DefaultPresealsPerBootstrapMiner, len(sectorInfosAfter))
 	}
 
 	t.Run("Force max prove commit aggregate size", func(t *testing.T) {
