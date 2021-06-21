@@ -96,6 +96,10 @@ type SealerConfig struct {
 	AllowPreCommit2 bool
 	AllowCommit     bool
 	AllowUnseal     bool
+
+	// IgnoreResourceFiltering instructs the system to ignore available
+	// resources when assigning tasks to the local worker.
+	IgnoreResourceFiltering bool
 }
 
 type StorageAuth http.Header

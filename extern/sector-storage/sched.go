@@ -349,24 +349,24 @@ func (sh *scheduler) trySched() {
 	defer sh.workersLk.RUnlock()
 
 	windowsLen := len(sh.openWindows)
-	queuneLen := sh.schedQueue.Len()
+	queueLen := sh.schedQueue.Len()
 
-	log.Debugf("SCHED %d queued; %d open windows", queuneLen, windowsLen)
+	log.Debugf("SCHED %d queued; %d open windows", queueLen, windowsLen)
 
-	if windowsLen == 0 || queuneLen == 0 {
+	if windowsLen == 0 || queueLen == 0 {
 		// nothing to schedule on
 		return
 	}
 
 	windows := make([]schedWindow, windowsLen)
-	acceptableWindows := make([][]int, queuneLen)
+	acceptableWindows := make([][]int, queueLen)
 
 	// Step 1
 	throttle := make(chan struct{}, windowsLen)
 
 	var wg sync.WaitGroup
-	wg.Add(queuneLen)
-	for i := 0; i < queuneLen; i++ {
+	wg.Add(queueLen)
+	for i := 0; i < queueLen; i++ {
 		throttle <- struct{}{}
 
 		go func(sqi int) {
@@ -393,7 +393,8 @@ func (sh *scheduler) trySched() {
 				}
 
 				// TODO: allow bigger windows
-				if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, "schedAcceptable", worker.info.Resources) {
+				ignoringResources := worker.info.IgnoreResources
+				if !ignoringResources && !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, "schedAcceptable", worker.info.Resources) {
 					continue
 				}
 
@@ -451,9 +452,9 @@ func (sh *scheduler) trySched() {
 
 	// Step 2
 	scheduled := 0
-	rmQueue := make([]int, 0, queuneLen)
+	rmQueue := make([]int, 0, queueLen)
 
-	for sqi := 0; sqi < queuneLen; sqi++ {
+	for sqi := 0; sqi < queueLen; sqi++ {
 		task := (*sh.schedQueue)[sqi]
 		needRes := ResourceTable[task.taskType][task.sector.ProofType]
 

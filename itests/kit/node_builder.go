@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/node/config"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -126,6 +127,12 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 
 		node.Override(new(v1api.FullNode), tnd),
 		node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, act)),
+
+		node.Override(new(*sectorstorage.SealerConfig), func() *sectorstorage.SealerConfig {
+			scfg := config.DefaultStorageMiner()
+			scfg.Storage.IgnoreResourceFiltering = true
+			return &scfg.Storage
+		}),
 
 		opts,
 	)
@@ -532,6 +539,11 @@ func mockMinerBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []Stora
 			node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
 			node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
 			node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
+			node.Override(new(*sectorstorage.SealerConfig), func() *sectorstorage.SealerConfig {
+				scfg := config.DefaultStorageMiner()
+				scfg.Storage.IgnoreResourceFiltering = true
+				return &scfg.Storage
+			}),
 
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Override(new(ffiwrapper.Prover), mock.MockProver),
