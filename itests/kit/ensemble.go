@@ -439,7 +439,7 @@ func (n *Ensemble) Start() *Ensemble {
 
 			node.MockHost(n.mn),
 
-			node.Override(new(v1api.FullNode), m.FullNode),
+			node.Override(new(v1api.FullNode), m.FullNode.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
 			// disable resource filtering so that local worker gets assigned tasks
