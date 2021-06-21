@@ -128,7 +128,7 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	client, miner, ens := kit.EnsembleMinimal(t)
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	var (
