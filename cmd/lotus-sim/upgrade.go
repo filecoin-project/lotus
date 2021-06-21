@@ -72,7 +72,7 @@ var upgradeSetCommand = &cli.Command{
 			return fmt.Errorf("expected 2 arguments")
 		}
 		nvString := args.Get(0)
-		networkVersion, err := strconv.ParseInt(nvString, 10, 64)
+		networkVersion, err := strconv.ParseUint(nvString, 10, 32)
 		if err != nil {
 			return fmt.Errorf("failed to parse network version %q: %w", nvString, err)
 		}

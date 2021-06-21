@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
-// pendingCommitTracker tracks pending commits per-miner for a single epohc.
+// pendingCommitTracker tracks pending commits per-miner for a single epoch.
 type pendingCommitTracker map[address.Address]minerPendingCommits
 
 // minerPendingCommits tracks a miner's pending commits during a single epoch (grouped by seal proof type).
