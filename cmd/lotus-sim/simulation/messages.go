@@ -25,19 +25,19 @@ func toArray(store blockadt.Store, cids []cid.Cid) (cid.Cid, error) {
 
 // storeMessages packs a set of messages into a types.MsgMeta and returns the resulting CID. The
 // resulting CID is valid for the BlocKHeader's Messages field.
-func (nd *Node) storeMessages(ctx context.Context, messages []*types.Message) (cid.Cid, error) {
+func (sim *Simulation) storeMessages(ctx context.Context, messages []*types.Message) (cid.Cid, error) {
 	// We store all messages as "bls" messages so they're executed in-order. This ensures
 	// accurate gas accounting. It also ensures we don't, e.g., try to fund a miner after we
 	// fail a pre-commit...
 	var msgCids []cid.Cid
 	for _, msg := range messages {
-		c, err := nd.Chainstore.PutMessage(msg)
+		c, err := sim.Node.Chainstore.PutMessage(msg)
 		if err != nil {
 			return cid.Undef, err
 		}
 		msgCids = append(msgCids, c)
 	}
-	adtStore := nd.Chainstore.ActorStore(ctx)
+	adtStore := sim.Node.Chainstore.ActorStore(ctx)
 	blsMsgArr, err := toArray(adtStore, msgCids)
 	if err != nil {
 		return cid.Undef, err

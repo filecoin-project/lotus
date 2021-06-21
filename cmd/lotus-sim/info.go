@@ -42,7 +42,7 @@ func printInfo(ctx context.Context, sim *simulation.Simulation, out io.Writer) e
 	if powerLookbackEpoch < start.Height() {
 		powerLookbackEpoch = start.Height()
 	}
-	lookbackTs, err := sim.Chainstore.GetTipsetByHeight(ctx, powerLookbackEpoch, head, false)
+	lookbackTs, err := sim.Node.Chainstore.GetTipsetByHeight(ctx, powerLookbackEpoch, head, false)
 	if err != nil {
 		return err
 	}

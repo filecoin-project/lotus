@@ -71,7 +71,7 @@ func (c *config) upgradeSchedule() (stmgr.UpgradeSchedule, error) {
 
 // Simulation specifies a lotus-sim simulation.
 type Simulation struct {
-	*Node
+	Node         *Node
 	StateManager *stmgr.StateManager
 
 	name   string
@@ -87,7 +87,7 @@ type Simulation struct {
 // loadConfig loads a simulation's config from the datastore. This must be called on startup and may
 // be called to restore the config from-disk.
 func (sim *Simulation) loadConfig() error {
-	configBytes, err := sim.MetadataDS.Get(sim.key("config"))
+	configBytes, err := sim.Node.MetadataDS.Get(sim.key("config"))
 	if err == nil {
 		err = json.Unmarshal(configBytes, &sim.config)
 	}
@@ -108,7 +108,7 @@ func (sim *Simulation) saveConfig() error {
 	if err != nil {
 		return err
 	}
-	return sim.MetadataDS.Put(sim.key("config"), buf)
+	return sim.Node.MetadataDS.Put(sim.key("config"), buf)
 }
 
 var simulationPrefix = datastore.NewKey("/simulation")
@@ -121,7 +121,7 @@ func (sim *Simulation) key(subkey string) datastore.Key {
 
 // loadNamedTipSet the tipset with the given name (for this simulation)
 func (sim *Simulation) loadNamedTipSet(name string) (*types.TipSet, error) {
-	tskBytes, err := sim.MetadataDS.Get(sim.key(name))
+	tskBytes, err := sim.Node.MetadataDS.Get(sim.key(name))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset %s/%s: %w", sim.name, name, err)
 	}
@@ -129,7 +129,7 @@ func (sim *Simulation) loadNamedTipSet(name string) (*types.TipSet, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse tipste %v (%s/%s): %w", tskBytes, sim.name, name, err)
 	}
-	ts, err := sim.Chainstore.LoadTipSet(tsk)
+	ts, err := sim.Node.Chainstore.LoadTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset %s (%s/%s): %w", tsk, sim.name, name, err)
 	}
@@ -138,7 +138,7 @@ func (sim *Simulation) loadNamedTipSet(name string) (*types.TipSet, error) {
 
 // storeNamedTipSet stores the tipset at name (relative to the simulation).
 func (sim *Simulation) storeNamedTipSet(name string, ts *types.TipSet) error {
-	if err := sim.MetadataDS.Put(sim.key(name), ts.Key().Bytes()); err != nil {
+	if err := sim.Node.MetadataDS.Put(sim.key(name), ts.Key().Bytes()); err != nil {
 		return xerrors.Errorf("failed to store tipset (%s/%s): %w", sim.name, name, err)
 	}
 	return nil
@@ -198,7 +198,7 @@ func (sim *Simulation) SetUpgradeHeight(nv network.Version, epoch abi.ChainEpoch
 	if err != nil {
 		return err
 	}
-	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(sim.Chainstore, newUpgradeSchedule)
+	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(sim.Node.Chainstore, newUpgradeSchedule)
 	if err != nil {
 		return err
 	}
@@ -241,7 +241,7 @@ func (sim *Simulation) Walk(
 		stCid cid.Cid,
 		messages []*AppliedMessage) error,
 ) error {
-	store := sim.Chainstore.ActorStore(ctx)
+	store := sim.Node.Chainstore.ActorStore(ctx)
 	minEpoch := sim.start.Height()
 	if lookback != 0 {
 		minEpoch = sim.head.Height() - abi.ChainEpoch(lookback)
@@ -305,7 +305,7 @@ func (sim *Simulation) Walk(
 
 			stCid = ts.MinTicketBlock().ParentStateRoot
 			recCid = ts.MinTicketBlock().ParentMessageReceipts
-			ts, err = sim.Chainstore.LoadTipSet(ts.Parents())
+			ts, err = sim.Node.Chainstore.LoadTipSet(ts.Parents())
 			if err != nil {
 				return xerrors.Errorf("loading parent: %w", err)
 			}
@@ -339,7 +339,7 @@ func (sim *Simulation) Walk(
 					break
 				}
 
-				msgs, err := sim.Chainstore.MessagesForTipset(job.ts)
+				msgs, err := sim.Node.Chainstore.MessagesForTipset(job.ts)
 				if err != nil {
 					return err
 				}

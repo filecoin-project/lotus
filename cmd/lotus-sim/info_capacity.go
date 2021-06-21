@@ -39,7 +39,7 @@ var infoCapacityGrowthSimCommand = &cli.Command{
 		lastHeight := ts.Height()
 
 		for ts.Height() > firstEpoch && cctx.Err() == nil {
-			ts, err = sim.Chainstore.LoadTipSet(ts.Parents())
+			ts, err = sim.Node.Chainstore.LoadTipSet(ts.Parents())
 			if err != nil {
 				return err
 			}

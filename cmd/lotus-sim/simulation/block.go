@@ -73,7 +73,7 @@ func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message
 		Timestamp:             uts,
 		ElectionProof:         &types.ElectionProof{WinCount: 1},
 	}}
-	err = sim.Chainstore.PersistBlockHeaders(blks...)
+	err = sim.Node.Chainstore.PersistBlockHeaders(blks...)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to persist block headers: %w", err)
 	}
