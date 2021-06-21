@@ -181,9 +181,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		assert.Equal(t, miner5.MaxAggregatedSectors+kit.DefaultPresealsPerBootstrapMiner, len(sectorInfosAfter))
 	}
 
-	t.Run("Force max prove commit aggregate size", func(t *testing.T) {
-		runTest(t)
-	})
+	t.Run("Force max prove commit aggregate size", runTest)
 }
 
 func TestPledgeBeforeNv13(t *testing.T) {
