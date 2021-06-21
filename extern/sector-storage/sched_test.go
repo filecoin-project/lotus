@@ -338,18 +338,15 @@ func TestSched(t *testing.T) {
 		}
 	}
 
-	t.Run("constrained-resources-not-scheduled", testFunc([]workerSpec{
-		{name: "fred", resources: constrainedWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
+	// checks behaviour with workers with constrained resources
+	// the first one is not ignoring resource constraints, so we assign to the second worker, who is
+	t.Run("constrained-resources", testFunc([]workerSpec{
+		{name: "fred1", resources: constrainedWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
+		{name: "fred2", resources: constrainedWorkerResources, ignoreResources: true, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
 	}, []task{
-		sched("pc1-1", "fred", 8, sealtasks.TTPreCommit1),
-		taskNotScheduled("pc1-1"),
-	}))
-
-	t.Run("constrained-resources-ignored-scheduled", testFunc([]workerSpec{
-		{name: "fred", resources: constrainedWorkerResources, ignoreResources: true, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
-	}, []task{
-		sched("pc1-1", "fred", 8, sealtasks.TTPreCommit1),
+		sched("pc1-1", "fred2", 8, sealtasks.TTPreCommit1),
 		taskStarted("pc1-1"),
+		taskDone("pc1-1"),
 	}))
 
 	t.Run("one-pc1", testFunc([]workerSpec{
