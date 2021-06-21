@@ -16,7 +16,6 @@ import (
 
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/stages"
@@ -80,7 +79,6 @@ type Simulation struct {
 	start  *types.TipSet
 
 	// head
-	st   *state.StateTree
 	head *types.TipSet
 
 	stages []stages.Stage
@@ -111,22 +109,6 @@ func (sim *Simulation) saveConfig() error {
 		return err
 	}
 	return sim.MetadataDS.Put(sim.key("config"), buf)
-}
-
-// stateTree returns the current state-tree for the current head, computing the tipset if necessary.
-// The state-tree is cached until the head is changed.
-func (sim *Simulation) stateTree(ctx context.Context) (*state.StateTree, error) {
-	if sim.st == nil {
-		st, _, err := sim.StateManager.TipSetState(ctx, sim.head)
-		if err != nil {
-			return nil, err
-		}
-		sim.st, err = sim.StateManager.StateTree(st)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return sim.st, nil
 }
 
 var simulationPrefix = datastore.NewKey("/simulation")
@@ -183,7 +165,6 @@ func (sim *Simulation) SetHead(head *types.TipSet) error {
 	if err := sim.storeNamedTipSet("head", head); err != nil {
 		return err
 	}
-	sim.st = nil // we'll compute this on-demand.
 	sim.head = head
 	return nil
 }
