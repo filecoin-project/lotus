@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"context"
-	"io"
 	"strings"
 
 	"go.uber.org/multierr"
@@ -23,55 +22,63 @@ import (
 
 // Node represents the local lotus node, or at least the part of it we care about.
 type Node struct {
-	Repo       repo.LockedRepo
+	repo       repo.LockedRepo
 	Blockstore blockstore.Blockstore
 	MetadataDS datastore.Batching
 	Chainstore *store.ChainStore
 }
 
 // OpenNode opens the local lotus node for writing. This will fail if the node is online.
-func OpenNode(ctx context.Context, path string) (*Node, error) {
-	var node Node
+func OpenNode(ctx context.Context, path string) (node *Node, _err error) {
 	r, err := repo.NewFS(path)
 	if err != nil {
 		return nil, err
 	}
 
-	node.Repo, err = r.Lock(repo.FullNode)
+	lr, err := r.Lock(repo.FullNode)
 	if err != nil {
-		_ = node.Close()
+		return nil, err
+	}
+	defer func() {
+		if _err != nil {
+			lr.Close()
+		}
+	}()
+
+	bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
+	if err != nil {
 		return nil, err
 	}
 
-	node.Blockstore, err = node.Repo.Blockstore(ctx, repo.UniversalBlockstore)
+	ds, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
-		_ = node.Close()
 		return nil, err
 	}
 
-	node.MetadataDS, err = node.Repo.Datastore(ctx, "/metadata")
-	if err != nil {
-		_ = node.Close()
-		return nil, err
-	}
+	node = NewNode(bs, ds)
+	node.repo = lr
 
-	node.Chainstore = store.NewChainStore(node.Blockstore, node.Blockstore, node.MetadataDS, vm.Syscalls(mock.Verifier), nil)
-	return &node, nil
+	return node, nil
 }
 
-// Close cleanly close the node. Please call this on shutdown to make sure everything is flushed.
+// NewNode will construct a new simulation node from a datastore (used to store simulation
+// configuration) and a blockstore (chain + state).
+func NewNode(bs blockstore.Blockstore, ds datastore.Batching) *Node {
+	return &Node{
+		Chainstore: store.NewChainStore(bs, bs, ds, vm.Syscalls(mock.Verifier), nil),
+		MetadataDS: ds,
+		Blockstore: bs,
+	}
+}
+
+// Close cleanly close the repo. Please call this on shutdown to make sure everything is flushed.
+//
+// This function is a no-op when the node is manually constructed with `NewNode`.
 func (nd *Node) Close() error {
-	var err error
-	if closer, ok := nd.Blockstore.(io.Closer); ok && closer != nil {
-		err = multierr.Append(err, closer.Close())
+	if nd.repo != nil {
+		return nd.repo.Close()
 	}
-	if nd.MetadataDS != nil {
-		err = multierr.Append(err, nd.MetadataDS.Close())
-	}
-	if nd.Repo != nil {
-		err = multierr.Append(err, nd.Repo.Close())
-	}
-	return err
+	return nil
 }
 
 // LoadSim loads
