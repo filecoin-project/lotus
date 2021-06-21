@@ -26,12 +26,14 @@ type nodeOpts struct {
 	ownerKey      *wallet.Key
 	extraNodeOpts []node.Option
 	optBuilders   []OptBuilder
+	proofType     abi.RegisteredSealProof
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
 var DefaultNodeOpts = nodeOpts{
-	balance: big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
-	sectors: DefaultPresealsPerBootstrapMiner,
+	balance:   big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
+	sectors:   DefaultPresealsPerBootstrapMiner,
+	proofType: abi.RegisteredSealProof_StackedDrg2KiBV1_1, // default _concrete_ proof type for non-genesis miners (notice the _1) for new actors versions.
 }
 
 // OptBuilder is used to create an option after some other node is already
@@ -95,11 +97,11 @@ func ConstructorOpts(extra ...node.Option) NodeOpt {
 	}
 }
 
-// AddOptBuilder adds an OptionBuilder to a node. It is used to add Lotus node
-// constructor options after some nodes are already active.
-func AddOptBuilder(optBuilder OptBuilder) NodeOpt {
+// ProofType sets the proof type for this node. If you're using new actor
+// versions, this should be a _1 proof type.
+func ProofType(proofType abi.RegisteredSealProof) NodeOpt {
 	return func(opts *nodeOpts) error {
-		opts.optBuilders = append(opts.optBuilders, optBuilder)
+		opts.proofType = proofType
 		return nil
 	}
 }

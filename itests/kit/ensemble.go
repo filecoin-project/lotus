@@ -337,7 +337,7 @@ func (n *Ensemble) Start() *Ensemble {
 			params, aerr := actors.SerializeParams(&power2.CreateMinerParams{
 				Owner:         m.OwnerKey.Address,
 				Worker:        m.OwnerKey.Address,
-				SealProofType: n.options.proofType,
+				SealProofType: m.options.proofType,
 				Peer:          abi.PeerID(m.Libp2p.PeerID),
 			})
 			require.NoError(n.t, aerr)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	lapi "github.com/filecoin-project/lotus/api"
@@ -170,9 +171,10 @@ func (ts *apiSuite) testMiningReal(t *testing.T) {
 func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
 
-	full, genesisMiner, ens := kit.EnsembleMinimal(t, ts.opts...)
+	full, genesisMiner, ens := kit.EnsembleMinimal(t, append(ts.opts, kit.MockProofs())...)
+	ens.InterconnectAll().BeginMining(4 * time.Millisecond)
 
-	ens.BeginMining(4 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	gaa, err := genesisMiner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -181,7 +183,10 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	require.NoError(t, err)
 
 	var newMiner kit.TestMiner
-	ens.Miner(&newMiner, full, kit.OwnerAddr(full.DefaultKey)).Start()
+	ens.Miner(&newMiner, full,
+		kit.OwnerAddr(full.DefaultKey),
+		kit.ProofType(abi.RegisteredSealProof_StackedDrg2KiBV1), // we're using v0 actors with old proofs.
+	).Start().InterconnectAll()
 
 	ta, err := newMiner.ActorAddress(ctx)
 	require.NoError(t, err)

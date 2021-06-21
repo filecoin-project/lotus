@@ -16,22 +16,13 @@ type genesisAccount struct {
 
 type ensembleOpts struct {
 	pastOffset   time.Duration
-	proofType    abi.RegisteredSealProof
 	verifiedRoot genesisAccount
 	accounts     []genesisAccount
 	mockProofs   bool
 }
 
 var DefaultEnsembleOpts = ensembleOpts{
-	pastOffset: 10000000 * time.Second,                     // time sufficiently in the past to trigger catch-up mining.
-	proofType:  abi.RegisteredSealProof_StackedDrg2KiBV1_1, // default _concrete_ proof type for non-genesis miners (notice the _1).
-}
-
-func ProofType(proofType abi.RegisteredSealProof) EnsembleOpt {
-	return func(opts *ensembleOpts) error {
-		opts.proofType = proofType
-		return nil
-	}
+	pastOffset: 10000000 * time.Second, // time sufficiently in the past to trigger catch-up mining.
 }
 
 // MockProofs activates mock proofs for the entire ensemble.
