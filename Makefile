@@ -234,6 +234,12 @@ BINS+=tvx
 install-chainwatch: lotus-chainwatch
 	install -C ./lotus-chainwatch /usr/local/bin/lotus-chainwatch
 
+lotus-sim: $(BUILD_DEPS)
+	rm -f lotus-sim
+	go build $(GOFLAGS) -o lotus-sim ./cmd/lotus-sim
+.PHONY: lotus-sim
+BINS+=lotus-sim
+
 # SYSTEMD
 
 install-daemon-service: install-daemon
