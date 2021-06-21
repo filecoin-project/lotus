@@ -130,7 +130,7 @@ func CreateTestStorageNode(ctx context.Context, t *testing.T, waddr address.Addr
 
 		node.Override(new(*sectorstorage.SealerConfig), func() *sectorstorage.SealerConfig {
 			scfg := config.DefaultStorageMiner()
-			scfg.Storage.IgnoreResourceFiltering = true
+			scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
 			return &scfg.Storage
 		}),
 
@@ -541,7 +541,7 @@ func mockMinerBuilderOpts(t *testing.T, fullOpts []FullNodeOpts, storage []Stora
 			node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
 			node.Override(new(*sectorstorage.SealerConfig), func() *sectorstorage.SealerConfig {
 				scfg := config.DefaultStorageMiner()
-				scfg.Storage.IgnoreResourceFiltering = true
+				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
 				return &scfg.Storage
 			}),
 
