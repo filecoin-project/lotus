@@ -7,12 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/node/impl"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 )
 
 func TestPledgeSectors(t *testing.T) {
@@ -101,6 +106,88 @@ func TestPledgeBatching(t *testing.T) {
 
 	t.Run("100", func(t *testing.T) {
 		runTest(t, 100)
+	})
+}
+
+func TestPledgeMaxBatching(t *testing.T) {
+	blockTime := 50 * time.Millisecond
+
+	runTest := func(t *testing.T) {
+		nSectors := miner5.MaxAggregatedSectors
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
+		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+		ens.InterconnectAll().BeginMining(blockTime)
+		m, ok := miner.StorageMiner.(*impl.StorageMinerAPI)
+		require.True(t, ok)
+		cfg, err := m.GetSealingConfigFunc()
+		require.NoError(t, err)
+		cfg.MinCommitBatch = miner5.MaxAggregatedSectors
+		require.NoError(t, m.SetSealingConfigFunc(cfg))
+
+		waitTillChainHeight(ctx, t, client, 10)
+
+		// Gather number of sector infos before committing to account for preseal impact on total count
+		sectorInfosBefore, err := client.StateMinerSectors(ctx, miner.ActorAddr, nil, types.EmptyTSK)
+		presealCount := len(sectorInfosBefore)
+		require.NoError(t, err)
+
+		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
+		var lastSectorNo abi.SectorNumber
+
+		for len(toCheck) > 0 {
+			states := map[api.SectorState]int{}
+
+			for n := range toCheck {
+				lastSectorNo = n
+				st, err := miner.SectorsStatus(ctx, n, false)
+				require.NoError(t, err)
+				states[st.State]++
+				if st.State == api.SectorState(sealing.Proving) {
+					delete(toCheck, n)
+				}
+				if strings.Contains(string(st.State), "Fail") {
+					t.Fatal("sector in a failed state", st.State)
+				}
+			}
+			if states[api.SectorState(sealing.SubmitPreCommitBatch)] == nSectors ||
+				(states[api.SectorState(sealing.SubmitPreCommitBatch)] > 0 && states[api.SectorState(sealing.PreCommit1)] == 0 && states[api.SectorState(sealing.PreCommit2)] == 0) {
+				pcb, err := miner.SectorPreCommitFlush(ctx)
+				require.NoError(t, err)
+				if pcb != nil {
+					fmt.Printf("PRECOMMIT BATCH: %+v\n", pcb)
+				}
+			}
+
+			if states[api.SectorState(sealing.SubmitCommitAggregate)] == nSectors {
+				cb, err := miner.SectorCommitFlush(ctx)
+				require.NoError(t, err)
+				if cb != nil {
+					fmt.Printf("COMMIT BATCH: %+v\n", cb)
+				}
+			}
+
+			build.Clock.Sleep(100 * time.Millisecond)
+			fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
+		}
+
+		// Wait for flushed ProveCommitAggregate to land on chain
+		st, err := miner.SectorsStatus(ctx, lastSectorNo, false)
+		require.NoError(t, err)
+		for st.State == api.SectorState(sealing.CommitAggregateWait) {
+			build.Clock.Sleep(100 * time.Millisecond)
+		}
+
+		// Ensure that max aggregate message has propagated to the other node by checking current state
+		sectorInfosAfter, err := client.StateMinerSectors(ctx, miner.ActorAddr, nil, types.EmptyTSK)
+		require.NoError(t, err)
+		assert.Equal(t, miner5.MaxAggregatedSectors, presealCount+len(sectorInfosAfter))
+	}
+
+	t.Run("Force max prove commit aggregate size", func(t *testing.T) {
+		runTest(t)
 	})
 }
 
