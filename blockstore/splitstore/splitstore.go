@@ -136,6 +136,8 @@ type SplitStore struct {
 
 	ctx    context.Context
 	cancel func()
+
+	debug *debugLog
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -203,9 +205,12 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 		return blk, nil
 
 	case bstore.ErrNotFound:
+		s.debug.LogReadMiss(cid)
+
 		blk, err = s.cold.Get(cid)
 		if err == nil {
 			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
+
 		}
 		return blk, err
 
@@ -222,6 +227,8 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 		return size, nil
 
 	case bstore.ErrNotFound:
+		s.debug.LogReadMiss(cid)
+
 		size, err = s.cold.GetSize(cid)
 		if err == nil {
 			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
@@ -240,6 +247,7 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 		return s.cold.Put(blk)
 	}
 
+	curTs := s.curTs
 	epoch := s.writeEpoch
 	s.mx.Unlock()
 
@@ -248,6 +256,8 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 		log.Errorf("error tracking CID in hotstore: %s; falling back to coldstore", err)
 		return s.cold.Put(blk)
 	}
+
+	s.debug.LogWrite(curTs, blk, epoch)
 
 	return s.hot.Put(blk)
 }
@@ -259,6 +269,7 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 		return s.cold.PutMany(blks)
 	}
 
+	curTs := s.curTs
 	epoch := s.writeEpoch
 	s.mx.Unlock()
 
@@ -272,6 +283,8 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 		log.Errorf("error tracking CIDs in hotstore: %s; falling back to coldstore", err)
 		return s.cold.PutMany(blks)
 	}
+
+	s.debug.LogWriteMany(curTs, blks, epoch)
 
 	return s.hot.PutMany(blks)
 }
@@ -319,6 +332,8 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	err := s.hot.View(cid, cb)
 	switch err {
 	case bstore.ErrNotFound:
+		s.debug.LogReadMiss(cid)
+
 		err = s.cold.View(cid, cb)
 		if err == nil {
 			stats.Record(context.Background(), metrics.SplitstoreMiss.M(1))
@@ -411,6 +426,7 @@ func (s *SplitStore) Close() error {
 	}
 
 	s.cancel()
+	s.debug.Close()
 	return multierr.Combine(s.tracker.Close(), s.env.Close())
 }
 
@@ -784,6 +800,9 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		// it's cold, mark it for move
 		cold = append(cold, cid)
 		coldCnt++
+
+		s.debug.LogMove(curTs, cid, writeEpoch)
+
 		return nil
 	})
 
