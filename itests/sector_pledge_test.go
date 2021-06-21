@@ -117,8 +117,8 @@ func TestPledgeMaxBatching(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
-		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+		opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 		ens.InterconnectAll().BeginMining(blockTime)
 		m, ok := miner.StorageMiner.(*impl.StorageMinerAPI)
 		require.True(t, ok)
@@ -127,7 +127,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		cfg.MinCommitBatch = miner5.MaxAggregatedSectors
 		require.NoError(t, m.SetSealingConfigFunc(cfg))
 
-		waitTillChainHeight(ctx, t, client, 10)
+		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
 		// Gather number of sector infos before committing to account for preseal impact on total count
 		sectorInfosBefore, err := client.StateMinerSectors(ctx, miner.ActorAddr, nil, types.EmptyTSK)
