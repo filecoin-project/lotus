@@ -170,7 +170,7 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 	}
 
 	wcfg := WorkerConfig{
-		IgnoreResourceFiltering: sc.ResourceFiltering == ResourceFilteringHardware,
+		IgnoreResourceFiltering: sc.ResourceFiltering == ResourceFilteringDisabled,
 		TaskTypes:               localTasks,
 	}
 	worker := NewLocalWorker(wcfg, stor, lstor, si, m, wss)
