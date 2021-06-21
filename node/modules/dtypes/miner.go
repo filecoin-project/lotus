@@ -92,3 +92,5 @@ type GetExpectedSealDurationFunc func() (time.Duration, error)
 
 type StorageDealFilter func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error)
 type RetrievalDealFilter func(ctx context.Context, deal retrievalmarket.ProviderDealState) (bool, string, error)
+
+type RetrievalPricingFunc func(ctx context.Context, dealPricingParams retrievalmarket.PricingInput) (retrievalmarket.Ask, error)

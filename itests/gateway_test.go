@@ -203,7 +203,10 @@ func TestGatewayDealFlow(t *testing.T) {
 	dealStartEpoch := abi.ChainEpoch(2 << 12)
 
 	dh := kit.NewDealHarness(t, nodes.lite, nodes.miner)
-	dealCid, res, _ := dh.MakeOnlineDeal(ctx, 6, false, dealStartEpoch)
+	dealCid, res, _ := dh.MakeOnlineDeal(context.Background(), kit.MakeFullDealParams{
+		Rseed:      6,
+		StartEpoch: dealStartEpoch,
+	})
 	dh.PerformRetrieval(ctx, dealCid, res.Root, false)
 }
 

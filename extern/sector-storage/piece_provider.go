@@ -24,7 +24,10 @@ type Unsealer interface {
 type PieceProvider interface {
 	// ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
 	ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error)
+	IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
 }
+
+var _ PieceProvider = &pieceProvider{}
 
 type pieceProvider struct {
 	storage *stores.Remote
@@ -38,6 +41,26 @@ func NewPieceProvider(storage *stores.Remote, index stores.SectorIndex, uns Unse
 		index:   index,
 		uns:     uns,
 	}
+}
+
+// IsUnsealed checks if we have the unsealed piece at the given offset in an already
+// existing unsealed file either locally or on any of the workers.
+func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+	if err := offset.Valid(); err != nil {
+		return false, xerrors.Errorf("offset is not valid: %w", err)
+	}
+	if err := size.Validate(); err != nil {
+		return false, xerrors.Errorf("size is not a valid piece size: %w", err)
+	}
+
+	ctxLock, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := p.index.StorageLock(ctxLock, sector.ID, storiface.FTUnsealed, storiface.FTNone); err != nil {
+		return false, xerrors.Errorf("acquiring read sector lock: %w", err)
+	}
+
+	return p.storage.CheckIsUnsealed(ctxLock, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded())
 }
 
 // tryReadUnsealedPiece will try to read the unsealed piece from an existing unsealed sector file for the given sector from any worker that has it.

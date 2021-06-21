@@ -119,6 +119,10 @@ func (mgr *SectorMgr) AcquireSectorNumber() (abi.SectorNumber, error) {
 	return id, nil
 }
 
+func (mgr *SectorMgr) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+	return false, nil
+}
+
 func (mgr *SectorMgr) ForceState(sid storage.SectorRef, st int) error {
 	mgr.lk.Lock()
 	ss, ok := mgr.sectors[sid.ID]

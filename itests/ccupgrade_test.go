@@ -62,8 +62,9 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	require.NoError(t, err)
 
 	dh := kit.NewDealHarness(t, client, miner)
-
-	dh.MakeOnlineDeal(context.Background(), 6, false, 0)
+	deal, res, inPath := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{Rseed: 6})
+	outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, false)
+	kit.AssertFilesEqual(t, inPath, outPath)
 
 	// Validate upgrade
 

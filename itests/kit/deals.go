@@ -30,6 +30,12 @@ type DealHarness struct {
 	miner  *TestMiner
 }
 
+type MakeFullDealParams struct {
+	Rseed      int
+	FastRet    bool
+	StartEpoch abi.ChainEpoch
+}
+
 // NewDealHarness creates a test harness that contains testing utilities for deals.
 func NewDealHarness(t *testing.T, client *TestFullNode, miner *TestMiner) *DealHarness {
 	return &DealHarness{
@@ -44,12 +50,12 @@ func NewDealHarness(t *testing.T, client *TestFullNode, miner *TestMiner) *DealH
 // on the storage deal. It returns when the deal is sealed.
 //
 // TODO: convert input parameters to struct, and add size as an input param.
-func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, rseed int, fastRet bool, startEpoch abi.ChainEpoch) (deal *cid.Cid, res *api.ImportRes, path string) {
-	res, path = dh.client.CreateImportFile(ctx, rseed, 0)
+func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
+	res, path = dh.client.CreateImportFile(ctx, params.Rseed, 0)
 
 	dh.t.Logf("FILE CID: %s", res.Root)
 
-	deal = dh.StartDeal(ctx, res.Root, fastRet, startEpoch)
+	deal = dh.StartDeal(ctx, res.Root, params.FastRet, params.StartEpoch)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)

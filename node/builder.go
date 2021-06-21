@@ -409,8 +409,16 @@ var MinerNode = Options(
 
 	// Markets (retrieval)
 	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
+	Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(config.DealmakingConfig{
+		RetrievalPricing: &config.RetrievalPricing{
+			Strategy: config.RetrievalPricingDefaultMode,
+			Default:  &config.RetrievalPricingDefault{},
+		},
+	})),
+	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 	Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 	Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
+
 	Override(HandleRetrievalKey, modules.HandleRetrieval),
 
 	// Markets (storage)
@@ -564,6 +572,19 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	pricingConfig := cfg.Dealmaking.RetrievalPricing
+	if pricingConfig.Strategy == config.RetrievalPricingExternalMode {
+		if pricingConfig.External == nil {
+			return Error(xerrors.New("retrieval pricing policy has been to set to external but external policy config is nil"))
+		}
+
+		if pricingConfig.External.Path == "" {
+			return Error(xerrors.New("retrieval pricing policy has been to set to external but external script path is empty"))
+		}
+	} else if pricingConfig.Strategy != config.RetrievalPricingDefaultMode {
+		return Error(xerrors.New("retrieval pricing policy must be either default or external"))
+	}
+
 	return Options(
 		ConfigCommon(&cfg.Common),
 
@@ -574,6 +595,8 @@ func ConfigStorageMiner(c interface{}) Option {
 		If(cfg.Dealmaking.RetrievalFilter != "",
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 		),
+
+		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(&cfg.Fees, storageadapter.PublishMsgConfig{
 			Period:         time.Duration(cfg.Dealmaking.PublishMsgPeriod),

@@ -745,7 +745,7 @@ COMMANDS:
    selection  Configure acceptance criteria for retrieval deal proposals
    list       List all active retrieval deals for this miner
    set-ask    Configure the provider's retrieval ask
-   get-ask    Get the provider's current retrieval ask
+   get-ask    Get the provider's current retrieval ask configured by the provider in the ask-store using the set-ask CLI command
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -848,7 +848,7 @@ OPTIONS:
 ### lotus-miner retrieval-deals get-ask
 ```
 NAME:
-   lotus-miner retrieval-deals get-ask - Get the provider's current retrieval ask
+   lotus-miner retrieval-deals get-ask - Get the provider's current retrieval ask configured by the provider in the ask-store using the set-ask CLI command
 
 USAGE:
    lotus-miner retrieval-deals get-ask [command options] [arguments...]
