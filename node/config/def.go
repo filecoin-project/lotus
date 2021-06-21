@@ -342,6 +342,9 @@ func DefaultStorageMiner() *StorageMiner {
 			// Default to 10 - tcp should still be able to figure this out, and
 			// it's the ratio between 10gbit / 1gbit
 			ParallelFetchLimit: 10,
+
+			// By default use the hardware resource filtering strategy.
+			ResourceFiltering: sectorstorage.ResourceFilteringHardware,
 		},
 
 		Dealmaking: DealmakingConfig{

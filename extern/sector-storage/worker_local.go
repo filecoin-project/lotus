@@ -20,7 +20,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
-	storage "github.com/filecoin-project/specs-storage/storage"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -33,6 +33,11 @@ var pathTypes = []storiface.SectorFileType{storiface.FTUnsealed, storiface.FTSea
 type WorkerConfig struct {
 	TaskTypes []sealtasks.TaskType
 	NoSwap    bool
+
+	// IgnoreResourceFiltering enables task distribution to happen on this
+	// worker regardless of its currently available resources. Used in testing
+	// with the local worker.
+	IgnoreResourceFiltering bool
 }
 
 // used do provide custom proofs impl (mostly used in testing)
@@ -45,6 +50,9 @@ type LocalWorker struct {
 	ret        storiface.WorkerReturn
 	executor   ExecutorFunc
 	noSwap     bool
+
+	// see equivalent field on WorkerConfig.
+	ignoreResources bool
 
 	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
@@ -71,12 +79,12 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 		ct: &workerCallTracker{
 			st: cst,
 		},
-		acceptTasks: acceptTasks,
-		executor:    executor,
-		noSwap:      wcfg.NoSwap,
-
-		session: uuid.New(),
-		closing: make(chan struct{}),
+		acceptTasks:     acceptTasks,
+		executor:        executor,
+		noSwap:          wcfg.NoSwap,
+		ignoreResources: wcfg.IgnoreResourceFiltering,
+		session:         uuid.New(),
+		closing:         make(chan struct{}),
 	}
 
 	if w.executor == nil {
@@ -501,7 +509,8 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	}
 
 	return storiface.WorkerInfo{
-		Hostname: hostname,
+		Hostname:        hostname,
+		IgnoreResources: l.ignoreResources,
 		Resources: storiface.WorkerResources{
 			MemPhysical: mem.Total,
 			MemSwap:     memSwap,

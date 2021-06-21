@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
@@ -440,6 +441,14 @@ func (n *Ensemble) Start() *Ensemble {
 
 			node.Override(new(v1api.FullNode), m.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
+
+			// disable resource filtering so that local worker gets assigned tasks
+			// regardless of system pressure.
+			node.Override(new(*sectorstorage.SealerConfig), func() *sectorstorage.SealerConfig {
+				scfg := config.DefaultStorageMiner()
+				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
+				return &scfg.Storage
+			}),
 		}
 
 		// append any node builder options.
