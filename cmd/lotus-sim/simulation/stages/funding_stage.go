@@ -81,13 +81,15 @@ func (fs *FundingStage) SendAndFund(bb *blockbuilder.BlockBuilder, msg *types.Me
 	return res, err
 }
 
-func (fs *FundingStage) fund(bb *blockbuilder.BlockBuilder, target address.Address, times int) error {
+// fund funds the target actor with 'TargetFunds << shift' FIL. The "shift" parameter allows us to
+// keep doubling the amount until the intended operation succeeds.
+func (fs *FundingStage) fund(bb *blockbuilder.BlockBuilder, target address.Address, shift int) error {
 	amt := TargetFunds
-	if times > 0 {
-		if times >= 8 {
-			times = 8 // cap
+	if shift > 0 {
+		if shift >= 8 {
+			shift = 8 // cap
 		}
-		amt = big.Lsh(amt, uint(times))
+		amt = big.Lsh(amt, uint(shift))
 	}
 	_, err := bb.PushMessage(&types.Message{
 		From:   fs.fundAccount,
