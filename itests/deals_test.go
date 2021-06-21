@@ -38,7 +38,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	startEpoch := abi.ChainEpoch(2 << 12)
 
 	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
-		client, miner, ens := kit.EnsembleMinimal(t)
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 		ens.InterconnectAll().BeginMining(blockTime)
 		dh := kit.NewDealHarness(t, client, miner)
 
@@ -54,9 +54,9 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
-		//t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
-		//t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
-		//t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
+		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
+		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
 		t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
 	}
 }
