@@ -29,12 +29,17 @@ type Node struct {
 }
 
 // OpenNode opens the local lotus node for writing. This will fail if the node is online.
-func OpenNode(ctx context.Context, path string) (node *Node, _err error) {
+func OpenNode(ctx context.Context, path string) (*Node, error) {
 	r, err := repo.NewFS(path)
 	if err != nil {
 		return nil, err
 	}
 
+	return NewNode(ctx, r)
+}
+
+// NewNode constructs a new node from the given repo.
+func NewNode(ctx context.Context, r repo.Repo) (nd *Node, _err error) {
 	lr, err := r.Lock(repo.FullNode)
 	if err != nil {
 		return nil, err
@@ -54,26 +59,15 @@ func OpenNode(ctx context.Context, path string) (node *Node, _err error) {
 	if err != nil {
 		return nil, err
 	}
-
-	node = NewNode(bs, ds)
-	node.repo = lr
-
-	return node, nil
-}
-
-// NewNode will construct a new simulation node from a datastore (used to store simulation
-// configuration) and a blockstore (chain + state).
-func NewNode(bs blockstore.Blockstore, ds datastore.Batching) *Node {
 	return &Node{
+		repo:       lr,
 		Chainstore: store.NewChainStore(bs, bs, ds, vm.Syscalls(mock.Verifier), nil),
 		MetadataDS: ds,
 		Blockstore: bs,
-	}
+	}, err
 }
 
 // Close cleanly close the repo. Please call this on shutdown to make sure everything is flushed.
-//
-// This function is a no-op when the node is manually constructed with `NewNode`.
 func (nd *Node) Close() error {
 	if nd.repo != nil {
 		return nd.repo.Close()
