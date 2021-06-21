@@ -42,7 +42,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	require.Regexp(t, regexp.MustCompile("Ask:"), out)
 
 	// Create a deal (non-interactive)
-	// client deal --start-epoch=<start epoch> <cid> <Miner addr> 1000000attofil <duration>
+	// client deal --start-epoch=<start epoch> <cid> <miner addr> 1000000attofil <duration>
 	res, _, _, err := CreateImportFile(ctx, clientNode, 1, 0)
 
 	require.NoError(t, err)
