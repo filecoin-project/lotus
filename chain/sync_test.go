@@ -85,6 +85,7 @@ type syncTestUtil struct {
 	blocks  []*store.FullTipSet
 
 	nds []api.FullNode
+	us  stmgr.UpgradeSchedule
 }
 
 func prepSyncTest(t testing.TB, h int) *syncTestUtil {
@@ -104,9 +105,10 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 
 		mn: mocknet.New(ctx),
 		g:  g,
+		us: stmgr.DefaultUpgradeSchedule(),
 	}
 
-	tu.addSourceNode(stmgr.DefaultUpgradeSchedule(), h)
+	tu.addSourceNode(h)
 
 	//tu.checkHeight("source", source, h)
 
@@ -119,7 +121,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syncTestUtil {
 	logging.SetLogLevel("*", "INFO")
 
-	us := stmgr.UpgradeSchedule{{
+	sched := stmgr.UpgradeSchedule{{
 		// prepare for upgrade.
 		Network:   network.Version9,
 		Height:    1,
@@ -138,7 +140,7 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 		Migration: stmgr.UpgradeActorsV5,
 	}}
 
-	g, err := gen.NewGeneratorWithUpgradeSchedule(us)
+	g, err := gen.NewGeneratorWithUpgradeSchedule(sched)
 
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -153,9 +155,10 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 
 		mn: mocknet.New(ctx),
 		g:  g,
+		us: sched,
 	}
 
-	tu.addSourceNode(us, h)
+	tu.addSourceNode(h)
 	//tu.checkHeight("source", source, h)
 
 	// separate logs
@@ -266,7 +269,7 @@ func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
 	tu.g.CurTipset = mts
 }
 
-func (tu *syncTestUtil) addSourceNode(us stmgr.UpgradeSchedule, gen int) {
+func (tu *syncTestUtil) addSourceNode(gen int) {
 	if tu.genesis != nil {
 		tu.t.Fatal("source node already exists")
 	}
@@ -282,7 +285,7 @@ func (tu *syncTestUtil) addSourceNode(us stmgr.UpgradeSchedule, gen int) {
 		node.Test(),
 
 		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
-		node.Override(new(stmgr.UpgradeSchedule), us),
+		node.Override(new(stmgr.UpgradeSchedule), tu.us),
 	)
 	require.NoError(tu.t, err)
 	tu.t.Cleanup(func() { _ = stop(context.Background()) })
@@ -315,6 +318,7 @@ func (tu *syncTestUtil) addClientNode() int {
 		node.Test(),
 
 		node.Override(new(modules.Genesis), modules.LoadGenesis(tu.genesis)),
+		node.Override(new(stmgr.UpgradeSchedule), tu.us),
 	)
 	require.NoError(tu.t, err)
 	tu.t.Cleanup(func() { _ = stop(context.Background()) })
@@ -1032,18 +1036,24 @@ func TestDrandNull(t *testing.T) {
 	build.UpgradeHyperdriveHeight = v5h
 	tu := prepSyncTestWithV5Height(t, H, v5h)
 
+	p0 := tu.addClientNode()
+	p1 := tu.addClientNode()
+
+	tu.loadChainToNode(p0)
+	tu.loadChainToNode(p1)
+
 	entropy := []byte{0, 2, 3, 4}
 	// arbitrarily chosen
 	pers := crypto.DomainSeparationTag_WinningPoStChallengeSeed
 
 	beforeNull := tu.g.CurTipset
-	afterNull := tu.mineOnBlock(beforeNull, 0, nil, false, false, nil, 2)
+	afterNull := tu.mineOnBlock(beforeNull, p0, nil, false, false, nil, 2)
 	nullHeight := beforeNull.TipSet().Height() + 1
 	if afterNull.TipSet().Height() == nullHeight {
 		t.Fatal("didn't inject nulls as expected")
 	}
 
-	rand, err := tu.nds[0].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
+	rand, err := tu.nds[p0].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
 	require.NoError(t, err)
 
 	// calculate the expected randomness based on the beacon BEFORE the null
@@ -1054,20 +1064,20 @@ func TestDrandNull(t *testing.T) {
 	require.Equal(t, []byte(rand), expectedRand)
 
 	// zoom zoom to past the v5 upgrade by injecting many many nulls
-	postUpgrade := tu.mineOnBlock(afterNull, 0, nil, false, false, nil, v5h)
-	nv, err := tu.nds[0].StateNetworkVersion(tu.ctx, types.EmptyTSK)
+	postUpgrade := tu.mineOnBlock(afterNull, p0, nil, false, false, nil, v5h)
+	nv, err := tu.nds[p0].StateNetworkVersion(tu.ctx, postUpgrade.TipSet().Key())
 	require.NoError(t, err)
 	if nv != network.Version13 {
 		t.Fatal("expect to be v13 by now")
 	}
 
-	afterNull = tu.mineOnBlock(postUpgrade, 0, nil, false, false, nil, 2)
+	afterNull = tu.mineOnBlock(postUpgrade, p0, nil, false, false, nil, 2)
 	nullHeight = postUpgrade.TipSet().Height() + 1
 	if afterNull.TipSet().Height() == nullHeight {
 		t.Fatal("didn't inject nulls as expected")
 	}
 
-	rand, err = tu.nds[0].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
+	rand0, err := tu.nds[p0].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
 	require.NoError(t, err)
 
 	// calculate the expected randomness based on the beacon AFTER the null
@@ -1075,7 +1085,21 @@ func TestDrandNull(t *testing.T) {
 	expectedRand, err = store.DrawRandomness(expectedBE[len(expectedBE)-1].Data, pers, nullHeight, entropy)
 	require.NoError(t, err)
 
-	require.Equal(t, []byte(rand), expectedRand)
-	build.UpgradeHyperdriveHeight = ov5h
+	require.Equal(t, []byte(rand0), expectedRand)
 
+	// Introduce p1 to friendly p0 who has all the blocks
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(p0, p1)
+	tu.waitUntilNodeHasTs(p1, afterNull.TipSet().Key())
+	p1Head := tu.getHead(p1)
+
+	// Yes, p1 syncs well to p0's chain
+	require.Equal(tu.t, p1Head.Key(), afterNull.TipSet().Key())
+
+	// Yes, p1 sources the same randomness as p0
+	rand1, err := tu.nds[p1].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
+	require.NoError(t, err)
+	require.Equal(t, rand0, rand1)
+
+	build.UpgradeHyperdriveHeight = ov5h
 }
