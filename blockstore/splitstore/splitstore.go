@@ -44,15 +44,15 @@ var (
 	// === :: cold (already archived)
 	// ≡≡≡ :: to be archived in this compaction
 	// --- :: hot
-	CompactionThreshold = 4 * build.Finality
+	CompactionThreshold = 7 * build.Finality
 
 	// CompactionBoundary is the number of epochs from the current epoch at which
 	// we will walk the chain for live objects.
-	CompactionBoundary = 2 * build.Finality
+	CompactionBoundary = 4 * build.Finality
 
 	// CompactionSlack is the number of epochs from the compaction boundary to the beginning
 	// of the cold epoch.
-	CompactionSlack = build.Finality
+	CompactionSlack = 2 * build.Finality
 
 	// SyncGapTime is the time delay from a tipset's min timestamp before we decide
 	// there is a sync gap
