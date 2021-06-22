@@ -43,36 +43,6 @@ func sectorsFromClaim(sectorSize abi.SectorSize, c power.Claim) int64 {
 	return sectorCount.Int64()
 }
 
-// loadClaims will load all non-zero claims at the given epoch.
-func loadClaims(
-	ctx context.Context, bb *blockbuilder.BlockBuilder, height abi.ChainEpoch,
-) (map[address.Address]power.Claim, error) {
-	powerTable := make(map[address.Address]power.Claim)
-
-	st, err := bb.StateTreeByHeight(height)
-	if err != nil {
-		return nil, err
-	}
-
-	powerState, err := loadPower(bb.ActorStore(), st)
-	if err != nil {
-		return nil, err
-	}
-
-	err = powerState.ForEachClaim(func(miner address.Address, claim power.Claim) error {
-		// skip miners without power
-		if claim.RawBytePower.IsZero() {
-			return nil
-		}
-		powerTable[miner] = claim
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return powerTable, nil
-}
-
 func postChainCommitInfo(ctx context.Context, bb *blockbuilder.BlockBuilder, epoch abi.ChainEpoch) (abi.Randomness, error) {
 	cs := bb.StateManager().ChainStore()
 	ts := bb.ParentTipSet()

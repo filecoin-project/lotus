@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -26,9 +25,8 @@ import (
 )
 
 const (
-	minPreCommitBatchSize        = 1
-	maxPreCommitBatchSize        = miner5.PreCommitSectorBatchMaxSize
-	onboardingProjectionLookback = 2 * 7 * builtin.EpochsInDay // lookback two weeks
+	minPreCommitBatchSize = 1
+	maxPreCommitBatchSize = miner5.PreCommitSectorBatchMaxSize
 )
 
 type PreCommitStage struct {
@@ -276,11 +274,6 @@ func (stage *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBui
 			"rest", stage.rest.len(),
 		)
 	}()
-	lookbackEpoch := bb.Height() - onboardingProjectionLookback
-	lookbackPowerTable, err := loadClaims(ctx, bb, lookbackEpoch)
-	if err != nil {
-		return xerrors.Errorf("failed to load claims from lookback epoch %d: %w", lookbackEpoch, err)
-	}
 
 	store := bb.ActorStore()
 	st := bb.ParentStateTree()
@@ -290,10 +283,10 @@ func (stage *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBui
 	}
 
 	type onboardingInfo struct {
-		addr           address.Address
-		onboardingRate uint64
+		addr        address.Address
+		sectorCount uint64
 	}
-	sealList := make([]onboardingInfo, 0, len(lookbackPowerTable))
+	var sealList []onboardingInfo
 	err = powerState.ForEachClaim(func(addr address.Address, claim power.Claim) error {
 		if claim.RawBytePower.IsZero() {
 			return nil
@@ -308,16 +301,10 @@ func (stage *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBui
 			return err
 		}
 
-		sectorsAdded := sectorsFromClaim(info.SectorSize, claim)
-		if lookbackClaim, ok := lookbackPowerTable[addr]; !ok {
-			sectorsAdded -= sectorsFromClaim(info.SectorSize, lookbackClaim)
-		}
+		sectorCount := sectorsFromClaim(info.SectorSize, claim)
 
-		// NOTE: power _could_ have been lost, but that's too much of a pain to care
-		// about. We _could_ look for faulty power by iterating through all
-		// deadlines, but I'd rather not.
-		if sectorsAdded > 0 {
-			sealList = append(sealList, onboardingInfo{addr, uint64(sectorsAdded)})
+		if sectorCount > 0 {
+			sealList = append(sealList, onboardingInfo{addr, uint64(sectorCount)})
 		}
 		return nil
 	})
@@ -331,7 +318,7 @@ func (stage *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBui
 
 	// Now that we have a list of sealing miners, sort them into percentiles.
 	sort.Slice(sealList, func(i, j int) bool {
-		return sealList[i].onboardingRate < sealList[j].onboardingRate
+		return sealList[i].sectorCount < sealList[j].sectorCount
 	})
 
 	// reset, just in case.
