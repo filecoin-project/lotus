@@ -161,12 +161,16 @@ func (d *debugLog) rotateReadLog() {
 	err := d.rotate(d.readLog, d.readPath)
 	if err != nil {
 		log.Errorf("error rotating read log: %s", err)
+		return
 	}
 
 	d.readLog, err = os.OpenFile(d.readPath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Errorf("error opening log file: %s", err)
+		return
 	}
+
+	d.readCnt = 0
 }
 
 func (d *debugLog) rotateWriteLog() {
@@ -180,12 +184,16 @@ func (d *debugLog) rotateWriteLog() {
 	err := d.rotate(d.writeLog, d.writePath)
 	if err != nil {
 		log.Errorf("error rotating read log: %s", err)
+		return
 	}
 
 	d.writeLog, err = os.OpenFile(d.writePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Errorf("error opening log file: %s", err)
+		return
 	}
+
+	d.writeCnt = 0
 }
 
 func (d *debugLog) rotateMoveLog() {
@@ -199,12 +207,16 @@ func (d *debugLog) rotateMoveLog() {
 	err := d.rotate(d.moveLog, d.movePath)
 	if err != nil {
 		log.Errorf("error rotating read log: %s", err)
+		return
 	}
 
 	d.moveLog, err = os.OpenFile(d.movePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Errorf("error opening log file: %s", err)
+		return
 	}
+
+	d.moveCnt = 0
 }
 
 func (d *debugLog) rotate(f *os.File, path string) error {
