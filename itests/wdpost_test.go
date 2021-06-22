@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
-	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
@@ -27,7 +27,7 @@ func TestWindowedPost(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var (
 		blocktime = 2 * time.Millisecond
@@ -50,8 +50,8 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := kit2.ConstructorOpts(kit2.LatestActorsAt(upgradeHeight))
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+	opts := kit.ConstructorOpts(kit.LatestActorsAt(upgradeHeight))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	miner.PledgeSectors(ctx, nSectors, 0, nil)
@@ -69,7 +69,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	ts := client.WaitTillChain(ctx, kit2.HeightAtLeast(waitUntil))
+	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
@@ -79,7 +79,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	require.NoError(t, err)
 
 	require.Equal(t, p.MinerPower, p.TotalPower)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+kit2.DefaultPresealsPerBootstrapMiner)))
+	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+kit.DefaultPresealsPerBootstrapMiner)))
 
 	t.Log("Drop some sectors")
 
@@ -145,8 +145,8 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	waitUntil = di.PeriodStart + di.WPoStProvingPeriod + 2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	height = kit2.WaitTillChainHeight(ctx, t, client, blocktime, int(waitUntil))
-	t.Logf("Now head.Height = %d", height)
+	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -154,7 +154,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
 	sectors := p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+kit2.DefaultPresealsPerBootstrapMiner-3, int(sectors)) // -3 just removed sectors
+	require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-3, int(sectors)) // -3 just removed sectors
 
 	t.Log("Recover one sector")
 
@@ -167,8 +167,8 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	waitUntil = di.PeriodStart + di.WPoStProvingPeriod + 2
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	height = kit2.WaitTillChainHeight(ctx, t, client, blocktime, int(waitUntil))
-	t.Logf("Now head.Height = %d", height)
+	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -176,7 +176,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
 	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+kit2.DefaultPresealsPerBootstrapMiner-2, int(sectors)) // -2 not recovered sectors
+	require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-2, int(sectors)) // -2 not recovered sectors
 
 	// pledge a sector after recovery
 
@@ -190,8 +190,8 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 2
 		t.Logf("End for head.Height > %d\n", waitUntil)
 
-		height = kit2.WaitTillChainHeight(ctx, t, client, blocktime, int(waitUntil))
-		t.Logf("Now head.Height = %d", height)
+		ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+		t.Logf("Now head.Height = %d", ts.Height())
 	}
 
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
@@ -200,7 +200,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 
 	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+kit2.DefaultPresealsPerBootstrapMiner-2+1, int(sectors)) // -2 not recovered sectors + 1 just pledged
+	require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-2+1, int(sectors)) // -2 not recovered sectors + 1 just pledged
 }
 
 func TestWindowPostBaseFeeNoBurn(t *testing.T) {
@@ -208,7 +208,7 @@ func TestWindowPostBaseFeeNoBurn(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var (
 		blocktime = 2 * time.Millisecond
@@ -221,7 +221,7 @@ func TestWindowPostBaseFeeNoBurn(t *testing.T) {
 	och := build.UpgradeClausHeight
 	build.UpgradeClausHeight = 10
 
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs())
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	maddr, err := miner.ActorAddress(ctx)
@@ -264,15 +264,15 @@ func TestWindowPostBaseFeeBurn(t *testing.T) {
 		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	blocktime := 2 * time.Millisecond
 
-	opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	maddr, err := miner.ActorAddress(ctx)

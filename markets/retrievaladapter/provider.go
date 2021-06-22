@@ -103,12 +103,13 @@ func (rpn *retrievalProviderNode) GetChainHead(ctx context.Context) (shared.TipS
 }
 
 func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
-	si, err := rpn.miner.GetSectorInfo(sectorID)
+	//TODO(anteva): maybe true? show on chain info??
+	si, err := rpn.secb.SectorsStatus(ctx, sectorID, false)
 	if err != nil {
-		return false, xerrors.Errorf("failed to get sectorinfo, err=%s", err)
+		return false, xerrors.Errorf("failed to get sector info: %w", err)
 	}
 
-	mid, err := address.IDFromAddress(rpn.miner.Address())
+	mid, err := address.IDFromAddress(rpn.maddr)
 	if err != nil {
 		return false, err
 	}
@@ -118,7 +119,7 @@ func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.S
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
 		},
-		ProofType: si.SectorType,
+		ProofType: si.SealProof, //TODO: confirm this is correct
 	}
 
 	log.Debugf("will call IsUnsealed now sector=%+v, offset=%d, size=%d", sectorID, offset, length)

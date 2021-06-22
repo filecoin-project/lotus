@@ -11,6 +11,8 @@ import (
 // This function supports passing both ensemble and node functional options.
 // Functional options are applied to all nodes.
 func EnsembleMinimal(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *Ensemble) {
+	opts = append(opts, WithAllSubsystems())
+
 	eopts, nopts := siftOptions(t, opts)
 
 	var (
@@ -50,6 +52,8 @@ func EnsembleWithMarket(t *testing.T, opts ...interface{}) (*TestFullNode, *Test
 // This function supports passing both ensemble and node functional options.
 // Functional options are applied to all nodes.
 func EnsembleTwoOne(t *testing.T, opts ...interface{}) (*TestFullNode, *TestFullNode, *TestMiner, *Ensemble) {
+	opts = append(opts, WithAllSubsystems())
+
 	eopts, nopts := siftOptions(t, opts)
 
 	var (
@@ -66,6 +70,8 @@ func EnsembleTwoOne(t *testing.T, opts ...interface{}) (*TestFullNode, *TestFull
 // This function supports passing both ensemble and node functional options.
 // Functional options are applied to all nodes.
 func EnsembleOneTwo(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *TestMiner, *Ensemble) {
+	opts = append(opts, WithAllSubsystems())
+
 	eopts, nopts := siftOptions(t, opts)
 
 	var (

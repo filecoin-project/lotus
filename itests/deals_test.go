@@ -30,7 +30,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	//blockTime := 10 * time.Millisecond
+	blockTime := 10 * time.Millisecond
 
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
@@ -38,7 +38,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	startEpoch := abi.ChainEpoch(2 << 12)
 
 	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
-		//api.RunningNodeType = api.NodeMiner // TODO(anteva): fix me
+		api.RunningNodeType = api.NodeMiner // TODO(anteva): fix me
 
 		////TODO: add miner
 		//client, main, _, _ := kit2.EnsembleWithMarket(t, kit2.MockProofs(), kit2.ThroughRPC())
@@ -109,7 +109,7 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 
 	var blockTime = 1 * time.Second
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC()) // no mock proofs.
+	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.WithAllSubsystems()) // no mock proofs.
 	ens.InterconnectAll().BeginMining(blockTime)
 	dh := kit.NewDealHarness(t, client, miner)
 
