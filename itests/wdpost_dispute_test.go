@@ -42,11 +42,12 @@ func TestWindowPostDispute(t *testing.T) {
 	// it doesn't submit proofs.
 	//
 	// Then we're going to manually submit bad proofs.
-	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
+	opts := []kit.NodeOpt{kit.ConstructorOpts(kit.LatestActorsAt(-1))}
+	opts = append(opts, kit.WithAllSubsystems())
 	ens := kit.NewEnsemble(t, kit.MockProofs()).
-		FullNode(&client, opts).
-		Miner(&chainMiner, &client, opts).
-		Miner(&evilMiner, &client, opts, kit.PresealSectors(0)).
+		FullNode(&client, opts...).
+		Miner(&chainMiner, &client, opts...).
+		Miner(&evilMiner, &client, append(opts, kit.PresealSectors(0))...).
 		Start()
 
 	{
