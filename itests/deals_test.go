@@ -143,7 +143,7 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	var (
 		ctx       = context.Background()
-		blocktime = 10 * time.Millisecond
+		blocktime = time.Second
 	)
 
 	kit.QuietMiningLogs()
