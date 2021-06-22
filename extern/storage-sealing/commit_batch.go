@@ -108,6 +108,7 @@ func (b *CommitBatcher) run() {
 		}
 		lastMsg = nil
 
+		// indicates whether we should only start a batch if we have reached or exceeded cfg.MaxCommitBatch
 		var sendAboveMax bool
 		select {
 		case <-b.stop:
