@@ -288,6 +288,7 @@ func startNodes(
 	var gapi api.Gateway
 	gapi, closer, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 	require.NoError(t, err)
+	t.Cleanup(closer)
 
 	ens.FullNode(&lite,
 		kit.LiteNode(),
