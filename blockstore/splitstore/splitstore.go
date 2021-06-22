@@ -806,6 +806,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return nil
 	})
 
+	s.debug.FlushMove()
+
 	if err != nil {
 		return xerrors.Errorf("error collecting cold objects: %w", err)
 	}

@@ -43,6 +43,14 @@ func (d *debugLog) LogMove(curTs *types.TipSet, cid cid.Cid, writeEpoch abi.Chai
 	// TODO
 }
 
+func (d *debugLog) FlushMove() {
+	if d == nil {
+		return
+	}
+
+	// TODO
+}
+
 func (d *debugLog) Close() error {
 	if d == nil {
 		return nil
