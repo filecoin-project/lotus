@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/api/v0api"
 
 	"github.com/fatih/color"
@@ -183,18 +185,23 @@ var StateMinerInfo = &cli.Command{
 			return err
 		}
 
-		rpercI := types.BigDiv(types.BigMul(pow.MinerPower.RawBytePower, types.NewInt(1000000)), pow.TotalPower.RawBytePower)
-		qpercI := types.BigDiv(types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
-
 		fmt.Printf("Byte Power:   %s / %s (%0.4f%%)\n",
 			color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
 			types.SizeStr(pow.TotalPower.RawBytePower),
-			float64(rpercI.Int64())/10000)
+			types.BigDivFloat(
+				types.BigMul(pow.MinerPower.RawBytePower, big.NewInt(100)),
+				pow.TotalPower.RawBytePower,
+			),
+		)
 
 		fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n",
 			color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
 			types.DeciStr(pow.TotalPower.QualityAdjPower),
-			float64(qpercI.Int64())/10000)
+			types.BigDivFloat(
+				types.BigMul(pow.MinerPower.QualityAdjPower, big.NewInt(100)),
+				pow.TotalPower.QualityAdjPower,
+			),
+		)
 
 		fmt.Println()
 
@@ -281,17 +288,26 @@ var StatePowerCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
 		var maddr address.Address
 		if cctx.Args().Present() {
 			maddr, err = address.NewFromString(cctx.Args().First())
 			if err != nil {
 				return err
 			}
-		}
 
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
+			ma, err := api.StateGetActor(ctx, maddr, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			if !builtin.IsStorageMinerActor(ma.Code) {
+				return xerrors.New("provided address does not correspond to a miner actor")
+			}
 		}
 
 		power, err := api.StateMinerPower(ctx, maddr, ts.Key())
@@ -302,8 +318,15 @@ var StatePowerCmd = &cli.Command{
 		tp := power.TotalPower
 		if cctx.Args().Present() {
 			mp := power.MinerPower
-			percI := types.BigDiv(types.BigMul(mp.QualityAdjPower, types.NewInt(1000000)), tp.QualityAdjPower)
-			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.QualityAdjPower.String(), types.SizeStr(mp.QualityAdjPower), tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower), float64(percI.Int64())/10000)
+			fmt.Printf(
+				"%s(%s) / %s(%s) ~= %0.4f%%\n",
+				mp.QualityAdjPower.String(), types.SizeStr(mp.QualityAdjPower),
+				tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower),
+				types.BigDivFloat(
+					types.BigMul(mp.QualityAdjPower, big.NewInt(100)),
+					tp.QualityAdjPower,
+				),
+			)
 		} else {
 			fmt.Printf("%s(%s)\n", tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower))
 		}
@@ -345,7 +368,7 @@ var StateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
@@ -385,7 +408,7 @@ var StateActiveSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil

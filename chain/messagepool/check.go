@@ -19,18 +19,18 @@ import (
 var baseFeeUpperBoundFactor = types.NewInt(10)
 
 // CheckMessages performs a set of logic checks for a list of messages, prior to submitting it to the mpool
-func (mp *MessagePool) CheckMessages(protos []*api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
+func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
 	flex := make([]bool, len(protos))
 	msgs := make([]*types.Message, len(protos))
 	for i, p := range protos {
 		flex[i] = !p.ValidNonce
 		msgs[i] = &p.Message
 	}
-	return mp.checkMessages(msgs, false, flex)
+	return mp.checkMessages(ctx, msgs, false, flex)
 }
 
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
-func (mp *MessagePool) CheckPendingMessages(from address.Address) ([][]api.MessageCheckStatus, error) {
+func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Address) ([][]api.MessageCheckStatus, error) {
 	var msgs []*types.Message
 	mp.lk.Lock()
 	mset, ok := mp.pending[from]
@@ -49,12 +49,12 @@ func (mp *MessagePool) CheckPendingMessages(from address.Address) ([][]api.Messa
 		return msgs[i].Nonce < msgs[j].Nonce
 	})
 
-	return mp.checkMessages(msgs, true, nil)
+	return mp.checkMessages(ctx, msgs, true, nil)
 }
 
 // CheckReplaceMessages performs a set of logical checks for related messages while performing a
 // replacement.
-func (mp *MessagePool) CheckReplaceMessages(replace []*types.Message) ([][]api.MessageCheckStatus, error) {
+func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*types.Message) ([][]api.MessageCheckStatus, error) {
 	msgMap := make(map[address.Address]map[uint64]*types.Message)
 	count := 0
 
@@ -94,12 +94,12 @@ func (mp *MessagePool) CheckReplaceMessages(replace []*types.Message) ([][]api.M
 		start = end
 	}
 
-	return mp.checkMessages(msgs, true, nil)
+	return mp.checkMessages(ctx, msgs, true, nil)
 }
 
 // flexibleNonces should be either nil or of len(msgs), it signifies that message at given index
 // has non-determied nonce at this point
-func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool, flexibleNonces []bool) (result [][]api.MessageCheckStatus, err error) {
+func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message, interned bool, flexibleNonces []bool) (result [][]api.MessageCheckStatus, err error) {
 	if mp.api.IsLite() {
 		return nil, nil
 	}
@@ -160,7 +160,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool, flexi
 			} else {
 				mp.lk.Unlock()
 
-				stateNonce, err := mp.getStateNonce(m.From, curTs)
+				stateNonce, err := mp.getStateNonce(ctx, m.From, curTs)
 				if err != nil {
 					check.OK = false
 					check.Err = fmt.Sprintf("error retrieving state nonce: %s", err.Error())
@@ -193,7 +193,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool, flexi
 
 		balance, ok := balances[m.From]
 		if !ok {
-			balance, err = mp.getStateBalance(m.From, curTs)
+			balance, err = mp.getStateBalance(ctx, m.From, curTs)
 			if err != nil {
 				check.OK = false
 				check.Err = fmt.Sprintf("error retrieving state balance: %s", err)
@@ -243,7 +243,7 @@ func (mp *MessagePool) checkMessages(msgs []*types.Message, interned bool, flexi
 			},
 		}
 
-		if len(bytes) > 32*1024-128 { // 128 bytes to account for signature size
+		if len(bytes) > MaxMessageSize-128 { // 128 bytes to account for signature size
 			check.OK = false
 			check.Err = "message too big"
 		} else {

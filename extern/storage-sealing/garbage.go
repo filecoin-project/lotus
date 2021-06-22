@@ -9,6 +9,8 @@ import (
 )
 
 func (m *Sealing) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
+	m.startupWait.Wait()
+
 	m.inputLk.Lock()
 	defer m.inputLk.Unlock()
 

@@ -87,6 +87,112 @@ func TestHappyPath(t *testing.T) {
 	}
 }
 
+func TestHappyPathFinalizeEarly(t *testing.T) {
+	var notif []struct{ before, after SectorInfo }
+	ma, _ := address.NewIDAddress(55151)
+	m := test{
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]statSectorState{},
+			},
+			notifee: func(before, after SectorInfo) {
+				notif = append(notif, struct{ before, after SectorInfo }{before, after})
+			},
+		},
+		t:     t,
+		state: &SectorInfo{State: Packing},
+	}
+
+	m.planSingle(SectorPacked{})
+	require.Equal(m.t, m.state.State, GetTicket)
+
+	m.planSingle(SectorTicket{})
+	require.Equal(m.t, m.state.State, PreCommit1)
+
+	m.planSingle(SectorPreCommit1{})
+	require.Equal(m.t, m.state.State, PreCommit2)
+
+	m.planSingle(SectorPreCommit2{})
+	require.Equal(m.t, m.state.State, PreCommitting)
+
+	m.planSingle(SectorPreCommitted{})
+	require.Equal(m.t, m.state.State, PreCommitWait)
+
+	m.planSingle(SectorPreCommitLanded{})
+	require.Equal(m.t, m.state.State, WaitSeed)
+
+	m.planSingle(SectorSeedReady{})
+	require.Equal(m.t, m.state.State, Committing)
+
+	m.planSingle(SectorProofReady{})
+	require.Equal(m.t, m.state.State, CommitFinalize)
+
+	m.planSingle(SectorFinalized{})
+	require.Equal(m.t, m.state.State, SubmitCommit)
+
+	m.planSingle(SectorSubmitCommitAggregate{})
+	require.Equal(m.t, m.state.State, SubmitCommitAggregate)
+
+	m.planSingle(SectorCommitAggregateSent{})
+	require.Equal(m.t, m.state.State, CommitWait)
+
+	m.planSingle(SectorProving{})
+	require.Equal(m.t, m.state.State, FinalizeSector)
+
+	m.planSingle(SectorFinalized{})
+	require.Equal(m.t, m.state.State, Proving)
+
+	expected := []SectorState{Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, CommitFinalize, SubmitCommit, SubmitCommitAggregate, CommitWait, FinalizeSector, Proving}
+	for i, n := range notif {
+		if n.before.State != expected[i] {
+			t.Fatalf("expected before state: %s, got: %s", expected[i], n.before.State)
+		}
+		if n.after.State != expected[i+1] {
+			t.Fatalf("expected after state: %s, got: %s", expected[i+1], n.after.State)
+		}
+	}
+}
+
+func TestCommitFinalizeFailed(t *testing.T) {
+	var notif []struct{ before, after SectorInfo }
+	ma, _ := address.NewIDAddress(55151)
+	m := test{
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]statSectorState{},
+			},
+			notifee: func(before, after SectorInfo) {
+				notif = append(notif, struct{ before, after SectorInfo }{before, after})
+			},
+		},
+		t:     t,
+		state: &SectorInfo{State: Committing},
+	}
+
+	m.planSingle(SectorProofReady{})
+	require.Equal(m.t, m.state.State, CommitFinalize)
+
+	m.planSingle(SectorFinalizeFailed{})
+	require.Equal(m.t, m.state.State, CommitFinalizeFailed)
+
+	m.planSingle(SectorRetryFinalize{})
+	require.Equal(m.t, m.state.State, CommitFinalize)
+
+	m.planSingle(SectorFinalized{})
+	require.Equal(m.t, m.state.State, SubmitCommit)
+
+	expected := []SectorState{Committing, CommitFinalize, CommitFinalizeFailed, CommitFinalize, SubmitCommit}
+	for i, n := range notif {
+		if n.before.State != expected[i] {
+			t.Fatalf("expected before state: %s, got: %s", expected[i], n.before.State)
+		}
+		if n.after.State != expected[i+1] {
+			t.Fatalf("expected after state: %s, got: %s", expected[i+1], n.after.State)
+		}
+	}
+}
 func TestSeedRevert(t *testing.T) {
 	ma, _ := address.NewIDAddress(55151)
 	m := test{

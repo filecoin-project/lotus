@@ -889,8 +889,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -1039,8 +1039,8 @@ Inputs:
 ```json
 [
   {
-    "Addrs": null,
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": []
   }
 ]
 ```
@@ -1090,8 +1090,8 @@ Inputs:
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -2205,6 +2205,7 @@ Response:
   "ef8d99a2-6865-4189-8ffa-9fef0f806eee": {
     "Info": {
       "Hostname": "host",
+      "IgnoreResources": false,
       "Resources": {
         "MemPhysical": 274877906944,
         "MemSwap": 128849018880,

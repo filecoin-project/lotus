@@ -362,9 +362,10 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
 
-		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"))
+		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"),
+			&stores.DefaultPartialFileHandler{})
 
-		fh := &stores.FetchHandler{Local: localStore}
+		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
 		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
 			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 				w.WriteHeader(401)

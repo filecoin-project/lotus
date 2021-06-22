@@ -2505,7 +2505,7 @@ using both transaction ID and a hash of the parameters used in the
 proposal. This method of approval can be used to ensure you only approve
 exactly the transaction you think you are.
 It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
-<sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
+<sender address of the approve msg>, <method to call in the approved message>, <params to include in the proposed message>
 
 
 Perms: sign
@@ -2841,8 +2841,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -2991,8 +2991,8 @@ Inputs:
 ```json
 [
   {
-    "Addrs": null,
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": []
   }
 ]
 ```
@@ -3042,8 +3042,8 @@ Inputs:
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 

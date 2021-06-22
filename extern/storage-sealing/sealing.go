@@ -28,6 +28,7 @@ import (
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 const SectorStorePrefix = "/sectors"
@@ -66,6 +67,7 @@ type SealingAPI interface {
 	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok TipSetToken) ([]api.Partition, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
+	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
@@ -78,8 +80,10 @@ type AddrSel func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, good
 
 type Sealing struct {
 	api    SealingAPI
-	feeCfg FeeConfig
+	feeCfg config.MinerFeeConfig
 	events Events
+
+	startupWait sync.WaitGroup
 
 	maddr address.Address
 
@@ -112,12 +116,6 @@ type Sealing struct {
 	dealInfo  *CurrentDealInfoManager
 }
 
-type FeeConfig struct {
-	MaxPreCommitGasFee abi.TokenAmount
-	MaxCommitGasFee    abi.TokenAmount
-	MaxTerminateGasFee abi.TokenAmount
-}
-
 type openSector struct {
 	used abi.UnpaddedPieceSize // change to bitfield/rle when AddPiece gains offset support to better fill sectors
 
@@ -134,7 +132,7 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, prov ffiwrapper.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
+func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, prov ffiwrapper.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
 	s := &Sealing{
 		api:    api,
 		feeCfg: fc,
@@ -155,9 +153,9 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 		notifee: notifee,
 		addrSel: as,
 
-		terminator:  NewTerminationBatcher(context.TODO(), maddr, api, as, fc, gc),
-		precommiter: NewPreCommitBatcher(context.TODO(), maddr, api, as, fc, gc),
-		commiter:    NewCommitBatcher(context.TODO(), maddr, api, as, fc, gc, prov),
+		terminator:  NewTerminationBatcher(mctx, maddr, api, as, fc, gc),
+		precommiter: NewPreCommitBatcher(mctx, maddr, api, as, fc, gc),
+		commiter:    NewCommitBatcher(mctx, maddr, api, as, fc, gc, prov),
 
 		getConfig: gc,
 		dealInfo:  &CurrentDealInfoManager{api},
@@ -166,6 +164,7 @@ func New(api SealingAPI, fc FeeConfig, events Events, maddr address.Address, ds 
 			bySector: map[abi.SectorID]statSectorState{},
 		},
 	}
+	s.startupWait.Add(1)
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
 
@@ -193,10 +192,14 @@ func (m *Sealing) Stop(ctx context.Context) error {
 }
 
 func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
+	m.startupWait.Wait()
+
 	return m.sectors.Send(uint64(sid), SectorRemove{})
 }
 
 func (m *Sealing) Terminate(ctx context.Context, sid abi.SectorNumber) error {
+	m.startupWait.Wait()
+
 	return m.sectors.Send(uint64(sid), SectorTerminate{})
 }
 

@@ -42,7 +42,7 @@ func init() {
 	// deadline when the challenge is available.
 	//
 	// This will auto-scale the proving period.
-	policy.SetWPoStChallengeWindow(abi.ChainEpoch(5))
+	// policy.SetWPoStChallengeWindow(abi.ChainEpoch(5)) // commented-out until we enable PoSt faults tests
 
 	// Number of epochs between publishing the precommit and when the challenge for interactive PoRep is drawn
 	// used to ensure it is not predictable by miner.

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"sync"
 
@@ -116,6 +117,10 @@ func (mgr *SectorMgr) AcquireSectorNumber() (abi.SectorNumber, error) {
 	id := mgr.nextSectorID
 	mgr.nextSectorID++
 	return id, nil
+}
+
+func (mgr *SectorMgr) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+	return false, nil
 }
 
 func (mgr *SectorMgr) ForceState(sid storage.SectorRef, st int) error {
@@ -375,13 +380,12 @@ func generateFakePoSt(sectorInfo []proof5.SectorInfo, rpt func(abi.RegisteredSea
 	}
 }
 
-func (mgr *SectorMgr) ReadPiece(ctx context.Context, w io.Writer, sectorID storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, c cid.Cid) error {
+func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error) {
 	if offset != 0 {
 		panic("implme")
 	}
 
-	_, err := io.CopyN(w, bytes.NewReader(mgr.pieces[mgr.sectors[sectorID.ID].pieces[0]]), int64(size))
-	return err
+	return ioutil.NopCloser(bytes.NewReader(mgr.pieces[mgr.sectors[sector.ID].pieces[0]][:size])), false, nil
 }
 
 func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof) (storage.SectorRef, []abi.PieceInfo, error) {
@@ -490,6 +494,10 @@ func (mgr *SectorMgr) ReturnReadPiece(ctx context.Context, callID storiface.Call
 
 func (mgr *SectorMgr) ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
 	panic("not supported")
+}
+
+func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
+	return nil
 }
 
 func (m mockVerifProver) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {

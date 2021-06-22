@@ -171,12 +171,6 @@ func (m *Miner) Run(ctx context.Context) error {
 		return xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	fc := sealing.FeeConfig{
-		MaxPreCommitGasFee: abi.TokenAmount(m.feeCfg.MaxPreCommitGasFee),
-		MaxCommitGasFee:    abi.TokenAmount(m.feeCfg.MaxCommitGasFee),
-		MaxTerminateGasFee: abi.TokenAmount(m.feeCfg.MaxTerminateGasFee),
-	}
-
 	var (
 		// consumer of chain head changes.
 		evts        = events.NewEvents(ctx, m.api)
@@ -205,7 +199,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	)
 
 	// Instantiate the sealing FSM.
-	m.sealing = sealing.New(adaptedAPI, fc, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
+	m.sealing = sealing.New(ctx, adaptedAPI, m.feeCfg, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
 
 	// Run the sealing FSM.
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
