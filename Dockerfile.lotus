@@ -36,7 +36,7 @@ WORKDIR /opt/filecoin
 ARG RUSTFLAGS=""
 ARG GOFLAGS=""
 
-RUN make lotus lotus-miner lotus-worker lotus-shed lotus-chainwatch lotus-stats lotus-wallet lotus-gateway
+RUN make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway
 
 
 FROM ubuntu:20.04 AS base
@@ -61,6 +61,7 @@ FROM base AS lotus
 MAINTAINER Lotus Development Team
 
 COPY --from=builder /opt/filecoin/lotus /usr/local/bin/
+COPY --from=builder /opt/filecoin/lotus-shed /usr/local/bin/
 COPY scripts/docker-lotus-entrypoint.sh /
 
 ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
@@ -68,7 +69,7 @@ ENV LOTUS_PATH /var/lib/lotus
 ENV LOTUS_JAEGER_AGENT_HOST 127.0.0.1
 ENV LOTUS_JAEGER_AGENT_PORT 6831
 ENV DOCKER_LOTUS_IMPORT_SNAPSHOT https://fil-chain-snapshots-fallback.s3.amazonaws.com/mainnet/minimal_finality_stateroots_latest.car
-ENV DOCKER_LOTUS_WALLET_IMPORT ""
+ENV DOCKER_LOTUS_IMPORT_WALLET ""
 
 RUN mkdir /var/lib/lotus /var/tmp/filecoin-proof-parameters
 RUN chown fc: /var/lib/lotus /var/tmp/filecoin-proof-parameters
@@ -83,19 +84,6 @@ EXPOSE 1234
 ENTRYPOINT ["/docker-lotus-entrypoint.sh"]
 
 CMD ["-help"]
-
-###
-FROM base as lotus-shed
-MAINTAINER Lotus Development Team
-
-COPY --from=builder /opt/filecoin/lotus-shed /usr/local/bin/
-
-USER fc
-
-ENTRYPOINT ["/usr/local/bin/lotus-shed"]
-
-CMD ["-help"]
-
 
 ###
 FROM base AS lotus-wallet
@@ -119,45 +107,6 @@ EXPOSE 1777
 ENTRYPOINT ["/usr/local/bin/lotus-wallet"]
 
 CMD ["-help"]
-
-
-###
-FROM base AS lotus-chainwatch
-MAINTAINER Lotus Development Team
-
-COPY --from=builder /opt/filecoin/lotus-chainwatch /usr/local/bin/
-
-ENV LOTUS_JAEGER_AGENT_HOST 127.0.0.1
-ENV LOTUS_JAEGER_AGENT_PORT 6831
-ENV FULLNODE_API_INFO /ip4/127.0.0.1/tcp/1234/http
-
-USER fc
-
-ENTRYPOINT ["/usr/local/bin/lotus-chainwatch"]
-
-CMD ["-help"]
-
-
-###
-FROM base AS lotus-stats
-MAINTAINER Lotus Development Team
-
-COPY --from=builder /opt/filecoin/lotus-stats /usr/local/bin/
-
-ENV LOTUS_JAEGER_AGENT_HOST 127.0.0.1
-ENV LOTUS_JAEGER_AGENT_PORT 6831
-ENV LOTUS_STATS_INFLUX_HOSTNAME 127.0.0.1
-ENV LOTUS_STATS_INFLUX_DATABASE lotus-stats
-ENV LOTUS_STATS_INFLUX_USERNAME lotus-stats
-ENV LOTUS_STATS_INFLUX_PASSWORD lotuspw
-ENV FULLNODE_API_INFO /ip4/127.0.0.1/tcp/1234/http
-
-USER fc
-
-ENTRYPOINT ["/usr/local/bin/lotus-stats"]
-
-CMD ["-help"]
-
 
 ###
 FROM base AS lotus-gateway
@@ -242,10 +191,6 @@ ENV LOTUS_JAEGER_AGENT_HOST 127.0.0.1
 ENV LOTUS_JAEGER_AGENT_PORT 6831
 ENV LOTUS_MINER_PATH /var/lib/lotus-miner
 ENV LOTUS_PATH /var/lib/lotus
-ENV LOTUS_STATS_INFLUX_DATABASE lotus-stats
-ENV LOTUS_STATS_INFLUX_HOSTNAME 127.0.0.1
-ENV LOTUS_STATS_INFLUX_PASSWORD lotuspw
-ENV LOTUS_STATS_INFLUX_USERNAME lotus-stats
 ENV LOTUS_WORKER_PATH /var/lib/lotus-worker
 ENV MINER_API_INFO /ip4/127.0.0.1/tcp/2345/http
 ENV WALLET_PATH /var/lib/lotus-wallet
@@ -255,8 +200,6 @@ ENV DOCKER_LOTUS_MINER_INIT true
 COPY --from=builder /opt/filecoin/lotus      /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-shed /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-wallet /usr/local/bin/
-COPY --from=builder /opt/filecoin/lotus-chainwatch /usr/local/bin/
-COPY --from=builder /opt/filecoin/lotus-stats /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-gateway /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-miner /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-worker /usr/local/bin/

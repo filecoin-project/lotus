@@ -1,5 +1,4 @@
 # By default, this docker-compose file will start a lotus fullnode
-# and some associated monitoring.
 #
 # Some directives have been left commented out so they serve as an
 # example for more advanced use.
@@ -51,7 +50,7 @@ services:
     environment:
       - LOTUS_JAEGER_AGENT_HOST=jaeger
       - LOTUS_JAEGER_AGENT_PORT=6831
-    # - DOCKER_LOTUS_WALLET_IMPORT=/tmp/wallet
+    # - DOCKER_LOTUS_IMPORT_WALLET=/tmp/wallet
     deploy:
       restart_policy:
         condition: on-failure
@@ -64,43 +63,6 @@ services:
     #     target: /tmp/wallet
     command:
       - daemon
-  lotus-chainwatch:
-    build:
-      context: .
-      target: lotus-chainwatch
-      dockerfile: Dockerfile.lotus
-    image: filecoin/lotus-chainwatch
-    depends_on:
-      - lotus
-    environment:
-      - FULLNODE_API_INFO=/dns/lotus/tcp/1234/http
-      - LOTUS_JAEGER_AGENT_HOST=jaeger
-      - LOTUS_JAEGER_AGENT_PORT=6831
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 30s
-    command:
-      - run
-  lotus-stats:
-    build:
-      context: .
-      target: lotus-stats
-      dockerfile: Dockerfile.lotus
-    image: filecoin/lotus-stats
-    depends_on:
-      - lotus
-      - influxdb
-    environment:
-      - FULLNODE_API_INFO=/dns/lotus/tcp/1234/http
-      - LOTUS_JAEGER_AGENT_HOST=jaeger
-      - LOTUS_JAEGER_AGENT_PORT=6831
-      - LOTUS_STATS_INFLUX_HOSTNAME=influxdb
-      - LOTUS_STATS_INFLUX_USERNAME=lotus-stats
-      - LOTUS_STATS_INFLUX_PASSWORD=lotus-stats-pw
-      - LOTUS_STATS_INFLUX_DATABASE=lotus-stats
-    command:
-      - run
   lotus-gateway:
     build:
       context: .
@@ -177,19 +139,6 @@ services:
     ports:
       - "6831:6831/udp"
       - "16686:16686"
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 30s
-  influxdb:
-    image: influxdb:latest
-    ports:
-      - 8086:8086
-    environment:
-      - DOCKER_INFLUXDB_INIT_USERNAME=lotus-stats
-      - DOCKER_INFLUXDB_INIT_PASSWORD=lotus-stats-pw
-      - DOCKER_INFLUXDB_INIT_ORG=lotus-stats
-      - DOCKER_INFLUXDB_INIT_BUCKET=lotus-stats
     deploy:
       restart_policy:
         condition: on-failure
