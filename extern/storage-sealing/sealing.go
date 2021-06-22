@@ -132,7 +132,7 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, prov ffiwrapper.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
+func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sectorstorage.SectorManager, sc SectorIDCounter, verif ffiwrapper.Verifier, prov ffiwrapper.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
 	s := &Sealing{
 		api:    api,
 		feeCfg: fc,
@@ -153,9 +153,9 @@ func New(api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.
 		notifee: notifee,
 		addrSel: as,
 
-		terminator:  NewTerminationBatcher(context.TODO(), maddr, api, as, fc, gc),
-		precommiter: NewPreCommitBatcher(context.TODO(), maddr, api, as, fc, gc),
-		commiter:    NewCommitBatcher(context.TODO(), maddr, api, as, fc, gc, prov),
+		terminator:  NewTerminationBatcher(mctx, maddr, api, as, fc, gc),
+		precommiter: NewPreCommitBatcher(mctx, maddr, api, as, fc, gc),
+		commiter:    NewCommitBatcher(mctx, maddr, api, as, fc, gc, prov),
 
 		getConfig: gc,
 		dealInfo:  &CurrentDealInfoManager{api},

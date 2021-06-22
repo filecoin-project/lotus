@@ -1,4 +1,4 @@
-package kit2
+package kit
 
 import (
 	"bytes"
@@ -147,13 +147,13 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		require.NoError(n.t, err)
 	}
 
-	var key *wallet.Key
-	if !n.bootstrapped && !options.balance.IsZero() {
-		// create a key+address, and assign it some FIL; this will be set as the default wallet.
-		var err error
-		key, err = wallet.GenerateKey(types.KTBLS)
-		require.NoError(n.t, err)
+	key, err := wallet.GenerateKey(types.KTBLS)
+	require.NoError(n.t, err)
 
+	if !n.bootstrapped && !options.balance.IsZero() {
+		// if we still haven't forged genesis, create a key+address, and assign
+		// it some FIL; this will be set as the default wallet when the node is
+		// started.
 		genacc := genesis.Actor{
 			Type:    genesis.TAccount,
 			Balance: options.balance,
@@ -300,10 +300,14 @@ func (n *Ensemble) Start() *Ensemble {
 			)
 		}
 
+		// Call option builders, passing active nodes as the parameter
+		for _, bopt := range full.options.optBuilders {
+			opts = append(opts, bopt(n.active.fullnodes))
+		}
+
 		// Construct the full node.
 		stop, err := node.New(ctx, opts...)
 
-		// fullOpts[i].Opts(fulls),
 		require.NoError(n.t, err)
 
 		addr, err := full.WalletImport(context.Background(), &full.DefaultKey.KeyInfo)
@@ -344,7 +348,7 @@ func (n *Ensemble) Start() *Ensemble {
 				params, aerr := actors.SerializeParams(&power2.CreateMinerParams{
 					Owner:         m.OwnerKey.Address,
 					Worker:        m.OwnerKey.Address,
-					SealProofType: n.options.proofType,
+					SealProofType: m.options.proofType,
 					Peer:          abi.PeerID(m.Libp2p.PeerID),
 				})
 				require.NoError(n.t, aerr)
@@ -493,8 +497,16 @@ func (n *Ensemble) Start() *Ensemble {
 
 			node.MockHost(n.mn),
 
-			node.Override(new(v1api.FullNode), m.FullNode),
+			node.Override(new(v1api.FullNode), m.FullNode.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
+
+			// disable resource filtering so that local worker gets assigned tasks
+			// regardless of system pressure.
+			node.Override(new(sectorstorage.SealerConfig), func() sectorstorage.SealerConfig {
+				scfg := config.DefaultStorageMiner()
+				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
+				return scfg.Storage
+			}),
 		}
 
 		// append any node builder options.

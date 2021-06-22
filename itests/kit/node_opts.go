@@ -1,4 +1,4 @@
-package kit2
+package kit
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,6 +14,8 @@ import (
 // PresealSectors option.
 const DefaultPresealsPerBootstrapMiner = 2
 
+const TestSpt = abi.RegisteredSealProof_StackedDrg2KiBV1_1
+
 // nodeOpts is an options accumulating struct, where functional options are
 // merged into.
 type nodeOpts struct {
@@ -24,15 +26,22 @@ type nodeOpts struct {
 	ownerKey      *wallet.Key
 	extraNodeOpts []node.Option
 
-	subsystems MinerSubsystem
-	mainMiner  *TestMiner
+	subsystems  MinerSubsystem
+	mainMiner   *TestMiner
+	optBuilders []OptBuilder
+	proofType   abi.RegisteredSealProof
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
 var DefaultNodeOpts = nodeOpts{
-	balance: big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
-	sectors: DefaultPresealsPerBootstrapMiner,
+	balance:   big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
+	sectors:   DefaultPresealsPerBootstrapMiner,
+	proofType: abi.RegisteredSealProof_StackedDrg2KiBV1_1, // default _concrete_ proof type for non-genesis miners (notice the _1) for new actors versions.
 }
+
+// OptBuilder is used to create an option after some other node is already
+// active. Takes all active nodes as a parameter.
+type OptBuilder func(activeNodes []*TestFullNode) node.Option
 
 // NodeOpt is a functional option for test nodes.
 type NodeOpt func(opts *nodeOpts) error
@@ -112,6 +121,15 @@ func OwnerAddr(wk *wallet.Key) NodeOpt {
 func ConstructorOpts(extra ...node.Option) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.extraNodeOpts = extra
+		return nil
+	}
+}
+
+// ProofType sets the proof type for this node. If you're using new actor
+// versions, this should be a _1 proof type.
+func ProofType(proofType abi.RegisteredSealProof) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.proofType = proofType
 		return nil
 	}
 }

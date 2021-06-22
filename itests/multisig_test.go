@@ -3,7 +3,6 @@ package itests
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -18,17 +17,16 @@ import (
 
 // TestMultisig does a basic test to exercise the multisig CLI commands
 func TestMultisig(t *testing.T) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 	kit.QuietMiningLogs()
 
-	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
-	clientNode, _ := kit.StartOneNodeOneMiner(ctx, t, blocktime)
+	blockTime := 5 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
 
-	runMultisigTests(t, clientNode)
+	runMultisigTests(t, client)
 }
 
-func runMultisigTests(t *testing.T, clientNode kit.TestFullNode) {
+func runMultisigTests(t *testing.T, clientNode *kit.TestFullNode) {
 	// Create mock CLI
 	ctx := context.Background()
 	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)

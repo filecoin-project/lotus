@@ -1,4 +1,4 @@
-package kit2
+package kit
 
 type TestDealState int
 

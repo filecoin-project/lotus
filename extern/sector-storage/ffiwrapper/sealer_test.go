@@ -545,6 +545,7 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 
 	avi.Proof, err = ProofProver.AggregateSealProofs(avi, toAggregate)
 	require.NoError(t, err)
+	require.Len(t, avi.Proof, 11188)
 
 	aggDone := time.Now()
 

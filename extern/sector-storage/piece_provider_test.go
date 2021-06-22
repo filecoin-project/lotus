@@ -53,6 +53,8 @@ func TestPieceProviderSimpleNoRemoteWorker(t *testing.T) {
 	// pre-commit 1
 	preCommit1 := ppt.preCommit1(t)
 
+	// check if IsUnsealed -> true
+	require.True(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(0), size))
 	// read piece
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
 		false, pieceData)
@@ -60,6 +62,8 @@ func TestPieceProviderSimpleNoRemoteWorker(t *testing.T) {
 	// pre-commit 2
 	ppt.preCommit2(t, preCommit1)
 
+	// check if IsUnsealed -> true
+	require.True(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(0), size))
 	// read piece
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
 		false, pieceData)
@@ -67,10 +71,14 @@ func TestPieceProviderSimpleNoRemoteWorker(t *testing.T) {
 	// finalize -> nil here will remove unsealed file
 	ppt.finalizeSector(t, nil)
 
+	// check if IsUnsealed -> false
+	require.False(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(0), size))
 	// Read the piece -> will have to unseal
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
 		true, pieceData)
 
+	// check if IsUnsealed -> true
+	require.True(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(0), size))
 	// read the piece -> will not have to unseal
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
 		false, pieceData)
@@ -118,12 +126,18 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 
 	// pre-commit 1
 	pC1 := ppt.preCommit1(t)
+
+	// check if IsUnsealed -> true
+	require.True(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(0), pd1size))
 	// Read the piece -> no need to unseal
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), pd1size,
 		false, pd1)
 
 	// pre-commit 2
 	ppt.preCommit2(t, pC1)
+
+	// check if IsUnsealed -> true
+	require.True(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(0), pd1size))
 	// Read the piece -> no need to unseal
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), pd1size,
 		false, pd1)
@@ -133,6 +147,8 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 	// sending nil here will remove all unsealed files after sector is finalized.
 	ppt.finalizeSector(t, nil)
 
+	// check if IsUnsealed -> false
+	require.False(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(0), pd1size))
 	// Read the piece -> have to unseal since we removed the file.
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), pd1size,
 		true, pd1)
@@ -142,14 +158,21 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 
 	// remove the unsealed file and read again -> will have to unseal.
 	ppt.removeAllUnsealedSectorFiles(t)
+	// check if IsUnsealed -> false
+	require.False(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(0), pd1size))
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), pd1size,
 		true, pd1)
 
+	// check if IsUnsealed -> true
+	require.True(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(pd1size), pd2size))
 	// Read Piece 2 -> no unsealing as it got unsealed above.
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(pd1size), pd2size, false, pd2)
 
 	// remove all unseal files -> Read Piece 2 -> will have to Unseal.
 	ppt.removeAllUnsealedSectorFiles(t)
+
+	// check if IsUnsealed -> false
+	require.False(t, ppt.isUnsealed(t, storiface.UnpaddedByteIndex(pd1size), pd2size))
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(pd1size), pd2size, true, pd2)
 }
 
@@ -304,6 +327,12 @@ func (p *pieceProviderTestHarness) preCommit2(t *testing.T, pc1 specstorage.PreC
 	require.NoError(t, err)
 	commD := sectorCids.Unsealed
 	p.commD = commD
+}
+
+func (p *pieceProviderTestHarness) isUnsealed(t *testing.T, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) bool {
+	b, err := p.pp.IsUnsealed(p.ctx, p.sector, offset, size)
+	require.NoError(t, err)
+	return b
 }
 
 func (p *pieceProviderTestHarness) readPiece(t *testing.T, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize,

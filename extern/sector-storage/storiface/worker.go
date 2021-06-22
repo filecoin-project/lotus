@@ -18,7 +18,12 @@ import (
 type WorkerInfo struct {
 	Hostname string
 
-	Resources WorkerResources
+	// IgnoreResources indicates whether the worker's available resources should
+	// be used ignored (true) or used (false) for the purposes of scheduling and
+	// task assignment. Only supported on local workers. Used for testing.
+	// Default should be false (zero value, i.e. resources taken into account).
+	IgnoreResources bool
+	Resources       WorkerResources
 }
 
 type WorkerResources struct {

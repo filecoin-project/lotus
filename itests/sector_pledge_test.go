@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/itests/kit2"
 )
 
 func TestPledgeSectors(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	blockTime := 50 * time.Millisecond
 
@@ -24,7 +24,7 @@ func TestPledgeSectors(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		_, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs())
+		_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 		ens.InterconnectAll().BeginMining(blockTime)
 
 		miner.PledgeSectors(ctx, nSectors, 0, nil)
@@ -54,11 +54,11 @@ func TestPledgeBatching(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		opts := kit2.ConstructorOpts(kit2.LatestActorsAt(-1))
-		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+		opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 		ens.InterconnectAll().BeginMining(blockTime)
 
-		client.WaitTillChain(ctx, kit2.HeightAtLeast(10))
+		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 
@@ -111,11 +111,11 @@ func TestPledgeBeforeNv13(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		opts := kit2.ConstructorOpts(kit2.LatestActorsAt(1000000000))
-		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+		opts := kit.ConstructorOpts(kit.LatestActorsAt(1000000000))
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 		ens.InterconnectAll().BeginMining(blocktime)
 
-		client.WaitTillChain(ctx, kit2.HeightAtLeast(10))
+		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 

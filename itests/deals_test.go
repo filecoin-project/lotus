@@ -14,7 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
@@ -27,7 +28,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	//blockTime := 10 * time.Millisecond
 
@@ -37,11 +38,15 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	startEpoch := abi.ChainEpoch(2 << 12)
 
 	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
-		api.RunningNodeType = api.NodeMiner // TODO(anteva): fix me
+		//api.RunningNodeType = api.NodeMiner // TODO(anteva): fix me
 
-		client, main, market, _ := kit2.EnsembleWithMarket(t, kit2.MockProofs(), kit2.ThroughRPC())
+		////TODO: add miner
+		//client, main, _, _ := kit2.EnsembleWithMarket(t, kit2.MockProofs(), kit2.ThroughRPC())
 
-		dh := kit2.NewDealHarness(t, client, main, market)
+		//dh := kit.NewDealHarness(t, client, main)
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
+		ens.InterconnectAll().BeginMining(blockTime)
+		dh := kit.NewDealHarness(t, client, miner)
 
 		runConcurrentDeals(t, dh, fullDealCyclesOpts{
 			n:             n,
@@ -51,7 +56,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		})
 	}
 
-	//cycles := []int{1, 2, 4, 8}
+	// TODO: add 2, 4, 8, more when this graphsync issue is fixed: https://github.com/ipfs/go-graphsync/issues/175#
 	cycles := []int{1}
 	for _, n := range cycles {
 		n := n
@@ -70,7 +75,7 @@ type fullDealCyclesOpts struct {
 	startEpoch    abi.ChainEpoch
 }
 
-func runConcurrentDeals(t *testing.T, dh *kit2.DealHarness, opts fullDealCyclesOpts) {
+func runConcurrentDeals(t *testing.T, dh *kit.DealHarness, opts fullDealCyclesOpts) {
 	errgrp, _ := errgroup.WithContext(context.Background())
 	for i := 0; i < opts.n; i++ {
 		i := i
@@ -82,9 +87,13 @@ func runConcurrentDeals(t *testing.T, dh *kit2.DealHarness, opts fullDealCyclesO
 					err = fmt.Errorf("deal failed: %s", r)
 				}
 			}()
-			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), 5+i, opts.fastRetrieval, opts.startEpoch)
+			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), kit.MakeFullDealParams{
+				Rseed:      5 + i,
+				FastRet:    opts.fastRetrieval,
+				StartEpoch: opts.startEpoch,
+			})
 			outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, opts.carExport)
-			kit2.AssertFilesEqual(t, inPath, outPath)
+			kit.AssertFilesEqual(t, inPath, outPath)
 			return nil
 		})
 	}
@@ -96,13 +105,13 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var blockTime = 1 * time.Second
 
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.ThroughRPC()) // no mock proofs.
+	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC()) // no mock proofs.
 	ens.InterconnectAll().BeginMining(blockTime)
-	dh := kit2.NewDealHarness(t, client, miner, miner)
+	dh := kit.NewDealHarness(t, client, miner)
 
 	t.Run("stdretrieval", func(t *testing.T) {
 		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1})
@@ -118,6 +127,95 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 	})
 }
 
+func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
+	var (
+		ctx       = context.Background()
+		blocktime = 10 * time.Millisecond
+	)
+
+	kit.QuietMiningLogs()
+
+	client, miner, ens := kit.EnsembleMinimal(t)
+	ens.InterconnectAll().BeginMining(blocktime)
+
+	var (
+		ppb         = int64(1)
+		unsealPrice = int64(77)
+	)
+
+	// Set unsealed price to non-zero
+	ask, err := miner.MarketGetRetrievalAsk(ctx)
+	require.NoError(t, err)
+	ask.PricePerByte = abi.NewTokenAmount(ppb)
+	ask.UnsealPrice = abi.NewTokenAmount(unsealPrice)
+	err = miner.MarketSetRetrievalAsk(ctx, ask)
+	require.NoError(t, err)
+
+	dh := kit.NewDealHarness(t, client, miner)
+
+	deal1, res1, _ := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{Rseed: 6})
+
+	// one more storage deal for the same data
+	_, res2, _ := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{Rseed: 6})
+	require.Equal(t, res1.Root, res2.Root)
+
+	// Retrieval
+	dealInfo, err := client.ClientGetDealInfo(ctx, *deal1)
+	require.NoError(t, err)
+
+	// fetch quote -> zero for unsealed price since unsealed file already exists.
+	offers, err := client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
+	require.NoError(t, err)
+	require.Len(t, offers, 2)
+	require.Equal(t, offers[0], offers[1])
+	require.Equal(t, uint64(0), offers[0].UnsealPrice.Uint64())
+	require.Equal(t, dealInfo.Size*uint64(ppb), offers[0].MinPrice.Uint64())
+
+	// remove ONLY one unsealed file
+	ss, err := miner.StorageList(context.Background())
+	require.NoError(t, err)
+	_, err = miner.SectorsList(ctx)
+	require.NoError(t, err)
+
+iLoop:
+	for storeID, sd := range ss {
+		for _, sector := range sd {
+			err := miner.StorageDropSector(ctx, storeID, sector.SectorID, storiface.FTUnsealed)
+			require.NoError(t, err)
+			break iLoop // remove ONLY one
+		}
+	}
+
+	// get retrieval quote -> zero for unsealed price as unsealed file exists.
+	offers, err = client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
+	require.NoError(t, err)
+	require.Len(t, offers, 2)
+	require.Equal(t, offers[0], offers[1])
+	require.Equal(t, uint64(0), offers[0].UnsealPrice.Uint64())
+	require.Equal(t, dealInfo.Size*uint64(ppb), offers[0].MinPrice.Uint64())
+
+	// remove the other unsealed file as well
+	ss, err = miner.StorageList(context.Background())
+	require.NoError(t, err)
+	_, err = miner.SectorsList(ctx)
+	require.NoError(t, err)
+	for storeID, sd := range ss {
+		for _, sector := range sd {
+			require.NoError(t, miner.StorageDropSector(ctx, storeID, sector.SectorID, storiface.FTUnsealed))
+		}
+	}
+
+	// fetch quote -> non-zero for unseal price as we no more unsealed files.
+	offers, err = client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
+	require.NoError(t, err)
+	require.Len(t, offers, 2)
+	require.Equal(t, offers[0], offers[1])
+	require.Equal(t, uint64(unsealPrice), offers[0].UnsealPrice.Uint64())
+	total := (dealInfo.Size * uint64(ppb)) + uint64(unsealPrice)
+	require.Equal(t, total, offers[0].MinPrice.Uint64())
+
+}
+
 func TestPublishDealsBatching(t *testing.T) {
 	var (
 		ctx            = context.Background()
@@ -126,7 +224,7 @@ func TestPublishDealsBatching(t *testing.T) {
 		startEpoch     = abi.ChainEpoch(2 << 12)
 	)
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	opts := node.Override(new(*storageadapter.DealPublisher),
 		storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
@@ -135,10 +233,10 @@ func TestPublishDealsBatching(t *testing.T) {
 		}),
 	)
 
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), kit2.ConstructorOpts(opts))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(opts))
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	dh := kit2.NewDealHarness(t, client, miner, miner)
+	dh := kit.NewDealHarness(t, client, miner)
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
@@ -213,23 +311,23 @@ func TestFirstDealEnablesMining(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var (
-		client   kit2.TestFullNode
-		genMiner kit2.TestMiner // bootstrap
-		provider kit2.TestMiner // no sectors, will need to create one
+		client   kit.TestFullNode
+		genMiner kit.TestMiner // bootstrap
+		provider kit.TestMiner // no sectors, will need to create one
 	)
 
-	ens := kit2.NewEnsemble(t, kit2.MockProofs())
+	ens := kit.NewEnsemble(t, kit.MockProofs())
 	ens.FullNode(&client)
 	ens.Miner(&genMiner, &client)
-	ens.Miner(&provider, &client, kit2.PresealSectors(0))
+	ens.Miner(&provider, &client, kit.PresealSectors(0))
 	ens.Start().InterconnectAll().BeginMining(50 * time.Millisecond)
 
 	ctx := context.Background()
 
-	dh := kit2.NewDealHarness(t, &client, &provider, &provider)
+	dh := kit.NewDealHarness(t, &client, &provider)
 
 	ref, _ := client.CreateImportFile(ctx, 5, 0)
 
@@ -244,7 +342,7 @@ func TestFirstDealEnablesMining(t *testing.T) {
 	providerMined := make(chan struct{})
 
 	go func() {
-		_ = client.WaitTillChain(ctx, kit2.BlockMinedBy(provider.ActorAddr))
+		_ = client.WaitTillChain(ctx, kit.BlockMinedBy(provider.ActorAddr))
 		close(providerMined)
 	}()
 
@@ -269,10 +367,10 @@ func TestOfflineDealFlow(t *testing.T) {
 
 	runTest := func(t *testing.T, fastRet bool) {
 		ctx := context.Background()
-		client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs())
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 		ens.InterconnectAll().BeginMining(blocktime)
 
-		dh := kit2.NewDealHarness(t, client, miner, miner)
+		dh := kit.NewDealHarness(t, client, miner)
 
 		// Create a random file and import on the client.
 		res, inFile := client.CreateImportFile(ctx, 1, 0)
@@ -336,7 +434,8 @@ func TestOfflineDealFlow(t *testing.T) {
 		// Retrieve the deal
 		outFile := dh.PerformRetrieval(ctx, proposalCid, rootCid, false)
 
-		kit2.AssertFilesEqual(t, inFile, outFile)
+		kit.AssertFilesEqual(t, inFile, outFile)
+
 	}
 
 	t.Run("stdretrieval", func(t *testing.T) { runTest(t, false) })
@@ -348,14 +447,14 @@ func TestZeroPricePerByteRetrieval(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var (
 		blockTime  = 10 * time.Millisecond
 		startEpoch = abi.ChainEpoch(2 << 12)
 	)
 
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs())
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx := context.Background()
@@ -367,7 +466,7 @@ func TestZeroPricePerByteRetrieval(t *testing.T) {
 	err = miner.MarketSetRetrievalAsk(ctx, ask)
 	require.NoError(t, err)
 
-	dh := kit2.NewDealHarness(t, client, miner, miner)
+	dh := kit.NewDealHarness(t, client, miner)
 	runConcurrentDeals(t, dh, fullDealCyclesOpts{
 		n:          1,
 		startEpoch: startEpoch,

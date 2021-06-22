@@ -14,6 +14,14 @@ import (
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
 
+const (
+	// RetrievalPricingDefault configures the node to use the default retrieval pricing policy.
+	RetrievalPricingDefaultMode = "default"
+	// RetrievalPricingExternal configures the node to use the external retrieval pricing script
+	// configured by the user.
+	RetrievalPricingExternalMode = "external"
+)
+
 // Common is common config between full node and miner
 type Common struct {
 	API    API
@@ -81,6 +89,29 @@ type DealmakingConfig struct {
 
 	Filter          string
 	RetrievalFilter string
+
+	RetrievalPricing *RetrievalPricing
+}
+
+type RetrievalPricing struct {
+	Strategy string // possible values: "default", "external"
+
+	Default  *RetrievalPricingDefault
+	External *RetrievalPricingExternal
+}
+
+type RetrievalPricingExternal struct {
+	// Path of the external script that will be run to price a retrieval deal.
+	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".
+	Path string
+}
+
+type RetrievalPricingDefault struct {
+	// VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
+	// of a payloadCid that belongs to a verified storage deal.
+	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "default".
+	// default value is true
+	VerifiedDealsFreeTransfer bool
 }
 
 type SealingConfig struct {
@@ -322,6 +353,9 @@ func DefaultStorageMiner() *StorageMiner {
 			// Default to 10 - tcp should still be able to figure this out, and
 			// it's the ratio between 10gbit / 1gbit
 			ParallelFetchLimit: 10,
+
+			// By default use the hardware resource filtering strategy.
+			ResourceFiltering: sectorstorage.ResourceFilteringHardware,
 		},
 
 		Dealmaking: DealmakingConfig{
@@ -337,6 +371,16 @@ func DefaultStorageMiner() *StorageMiner {
 			PublishMsgPeriod:                Duration(time.Hour),
 			MaxDealsPerPublishMsg:           8,
 			MaxProviderCollateralMultiplier: 2,
+
+			RetrievalPricing: &RetrievalPricing{
+				Strategy: RetrievalPricingDefaultMode,
+				Default: &RetrievalPricingDefault{
+					VerifiedDealsFreeTransfer: true,
+				},
+				External: &RetrievalPricingExternal{
+					Path: "",
+				},
+			},
 		},
 
 		Subsystems: MinerSubsystemConfig{

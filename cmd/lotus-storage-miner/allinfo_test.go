@@ -7,12 +7,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/impl"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
-
-	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -24,12 +20,6 @@ func TestMinerAllInfo(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	_ = logging.SetLogLevel("*", "INFO")
-
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
-	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
-
 	_test = true
 
 	kit.QuietMiningLogs()
@@ -40,16 +30,15 @@ func TestMinerAllInfo(t *testing.T) {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
 
-	n, sn := kit.Builder(t, kit.OneFull, kit.OneMiner)
-	client, miner := n[0].FullNode, sn[0]
-	kit.ConnectAndStartMining(t, time.Second, miner, client.(*impl.FullNodeAPI))
+	client, miner, ens := kit.EnsembleMinimal(t)
+	ens.InterconnectAll().BeginMining(time.Second)
 
 	run := func(t *testing.T) {
 		app := cli.NewApp()
 		app.Metadata = map[string]interface{}{
 			"repoType":         repo.StorageMiner,
-			"testnode-full":    n[0],
-			"testnode-storage": sn[0],
+			"testnode-full":    client,
+			"testnode-storage": miner,
 		}
 		api.RunningNodeType = api.NodeMiner
 
@@ -61,7 +50,9 @@ func TestMinerAllInfo(t *testing.T) {
 	t.Run("pre-info-all", run)
 
 	dh := kit.NewDealHarness(t, client, miner)
-	dh.MakeFullDeal(context.Background(), 6, false, false, 0)
+	deal, res, inPath := dh.MakeOnlineDeal(context.Background(), kit.MakeFullDealParams{Rseed: 6})
+	outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, false)
+	kit.AssertFilesEqual(t, inPath, outPath)
 
 	t.Run("post-info-all", run)
 }

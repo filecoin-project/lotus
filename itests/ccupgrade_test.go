@@ -6,16 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/itests/kit2"
-	"github.com/stretchr/testify/require"
-
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/itests/kit"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCCUpgrade(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	for _, height := range []abi.ChainEpoch{
 		-1,   // before
@@ -34,8 +33,8 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	ctx := context.Background()
 	blockTime := 5 * time.Millisecond
 
-	opts := kit2.ConstructorOpts(kit2.LatestActorsAt(upgradeHeight))
-	client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+	opts := kit.ConstructorOpts(kit.LatestActorsAt(upgradeHeight))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	maddr, err := miner.ActorAddress(ctx)
@@ -43,7 +42,7 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 		t.Fatal(err)
 	}
 
-	CC := abi.SectorNumber(kit2.DefaultPresealsPerBootstrapMiner + 1)
+	CC := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
 	Upgraded := CC + 1
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
@@ -62,9 +61,10 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	err = miner.SectorMarkForUpgrade(ctx, sl[0])
 	require.NoError(t, err)
 
-	dh := kit2.NewDealHarness(t, client, miner, miner)
-
-	dh.MakeOnlineDeal(context.Background(), 6, false, 0)
+	dh := kit.NewDealHarness(t, client, miner)
+	deal, res, inPath := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{Rseed: 6})
+	outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, false)
+	kit.AssertFilesEqual(t, inPath, outPath)
 
 	// Validate upgrade
 

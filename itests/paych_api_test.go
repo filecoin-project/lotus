@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
@@ -23,22 +24,21 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit2"
 )
 
 func TestPaymentChannelsAPI(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	ctx := context.Background()
 	blockTime := 5 * time.Millisecond
 
 	var (
-		paymentCreator  kit2.TestFullNode
-		paymentReceiver kit2.TestFullNode
-		miner           kit2.TestMiner
+		paymentCreator  kit.TestFullNode
+		paymentReceiver kit.TestFullNode
+		miner           kit.TestMiner
 	)
 
-	ens := kit2.NewEnsemble(t, kit2.MockProofs()).
+	ens := kit.NewEnsemble(t, kit.MockProofs()).
 		FullNode(&paymentCreator).
 		FullNode(&paymentReceiver).
 		Miner(&miner, &paymentCreator).
@@ -51,7 +51,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
 	require.NoError(t, err)
 
-	kit2.SendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
+	kit.SendFunds(ctx, t, &paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
 
 	// setup the payment channel
 	createrAddr, err := paymentCreator.WalletDefaultAddress(ctx)
@@ -200,7 +200,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	require.EqualValues(t, abi.NewTokenAmount(expectedRefund), delta, "did not send correct funds from creator: expected %d, got %d", expectedRefund, delta)
 }
 
-func waitForBlocks(ctx context.Context, t *testing.T, bm *kit2.BlockMiner, paymentReceiver kit2.TestFullNode, receiverAddr address.Address, count int) {
+func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymentReceiver kit.TestFullNode, receiverAddr address.Address, count int) {
 	// We need to add null blocks in batches, if we add too many the chain can't sync
 	batchSize := 60
 	for i := 0; i < count; i += batchSize {
@@ -225,7 +225,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *kit2.BlockMiner, payme
 	}
 }
 
-func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit2.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
+func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
 	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 

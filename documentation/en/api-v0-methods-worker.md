@@ -89,6 +89,7 @@ Response:
 ```json
 {
   "Hostname": "string value",
+  "IgnoreResources": true,
   "Resources": {
     "MemPhysical": 42,
     "MemSwap": 42,

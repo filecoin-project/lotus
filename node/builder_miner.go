@@ -63,6 +63,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		Override(new(*stores.Local), modules.LocalStorage),
 		Override(new(*stores.Remote), modules.RemoteStorage),
+		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		If(!cfg.Subsystems.EnableMining,
 			If(cfg.Subsystems.EnableSealing, Error(xerrors.Errorf("sealing can only be enabled on a mining node"))),
@@ -125,6 +126,12 @@ func ConfigStorageMiner(c interface{}) Option {
 
 			// Markets (retrieval deps)
 			Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
+			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(config.DealmakingConfig{
+				RetrievalPricing: &config.RetrievalPricing{
+					Strategy: config.RetrievalPricingDefaultMode,
+					Default:  &config.RetrievalPricingDefault{},
+				},
+			})),
 
 			// Markets (retrieval)
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),

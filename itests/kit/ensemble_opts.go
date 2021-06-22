@@ -1,4 +1,4 @@
-package kit2
+package kit
 
 import (
 	"time"
@@ -16,7 +16,6 @@ type genesisAccount struct {
 
 type ensembleOpts struct {
 	pastOffset   time.Duration
-	proofType    abi.RegisteredSealProof
 	verifiedRoot genesisAccount
 	accounts     []genesisAccount
 	mockProofs   bool
@@ -24,14 +23,6 @@ type ensembleOpts struct {
 
 var DefaultEnsembleOpts = ensembleOpts{
 	pastOffset: 10000000 * time.Second, // time sufficiently in the past to trigger catch-up mining.
-	proofType:  abi.RegisteredSealProof_StackedDrg2KiBV1,
-}
-
-func ProofType(proofType abi.RegisteredSealProof) EnsembleOpt {
-	return func(opts *ensembleOpts) error {
-		opts.proofType = proofType
-		return nil
-	}
 }
 
 // MockProofs activates mock proofs for the entire ensemble.

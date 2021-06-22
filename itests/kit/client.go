@@ -21,7 +21,7 @@ import (
 )
 
 // RunClientTest exercises some of the Client CLI commands
-func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) {
+func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -42,7 +42,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) 
 	require.Regexp(t, regexp.MustCompile("Ask:"), out)
 
 	// Create a deal (non-interactive)
-	// client deal --start-epoch=<start epoch> <cid> <Miner addr> 1000000attofil <duration>
+	// client deal --start-epoch=<start epoch> <cid> <miner addr> 1000000attofil <duration>
 	res, _, _, err := CreateImportFile(ctx, clientNode, 1, 0)
 
 	require.NoError(t, err)

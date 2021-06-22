@@ -42,7 +42,7 @@ BUILD_DEPS+=build/.filecoin-install
 CLEAN+=build/.filecoin-install
 
 ffi-version-check:
-	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 2 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
+	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 3 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
 BUILD_DEPS+=ffi-version-check
 
 .PHONY: ffi-version-check

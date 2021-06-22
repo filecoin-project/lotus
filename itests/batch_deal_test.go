@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
-	"github.com/filecoin-project/lotus/itests/kit2"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -18,7 +18,7 @@ import (
 )
 
 func TestBatchDealInput(t *testing.T) {
-	kit2.QuietMiningLogs()
+	kit.QuietMiningLogs()
 
 	var (
 		blockTime = 10 * time.Millisecond
@@ -37,7 +37,7 @@ func TestBatchDealInput(t *testing.T) {
 			maxDealsPerMsg := uint64(deals)
 
 			// Set max deals per publish deals message to maxDealsPerMsg
-			opts := kit2.ConstructorOpts(node.Options(
+			opts := kit.ConstructorOpts(node.Options(
 				node.Override(
 					new(*storageadapter.DealPublisher),
 					storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
@@ -56,9 +56,9 @@ func TestBatchDealInput(t *testing.T) {
 					}, nil
 				}),
 			))
-			client, miner, ens := kit2.EnsembleMinimal(t, kit2.MockProofs(), opts)
+			client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 			ens.InterconnectAll().BeginMining(blockTime)
-			dh := kit2.NewDealHarness(t, client, miner, miner)
+			dh := kit.NewDealHarness(t, client, miner)
 
 			err := miner.MarketSetAsk(ctx, big.Zero(), big.Zero(), 200, 128, 32<<30)
 			require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestBatchDealInput(t *testing.T) {
 
 			// Starts a deal and waits until it's published
 			runDealTillSeal := func(rseed int) {
-				res, _, _, err := kit2.CreateImportFile(ctx, client, rseed, piece)
+				res, _, _, err := kit.CreateImportFile(ctx, client, rseed, piece)
 				require.NoError(t, err)
 
 				deal := dh.StartDeal(ctx, res.Root, false, dealStartEpoch)
