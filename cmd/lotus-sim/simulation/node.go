@@ -46,7 +46,7 @@ func NewNode(ctx context.Context, r repo.Repo) (nd *Node, _err error) {
 	}
 	defer func() {
 		if _err != nil {
-			lr.Close()
+			_ = lr.Close()
 		}
 	}()
 
