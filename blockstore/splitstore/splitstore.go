@@ -445,8 +445,7 @@ func (s *SplitStore) Close() error {
 	}
 
 	s.cancel()
-	s.debug.Close()
-	return multierr.Combine(s.tracker.Close(), s.env.Close())
+	return multierr.Combine(s.tracker.Close(), s.env.Close(), s.debug.Close())
 }
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
