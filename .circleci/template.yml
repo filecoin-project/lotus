@@ -136,7 +136,7 @@ jobs:
         description: Test suite name to report to CircleCI.
       gotestsum-format:
         type: string
-        default: pkgname-and-test-fails
+        default: standard-verbose
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string

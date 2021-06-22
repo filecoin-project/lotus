@@ -136,7 +136,7 @@ jobs:
         description: Test suite name to report to CircleCI.
       gotestsum-format:
         type: string
-        default: pkgname-and-test-fails
+        default: standard-verbose
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
@@ -842,7 +842,7 @@ workflows:
       - test:
           name: test-unit-rest
           suite: utest-unit-rest
-          target: "./blockstore/... ./build/... ./cmd/... ./extern/... ./paychmgr/... ./storage/... ./api/... ./conformance/... ./journal/... ./chain/... ./markets/... ./tools/... ./cli/... ./gateway/... ./lib/... ./node/..."
+          target: "./blockstore/... ./build/... ./journal/... ./cli/... ./conformance/... ./node/... ./paychmgr/... ./api/... ./chain/... ./lib/... ./cmd/... ./extern/... ./gateway/... ./markets/... ./storage/... ./tools/..."
       - test:
           name: test-unit-storage
           suite: utest-unit-storage
