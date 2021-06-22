@@ -30,7 +30,8 @@ func TestSDRUpgrade(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := kit.ConstructorOpts(kit.SDRUpgradeAt(500, 1000))
+	opts := []kit.NodeOpt{kit.ConstructorOpts(kit.SDRUpgradeAt(500, 1000))}
+	opts = append(opts, kit.WithAllSubsystems())
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 	ens.InterconnectAll()
 

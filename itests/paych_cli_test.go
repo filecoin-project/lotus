@@ -420,7 +420,7 @@ func startPaychCreatorReceiverMiner(ctx context.Context, t *testing.T, paymentCr
 	kit.NewEnsemble(t, kit.MockProofs()).
 		FullNode(paymentCreator, opts).
 		FullNode(paymentReceiver, opts).
-		Miner(&miner, paymentCreator).
+		Miner(&miner, paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll().
 		BeginMining(blocktime)
