@@ -255,8 +255,7 @@ func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) 
 
 // Start starts all enrolled nodes.
 func (n *Ensemble) Start() *Ensemble {
-	ctx, cancel := context.WithCancel(context.Background())
-	n.t.Cleanup(cancel)
+	ctx := context.Background()
 
 	var gtempl *genesis.Template
 	if !n.bootstrapped {
