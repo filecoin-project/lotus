@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -29,6 +30,12 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	}
 
 	kit.QuietMiningLogs()
+
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
 
 	blockTime := 10 * time.Millisecond
 
@@ -106,6 +113,12 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 	}
 
 	kit.QuietMiningLogs()
+
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
 
 	var blockTime = 1 * time.Second
 
@@ -223,6 +236,12 @@ func TestPublishDealsBatching(t *testing.T) {
 		maxDealsPerMsg = uint64(2) // Set max deals per publish deals message to 2
 		startEpoch     = abi.ChainEpoch(2 << 12)
 	)
+
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
 
 	kit.QuietMiningLogs()
 
@@ -365,6 +384,12 @@ func TestOfflineDealFlow(t *testing.T) {
 	// so that the deal starts sealing in time
 	startEpoch := abi.ChainEpoch(2 << 12)
 
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
+
 	runTest := func(t *testing.T, fastRet bool) {
 		ctx := context.Background()
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
@@ -446,6 +471,12 @@ func TestZeroPricePerByteRetrieval(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
 
 	kit.QuietMiningLogs()
 
