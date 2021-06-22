@@ -216,9 +216,12 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 
 	case bstore.ErrNotFound:
 		s.mx.Lock()
+		warmup := s.warmupEpoch > 0
 		curTs := s.curTs
 		s.mx.Unlock()
-		s.debug.LogReadMiss(curTs, cid)
+		if warmup {
+			s.debug.LogReadMiss(curTs, cid)
+		}
 
 		blk, err = s.cold.Get(cid)
 		if err == nil {
@@ -241,9 +244,12 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 
 	case bstore.ErrNotFound:
 		s.mx.Lock()
+		warmup := s.warmupEpoch > 0
 		curTs := s.curTs
 		s.mx.Unlock()
-		s.debug.LogReadMiss(curTs, cid)
+		if warmup {
+			s.debug.LogReadMiss(curTs, cid)
+		}
 
 		size, err = s.cold.GetSize(cid)
 		if err == nil {
@@ -349,9 +355,12 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	switch err {
 	case bstore.ErrNotFound:
 		s.mx.Lock()
+		warmup := s.warmupEpoch > 0
 		curTs := s.curTs
 		s.mx.Unlock()
-		s.debug.LogReadMiss(curTs, cid)
+		if warmup {
+			s.debug.LogReadMiss(curTs, cid)
+		}
 
 		err = s.cold.View(cid, cb)
 		if err == nil {
