@@ -513,20 +513,20 @@ func (n *Ensemble) Start() *Ensemble {
 		// append any node builder options.
 		opts = append(opts, m.options.extraNodeOpts...)
 
-		idAddr, err := address.IDFromAddress(m.ActorAddr)
+		_, err = address.IDFromAddress(m.ActorAddr)
 		require.NoError(n.t, err)
 
 		// preload preseals if the network still hasn't bootstrapped.
-		var presealSectors []abi.SectorID
-		if !n.bootstrapped {
-			sectors := n.genesis.miners[i].Sectors
-			for _, sector := range sectors {
-				presealSectors = append(presealSectors, abi.SectorID{
-					Miner:  abi.ActorID(idAddr),
-					Number: sector.SectorID,
-				})
-			}
-		}
+		//var presealSectors []abi.SectorID
+		//if !n.bootstrapped {
+		//sectors := n.genesis.miners[i].Sectors
+		//for _, sector := range sectors {
+		//presealSectors = append(presealSectors, abi.SectorID{
+		//Miner:  abi.ActorID(idAddr),
+		//Number: sector.SectorID,
+		//})
+		//}
+		//}
 
 		if n.options.mockProofs {
 			opts = append(opts,
