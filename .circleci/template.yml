@@ -1,0 +1,915 @@
+version: 2.1
+orbs:
+  go: gotest/tools@0.0.13
+  aws-cli: circleci/aws-cli@1.3.2
+  packer: salaxander/packer@0.0.3
+
+executors:
+  golang:
+    docker:
+      - image: circleci/golang:1.16.4
+    resource_class: 2xlarge
+  ubuntu:
+    docker:
+      - image: ubuntu:20.04
+
+commands:
+  install-deps:
+    steps:
+      - go/install-ssh
+      - go/install: {package: git}
+  prepare:
+    parameters:
+      linux:
+        default: true
+        description: is a linux build environment?
+        type: boolean
+      darwin:
+        default: false
+        description: is a darwin build environment?
+        type: boolean
+    steps:
+      - checkout
+      - git_fetch_all_tags
+      - checkout
+      - when:
+          condition: << parameters.linux >>
+          steps:
+            - run: sudo apt-get update
+            - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+      - run: git submodule sync
+      - run: git submodule update --init
+  download-params:
+    steps:
+      - restore_cache:
+          name: Restore parameters cache
+          keys:
+            - 'v25-2k-lotus-params'
+          paths:
+            - /var/tmp/filecoin-proof-parameters/
+      - run:  ./lotus fetch-params 2048
+      - save_cache:
+          name: Save parameters cache
+          key: 'v25-2k-lotus-params'
+          paths:
+            - /var/tmp/filecoin-proof-parameters/
+  install_ipfs:
+    steps:
+      - run: |
+          apt update
+          apt install -y wget
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512
+          if [ "$(sha512sum go-ipfs_v0.4.22_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512)" ]
+          then
+            echo "ipfs failed checksum check"
+            exit 1
+          fi
+          tar -xf go-ipfs_v0.4.22_linux-amd64.tar.gz
+          mv go-ipfs/ipfs /usr/local/bin/ipfs
+          chmod +x /usr/local/bin/ipfs
+  git_fetch_all_tags:
+    steps:
+      - run:
+          name: fetch all tags
+          command: |
+            git fetch --all
+
+jobs:
+  mod-tidy-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-tidy-check
+
+  build-all:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: sudo apt-get update
+      - run: sudo apt-get install npm
+      - run:
+          command: make buildall
+      - store_artifacts:
+          path: lotus
+      - store_artifacts:
+          path: lotus-miner
+      - store_artifacts:
+          path: lotus-worker
+      - run: mkdir linux && mv lotus lotus-miner lotus-worker linux/
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux
+
+  build-debug:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make debug
+
+  test:
+    description: |
+      Run tests with gotestsum.
+    parameters: &test-params
+      executor:
+        type: executor
+        default: golang
+      go-test-flags:
+        type: string
+        default: "-timeout 30m"
+        description: Flags passed to go test.
+      target:
+        type: string
+        default: "./..."
+        description: Import paths of packages to be tested.
+      proofs-log-test:
+        type: string
+        default: "0"
+      suite:
+        type: string
+        default: unit
+        description: Test suite name to report to CircleCI.
+      gotestsum-format:
+        type: string
+        default: pkgname-and-test-fails
+        description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
+      coverage:
+        type: string
+        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/lotus/...
+        description: Coverage flag. Set to the empty string to disable.
+      codecov-upload:
+        type: boolean
+        default: true
+        description: |
+          Upload coverage report to https://codecov.io/. Requires the codecov API token to be
+          set as an environment variable for private projects.
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps lotus
+          no_output_timeout: 30m
+      - download-params
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+          version: 0.5.2
+      - run:
+          name: go test
+          environment:
+            TEST_RUSTPROOFS_LOGS: << parameters.proofs-log-test >>
+            SKIP_CONFORMANCE: "1"
+          command: |
+            mkdir -p /tmp/test-reports/<< parameters.suite >>
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format << parameters.gotestsum-format >> \
+              --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
+              -- \
+              << parameters.coverage >> \
+              << parameters.go-test-flags >> \
+              << parameters.packages >>
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/<< parameters.suite >>.json
+      - when:
+          condition: << parameters.codecov-upload >>
+          steps:
+            - go/install: {package: bash}
+            - go/install: {package: curl}
+            - run:
+                shell: /bin/bash -eo pipefail
+                command: |
+                  bash <(curl -s https://codecov.io/bash)
+
+  test-conformance:
+    description: |
+      Run tests using a corpus of interoperable test vectors for Filecoin 
+      implementations to test their correctness and compliance with the Filecoin
+      specifications.
+    parameters:
+      <<: *test-params
+      vectors-branch:
+        type: string
+        default: ""
+        description: |
+          Branch on github.com/filecoin-project/test-vectors to checkout and
+          test with. If empty (the default) the commit defined by the git
+          submodule is used.
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps lotus
+          no_output_timeout: 30m
+      - download-params
+      - when:
+          condition:
+            not:
+              equal: [ "", << parameters.vectors-branch >> ]
+          steps:
+            - run:
+                name: checkout vectors branch
+                command: |
+                  cd extern/test-vectors
+                  git fetch
+                  git checkout origin/<< parameters.vectors-branch >>
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+          version: 0.5.2
+      - run:
+          name: install statediff globally
+          command: |
+            ## statediff is optional; we succeed even if compilation fails.
+            mkdir -p /tmp/statediff
+            git clone https://github.com/filecoin-project/statediff.git /tmp/statediff
+            cd /tmp/statediff
+            go install ./cmd/statediff || exit 0
+      - run:
+          name: go test
+          environment:
+            SKIP_CONFORMANCE: "0"
+          command: |
+            mkdir -p /tmp/test-reports
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format pkgname-and-test-fails \
+              --junitfile /tmp/test-reports/junit.xml \
+              -- \
+              -v -coverpkg ./chain/vm/,github.com/filecoin-project/specs-actors/... -coverprofile=/tmp/conformance.out ./conformance/
+            go tool cover -html=/tmp/conformance.out -o /tmp/test-artifacts/conformance-coverage.html
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/conformance-coverage.html
+  build-ntwk-calibration:
+    description: |
+      Compile lotus binaries for the calibration network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make calibnet
+      - run: mkdir linux-calibrationnet && mv lotus lotus-miner lotus-worker linux-calibrationnet
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux-calibrationnet
+  build-ntwk-butterfly:
+    description: |
+      Compile lotus binaries for the butterfly network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make butterflynet
+      - run: mkdir linux-butterflynet && mv lotus lotus-miner lotus-worker linux-butterflynet
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux-butterflynet
+  build-ntwk-nerpa:
+    description: |
+      Compile lotus binaries for the nerpa network
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: make nerpanet
+      - run: mkdir linux-nerpanet && mv lotus lotus-miner lotus-worker linux-nerpanet
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux-nerpanet
+  build-lotus-soup:
+    description: |
+      Compile `lotus-soup` Testground test plan
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run: cd extern/filecoin-ffi && make
+      - run:
+          name: "go get lotus@master"
+          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../.. && go mod tidy
+      - run:
+          name: "build lotus-soup testplan"
+          command: pushd testplans/lotus-soup && go build -tags=testground .
+  trigger-testplans:
+    description: |
+      Trigger `lotus-soup` test cases on TaaS
+    parameters:
+      <<: *test-params
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          name: "download testground"
+          command: wget https://gist.github.com/nonsense/5fbf3167cac79945f658771aed32fc44/raw/2e17eb0debf7ec6bdf027c1bdafc2c92dd97273b/testground-d3e9603 -O ~/testground-cli && chmod +x ~/testground-cli
+      - run:
+          name: "prepare .env.toml"
+          command: pushd testplans/lotus-soup && mkdir -p $HOME/testground && cp env-ci.toml $HOME/testground/.env.toml && echo 'endpoint="https://ci.testground.ipfs.team"' >> $HOME/testground/.env.toml && echo 'user="circleci"' >> $HOME/testground/.env.toml
+      - run:
+          name: "prepare testground home dir and link test plans"
+          command: mkdir -p $HOME/testground/plans && ln -s $(pwd)/testplans/lotus-soup $HOME/testground/plans/lotus-soup && ln -s $(pwd)/testplans/graphsync $HOME/testground/plans/graphsync
+      - run:
+          name: "go get lotus@master"
+          command: cd testplans/lotus-soup && go get github.com/filecoin-project/lotus@master
+      - run:
+          name: "trigger deals baseline testplan on taas"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
+      - run:
+          name: "trigger payment channel stress testplan on taas"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
+      - run:
+          name: "trigger graphsync testplan on taas"
+          command: ~/testground-cli run composition -f $HOME/testground/plans/graphsync/_compositions/stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
+
+
+  build-macos:
+    description: build darwin lotus binary
+    macos:
+      xcode: "10.0.0"
+    working_directory: ~/go/src/github.com/filecoin-project/lotus
+    steps:
+      - prepare:
+          linux: false
+          darwin: true
+      - run:
+          name: Install go
+          command: |
+            curl -O https://dl.google.com/go/go1.16.4.darwin-amd64.pkg && \
+            sudo installer -pkg go1.16.4.darwin-amd64.pkg -target /
+      - run:
+          name: Install pkg-config
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
+      - run: go version
+      - run:
+          name: Install Rust
+          command: |
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+      - run:
+          name: Install jq
+          command: |
+            curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
+            chmod +x /usr/local/bin/jq
+      - run:
+          name: Install hwloc
+          command: |
+            mkdir ~/hwloc
+            curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
+            cd ~/hwloc
+            tar -xvzpf hwloc-2.4.1.tar.gz
+            cd hwloc-2.4.1
+            ./configure && make && sudo make install
+      - restore_cache:
+          name: restore cargo cache
+          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
+      - install-deps
+      - run:
+          command: make build
+          no_output_timeout: 30m
+      - store_artifacts:
+          path: lotus
+      - store_artifacts:
+          path: lotus-miner
+      - store_artifacts:
+          path: lotus-worker
+      - run: mkdir darwin && mv lotus lotus-miner lotus-worker darwin/
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - darwin
+      - save_cache:
+          name: save cargo cache
+          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
+          paths:
+            - "~/.rustup"
+            - "~/.cargo"
+
+  build-appimage:
+    machine:
+      image: ubuntu-2004:202104-01
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - run:
+          name: install appimage-builder
+          command: |
+            # docs: https://appimage-builder.readthedocs.io/en/latest/intro/install.html
+            sudo apt update
+            sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace
+            sudo curl -Lo /usr/local/bin/appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+            sudo chmod +x /usr/local/bin/appimagetool
+            sudo pip3 install appimage-builder
+      - run:
+          name: install lotus dependencies
+          command: sudo apt install ocl-icd-opencl-dev libhwloc-dev
+      - run:
+          name: build appimage
+          command: |
+            sed -i "s/version: latest/version: ${CIRCLE_TAG:-latest}/" AppImageBuilder.yml
+            make appimage
+      - run:
+          name: prepare workspace
+          command: |
+            mkdir appimage
+            mv Lotus-latest-x86_64.AppImage appimage
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - appimage
+
+
+  gofmt:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: "! go fmt ./... 2>&1 | read"
+
+  gen-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make deps
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: go install github.com/hannahhoward/cbor-gen-for
+      - run: make gen
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+      - run: make docsgen-cli
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
+  docs-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
+      - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
+      - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker
+      - run: make deps
+      - run: make docsgen
+      - run: zcat build/openrpc/full.json.gz | jq > ../post-openrpc-full
+      - run: zcat build/openrpc/miner.json.gz | jq > ../post-openrpc-miner
+      - run: zcat build/openrpc/worker.json.gz | jq > ../post-openrpc-worker
+      - run: git --no-pager diff
+      - run: diff ../pre-openrpc-full ../post-openrpc-full
+      - run: diff ../pre-openrpc-miner ../post-openrpc-miner
+      - run: diff ../pre-openrpc-worker ../post-openrpc-worker
+      - run: git --no-pager diff --quiet
+
+  lint: &lint
+    description: |
+      Run golangci-lint.
+    parameters:
+      executor:
+        type: executor
+        default: golang
+      golangci-lint-version:
+        type: string
+        default: 1.27.0
+      concurrency:
+        type: string
+        default: '2'
+        description: |
+          Concurrency used to run linters. Defaults to 2 because NumCPU is not
+          aware of container CPU limits.
+      args:
+        type: string
+        default: ''
+        description: |
+          Arguments to pass to golangci-lint
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make deps
+          no_output_timeout: 30m
+      - go/install-golangci-lint:
+          gobin: $HOME/.local/bin
+          version: << parameters.golangci-lint-version >>
+      - run:
+          name: Lint
+          command: |
+            $HOME/.local/bin/golangci-lint run -v --timeout 2m \
+              --concurrency << parameters.concurrency >> << parameters.args >>
+  lint-all:
+    <<: *lint
+
+  publish:
+    description: publish binary artifacts
+    executor: ubuntu
+    steps:
+      - run:
+          name: Install git jq curl
+          command: apt update && apt install -y git jq curl
+      - checkout
+      - git_fetch_all_tags
+      - checkout
+      - install_ipfs
+      - attach_workspace:
+          at: "."
+      - run:
+          name: Create bundles
+          command: ./scripts/build-bundle.sh
+      - run:
+          name: Publish release
+          command: ./scripts/publish-release.sh
+
+  publish-snapcraft:
+    description: build and push snapcraft
+    machine:
+      image: ubuntu-2004:202104-01
+    resource_class: 2xlarge
+    parameters:
+      channel:
+        type: string
+        default: "edge"
+        description: snapcraft channel
+    steps:
+      - checkout
+      - run:
+          name: install snapcraft
+          command: sudo snap install snapcraft --classic
+      - run:
+          name: create snapcraft config file
+          command: |
+            mkdir -p ~/.config/snapcraft
+            echo "$SNAPCRAFT_LOGIN_FILE" | base64 -d > ~/.config/snapcraft/snapcraft.cfg
+      - run:
+          name: build snap
+          command: snapcraft --use-lxd
+      - run:
+          name: publish snap
+          command: snapcraft push *.snap --release << parameters.channel >>
+
+  build-and-push-image:
+    description: build and push docker images to public AWS ECR registry
+    executor: aws-cli/default
+    parameters:
+      profile-name:
+        type: string
+        default: "default"
+        description: AWS profile name to be configured.
+
+      aws-access-key-id:
+        type: env_var_name
+        default: AWS_ACCESS_KEY_ID
+        description: >
+          AWS access key id for IAM role. Set this to the name of
+          the environment variable you will set to hold this
+          value, i.e. AWS_ACCESS_KEY.
+
+      aws-secret-access-key:
+        type: env_var_name
+        default: AWS_SECRET_ACCESS_KEY
+        description: >
+          AWS secret key for IAM role. Set this to the name of
+          the environment variable you will set to hold this
+          value, i.e. AWS_SECRET_ACCESS_KEY.
+
+      region:
+        type: env_var_name
+        default: AWS_REGION
+        description: >
+          Name of env var storing your AWS region information,
+          defaults to AWS_REGION
+
+      account-url:
+        type: env_var_name
+        default: AWS_ECR_ACCOUNT_URL
+        description: >
+          Env var storing Amazon ECR account URL that maps to an AWS account,
+          e.g. {awsAccountNum}.dkr.ecr.us-west-2.amazonaws.com
+          defaults to AWS_ECR_ACCOUNT_URL
+
+      dockerfile:
+        type: string
+        default: Dockerfile
+        description: Name of dockerfile to use. Defaults to Dockerfile.
+
+      path:
+        type: string
+        default: .
+        description: Path to the directory containing your Dockerfile and build context. Defaults to . (working directory).
+
+      extra-build-args:
+        type: string
+        default: ""
+        description: >
+          Extra flags to pass to docker build. For examples, see
+          https://docs.docker.com/engine/reference/commandline/build
+
+      repo:
+        type: string
+        description: Name of an Amazon ECR repository
+
+      tag:
+        type: string
+        default: "latest"
+        description: A comma-separated string containing docker image tags to build and push (default = latest)
+
+    steps:
+      - run:
+          name: Confirm that environment variables are set
+          command: |
+            if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+              echo "No AWS_ACCESS_KEY_ID is set. Skipping build-and-push job ..."
+              circleci-agent step halt
+            fi
+
+      - aws-cli/setup:
+          profile-name: <<parameters.profile-name>>
+          aws-access-key-id: <<parameters.aws-access-key-id>>
+          aws-secret-access-key: <<parameters.aws-secret-access-key>>
+          aws-region: <<parameters.region>>
+
+      - run:
+          name: Log into Amazon ECR
+          command: |
+            aws ecr-public get-login-password --region $<<parameters.region>> --profile <<parameters.profile-name>> | docker login --username AWS --password-stdin $<<parameters.account-url>>
+
+      - checkout
+
+      - setup_remote_docker:
+          version: 19.03.13
+          docker_layer_caching: false
+
+      - run:
+          name: Build docker image
+          command: |
+            registry_id=$(echo $<<parameters.account-url>> | sed "s;\..*;;g")
+
+            docker_tag_args=""
+            IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
+            for tag in "${DOCKER_TAGS[@]}"; do
+              docker_tag_args="$docker_tag_args -t $<<parameters.account-url>>/<<parameters.repo>>:$tag"
+            done
+
+            docker build \
+              <<#parameters.extra-build-args>><<parameters.extra-build-args>><</parameters.extra-build-args>> \
+              -f <<parameters.path>>/<<parameters.dockerfile>> \
+              $docker_tag_args \
+              <<parameters.path>>
+
+      - run:
+          name: Push image to Amazon ECR
+          command: |
+            IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
+            for tag in "${DOCKER_TAGS[@]}"; do
+              docker push $<<parameters.account-url>>/<<parameters.repo>>:${tag}
+            done
+
+  publish-packer-mainnet:
+    description: build and push AWS IAM and DigitalOcean droplet.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
+  publish-packer-calibrationnet:
+    description: build and push AWS IAM and DigitalOcean droplet.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
+  publish-packer-butterflynet:
+    description: build and push AWS IAM and DigitalOcean droplet.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+  publish-packer-nerpanet:
+    description: build and push AWS IAM and DigitalOcean droplet.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus.pkr.hcl
+          args: "-var ci_workspace_bins=./linux-nerpanet -var lotus_network=nerpanet -var git_tag=$CIRCLE_TAG"
+
+workflows:
+  version: 2.1
+  ci:
+    jobs:
+      - lint-all:
+          concurrency: "16"   # expend all docker 2xlarge CPUs.
+      - mod-tidy-check
+      - gofmt
+      - gen-check
+      - docs-check
+
+      [[- range $file := .ItestFiles -]]
+      [[ with $name := $file | stripSuffix ]]
+      - test:
+          name: test-itest-[[ $name ]]
+          suite: itest-[[ $name ]]
+          target: "./itests/[[ $file ]]"
+      [[ end ]]
+      [[- end -]]
+
+      [[range $suite, $pkgs := .UnitSuites]]
+      - test:
+          name: test-[[ $suite ]]
+          suite: utest-[[ $suite ]]
+          target: "[[ $pkgs ]]"
+      [[- end]]
+
+      - check-proofs-multicore-sdr:
+          go-test-flags: "-run=TestMulticoreSDR"
+          suite: multicore-sdr-check
+          target: "./extern/sector-storage/ffiwrapper"
+          proofs-log-test: "1"
+      - test-conformance:
+          suite: conformance
+          codecov-upload: false
+          target: "./conformance"
+      - test-conformance:
+          name: test-conformance-bleeding-edge
+          codecov-upload: false
+          suite: conformance-bleeding-edge
+          target: "./conformance"
+          vectors-branch: master
+      - trigger-testplans:
+          filters:
+            branches:
+              only:
+                - master
+      - build-debug
+      - build-all:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-ntwk-calibration:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-ntwk-butterfly:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-ntwk-nerpa:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-lotus-soup
+      - build-macos:
+          requires:
+            - test-short
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage:
+          requires:
+            - test-short
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish:
+          requires:
+            - build-all
+            - build-macos
+            - build-appimage
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-and-push-image:
+          dockerfile: Dockerfile.lotus
+          path: .
+          repo: lotus-dev
+          tag: '${CIRCLE_SHA1:0:8}'
+      - publish-packer-mainnet:
+          requires:
+            - build-all
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-packer-calibrationnet:
+          requires:
+            - build-ntwk-calibration
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-packer-butterflynet:
+          requires:
+            - build-ntwk-butterfly
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-packer-nerpanet:
+          requires:
+            - build-ntwk-nerpa
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-snapcraft:
+          name: publish-snapcraft-stable
+          channel: stable
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - publish-snapcraft:
+          name: publish-snapcraft-nightly
+          channel: edge
