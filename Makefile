@@ -379,3 +379,6 @@ docsgen-cli: lotus lotus-miner lotus-worker
 
 print-%:
 	@echo $*=$($*)
+
+circleci:
+	go generate -x ./.circleci
