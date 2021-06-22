@@ -74,6 +74,9 @@ var (
 	markSetSizeKey = dstore.NewKey("/splitstore/markSetSize")
 
 	log = logging.Logger("splitstore")
+
+	// set this to true if you are debugging the splitstore to enable debug logging
+	enableDebugLog = false
 )
 
 const (
@@ -173,6 +176,13 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
 
+	if enableDebugLog {
+		ss.debug, err = openDebugLog(path)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return ss, nil
 }
 
@@ -205,7 +215,10 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 		return blk, nil
 
 	case bstore.ErrNotFound:
-		s.debug.LogReadMiss(cid)
+		s.mx.Lock()
+		curTs := s.curTs
+		s.mx.Unlock()
+		s.debug.LogReadMiss(curTs, cid)
 
 		blk, err = s.cold.Get(cid)
 		if err == nil {
@@ -227,7 +240,10 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 		return size, nil
 
 	case bstore.ErrNotFound:
-		s.debug.LogReadMiss(cid)
+		s.mx.Lock()
+		curTs := s.curTs
+		s.mx.Unlock()
+		s.debug.LogReadMiss(curTs, cid)
 
 		size, err = s.cold.GetSize(cid)
 		if err == nil {
@@ -332,7 +348,10 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	err := s.hot.View(cid, cb)
 	switch err {
 	case bstore.ErrNotFound:
-		s.debug.LogReadMiss(cid)
+		s.mx.Lock()
+		curTs := s.curTs
+		s.mx.Unlock()
+		s.debug.LogReadMiss(curTs, cid)
 
 		err = s.cold.View(cid, cb)
 		if err == nil {
@@ -806,7 +825,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return nil
 	})
 
-	s.debug.FlushMove()
+	s.debug.Flush()
 
 	if err != nil {
 		return xerrors.Errorf("error collecting cold objects: %w", err)
