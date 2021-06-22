@@ -343,6 +343,17 @@ api-gen:
 	goimports -w api
 .PHONY: api-gen
 
+appimage: $(BUILD_DEPS)
+	rm -rf appimage-builder-cache || true
+	rm AppDir/io.filecoin.lotus.desktop || true
+	rm AppDir/icon.svg || true
+	rm Appdir/AppRun || true
+	mkdir -p AppDir/usr/bin
+	rm -rf lotus
+	go run github.com/GeertJohan/go.rice/rice embed-go -i ./build
+	go build $(GOFLAGS) -o lotus ./cmd/lotus
+	cp ./lotus AppDir/usr/bin/
+	appimage-builder
 docsgen: docsgen-md docsgen-openrpc
 
 docsgen-md-bin: api-gen actors-gen
