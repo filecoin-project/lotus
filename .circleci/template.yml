@@ -174,7 +174,7 @@ jobs:
               -- \
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
-              << parameters.packages >>
+              << parameters.target >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
@@ -762,8 +762,7 @@ workflows:
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
       [[- end]]
-
-      - check-proofs-multicore-sdr:
+      - test:
           go-test-flags: "-run=TestMulticoreSDR"
           suite: multicore-sdr-check
           target: "./extern/sector-storage/ffiwrapper"
@@ -785,37 +784,27 @@ workflows:
                 - master
       - build-debug
       - build-all:
-          requires:
-            - test-short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-calibration:
-          requires:
-            - test-short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-butterfly:
-          requires:
-            - test-short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-nerpa:
-          requires:
-            - test-short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
       - build-macos:
-          requires:
-            - test-short
           filters:
             branches:
               ignore:
@@ -824,8 +813,6 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-appimage:
-          requires:
-            - test-short
           filters:
             branches:
               ignore:

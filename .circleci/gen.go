@@ -9,6 +9,8 @@ import (
 	"text/template"
 )
 
+//go:generate go run ./gen.go ..
+
 //go:embed template.yml
 var templateFile embed.FS
 
@@ -43,7 +45,7 @@ func main() {
 	tmpl = template.Must(tmpl.ParseFS(templateFile, "*"))
 
 	// list all itests.
-	itests, err := filepath.Glob("./itests/*_test.go")
+	itests, err := filepath.Glob(filepath.Join(repo, "./itests/*_test.go"))
 	if err != nil {
 		panic(err)
 	}
@@ -117,8 +119,14 @@ func main() {
 		}(),
 	}
 
+	out, err := os.Create("./config.yml")
+	if err != nil {
+		panic(err)
+	}
+	defer out.Close()
+
 	// execute the template.
-	if err := tmpl.Execute(os.Stdout, in); err != nil {
+	if err := tmpl.Execute(out, in); err != nil {
 		panic(err)
 	}
 }
