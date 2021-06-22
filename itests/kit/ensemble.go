@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	"github.com/filecoin-project/lotus/genesis"
@@ -502,36 +503,43 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// disable resource filtering so that local worker gets assigned tasks
 			// regardless of system pressure.
-			// TODO: (anteva) this is missing???
-			//node.Override(new(sectorstorage.SealerConfig), func() sectorstorage.SealerConfig {
-			//scfg := config.DefaultStorageMiner()
-			//scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
-			//return scfg.Storage
-			//}),
+			node.Override(new(sectorstorage.SealerConfig), func() sectorstorage.SealerConfig {
+				scfg := config.DefaultStorageMiner()
+				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
+				return scfg.Storage
+			}),
 		}
 
 		// append any node builder options.
 		opts = append(opts, m.options.extraNodeOpts...)
 
-		_, err = address.IDFromAddress(m.ActorAddr)
+		idAddr, err := address.IDFromAddress(m.ActorAddr)
 		require.NoError(n.t, err)
 
 		// preload preseals if the network still hasn't bootstrapped.
-		//var presealSectors []abi.SectorID
-		//if !n.bootstrapped {
-		//sectors := n.genesis.miners[i].Sectors
-		//for _, sector := range sectors {
-		//presealSectors = append(presealSectors, abi.SectorID{
-		//Miner:  abi.ActorID(idAddr),
-		//Number: sector.SectorID,
-		//})
-		//}
-		//}
+		var presealSectors []abi.SectorID
+		if !n.bootstrapped {
+			sectors := n.genesis.miners[i].Sectors
+			for _, sector := range sectors {
+				presealSectors = append(presealSectors, abi.SectorID{
+					Miner:  abi.ActorID(idAddr),
+					Number: sector.SectorID,
+				})
+			}
+		}
 
 		if n.options.mockProofs {
 			opts = append(opts,
+				node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
+					return mock.NewMockSectorMgr(presealSectors), nil
+				}),
+				node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
+				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
+				node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
+
 				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 				node.Override(new(ffiwrapper.Prover), mock.MockProver),
+				node.Unset(new(*sectorstorage.Manager)),
 			)
 		}
 
