@@ -35,6 +35,30 @@ type MakeFullDealParams struct {
 	Rseed      int
 	FastRet    bool
 	StartEpoch abi.ChainEpoch
+
+	// SuspendUntilCryptoeconStable suspends deal-making, until cryptoecon
+	// parameters are stabilised. This affects projected collateral, and tests
+	// will fail in network version 13 and higher if deals are started too soon
+	// after network birth.
+	//
+	// The reason is that the formula for collateral calculation takes
+	// circulating supply into account:
+	//
+	//   [portion of power this deal will be] * [~1% of tokens].
+	//
+	// In the first epochs after genesis, the total circulating supply is
+	// changing dramatically in percentual terms. Therefore, if the deal is
+	// proposed too soon, by the time it gets published on chain, the quoted
+	// provider collateral will no longer be valid.
+	//
+	// The observation is that deals fail with:
+	//
+	//   GasEstimateMessageGas error: estimating gas used: message execution
+	//   failed: exit 16, reason: Provider collateral out of bounds. (RetCode=16)
+	//
+	// Enabling this will suspend deal-making until the network has reached a
+	// height of 150.
+	SuspendUntilCryptoeconStable bool
 }
 
 // NewDealHarness creates a test harness that contains testing utilities for deals.
@@ -55,6 +79,12 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 	res, path = dh.client.CreateImportFile(ctx, params.Rseed, 0)
 
 	dh.t.Logf("FILE CID: %s", res.Root)
+
+	if params.SuspendUntilCryptoeconStable {
+		dh.t.Logf("deal-making suspending until cryptecon parameters have stabilised")
+		ts := dh.client.WaitTillChain(ctx, HeightAtLeast(150))
+		dh.t.Logf("deal-making continuing; current height is %d", ts.Height())
+	}
 
 	deal = dh.StartDeal(ctx, res.Root, params.FastRet, params.StartEpoch)
 
