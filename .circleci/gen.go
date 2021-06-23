@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -99,6 +100,9 @@ func main() {
 	for k := range rest {
 		groupedUnitTests["unit-rest"] = append(groupedUnitTests["unit-rest"], k)
 	}
+
+	// map iteration guarantees no order, so sort the array in-place.
+	sort.Strings(groupedUnitTests["unit-rest"])
 
 	// form the input data.
 	type data struct {

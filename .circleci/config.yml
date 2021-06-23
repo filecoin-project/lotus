@@ -842,7 +842,7 @@ workflows:
       - test:
           name: test-unit-rest
           suite: utest-unit-rest
-          target: "./blockstore/... ./build/... ./journal/... ./cli/... ./conformance/... ./node/... ./paychmgr/... ./api/... ./chain/... ./lib/... ./cmd/... ./extern/... ./gateway/... ./markets/... ./storage/... ./tools/..."
+          target: "./api/... ./blockstore/... ./build/... ./chain/... ./cli/... ./cmd/... ./conformance/... ./extern/... ./gateway/... ./journal/... ./lib/... ./markets/... ./node/... ./paychmgr/... ./storage/... ./tools/..."
       - test:
           name: test-unit-storage
           suite: utest-unit-storage
