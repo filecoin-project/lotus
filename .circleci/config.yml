@@ -830,7 +830,6 @@ workflows:
           name: test-itest-wdpost
           suite: itest-wdpost
           target: "./itests/wdpost_test.go"
-      
       - test:
           name: test-unit-cli
           suite: utest-unit-cli
