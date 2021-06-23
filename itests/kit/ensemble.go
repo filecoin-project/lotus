@@ -432,7 +432,7 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
 
 		if m.options.mainMiner != nil {
-			token, err := m.options.mainMiner.FullNode.AuthNew(ctx, api.AllPermissions[:4])
+			token, err := m.options.mainMiner.FullNode.AuthNew(ctx, api.AllPermissions)
 			require.NoError(n.t, err)
 
 			cfg.Subsystems.SectorIndexApiInfo = fmt.Sprintf("%s:%s", token, m.options.mainMiner.ListenAddr)

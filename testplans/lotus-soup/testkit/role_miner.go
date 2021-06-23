@@ -600,7 +600,7 @@ func startStorageMinerAPIServer(t *TestEnvironment, repo repo.Repo, minerApi api
 	rpcServer.Register("Filecoin", minerApi)
 
 	mux.Handle("/rpc/v0", rpcServer)
-	mux.PathPrefix("/remote").HandlerFunc(minerApi.(*impl.StorageMinerAPI).ServeRemote)
+	mux.PathPrefix("/remote").HandlerFunc(minerApi.(*impl.StorageMinerAPI).ServeRemote(true))
 	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 	exporter, err := prometheus.NewExporter(prometheus.Options{
