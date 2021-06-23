@@ -58,6 +58,8 @@ type DealmakingConfig struct {
 	ConsiderUnverifiedStorageDeals bool
 	PieceCidBlocklist              []cid.Cid
 	ExpectedSealDuration           Duration
+	// Maximum amount of time proposed deal StartEpoch can be in future
+	MaxDealStartDelay Duration
 	// The amount of time to wait for more deals to arrive before
 	// publishing
 	PublishMsgPeriod Duration
@@ -320,6 +322,7 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
+			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
 			ExpectedSealDuration:            Duration(time.Hour * 24),
 			PublishMsgPeriod:                Duration(time.Hour),
 			MaxDealsPerPublishMsg:           8,

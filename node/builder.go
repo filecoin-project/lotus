@@ -436,6 +436,8 @@ var MinerNode = Options(
 	Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
 	Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
 	Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
+	Override(new(dtypes.SetMaxDealStartDelayFunc), modules.NewSetMaxDealStartDelayFunc),
+	Override(new(dtypes.GetMaxDealStartDelayFunc), modules.NewGetMaxDealStartDelayFunc),
 )
 
 // Online sets up basic libp2p node
