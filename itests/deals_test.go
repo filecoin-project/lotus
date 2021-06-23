@@ -24,6 +24,51 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+func TestDealWithMarketAndMinerNode(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	kit.QuietMiningLogs()
+
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
+
+	// For these tests where the block time is artificially short, just use
+	// a deal start epoch that is guaranteed to be far enough in the future
+	// so that the deal starts sealing in time
+	startEpoch := abi.ChainEpoch(2 << 12)
+
+	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
+		api.RunningNodeType = api.NodeMiner // TODO(anteva): fix me
+
+		client, main, market, _ := kit.EnsembleWithMinerAndMarketNodes(t, kit.ThroughRPC())
+
+		dh := kit.NewDealHarness(t, client, main, market)
+
+		runConcurrentDeals(t, dh, fullDealCyclesOpts{
+			n:             n,
+			fastRetrieval: fastRetrieval,
+			carExport:     carExport,
+			startEpoch:    startEpoch,
+		})
+	}
+
+	// TODO: add 2, 4, 8, more when this graphsync issue is fixed: https://github.com/ipfs/go-graphsync/issues/175#
+	cycles := []int{1}
+	for _, n := range cycles {
+		n := n
+		ns := fmt.Sprintf("%d", n)
+		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
+		//t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
+		//t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		//t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
+	}
+}
+
 func TestDealCyclesConcurrent(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")

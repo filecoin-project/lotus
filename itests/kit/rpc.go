@@ -2,6 +2,8 @@ package kit
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,8 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func CreateRPCServer(t *testing.T, handler http.Handler) (*httptest.Server, multiaddr.Multiaddr) {
+func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) (*httptest.Server, multiaddr.Multiaddr) {
 	testServ := httptest.NewServer(handler)
+	if listener != nil {
+		testServ.Listener = listener
+	}
 	t.Cleanup(testServ.Close)
 	t.Cleanup(testServ.CloseClientConnections)
 
@@ -28,7 +33,7 @@ func fullRpc(t *testing.T, f *TestFullNode) *TestFullNode {
 	handler, err := node.FullNodeHandler(f.FullNode, false)
 	require.NoError(t, err)
 
-	srv, maddr := CreateRPCServer(t, handler)
+	srv, maddr := CreateRPCServer(t, handler, nil)
 
 	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 	require.NoError(t, err)
@@ -42,9 +47,11 @@ func minerRpc(t *testing.T, m *TestMiner) *TestMiner {
 	handler, err := node.MinerHandler(m.StorageMiner, false)
 	require.NoError(t, err)
 
-	srv, maddr := CreateRPCServer(t, handler)
+	srv, maddr := CreateRPCServer(t, handler, m.RemoteListener)
 
-	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v0", nil)
+	fmt.Println("creating RPC server for", m.ActorAddr, "at: ", srv.Listener.Addr().String())
+	url := "ws://" + srv.Listener.Addr().String() + "/rpc/v0"
+	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), url, nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
 

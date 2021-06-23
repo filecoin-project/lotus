@@ -270,7 +270,7 @@ func startNodes(
 	handler, err := gateway.Handler(gwapi)
 	require.NoError(t, err)
 
-	srv, _ := kit.CreateRPCServer(t, handler)
+	srv, _ := kit.CreateRPCServer(t, handler, nil)
 
 	// Create a gateway client API that connects to the gateway server
 	var gapi api.Gateway

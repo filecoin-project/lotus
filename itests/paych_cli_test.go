@@ -33,7 +33,7 @@ func init() {
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
-// TestPaymentChannels does a basic test to exercise the payment channel CLI
+// TestPaymentChannelsBasic does a basic test to exercise the payment channel CLI
 // commands
 func TestPaymentChannelsBasic(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")

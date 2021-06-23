@@ -23,7 +23,7 @@ func EnsembleMinimal(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMin
 	return &full, &miner, ens
 }
 
-func EnsembleWithMarket(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *TestMiner, *Ensemble) {
+func EnsembleWithMinerAndMarketNodes(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *TestMiner, *Ensemble) {
 	eopts, nopts := siftOptions(t, opts)
 
 	var (

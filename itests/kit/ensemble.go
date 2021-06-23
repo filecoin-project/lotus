@@ -432,11 +432,14 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
 
 		if m.options.mainMiner != nil {
-			token, err := m.options.mainMiner.FullNode.AuthNew(ctx, api.AllPermissions[:3])
+			token, err := m.options.mainMiner.FullNode.AuthNew(ctx, api.AllPermissions[:4])
 			require.NoError(n.t, err)
 
 			cfg.Subsystems.SectorIndexApiInfo = fmt.Sprintf("%s:%s", token, m.options.mainMiner.ListenAddr)
 			cfg.Subsystems.SealerApiInfo = fmt.Sprintf("%s:%s", token, m.options.mainMiner.ListenAddr)
+
+			fmt.Println("config for market node, setting SectorIndexApiInfo to: ", cfg.Subsystems.SectorIndexApiInfo)
+			fmt.Println("config for market node, setting SealerApiInfo to: ", cfg.Subsystems.SealerApiInfo)
 		}
 
 		err = lr.SetConfig(func(raw interface{}) {
