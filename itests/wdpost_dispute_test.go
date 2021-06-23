@@ -50,26 +50,11 @@ func TestWindowPostDispute(t *testing.T) {
 		Miner(&evilMiner, &client, append(opts, kit.PresealSectors(0))...).
 		Start()
 
-	{
-		addrinfo, err := client.NetAddrsListen(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if err := chainMiner.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
-
-		if err := evilMiner.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	defaultFrom, err := client.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
 
 	// Mine with the _second_ node (the good one).
-	ens.BeginMining(blocktime, &chainMiner)
+	ens.InterconnectAll().BeginMining(blocktime, &chainMiner)
 
 	// Give the chain miner enough sectors to win every block.
 	chainMiner.PledgeSectors(ctx, 10, 0, nil)
@@ -85,7 +70,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 	t.Logf("Running one proving period\n")
 
-	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2
+	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2 + 1
 	t.Logf("End for head.Height > %d", waitUntil)
 
 	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
@@ -258,7 +243,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Log("Running one proving period")
-	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2
+	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2 + 1
 	t.Logf("End for head.Height > %d", waitUntil)
 
 	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))

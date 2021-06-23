@@ -111,6 +111,7 @@ type Ensemble struct {
 	active struct {
 		fullnodes []*TestFullNode
 		miners    []*TestMiner
+		bms       map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
 		miners   []genesis.Miner
@@ -127,6 +128,7 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	}
 
 	n := &Ensemble{t: t, options: &options}
+	n.active.bms = make(map[*TestMiner]*BlockMiner)
 
 	// add accounts from ensemble options to genesis.
 	for _, acc := range options.accounts {
@@ -656,7 +658,14 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 
 	var bms []*BlockMiner
 	if len(miners) == 0 {
-		miners = n.active.miners
+		// no miners have been provided explicitly, instantiate block miners
+		// for all active miners that aren't still mining.
+		for _, m := range n.active.miners {
+			if _, ok := n.active.bms[m]; ok {
+				continue // skip, already have a block miner
+			}
+			miners = append(miners, m)
+		}
 	}
 
 	for _, m := range miners {
@@ -665,6 +674,8 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 		n.t.Cleanup(bm.Stop)
 
 		bms = append(bms, bm)
+
+		n.active.bms[m] = bm
 	}
 
 	return bms
