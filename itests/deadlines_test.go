@@ -54,6 +54,8 @@ import (
 // * asserts that miner B loses power
 // * asserts that miner D loses power, is inactive
 func TestDeadlineToggling(t *testing.T) {
+	kit.Expensive(t)
+
 	_ = logging.SetLogLevel("miner", "ERROR")
 	_ = logging.SetLogLevel("chainstore", "ERROR")
 	_ = logging.SetLogLevel("chain", "ERROR")

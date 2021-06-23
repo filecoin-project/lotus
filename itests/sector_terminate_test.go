@@ -17,6 +17,8 @@ import (
 )
 
 func TestTerminate(t *testing.T) {
+	kit.Expensive(t)
+
 	kit.QuietMiningLogs()
 
 	const blocktime = 2 * time.Millisecond

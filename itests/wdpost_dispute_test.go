@@ -22,6 +22,8 @@ import (
 )
 
 func TestWindowPostDispute(t *testing.T) {
+	kit.Expensive(t)
+
 	kit.QuietMiningLogs()
 
 	b := kit.MockMinerBuilder
@@ -249,6 +251,8 @@ func TestWindowPostDispute(t *testing.T) {
 }
 
 func TestWindowPostDisputeFails(t *testing.T) {
+	kit.Expensive(t)
+
 	kit.QuietMiningLogs()
 
 	b := kit.MockMinerBuilder

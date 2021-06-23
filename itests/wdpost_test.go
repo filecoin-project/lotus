@@ -22,6 +22,8 @@ import (
 )
 
 func TestWindowedPost(t *testing.T) {
+	kit.Expensive(t)
+
 	kit.QuietMiningLogs()
 
 	var (
@@ -259,6 +261,8 @@ func testWindowPostUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Durati
 }
 
 func TestWindowPostBaseFeeNoBurn(t *testing.T) {
+	kit.Expensive(t)
+
 	kit.QuietMiningLogs()
 
 	var (
@@ -314,6 +318,8 @@ waitForProof:
 }
 
 func TestWindowPostBaseFeeBurn(t *testing.T) {
+	kit.Expensive(t)
+
 	kit.QuietMiningLogs()
 
 	ctx, cancel := context.WithCancel(context.Background())
