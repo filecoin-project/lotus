@@ -59,7 +59,6 @@ import (
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
@@ -486,6 +485,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
+	startDelay dtypes.GetMaxDealStartDelayFunc,
 	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
@@ -493,6 +493,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 		unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
+		startDelay dtypes.GetMaxDealStartDelayFunc,
 		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
@@ -564,9 +565,14 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 				return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
 			}
 
+			sd, err := startDelay()
+			if err != nil {
+				return false, "miner error", err
+			}
+
 			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg
-			maxStartEpoch := earliest + abi.ChainEpoch(7*builtin.SecondsInDay/build.BlockDelaySecs)
+			maxStartEpoch := earliest + abi.ChainEpoch(uint64(sd.Seconds())/build.BlockDelaySecs)
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}
@@ -893,6 +899,24 @@ func NewGetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.GetExpectedSealDu
 	return func() (out time.Duration, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
 			out = time.Duration(cfg.Dealmaking.ExpectedSealDuration)
+		})
+		return
+	}, nil
+}
+
+func NewSetMaxDealStartDelayFunc(r repo.LockedRepo) (dtypes.SetMaxDealStartDelayFunc, error) {
+	return func(delay time.Duration) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.MaxDealStartDelay = config.Duration(delay)
+		})
+		return
+	}, nil
+}
+
+func NewGetMaxDealStartDelayFunc(r repo.LockedRepo) (dtypes.GetMaxDealStartDelayFunc, error) {
+	return func() (out time.Duration, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = time.Duration(cfg.Dealmaking.MaxDealStartDelay)
 		})
 		return
 	}, nil
