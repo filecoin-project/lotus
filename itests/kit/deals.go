@@ -57,7 +57,7 @@ type MakeFullDealParams struct {
 	//   failed: exit 16, reason: Provider collateral out of bounds. (RetCode=16)
 	//
 	// Enabling this will suspend deal-making until the network has reached a
-	// height of 150.
+	// height of 300.
 	SuspendUntilCryptoeconStable bool
 }
 
@@ -82,7 +82,7 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 
 	if params.SuspendUntilCryptoeconStable {
 		dh.t.Logf("deal-making suspending until cryptecon parameters have stabilised")
-		ts := dh.client.WaitTillChain(ctx, HeightAtLeast(150))
+		ts := dh.client.WaitTillChain(ctx, HeightAtLeast(300))
 		dh.t.Logf("deal-making continuing; current height is %d", ts.Height())
 	}
 
