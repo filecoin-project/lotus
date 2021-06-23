@@ -92,7 +92,7 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-	dh.WaitDealSealed(ctx, deal, false, false, nil)
+	dh.WaitDealSealed(ctx, deal, false, false)
 
 	return deal, res, path
 }
@@ -122,49 +122,127 @@ func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool
 	return deal
 }
 
-// WaitDealSealed waits until the deal is sealed.
-func (dh *DealHarness) WaitDealSealed(ctx context.Context, deal *cid.Cid, noseal, noSealStart bool, cb func()) {
-loop:
-	for {
-		di, err := dh.client.ClientGetDealInfo(ctx, *deal)
-		require.NoError(dh.t, err)
+type DealStateCheck func(ctx context.Context, di *api.DealInfo, sn abi.SectorNumber) bool
+
+func (dh *DealHarness) DealState(expect ...storagemarket.StorageDealStatus) DealStateCheck {
+	return func(ctx context.Context, di *api.DealInfo, sn abi.SectorNumber) bool {
+		for _, state := range expect {
+			if di.State == state {
+				return true
+			}
+		}
 
 		switch di.State {
-		case storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing:
-			if noseal {
-				return
-			}
-			if !noSealStart {
-				dh.StartSealingWaiting(ctx)
-			}
 		case storagemarket.StorageDealProposalRejected:
 			dh.t.Fatal("deal rejected")
 		case storagemarket.StorageDealFailing:
 			dh.t.Fatal("deal failed")
 		case storagemarket.StorageDealError:
 			dh.t.Fatal("deal errored", di.Message)
-		case storagemarket.StorageDealActive:
-			dh.t.Log("COMPLETE", di)
-			break loop
 		}
 
-		mds, err := dh.market.MarketListIncompleteDeals(ctx)
+		return false
+	}
+}
+
+func (dh *DealHarness) DealSectorState(expect sealing.SectorState) DealStateCheck {
+	return func(ctx context.Context, di *api.DealInfo, sn abi.SectorNumber) bool {
+		if sn == 0 {
+			return false
+		}
+
+		si, err := dh.main.SectorsStatus(ctx, sn, false)
 		require.NoError(dh.t, err)
 
-		var minerState storagemarket.StorageDealStatus
-		for _, md := range mds {
-			if md.DealID == di.DealID {
-				minerState = md.State
+		return si.State == api.SectorState(expect)
+	}
+}
+
+func (dh *DealHarness) DealOn(cb func(), state ...storagemarket.StorageDealStatus) DealStateCheck {
+	return func(ctx context.Context, di *api.DealInfo, sn abi.SectorNumber) bool {
+		for _, state := range state {
+			if di.State == state {
+				cb()
 				break
 			}
 		}
 
-		dh.t.Logf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
-		time.Sleep(time.Second / 2)
-		if cb != nil {
-			cb()
-		}
+		return true
 	}
+}
+
+func (dh *DealHarness) WaitDealStates(ctx context.Context, deals []*cid.Cid, stateChecks ...DealStateCheck) {
+	todo := make(map[cid.Cid]struct{}, len(deals))
+	for _, deal := range deals {
+		todo[*deal] = struct{}{}
+	}
+
+	for len(todo) > 0 {
+		for deal := range todo {
+			di, err := dh.client.ClientGetDealInfo(ctx, deal)
+			require.NoError(dh.t, err)
+
+			mds, err := dh.market.MarketListIncompleteDeals(ctx)
+			require.NoError(dh.t, err)
+
+			var ms abi.SectorNumber
+			sl, err := dh.main.SectorsList(ctx)
+			require.NoError(dh.t, err)
+		sloop:
+			for _, s := range sl {
+				si, err := dh.main.SectorsStatus(ctx, s, false)
+				require.NoError(dh.t, err)
+				for _, dealId := range si.Deals {
+					if dealId == di.DealID {
+						ms = s
+						break sloop
+					}
+				}
+			}
+
+			done := true
+			for _, check := range stateChecks {
+				if !check(ctx, di, ms) {
+					done = false
+					break
+				}
+			}
+
+			if done {
+				dh.t.Log("Wait complete", di)
+				delete(todo, deal)
+			}
+
+			var minerDeal storagemarket.MinerDeal
+			for _, md := range mds {
+				if md.DealID == di.DealID {
+					minerDeal = md
+					break
+				}
+			}
+
+			dh.t.Logf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerDeal.State])
+		}
+
+		time.Sleep(time.Second / 2)
+	}
+}
+
+// WaitDealSealed waits until the deal is sealed.
+func (dh *DealHarness) WaitDealSealed(ctx context.Context, deal *cid.Cid, noseal, noSealStart bool) {
+	if noseal {
+		dh.WaitDealStates(ctx, []*cid.Cid{deal}, dh.DealState(storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive))
+	}
+	var checks []DealStateCheck
+	if noSealStart {
+		checks = append(checks, dh.DealOn(func() {
+			dh.StartSealingWaiting(ctx)
+		}, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing))
+	}
+
+	checks = append(checks, dh.DealState(storagemarket.StorageDealActive))
+
+	dh.WaitDealStates(ctx, []*cid.Cid{deal}, checks...)
 }
 
 // WaitDealPublished waits until the deal is published.

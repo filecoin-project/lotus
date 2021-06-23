@@ -55,7 +55,7 @@ func TestFirstDealEnablesMining(t *testing.T) {
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 
-	dh.WaitDealSealed(ctx, deal, false, false, nil)
+	dh.WaitDealSealed(ctx, deal, false, false)
 
 	<-providerMined
 }

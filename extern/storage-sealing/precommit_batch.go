@@ -181,8 +181,12 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, xerrors.Errorf("getting config: %w", err)
 	}
 
-	if notif && total < cfg.MaxPreCommitBatch {
-		return nil, nil
+	if notif {
+		if total < cfg.MaxPreCommitBatch {
+			return nil, nil
+		}
+
+		log.Info("processing batch: queued more than Max")
 	}
 
 	// todo support multiple batches
