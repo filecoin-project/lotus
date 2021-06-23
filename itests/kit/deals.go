@@ -2,15 +2,11 @@ package kit
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/ipfs/go-cid"
-	files "github.com/ipfs/go-ipfs-files"
-	"github.com/ipld/go-car"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,10 +14,15 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
+	"github.com/ipld/go-car"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 type DealHarness struct {
@@ -245,4 +246,36 @@ func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (o
 	require.NoError(dh.t, err)
 
 	return tmpfile
+}
+
+type RunConcurrentDealsOpts struct {
+	N             int
+	FastRetrieval bool
+	CarExport     bool
+	StartEpoch    abi.ChainEpoch
+}
+
+func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
+	errgrp, _ := errgroup.WithContext(context.Background())
+	for i := 0; i < opts.N; i++ {
+		i := i
+		errgrp.Go(func() (err error) {
+			defer func() {
+				// This is necessary because golang can't deal with test
+				// failures being reported from children goroutines ¯\_(ツ)_/¯
+				if r := recover(); r != nil {
+					err = fmt.Errorf("deal failed: %s", r)
+				}
+			}()
+			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), MakeFullDealParams{
+				Rseed:      5 + i,
+				FastRet:    opts.FastRetrieval,
+				StartEpoch: opts.StartEpoch,
+			})
+			outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, opts.CarExport)
+			AssertFilesEqual(dh.t, inPath, outPath)
+			return nil
+		})
+	}
+	require.NoError(dh.t, errgrp.Wait())
 }
