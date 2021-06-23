@@ -93,7 +93,7 @@ func (b *PreCommitBatcher) run() {
 		}
 		lastRes = nil
 
-		var sendAboveMax, sendAboveMin bool
+		var sendAboveMax bool
 		select {
 		case <-b.stop:
 			close(b.stopped)
@@ -101,13 +101,13 @@ func (b *PreCommitBatcher) run() {
 		case <-b.notify:
 			sendAboveMax = true
 		case <-b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack):
-			sendAboveMin = true
+			// do nothing
 		case fr := <-b.force: // user triggered
 			forceRes = fr
 		}
 
 		var err error
-		lastRes, err = b.maybeStartBatch(sendAboveMax, sendAboveMin)
+		lastRes, err = b.maybeStartBatch(sendAboveMax)
 		if err != nil {
 			log.Warnw("PreCommitBatcher processBatch error", "error", err)
 		}
@@ -155,7 +155,7 @@ func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.T
 	return time.After(wait)
 }
 
-func (b *PreCommitBatcher) maybeStartBatch(notif, after bool) ([]sealiface.PreCommitBatchRes, error) {
+func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBatchRes, error) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 
@@ -170,10 +170,6 @@ func (b *PreCommitBatcher) maybeStartBatch(notif, after bool) ([]sealiface.PreCo
 	}
 
 	if notif && total < cfg.MaxPreCommitBatch {
-		return nil, nil
-	}
-
-	if after && total < cfg.MinPreCommitBatch {
 		return nil, nil
 	}
 

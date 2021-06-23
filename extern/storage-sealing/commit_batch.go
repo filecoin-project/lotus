@@ -108,7 +108,8 @@ func (b *CommitBatcher) run() {
 		}
 		lastMsg = nil
 
-		var sendAboveMax, sendAboveMin bool
+		// indicates whether we should only start a batch if we have reached or exceeded cfg.MaxCommitBatch
+		var sendAboveMax bool
 		select {
 		case <-b.stop:
 			close(b.stopped)
@@ -116,13 +117,13 @@ func (b *CommitBatcher) run() {
 		case <-b.notify:
 			sendAboveMax = true
 		case <-b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack):
-			sendAboveMin = true
+			// do nothing
 		case fr := <-b.force: // user triggered
 			forceRes = fr
 		}
 
 		var err error
-		lastMsg, err = b.maybeStartBatch(sendAboveMax, sendAboveMin)
+		lastMsg, err = b.maybeStartBatch(sendAboveMax)
 		if err != nil {
 			log.Warnw("CommitBatcher processBatch error", "error", err)
 		}
@@ -170,7 +171,7 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.Time
 	return time.After(wait)
 }
 
-func (b *CommitBatcher) maybeStartBatch(notif, after bool) ([]sealiface.CommitBatchRes, error) {
+func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes, error) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 
@@ -185,10 +186,6 @@ func (b *CommitBatcher) maybeStartBatch(notif, after bool) ([]sealiface.CommitBa
 	}
 
 	if notif && total < cfg.MaxCommitBatch {
-		return nil, nil
-	}
-
-	if after && total < cfg.MinCommitBatch {
 		return nil, nil
 	}
 

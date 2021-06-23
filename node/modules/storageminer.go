@@ -830,7 +830,6 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				FinalizeEarly:             cfg.FinalizeEarly,
 
 				BatchPreCommits:     cfg.BatchPreCommits,
-				MinPreCommitBatch:   cfg.MinPreCommitBatch,
 				MaxPreCommitBatch:   cfg.MaxPreCommitBatch,
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
 				PreCommitBatchSlack: config.Duration(cfg.PreCommitBatchSlack),
@@ -862,7 +861,6 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 				FinalizeEarly:             cfg.Sealing.FinalizeEarly,
 
 				BatchPreCommits:     cfg.Sealing.BatchPreCommits,
-				MinPreCommitBatch:   cfg.Sealing.MinPreCommitBatch,
 				MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
 				PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
 				PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
