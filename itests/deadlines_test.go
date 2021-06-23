@@ -3,7 +3,6 @@ package itests
 import (
 	"bytes"
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -53,9 +52,7 @@ import (
 // * asserts that miner B loses power
 // * asserts that miner D loses power, is inactive
 func TestDeadlineToggling(t *testing.T) {
-	if os.Getenv("LOTUS_TEST_DEADLINE_TOGGLING") != "1" {
-		t.Skip("this takes a few minutes, set LOTUS_TEST_DEADLINE_TOGGLING=1 to run")
-	}
+	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
 

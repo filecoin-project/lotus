@@ -8,25 +8,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/gateway"
+	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/multisig"
 	"github.com/filecoin-project/lotus/node"
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 )
 
 const (
@@ -175,7 +175,7 @@ func TestGatewayMsigCLI(t *testing.T) {
 	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 
 	lite := nodes.lite
-	runMultisigTests(t, lite)
+	multisig.RunMultisigTests(t, lite)
 }
 
 func TestGatewayDealFlow(t *testing.T) {

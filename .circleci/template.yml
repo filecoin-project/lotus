@@ -746,107 +746,22 @@ workflows:
       - gofmt
       - gen-check
       - docs-check
+
+      [[- range $file := .ItestFiles -]]
+      [[ with $name := $file | stripSuffix ]]
       - test:
-          name: test-itest-api
-          suite: itest-api
-          target: "./itests/api_test.go"
-      
+          name: test-itest-[[ $name ]]
+          suite: itest-[[ $name ]]
+          target: "./itests/[[ $file ]]"
+      [[ end ]]
+      [[- end -]]
+
+      [[range $suite, $pkgs := .UnitSuites]]
       - test:
-          name: test-itest-batch_deal
-          suite: itest-batch_deal
-          target: "./itests/batch_deal_test.go"
-      
-      - test:
-          name: test-itest-ccupgrade
-          suite: itest-ccupgrade
-          target: "./itests/ccupgrade_test.go"
-      
-      - test:
-          name: test-itest-cli
-          suite: itest-cli
-          target: "./itests/cli_test.go"
-      
-      - test:
-          name: test-itest-deadlines
-          suite: itest-deadlines
-          target: "./itests/deadlines_test.go"
-      
-      - test:
-          name: test-itest-deals
-          suite: itest-deals
-          target: "./itests/deals_test.go"
-      
-      - test:
-          name: test-itest-gateway
-          suite: itest-gateway
-          target: "./itests/gateway_test.go"
-      
-      - test:
-          name: test-itest-multisig
-          suite: itest-multisig
-          target: "./itests/multisig_test.go"
-      
-      - test:
-          name: test-itest-paych_api
-          suite: itest-paych_api
-          target: "./itests/paych_api_test.go"
-      
-      - test:
-          name: test-itest-paych_cli
-          suite: itest-paych_cli
-          target: "./itests/paych_cli_test.go"
-      
-      - test:
-          name: test-itest-sdr_upgrade
-          suite: itest-sdr_upgrade
-          target: "./itests/sdr_upgrade_test.go"
-      
-      - test:
-          name: test-itest-sector_pledge
-          suite: itest-sector_pledge
-          target: "./itests/sector_pledge_test.go"
-      
-      - test:
-          name: test-itest-sector_terminate
-          suite: itest-sector_terminate
-          target: "./itests/sector_terminate_test.go"
-      
-      - test:
-          name: test-itest-tape
-          suite: itest-tape
-          target: "./itests/tape_test.go"
-      
-      - test:
-          name: test-itest-verifreg
-          suite: itest-verifreg
-          target: "./itests/verifreg_test.go"
-      
-      - test:
-          name: test-itest-wdpost_dispute
-          suite: itest-wdpost_dispute
-          target: "./itests/wdpost_dispute_test.go"
-      
-      - test:
-          name: test-itest-wdpost
-          suite: itest-wdpost
-          target: "./itests/wdpost_test.go"
-      
-      - test:
-          name: test-unit-cli
-          suite: utest-unit-cli
-          target: "./cli/... ./cmd/... ./api/..."
-      - test:
-          name: test-unit-node
-          suite: utest-unit-node
-          target: "./node/..."
-      - test:
-          name: test-unit-rest
-          suite: utest-unit-rest
-          target: "./api/... ./blockstore/... ./build/... ./chain/... ./cli/... ./cmd/... ./conformance/... ./extern/... ./gateway/... ./journal/... ./lib/... ./markets/... ./node/... ./paychmgr/... ./storage/... ./tools/..."
-      - test:
-          name: test-unit-storage
-          suite: utest-unit-storage
-          target: "./storage/... ./extern/..."
+          name: test-[[ $suite ]]
+          suite: utest-[[ $suite ]]
+          target: "[[ $pkgs ]]"
+      [[- end]]
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
           suite: multicore-sdr-check
