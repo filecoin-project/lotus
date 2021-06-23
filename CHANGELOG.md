@@ -1,10 +1,10 @@
 # Lotus changelog
 
-# 1.10.0-rc6 / 2021-06-18
+# 1.10.0 / 2021-06-23
 
-> Note: If you are running a lotus miner, check out the doc [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#precommitsectorsbatch) for new lotus miner configurations explanations of the new features!
+> Note: If you are running a Lotus miner, check out the documentation[here](https://docs.filecoin.io/mine/lotus/miner-configuration/#precommitsectorsbatch) for details of the new Lotus miner config options and explanations of the new features.
 
-This is the 6th release candidate for Lotus v1.10.0, an upcoming mandatory release of Lotus that will introduce Filecoin network v13. Use this release for syncing with the [reset calibration net](https://github.com/filecoin-project/community/discussions/74#discussioncomment-885580). In addition, included in the new network version are the following FIPs:
+This is a mandatory release of Lotus that introduces Filecoin network v13, codenamed the HyperDrive upgrade. The Filecoin mainnet will upgrade at epoch 892800, which is 2021-06-30T22:00:00Z. The network upgrade introduces the following FIPs:
 
 - [FIP-0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.md): Add miner batched sector pre-commit method
 - [FIP-0011](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0011.md): Remove reward auction from reporting consensus faults
@@ -12,11 +12,33 @@ This is the 6th release candidate for Lotus v1.10.0, an upcoming mandatory relea
 - [FIP-0013](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013.md): Add ProveCommitSectorAggregated method to reduce on-chain congestion
 - [FIP-0015](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0015.md): Revert FIP-0009(Exempt Window PoSts from BaseFee burn)
 
-This release candidate does not set the upgrade epochs for mainnet, but does set the upgrade epoch for the calibration network to 321519.
-
 Note that this release is built on top of Lotus v1.9.0. Enterprising users can use the `master` branch of Lotus to get the latest functionality, including all changes in this release candidate.
 
-A detailed changelog will be included in a later release candidate.
+## Proof batching and aggregation
+
+FIPs [0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.md) and [0013](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013.md) combine to allow for a significant increase in the rate of onboarding storage on the Filecoin network. It is hoped that this will lead to more useful data being stored on the network, reduced network congestion, and lower network base fee.
+
+### Projected state tree growth
+
+As a result of the accelerated onboarding of storage onto the network, it is possible 
+
+### Hardware requirements and suggestions
+
+As the size of a single state tree grows, so will the size of the minimal datastore needed to sync the blockchain. The Filecoin protocol requires any node validating the chain to have the last 1800 state trees (2 * `ChainFinality`). Depending on how fast storage providers seal new sectors, this could get as large as AMOUNT in 6 months, and grow as fast as 20 GB per day. This increases the necessary hardware requirements to validate the Filecoin blockchain, but can be supported by images such as [Amazon EC2](https://aws.amazon.com/ec2/instance-explorer/?ec2-instances-cards.sort-by=item.additionalFields.category-order&ec2-instances-cards.sort-order=asc&awsf.ec2-instances-filter-category=*all&awsf.ec2-instances-filter-processors=*all&awsf.ec2-instances-filter-accelerators=*all&awsf.ec2-instances-filter-capabilities=additional-capabilities%23instance-storage&ec2-instances-cards.q=ssd&ec2-instances-cards.q_operator=AND&awsm.page-ec2-instances-cards=1) and [Google Cloud Platform](https://cloud.google.com/compute/docs/machine-types).
+
+### Future improvements
+
+Various Lotus improvements are planned moving forward to mitigate the effects of the growing state tree size. The primary improvement is the [Lotus splitstore](LINK TO DISCUSSION), which will soon be enabled by default. The feature allows for [online garbage collection](https://github.com/filecoin-project/lotus/issues/6577) for nodes that do not seek to maintain full chain and state history, thus eliminating the need for users to delete their datastores and sync from snapshots.
+
+Other improvements including better compressed snapshots, faster premigrations, and improved chain exports.
+
+## WindowPost base fee burn
+
+Included in the HyperDrive upgrade is [FIP-0015](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0015.md) which eliminates the special-case gas treatment of `SubmitWindowedPoSt` messages that was introduced in [FIP-0009](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0009.md). Although `SubmitWindowedPoSt` messages will be relatively cheap, thanks to the introduction of optimistic acceptance of these proofs in [FIP-0010](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0010.md), storage providers should pay attention to their `MaxWindowPoStGasFee` config option: too low and PoSts may not land on chain; too high and they may cost an exorbitant amount!
+
+## Changelog
+
+TODO
 
 # 1.9.0 / 2021-05-17
 
