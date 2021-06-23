@@ -3,7 +3,6 @@ package itests
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -23,9 +22,7 @@ import (
 )
 
 func TestWindowedPost(t *testing.T) {
-	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
-		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
-	}
+	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
 
@@ -264,9 +261,7 @@ func testWindowPostUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Durati
 }
 
 func TestWindowPostBaseFeeNoBurn(t *testing.T) {
-	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
-		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
-	}
+	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
 
@@ -323,9 +318,7 @@ waitForProof:
 }
 
 func TestWindowPostBaseFeeBurn(t *testing.T) {
-	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
-		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
-	}
+	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
 
