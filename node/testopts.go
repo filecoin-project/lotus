@@ -10,8 +10,8 @@ import (
 
 func MockHost(mn mocknet.Mocknet) Option {
 	return Options(
-		ApplyIf(func(s *Settings) bool { return !s.Online },
-			Error(errors.New("MockHost must be specified after Online")),
+		ApplyIf(func(s *Settings) bool { return !s.Base },
+			Error(errors.New("MockHost must be specified after Base")),
 		),
 
 		Override(new(lp2p.RawHost), lp2p.MockHost),

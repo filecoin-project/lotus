@@ -26,10 +26,11 @@ type nodeOpts struct {
 	ownerKey      *wallet.Key
 	extraNodeOpts []node.Option
 
-	subsystems  MinerSubsystem
-	mainMiner   *TestMiner
-	optBuilders []OptBuilder
-	proofType   abi.RegisteredSealProof
+	subsystems    MinerSubsystem
+	mainMiner     *TestMiner
+	disableLibp2p bool
+	optBuilders   []OptBuilder
+	proofType     abi.RegisteredSealProof
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -60,6 +61,13 @@ func WithAllSubsystems() NodeOpt {
 func WithSubsystem(single MinerSubsystem) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.subsystems = opts.subsystems.Add(single)
+		return nil
+	}
+}
+
+func DisableLibp2p() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.disableLibp2p = true
 		return nil
 	}
 }

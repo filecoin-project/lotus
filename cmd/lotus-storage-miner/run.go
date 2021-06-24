@@ -124,7 +124,7 @@ var runCmd = &cli.Command{
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Online(),
+			node.Base(r),
 			node.Repo(r),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },
@@ -143,14 +143,14 @@ var runCmd = &cli.Command{
 		}
 
 		// Bootstrap with full node
-		remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
-		if err != nil {
-			return xerrors.Errorf("getting full node libp2p address: %w", err)
-		}
+		//remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
+		//if err != nil {
+		//return xerrors.Errorf("getting full node libp2p address: %w", err)
+		//}
 
-		if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
-			return xerrors.Errorf("connecting to full node (libp2p): %w", err)
-		}
+		//if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
+		//return xerrors.Errorf("connecting to full node (libp2p): %w", err)
+		//}
 
 		log.Infof("Remote version %s", v)
 

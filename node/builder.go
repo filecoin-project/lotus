@@ -8,6 +8,7 @@ import (
 
 	metricsi "github.com/ipfs/go-metrics-interface"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/system"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -34,6 +35,8 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/common"
+	"github.com/filecoin-project/lotus/node/impl/common/mock"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -128,7 +131,7 @@ type Settings struct {
 
 	nodeType repo.RepoType
 
-	Online bool // Online option applied
+	Base   bool // Base option applied
 	Config bool // Config option applied
 	Lite   bool // Start node in "lite" mode
 }
@@ -207,18 +210,14 @@ func isFullOrLiteNode(s *Settings) bool { return s.nodeType == repo.FullNode }
 func isFullNode(s *Settings) bool       { return s.nodeType == repo.FullNode && !s.Lite }
 func isLiteNode(s *Settings) bool       { return s.nodeType == repo.FullNode && s.Lite }
 
-// Online sets up basic libp2p node
-func Online() Option {
-
+func Base(r repo.Repo) Option {
 	return Options(
-		// make sure that online is applied before Config.
-		// This is important because Config overrides some of Online units
-		func(s *Settings) error { s.Online = true; return nil },
+		func(s *Settings) error { s.Base = true; return nil }, // mark Base as applied
 		ApplyIf(func(s *Settings) bool { return s.Config },
-			Error(errors.New("the Online option must be set before Config option")),
+			Error(errors.New("the Base() option must be set before Config option")),
 		),
 
-		LibP2P,
+		ApplyIfEnableLibP2P(r, LibP2P),
 
 		ApplyIf(isFullOrLiteNode, ChainNode),
 		ApplyIf(isType(repo.StorageMiner), MinerNode),
@@ -226,7 +225,7 @@ func Online() Option {
 }
 
 // Config sets up constructors based on the provided Config
-func ConfigCommon(cfg *config.Common) Option {
+func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
@@ -242,7 +241,14 @@ func ConfigCommon(cfg *config.Common) Option {
 			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
 			return urls, nil
 		}),
-		ApplyIf(func(s *Settings) bool { return s.Online },
+		ApplyIf(func(s *Settings) bool { return s.Base }), // apply only if Base has already been applied
+		If(!enableLibp2pNode,
+			Override(new(common.NetAPI), From(new(mock.MockNetAPI))),
+			Override(new(api.Common), From(new(common.CommonAPI))),
+		),
+		If(enableLibp2pNode,
+			Override(new(common.NetAPI), From(new(common.Libp2pNetAPI))),
+			Override(new(api.Common), From(new(common.CommonAPI))),
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
 			Override(ConnectionManagerKey, lp2p.ConnectionManager(
 				cfg.Libp2p.ConnMgrLow,
@@ -255,10 +261,11 @@ func ConfigCommon(cfg *config.Common) Option {
 			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
 			),
+
+			Override(AddrsFactoryKey, lp2p.AddrsFactory(
+				cfg.Libp2p.AnnounceAddresses,
+				cfg.Libp2p.NoAnnounceAddresses)),
 		),
-		Override(AddrsFactoryKey, lp2p.AddrsFactory(
-			cfg.Libp2p.AnnounceAddresses,
-			cfg.Libp2p.NoAnnounceAddresses)),
 		Override(new(dtypes.MetadataDS), modules.Datastore(cfg.Backup.DisableMetadataLog)),
 	)
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
@@ -59,6 +58,7 @@ type StorageMinerAPI struct {
 	DataTransfer      dtypes.ProviderDataTransfer       `optional:"true"`
 	DealPublisher     *storageadapter.DealPublisher     `optional:"true"`
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
+	Host              dtypes.Libp2pHost                 `optional:"true"`
 
 	// Miner / storage
 	Miner       *storage.Miner              `optional:"true"`
@@ -67,7 +67,6 @@ type StorageMinerAPI struct {
 	IStorageMgr sectorstorage.SectorManager `optional:"true"`
 	stores.SectorIndex
 	storiface.WorkerReturn `optional:"true"`
-	Host                   host.Host
 	AddrSel                *storage.AddressSelector
 
 	Epp gen.WinningPoStProver `optional:"true"`

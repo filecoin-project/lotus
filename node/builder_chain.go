@@ -160,9 +160,11 @@ func ConfigFullNode(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	enableLibp2pNode := true // always enable libp2p for full nodes
+
 	ipfsMaddr := cfg.Client.IpfsMAddr
 	return Options(
-		ConfigCommon(&cfg.Common),
+		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
 		If(cfg.Client.UseIpfs,
 			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),

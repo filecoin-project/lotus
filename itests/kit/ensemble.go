@@ -273,10 +273,11 @@ func (n *Ensemble) Start() *Ensemble {
 
 	// Create all inactive full nodes.
 	for i, full := range n.inactive.fullnodes {
+		r := repo.NewMemory(nil)
 		opts := []node.Option{
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
-			node.Online(),
-			node.Repo(repo.NewMemory(nil)),
+			node.Base(r),
+			node.Repo(r),
 			node.MockHost(n.mn),
 			node.Test(),
 
@@ -496,11 +497,11 @@ func (n *Ensemble) Start() *Ensemble {
 		var mineBlock = make(chan lotusminer.MineReq)
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner),
-			node.Online(),
+			node.Base(r),
 			node.Repo(r),
 			node.Test(),
 
-			node.MockHost(n.mn),
+			node.If(!m.options.disableLibp2p, node.MockHost(n.mn)),
 
 			node.Override(new(v1api.FullNode), m.FullNode.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),

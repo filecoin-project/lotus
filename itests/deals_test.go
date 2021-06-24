@@ -63,9 +63,9 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 		n := n
 		ns := fmt.Sprintf("%d", n)
 		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
-		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
-		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
-		t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
+		//t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
+		//t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		//t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
 	}
 }
 
@@ -171,14 +171,14 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1})
 	})
 
-	t.Run("fastretrieval", func(t *testing.T) {
-		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
-	})
+	//t.Run("fastretrieval", func(t *testing.T) {
+	//runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
+	//})
 
-	t.Run("fastretrieval-twodeals-sequential", func(t *testing.T) {
-		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
-		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
-	})
+	//t.Run("fastretrieval-twodeals-sequential", func(t *testing.T) {
+	//runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
+	//runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
+	//})
 }
 
 func TestQuotePriceForUnsealedRetrieval(t *testing.T) {

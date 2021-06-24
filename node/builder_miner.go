@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
-	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -37,8 +36,6 @@ import (
 )
 
 var MinerNode = Options(
-	// API dependencies
-	Override(new(api.Common), From(new(common.CommonAPI))),
 	Override(new(sectorstorage.StorageAuth), modules.StorageAuth),
 
 	// Actor config
@@ -57,8 +54,10 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	enableLibp2pNode := cfg.Subsystems.EnableStorageMarket // we enable libp2p nodes if the storage market subsystem is enabled, otherwise we don't
+
 	return Options(
-		ConfigCommon(&cfg.Common),
+		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		Override(new(*stores.Local), modules.LocalStorage),
@@ -190,9 +189,6 @@ func StorageMiner(out *api.StorageMiner) Option {
 	return Options(
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the StorageMiner option must be set before Config option")),
-		),
-		ApplyIf(func(s *Settings) bool { return s.Online },
-			Error(errors.New("the StorageMiner option must be set before Online option")),
 		),
 
 		func(s *Settings) error {

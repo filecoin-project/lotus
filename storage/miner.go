@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/libp2p/go-libp2p-core/host"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -143,13 +143,13 @@ func NewMiner(api fullNodeFilteredAPI,
 	m := &Miner{
 		api:     api,
 		feeCfg:  feeCfg,
-		h:       h,
 		sealer:  sealer,
 		ds:      ds,
 		sc:      sc,
 		verif:   verif,
 		prover:  prover,
 		addrSel: as,
+		h:       h,
 
 		maddr:          maddr,
 		getSealConfig:  gsd,
