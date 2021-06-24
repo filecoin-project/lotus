@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/pricing"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
@@ -590,6 +591,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
+	lotusMount dagstore.LotusMountAPI,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -599,7 +601,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, lotusMount, opt)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
