@@ -25,7 +25,16 @@ Note:
 
 ### Projected state tree growth
 
-As a result of the accelerated onboardiPreCommitSectorsBatcng of storage onto the network, it is possible
+In order to validate the Hyperdrive changes, we wrote a simulation to seal as many sectors as fast as possible assuming the same number and mix of 32GiB and 64GiB miners as the current network.
+
+Given these assumptions:
+
+- We'd expect a network storage growth rate of around 530PiB per day.
+- We'd expect network bandwidth dedicated to `SubmitWindowedPoSt` to grow by about 0.02% per day.
+- We'd expect the [state-tree](https://spec.filecoin.io/#section-systems.filecoin_vm.state_tree) to grow by 1.6GiB per day.
+   - Nearly all of the state-tree growth is expected to come from new sector metadata.
+- We'd expect the daily lotus datastore growth rate to increase by about 10-15%.
+   - Most "growth" of the lotus datastore is due to "churn", historical data that's no longer referenced by the latest state-tree.
 
 ### Hardware requirements and suggestions
 
