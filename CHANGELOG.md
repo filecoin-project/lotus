@@ -14,9 +14,9 @@ Note that this release is built on top of Lotus v1.9.0. Enterprising users can u
 
 ## Proof batching and aggregation
 
-FIPs [0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.md) and [0013](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013.md) combine to allow for a significant increase in the rate of onboarding storage on the Filecoin network. It is hoped that this will lead to more useful data being stored on the network, reduced network congestion, and lower network base fee.
+FIPs [0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.md) and [0013](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013.md) combine to allow for a significant increase in the rate of onboarding storage on the Filecoin network. This aims to lead to more useful data being stored on the network, reduced network congestion, and lower network base fee.
 
-**Check out the documentation [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#precommitsectorsbatch) for details of the new Lotus miner sealing config options, [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#fees-section) for fee config options, and explanations of the new features.**
+**Check out the documentation [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#precommitsectorsbatch) for details on the new Lotus miner sealing config options, [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#fees-section) for fee config options, and explanations of the new features.**
 
 Note: 
   - We recommend to keep `PreCommitSectorsBatch` as 1.
@@ -25,15 +25,15 @@ Note:
 
 ### Projected state tree growth
 
-In order to validate the Hyperdrive changes, we wrote a simulation to seal as many sectors as fast as possible assuming the same number and mix of 32GiB and 64GiB miners as the current network.
+In order to validate the Hyperdrive changes, we wrote a simulation to seal as many sectors as quickly as possible, assuming the same number and mix of 32GiB and 64GiB miners as the current network.
 
 Given these assumptions:
 
-- We'd expect a network storage growth rate of around 530PiB per day.
+- We'd expect a network storage growth rate of around 530PiB per day. 😳 🎉 🥳 😅
 - We'd expect network bandwidth dedicated to `SubmitWindowedPoSt` to grow by about 0.02% per day.
-- We'd expect the [state-tree](https://spec.filecoin.io/#section-systems.filecoin_vm.state_tree) to grow by 1.6GiB per day.
+- We'd expect the [state-tree](https://spec.filecoin.io/#section-systems.filecoin_vm.state_tree) (and therefore [snapshot](https://docs.filecoin.io/get-started/lotus/chain/#lightweight-snapshot)) size to grow by 1.16GiB per day.
    - Nearly all of the state-tree growth is expected to come from new sector metadata.
-- We'd expect the daily lotus datastore growth rate to increase by about 10-15%.
+- We'd expect the daily lotus datastore growth rate to increase by about 10-15% (from current ~21GiB/day).
    - Most "growth" of the lotus datastore is due to "churn", historical data that's no longer referenced by the latest state-tree.
 
 ### Hardware requirements and suggestions
