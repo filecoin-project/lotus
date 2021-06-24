@@ -2,7 +2,9 @@
 
 # 1.10.0 / 2021-06-23
 
-This is a mandatory release of Lotus that introduces Filecoin network v13, codenamed the HyperDrive upgrade. The Filecoin mainnet will upgrade, which is 2021-06-30T22:00:00Z. The network upgrade introduces the following FIPs:
+This is a mandatory release of Lotus that introduces Filecoin network v13, codenamed the HyperDrive upgrade. The 
+Filecoin mainnet will upgrade, which is epoch 892800, on 2021-06-30T22:00:00Z. The network upgrade introduces the 
+following FIPs:
 
 - [FIP-0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.md): Add miner batched sector pre-commit method
 - [FIP-0011](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0011.md): Remove reward auction from reporting consensus faults
@@ -21,7 +23,8 @@ FIPs [0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.m
 Note: 
   - We recommend to keep `PreCommitSectorsBatch` as 1.
   - We recommend miners to set `PreCommitBatchWait` lower than 30 hours.
-  - We recommend miners to set a longer `CommitBatchSlack` and  `PreCommitBatchSlac` to prevent message failures due to expirations.
+  - We recommend miners to set a longer `CommitBatchSlack` and  `PreCommitBatchSlack` to prevent message failures 
+    due to expirations.
 
 ### Projected state tree growth
 
@@ -118,21 +121,21 @@ Included in the HyperDrive upgrade is [FIP-0015](https://github.com/filecoin-pro
 
 | Contributor        | Commits | Lines ±     | Files Changed |
 |--------------------|---------|-------------|---------------|
-| Łukasz Magiera     | 81      | +9606/-1536 | 361           |
-| Aayush Rajasekaran | 41      | +6543/-679  | 189           |
-| ZenGround0         | 11      | +4074/-727  | 110           |
-| Alex               | 10      | +2035/-1177 | 55            |
-| Ian Davis          | 1       | +779/-12    | 5             |
-| Frrist             | 2       | +722/-6     | 6             |
-| Steven Allen       | 6       | +368/-24    | 15            |
-| Jennifer Wang      | 11      | +204/-111   | 19            |
-| vyzo               | 6       | +155/-66    | 13            |
-| Cory Schwartz      | 10      | +171/-27    | 14            |
-| Jakub Sztandera    | 4       | +177/-13    | 7             |
-| Peter Rabbitson    | 4       | +65/-42     | 5             |
-| Travis Person      | 2       | +11/-11     | 4             |
-| Kirk Baird         | 1       | +1/-5       | 1             |
-| wangchao           | 2       | +3/-2       | 2             |
+| @magik6k    | 81      | +9606/-1536 | 361           |
+| @arajasek  | 41      | +6543/-679  | 189           |
+| @ZenGround0         | 11      | +4074/-727  | 110           |
+| @anorth                | 10      | +2035/-1177 | 55            |
+| @iand           | 1       | +779/-12    | 5             |
+| @frrist             | 2       | +722/-6     | 6             |
+| @Stebalien       | 6       | +368/-24    | 15            |
+| @jennijuju      | 11      | +204/-111   | 19            |
+| @vyzo               | 6       | +155/-66    | 13            |
+| @coryschwartz      | 10      | +171/-27    | 14            |
+| @Kubuxu    | 4       | +177/-13    | 7             |
+| @ribasushi    | 4       | +65/-42     | 5             |
+| @travisperson      | 2       | +11/-11     | 4             |
+| @kirk-baird | 1       | +1/-5       | 1             |
+| @wangchao           | 2       | +3/-2       | 2             |
 
 
 # 1.9.0 / 2021-05-17
