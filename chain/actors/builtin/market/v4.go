@@ -38,23 +38,23 @@ func (s *state4) TotalLocked() (abi.TokenAmount, error) {
 }
 
 func (s *state4) BalancesChanged(otherState State) (bool, error) {
-	otherState2, ok := otherState.(*state4)
+	otherState4, ok := otherState.(*state4)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true, nil
 	}
-	return !s.State.EscrowTable.Equals(otherState2.State.EscrowTable) || !s.State.LockedTable.Equals(otherState2.State.LockedTable), nil
+	return !s.State.EscrowTable.Equals(otherState4.State.EscrowTable) || !s.State.LockedTable.Equals(otherState4.State.LockedTable), nil
 }
 
 func (s *state4) StatesChanged(otherState State) (bool, error) {
-	otherState2, ok := otherState.(*state4)
+	otherState4, ok := otherState.(*state4)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true, nil
 	}
-	return !s.State.States.Equals(otherState2.State.States), nil
+	return !s.State.States.Equals(otherState4.State.States), nil
 }
 
 func (s *state4) States() (DealStates, error) {
@@ -66,13 +66,13 @@ func (s *state4) States() (DealStates, error) {
 }
 
 func (s *state4) ProposalsChanged(otherState State) (bool, error) {
-	otherState2, ok := otherState.(*state4)
+	otherState4, ok := otherState.(*state4)
 	if !ok {
 		// there's no way to compare different versions of the state, so let's
 		// just say that means the state of balances has changed
 		return true, nil
 	}
-	return !s.State.Proposals.Equals(otherState2.State.Proposals), nil
+	return !s.State.Proposals.Equals(otherState4.State.Proposals), nil
 }
 
 func (s *state4) Proposals() (DealProposals, error) {
@@ -131,31 +131,31 @@ type dealStates4 struct {
 }
 
 func (s *dealStates4) Get(dealID abi.DealID) (*DealState, bool, error) {
-	var deal2 market4.DealState
-	found, err := s.Array.Get(uint64(dealID), &deal2)
+	var deal4 market4.DealState
+	found, err := s.Array.Get(uint64(dealID), &deal4)
 	if err != nil {
 		return nil, false, err
 	}
 	if !found {
 		return nil, false, nil
 	}
-	deal := fromV4DealState(deal2)
+	deal := fromV4DealState(deal4)
 	return &deal, true, nil
 }
 
 func (s *dealStates4) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
-	var ds1 market4.DealState
-	return s.Array.ForEach(&ds1, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV4DealState(ds1))
+	var ds4 market4.DealState
+	return s.Array.ForEach(&ds4, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV4DealState(ds4))
 	})
 }
 
 func (s *dealStates4) decode(val *cbg.Deferred) (*DealState, error) {
-	var ds1 market4.DealState
-	if err := ds1.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+	var ds4 market4.DealState
+	if err := ds4.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	ds := fromV4DealState(ds1)
+	ds := fromV4DealState(ds4)
 	return &ds, nil
 }
 
@@ -172,31 +172,31 @@ type dealProposals4 struct {
 }
 
 func (s *dealProposals4) Get(dealID abi.DealID) (*DealProposal, bool, error) {
-	var proposal2 market4.DealProposal
-	found, err := s.Array.Get(uint64(dealID), &proposal2)
+	var proposal4 market4.DealProposal
+	found, err := s.Array.Get(uint64(dealID), &proposal4)
 	if err != nil {
 		return nil, false, err
 	}
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV4DealProposal(proposal2)
+	proposal := fromV4DealProposal(proposal4)
 	return &proposal, true, nil
 }
 
 func (s *dealProposals4) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
-	var dp1 market4.DealProposal
-	return s.Array.ForEach(&dp1, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV4DealProposal(dp1))
+	var dp4 market4.DealProposal
+	return s.Array.ForEach(&dp4, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV4DealProposal(dp4))
 	})
 }
 
 func (s *dealProposals4) decode(val *cbg.Deferred) (*DealProposal, error) {
-	var dp1 market4.DealProposal
-	if err := dp1.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+	var dp4 market4.DealProposal
+	if err := dp4.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV4DealProposal(dp1)
+	dp := fromV4DealProposal(dp4)
 	return &dp, nil
 }
 

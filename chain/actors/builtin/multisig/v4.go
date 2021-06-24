@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	msig4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/multisig"
 )
 
@@ -69,17 +70,17 @@ func (s *state4) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 		if n <= 0 {
 			return xerrors.Errorf("invalid pending transaction key: %v", key)
 		}
-		return cb(txid, (Transaction)(out))
+		return cb(txid, (Transaction)(out)) //nolint:unconvert
 	})
 }
 
 func (s *state4) PendingTxnChanged(other State) (bool, error) {
-	other2, ok := other.(*state4)
+	other4, ok := other.(*state4)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
-	return !s.State.PendingTxns.Equals(other2.PendingTxns), nil
+	return !s.State.PendingTxns.Equals(other4.PendingTxns), nil
 }
 
 func (s *state4) transactions() (adt.Map, error) {

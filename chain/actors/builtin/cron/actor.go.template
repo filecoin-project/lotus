@@ -1,0 +1,10 @@
+package cron
+
+import (
+	builtin{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin"
+)
+
+var (
+	Address = builtin{{.latestVersion}}.CronActorAddr
+	Methods = builtin{{.latestVersion}}.MethodsCron
+)

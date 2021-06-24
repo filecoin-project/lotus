@@ -34,7 +34,7 @@ const UpgradeSmokeHeight = 51000
 const UpgradeIgnitionHeight = 94000
 const UpgradeRefuelHeight = 130800
 
-const UpgradeActorsV2Height = 138720
+const UpgradeAssemblyHeight = 138720
 
 const UpgradeTapeHeight = 140760
 
@@ -51,16 +51,19 @@ const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 const UpgradeOrangeHeight = 336458
 
 // 2020-12-22T02:00:00Z
-const UpgradeClausHeight = 343200
+var UpgradeClausHeight = abi.ChainEpoch(343200)
 
 // 2021-03-04T00:00:30Z
-var UpgradeActorsV3Height = abi.ChainEpoch(550321)
+const UpgradeTrustHeight = 550321
 
 // 2021-04-12T22:00:00Z
 const UpgradeNorwegianHeight = 665280
 
 // 2021-04-29T06:00:00Z
-var UpgradeActorsV4Height = abi.ChainEpoch(712320)
+const UpgradeTurboHeight = 712320
+
+// 2021-06-30T22:00:00Z
+var UpgradeHyperdriveHeight = abi.ChainEpoch(892800)
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
@@ -69,12 +72,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_V3_ACTOR_MIGRATION") == "1" {
-		UpgradeActorsV3Height = math.MaxInt64
-	}
-
-	if os.Getenv("LOTUS_DISABLE_V4_ACTOR_MIGRATION") == "1" {
-		UpgradeActorsV4Height = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_HYPERDRIVE") == "1" {
+		UpgradeHyperdriveHeight = math.MaxInt64
 	}
 
 	Devnet = false

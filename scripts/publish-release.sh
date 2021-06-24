@@ -29,13 +29,20 @@ RELEASE_ID=`echo "${RELEASE_RESPONSE}" | jq '.id'`
 if [ "${RELEASE_ID}" = "null" ]; then
   echo "creating release"
 
+  COND_CREATE_DISCUSSION=""
+  PRERELEASE=true
+  if [[ ${CIRCLE_TAG} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    COND_CREATE_DISCUSSION="\"discussion_category_name\": \"announcement\","
+    PRERELEASE=false
+  fi
+
   RELEASE_DATA="{
     \"tag_name\": \"${CIRCLE_TAG}\",
     \"target_commitish\": \"${CIRCLE_SHA1}\",
-    \"discussion_category_name\": \"announcement\",
+    ${COND_CREATE_DISCUSSION}
     \"name\": \"${CIRCLE_TAG}\",
     \"body\": \"\",
-    \"prerelease\": false
+    \"prerelease\": ${PRERELEASE}
   }"
 
   # create it if it doesn't exist yet
@@ -61,6 +68,9 @@ artifacts=(
   "lotus_${CIRCLE_TAG}_darwin-amd64.tar.gz"
   "lotus_${CIRCLE_TAG}_darwin-amd64.tar.gz.cid"
   "lotus_${CIRCLE_TAG}_darwin-amd64.tar.gz.sha512"
+  "Lotus-${CIRCLE_TAG}-x86_64.AppImage"
+  "Lotus-${CIRCLE_TAG}-x86_64.AppImage.cid"
+  "Lotus-${CIRCLE_TAG}-x86_64.AppImage.sha512"
 )
 
 for RELEASE_FILE in "${artifacts[@]}"

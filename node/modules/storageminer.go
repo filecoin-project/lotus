@@ -59,7 +59,6 @@ import (
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
@@ -100,7 +99,7 @@ func GetParams(spt abi.RegisteredSealProof) error {
 	}
 
 	// TODO: We should fetch the params for the actual proof type, not just based on the size.
-	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), uint64(ssize)); err != nil {
+	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
@@ -203,6 +202,7 @@ type StorageMinerParams struct {
 	Sealer             sectorstorage.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
 	Verifier           ffiwrapper.Verifier
+	Prover             ffiwrapper.Prover
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
 	Journal            journal.Journal
 	AddrSel            *storage.AddressSelector
@@ -219,6 +219,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			h      = params.Host
 			sc     = params.SectorIDCounter
 			verif  = params.Verifier
+			prover = params.Prover
 			gsd    = params.GetSealingConfigFn
 			j      = params.Journal
 			as     = params.AddrSel
@@ -236,7 +237,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, gsd, fc, j, as)
+		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, prover, gsd, fc, j, as)
 		if err != nil {
 			return nil, err
 		}
@@ -484,6 +485,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
+	startDelay dtypes.GetMaxDealStartDelayFunc,
 	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
@@ -491,6 +493,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 		unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
+		startDelay dtypes.GetMaxDealStartDelayFunc,
 		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
 
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
@@ -562,9 +565,14 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 				return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
 			}
 
+			sd, err := startDelay()
+			if err != nil {
+				return false, "miner error", err
+			}
+
 			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg
-			maxStartEpoch := earliest + abi.ChainEpoch(7*builtin.SecondsInDay/build.BlockDelaySecs)
+			maxStartEpoch := earliest + abi.ChainEpoch(uint64(sd.Seconds())/build.BlockDelaySecs)
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}
@@ -825,6 +833,22 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            config.Duration(cfg.WaitDealsDelay),
 				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
+				FinalizeEarly:             cfg.FinalizeEarly,
+
+				BatchPreCommits:     cfg.BatchPreCommits,
+				MaxPreCommitBatch:   cfg.MaxPreCommitBatch,
+				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
+				PreCommitBatchSlack: config.Duration(cfg.PreCommitBatchSlack),
+
+				AggregateCommits: cfg.AggregateCommits,
+				MinCommitBatch:   cfg.MinCommitBatch,
+				MaxCommitBatch:   cfg.MaxCommitBatch,
+				CommitBatchWait:  config.Duration(cfg.CommitBatchWait),
+				CommitBatchSlack: config.Duration(cfg.CommitBatchSlack),
+
+				TerminateBatchMax:  cfg.TerminateBatchMax,
+				TerminateBatchMin:  cfg.TerminateBatchMin,
+				TerminateBatchWait: config.Duration(cfg.TerminateBatchWait),
 			}
 		})
 		return
@@ -840,6 +864,22 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
 				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
 				AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
+				FinalizeEarly:             cfg.Sealing.FinalizeEarly,
+
+				BatchPreCommits:     cfg.Sealing.BatchPreCommits,
+				MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
+				PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
+				PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
+
+				AggregateCommits: cfg.Sealing.AggregateCommits,
+				MinCommitBatch:   cfg.Sealing.MinCommitBatch,
+				MaxCommitBatch:   cfg.Sealing.MaxCommitBatch,
+				CommitBatchWait:  time.Duration(cfg.Sealing.CommitBatchWait),
+				CommitBatchSlack: time.Duration(cfg.Sealing.CommitBatchSlack),
+
+				TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
+				TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
+				TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
 			}
 		})
 		return
@@ -859,6 +899,24 @@ func NewGetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.GetExpectedSealDu
 	return func() (out time.Duration, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
 			out = time.Duration(cfg.Dealmaking.ExpectedSealDuration)
+		})
+		return
+	}, nil
+}
+
+func NewSetMaxDealStartDelayFunc(r repo.LockedRepo) (dtypes.SetMaxDealStartDelayFunc, error) {
+	return func(delay time.Duration) (err error) {
+		err = mutateCfg(r, func(cfg *config.StorageMiner) {
+			cfg.Dealmaking.MaxDealStartDelay = config.Duration(delay)
+		})
+		return
+	}, nil
+}
+
+func NewGetMaxDealStartDelayFunc(r repo.LockedRepo) (dtypes.GetMaxDealStartDelayFunc, error) {
+	return func() (out time.Duration, err error) {
+		err = readCfg(r, func(cfg *config.StorageMiner) {
+			out = time.Duration(cfg.Dealmaking.MaxDealStartDelay)
 		})
 		return
 	}, nil

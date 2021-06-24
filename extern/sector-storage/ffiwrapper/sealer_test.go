@@ -18,6 +18,7 @@ import (
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 
@@ -31,6 +32,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
@@ -83,9 +85,10 @@ func (s *seal) precommit(t *testing.T, sb *Sealer, id storage.SectorRef, done fu
 	s.cids = cids
 }
 
-func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
+var seed = abi.InteractiveSealRandomness{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
+
+func (s *seal) commit(t *testing.T, sb *Sealer, done func()) storage.Proof {
 	defer done()
-	seed := abi.InteractiveSealRandomness{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
 
 	pc1, err := sb.SealCommit1(context.TODO(), s.ref, s.ticket, seed, []abi.PieceInfo{s.pi}, s.cids)
 	if err != nil {
@@ -112,6 +115,8 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) {
 	if !ok {
 		t.Fatal("proof failed to validate")
 	}
+
+	return proof
 }
 
 func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si storage.SectorRef, done func()) {
@@ -229,7 +234,12 @@ func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
 		panic(err)
 	}
 
-	err = paramfetch.GetParams(context.TODO(), dat, uint64(s))
+	datSrs, err := ioutil.ReadFile("../../../build/proof-params/srs-inner-product.json")
+	if err != nil {
+		panic(err)
+	}
+
+	err = paramfetch.GetParams(context.TODO(), dat, datSrs, uint64(s))
 	if err != nil {
 		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
 	}
@@ -460,6 +470,98 @@ func TestSealAndVerify3(t *testing.T) {
 	corrupt(t, sb, si2)
 
 	post(t, sb, []abi.SectorID{si1.ID, si2.ID}, s1, s2, s3)
+}
+
+func TestSealAndVerifyAggregate(t *testing.T) {
+	numAgg := 5
+
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	defer requireFDsClosed(t, openFDs(t))
+
+	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
+		t.Skip("this is slow")
+	}
+	_ = os.Setenv("RUST_LOG", "info")
+
+	getGrothParamFileAndVerifyingKeys(sectorSize)
+
+	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	miner := abi.ActorID(123)
+
+	sp := &basicfs.Provider{
+		Root: cdir,
+	}
+	sb, err := New(sp)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	cleanup := func() {
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", cdir)
+			return
+		}
+		if err := os.RemoveAll(cdir); err != nil {
+			t.Error(err)
+		}
+	}
+	defer cleanup()
+
+	avi := proof5.AggregateSealVerifyProofAndInfos{
+		Miner:          miner,
+		SealProof:      sealProofType,
+		AggregateProof: policy.GetDefaultAggregationProof(),
+		Proof:          nil,
+		Infos:          make([]proof5.AggregateSealVerifyInfo, numAgg),
+	}
+
+	toAggregate := make([][]byte, numAgg)
+	for i := 0; i < numAgg; i++ {
+		si := storage.SectorRef{
+			ID:        abi.SectorID{Miner: miner, Number: abi.SectorNumber(i + 1)},
+			ProofType: sealProofType,
+		}
+
+		s := seal{ref: si}
+		s.precommit(t, sb, si, func() {})
+		toAggregate[i] = s.commit(t, sb, func() {})
+
+		avi.Infos[i] = proof5.AggregateSealVerifyInfo{
+			Number:                abi.SectorNumber(i + 1),
+			Randomness:            s.ticket,
+			InteractiveRandomness: seed,
+			SealedCID:             s.cids.Sealed,
+			UnsealedCID:           s.cids.Unsealed,
+		}
+	}
+
+	aggStart := time.Now()
+
+	avi.Proof, err = ProofProver.AggregateSealProofs(avi, toAggregate)
+	require.NoError(t, err)
+	require.Len(t, avi.Proof, 11188)
+
+	aggDone := time.Now()
+
+	_, err = ProofProver.AggregateSealProofs(avi, toAggregate)
+	require.NoError(t, err)
+
+	aggHot := time.Now()
+
+	ok, err := ProofVerifier.VerifyAggregateSeals(avi)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	verifDone := time.Now()
+
+	fmt.Printf("Aggregate: %s\n", aggDone.Sub(aggStart).String())
+	fmt.Printf("Hot: %s\n", aggHot.Sub(aggDone).String())
+	fmt.Printf("Verify: %s\n", verifDone.Sub(aggHot).String())
 }
 
 func BenchmarkWriteWithAlignment(b *testing.B) {

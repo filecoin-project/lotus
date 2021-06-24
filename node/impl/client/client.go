@@ -62,7 +62,8 @@ import (
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
-const dealStartBufferHours uint64 = 49
+// 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
+const dealStartBufferHours uint64 = 8 * 24
 
 type API struct {
 	fx.In

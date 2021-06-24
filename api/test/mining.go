@@ -194,7 +194,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
 
-	waitDealSealed(t, ctx, provider, client, deal, false)
+	waitDealSealed(t, ctx, provider, client, deal, false, false, nil)
 
 	<-minedTwo
 
@@ -206,7 +206,7 @@ func TestDealMining(t *testing.T, b APIBuilder, blocktime time.Duration, carExpo
 func (ts *testSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
 	n, sn := ts.makeNodes(t, []FullNodeOpts{
-		FullNodeWithActorsV4At(-1),
+		FullNodeWithLatestActorsAt(-1),
 	}, []StorageMiner{
 		{Full: 0, Preseal: PresealGenesis},
 	})

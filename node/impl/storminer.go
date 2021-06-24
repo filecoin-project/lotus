@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
@@ -244,13 +245,13 @@ func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, err
 		return nil, err
 	}
 
-	out := make([]abi.SectorNumber, len(sectors))
-	for i, sector := range sectors {
+	out := make([]abi.SectorNumber, 0, len(sectors))
+	for _, sector := range sectors {
 		if sector.State == sealing.UndefinedSectorState {
 			continue // sector ID not set yet
 		}
 
-		out[i] = sector.SectorNumber
+		out = append(out, sector.SectorNumber)
 	}
 	return out, nil
 }
@@ -373,8 +374,24 @@ func (sm *StorageMinerAPI) SectorTerminatePending(ctx context.Context) ([]abi.Se
 	return sm.Miner.TerminatePending(ctx)
 }
 
+func (sm *StorageMinerAPI) SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) {
+	return sm.Miner.SectorPreCommitFlush(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return sm.Miner.SectorPreCommitPending(ctx)
+}
+
 func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {
 	return sm.Miner.MarkForUpgrade(id)
+}
+
+func (sm *StorageMinerAPI) SectorCommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) {
+	return sm.Miner.CommitFlush(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) {
+	return sm.Miner.CommitPending(ctx)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {

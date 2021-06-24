@@ -42,7 +42,7 @@ BUILD_DEPS+=build/.filecoin-install
 CLEAN+=build/.filecoin-install
 
 ffi-version-check:
-	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 2 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
+	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 3 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
 BUILD_DEPS+=ffi-version-check
 
 .PHONY: ffi-version-check
@@ -333,17 +333,32 @@ type-gen: api-gen
 method-gen: api-gen
 	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
 
+actors-gen:
+	go run ./chain/actors/agen
+	go fmt ./...
+
 api-gen:
 	go run ./gen/api
 	goimports -w api
 	goimports -w api
 .PHONY: api-gen
 
+appimage: $(BUILD_DEPS)
+	rm -rf appimage-builder-cache || true
+	rm AppDir/io.filecoin.lotus.desktop || true
+	rm AppDir/icon.svg || true
+	rm Appdir/AppRun || true
+	mkdir -p AppDir/usr/bin
+	rm -rf lotus
+	go run github.com/GeertJohan/go.rice/rice embed-go -i ./build
+	go build $(GOFLAGS) -o lotus ./cmd/lotus
+	cp ./lotus AppDir/usr/bin/
+	appimage-builder
 docsgen: docsgen-md docsgen-openrpc
 
-docsgen-md-bin: api-gen
+docsgen-md-bin: api-gen actors-gen
 	go build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
-docsgen-openrpc-bin: api-gen
+docsgen-openrpc-bin: api-gen actors-gen
 	go build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
 docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
@@ -367,7 +382,7 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: type-gen method-gen docsgen api-gen
+gen: actors-gen type-gen method-gen docsgen api-gen
 .PHONY: gen
 
 print-%:

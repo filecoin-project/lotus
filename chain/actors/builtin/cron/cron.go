@@ -1,10 +1,10 @@
 package cron
 
 import (
-	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 )
 
 var (
-	Address = builtin4.CronActorAddr
-	Methods = builtin4.MethodsCron
+	Address = builtin5.CronActorAddr
+	Methods = builtin5.MethodsCron
 )

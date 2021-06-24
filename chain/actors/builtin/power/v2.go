@@ -51,7 +51,7 @@ func (s *state2) TotalCommitted() (Claim, error) {
 }
 
 func (s *state2) MinerPower(addr address.Address) (Claim, bool, error) {
-	claims, err := adt2.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return Claim{}, false, err
 	}
@@ -79,7 +79,7 @@ func (s *state2) MinerCounts() (uint64, uint64, error) {
 }
 
 func (s *state2) ListAllMiners() ([]address.Address, error) {
-	claims, err := adt2.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (s *state2) ListAllMiners() ([]address.Address, error) {
 }
 
 func (s *state2) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
-	claims, err := adt2.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return err
 	}

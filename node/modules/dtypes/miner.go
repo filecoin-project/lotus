@@ -88,5 +88,8 @@ type SetExpectedSealDurationFunc func(time.Duration) error
 // too determine how long sealing is expected to take
 type GetExpectedSealDurationFunc func() (time.Duration, error)
 
+type SetMaxDealStartDelayFunc func(time.Duration) error
+type GetMaxDealStartDelayFunc func() (time.Duration, error)
+
 type StorageDealFilter func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error)
 type RetrievalDealFilter func(ctx context.Context, deal retrievalmarket.ProviderDealState) (bool, string, error)

@@ -395,8 +395,10 @@ func (d *deadline2) PartitionsPoSted() (bitfield.BitField, error) {
 }
 
 func (d *deadline2) DisputableProofCount() (uint64, error) {
+
 	// field doesn't exist until v3
 	return 0, nil
+
 }
 
 func (p *partition2) AllSectors() (bitfield.BitField, error) {
@@ -412,6 +414,7 @@ func (p *partition2) RecoveringSectors() (bitfield.BitField, error) {
 }
 
 func fromV2SectorOnChainInfo(v2 miner2.SectorOnChainInfo) SectorOnChainInfo {
+
 	return SectorOnChainInfo{
 		SectorNumber:          v2.SectorNumber,
 		SealProof:             v2.SealProof,
@@ -425,9 +428,11 @@ func fromV2SectorOnChainInfo(v2 miner2.SectorOnChainInfo) SectorOnChainInfo {
 		ExpectedDayReward:     v2.ExpectedDayReward,
 		ExpectedStoragePledge: v2.ExpectedStoragePledge,
 	}
+
 }
 
 func fromV2SectorPreCommitOnChainInfo(v2 miner2.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+
 	return SectorPreCommitOnChainInfo{
 		Info:               (SectorPreCommitInfo)(v2.Info),
 		PreCommitDeposit:   v2.PreCommitDeposit,
@@ -435,4 +440,5 @@ func fromV2SectorPreCommitOnChainInfo(v2 miner2.SectorPreCommitOnChainInfo) Sect
 		DealWeight:         v2.DealWeight,
 		VerifiedDealWeight: v2.VerifiedDealWeight,
 	}
+
 }

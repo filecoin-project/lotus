@@ -1,0 +1,265 @@
+package policy
+
+import (
+	"sort"
+
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors"
+
+	{{range .versions}}
+    {{if (ge . 2)}} builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin" {{end}}
+	market{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/market"
+	miner{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/miner"
+	verifreg{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/verifreg"
+	{{if (eq . 0)}} power{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/power" {{end}}
+    {{end}}
+
+    paych{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/paych"
+)
+
+const (
+	ChainFinality                  = miner{{.latestVersion}}.ChainFinality
+	SealRandomnessLookback         = ChainFinality
+	PaychSettleDelay               = paych{{.latestVersion}}.SettleDelay
+	MaxPreCommitRandomnessLookback = builtin{{.latestVersion}}.EpochsInDay + SealRandomnessLookback
+)
+
+// SetSupportedProofTypes sets supported proof types, across all actor versions.
+// This should only be used for testing.
+func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
+	{{range .versions}}
+	    {{if (eq . 0)}}
+	        miner{{.}}.SupportedProofTypes = make(map[abi.RegisteredSealProof]struct{}, len(types))
+        {{else if (le . 4)}}
+            miner{{.}}.PreCommitSealProofTypesV0 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+            miner{{.}}.PreCommitSealProofTypesV7 = make(map[abi.RegisteredSealProof]struct{}, len(types)*2)
+            miner{{.}}.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+        {{else}}
+            miner{{.}}.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+	    {{end}}
+	{{end}}
+
+	AddSupportedProofTypes(types...)
+}
+
+// AddSupportedProofTypes sets supported proof types, across all actor versions.
+// This should only be used for testing.
+func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
+	for _, t := range types {
+		if t >= abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+			panic("must specify v1 proof types only")
+		}
+		// Set for all miner versions.
+
+		{{range .versions}}
+            {{if (eq . 0)}}
+        	    miner{{.}}.SupportedProofTypes[t] = struct{}{}
+            {{else if (le . 4)}}
+                miner{{.}}.PreCommitSealProofTypesV0[t] = struct{}{}
+                miner{{.}}.PreCommitSealProofTypesV7[t] = struct{}{}
+                miner{{.}}.PreCommitSealProofTypesV7[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+                miner{{.}}.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+            {{else}}
+                miner{{.}}.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+                wpp, err := t.RegisteredWindowPoStProof()
+                if err != nil {
+                    // Fine to panic, this is a test-only method
+                    panic(err)
+                }
+
+                miner{{.}}.WindowPoStProofTypes[wpp] = struct{}{}
+            {{end}}
+        {{end}}
+	}
+}
+
+// SetPreCommitChallengeDelay sets the pre-commit challenge delay across all
+// actors versions. Use for testing.
+func SetPreCommitChallengeDelay(delay abi.ChainEpoch) {
+	// Set for all miner versions.
+    {{range .versions}}
+        miner{{.}}.PreCommitChallengeDelay = delay
+    {{end}}
+}
+
+// TODO: this function shouldn't really exist. Instead, the API should expose the precommit delay.
+func GetPreCommitChallengeDelay() abi.ChainEpoch {
+	return miner{{.latestVersion}}.PreCommitChallengeDelay
+}
+
+// SetConsensusMinerMinPower sets the minimum power of an individual miner must
+// meet for leader election, across all actor versions. This should only be used
+// for testing.
+func SetConsensusMinerMinPower(p abi.StoragePower) {
+    {{range .versions}}
+        {{if (eq . 0)}}
+            power{{.}}.ConsensusMinerMinPower = p
+        {{else if (eq . 2)}}
+            for _, policy := range builtin{{.}}.SealProofPolicies {
+                policy.ConsensusMinerMinPower = p
+            }
+        {{else}}
+            for _, policy := range builtin{{.}}.PoStProofPolicies {
+                policy.ConsensusMinerMinPower = p
+            }
+        {{end}}
+    {{end}}
+}
+
+// SetMinVerifiedDealSize sets the minimum size of a verified deal. This should
+// only be used for testing.
+func SetMinVerifiedDealSize(size abi.StoragePower) {
+    {{range .versions}}
+        verifreg{{.}}.MinVerifiedDealSize = size
+    {{end}}
+}
+
+func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) abi.ChainEpoch {
+	switch ver {
+		{{range .versions}}
+            case actors.Version{{.}}:
+                {{if (eq . 0)}}
+                    return miner{{.}}.MaxSealDuration[t]
+                {{else}}
+                    return miner{{.}}.MaxProveCommitDuration[t]
+                {{end}}
+        {{end}}
+    default:
+        panic("unsupported actors version")
+    }
+}
+
+func DealProviderCollateralBounds(
+	size abi.PaddedPieceSize, verified bool,
+	rawBytePower, qaPower, baselinePower abi.StoragePower,
+	circulatingFil abi.TokenAmount, nwVer network.Version,
+) (min, max abi.TokenAmount) {
+	switch actors.VersionForNetwork(nwVer) {
+	    {{range .versions}}
+            case actors.Version{{.}}:
+                {{if (eq . 0)}}
+                    return market{{.}}.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil, nwVer)
+                {{else}}
+                    return market{{.}}.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
+                {{end}}
+        {{end}}
+	default:
+		panic("unsupported actors version")
+	}
+}
+
+func DealDurationBounds(pieceSize abi.PaddedPieceSize) (min, max abi.ChainEpoch) {
+	return market{{.latestVersion}}.DealDurationBounds(pieceSize)
+}
+
+// Sets the challenge window and scales the proving period to match (such that
+// there are always 48 challenge windows in a proving period).
+func SetWPoStChallengeWindow(period abi.ChainEpoch) {
+    {{range .versions}}
+        miner{{.}}.WPoStChallengeWindow = period
+        miner{{.}}.WPoStProvingPeriod = period * abi.ChainEpoch(miner{{.}}.WPoStPeriodDeadlines)
+        {{if (ge . 3)}}
+        	// by default, this is 2x finality which is 30 periods.
+        	// scale it if we're scaling the challenge period.
+        	miner{{.}}.WPoStDisputeWindow = period * 30
+        {{end}}
+    {{end}}
+}
+
+func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
+	if nwVer <= network.Version3 {
+		return 10
+	}
+
+    // NOTE: if this ever changes, adjust it in a (*Miner).mineOne() logline as well
+	return ChainFinality
+}
+
+func GetMaxSectorExpirationExtension() abi.ChainEpoch {
+	return miner{{.latestVersion}}.MaxSectorExpirationExtension
+}
+
+func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {
+	sectorsPerPart, err := builtin{{.latestVersion}}.PoStProofWindowPoStPartitionSectors(p)
+	if err != nil {
+		return 0, err
+	}
+	maxSectors := uint64(GetAddressedSectorsMax(nv))
+	return int(maxSectors / sectorsPerPart), nil
+}
+
+func GetDefaultSectorSize() abi.SectorSize {
+	// supported sector sizes are the same across versions.
+	szs := make([]abi.SectorSize, 0, len(miner{{.latestVersion}}.PreCommitSealProofTypesV8))
+	for spt := range miner{{.latestVersion}}.PreCommitSealProofTypesV8 {
+		ss, err := spt.SectorSize()
+		if err != nil {
+			panic(err)
+		}
+
+		szs = append(szs, ss)
+	}
+
+	sort.Slice(szs, func(i, j int) bool {
+		return szs[i] < szs[j]
+	})
+
+	return szs[0]
+}
+
+func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
+       return abi.RegisteredAggregationProof_SnarkPackV1
+}
+
+func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) abi.ChainEpoch {
+	if nwVer <= network.Version10 {
+		return builtin4.SealProofPoliciesV0[proof].SectorMaxLifetime
+	}
+
+	return builtin{{.latestVersion}}.SealProofPoliciesV11[proof].SectorMaxLifetime
+}
+
+func GetAddressedSectorsMax(nwVer network.Version) int {
+	switch actors.VersionForNetwork(nwVer) {
+	    {{range .versions}}
+            case actors.Version{{.}}:
+                return miner{{.}}.AddressedSectorsMax
+        {{end}}
+	default:
+		panic("unsupported network version")
+	}
+}
+
+func GetDeclarationsMax(nwVer network.Version) int {
+	switch actors.VersionForNetwork(nwVer) {
+	    {{range .versions}}
+	    case actors.Version{{.}}:
+            {{if (eq . 0)}}
+                // TODO: Should we instead panic here since the concept doesn't exist yet?
+                return miner{{.}}.AddressedPartitionsMax
+            {{else}}
+                return miner{{.}}.DeclarationsMax
+            {{end}}
+        {{end}}
+	default:
+		panic("unsupported network version")
+	}
+}
+
+func AggregateNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) abi.TokenAmount {
+    switch actors.VersionForNetwork(nwVer) {
+	    {{range .versions}}
+	    case actors.Version{{.}}:
+            {{if (le . 4)}}
+                return big.Zero()
+            {{else}}
+                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee)
+            {{end}}
+        {{end}}
+	default:
+		panic("unsupported network version")
+	}
+}

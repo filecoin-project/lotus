@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 )
@@ -121,12 +122,12 @@ func (s *state4) ForEachClaim(cb func(miner address.Address, claim Claim) error)
 }
 
 func (s *state4) ClaimsChanged(other State) (bool, error) {
-	other2, ok := other.(*state4)
+	other4, ok := other.(*state4)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
-	return !s.State.Claims.Equals(other2.State.Claims), nil
+	return !s.State.Claims.Equals(other4.State.Claims), nil
 }
 
 func (s *state4) claims() (adt.Map, error) {
