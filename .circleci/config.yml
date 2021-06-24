@@ -456,7 +456,7 @@ jobs:
           name: prepare workspace
           command: |
             mkdir appimage
-            mv Lotus-*-AppImage appimage
+            mv Lotus-*.AppImage appimage
       - persist_to_workspace:
           root: "."
           paths:
