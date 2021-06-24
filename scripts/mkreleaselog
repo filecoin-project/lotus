@@ -5,26 +5,7 @@ export GOPATH="$(go env GOPATH)"
 
 alias jq="jq --unbuffered"
 
-AUTHORS=(
-    # orgs
-    ipfs
-    ipld
-    libp2p
-    multiformats
-    filecoin-project
-    ipfs-shipyard
-
-    # Authors of personal repos used by go-ipfs that should be mentioned in the
-    # release notes.
-    whyrusleeping
-    Kubuxu
-    jbenet
-    Stebalien
-    marten-seemann
-    hsanjuan
-    lucas-clemente
-    warpfork
-)
+AUTHORS=(filecoin-project)
 
 [[ -n "${REPO_FILTER+x}" ]] || REPO_FILTER="github.com/(${$(printf "|%s" "${AUTHORS[@]}"):1})"
 
