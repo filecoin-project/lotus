@@ -36,10 +36,6 @@ Given these assumptions:
 - We'd expect the daily lotus datastore growth rate to increase by about 10-15% (from current ~21GiB/day).
    - Most "growth" of the lotus datastore is due to "churn", historical data that's no longer referenced by the latest state-tree.
 
-### Hardware requirements and suggestions
-
-As the size of a single state tree grows, so will the size of the minimal datastore needed to sync the blockchain. The Filecoin protocol requires any node validating the chain to have the last 1800 state trees (2 * `ChainFinality`). Depending on how fast storage providers seal new sectors, this could get as large as AMOUNT in 6 months, and grow as fast as 20 GB per day. This increases the necessary hardware requirements to validate the Filecoin blockchain, but can be supported by images such as [Amazon EC2](https://aws.amazon.com/ec2/instance-explorer/?ec2-instances-cards.sort-by=item.additionalFields.category-order&ec2-instances-cards.sort-order=asc&awsf.ec2-instances-filter-category=*all&awsf.ec2-instances-filter-processors=*all&awsf.ec2-instances-filter-accelerators=*all&awsf.ec2-instances-filter-capabilities=additional-capabilities%23instance-storage&ec2-instances-cards.q=ssd&ec2-instances-cards.q_operator=AND&awsm.page-ec2-instances-cards=1) and [Google Cloud Platform](https://cloud.google.com/compute/docs/machine-types).
-
 ### Future improvements
 
 Various Lotus improvements are planned moving forward to mitigate the effects of the growing state tree size. The primary improvement is the [Lotus splitstore](https://github.com/filecoin-project/lotus/discussions/5788), which will soon be enabled by default. The feature allows for [online garbage collection](https://github.com/filecoin-project/lotus/issues/6577) for nodes that do not seek to maintain full chain and state history, thus eliminating the need for users to delete their datastores and sync from snapshots.
