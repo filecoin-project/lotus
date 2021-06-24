@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/dagstore"
+	"github.com/filecoin-project/lotus/markets/mount"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -132,6 +134,12 @@ func ConfigStorageMiner(c interface{}) Option {
 					Default:  &config.RetrievalPricingDefault{},
 				},
 			})),
+
+			// DAGStore Mount for Markets
+			Override(new(dagstore.LotusMountAPI), mount.NewLotusMount),
+
+			// TODO Create a fully instantiated and rehydrated DAGStore here by instantiating and using a LotusMountFactory.
+			// Inject the DAGstore into the storage and retrieval markets.
 
 			// Markets (retrieval)
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
