@@ -439,6 +439,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			GasCosts: &gasOutputs,
 			Duration: time.Since(start),
+			ActorErr: aerrors.Newf(exitcode.SysErrOutOfGas,
+				"message gas limit does not cover on-chain gas costs"),
 		}, nil
 	}
 
@@ -667,6 +669,12 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	}
 
 	return root, nil
+}
+
+// Get the buffered blockstore associated with the VM. This includes any temporary blocks produced
+// during this VM's execution.
+func (vm *VM) ActorStore(ctx context.Context) adt.Store {
+	return adt.WrapStore(ctx, vm.cst)
 }
 
 func linksForObj(blk block.Block, cb func(cid.Cid)) error {
