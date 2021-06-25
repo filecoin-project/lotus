@@ -3,6 +3,7 @@ package genesis
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -46,8 +47,9 @@ func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av ac
 	}
 
 	act := &types.Actor{
-		Code: actcid,
-		Head: statecid,
+		Code:    actcid,
+		Head:    statecid,
+		Balance: big.Zero(),
 	}
 
 	return act, nil
