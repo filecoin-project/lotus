@@ -457,6 +457,8 @@ jobs:
           command: |
             mkdir appimage
             mv Lotus-*.AppImage appimage
+      - store_artifacts:
+          path: appimage
       - persist_to_workspace:
           root: "."
           paths:
@@ -800,10 +802,6 @@ workflows:
       - build-all:
           requires:
             - test-short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-calibration:
           requires:
             - test-short
@@ -829,23 +827,9 @@ workflows:
       - build-macos:
           requires:
             - test-short
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-appimage:
           requires:
             - test-short
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
