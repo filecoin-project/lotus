@@ -151,12 +151,12 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
 	if err != nil {
-		return nil, xerrors.Errorf("failed resolving params.Wallet addr: %w", params.Wallet)
+		return nil, xerrors.Errorf("failed resolving params.Wallet addr (%s): %w", params.Wallet, err)
 	}
 
 	exist, err := a.WalletHas(ctx, walletKey)
 	if err != nil {
-		return nil, xerrors.Errorf("failed getting addr from wallet: %w", params.Wallet)
+		return nil, xerrors.Errorf("failed getting addr from wallet (%s): %w", params.Wallet, err)
 	}
 	if !exist {
 		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
