@@ -624,11 +624,21 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		Spt:   sector.SectorType,
 	})
 	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("queuing commit for aggregation failed: %w", err)})
+		return ctx.Send(SectorRetrySubmitCommit{})
 	}
 
 	if res.Error != "" {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("aggregate error: %s", res.Error)})
+		tok, _, err := m.api.ChainHead(ctx.Context())
+		if err != nil {
+			log.Errorf("handleSubmitCommit: api error, not proceeding: %+v", err)
+			return nil
+		}
+
+		if err := m.checkCommit(ctx.Context(), sector, sector.Proof, tok); err != nil {
+			return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
+		}
+
+		return ctx.Send(SectorRetrySubmitCommit{})
 	}
 
 	if e, found := res.FailedSectors[sector.SectorNumber]; found {
