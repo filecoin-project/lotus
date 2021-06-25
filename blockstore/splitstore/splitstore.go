@@ -168,7 +168,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	}
 
 	// the txn markset env
-	txnEnv, err := OpenMarkSetEnv(path, "bloomts")
+	txnEnv, err := OpenMarkSetEnv(path, "mapts")
 	if err != nil {
 		_ = tracker.Close()
 		_ = env.Close()
