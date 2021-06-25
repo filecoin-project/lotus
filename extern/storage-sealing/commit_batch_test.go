@@ -48,7 +48,6 @@ func TestCommitBatcher(t *testing.T) {
 			AlwaysKeepUnsealedCopy:    true,
 
 			BatchPreCommits:     true,
-			MinPreCommitBatch:   1,
 			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize,
 			PreCommitBatchWait:  24 * time.Hour,
 			PreCommitBatchSlack: 3 * time.Hour,

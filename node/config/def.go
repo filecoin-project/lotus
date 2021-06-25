@@ -66,6 +66,8 @@ type DealmakingConfig struct {
 	ConsiderUnverifiedStorageDeals bool
 	PieceCidBlocklist              []cid.Cid
 	ExpectedSealDuration           Duration
+	// Maximum amount of time proposed deal StartEpoch can be in future
+	MaxDealStartDelay Duration
 	// The amount of time to wait for more deals to arrive before
 	// publishing
 	PublishMsgPeriod Duration
@@ -124,7 +126,6 @@ type SealingConfig struct {
 	BatchPreCommits bool
 	// maximum precommit batch size - batches will be sent immediately above this size
 	MaxPreCommitBatch int
-	MinPreCommitBatch int
 	// how long to wait before submitting a batch after crossing the minimum batch size
 	PreCommitBatchWait Duration
 	// time buffer for forceful batch submission before sectors/deal in batch would start expiring
@@ -316,7 +317,6 @@ func DefaultStorageMiner() *StorageMiner {
 			FinalizeEarly:             false,
 
 			BatchPreCommits:     true,
-			MinPreCommitBatch:   1,                                  // we must have at least one precommit to batch
 			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
 			PreCommitBatchWait:  Duration(24 * time.Hour),           // this should be less than 31.5 hours, which is the expiration of a precommit ticket
 			PreCommitBatchSlack: Duration(3 * time.Hour),            // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
@@ -356,6 +356,7 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
+			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
 			ExpectedSealDuration:            Duration(time.Hour * 24),
 			PublishMsgPeriod:                Duration(time.Hour),
 			MaxDealsPerPublishMsg:           8,
@@ -377,12 +378,12 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxCommitGasFee:    types.MustParseFIL("0.05"),
 
 			MaxPreCommitBatchGasFee: BatchFeeConfig{
-				Base:      types.MustParseFIL("0.025"), // TODO: update before v1.10.0
-				PerSector: types.MustParseFIL("0.025"), // TODO: update before v1.10.0
+				Base:      types.MustParseFIL("0"),
+				PerSector: types.MustParseFIL("0.02"),
 			},
 			MaxCommitBatchGasFee: BatchFeeConfig{
-				Base:      types.MustParseFIL("0.05"), // TODO: update before v1.10.0
-				PerSector: types.MustParseFIL("0.05"), // TODO: update before v1.10.0
+				Base:      types.MustParseFIL("0"),
+				PerSector: types.MustParseFIL("0.03"), // enough for 6 agg and 1nFIL base fee
 			},
 
 			MaxTerminateGasFee:     types.MustParseFIL("0.5"),
