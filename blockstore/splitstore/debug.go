@@ -123,7 +123,7 @@ func (d *debugLog) LogWriteMany(curTs *types.TipSet, blks []blocks.Block, writeE
 	}
 }
 
-func (d *debugLog) LogMove(curTs *types.TipSet, cid cid.Cid, writeEpoch abi.ChainEpoch) {
+func (d *debugLog) LogMove(curTs *types.TipSet, cid cid.Cid) {
 	if d == nil {
 		return
 	}
@@ -133,7 +133,7 @@ func (d *debugLog) LogMove(curTs *types.TipSet, cid cid.Cid, writeEpoch abi.Chai
 
 	d.moveCnt++
 
-	_, err := fmt.Fprintf(d.moveLog, "%d %s %d\n", curTs.Height(), cid, writeEpoch)
+	_, err := fmt.Fprintf(d.moveLog, "%d %s\n", curTs.Height(), cid)
 	if err != nil {
 		log.Warnf("error writing move log: %s", err)
 	}

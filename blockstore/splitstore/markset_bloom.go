@@ -15,19 +15,22 @@ const (
 	BloomFilterProbability = 0.01
 )
 
-type BloomMarkSetEnv struct{}
+type BloomMarkSetEnv struct {
+	ts bool
+}
 
 var _ MarkSetEnv = (*BloomMarkSetEnv)(nil)
 
 type BloomMarkSet struct {
 	salt []byte
 	bf   *bbloom.Bloom
+	ts   bool
 }
 
 var _ MarkSet = (*BloomMarkSet)(nil)
 
-func NewBloomMarkSetEnv() (*BloomMarkSetEnv, error) {
-	return &BloomMarkSetEnv{}, nil
+func NewBloomMarkSetEnv(ts bool) (*BloomMarkSetEnv, error) {
+	return &BloomMarkSetEnv{ts: ts}, nil
 }
 
 func (e *BloomMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
@@ -47,7 +50,7 @@ func (e *BloomMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 		return nil, xerrors.Errorf("error creating bloom filter: %w", err)
 	}
 
-	return &BloomMarkSet{salt: salt, bf: bf}, nil
+	return &BloomMarkSet{salt: salt, bf: bf, ts: e.ts}, nil
 }
 
 func (e *BloomMarkSetEnv) Close() error {
@@ -64,12 +67,20 @@ func (s *BloomMarkSet) saltedKey(cid cid.Cid) []byte {
 }
 
 func (s *BloomMarkSet) Mark(cid cid.Cid) error {
-	s.bf.Add(s.saltedKey(cid))
+	if s.ts {
+		s.bf.AddTS(s.saltedKey(cid))
+	} else {
+		s.bf.Add(s.saltedKey(cid))
+	}
+
 	return nil
 }
 
 func (s *BloomMarkSet) Has(cid cid.Cid) (bool, error) {
-	return s.bf.Has(s.saltedKey(cid)), nil
+	if s.ts {
+		return s.bf.HasTS(s.saltedKey(cid)), nil
+	}
+	return s.bf.HasTS(s.saltedKey(cid)), nil
 }
 
 func (s *BloomMarkSet) Close() error {

@@ -29,7 +29,9 @@ type MarkSetEnv interface {
 func OpenMarkSetEnv(path string, mtype string) (MarkSetEnv, error) {
 	switch mtype {
 	case "", "bloom":
-		return NewBloomMarkSetEnv()
+		return NewBloomMarkSetEnv(false)
+	case "bloomts":
+		return NewBloomMarkSetEnv(true)
 	case "bolt":
 		return NewBoltMarkSetEnv(filepath.Join(path, "markset.bolt"))
 	default:
