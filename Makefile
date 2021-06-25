@@ -234,6 +234,12 @@ BINS+=tvx
 install-chainwatch: lotus-chainwatch
 	install -C ./lotus-chainwatch /usr/local/bin/lotus-chainwatch
 
+lotus-sim: $(BUILD_DEPS)
+	rm -f lotus-sim
+	go build $(GOFLAGS) -o lotus-sim ./cmd/lotus-sim
+.PHONY: lotus-sim
+BINS+=lotus-sim
+
 # SYSTEMD
 
 install-daemon-service: install-daemon
@@ -364,7 +370,7 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: actors-gen type-gen method-gen docsgen api-gen
+gen: actors-gen type-gen method-gen docsgen api-gen circleci
 	@echo ">>> IF YOU'VE MODIFIED THE CLI, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 
@@ -379,3 +385,6 @@ docsgen-cli: lotus lotus-miner lotus-worker
 
 print-%:
 	@echo $*=$($*)
+
+circleci:
+	go generate -x ./.circleci
