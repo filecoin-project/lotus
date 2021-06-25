@@ -62,8 +62,8 @@ const UpgradeNorwegianHeight = 665280
 // 2021-04-29T06:00:00Z
 const UpgradeTurboHeight = 712320
 
-// ???
-var UpgradeHyperdriveHeight = abi.ChainEpoch(9999999)
+// 2021-06-30T22:00:00Z
+var UpgradeHyperdriveHeight = abi.ChainEpoch(892800)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
