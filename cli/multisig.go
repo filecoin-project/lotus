@@ -1428,7 +1428,7 @@ var msigLockCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 6 {
+		if cctx.Args().Len() != 5 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, tx id, start epoch, unlock duration, and amount"))
 		}
 
