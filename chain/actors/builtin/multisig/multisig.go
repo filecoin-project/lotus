@@ -186,6 +186,7 @@ type MessageBuilder interface {
 type ProposalHashData = msig5.ProposalHashData
 type ProposeReturn = msig5.ProposeReturn
 type ProposeParams = msig5.ProposeParams
+type ApproveReturn = msig5.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	params := msig5.TxnIDParams{ID: msig5.TxnID(id)}
