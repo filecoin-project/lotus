@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/itests/multisig"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -188,7 +189,7 @@ func TestGatewayMsigCLI(t *testing.T) {
 	defer nodes.closer()
 
 	lite := nodes.lite
-	runMultisigTests(t, lite)
+	multisig.RunMultisigTests(t, lite)
 }
 
 func TestGatewayDealFlow(t *testing.T) {

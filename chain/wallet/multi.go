@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go.uber.org/fx"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -56,18 +57,18 @@ func nonNil(wallets ...getif) []api.Wallet {
 func (m MultiWallet) find(ctx context.Context, address address.Address, wallets ...getif) (api.Wallet, error) {
 	ws := nonNil(wallets...)
 
+	var merr error
+
 	for _, w := range ws {
 		have, err := w.WalletHas(ctx, address)
-		if err != nil {
-			return nil, err
-		}
+		merr = multierr.Append(merr, err)
 
-		if have {
+		if err == nil && have {
 			return w, nil
 		}
 	}
 
-	return nil, nil
+	return nil, merr
 }
 
 func (m MultiWallet) WalletNew(ctx context.Context, keyType types.KeyType) (address.Address, error) {
