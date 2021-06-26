@@ -161,6 +161,8 @@ require (
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 )
 
+replace github.com/libp2p/go-libp2p-yamux => github.com/libp2p/go-libp2p-yamux v0.5.1
+
 replace github.com/filecoin-project/lotus => ./
 
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
