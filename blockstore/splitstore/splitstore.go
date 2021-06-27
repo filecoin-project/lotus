@@ -263,19 +263,6 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	}
 }
 
-// internal version used by walk so that we don't blow the txn
-func (s *SplitStore) get(cid cid.Cid) (blocks.Block, error) {
-	blk, err := s.hot.Get(cid)
-
-	switch err {
-	case bstore.ErrNotFound:
-		return s.cold.Get(cid)
-
-	default:
-		return blk, err
-	}
-}
-
 func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
@@ -1085,6 +1072,19 @@ func (s *SplitStore) walkLinks(c cid.Cid, walked *cid.Set, f func(cid.Cid) error
 	}
 
 	return rerr
+}
+
+// internal version used by walk so that we don't blow the txn
+func (s *SplitStore) get(cid cid.Cid) (blocks.Block, error) {
+	blk, err := s.hot.Get(cid)
+
+	switch err {
+	case bstore.ErrNotFound:
+		return s.cold.Get(cid)
+
+	default:
+		return blk, err
+	}
 }
 
 func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
