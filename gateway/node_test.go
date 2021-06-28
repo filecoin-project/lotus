@@ -233,3 +233,19 @@ func (m *mockGatewayDepsAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Ci
 func (m *mockGatewayDepsAPI) StateReadState(ctx context.Context, act address.Address, ts types.TipSetKey) (*api.ActorState, error) {
 	panic("implement me")
 }
+
+func (m *mockGatewayDepsAPI) Version(context.Context) (api.APIVersion, error) {
+	return api.APIVersion{
+		APIVersion: api.FullAPIVersion1,
+	}, nil
+}
+
+func TestGatewayVersion(t *testing.T) {
+	ctx := context.Background()
+	mock := &mockGatewayDepsAPI{}
+	a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit)
+
+	v, err := a.Version(ctx)
+	require.NoError(t, err)
+	require.Equal(t, api.FullAPIVersion1, v.APIVersion)
+}
