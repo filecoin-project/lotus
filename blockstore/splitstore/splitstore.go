@@ -325,7 +325,7 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 	}
 
 	if err != nil {
-		log.Errorf("error putting cid %s in hotstore: %s", blk.Cid(), err)
+		log.Errorf("error putting block %s in hotstore: %s", blk.Cid(), err)
 	}
 
 	return err
