@@ -324,6 +324,10 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 		err = s.txnProtect.Mark(blk.Cid())
 	}
 
+	if err != nil {
+		log.Errorf("error putting cid %s in hotstore: %s", blk.Cid(), err)
+	}
+
 	return err
 }
 
@@ -362,6 +366,10 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 				err = multierr.Combine(err, err2)
 			}
 		}
+	}
+
+	if err != nil {
+		log.Errorf("error putting batch in hotstore: %s", err)
 	}
 
 	return err
