@@ -1093,7 +1093,7 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 	for _, cid := range cold {
 		blk, err := s.hot.Get(cid)
 		if err != nil {
-			if err == dstore.ErrNotFound {
+			if err == bstore.ErrNotFound {
 				// this can happen if the node is killed after we have deleted the block from the hotstore
 				// but before we have deleted it from the tracker; just delete the tracker.
 				err = s.tracker.Delete(cid)
