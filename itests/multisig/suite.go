@@ -14,21 +14,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func RunMultisigTests(t *testing.T, clientNode kit.TestFullNode) {
+func RunMultisigTests(t *testing.T, client *kit.TestFullNode) {
 	// Create mock CLI
 	ctx := context.Background()
 	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
-	clientCLI := mockCLI.Client(clientNode.ListenAddr)
+	clientCLI := mockCLI.Client(client.ListenAddr)
 
 	// Create some wallets on the node to use for testing multisig
 	var walletAddrs []address.Address
 	for i := 0; i < 4; i++ {
-		addr, err := clientNode.WalletNew(ctx, types.KTSecp256k1)
+		addr, err := client.WalletNew(ctx, types.KTSecp256k1)
 		require.NoError(t, err)
 
 		walletAddrs = append(walletAddrs, addr)
 
-		kit.SendFunds(ctx, t, clientNode, addr, types.NewInt(1e15))
+		kit.SendFunds(ctx, t, client, addr, types.NewInt(1e15))
 	}
 
 	// Create an msig with three of the addresses and threshold of two sigs

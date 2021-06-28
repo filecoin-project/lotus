@@ -1,7 +1,6 @@
 package itests
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
@@ -15,8 +14,8 @@ func TestClient(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
 	kit.QuietMiningLogs()
 
-	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
-	clientNode, _ := kit.StartOneNodeOneMiner(ctx, t, blocktime)
-	kit.RunClientTest(t, cli.Commands, clientNode)
+	blockTime := 5 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+	kit.RunClientTest(t, cli.Commands, client)
 }

@@ -1,19 +1,12 @@
 package kit
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/ipfs/go-cid"
-	files "github.com/ipfs/go-ipfs-files"
-	"github.com/ipld/go-car"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -21,30 +14,55 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
+	"github.com/ipld/go-car"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 type DealHarness struct {
 	t      *testing.T
-	client api.FullNode
-	miner  TestMiner
+	client *TestFullNode
+	miner  *TestMiner
 }
 
 type MakeFullDealParams struct {
-	Ctx         context.Context
-	Rseed       int
-	CarExport   bool
-	FastRet     bool
-	StartEpoch  abi.ChainEpoch
-	DoRetrieval bool
+	Rseed      int
+	FastRet    bool
+	StartEpoch abi.ChainEpoch
+
+	// SuspendUntilCryptoeconStable suspends deal-making, until cryptoecon
+	// parameters are stabilised. This affects projected collateral, and tests
+	// will fail in network version 13 and higher if deals are started too soon
+	// after network birth.
+	//
+	// The reason is that the formula for collateral calculation takes
+	// circulating supply into account:
+	//
+	//   [portion of power this deal will be] * [~1% of tokens].
+	//
+	// In the first epochs after genesis, the total circulating supply is
+	// changing dramatically in percentual terms. Therefore, if the deal is
+	// proposed too soon, by the time it gets published on chain, the quoted
+	// provider collateral will no longer be valid.
+	//
+	// The observation is that deals fail with:
+	//
+	//   GasEstimateMessageGas error: estimating gas used: message execution
+	//   failed: exit 16, reason: Provider collateral out of bounds. (RetCode=16)
+	//
+	// Enabling this will suspend deal-making until the network has reached a
+	// height of 300.
+	SuspendUntilCryptoeconStable bool
 }
 
 // NewDealHarness creates a test harness that contains testing utilities for deals.
-func NewDealHarness(t *testing.T, client api.FullNode, miner TestMiner) *DealHarness {
+func NewDealHarness(t *testing.T, client *TestFullNode, miner *TestMiner) *DealHarness {
 	return &DealHarness{
 		t:      t,
 		client: client,
@@ -52,43 +70,39 @@ func NewDealHarness(t *testing.T, client api.FullNode, miner TestMiner) *DealHar
 	}
 }
 
-func (dh *DealHarness) MakeFullDeal(params MakeFullDealParams) ([]byte,
-	*api.DealInfo, cid.Cid) {
-	res, _, data, err := CreateImportFile(params.Ctx, dh.client, params.Rseed, 0)
-	if err != nil {
-		dh.t.Fatal(err)
+// MakeOnlineDeal makes an online deal, generating a random file with the
+// supplied seed, and setting the specified fast retrieval flag and start epoch
+// on the storage deal. It returns when the deal is sealed.
+//
+// TODO: convert input parameters to struct, and add size as an input param.
+func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
+	res, path = dh.client.CreateImportFile(ctx, params.Rseed, 0)
+
+	dh.t.Logf("FILE CID: %s", res.Root)
+
+	if params.SuspendUntilCryptoeconStable {
+		dh.t.Logf("deal-making suspending until cryptecon parameters have stabilised")
+		ts := dh.client.WaitTillChain(ctx, HeightAtLeast(300))
+		dh.t.Logf("deal-making continuing; current height is %d", ts.Height())
 	}
 
-	fcid := res.Root
-	fmt.Println("FILE CID: ", fcid)
-
-	deal := dh.StartDeal(params.Ctx, fcid, params.FastRet, params.StartEpoch)
+	deal = dh.StartDeal(ctx, res.Root, params.FastRet, params.StartEpoch)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-	dh.WaitDealSealed(params.Ctx, deal, false, false, nil)
+	dh.WaitDealSealed(ctx, deal, false, false, nil)
 
-	// Retrieval
-	info, err := dh.client.ClientGetDealInfo(params.Ctx, *deal)
-	require.NoError(dh.t, err)
-
-	if params.DoRetrieval {
-		dh.TestRetrieval(params.Ctx, fcid, &info.PieceCID, params.CarExport, data)
-	}
-
-	return data, info, fcid
+	return deal, res, path
 }
 
+// StartDeal starts a storage deal between the client and the miner.
 func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
 	maddr, err := dh.miner.ActorAddress(ctx)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
 
 	addr, err := dh.client.WalletDefaultAddress(ctx)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	deal, err := dh.client.ClientStartDeal(ctx, &api.StartDealParams{
 		Data: &storagemarket.DataRef{
 			TransferType: storagemarket.TTGraphsync,
@@ -101,12 +115,12 @@ func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool
 		MinBlocksDuration: uint64(build.MinDealDuration),
 		FastRetrieval:     fastRet,
 	})
-	if err != nil {
-		dh.t.Fatalf("%+v", err)
-	}
+	require.NoError(dh.t, err)
+
 	return deal
 }
 
+// WaitDealSealed waits until the deal is sealed.
 func (dh *DealHarness) WaitDealSealed(ctx context.Context, deal *cid.Cid, noseal, noSealStart bool, cb func()) {
 loop:
 	for {
@@ -128,7 +142,7 @@ loop:
 		case storagemarket.StorageDealError:
 			dh.t.Fatal("deal errored", di.Message)
 		case storagemarket.StorageDealActive:
-			fmt.Println("COMPLETE", di)
+			dh.t.Log("COMPLETE", di)
 			break loop
 		}
 
@@ -143,7 +157,7 @@ loop:
 			}
 		}
 
-		fmt.Printf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
+		dh.t.Logf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
 		time.Sleep(time.Second / 2)
 		if cb != nil {
 			cb()
@@ -151,13 +165,14 @@ loop:
 	}
 }
 
+// WaitDealPublished waits until the deal is published.
 func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	updates, err := dh.miner.MarketGetDealUpdates(subCtx)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -172,10 +187,10 @@ func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 				case storagemarket.StorageDealError:
 					dh.t.Fatal("deal errored", di.Message)
 				case storagemarket.StorageDealFinalizing, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive:
-					fmt.Println("COMPLETE", di)
+					dh.t.Log("COMPLETE", di)
 					return
 				}
-				fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
+				dh.t.Log("Deal state: ", storagemarket.DealStates[di.State])
 			}
 		}
 	}
@@ -194,133 +209,103 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 			require.NoError(dh.t, dh.miner.SectorStartSealing(ctx, snum))
 		}
 
-		flushSealingBatches(dh.t, ctx, dh.miner)
+		dh.miner.FlushSealingBatches(ctx)
 	}
 }
 
-func (dh *DealHarness) TestRetrieval(ctx context.Context, fcid cid.Cid, piece *cid.Cid, carExport bool, expect []byte) {
-	offers, err := dh.client.ClientFindData(ctx, fcid, piece)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root cid.Cid, carExport bool) (path string) {
+	// perform retrieval.
+	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
+	require.NoError(dh.t, err)
 
-	if len(offers) < 1 {
-		dh.t.Fatal("no offers")
-	}
+	offers, err := dh.client.ClientFindData(ctx, root, &info.PieceCID)
+	require.NoError(dh.t, err)
+	require.NotEmpty(dh.t, offers, "no offers")
 
-	rpath, err := ioutil.TempDir("", "lotus-retrieve-test-")
-	if err != nil {
-		dh.t.Fatal(err)
-	}
-	defer os.RemoveAll(rpath) //nolint:errcheck
+	carFile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
+	require.NoError(dh.t, err)
+
+	defer carFile.Close() //nolint:errcheck
 
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
 
 	ref := &api.FileRef{
-		Path:  filepath.Join(rpath, "ret"),
+		Path:  carFile.Name(),
 		IsCAR: carExport,
 	}
+
 	updates, err := dh.client.ClientRetrieveWithEvents(ctx, offers[0].Order(caddr), ref)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	for update := range updates {
-		if update.Err != "" {
-			dh.t.Fatalf("retrieval failed: %s", update.Err)
-		}
+		require.Emptyf(dh.t, update.Err, "retrieval failed: %s", update.Err)
 	}
 
-	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))
-	if err != nil {
-		dh.t.Fatal(err)
-	}
-
+	ret := carFile.Name()
 	if carExport {
-		rdata = dh.ExtractCarData(ctx, rdata, rpath)
+		actualFile := dh.ExtractFileFromCAR(ctx, carFile)
+		ret = actualFile.Name()
+		_ = actualFile.Close() //nolint:errcheck
 	}
 
-	if !bytes.Equal(rdata, expect) {
-		dh.t.Fatal("wrong expect retrieved")
-	}
+	return ret
 }
 
-func (dh *DealHarness) ExtractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
+func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (out *os.File) {
 	bserv := dstest.Bserv()
-	ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	ch, err := car.LoadCar(bserv.Blockstore(), file)
+	require.NoError(dh.t, err)
+
 	b, err := bserv.GetBlock(ctx, ch.Roots[0])
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	nd, err := ipld.Decode(b)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
+	require.NoError(dh.t, err)
+
 	dserv := dag.NewDAGService(bserv)
 	fil, err := unixfile.NewUnixfsFile(ctx, dserv, nd)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
-	outPath := filepath.Join(rpath, "retLoadedCAR")
-	if err := files.WriteTo(fil, outPath); err != nil {
-		dh.t.Fatal(err)
-	}
-	rdata, err = ioutil.ReadFile(outPath)
-	if err != nil {
-		dh.t.Fatal(err)
-	}
-	return rdata
+	require.NoError(dh.t, err)
+
+	tmpfile, err := ioutil.TempFile(dh.t.TempDir(), "file-in-car")
+	require.NoError(dh.t, err)
+
+	defer tmpfile.Close() //nolint:errcheck
+
+	err = files.WriteTo(fil, tmpfile.Name())
+	require.NoError(dh.t, err)
+
+	return tmpfile
 }
 
-type DealsScaffold struct {
-	Ctx        context.Context
-	Client     *impl.FullNodeAPI
-	Miner      TestMiner
-	BlockMiner *BlockMiner
+type RunConcurrentDealsOpts struct {
+	N             int
+	FastRetrieval bool
+	CarExport     bool
+	StartEpoch    abi.ChainEpoch
 }
 
-func ConnectAndStartMining(t *testing.T, blocktime time.Duration, miner TestMiner, clients ...api.FullNode) *BlockMiner {
-	ctx := context.Background()
-
-	for _, c := range clients {
-		addrinfo, err := c.NetAddrsListen(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := miner.NetConnect(ctx, addrinfo); err != nil {
-			t.Fatal(err)
-		}
+func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
+	errgrp, _ := errgroup.WithContext(context.Background())
+	for i := 0; i < opts.N; i++ {
+		i := i
+		errgrp.Go(func() (err error) {
+			defer func() {
+				// This is necessary because golang can't deal with test
+				// failures being reported from children goroutines ¯\_(ツ)_/¯
+				if r := recover(); r != nil {
+					err = fmt.Errorf("deal failed: %s", r)
+				}
+			}()
+			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), MakeFullDealParams{
+				Rseed:      5 + i,
+				FastRet:    opts.FastRetrieval,
+				StartEpoch: opts.StartEpoch,
+			})
+			outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, opts.CarExport)
+			AssertFilesEqual(dh.t, inPath, outPath)
+			return nil
+		})
 	}
-
-	time.Sleep(time.Second)
-
-	blockMiner := NewBlockMiner(t, miner)
-	blockMiner.MineBlocks(ctx, blocktime)
-	t.Cleanup(blockMiner.Stop)
-	return blockMiner
-}
-
-type TestDealState int
-
-const (
-	TestDealStateFailed     = TestDealState(-1)
-	TestDealStateInProgress = TestDealState(0)
-	TestDealStateComplete   = TestDealState(1)
-)
-
-// CategorizeDealState categorizes deal states into one of three states:
-// Complete, InProgress, Failed.
-func CategorizeDealState(dealStatus string) TestDealState {
-	switch dealStatus {
-	case "StorageDealFailing", "StorageDealError":
-		return TestDealStateFailed
-	case "StorageDealStaged", "StorageDealAwaitingPreCommit", "StorageDealSealing", "StorageDealActive", "StorageDealExpired", "StorageDealSlashed":
-		return TestDealStateComplete
-	}
-	return TestDealStateInProgress
+	require.NoError(dh.t, errgrp.Wait())
 }

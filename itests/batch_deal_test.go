@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/stretchr/testify/require"
 )
@@ -32,50 +31,40 @@ func TestBatchDealInput(t *testing.T) {
 
 	run := func(piece, deals, expectSectors int) func(t *testing.T) {
 		return func(t *testing.T) {
+			ctx := context.Background()
+
 			publishPeriod := 10 * time.Second
 			maxDealsPerMsg := uint64(deals)
 
 			// Set max deals per publish deals message to maxDealsPerMsg
-			minerDef := []kit.StorageMiner{{
-				Full: 0,
-				Opts: node.Options(
-					node.Override(
-						new(*storageadapter.DealPublisher),
-						storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
-							Period:         publishPeriod,
-							MaxDealsPerMsg: maxDealsPerMsg,
-						})),
-					node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
-						return func() (sealiface.Config, error) {
-							return sealiface.Config{
-								MaxWaitDealsSectors:       2,
-								MaxSealingSectors:         1,
-								MaxSealingSectorsForDeals: 3,
-								AlwaysKeepUnsealedCopy:    true,
-								WaitDealsDelay:            time.Hour,
-							}, nil
+			opts := kit.ConstructorOpts(node.Options(
+				node.Override(
+					new(*storageadapter.DealPublisher),
+					storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
+						Period:         publishPeriod,
+						MaxDealsPerMsg: maxDealsPerMsg,
+					})),
+				node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
+					return func() (sealiface.Config, error) {
+						return sealiface.Config{
+							MaxWaitDealsSectors:       2,
+							MaxSealingSectors:         1,
+							MaxSealingSectorsForDeals: 3,
+							AlwaysKeepUnsealedCopy:    true,
+							WaitDealsDelay:            time.Hour,
 						}, nil
-					}),
-				),
-				Preseal: kit.PresealGenesis,
-			}}
-
-			// Create a connect client and miner node
-			n, sn := kit.MockMinerBuilder(t, kit.OneFull, minerDef)
-			client := n[0].FullNode.(*impl.FullNodeAPI)
-			miner := sn[0]
-
-			blockMiner := kit.ConnectAndStartMining(t, blockTime, miner, client)
-			t.Cleanup(blockMiner.Stop)
-
+					}, nil
+				}),
+			))
+			client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+			ens.InterconnectAll().BeginMining(blockTime)
 			dh := kit.NewDealHarness(t, client, miner)
-			ctx := context.Background()
 
 			err := miner.MarketSetAsk(ctx, big.Zero(), big.Zero(), 200, 128, 32<<30)
 			require.NoError(t, err)
 
 			checkNoPadding := func() {
-				sl, err := sn[0].SectorsList(ctx)
+				sl, err := miner.SectorsList(ctx)
 				require.NoError(t, err)
 
 				sort.Slice(sl, func(i, j int) bool {
@@ -83,7 +72,7 @@ func TestBatchDealInput(t *testing.T) {
 				})
 
 				for _, snum := range sl {
-					si, err := sn[0].SectorsStatus(ctx, snum, false)
+					si, err := miner.SectorsStatus(ctx, snum, false)
 					require.NoError(t, err)
 
 					// fmt.Printf("S %d: %+v %s\n", snum, si.Deals, si.State)
@@ -122,7 +111,7 @@ func TestBatchDealInput(t *testing.T) {
 
 			checkNoPadding()
 
-			sl, err := sn[0].SectorsList(ctx)
+			sl, err := miner.SectorsList(ctx)
 			require.NoError(t, err)
 			require.Equal(t, len(sl), expectSectors)
 		}

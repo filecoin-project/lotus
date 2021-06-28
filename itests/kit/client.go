@@ -21,7 +21,7 @@ import (
 )
 
 // RunClientTest exercises some of the Client CLI commands
-func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode TestFullNode) {
+func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
