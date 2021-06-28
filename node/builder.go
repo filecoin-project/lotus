@@ -238,7 +238,7 @@ var LibP2P = Options(
 	Override(ConnGaterKey, lp2p.ConnGaterOption),
 )
 
-func isType(t repo.RepoType) func(s *Settings) bool {
+func IsType(t repo.RepoType) func(s *Settings) bool {
 	return func(s *Settings) bool { return s.nodeType == t }
 }
 
@@ -468,7 +468,7 @@ func Online() Option {
 		LibP2P,
 
 		ApplyIf(isFullOrLiteNode, ChainNode),
-		ApplyIf(isType(repo.StorageMiner), MinerNode),
+		ApplyIf(IsType(repo.StorageMiner), MinerNode),
 	)
 }
 
@@ -680,8 +680,8 @@ func Repo(r repo.Repo) Option {
 
 			Override(new(*dtypes.APIAlg), modules.APISecret),
 
-			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
-			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
+			ApplyIf(IsType(repo.FullNode), ConfigFullNode(c)),
+			ApplyIf(IsType(repo.StorageMiner), ConfigStorageMiner(c)),
 		)(settings)
 	}
 }
