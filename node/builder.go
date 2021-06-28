@@ -238,7 +238,7 @@ var LibP2P = Options(
 	Override(ConnGaterKey, lp2p.ConnGaterOption),
 )
 
-func isType(t repo.RepoType) func(s *Settings) bool {
+func IsType(t repo.RepoType) func(s *Settings) bool {
 	return func(s *Settings) bool { return s.nodeType == t }
 }
 
@@ -299,7 +299,7 @@ var ChainNode = Options(
 	Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 
 	// Shared graphsync (markets, serving chain)
-	Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultFullNode().Client.SimultaneousTransfers)),
+	Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultSimultaneousTransfers)),
 
 	// Service: Wallet
 	Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
@@ -403,7 +403,7 @@ var MinerNode = Options(
 	Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
 	Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 	Override(new(dtypes.StagingDAG), modules.StagingDAG),
-	Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
+	Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(config.DefaultSimultaneousTransfers)),
 	Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 	Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
@@ -468,7 +468,7 @@ func Online() Option {
 		LibP2P,
 
 		ApplyIf(isFullOrLiteNode, ChainNode),
-		ApplyIf(isType(repo.StorageMiner), MinerNode),
+		ApplyIf(IsType(repo.StorageMiner), MinerNode),
 	)
 }
 
@@ -606,6 +606,8 @@ func ConfigStorageMiner(c interface{}) Option {
 		})),
 		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
 
+		Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfers)),
+
 		Override(new(sectorstorage.SealerConfig), cfg.Storage),
 		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 		Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
@@ -678,8 +680,8 @@ func Repo(r repo.Repo) Option {
 
 			Override(new(*dtypes.APIAlg), modules.APISecret),
 
-			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
-			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
+			ApplyIf(IsType(repo.FullNode), ConfigFullNode(c)),
+			ApplyIf(IsType(repo.StorageMiner), ConfigStorageMiner(c)),
 		)(settings)
 	}
 }

@@ -78,6 +78,9 @@ type DealmakingConfig struct {
 	// as a multiplier of the minimum collateral bound
 	MaxProviderCollateralMultiplier uint64
 
+	// The maximum number of parallel online data transfers (storage+retrieval)
+	SimultaneousTransfers uint64
+
 	Filter          string
 	RetrievalFilter string
 
@@ -361,6 +364,8 @@ func DefaultStorageMiner() *StorageMiner {
 			PublishMsgPeriod:                Duration(time.Hour),
 			MaxDealsPerPublishMsg:           8,
 			MaxProviderCollateralMultiplier: 2,
+
+			SimultaneousTransfers: DefaultSimultaneousTransfers,
 
 			RetrievalPricing: &RetrievalPricing{
 				Strategy: RetrievalPricingDefaultMode,
