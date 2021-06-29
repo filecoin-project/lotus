@@ -27,7 +27,7 @@ type debugLog struct {
 	readMx, writeMx, moveMx, stackMx         sync.Mutex
 	readLog, writeLog, moveLog, stackLog     *os.File
 	readCnt, writeCnt, moveCnt, stackCnt     int
-	stackMap                                 map[string]struct{}
+	stackMap                                 map[string]string
 }
 
 func openDebugLog(path string) (*debugLog, error) {
@@ -76,7 +76,7 @@ func openDebugLog(path string) (*debugLog, error) {
 		writeLog:  writeFile,
 		moveLog:   moveFile,
 		stackLog:  stackFile,
-		stackMap:  make(map[string]struct{}),
+		stackMap:  make(map[string]string),
 	}, nil
 }
 
@@ -320,20 +320,19 @@ func (d *debugLog) getStack() string {
 	sk := d.getNormalizedStackTrace()
 	hash := sha256.Sum256([]byte(sk))
 	key := string(hash[:])
-	repr := hex.EncodeToString(hash[:])
 
 	d.stackMx.Lock()
-	_, ok := d.stackMap[key]
-
+	repr, ok := d.stackMap[key]
 	if !ok {
+		repr = hex.EncodeToString(hash[:])
+		d.stackMap[key] = repr
+		d.stackCnt++
+
 		_, err := fmt.Fprintf(d.stackLog, "%s\n%s\n", repr, sk)
 		if err != nil {
-			log.Warnf("error writing stack trace: %s", err)
+			log.Warnf("error writing stack trace for %s: %s", repr, err)
 		}
 	}
-
-	d.stackMap[key] = struct{}{}
-	d.stackCnt++
 	d.stackMx.Unlock()
 
 	return repr
