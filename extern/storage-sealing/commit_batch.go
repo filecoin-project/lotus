@@ -32,6 +32,9 @@ import (
 
 const arp = abi.RegisteredAggregationProof_SnarkPackV1
 
+var aggFeeNum = big.NewInt(110)
+var aggFeeDen = big.NewInt(100)
+
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
@@ -305,7 +308,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
 	}
 
-	aggFee := policy.AggregateNetworkFee(nv, len(infos), bf)
+	aggFee := big.Div(big.Mul(policy.AggregateNetworkFee(nv, len(infos), bf), aggFeeNum), aggFeeDen)
 
 	needFunds := big.Add(collateral, aggFee)
 
