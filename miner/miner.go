@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -325,7 +326,9 @@ minerLoop:
 
 			if err := m.sf.MinedBlock(b.Header, base.TipSet.Height()+base.NullRounds); err != nil {
 				log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-				continue
+				if os.Getenv("LOTUS_MINER_NO_FILTER") != "_yes_" {
+					continue
+				}
 			}
 
 			blkKey := fmt.Sprintf("%d", b.Header.Height)
