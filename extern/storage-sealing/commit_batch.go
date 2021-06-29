@@ -32,6 +32,9 @@ import (
 
 const arp = abi.RegisteredAggregationProof_SnarkPackV1
 
+var aggFeeNum = big.NewInt(110)
+var aggFeeDen = big.NewInt(100)
+
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_commit_batcher.go -package=mocks . CommitBatcherApi
 
 type CommitBatcherApi interface {
@@ -307,7 +310,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
 	}
 
-	aggFee := policy.AggregateNetworkFee(nv, len(infos), bf)
+	aggFee := big.Div(big.Mul(policy.AggregateNetworkFee(nv, len(infos), bf), aggFeeNum), aggFeeDen)
 
 	needFunds := big.Add(collateral, aggFee)
 
