@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -143,11 +142,21 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 
 // VersionForNetwork returns the state tree version for the given network
 // version.
-func VersionForNetwork(ver network.Version) types.StateTreeVersion {
-	if actors.VersionForNetwork(ver) == actors.Version0 {
-		return types.StateTreeVersion0
+func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
+	switch ver {
+	case network.Version0, network.Version1, network.Version2, network.Version3:
+		return types.StateTreeVersion0, nil
+	case network.Version4, network.Version5, network.Version6, network.Version7, network.Version8, network.Version9:
+		return types.StateTreeVersion1, nil
+	case network.Version10, network.Version11:
+		return types.StateTreeVersion2, nil
+	case network.Version12:
+		return types.StateTreeVersion3, nil
+	case network.Version13:
+		return types.StateTreeVersion4, nil
+	default:
+		panic(fmt.Sprintf("unsupported network version %d", ver))
 	}
-	return types.StateTreeVersion1
 }
 
 func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, error) {
@@ -155,7 +164,7 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 	switch ver {
 	case types.StateTreeVersion0:
 		// info is undefined
-	case types.StateTreeVersion1, types.StateTreeVersion2:
+	case types.StateTreeVersion1, types.StateTreeVersion2, types.StateTreeVersion3, types.StateTreeVersion4:
 		var err error
 		info, err = cst.Put(context.TODO(), new(types.StateInfo0))
 		if err != nil {
@@ -495,12 +504,38 @@ func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) erro
 }
 
 func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error {
+	// Walk through layers, if any.
+	seen := make(map[address.Address]struct{})
+	for i := len(st.snaps.layers) - 1; i >= 0; i-- {
+		for addr, op := range st.snaps.layers[i].actors {
+			if _, ok := seen[addr]; ok {
+				continue
+			}
+			seen[addr] = struct{}{}
+			if op.Delete {
+				continue
+			}
+			act := op.Act // copy
+			if err := f(addr, &act); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	// Now walk through the saved actors.
 	var act types.Actor
 	return st.root.ForEach(&act, func(k string) error {
 		act := act // copy
 		addr, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return xerrors.Errorf("invalid address (%x) found in state tree key: %w", []byte(k), err)
+		}
+
+		// no need to record anything here, there are no duplicates in the actors HAMT
+		// iself.
+		if _, ok := seen[addr]; ok {
+			return nil
 		}
 
 		return f(addr, &act)

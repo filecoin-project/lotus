@@ -5,7 +5,7 @@
 [global]
   plan = "lotus-soup"
   case = "paych-stress"
-  total_instances = 5   # 2 clients + 2 miners + 1 bootstrapper
+  total_instances = 4   # 2 clients + 1 miners + 1 bootstrapper
   builder = "docker:go"
   runner = "cluster:k8s"
 
@@ -23,7 +23,7 @@
 
 [global.run.test_params]
   clients = "2"
-  miners = "2"
+  miners = "1"
   genesis_timestamp_offset = "0"
   balance = "100"    ## be careful, this is in FIL.
   sectors = "10"
@@ -44,7 +44,7 @@
 
 [[groups]]
   id = "miners"
-  instances = { count = 2 }
+  instances = { count = 1 }
   [groups.run.test_params]
     role = "miner"
   [groups.resources]

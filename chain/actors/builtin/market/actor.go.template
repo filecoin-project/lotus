@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -15,6 +16,7 @@ import (
 {{end}}
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -41,6 +43,27 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version) (State, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return make{{.}}(store)
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return builtin{{.}}.StorageMarketActorCodeID, nil
+{{end}}
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type State interface {
 	cbor.Marshaler
 	BalancesChanged(State) (bool, error)
@@ -55,6 +78,7 @@ type State interface {
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
 	) (weight, verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
+	GetState() interface{}
 }
 
 type BalanceTable interface {
@@ -92,51 +116,67 @@ type DealState struct {
 }
 
 type DealProposal struct {
-	PieceCID             cid.Cid
-	PieceSize            abi.PaddedPieceSize
-	VerifiedDeal         bool
-	Client               address.Address
-	Provider             address.Address
-	Label                string
-	StartEpoch           abi.ChainEpoch
-	EndEpoch             abi.ChainEpoch
+	PieceCID			 cid.Cid
+	PieceSize			 abi.PaddedPieceSize
+	VerifiedDeal		 bool
+	Client				 address.Address
+	Provider			 address.Address
+	Label				 string
+	StartEpoch			 abi.ChainEpoch
+	EndEpoch			 abi.ChainEpoch
 	StoragePricePerEpoch abi.TokenAmount
-	ProviderCollateral   abi.TokenAmount
-	ClientCollateral     abi.TokenAmount
+	ProviderCollateral	 abi.TokenAmount
+	ClientCollateral	 abi.TokenAmount
 }
 
 type DealStateChanges struct {
-	Added    []DealIDState
+	Added	 []DealIDState
 	Modified []DealStateChange
-	Removed  []DealIDState
+	Removed	 []DealIDState
 }
 
 type DealIDState struct {
-	ID   abi.DealID
+	ID	 abi.DealID
 	Deal DealState
 }
 
 // DealStateChange is a change in deal state from -> to
 type DealStateChange struct {
-	ID   abi.DealID
+	ID	 abi.DealID
 	From *DealState
-	To   *DealState
+	To	 *DealState
 }
 
 type DealProposalChanges struct {
-	Added   []ProposalIDState
+	Added	[]ProposalIDState
 	Removed []ProposalIDState
 }
 
 type ProposalIDState struct {
-	ID       abi.DealID
+	ID		 abi.DealID
 	Proposal DealProposal
 }
 
 func EmptyDealState() *DealState {
 	return &DealState{
 		SectorStartEpoch: -1,
-		SlashEpoch:       -1,
+		SlashEpoch:		  -1,
 		LastUpdatedEpoch: -1,
 	}
+}
+
+// returns the earned fees and pending fees for a given deal
+func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
+	   tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
+
+	   ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
+	   if ef.LessThan(big.Zero()) {
+			   ef = big.Zero()
+	   }
+
+	   if ef.GreaterThan(tf) {
+			   ef = tf
+	   }
+
+	   return ef, big.Sub(tf, ef)
 }

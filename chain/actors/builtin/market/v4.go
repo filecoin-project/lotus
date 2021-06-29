@@ -26,6 +26,19 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make4(store adt.Store) (State, error) {
+	out := state4{store: store}
+
+	s, err := market4.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
+	return &out, nil
+}
+
 type state4 struct {
 	market4.State
 	store adt.Store
@@ -206,4 +219,8 @@ func (s *dealProposals4) array() adt.Array {
 
 func fromV4DealProposal(v4 market4.DealProposal) DealProposal {
 	return (DealProposal)(v4)
+}
+
+func (s *state4) GetState() interface{} {
+	return &s.State
 }

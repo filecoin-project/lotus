@@ -77,6 +77,51 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version) (State, error) {
+	switch av {
+
+	case actors.Version0:
+		return make0(store)
+
+	case actors.Version2:
+		return make2(store)
+
+	case actors.Version3:
+		return make3(store)
+
+	case actors.Version4:
+		return make4(store)
+
+	case actors.Version5:
+		return make5(store)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+
+	case actors.Version0:
+		return builtin0.PaymentChannelActorCodeID, nil
+
+	case actors.Version2:
+		return builtin2.PaymentChannelActorCodeID, nil
+
+	case actors.Version3:
+		return builtin3.PaymentChannelActorCodeID, nil
+
+	case actors.Version4:
+		return builtin4.PaymentChannelActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.PaymentChannelActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 // State is an abstract version of payment channel state that works across
 // versions
 type State interface {
@@ -97,6 +142,8 @@ type State interface {
 
 	// Iterate lane states
 	ForEachLaneState(cb func(idx uint64, dl LaneState) error) error
+
+	GetState() interface{}
 }
 
 // LaneState is an abstract copy of the state of a single lane

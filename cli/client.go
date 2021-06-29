@@ -92,6 +92,7 @@ var clientCmd = &cli.Command{
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("retrieval", clientCancelRetrievalDealCmd),
+		WithCategory("retrieval", clientListRetrievalsCmd),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientBalancesCmd),
@@ -307,8 +308,8 @@ var clientDealCmd = &cli.Command{
 	Description: `Make a deal with a miner.
 dataCid comes from running 'lotus client import'.
 miner is the address of the miner you wish to make a deal with.
-price is measured in FIL/GB/Epoch. Miners usually don't accept a bid
-lower than their advertised ask. You can check a miners listed price
+price is measured in FIL/Epoch. Miners usually don't accept a bid
+lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
 with 'lotus client query-ask <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).`,
@@ -321,6 +322,10 @@ The minimum value is 518400 (6 months).`,
 		&cli.Int64Flag{
 			Name:  "manual-piece-size",
 			Usage: "if manually specifying piece cid, used to specify size (dataCid must be to a car file)",
+		},
+		&cli.BoolFlag{
+			Name:  "manual-stateless-deal",
+			Usage: "instructs the node to send an offline deal without registering it with the deallist/fsm",
 		},
 		&cli.StringFlag{
 			Name:  "from",
@@ -461,7 +466,7 @@ The minimum value is 518400 (6 months).`,
 			isVerified = verifiedDealParam
 		}
 
-		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
+		sdParams := &lapi.StartDealParams{
 			Data:               ref,
 			Wallet:             a,
 			Miner:              miner,
@@ -471,7 +476,18 @@ The minimum value is 518400 (6 months).`,
 			FastRetrieval:      cctx.Bool("fast-retrieval"),
 			VerifiedDeal:       isVerified,
 			ProviderCollateral: provCol,
-		})
+		}
+
+		var proposal *cid.Cid
+		if cctx.Bool("manual-stateless-deal") {
+			if ref.TransferType != storagemarket.TTManual || price.Int64() != 0 {
+				return xerrors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
+			}
+			proposal, err = api.ClientStatelessDeal(ctx, sdParams)
+		} else {
+			proposal, err = api.ClientStartDeal(ctx, sdParams)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -1169,6 +1185,8 @@ var clientRetrieveCmd = &cli.Command{
 			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
 
+		var prevStatus retrievalmarket.DealStatus
+
 		for {
 			select {
 			case evt, ok := <-updates:
@@ -1179,19 +1197,219 @@ var clientRetrieveCmd = &cli.Command{
 						retrievalmarket.ClientEvents[evt.Event],
 						retrievalmarket.DealStatuses[evt.Status],
 					)
-				} else {
-					afmt.Println("Success")
-					return nil
+					prevStatus = evt.Status
 				}
 
 				if evt.Err != "" {
 					return xerrors.Errorf("retrieval failed: %s", evt.Err)
 				}
+
+				if !ok {
+					if prevStatus == retrievalmarket.DealStatusCompleted {
+						afmt.Println("Success")
+					} else {
+						afmt.Printf("saw final deal state %s instead of expected success state DealStatusCompleted\n",
+							retrievalmarket.DealStatuses[prevStatus])
+					}
+					return nil
+				}
+
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")
 			}
 		}
 	},
+}
+
+var clientListRetrievalsCmd = &cli.Command{
+	Name:  "list-retrievals",
+	Usage: "List retrieval market deals",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "print verbose deal details",
+		},
+		&cli.BoolFlag{
+			Name:  "color",
+			Usage: "use color in display output",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "show-failed",
+			Usage: "show failed/failing deals",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "completed",
+			Usage: "show completed retrievals",
+		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		verbose := cctx.Bool("verbose")
+		color := cctx.Bool("color")
+		watch := cctx.Bool("watch")
+		showFailed := cctx.Bool("show-failed")
+		completed := cctx.Bool("completed")
+
+		localDeals, err := api.ClientListRetrievals(ctx)
+		if err != nil {
+			return err
+		}
+
+		if watch {
+			updates, err := api.ClientGetRetrievalUpdates(ctx)
+			if err != nil {
+				return err
+			}
+
+			for {
+				tm.Clear()
+				tm.MoveCursor(1, 1)
+
+				err = outputRetrievalDeals(ctx, tm.Screen, localDeals, verbose, color, showFailed, completed)
+				if err != nil {
+					return err
+				}
+
+				tm.Flush()
+
+				select {
+				case <-ctx.Done():
+					return nil
+				case updated := <-updates:
+					var found bool
+					for i, existing := range localDeals {
+						if existing.ID == updated.ID {
+							localDeals[i] = updated
+							found = true
+							break
+						}
+					}
+					if !found {
+						localDeals = append(localDeals, updated)
+					}
+				}
+			}
+		}
+
+		return outputRetrievalDeals(ctx, cctx.App.Writer, localDeals, verbose, color, showFailed, completed)
+	},
+}
+
+func isTerminalError(status retrievalmarket.DealStatus) bool {
+	// should patch this in go-fil-markets but to solve the problem immediate and not have buggy output
+	return retrievalmarket.IsTerminalError(status) || status == retrievalmarket.DealStatusErrored || status == retrievalmarket.DealStatusCancelled
+}
+func outputRetrievalDeals(ctx context.Context, out io.Writer, localDeals []lapi.RetrievalInfo, verbose bool, color bool, showFailed bool, completed bool) error {
+	var deals []api.RetrievalInfo
+	for _, deal := range localDeals {
+		if !showFailed && isTerminalError(deal.Status) {
+			continue
+		}
+		if !completed && retrievalmarket.IsTerminalSuccess(deal.Status) {
+			continue
+		}
+		deals = append(deals, deal)
+	}
+
+	tableColumns := []tablewriter.Column{
+		tablewriter.Col("PayloadCID"),
+		tablewriter.Col("DealId"),
+		tablewriter.Col("Provider"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("PricePerByte"),
+		tablewriter.Col("Received"),
+		tablewriter.Col("TotalPaid"),
+	}
+
+	if verbose {
+		tableColumns = append(tableColumns,
+			tablewriter.Col("PieceCID"),
+			tablewriter.Col("UnsealPrice"),
+			tablewriter.Col("BytesPaidFor"),
+			tablewriter.Col("TransferChannelID"),
+			tablewriter.Col("TransferStatus"),
+		)
+	}
+	tableColumns = append(tableColumns, tablewriter.NewLineCol("Message"))
+
+	w := tablewriter.New(tableColumns...)
+
+	for _, d := range deals {
+		w.Write(toRetrievalOutput(d, color, verbose))
+	}
+
+	return w.Flush(out)
+}
+
+func toRetrievalOutput(d api.RetrievalInfo, color bool, verbose bool) map[string]interface{} {
+
+	payloadCID := d.PayloadCID.String()
+	provider := d.Provider.String()
+	if !verbose {
+		payloadCID = ellipsis(payloadCID, 8)
+		provider = ellipsis(provider, 8)
+	}
+
+	retrievalOutput := map[string]interface{}{
+		"PayloadCID":   payloadCID,
+		"DealId":       d.ID,
+		"Provider":     provider,
+		"Status":       retrievalStatusString(color, d.Status),
+		"PricePerByte": types.FIL(d.PricePerByte),
+		"Received":     units.BytesSize(float64(d.BytesReceived)),
+		"TotalPaid":    types.FIL(d.TotalPaid),
+		"Message":      d.Message,
+	}
+
+	if verbose {
+		transferChannelID := ""
+		if d.TransferChannelID != nil {
+			transferChannelID = d.TransferChannelID.String()
+		}
+		transferStatus := ""
+		if d.DataTransfer != nil {
+			transferStatus = datatransfer.Statuses[d.DataTransfer.Status]
+		}
+		pieceCID := ""
+		if d.PieceCID != nil {
+			pieceCID = d.PieceCID.String()
+		}
+
+		retrievalOutput["PieceCID"] = pieceCID
+		retrievalOutput["UnsealPrice"] = types.FIL(d.UnsealPrice)
+		retrievalOutput["BytesPaidFor"] = units.BytesSize(float64(d.BytesPaidFor))
+		retrievalOutput["TransferChannelID"] = transferChannelID
+		retrievalOutput["TransferStatus"] = transferStatus
+	}
+	return retrievalOutput
+}
+
+func retrievalStatusString(c bool, status retrievalmarket.DealStatus) string {
+	s := retrievalmarket.DealStatuses[status]
+	if !c {
+		return s
+	}
+
+	if isTerminalError(status) {
+		return color.RedString(s)
+	}
+	if retrievalmarket.IsTerminalSuccess(status) {
+		return color.GreenString(s)
+	}
+	return s
 }
 
 var clientInspectDealCmd = &cli.Command{
@@ -1296,7 +1514,8 @@ var clientListAsksCmd = &cli.Command{
 	Usage: "List asks for top miners",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "by-ping",
+			Name:  "by-ping",
+			Usage: "sort by ping",
 		},
 		&cli.StringFlag{
 			Name:  "output-format",
@@ -1451,17 +1670,17 @@ loop:
 				}
 
 				rt := time.Now()
-
 				_, err = api.ClientQueryAsk(ctx, *mi.PeerId, miner)
 				if err != nil {
 					return
 				}
+				pingDuration := time.Now().Sub(rt)
 
 				atomic.AddInt64(&got, 1)
 				lk.Lock()
 				asks = append(asks, QueriedAsk{
 					Ask:  ask,
-					Ping: time.Now().Sub(rt),
+					Ping: pingDuration,
 				})
 				lk.Unlock()
 			}(miner)
@@ -1540,7 +1759,7 @@ var clientQueryAskCmd = &cli.Command{
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if *mi.PeerId == peer.ID("SETME") {
+			if mi.PeerId == nil || *mi.PeerId == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
 			}
 
