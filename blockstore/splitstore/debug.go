@@ -349,6 +349,9 @@ func (d *debugLog) getNormalizedStackTrace() string {
 	for i, line := range lines {
 		if line[len(line)-1] == ')' {
 			idx := strings.LastIndex(line, "(")
+			if idx < 0 {
+				continue
+			}
 			lines[i] = line[:idx]
 		}
 	}
