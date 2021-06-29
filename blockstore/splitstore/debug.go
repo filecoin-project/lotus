@@ -347,7 +347,7 @@ func (d *debugLog) getNormalizedStackTrace() string {
 	// for each line that ends in a ), remove the call args -- these are the registers
 	lines := strings.Split(sk, "\n")[1:]
 	for i, line := range lines {
-		if line[len(line)-1] == ')' {
+		if len(line) > 0 && line[len(line)-1] == ')' {
 			idx := strings.LastIndex(line, "(")
 			if idx < 0 {
 				continue
