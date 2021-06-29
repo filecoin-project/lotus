@@ -309,14 +309,16 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	aggFee := policy.AggregateNetworkFee(nv, len(infos), bf)
 
-	goodFunds := big.Add(maxFee, big.Add(collateral, aggFee))
+	needFunds := big.Add(collateral, aggFee)
 
-	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
+	goodFunds := big.Add(maxFee, needFunds)
+
+	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, needFunds)
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, collateral, maxFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
