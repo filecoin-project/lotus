@@ -97,7 +97,7 @@ func (d *debugLog) LogReadMiss(curTs *types.TipSet, cid cid.Cid) {
 
 	d.readCnt++
 
-	_, err := fmt.Fprintf(d.readLog, "%s %d %s %s\n", time.Now(), epoch, cid, stack)
+	_, err := fmt.Fprintf(d.readLog, "%s %d %s %s\n", d.timestamp(), epoch, cid, stack)
 	if err != nil {
 		log.Warnf("error writing read log: %s", err)
 	}
@@ -118,7 +118,7 @@ func (d *debugLog) LogWrite(curTs *types.TipSet, blk blocks.Block, writeEpoch ab
 
 	d.writeCnt++
 
-	_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", time.Now(), curTs.Height(), blk.Cid(), writeEpoch, stack)
+	_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", d.timestamp(), curTs.Height(), blk.Cid(), writeEpoch, stack)
 	if err != nil {
 		log.Warnf("error writing write log: %s", err)
 	}
@@ -139,7 +139,7 @@ func (d *debugLog) LogWriteMany(curTs *types.TipSet, blks []blocks.Block, writeE
 
 	d.writeCnt += len(blks)
 
-	now := time.Now()
+	now := d.timestamp()
 	for _, blk := range blks {
 		_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", now, curTs.Height(), blk.Cid(), writeEpoch, stack)
 		if err != nil {
@@ -357,4 +357,9 @@ func (d *debugLog) getNormalizedStackTrace() string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+func (d *debugLog) timestamp() string {
+	ts, _ := time.Now().MarshalText()
+	return string(ts)
 }
