@@ -225,6 +225,9 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.PreCo
 		params.Sectors = append(params.Sectors, *p.pci)
 		deposit = big.Add(deposit, p.deposit)
 	}
+	if cfg.CollateralFromMinerBalance {
+		deposit = big.Zero()
+	}
 
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {

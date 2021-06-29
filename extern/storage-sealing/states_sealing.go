@@ -357,9 +357,14 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
-	params, deposit, tok, err := m.preCommitParams(ctx, sector)
+	params, pcd, tok, err := m.preCommitParams(ctx, sector)
 	if params == nil || err != nil {
 		return err
+	}
+
+	deposit := pcd
+	if cfg.CollateralFromMinerBalance {
+		deposit = big.Zero() // pay using available miner balance
 	}
 
 	enc := new(bytes.Buffer)
@@ -389,7 +394,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: deposit, PreCommitInfo: *params})
+	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: pcd, PreCommitInfo: *params})
 }
 
 func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector SectorInfo) error {
@@ -626,6 +631,10 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 	collateral = big.Sub(collateral, pci.PreCommitDeposit)
 	if collateral.LessThan(big.Zero()) {
 		collateral = big.Zero()
+	}
+
+	if cfg.CollateralFromMinerBalance {
+		collateral = big.Zero() // pay using available miner balance
 	}
 
 	goodFunds := big.Add(collateral, big.Int(m.feeCfg.MaxCommitGasFee))

@@ -24,6 +24,8 @@ type Config struct {
 
 	FinalizeEarly bool
 
+	CollateralFromMinerBalance bool
+
 	BatchPreCommits     bool
 	MaxPreCommitBatch   int
 	PreCommitBatchWait  time.Duration

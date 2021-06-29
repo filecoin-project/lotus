@@ -125,6 +125,9 @@ type SealingConfig struct {
 	// Run sector finalization before submitting sector proof to the chain
 	FinalizeEarly bool
 
+	// Whether to use available miner balance for sector collateral instead of sending it with each message
+	CollateralFromMinerBalance bool
+
 	// enable / disable precommit batching (takes effect after nv13)
 	BatchPreCommits bool
 	// maximum precommit batch size - batches will be sent immediately above this size
@@ -317,12 +320,13 @@ func DefaultStorageMiner() *StorageMiner {
 		Common: defCommon(),
 
 		Sealing: SealingConfig{
-			MaxWaitDealsSectors:       2, // 64G with 32G sectors
-			MaxSealingSectors:         0,
-			MaxSealingSectorsForDeals: 0,
-			WaitDealsDelay:            Duration(time.Hour * 6),
-			AlwaysKeepUnsealedCopy:    true,
-			FinalizeEarly:             false,
+			MaxWaitDealsSectors:        2, // 64G with 32G sectors
+			MaxSealingSectors:          0,
+			MaxSealingSectorsForDeals:  0,
+			WaitDealsDelay:             Duration(time.Hour * 6),
+			AlwaysKeepUnsealedCopy:     true,
+			FinalizeEarly:              false,
+			CollateralFromMinerBalance: false,
 
 			BatchPreCommits:     true,
 			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
