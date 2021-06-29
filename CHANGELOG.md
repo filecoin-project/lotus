@@ -1,5 +1,9 @@
 # Lotus changelog
 
+# 1.11.0-rc1 / 2021-06-28
+
+This is the first release candidate for the optional Lotus v1.11.0 release that introduces several months of bugfixes and feature development. A more detailed changelog will follow.
+
 # 1.10.0 / 2021-06-23
 
 This is a mandatory release of Lotus that introduces Filecoin network v13, codenamed the HyperDrive upgrade. The
