@@ -47,6 +47,11 @@ func BigDiv(a, b BigInt) BigInt {
 	return BigInt{Int: big.NewInt(0).Div(a.Int, b.Int)}
 }
 
+func BigDivFloat(num, den BigInt) float64 {
+	res, _ := new(big.Rat).SetFrac(num.Int, den.Int).Float64()
+	return res
+}
+
 func BigMod(a, b BigInt) BigInt {
 	return BigInt{Int: big.NewInt(0).Mod(a.Int, b.Int)}
 }

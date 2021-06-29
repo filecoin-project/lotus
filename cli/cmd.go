@@ -34,7 +34,7 @@ func GetFullNodeServices(ctx *cli.Context) (ServicesAPI, error) {
 		return tn.(ServicesAPI), nil
 	}
 
-	api, c, err := GetFullNodeAPI(ctx)
+	api, c, err := GetFullNodeAPIV1(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +82,7 @@ var Commands = []*cli.Command{
 	WithCategory("developer", FetchParamCmd),
 	WithCategory("network", NetCmd),
 	WithCategory("network", SyncCmd),
+	WithCategory("status", StatusCmd),
 	PprofCmd,
 	VersionCmd,
 }

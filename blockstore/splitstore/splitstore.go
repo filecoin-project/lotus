@@ -406,6 +406,11 @@ func (s *SplitStore) Close() error {
 }
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
+	// Revert only.
+	if len(apply) == 0 {
+		return nil
+	}
+
 	s.mx.Lock()
 	curTs := apply[len(apply)-1]
 	epoch := curTs.Height()

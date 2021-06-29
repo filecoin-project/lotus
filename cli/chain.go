@@ -31,6 +31,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
@@ -535,7 +536,7 @@ var ChainListCmd = &cli.Command{
 	Aliases: []string{"love"},
 	Usage:   "View a segment of the chain",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{Name: "height"},
+		&cli.Uint64Flag{Name: "height", DefaultText: "current head"},
 		&cli.IntFlag{Name: "count", Value: 30},
 		&cli.StringFlag{
 			Name:  "format",
@@ -723,12 +724,6 @@ var ChainGetCmd = &cli.Command{
 				return err
 			}
 
-			if ts == nil {
-				ts, err = api.ChainHead(ctx)
-				if err != nil {
-					return err
-				}
-			}
 			p = "/ipfs/" + ts.ParentState().String() + p
 			if cctx.Bool("verbose") {
 				fmt.Println(p)
@@ -1122,11 +1117,13 @@ var SlashConsensusFault = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		a := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		c1, err := cid.Parse(cctx.Args().Get(0))
@@ -1134,7 +1131,7 @@ var SlashConsensusFault = &cli.Command{
 			return xerrors.Errorf("parsing cid 1: %w", err)
 		}
 
-		b1, err := api.ChainGetBlock(ctx, c1)
+		b1, err := a.ChainGetBlock(ctx, c1)
 		if err != nil {
 			return xerrors.Errorf("getting block 1: %w", err)
 		}
@@ -1144,7 +1141,7 @@ var SlashConsensusFault = &cli.Command{
 			return xerrors.Errorf("parsing cid 2: %w", err)
 		}
 
-		b2, err := api.ChainGetBlock(ctx, c2)
+		b2, err := a.ChainGetBlock(ctx, c2)
 		if err != nil {
 			return xerrors.Errorf("getting block 2: %w", err)
 		}
@@ -1155,7 +1152,7 @@ var SlashConsensusFault = &cli.Command{
 
 		var fromAddr address.Address
 		if from := cctx.String("from"); from == "" {
-			defaddr, err := api.WalletDefaultAddress(ctx)
+			defaddr, err := a.WalletDefaultAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -1191,7 +1188,7 @@ var SlashConsensusFault = &cli.Command{
 				return xerrors.Errorf("parsing cid extra: %w", err)
 			}
 
-			bExtra, err := api.ChainGetBlock(ctx, cExtra)
+			bExtra, err := a.ChainGetBlock(ctx, cExtra)
 			if err != nil {
 				return xerrors.Errorf("getting block extra: %w", err)
 			}
@@ -1209,15 +1206,17 @@ var SlashConsensusFault = &cli.Command{
 			return err
 		}
 
-		msg := &types.Message{
-			To:     b2.Miner,
-			From:   fromAddr,
-			Value:  types.NewInt(0),
-			Method: builtin.MethodsMiner.ReportConsensusFault,
-			Params: enc,
+		proto := &api.MessagePrototype{
+			Message: types.Message{
+				To:     b2.Miner,
+				From:   fromAddr,
+				Value:  types.NewInt(0),
+				Method: builtin.MethodsMiner.ReportConsensusFault,
+				Params: enc,
+			},
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		smsg, err := InteractiveSend(ctx, cctx, srv, proto)
 		if err != nil {
 			return err
 		}

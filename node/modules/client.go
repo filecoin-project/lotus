@@ -134,26 +134,21 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 
 	// data-transfer push / pull channel restart configuration:
 	dtRestartConfig := dtimpl.ChannelRestartConfig(channelmonitor.Config{
-		// For now only monitor push channels (for storage deals)
-		MonitorPushChannels: true,
-		// TODO: Enable pull channel monitoring (for retrievals) when the
-		//  following issue has been fixed:
-		// https://github.com/filecoin-project/go-data-transfer/issues/172
-		MonitorPullChannels: false,
-		// Wait up to 30s for the other side to respond to an Open channel message
-		AcceptTimeout: 30 * time.Second,
-		// Send a restart message if the data rate falls below 1024 bytes / minute
-		Interval:            time.Minute,
-		MinBytesTransferred: 1024,
-		// Perform check 10 times / minute
-		ChecksPerInterval: 10,
+		// Disable Accept and Complete timeouts until this issue is resolved:
+		// https://github.com/filecoin-project/lotus/issues/6343#
+		// Wait for the other side to respond to an Open channel message
+		AcceptTimeout: 0,
+		// Wait for the other side to send a Complete message once all
+		// data has been sent / received
+		CompleteTimeout: 0,
+
+		// When an error occurs, wait a little while until all related errors
+		// have fired before sending a restart message
+		RestartDebounce: 10 * time.Second,
 		// After sending a restart, wait for at least 1 minute before sending another
 		RestartBackoff: time.Minute,
 		// After trying to restart 3 times, give up and fail the transfer
 		MaxConsecutiveRestarts: 3,
-		// Wait up to 30s for the other side to send a Complete message once all
-		// data has been sent / received
-		CompleteTimeout: 30 * time.Second,
 	})
 	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport, dtRestartConfig)
 	if err != nil {
