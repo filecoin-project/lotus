@@ -245,7 +245,7 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 		}),
 		ApplyIf(func(s *Settings) bool { return s.Base }), // apply only if Base has already been applied
 		If(!enableLibp2pNode,
-			Override(new(api.Net), From(new(api.NetStub))),
+			Override(new(api.Net), new(api.NetStub)),
 			Override(new(api.Common), From(new(common.CommonAPI))),
 		),
 		If(enableLibp2pNode,
