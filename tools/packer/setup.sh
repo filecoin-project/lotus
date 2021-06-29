@@ -65,3 +65,9 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
 ufw allow 5678   #libp2p
+
+# Run digitalocean's cleanup script.
+# This script empties tmp directories, removes
+# bash history, and any ssh keys or passwords that might
+# be left behind.
+curl https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash
