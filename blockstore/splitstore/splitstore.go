@@ -77,6 +77,8 @@ var (
 
 	// set this to true if you are debugging the splitstore to enable debug logging
 	enableDebugLog = false
+	// set this to true if you want to track origin stack traces in the write log
+	enableDebugLogWriteTraces = false
 )
 
 const (
