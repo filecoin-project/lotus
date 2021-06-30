@@ -1164,7 +1164,9 @@ func (s *SplitStore) purgeBatch(cids []cid.Cid, deleteBatch func([]cid.Cid) erro
 func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 	deadCids := make([]cid.Cid, 0, batchSize)
 	purgeCnt := 0
-	defer log.Infof("purged %d objects", purgeCnt)
+	defer func() {
+		log.Infof("purged %d objects", purgeCnt)
+	}()
 
 	return s.purgeBatch(cids,
 		func(cids []cid.Cid) error {
