@@ -913,7 +913,12 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return xerrors.Errorf("error checkiing mark set for %s: %w", cid, err)
 		}
 
-		if mark {
+		live, err := s.txnProtect.Has(cid)
+		if err != nil {
+			return xerrors.Errorf("error checking liveness for %s: %w", cid, err)
+		}
+
+		if mark || live {
 			hotCnt++
 			return nil
 		}
