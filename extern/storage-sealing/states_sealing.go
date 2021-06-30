@@ -105,6 +105,10 @@ func checkTicketExpired(ticket, head abi.ChainEpoch) bool {
 	return head-ticket > MaxTicketAge // TODO: allow configuring expected seal durations
 }
 
+func checkProveCommitExpired(preCommitEpoch, msd abi.ChainEpoch, currEpoch abi.ChainEpoch) bool {
+	return currEpoch > preCommitEpoch+msd
+}
+
 func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, error) {
 	tok, epoch, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
@@ -126,7 +130,14 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 	if pci != nil {
 		ticketEpoch = pci.Info.SealRandEpoch
 
-		if checkTicketExpired(ticketEpoch, epoch) {
+		nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
+		if err != nil {
+			return nil, 0, xerrors.Errorf("getTicket: StateNetworkVersion: api error, not proceeding: %+v", err)
+		}
+
+		msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
+
+		if checkProveCommitExpired(pci.PreCommitEpoch, msd, epoch) {
 			return nil, 0, xerrors.Errorf("ticket expired for precommitted sector")
 		}
 	}
@@ -182,14 +193,35 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		}
 	}
 
-	_, height, err := m.api.ChainHead(ctx.Context())
+	tok, height, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
 		return nil
 	}
 
 	if checkTicketExpired(sector.TicketEpoch, height) {
-		return ctx.Send(SectorOldTicket{}) // go get new ticket
+		pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+		if err != nil {
+			log.Errorf("handlePreCommit1: StateSectorPreCommitInfo: api error, not proceeding: %+v", err)
+			return nil
+		}
+
+		if pci == nil {
+			return ctx.Send(SectorOldTicket{}) // go get new ticket
+		}
+
+		nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
+		if err != nil {
+			log.Errorf("handlePreCommit1: StateNetworkVersion: api error, not proceeding: %+v", err)
+			return nil
+		}
+
+		msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
+
+		// if height >  PreCommitEpoch + msd, there is no need to recalculate
+		if checkProveCommitExpired(pci.PreCommitEpoch, msd, height) {
+			return ctx.Send(SectorOldTicket{}) // will be removed
+		}
 	}
 
 	pc1o, err := m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.TicketValue, sector.pieceInfos())
