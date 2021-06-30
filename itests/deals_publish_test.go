@@ -38,7 +38,7 @@ func TestPublishDealsBatching(t *testing.T) {
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(opts))
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	dh := kit.NewDealHarness(t, client, miner)
+	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {

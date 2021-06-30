@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -43,6 +42,11 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
+		},
+		&cli.BoolFlag{
+			Name:  "enable-markets",
+			Usage: "",
+			Value: true,
 		},
 		&cli.BoolFlag{
 			Name:  "manage-fdlimit",
@@ -143,14 +147,15 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting API endpoint: %w", err)
 		}
 
-		lr, _ := r.Lock(repo.StorageMiner)
-		c, _ := lr.Config()
-		cfg, ok := c.(*config.StorageMiner)
-		if !ok {
-			log.Fatalf("invalid config from repo, got: %T", c)
-		}
+		//lr, _ := r.Lock(repo.StorageMiner)
+		//c, _ := lr.Config()
+		//cfg, ok := c.(*config.StorageMiner)
+		//if !ok {
+		//log.Fatalf("invalid config from repo, got: %T", c)
+		//}
 
-		if cfg.Subsystems.EnableStorageMarket {
+		//if cfg.Subsystems.EnableStorageMarket {
+		if cctx.Bool("enable-markets") {
 			log.Infof("Bootstrapping libp2p network with full node")
 
 			// Bootstrap with full node
@@ -166,7 +171,7 @@ var runCmd = &cli.Command{
 			log.Infof("No markets subsystem enabled, so no libp2p network bootstrapping")
 		}
 
-		_ = lr.Close()
+		//_ = lr.Close()
 
 		log.Infof("Remote version %s", v)
 

@@ -30,7 +30,7 @@ func TestFirstDealEnablesMining(t *testing.T) {
 
 	ctx := context.Background()
 
-	dh := kit.NewDealHarness(t, &client, &provider)
+	dh := kit.NewDealHarness(t, &client, &provider, &provider)
 
 	ref, _ := client.CreateImportFile(ctx, 5, 0)
 

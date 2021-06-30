@@ -28,7 +28,7 @@ func TestOfflineDealFlow(t *testing.T) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 		ens.InterconnectAll().BeginMining(blocktime)
 
-		dh := kit.NewDealHarness(t, client, miner)
+		dh := kit.NewDealHarness(t, client, miner, miner)
 
 		// Create a random file and import on the client.
 		res, inFile := client.CreateImportFile(ctx, 1, 0)

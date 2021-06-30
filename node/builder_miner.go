@@ -54,6 +54,19 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	pricingConfig := cfg.Dealmaking.RetrievalPricing
+	if pricingConfig.Strategy == config.RetrievalPricingExternalMode {
+		if pricingConfig.External == nil {
+			return Error(xerrors.New("retrieval pricing policy has been to set to external but external policy config is nil"))
+		}
+
+		if pricingConfig.External.Path == "" {
+			return Error(xerrors.New("retrieval pricing policy has been to set to external but external script path is empty"))
+		}
+	} else if pricingConfig.Strategy != config.RetrievalPricingDefaultMode {
+		return Error(xerrors.New("retrieval pricing policy must be either default or external"))
+	}
+
 	enableLibp2pNode := cfg.Subsystems.EnableStorageMarket // we enable libp2p nodes if the storage market subsystem is enabled, otherwise we don't
 
 	return Options(
@@ -119,7 +132,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
-			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
+			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfers)),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
@@ -131,6 +144,7 @@ func ConfigStorageMiner(c interface{}) Option {
 					Default:  &config.RetrievalPricingDefault{},
 				},
 			})),
+			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 			// Markets (retrieval)
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
@@ -165,6 +179,8 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.SetConsiderUnverifiedStorageDealsConfigFunc), modules.NewSetConsideringUnverifiedStorageDealsFunc),
 			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
 			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
+			Override(new(dtypes.SetMaxDealStartDelayFunc), modules.NewSetMaxDealStartDelayFunc),
+			Override(new(dtypes.GetMaxDealStartDelayFunc), modules.NewGetMaxDealStartDelayFunc),
 
 			If(cfg.Dealmaking.Filter != "",
 				Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
