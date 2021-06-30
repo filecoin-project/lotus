@@ -41,11 +41,12 @@ func TestPaymentChannelsBasic(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := kit.StartTwoNodesOneMiner(ctx, t, blocktime)
-	paymentCreator := nodes[0]
-	paymentReceiver := nodes[1]
-	creatorAddr := addrs[0]
-	receiverAddr := addrs[1]
+
+	var (
+		paymentCreator  kit.TestFullNode
+		paymentReceiver kit.TestFullNode
+	)
+	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
 	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
@@ -70,11 +71,15 @@ func TestPaymentChannelsBasic(t *testing.T) {
 	// creator: paych settle <channel>
 	creatorCLI.RunCmd("paych", "settle", chAddr.String())
 
+	t.Log("wait for chain to reach settle height")
+
 	// Wait for the chain to reach the settle height
 	chState := getPaychState(ctx, t, paymentReceiver, chAddr)
 	sa, err := chState.SettlingAt()
 	require.NoError(t, err)
 	waitForHeight(ctx, t, paymentReceiver, sa)
+
+	t.Log("settle height reached")
 
 	// receiver: paych collect <channel>
 	receiverCLI.RunCmd("paych", "collect", chAddr.String())
@@ -93,10 +98,11 @@ func TestPaymentChannelStatus(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := kit.StartTwoNodesOneMiner(ctx, t, blocktime)
-	paymentCreator := nodes[0]
-	creatorAddr := addrs[0]
-	receiverAddr := addrs[1]
+	var (
+		paymentCreator  kit.TestFullNode
+		paymentReceiver kit.TestFullNode
+	)
+	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
 	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
@@ -172,11 +178,11 @@ func TestPaymentChannelVouchers(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := kit.StartTwoNodesOneMiner(ctx, t, blocktime)
-	paymentCreator := nodes[0]
-	paymentReceiver := nodes[1]
-	creatorAddr := addrs[0]
-	receiverAddr := addrs[1]
+	var (
+		paymentCreator  kit.TestFullNode
+		paymentReceiver kit.TestFullNode
+	)
+	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
 	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
@@ -304,10 +310,11 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 
 	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes, addrs := kit.StartTwoNodesOneMiner(ctx, t, blocktime)
-	paymentCreator := nodes[0]
-	creatorAddr := addrs[0]
-	receiverAddr := addrs[1]
+	var (
+		paymentCreator  kit.TestFullNode
+		paymentReceiver kit.TestFullNode
+	)
+	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
 	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
@@ -405,4 +412,26 @@ func getPaychState(ctx context.Context, t *testing.T, node kit.TestFullNode, chA
 	require.NoError(t, err)
 
 	return chState
+}
+
+func startPaychCreatorReceiverMiner(ctx context.Context, t *testing.T, paymentCreator *kit.TestFullNode, paymentReceiver *kit.TestFullNode, blocktime time.Duration) (address.Address, address.Address) {
+	var miner kit.TestMiner
+	opts := kit.ThroughRPC()
+	kit.NewEnsemble(t, kit.MockProofs()).
+		FullNode(paymentCreator, opts).
+		FullNode(paymentReceiver, opts).
+		Miner(&miner, paymentCreator).
+		Start().
+		InterconnectAll().
+		BeginMining(blocktime)
+
+	// Send some funds to the second node
+	receiverAddr, err := paymentReceiver.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+	kit.SendFunds(ctx, t, paymentCreator, receiverAddr, abi.NewTokenAmount(1e18))
+
+	// Get the first node's address
+	creatorAddr, err := paymentCreator.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+	return creatorAddr, receiverAddr
 }

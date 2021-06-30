@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/itests/kit"
 	bminer "github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,18 +30,10 @@ func TestSDRUpgrade(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, sn := kit.MockMinerBuilder(t, []kit.FullNodeOpts{kit.FullNodeWithSDRAt(500, 1000)}, kit.OneMiner)
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
+	opts := kit.ConstructorOpts(kit.SDRUpgradeAt(500, 1000))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+	ens.InterconnectAll()
 
-	addrinfo, err := client.NetAddrsListen(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := miner.NetConnect(ctx, addrinfo); err != nil {
-		t.Fatal(err)
-	}
 	build.Clock.Sleep(time.Second)
 
 	pledge := make(chan struct{})
@@ -53,7 +44,7 @@ func TestSDRUpgrade(t *testing.T) {
 		round := 0
 		for atomic.LoadInt64(&mine) != 0 {
 			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
+			if err := miner.MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
 
 			}}); err != nil {
 				t.Error(err)
@@ -88,7 +79,7 @@ func TestSDRUpgrade(t *testing.T) {
 	}()
 
 	// before.
-	kit.PledgeSectors(t, ctx, miner, 9, 0, pledge)
+	miner.PledgeSectors(ctx, 9, 0, pledge)
 
 	s, err := miner.SectorsList(ctx)
 	require.NoError(t, err)

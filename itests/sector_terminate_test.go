@@ -2,71 +2,31 @@ package itests
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTerminate(t *testing.T) {
-	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
-		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
-	}
+	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
 
-	const blocktime = 2 * time.Millisecond
-
-	nSectors := uint64(2)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	n, sn := kit.MockMinerBuilder(t,
-		[]kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(-1)},
-		[]kit.StorageMiner{{Full: 0, Preseal: int(nSectors)}},
+	var (
+		blocktime = 2 * time.Millisecond
+		nSectors  = 2
+		ctx       = context.Background()
 	)
 
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
-
-	addrinfo, err := client.NetAddrsListen(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := miner.NetConnect(ctx, addrinfo); err != nil {
-		t.Fatal(err)
-	}
-	build.Clock.Sleep(time.Second)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for ctx.Err() == nil {
-			build.Clock.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
-				if ctx.Err() != nil {
-					// context was canceled, ignore the error.
-					return
-				}
-				t.Error(err)
-			}
-		}
-	}()
-	defer func() {
-		cancel()
-		<-done
-	}()
+	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.PresealSectors(nSectors), opts)
+	ens.InterconnectAll().BeginMining(blocktime)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -77,31 +37,24 @@ func TestTerminate(t *testing.T) {
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, p.MinerPower, p.TotalPower)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*nSectors))
+	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors)))
 
-	fmt.Printf("Seal a sector\n")
+	t.Log("Seal a sector")
 
-	kit.PledgeSectors(t, ctx, miner, 1, 0, nil)
+	miner.PledgeSectors(ctx, 1, 0, nil)
 
-	fmt.Printf("wait for power\n")
+	t.Log("wait for power")
 
 	{
 		// Wait until proven.
 		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 
-		waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 2
-		fmt.Printf("End for head.Height > %d\n", waitUntil)
+		waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 20 // 20 is some slack for the proof to be submitted + applied
+		t.Logf("End for head.Height > %d", waitUntil)
 
-		for {
-			head, err := client.ChainHead(ctx)
-			require.NoError(t, err)
-
-			if head.Height() > waitUntil {
-				fmt.Printf("Now head.Height = %d\n", head.Height())
-				break
-			}
-		}
+		ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+		t.Logf("Now head.Height = %d", ts.Height())
 	}
 
 	nSectors++
@@ -109,9 +62,9 @@ func TestTerminate(t *testing.T) {
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, p.MinerPower, p.TotalPower)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*nSectors))
+	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors)))
 
-	fmt.Println("Terminate a sector")
+	t.Log("Terminate a sector")
 
 	toTerminate := abi.SectorNumber(3)
 
@@ -124,7 +77,7 @@ loop:
 		si, err := miner.SectorsStatus(ctx, toTerminate, false)
 		require.NoError(t, err)
 
-		fmt.Println("state: ", si.State, msgTriggerred)
+		t.Log("state: ", si.State, msgTriggerred)
 
 		switch sealing.SectorState(si.State) {
 		case sealing.Terminating:
@@ -140,7 +93,7 @@ loop:
 				require.NoError(t, err)
 				if c != nil {
 					msgTriggerred = true
-					fmt.Println("terminate message:", c)
+					t.Log("terminate message:", c)
 
 					{
 						p, err := miner.SectorTerminatePending(ctx)
@@ -156,11 +109,14 @@ loop:
 		time.Sleep(100 * time.Millisecond)
 	}
 
+	// need to wait for message to be mined and applied.
+	time.Sleep(5 * time.Second)
+
 	// check power decreased
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, p.MinerPower, p.TotalPower)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*(nSectors-1)))
+	require.Equal(t, types.NewInt(uint64(ssz)*uint64(nSectors-1)), p.MinerPower.RawBytePower)
 
 	// check in terminated set
 	{
@@ -180,22 +136,15 @@ loop:
 
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
-	for {
-		head, err := client.ChainHead(ctx)
-		require.NoError(t, err)
 
-		if head.Height() > di.PeriodStart+di.WPoStProvingPeriod+2 {
-			fmt.Printf("Now head.Height = %d\n", head.Height())
-			break
-		}
-		build.Clock.Sleep(blocktime)
-	}
-	require.NoError(t, err)
-	fmt.Printf("End for head.Height > %d\n", di.PeriodStart+di.WPoStProvingPeriod+2)
+	waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 20 // slack like above
+	t.Logf("End for head.Height > %d", waitUntil)
+	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
 	require.Equal(t, p.MinerPower, p.TotalPower)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*(nSectors-1)))
+	require.Equal(t, types.NewInt(uint64(ssz)*uint64(nSectors-1)), p.MinerPower.RawBytePower)
 }

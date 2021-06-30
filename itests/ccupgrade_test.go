@@ -3,17 +3,14 @@ package itests
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
-
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/itests/kit"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCCUpgrade(t *testing.T) {
@@ -27,60 +24,33 @@ func TestCCUpgrade(t *testing.T) {
 	} {
 		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			runTestCCUpgrade(t, kit.MockMinerBuilder, 5*time.Millisecond, height)
+			runTestCCUpgrade(t, height)
 		})
 	}
 }
 
-func runTestCCUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Duration, upgradeHeight abi.ChainEpoch) {
+func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	ctx := context.Background()
-	n, sn := b(t, []kit.FullNodeOpts{kit.FullNodeWithLatestActorsAt(upgradeHeight)}, kit.OneMiner)
-	client := n[0].FullNode.(*impl.FullNodeAPI)
-	miner := sn[0]
+	blockTime := 5 * time.Millisecond
 
-	addrinfo, err := client.NetAddrsListen(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := miner.NetConnect(ctx, addrinfo); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(time.Second)
-
-	mine := int64(1)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for atomic.LoadInt64(&mine) == 1 {
-			time.Sleep(blocktime)
-			if err := sn[0].MineOne(ctx, kit.MineNext); err != nil {
-				t.Error(err)
-			}
-		}
-	}()
+	opts := kit.ConstructorOpts(kit.LatestActorsAt(upgradeHeight))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+	ens.InterconnectAll().BeginMining(blockTime)
 
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	CC := abi.SectorNumber(kit.GenesisPreseals + 1)
+	CC := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
 	Upgraded := CC + 1
 
-	kit.PledgeSectors(t, ctx, miner, 1, 0, nil)
+	miner.PledgeSectors(ctx, 1, 0, nil)
 
 	sl, err := miner.SectorsList(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(sl) != 1 {
-		t.Fatal("expected 1 sector")
-	}
-
-	if sl[0] != CC {
-		t.Fatal("bad")
-	}
+	require.NoError(t, err)
+	require.Len(t, sl, 1, "expected 1 sector")
+	require.Equal(t, CC, sl[0], "unexpected sector number")
 
 	{
 		si, err := client.StateSectorGetInfo(ctx, maddr, CC, types.EmptyTSK)
@@ -88,20 +58,16 @@ func runTestCCUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Duration, u
 		require.Less(t, 50000, int(si.Expiration))
 	}
 
-	if err := miner.SectorMarkForUpgrade(ctx, sl[0]); err != nil {
-		t.Fatal(err)
-	}
+	err = miner.SectorMarkForUpgrade(ctx, sl[0])
+	require.NoError(t, err)
 
 	dh := kit.NewDealHarness(t, client, miner)
-
-	_, _, _ = dh.MakeFullDeal(kit.MakeFullDealParams{
-		Ctx:         context.Background(),
-		Rseed:       6,
-		CarExport:   false,
-		FastRet:     false,
-		StartEpoch:  0,
-		DoRetrieval: true,
+	deal, res, inPath := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{
+		Rseed:                        6,
+		SuspendUntilCryptoeconStable: true,
 	})
+	outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, false)
+	kit.AssertFilesEqual(t, inPath, outPath)
 
 	// Validate upgrade
 
@@ -130,10 +96,6 @@ func runTestCCUpgrade(t *testing.T, b kit.APIBuilder, blocktime time.Duration, u
 		}
 		t.Log("waiting for sector to expire")
 		// wait one deadline per loop.
-		time.Sleep(time.Duration(dlInfo.WPoStChallengeWindow) * blocktime)
+		time.Sleep(time.Duration(dlInfo.WPoStChallengeWindow) * blockTime)
 	}
-
-	fmt.Println("shutting down mining")
-	atomic.AddInt64(&mine, -1)
-	<-done
 }

@@ -8,7 +8,7 @@ import (
 func QuietMiningLogs() {
 	lotuslog.SetupLogLevels()
 
-	_ = logging.SetLogLevel("miner", "ERROR")
+	_ = logging.SetLogLevel("miner", "ERROR") // set this to INFO to watch mining happen.
 	_ = logging.SetLogLevel("chainstore", "ERROR")
 	_ = logging.SetLogLevel("chain", "ERROR")
 	_ = logging.SetLogLevel("sub", "ERROR")
