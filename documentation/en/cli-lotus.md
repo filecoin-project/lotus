@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.0-dev
+   1.11.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -558,8 +558,8 @@ DESCRIPTION:
    Make a deal with a miner.
 dataCid comes from running 'lotus client import'.
 miner is the address of the miner you wish to make a deal with.
-price is measured in FIL/GB/Epoch. Miners usually don't accept a bid
-lower than their advertised ask. You can check a miners listed price
+price is measured in FIL/Epoch. Miners usually don't accept a bid
+lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
 with 'lotus client query-ask <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).

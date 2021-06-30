@@ -2,7 +2,6 @@ package itests
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -15,9 +14,7 @@ import (
 )
 
 func TestTerminate(t *testing.T) {
-	if os.Getenv("LOTUS_TEST_WINDOW_POST") != "1" {
-		t.Skip("this takes a few minutes, set LOTUS_TEST_WINDOW_POST=1 to run")
-	}
+	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
 

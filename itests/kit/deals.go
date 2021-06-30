@@ -2,15 +2,11 @@ package kit
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/ipfs/go-cid"
-	files "github.com/ipfs/go-ipfs-files"
-	"github.com/ipld/go-car"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,10 +14,15 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	dstest "github.com/ipfs/go-merkledag/test"
 	unixfile "github.com/ipfs/go-unixfs/file"
+	"github.com/ipld/go-car"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 type DealHarness struct {
@@ -35,6 +36,30 @@ type MakeFullDealParams struct {
 	Rseed      int
 	FastRet    bool
 	StartEpoch abi.ChainEpoch
+
+	// SuspendUntilCryptoeconStable suspends deal-making, until cryptoecon
+	// parameters are stabilised. This affects projected collateral, and tests
+	// will fail in network version 13 and higher if deals are started too soon
+	// after network birth.
+	//
+	// The reason is that the formula for collateral calculation takes
+	// circulating supply into account:
+	//
+	//   [portion of power this deal will be] * [~1% of tokens].
+	//
+	// In the first epochs after genesis, the total circulating supply is
+	// changing dramatically in percentual terms. Therefore, if the deal is
+	// proposed too soon, by the time it gets published on chain, the quoted
+	// provider collateral will no longer be valid.
+	//
+	// The observation is that deals fail with:
+	//
+	//   GasEstimateMessageGas error: estimating gas used: message execution
+	//   failed: exit 16, reason: Provider collateral out of bounds. (RetCode=16)
+	//
+	// Enabling this will suspend deal-making until the network has reached a
+	// height of 300.
+	SuspendUntilCryptoeconStable bool
 }
 
 // NewDealHarness creates a test harness that contains testing utilities for deals.
@@ -56,6 +81,12 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 	res, path = dh.client.CreateImportFile(ctx, params.Rseed, 0)
 
 	dh.t.Logf("FILE CID: %s", res.Root)
+
+	if params.SuspendUntilCryptoeconStable {
+		dh.t.Logf("deal-making suspending until cryptecon parameters have stabilised")
+		ts := dh.client.WaitTillChain(ctx, HeightAtLeast(300))
+		dh.t.Logf("deal-making continuing; current height is %d", ts.Height())
+	}
 
 	deal = dh.StartDeal(ctx, res.Root, params.FastRet, params.StartEpoch)
 
@@ -247,4 +278,36 @@ func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (o
 	require.NoError(dh.t, err)
 
 	return tmpfile
+}
+
+type RunConcurrentDealsOpts struct {
+	N             int
+	FastRetrieval bool
+	CarExport     bool
+	StartEpoch    abi.ChainEpoch
+}
+
+func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
+	errgrp, _ := errgroup.WithContext(context.Background())
+	for i := 0; i < opts.N; i++ {
+		i := i
+		errgrp.Go(func() (err error) {
+			defer func() {
+				// This is necessary because golang can't deal with test
+				// failures being reported from children goroutines ¯\_(ツ)_/¯
+				if r := recover(); r != nil {
+					err = fmt.Errorf("deal failed: %s", r)
+				}
+			}()
+			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), MakeFullDealParams{
+				Rseed:      5 + i,
+				FastRet:    opts.FastRetrieval,
+				StartEpoch: opts.StartEpoch,
+			})
+			outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, opts.CarExport)
+			AssertFilesEqual(dh.t, inPath, outPath)
+			return nil
+		})
+	}
+	require.NoError(dh.t, errgrp.Wait())
 }

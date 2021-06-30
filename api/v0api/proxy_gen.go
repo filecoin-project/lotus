@@ -449,6 +449,8 @@ type GatewayStruct struct {
 
 		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) ``
 
+		Version func(p0 context.Context) (api.APIVersion, error) ``
+
 		WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
 	}
 }
@@ -2094,6 +2096,14 @@ func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) 
 
 func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) Version(p0 context.Context) (api.APIVersion, error) {
+	return s.Internal.Version(p0)
+}
+
+func (s *GatewayStub) Version(p0 context.Context) (api.APIVersion, error) {
+	return *new(api.APIVersion), xerrors.New("method not supported")
 }
 
 func (s *GatewayStruct) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
