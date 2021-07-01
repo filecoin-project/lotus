@@ -896,7 +896,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	cold := make([]cid.Cid, 0, s.coldPurgeSize)
 
 	// some stats for logging
-	var hotCnt, coldCnt int
+	var hotCnt, coldCnt, liveCnt int
 
 	// 2.1 iterate through the tracking store and collect unreachable cold objects
 	err = s.tracker.ForEach(func(cid cid.Cid, writeEpoch abi.ChainEpoch) error {
@@ -913,13 +913,18 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return xerrors.Errorf("error checkiing mark set for %s: %w", cid, err)
 		}
 
+		if mark {
+			hotCnt++
+			return nil
+		}
+
 		live, err := s.txnProtect.Has(cid)
 		if err != nil {
 			return xerrors.Errorf("error checking liveness for %s: %w", cid, err)
 		}
 
-		if mark || live {
-			hotCnt++
+		if live {
+			liveCnt++
 			return nil
 		}
 
@@ -939,7 +944,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 
 	log.Infow("collection done", "took", time.Since(startCollect))
-	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt)
+	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "live", liveCnt)
 	stats.Record(context.Background(), metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(context.Background(), metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
@@ -1168,9 +1173,9 @@ func (s *SplitStore) purgeBatch(cids []cid.Cid, deleteBatch func([]cid.Cid) erro
 
 func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 	deadCids := make([]cid.Cid, 0, batchSize)
-	purgeCnt := 0
+	var purgeCnt, liveCnt int
 	defer func() {
-		log.Infof("purged %d objects", purgeCnt)
+		log.Infow("purged objects", "purged", purgeCnt, "live", liveCnt)
 	}()
 
 	return s.purgeBatch(cids,
@@ -1187,6 +1192,7 @@ func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 				}
 
 				if live {
+					liveCnt++
 					continue
 				}
 
