@@ -228,6 +228,33 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
+func (a *ChainAPI) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSetKey) ([]api.Message, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	// genesis block has no parent messages...
+	if ts.Height() == 0 {
+		return nil, nil
+	}
+
+	cm, err := a.Chain.MessagesForTipset(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []api.Message
+	for _, m := range cm {
+		out = append(out, api.Message{
+			Cid:     m.Cid(),
+			Message: m.VMMessage(),
+		})
+	}
+
+	return out, nil
+}
+
 func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
