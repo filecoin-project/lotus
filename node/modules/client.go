@@ -179,7 +179,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
 	net := smnet.NewFromLibp2pHost(h, marketsRetryParams)
 
-	c, err := storageimpl.NewClient(net, ibs, mds, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(time.Second))
+	c, err := storageimpl.NewClient(net, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(time.Second))
 	if err != nil {
 		return nil, err
 	}

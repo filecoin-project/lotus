@@ -607,7 +607,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
