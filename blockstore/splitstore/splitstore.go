@@ -998,12 +998,21 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 }
 
 func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bool, f func(cid.Cid) error) error {
+	visited := cid.NewSet()
 	walked := cid.NewSet()
 	toWalk := ts.Cids()
 
 	walkBlock := func(c cid.Cid) error {
-		if !walked.Visit(c) {
+		if !visited.Visit(c) {
 			return nil
+		}
+
+		// check if it has been referenced by some later state root via lookback to avoid duplicate
+		// dispatches to the visitor
+		if !walked.Has(c) {
+			if err := f(c); err != nil {
+				return err
+			}
 		}
 
 		blk, err := s.get(c)
@@ -1019,10 +1028,6 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bo
 		// don't walk under the boundary, unless we are keeping the headers hot
 		if hdr.Height < boundary && !s.cfg.HotHeaders {
 			return nil
-		}
-
-		if err := f(c); err != nil {
-			return err
 		}
 
 		if hdr.Height >= boundary {
