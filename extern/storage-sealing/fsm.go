@@ -388,7 +388,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case CommitWait:
 		return m.handleCommitWait, processed, nil
 	case CommitFinalize:
-		fallthrough
+		return m.handleCommitFinalizeSector, processed, nil
 	case FinalizeSector:
 		return m.handleFinalizeSector, processed, nil
 

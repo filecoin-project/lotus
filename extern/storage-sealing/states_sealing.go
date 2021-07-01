@@ -686,7 +686,15 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 	return ctx.Send(SectorProving{})
 }
 
+func (m *Sealing) handleCommitFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
+	return m.doFinalizeSector(ctx, sector, true)
+}
+
 func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
+	return m.doFinalizeSector(ctx, sector, false)
+}
+
+func (m *Sealing) doFinalizeSector(ctx statemachine.Context, sector SectorInfo, earlyFailedRetry bool) error {
 	// TODO: Maybe wait for some finality
 
 	cfg, err := m.getConfig()
@@ -695,6 +703,10 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 	}
 
 	if err := m.sealer.FinalizeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(false, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+		if cfg.FinalizeEarly && earlyFailedRetry == false {
+			return ctx.Send(SectorFinalized{})
+		}
+
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
