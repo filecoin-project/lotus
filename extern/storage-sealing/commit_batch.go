@@ -196,7 +196,25 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	var res []sealiface.CommitBatchRes
 
-	if total < cfg.MinCommitBatch || total < miner5.MinAggregatedSectors {
+	individual := (total < cfg.MinCommitBatch) || (total < miner5.MinAggregatedSectors)
+
+	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
+		tok, _, err := b.api.ChainHead(b.mctx)
+		if err != nil {
+			return nil, err
+		}
+
+		bf, err := b.api.ChainBaseFee(b.mctx, tok)
+		if err != nil {
+			return nil, xerrors.Errorf("couldn't get base fee: %w", err)
+		}
+
+		if bf.LessThan(cfg.AggregateAboveBaseFee) {
+			individual = true
+		}
+	}
+
+	if individual {
 		res, err = b.processIndividually()
 	} else {
 		res, err = b.processBatch(cfg)

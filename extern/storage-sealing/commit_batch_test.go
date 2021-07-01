@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/mocks"
@@ -57,6 +58,8 @@ func TestCommitBatcher(t *testing.T) {
 			MaxCommitBatch:   maxBatch,
 			CommitBatchWait:  24 * time.Hour,
 			CommitBatchSlack: 1 * time.Hour,
+
+			AggregateAboveBaseFee: types.BigMul(types.PicoFil, types.NewInt(150)), // 0.15 nFIL
 
 			TerminateBatchMin:  1,
 			TerminateBatchMax:  100,
@@ -143,7 +146,7 @@ func TestCommitBatcher(t *testing.T) {
 		}
 	}
 
-	expectSend := func(expect []abi.SectorNumber) action {
+	expectSend := func(expect []abi.SectorNumber, aboveBalancer bool) action {
 		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 
@@ -153,6 +156,22 @@ func TestCommitBatcher(t *testing.T) {
 				batch = true
 				ti = 1
 			}
+
+			basefee := types.PicoFil
+			if aboveBalancer {
+				basefee = types.NanoFil
+			}
+
+			if batch {
+				s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
+			}
+
+			if !aboveBalancer {
+				batch = false
+				ti = len(expect)
+			}
+
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
 			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&miner.SectorPreCommitOnChainInfo{
 				PreCommitDeposit: big.Zero(),
@@ -160,7 +179,7 @@ func TestCommitBatcher(t *testing.T) {
 			s.EXPECT().StateMinerInitialPledgeCollateral(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(big.Zero(), nil).Times(len(expect))
 			if batch {
 				s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version13, nil)
-				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(2000), nil)
+				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
 			}
 
 			s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
@@ -183,11 +202,11 @@ func TestCommitBatcher(t *testing.T) {
 		}
 	}
 
-	flush := func(expect []abi.SectorNumber) action {
+	flush := func(expect []abi.SectorNumber, aboveBalancer bool) action {
 		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
-			_ = expectSend(expect)(t, s, pcb)
+			_ = expectSend(expect, aboveBalancer)(t, s, pcb)
 
-			batch := len(expect) >= minBatch
+			batch := len(expect) >= minBatch && aboveBalancer
 
 			r, err := pcb.Flush(ctx)
 			require.NoError(t, err)
@@ -227,30 +246,57 @@ func TestCommitBatcher(t *testing.T) {
 	tcs := map[string]struct {
 		actions []action
 	}{
-		"addSingle": {
+		"addSingle-aboveBalancer": {
 			actions: []action{
 				addSector(0),
 				waitPending(1),
-				flush([]abi.SectorNumber{0}),
+				flush([]abi.SectorNumber{0}, true),
 			},
 		},
-		"addTwo": {
+		"addTwo-aboveBalancer": {
 			actions: []action{
 				addSectors(getSectors(2)),
 				waitPending(2),
-				flush(getSectors(2)),
+				flush(getSectors(2), true),
 			},
 		},
-		"addAte": {
+		"addAte-aboveBalancer": {
 			actions: []action{
 				addSectors(getSectors(8)),
 				waitPending(8),
-				flush(getSectors(8)),
+				flush(getSectors(8), true),
 			},
 		},
-		"addMax": {
+		"addMax-aboveBalancer": {
 			actions: []action{
-				expectSend(getSectors(maxBatch)),
+				expectSend(getSectors(maxBatch), true),
+				addSectors(getSectors(maxBatch)),
+			},
+		},
+		"addSingle-belowBalancer": {
+			actions: []action{
+				addSector(0),
+				waitPending(1),
+				flush([]abi.SectorNumber{0}, false),
+			},
+		},
+		"addTwo-belowBalancer": {
+			actions: []action{
+				addSectors(getSectors(2)),
+				waitPending(2),
+				flush(getSectors(2), false),
+			},
+		},
+		"addAte-belowBalancer": {
+			actions: []action{
+				addSectors(getSectors(8)),
+				waitPending(8),
+				flush(getSectors(8), false),
+			},
+		},
+		"addMax-belowBalancer": {
+			actions: []action{
+				expectSend(getSectors(maxBatch), false),
 				addSectors(getSectors(maxBatch)),
 			},
 		},
