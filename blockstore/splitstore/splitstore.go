@@ -712,7 +712,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	count := int64(0)
 	xcount := int64(0)
 	missing := int64(0)
-	err := s.walk(curTs, epoch, false,
+	err := s.walk(curTs, epoch, false, s.cfg.HotHeaders,
 		func(cid cid.Cid) error {
 			count++
 
@@ -823,7 +823,7 @@ func (s *SplitStore) estimateMarkSetSize(curTs *types.TipSet) error {
 	epoch := curTs.Height()
 
 	var count int64
-	err := s.walk(curTs, epoch, false,
+	err := s.walk(curTs, epoch, false, s.cfg.HotHeaders,
 		func(cid cid.Cid) error {
 			count++
 			return nil
@@ -873,7 +873,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	startMark := time.Now()
 
 	var count int64
-	err = s.walk(curTs, boundaryEpoch, true,
+	err = s.walk(curTs, boundaryEpoch, true, s.cfg.HotHeaders,
 		func(cid cid.Cid) error {
 			count++
 			return markSet.Mark(cid)
@@ -997,22 +997,22 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	return nil
 }
 
-func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bool, f func(cid.Cid) error) error {
+func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs, fullChain bool,
+	f func(cid.Cid) error) error {
 	visited := cid.NewSet()
 	walked := cid.NewSet()
 	toWalk := ts.Cids()
+	blkCnt := 0
 
 	walkBlock := func(c cid.Cid) error {
 		if !visited.Visit(c) {
 			return nil
 		}
 
-		// check if it has been referenced by some later state root via lookback to avoid duplicate
-		// dispatches to the visitor
-		if !walked.Has(c) {
-			if err := f(c); err != nil {
-				return err
-			}
+		blkCnt++
+
+		if err := f(c); err != nil {
+			return err
 		}
 
 		blk, err := s.get(c)
@@ -1025,11 +1025,12 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bo
 			return xerrors.Errorf("error unmarshaling block header (cid: %s): %w", c, err)
 		}
 
-		// don't walk under the boundary, unless we are keeping the headers hot
-		if hdr.Height < boundary && !s.cfg.HotHeaders {
+		// don't walk under the boundary, unless we are walking the full chain
+		if hdr.Height < boundary && !fullChain {
 			return nil
 		}
 
+		// we only scan the block if it is above the boundary
 		if hdr.Height >= boundary {
 			if inclMsgs {
 				if err := s.walkLinks(hdr.Messages, walked, f); err != nil {
@@ -1049,6 +1050,7 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bo
 		if hdr.Height > 0 {
 			toWalk = append(toWalk, hdr.Parents...)
 		}
+
 		return nil
 	}
 
@@ -1061,6 +1063,8 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bo
 			}
 		}
 	}
+
+	log.Infof("walked %d blocks", blkCnt)
 
 	return nil
 }
@@ -1089,7 +1093,10 @@ func (s *SplitStore) walkLinks(c cid.Cid, walked *cid.Set, f func(cid.Cid) error
 			return
 		}
 
-		rerr = s.walkLinks(c, walked, f)
+		err := s.walkLinks(c, walked, f)
+		if err != nil {
+			rerr = err
+		}
 	})
 
 	if err != nil {
