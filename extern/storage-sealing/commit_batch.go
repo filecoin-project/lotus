@@ -229,7 +229,9 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	total := len(b.todo)
 
-	var res sealiface.CommitBatchRes
+	res := sealiface.CommitBatchRes{
+		FailedSectors: map[abi.SectorNumber]string{},
+	}
 
 	params := miner5.ProveCommitAggregateParams{
 		SectorNumbers: bitfield.New(),
@@ -341,7 +343,8 @@ func (b *CommitBatcher) processIndividually() ([]sealiface.CommitBatchRes, error
 
 	for sn, info := range b.todo {
 		r := sealiface.CommitBatchRes{
-			Sectors: []abi.SectorNumber{sn},
+			Sectors:       []abi.SectorNumber{sn},
+			FailedSectors: map[abi.SectorNumber]string{},
 		}
 
 		mcid, err := b.processSingle(mi, sn, info, tok)
