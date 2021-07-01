@@ -109,22 +109,30 @@ func checkProveCommitExpired(preCommitEpoch, msd abi.ChainEpoch, currEpoch abi.C
 	return currEpoch > preCommitEpoch+msd
 }
 
-func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, error) {
+func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, bool, error) {
 	tok, epoch, err := m.api.ChainHead(ctx.Context())
 	if err != nil {
-		log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
-		return nil, 0, nil
+		log.Errorf("getTicket: api error, not proceeding: %+v", err)
+		return nil, 0, false, nil
+	}
+
+	// the reason why the StateMinerSectorAllocated function is placed here, if it is outside,
+	//	if the MarshalCBOR function and StateSectorPreCommitInfo function return err, it will be executed
+	allocated, aerr := m.api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	if aerr != nil {
+		log.Errorf("getTicket: api error, checking if sector is allocated: %+v", aerr)
+		return nil, 0, false, nil
 	}
 
 	ticketEpoch := epoch - policy.SealRandomnessLookback
 	buf := new(bytes.Buffer)
 	if err := m.maddr.MarshalCBOR(buf); err != nil {
-		return nil, 0, err
+		return nil, 0, allocated, err
 	}
 
 	pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
 	if err != nil {
-		return nil, 0, xerrors.Errorf("getting precommit info: %w", err)
+		return nil, 0, allocated, xerrors.Errorf("getting precommit info: %w", err)
 	}
 
 	if pci != nil {
@@ -132,32 +140,31 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 
 		nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
 		if err != nil {
-			return nil, 0, xerrors.Errorf("getTicket: StateNetworkVersion: api error, not proceeding: %+v", err)
+			return nil, 0, allocated, xerrors.Errorf("getTicket: StateNetworkVersion: api error, not proceeding: %+v", err)
 		}
 
 		msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
 
 		if checkProveCommitExpired(pci.PreCommitEpoch, msd, epoch) {
-			return nil, 0, xerrors.Errorf("ticket expired for precommitted sector")
+			return nil, 0, allocated, xerrors.Errorf("ticket expired for precommitted sector")
 		}
+	}
+
+	if allocated { // allocated is true, sector precommitted but expired, will SectorCommitFailed or SectorRemove
+		return nil, 0, allocated, xerrors.Errorf("Sector %s precommitted but expired", sector.SectorNumber)
 	}
 
 	rand, err := m.api.ChainGetRandomnessFromTickets(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, allocated, err
 	}
 
-	return abi.SealRandomness(rand), ticketEpoch, nil
+	return abi.SealRandomness(rand), ticketEpoch, allocated, nil
 }
 
 func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) error {
-	ticketValue, ticketEpoch, err := m.getTicket(ctx, sector)
+	ticketValue, ticketEpoch, allocated, err := m.getTicket(ctx, sector)
 	if err != nil {
-		allocated, aerr := m.api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, nil)
-		if aerr != nil {
-			log.Errorf("error checking if sector is allocated: %+v", aerr)
-		}
-
 		if allocated {
 			if sector.CommitMessage != nil {
 				// Some recovery paths with unfortunate timing lead here
