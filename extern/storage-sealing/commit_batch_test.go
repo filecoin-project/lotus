@@ -146,7 +146,7 @@ func TestCommitBatcher(t *testing.T) {
 		}
 	}
 
-	expectSend := func(expect []abi.SectorNumber, aboveBalancer bool) action {
+	expectSend := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool) action {
 		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 
@@ -173,10 +173,20 @@ func TestCommitBatcher(t *testing.T) {
 			}
 
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+
+			pciC := len(expect)
+			if failOnePCI {
+				s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), abi.SectorNumber(1), gomock.Any()).Return(nil, nil).Times(1) // not found
+				pciC = len(expect) - 1
+				if !batch {
+					ti--
+				}
+			}
 			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&miner.SectorPreCommitOnChainInfo{
 				PreCommitDeposit: big.Zero(),
-			}, nil).Times(len(expect))
-			s.EXPECT().StateMinerInitialPledgeCollateral(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(big.Zero(), nil).Times(len(expect))
+			}, nil).Times(pciC)
+			s.EXPECT().StateMinerInitialPledgeCollateral(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(big.Zero(), nil).Times(pciC)
+
 			if batch {
 				s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version13, nil)
 				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
@@ -202,9 +212,9 @@ func TestCommitBatcher(t *testing.T) {
 		}
 	}
 
-	flush := func(expect []abi.SectorNumber, aboveBalancer bool) action {
+	flush := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool) action {
 		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
-			_ = expectSend(expect, aboveBalancer)(t, s, pcb)
+			_ = expectSend(expect, aboveBalancer, failOnePCI)(t, s, pcb)
 
 			batch := len(expect) >= minBatch && aboveBalancer
 
@@ -217,6 +227,13 @@ func TestCommitBatcher(t *testing.T) {
 					return r[0].Sectors[i] < r[0].Sectors[j]
 				})
 				require.Equal(t, expect, r[0].Sectors)
+				if !failOnePCI {
+					require.Len(t, r[0].FailedSectors, 0)
+				} else {
+					require.Len(t, r[0].FailedSectors, 1)
+					_, found := r[0].FailedSectors[1]
+					require.True(t, found)
+				}
 			} else {
 				require.Len(t, r, len(expect))
 				for _, res := range r {
@@ -228,6 +245,13 @@ func TestCommitBatcher(t *testing.T) {
 				})
 				for i, res := range r {
 					require.Equal(t, abi.SectorNumber(i), res.Sectors[0])
+					if failOnePCI && res.Sectors[0] == 1 {
+						require.Len(t, res.FailedSectors, 1)
+						_, found := res.FailedSectors[1]
+						require.True(t, found)
+					} else {
+						require.Empty(t, res.FailedSectors)
+					}
 				}
 			}
 
@@ -250,26 +274,26 @@ func TestCommitBatcher(t *testing.T) {
 			actions: []action{
 				addSector(0),
 				waitPending(1),
-				flush([]abi.SectorNumber{0}, true),
+				flush([]abi.SectorNumber{0}, true, false),
 			},
 		},
 		"addTwo-aboveBalancer": {
 			actions: []action{
 				addSectors(getSectors(2)),
 				waitPending(2),
-				flush(getSectors(2), true),
+				flush(getSectors(2), true, false),
 			},
 		},
 		"addAte-aboveBalancer": {
 			actions: []action{
 				addSectors(getSectors(8)),
 				waitPending(8),
-				flush(getSectors(8), true),
+				flush(getSectors(8), true, false),
 			},
 		},
 		"addMax-aboveBalancer": {
 			actions: []action{
-				expectSend(getSectors(maxBatch), true),
+				expectSend(getSectors(maxBatch), true, false),
 				addSectors(getSectors(maxBatch)),
 			},
 		},
@@ -277,27 +301,42 @@ func TestCommitBatcher(t *testing.T) {
 			actions: []action{
 				addSector(0),
 				waitPending(1),
-				flush([]abi.SectorNumber{0}, false),
+				flush([]abi.SectorNumber{0}, false, false),
 			},
 		},
 		"addTwo-belowBalancer": {
 			actions: []action{
 				addSectors(getSectors(2)),
 				waitPending(2),
-				flush(getSectors(2), false),
+				flush(getSectors(2), false, false),
 			},
 		},
 		"addAte-belowBalancer": {
 			actions: []action{
 				addSectors(getSectors(8)),
 				waitPending(8),
-				flush(getSectors(8), false),
+				flush(getSectors(8), false, false),
 			},
 		},
 		"addMax-belowBalancer": {
 			actions: []action{
-				expectSend(getSectors(maxBatch), false),
+				expectSend(getSectors(maxBatch), false, false),
 				addSectors(getSectors(maxBatch)),
+			},
+		},
+
+		"addAte-aboveBalancer-failOne": {
+			actions: []action{
+				addSectors(getSectors(8)),
+				waitPending(8),
+				flush(getSectors(8), true, true),
+			},
+		},
+		"addAte-belowBalancer-failOne": {
+			actions: []action{
+				addSectors(getSectors(8)),
+				waitPending(8),
+				flush(getSectors(8), false, true),
 			},
 		},
 	}
