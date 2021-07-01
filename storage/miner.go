@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/libp2p/go-libp2p-core/host"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -52,7 +50,6 @@ var log = logging.Logger("storageminer")
 type Miner struct {
 	api     fullNodeFilteredAPI
 	feeCfg  config.MinerFeeConfig
-	h       host.Host
 	sealer  sectorstorage.SectorManager
 	ds      datastore.Batching
 	sc      sealing.SectorIDCounter
@@ -130,7 +127,6 @@ type fullNodeFilteredAPI interface {
 // NewMiner creates a new Miner object.
 func NewMiner(api fullNodeFilteredAPI,
 	maddr address.Address,
-	h host.Host,
 	ds datastore.Batching,
 	sealer sectorstorage.SectorManager,
 	sc sealing.SectorIDCounter,
@@ -149,7 +145,6 @@ func NewMiner(api fullNodeFilteredAPI,
 		verif:   verif,
 		prover:  prover,
 		addrSel: as,
-		h:       h,
 
 		maddr:          maddr,
 		getSealConfig:  gsd,

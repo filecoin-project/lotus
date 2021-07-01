@@ -45,7 +45,7 @@ import (
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
@@ -198,7 +198,6 @@ type StorageMinerParams struct {
 	Lifecycle          fx.Lifecycle
 	MetricsCtx         helpers.MetricsCtx
 	API                v1api.FullNode
-	Host               host.Host
 	MetadataDS         dtypes.MetadataDS
 	Sealer             sectorstorage.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
@@ -219,7 +218,6 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			lc     = params.Lifecycle
 			api    = params.API
 			sealer = params.Sealer
-			h      = params.Host
 			sc     = params.SectorIDCounter
 			verif  = params.Verifier
 			prover = params.Prover
@@ -240,7 +238,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, prover, gsd, fc, j, as)
+		sm, err := storage.NewMiner(api, maddr, ds, sealer, sc, verif, prover, gsd, fc, j, as)
 		if err != nil {
 			return nil, err
 		}

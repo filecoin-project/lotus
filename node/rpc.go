@@ -118,6 +118,7 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 		mapi = api.PermissionedStorMinerAPI(mapi)
 	}
 
+	_, _ = a.ActorAddress(context.Background())
 	readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 	rpcServer := jsonrpc.NewServer(readerServerOpt)
 	rpcServer.Register("Filecoin", mapi)
