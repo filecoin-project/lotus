@@ -1002,14 +1002,15 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs, f
 	visited := cid.NewSet()
 	walked := cid.NewSet()
 	toWalk := ts.Cids()
-	blkCnt := 0
+	walkCnt := 0
+	scanCnt := 0
 
 	walkBlock := func(c cid.Cid) error {
 		if !visited.Visit(c) {
 			return nil
 		}
 
-		blkCnt++
+		walkCnt++
 
 		if err := f(c); err != nil {
 			return err
@@ -1032,6 +1033,7 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs, f
 
 		// we only scan the block if it is above the boundary
 		if hdr.Height >= boundary {
+			scanCnt++
 			if inclMsgs {
 				if err := s.walkLinks(hdr.Messages, walked, f); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
@@ -1064,7 +1066,7 @@ func (s *SplitStore) walk(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs, f
 		}
 	}
 
-	log.Infof("walked %d blocks", blkCnt)
+	log.Infow("chain walk done", "walked", walkCnt, "scanned", scanCnt)
 
 	return nil
 }
