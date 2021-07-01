@@ -856,33 +856,37 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 	}, nil
 }
 
+func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
+	return sealiface.Config{
+		MaxWaitDealsSectors:       cfg.Sealing.MaxWaitDealsSectors,
+		MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
+		MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
+		WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
+		AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
+		FinalizeEarly:             cfg.Sealing.FinalizeEarly,
+
+		BatchPreCommits:     cfg.Sealing.BatchPreCommits,
+		MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
+		PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
+		PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
+
+		AggregateCommits:      cfg.Sealing.AggregateCommits,
+		MinCommitBatch:        cfg.Sealing.MinCommitBatch,
+		MaxCommitBatch:        cfg.Sealing.MaxCommitBatch,
+		CommitBatchWait:       time.Duration(cfg.Sealing.CommitBatchWait),
+		CommitBatchSlack:      time.Duration(cfg.Sealing.CommitBatchSlack),
+		AggregateAboveBaseFee: types.BigInt(cfg.Sealing.AggregateAboveBaseFee),
+
+		TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
+		TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
+		TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
+	}
+}
+
 func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error) {
 	return func() (out sealiface.Config, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = sealiface.Config{
-				MaxWaitDealsSectors:       cfg.Sealing.MaxWaitDealsSectors,
-				MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
-				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
-				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
-				AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
-				FinalizeEarly:             cfg.Sealing.FinalizeEarly,
-
-				BatchPreCommits:     cfg.Sealing.BatchPreCommits,
-				MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
-				PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
-				PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
-
-				AggregateCommits:      cfg.Sealing.AggregateCommits,
-				MinCommitBatch:        cfg.Sealing.MinCommitBatch,
-				MaxCommitBatch:        cfg.Sealing.MaxCommitBatch,
-				CommitBatchWait:       time.Duration(cfg.Sealing.CommitBatchWait),
-				CommitBatchSlack:      time.Duration(cfg.Sealing.CommitBatchSlack),
-				AggregateAboveBaseFee: types.BigInt(cfg.Sealing.AggregateAboveBaseFee),
-
-				TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
-				TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
-				TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
-			}
+			out = ToSealingConfig(cfg)
 		})
 		return
 	}, nil

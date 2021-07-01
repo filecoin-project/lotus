@@ -101,7 +101,7 @@ var storageAttachCmd = &cli.Command{
 			}
 
 			if !(cfg.CanStore || cfg.CanSeal) {
-				return xerrors.Errorf("must specify at least one of --store of --seal")
+				return xerrors.Errorf("must specify at least one of --store or --seal")
 			}
 
 			b, err := json.MarshalIndent(cfg, "", "  ")
