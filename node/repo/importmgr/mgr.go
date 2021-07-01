@@ -22,10 +22,11 @@ type Mgr struct {
 type Label string
 
 const (
-	LSource   = "source"   // Function which created the import
-	LRootCid  = "root"     // Root CID
-	LFileName = "filename" // Local file path
-	LMTime    = "mtime"    // File modification timestamp
+	LSource        = "source"    // Function which created the import
+	LRootCid       = "root"      // Root CID
+	LFileName      = "filename"  // Local file path
+	LMTime         = "mtime"     // File modification timestamp
+	LCARv2FilePath = "CARv2Path" // path of the CARv2 file.
 )
 
 func New(mds *multistore.MultiStore, ds datastore.Batching) *Mgr {
