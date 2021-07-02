@@ -151,7 +151,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 	}
 
 	if allocated { // allocated is true, sector precommitted but expired, will SectorCommitFailed or SectorRemove
-		return nil, 0, allocated, xerrors.Errorf("Sector %s precommitted but expired", sector.SectorNumber)
+		return nil, 0, allocated, xerrors.Errorf("sector %s precommitted but expired", sector.SectorNumber)
 	}
 
 	rand, err := m.api.ChainGetRandomnessFromTickets(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
