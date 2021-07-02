@@ -102,6 +102,12 @@ type Config struct {
 	// This is necessary, and automatically set by DI in lotus node construction, if
 	// you are running with a noop coldstore.
 	HotHeaders bool
+
+	// SkipMoveColdBlocks indicates whether to skip moving cold blocks to the coldstore.
+	// If the splitstore is running with a noop coldstore then this option is set to true
+	// which skips moving (as it is a noop, but still takes time to read all the cold objects)
+	// and directly purges cold blocks.
+	SkipMoveColdBlocks bool
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -1055,15 +1061,16 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return xerrors.Errorf("compaction aborted")
 	}
 
-	// 2.2 copy the cold objects to the coldstore
-	log.Info("moving cold blocks to the coldstore")
-	startMove := time.Now()
-	err = s.moveColdBlocks(cold)
-	if err != nil {
-		return xerrors.Errorf("error moving cold blocks: %w", err)
+	// 2.2 copy the cold objects to the coldstore -- if we have one
+	if !s.cfg.SkipMoveColdBlocks {
+		log.Info("moving cold blocks to the coldstore")
+		startMove := time.Now()
+		err = s.moveColdBlocks(cold)
+		if err != nil {
+			return xerrors.Errorf("error moving cold blocks: %w", err)
+		}
+		log.Infow("moving done", "took", time.Since(startMove))
 	}
-	log.Infow("moving done", "took", time.Since(startMove))
-
 	// 2.3 purge cold objects from the hotstore
 	log.Info("purging cold objects from the hotstore")
 	startPurge := time.Now()
