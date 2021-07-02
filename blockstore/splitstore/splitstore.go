@@ -219,12 +219,35 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 
 	has, err := s.hot.Has(cid)
 
-	if err != nil || has {
-		if has && s.txnProtect != nil {
-			err = s.txnProtect.Mark(cid)
+	if err != nil {
+		return has, err
+	}
+
+	if has {
+		// treat it as an implicit Write, absence options -- the vm uses this check to avoid duplicate
+		// writes on Flush. When we have options in the API, the vm can explicitly signal that this is
+		// an implicit Write.
+		s.mx.Lock()
+		curTs := s.curTs
+		epoch := s.writeEpoch
+		s.mx.Unlock()
+
+		err = s.tracker.Put(cid, epoch)
+		if err != nil {
+			log.Errorf("error tracking implicit write in hotstore: %s", err)
+			return true, err
 		}
 
-		return has, err
+		s.debug.LogWrite(curTs, cid, epoch)
+
+		// also make sure the object is considered live during compaction
+		if s.txnProtect != nil {
+			err = s.txnProtect.Mark(cid)
+			if err != nil {
+				log.Errorf("error protecting object in compaction transaction: %s", err)
+			}
+			return true, err
+		}
 	}
 
 	return s.cold.Has(cid)
@@ -240,6 +263,9 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	case nil:
 		if s.txnProtect != nil {
 			err = s.txnProtect.Mark(cid)
+			if err != nil {
+				log.Errorf("error protecting object in compaction transaction: %s", err)
+			}
 		}
 
 		return blk, err
@@ -275,6 +301,9 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	case nil:
 		if s.txnProtect != nil {
 			err = s.txnProtect.Mark(cid)
+			if err != nil {
+				log.Errorf("error protecting object in compaction transaction: %s", err)
+			}
 		}
 
 		return size, err
@@ -319,11 +348,14 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 		return s.cold.Put(blk)
 	}
 
-	s.debug.LogWrite(curTs, blk, epoch)
+	s.debug.LogWrite(curTs, blk.Cid(), epoch)
 
 	err = s.hot.Put(blk)
 	if err == nil && s.txnProtect != nil {
 		err = s.txnProtect.Mark(blk.Cid())
+		if err != nil {
+			log.Errorf("error protecting object in compaction transaction: %s", err)
+		}
 	}
 
 	if err != nil {
@@ -358,13 +390,14 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 		return s.cold.PutMany(blks)
 	}
 
-	s.debug.LogWriteMany(curTs, blks, epoch)
+	s.debug.LogWriteMany(curTs, batch, epoch)
 
 	err = s.hot.PutMany(blks)
 	if err == nil && s.txnProtect != nil {
 		for _, cid := range batch {
 			err2 := s.txnProtect.Mark(cid)
 			if err2 != nil {
+				log.Errorf("error protecting object in compaction transaction: %s", err)
 				err = multierr.Combine(err, err2)
 			}
 		}
@@ -425,6 +458,9 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	case nil:
 		if s.txnProtect != nil {
 			err = s.txnProtect.Mark(cid)
+			if err != nil {
+				log.Errorf("error protecting object in compaction transaction: %s", err)
+			}
 		}
 
 		return err

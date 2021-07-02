@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 
-	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 )
 
@@ -103,7 +102,7 @@ func (d *debugLog) LogReadMiss(curTs *types.TipSet, cid cid.Cid) {
 	}
 }
 
-func (d *debugLog) LogWrite(curTs *types.TipSet, blk blocks.Block, writeEpoch abi.ChainEpoch) {
+func (d *debugLog) LogWrite(curTs *types.TipSet, c cid.Cid, writeEpoch abi.ChainEpoch) {
 	if d == nil {
 		return
 	}
@@ -118,13 +117,13 @@ func (d *debugLog) LogWrite(curTs *types.TipSet, blk blocks.Block, writeEpoch ab
 
 	d.writeCnt++
 
-	_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", d.timestamp(), curTs.Height(), blk.Cid(), writeEpoch, stack)
+	_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", d.timestamp(), curTs.Height(), c, writeEpoch, stack)
 	if err != nil {
 		log.Warnf("error writing write log: %s", err)
 	}
 }
 
-func (d *debugLog) LogWriteMany(curTs *types.TipSet, blks []blocks.Block, writeEpoch abi.ChainEpoch) {
+func (d *debugLog) LogWriteMany(curTs *types.TipSet, cids []cid.Cid, writeEpoch abi.ChainEpoch) {
 	if d == nil {
 		return
 	}
@@ -137,11 +136,11 @@ func (d *debugLog) LogWriteMany(curTs *types.TipSet, blks []blocks.Block, writeE
 	d.writeMx.Lock()
 	defer d.writeMx.Unlock()
 
-	d.writeCnt += len(blks)
+	d.writeCnt += len(cids)
 
 	now := d.timestamp()
-	for _, blk := range blks {
-		_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", now, curTs.Height(), blk.Cid(), writeEpoch, stack)
+	for _, c := range cids {
+		_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", now, curTs.Height(), c, writeEpoch, stack)
 		if err != nil {
 			log.Warnf("error writing write log: %s", err)
 			break
