@@ -21,6 +21,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
+// TestDealWithMarketAndMinerNode is running concurrently a number of storage and retrieval deals towards a miner
+// architecture where the `mining/sealing/proving` node is a separate process from the `markets` node
 func TestDealWithMarketAndMinerNode(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
@@ -60,9 +62,9 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 		n := n
 		ns := fmt.Sprintf("%d", n)
 		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
-		//t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
-		//t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
-		//t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
+		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
+		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
 	}
 }
 
