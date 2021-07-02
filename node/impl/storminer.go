@@ -61,7 +61,7 @@ type StorageMinerAPI struct {
 	Host              dtypes.Libp2pHost                 `optional:"true"`
 
 	// Miner / storage
-	Miner       *storage.Miner
+	Miner       *storage.Miner              `optional:"true"`
 	BlockMiner  *miner.Miner                `optional:"true"`
 	StorageMgr  *sectorstorage.Manager      `optional:"true"`
 	IStorageMgr sectorstorage.SectorManager `optional:"true"`
