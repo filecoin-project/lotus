@@ -134,7 +134,10 @@ var runCmd = &cli.Command{
 
 		bootstrapLibP2P := cfg.Subsystems.EnableStorageMarket
 
-		lr.Close()
+		err = lr.Close()
+		if err != nil {
+			return err
+		}
 
 		shutdownChan := make(chan struct{})
 
