@@ -2,7 +2,11 @@
 
 # 1.10.1-rc1 / 2021-07-02
 
-This is an optional release of Lotus that have many bug fixes and improvements based on the feedbacks we got from the 
+This is an optional, but **highly recommended** release of Lotus that have many bug fixes and improvements based on the 
+feedbacks we 
+got 
+from 
+the 
 community since HyperDrive.
 
 ## New Features
