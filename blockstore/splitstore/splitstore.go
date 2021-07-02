@@ -232,8 +232,6 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 		// treat it as an implicit Write, absence options -- the vm uses this check to avoid duplicate
 		// writes on Flush. When we have options in the API, the vm can explicitly signal that this is
 		// an implicit Write.
-		// Unfortunately we can't just directly tracker.Put one by one, as it is ridiculously slow with
-		// bolot because of syncing, so we batch them
 		s.trackWrite(cid)
 
 		// also make sure the object is considered live during compaction
@@ -605,6 +603,8 @@ func (s *SplitStore) updateWriteEpoch() {
 	}
 }
 
+// Unfortunately we can't just directly tracker.Put one by one, as it is ridiculously slow with
+// bbolt because of syncing (order of 10ms), so we batch them.
 func (s *SplitStore) trackWrite(c cid.Cid) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
@@ -612,6 +612,7 @@ func (s *SplitStore) trackWrite(c cid.Cid) {
 	s.pendingWrites[c] = struct{}{}
 }
 
+// and also combine batch writes into them
 func (s *SplitStore) trackWrites(cids []cid.Cid) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
