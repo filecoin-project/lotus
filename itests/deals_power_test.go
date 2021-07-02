@@ -24,8 +24,8 @@ func TestFirstDealEnablesMining(t *testing.T) {
 
 	ens := kit.NewEnsemble(t, kit.MockProofs())
 	ens.FullNode(&client)
-	ens.Miner(&genMiner, &client)
-	ens.Miner(&provider, &client, kit.PresealSectors(0))
+	ens.Miner(&genMiner, &client, kit.WithAllSubsystems())
+	ens.Miner(&provider, &client, kit.WithAllSubsystems(), kit.PresealSectors(0))
 	ens.Start().InterconnectAll().BeginMining(50 * time.Millisecond)
 
 	ctx := context.Background()
