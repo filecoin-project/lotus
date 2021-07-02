@@ -125,7 +125,6 @@ OPTIONS:
    --miner-api value     2345
    --enable-gpu-proving  enable use of GPU for mining operations (default: true)
    --nosync              don't check full-node sync status (default: false)
-   --enable-markets      (default: true)
    --manage-fdlimit      manage open file limit (default: true)
    --help, -h            show help (default: false)
    
