@@ -623,6 +623,7 @@ func (s *SplitStore) updateWriteEpoch() {
 	if dt < 0 {
 		writeEpoch := curTs.Height() + 1
 		if writeEpoch > s.writeEpoch {
+			s.flushImplicitWrites(true)
 			s.writeEpoch = writeEpoch
 		}
 
