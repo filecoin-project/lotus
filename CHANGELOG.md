@@ -2,23 +2,14 @@
 
 # 1.10.1-rc1 / 2021-07-02
 
-This is an optional, but **highly recommended** release of Lotus that have many bug fixes and improvements based on the 
-feedbacks we 
-got 
-from 
-the 
-community since HyperDrive.
+This is an optional, but **highly recommended** release of Lotus that have many bug fixes and improvements based on the feedbacks we got from the community since HyperDrive.
 
 ## New Features
 - commit batch: AggregateAboveBaseFee config #6650
-  - `AggregateAboveBaseFee` is added to miner sealing configuration for setting the network base fee to start aggregating proofs. When the network base fee is lower than this 
-    value, the prove commits will be submitted individually via `ProveCommitSector`. According to the [Batch 
-    Incentive Alignment](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013.
-    md#batch-incentive-alignment) introduced in FIP-0013, we recommend miners to set this value to 0.15 nanoFIL to 
-    avoid unexpected aggregation fee in burn and enjoy the most benefits of aggregation!
+  - `AggregateAboveBaseFee` is added to miner sealing configuration for setting the network base fee to start aggregating proofs. When the network base fee is lower than this value, the prove commits will be submitted individually via `ProveCommitSector`. According to the [Batch Incentive Alignment](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013. md#batch-incentive-alignment) introduced in FIP-0013, we recommend miners to set this value to 0.15 nanoFIL(which is also the default) to avoid unexpected aggregation fee in burn and enjoy the most benefits of aggregation!
     
 ## Bug Fixes
-- storage: Fix FinalizeSector with sectors in stoage paths #6652\
+- storage: Fix FinalizeSector with sectors in storage paths #6652
 - Fix tiny error in check-client-datacap #6664  
 - Fix: precommit_batch method used the wrong cfg.PreCommitBatchWait #6658
 - to optimize the batchwait #6636
