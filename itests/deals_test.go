@@ -14,7 +14,7 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	var blockTime = 1 * time.Second
+	var blockTime = 50 * time.Millisecond
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC()) // no mock proofs.
 	ens.InterconnectAll().BeginMining(blockTime)

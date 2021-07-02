@@ -7,6 +7,7 @@ and feature development. A more detailed changelog will follow upon final releas
 
 - github.com/filecoin-project/lotus:
   - update changelog and bump version to v1.11.0-rc2
+
   - Lotus version 1.11.0
   - gateway: Add support for Version method ([filecoin-project/lotus#6618](https://github.com/filecoin-project/lotus/pull/6618))
   - Miner SimultaneousTransfers config ([filecoin-project/lotus#6612](https://github.com/filecoin-project/lotus/pull/6612))
