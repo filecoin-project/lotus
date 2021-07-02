@@ -812,6 +812,11 @@ workflows:
           target: "./itests/multisig_test.go"
       
       - test:
+          name: test-itest-nonce
+          suite: itest-nonce
+          target: "./itests/nonce_test.go"
+      
+      - test:
           name: test-itest-paych_api
           suite: itest-paych_api
           target: "./itests/paych_api_test.go"
