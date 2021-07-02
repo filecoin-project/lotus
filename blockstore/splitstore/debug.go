@@ -112,12 +112,17 @@ func (d *debugLog) LogWrite(curTs *types.TipSet, c cid.Cid, writeEpoch abi.Chain
 		stack = " " + d.getStack()
 	}
 
+	var curEpoch abi.ChainEpoch
+	if curTs != nil {
+		curEpoch = curTs.Height()
+	}
+
 	d.writeMx.Lock()
 	defer d.writeMx.Unlock()
 
 	d.writeCnt++
 
-	_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", d.timestamp(), curTs.Height(), c, writeEpoch, stack)
+	_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", d.timestamp(), curEpoch, c, writeEpoch, stack)
 	if err != nil {
 		log.Warnf("error writing write log: %s", err)
 	}
@@ -133,6 +138,11 @@ func (d *debugLog) LogWriteMany(curTs *types.TipSet, cids []cid.Cid, writeEpoch 
 		stack = " " + d.getStack()
 	}
 
+	var curEpoch abi.ChainEpoch
+	if curTs != nil {
+		curEpoch = curTs.Height()
+	}
+
 	d.writeMx.Lock()
 	defer d.writeMx.Unlock()
 
@@ -140,7 +150,7 @@ func (d *debugLog) LogWriteMany(curTs *types.TipSet, cids []cid.Cid, writeEpoch 
 
 	now := d.timestamp()
 	for _, c := range cids {
-		_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", now, curTs.Height(), c, writeEpoch, stack)
+		_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", now, curEpoch, c, writeEpoch, stack)
 		if err != nil {
 			log.Warnf("error writing write log: %s", err)
 			break
