@@ -1,10 +1,13 @@
 # Lotus changelog
 
-# 1.11.0-rc1 / 2021-06-28
+# 1.11.0-rc2 / 2021-07-02
 
-This is the first release candidate for the optional Lotus v1.11.0 release that introduces several months of bugfixes and feature development. 
+This is the second release candidate for the optional Lotus v1.11.0 release that introduces several months of bugfixes 
+and feature development. A more detailed changelog will follow upon final release.
 
 - github.com/filecoin-project/lotus:
+  - update changelog and bump version to v1.11.0-rc2
+
   - Lotus version 1.11.0
   - gateway: Add support for Version method ([filecoin-project/lotus#6618](https://github.com/filecoin-project/lotus/pull/6618))
   - Miner SimultaneousTransfers config ([filecoin-project/lotus#6612](https://github.com/filecoin-project/lotus/pull/6612))
@@ -197,7 +200,7 @@ Contributors
 | chadwick2143 | 3 | +739/-1 | 4 |
 | Peter Rabbitson | 21 | +487/-164 | 36 |
 | hannahhoward | 5 | +544/-5 | 19 |
-| Jennifer Wang | 8 | +206/-172 | 17 |
+| Jennifer Wang | 9 | +241/-174 | 19 |
 | frrist | 1 | +137/-88 | 7 |
 | Travis Person | 3 | +175/-6 | 7 |
 | Alex Wade | 1 | +48/-129 | 1 |
@@ -219,6 +222,38 @@ Contributors
 | raulk | 1 | +1/-1 | 1 |
 | Jack Yao | 1 | +1/-1 | 1 |
 | IPFSUnion | 1 | +1/-1 | 1 |
+
+# 1.10.1-rc1 / 2021-07-02
+
+This is an optional, but **highly recommended** release of Lotus that have many bug fixes and improvements based on the feedbacks we got from the community since HyperDrive.
+
+## New Features
+- commit batch: AggregateAboveBaseFee config #6650
+  - `AggregateAboveBaseFee` is added to miner sealing configuration for setting the network base fee to start aggregating proofs. When the network base fee is lower than this value, the prove commits will be submitted individually via `ProveCommitSector`. According to the [Batch Incentive Alignment](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013. md#batch-incentive-alignment) introduced in FIP-0013, we recommend miners to set this value to 0.15 nanoFIL(which is also the default) to avoid unexpected aggregation fee in burn and enjoy the most benefits of aggregation!
+
+## Bug Fixes
+- storage: Fix FinalizeSector with sectors in storage paths #6652
+- Fix tiny error in check-client-datacap #6664
+- Fix: precommit_batch method used the wrong cfg.PreCommitBatchWait #6658
+- to optimize the batchwait #6636
+- fix getTicket: sector precommitted but expired case #6635
+- handleSubmitCommitAggregate() exception handling #6595
+- remove precommit check in handleCommitFailed #6634
+- ensure agg fee is adequate
+- fix: miner balance is not enough, so that ProveCommitAggregate msg exec failed #6623
+- commit batch: Initialize the FailedSectors map #6647
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Łukasz Magiera | 7 | +151/-56 | 21 |
+| llifezou | 4 | +59/-20 | 4 |
+| johnli-helloworld | 2 | +45/-14 | 4 |
+| wangchao | 1 | +1/-27 | 1 |
+| Jerry | 2 | +9/-4 | 2 |
+| zhoutian527 | 1 | +2/-2 | 1 |
+| Peter Rabbitson | 1 | +1/-1 | 1 |
 
 # 1.10.0 / 2021-06-23
 
