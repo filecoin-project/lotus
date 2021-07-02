@@ -879,7 +879,6 @@ func (s *SplitStore) compact(curTs *types.TipSet) {
 		log.Infow("current mark set size estimate", "size", s.markSetSize)
 	}
 
-	s.flushImplicitWrites(false)
 	start := time.Now()
 	err = s.doCompact(curTs)
 	took := time.Since(start).Milliseconds()
@@ -938,6 +937,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}()
 
 	defer s.debug.Flush()
+
+	s.flushImplicitWrites(false)
 
 	// 1. mark reachable objects by walking the chain from the current epoch to the boundary epoch
 	log.Infow("marking reachable blocks", "currentEpoch", currentEpoch, "boundaryEpoch", boundaryEpoch)
