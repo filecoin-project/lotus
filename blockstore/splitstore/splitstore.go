@@ -311,10 +311,9 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	s.trackWrite(blk.Cid())
-
 	err := s.hot.Put(blk)
 	if err == nil {
+		s.trackWrite(blk.Cid())
 		s.trackTxnRef(blk.Cid())
 	}
 
@@ -330,10 +329,9 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	s.trackWriteMany(batch)
-
 	err := s.hot.PutMany(blks)
 	if err == nil {
+		s.trackWriteMany(batch)
 		s.trackTxnRefMany(batch)
 	}
 
