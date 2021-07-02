@@ -88,7 +88,7 @@ func (b *PreCommitBatcher) run() {
 		panic(err)
 	}
 
-	timer := time.NewTimer(b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack))
+	timer := time.NewTimer(b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack))
 	for {
 		if forceRes != nil {
 			forceRes <- lastRes
@@ -122,7 +122,7 @@ func (b *PreCommitBatcher) run() {
 			}
 		}
 
-		timer.Reset(b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack))
+		timer.Reset(b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack))
 	}
 }
 
