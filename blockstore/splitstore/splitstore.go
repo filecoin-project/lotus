@@ -592,8 +592,15 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 	}
 
 	cids := make([]cid.Cid, 0, len(s.pendingWrites))
+	seen := make(map[cid.Cid]struct{})
 	for c := range s.pendingWrites {
+		_, ok := seen[c]
+		if ok {
+			continue
+		}
+
 		cids = append(cids, c)
+		seen[c] = struct{}{}
 
 		// recursively walk dags to propagate dependent references
 		if c.Prefix().Codec != cid.DagCBOR {
@@ -601,9 +608,10 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 		}
 
 		err := s.walkLinks(c, cid.NewSet(), func(c cid.Cid) error {
-			_, has := s.pendingWrites[c]
-			if !has {
+			_, ok := seen[c]
+			if !ok {
 				cids = append(cids, c)
+				seen[c] = struct{}{}
 			}
 
 			return nil
