@@ -148,6 +148,9 @@ type SplitStore struct {
 	txnLk      sync.RWMutex
 	txnEnv     MarkSetEnv
 	txnProtect MarkSet
+
+	// implicit write set
+	implicitWrites map[cid.Cid]struct{}
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -188,6 +191,8 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		txnEnv:  txnEnv,
 
 		coldPurgeSize: defaultColdPurgeSize,
+
+		implicitWrites: make(map[cid.Cid]struct{}),
 	}
 
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
@@ -227,18 +232,9 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 		// treat it as an implicit Write, absence options -- the vm uses this check to avoid duplicate
 		// writes on Flush. When we have options in the API, the vm can explicitly signal that this is
 		// an implicit Write.
-		s.mx.Lock()
-		curTs := s.curTs
-		epoch := s.writeEpoch
-		s.mx.Unlock()
-
-		err = s.tracker.Put(cid, epoch)
-		if err != nil {
-			log.Errorf("error tracking implicit write in hotstore: %s", err)
-			return true, err
-		}
-
-		s.debug.LogWrite(curTs, cid, epoch)
+		// Unfortunately we can't just directly tracker.Put one by one, as it is ridiculously slow with
+		// bolot because of syncing, so we batch them
+		s.putImplicitWrite(cid)
 
 		// also make sure the object is considered live during compaction
 		if s.txnProtect != nil {
@@ -566,6 +562,7 @@ func (s *SplitStore) Close() error {
 		}
 	}
 
+	s.flushImplicitWrites(false)
 	s.cancel()
 	return multierr.Combine(s.tracker.Close(), s.env.Close(), s.debug.Close())
 }
@@ -634,8 +631,43 @@ func (s *SplitStore) updateWriteEpoch() {
 
 	writeEpoch := curTs.Height() + abi.ChainEpoch(dt.Seconds())/builtin.EpochDurationSeconds + 1
 	if writeEpoch > s.writeEpoch {
+		s.flushImplicitWrites(true)
 		s.writeEpoch = writeEpoch
 	}
+}
+
+func (s *SplitStore) putImplicitWrite(c cid.Cid) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	s.implicitWrites[c] = struct{}{}
+}
+
+func (s *SplitStore) flushImplicitWrites(locked bool) {
+	if !locked {
+		s.mx.Lock()
+		defer s.mx.Unlock()
+	}
+
+	if len(s.implicitWrites) == 0 {
+		return
+	}
+
+	cids := make([]cid.Cid, 0, len(s.implicitWrites))
+	for c := range s.implicitWrites {
+		cids = append(cids, c)
+	}
+	s.implicitWrites = make(map[cid.Cid]struct{})
+
+	epoch := s.writeEpoch
+	curTs := s.curTs
+
+	err := s.tracker.PutBatch(cids, epoch)
+	if err != nil {
+		log.Errorf("error putting implicit write batch to tracker: %s", err)
+	}
+
+	s.debug.LogWriteMany(curTs, cids, epoch)
 }
 
 func (s *SplitStore) background() {
