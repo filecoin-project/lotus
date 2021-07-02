@@ -51,8 +51,8 @@ type MapMarkSetEnv struct {
 var _ MarkSetEnv = (*MapMarkSetEnv)(nil)
 
 type MapMarkSet struct {
-	mx   sync.Mutex
-	cids map[cid.Cid]struct{}
+	mx  sync.Mutex
+	set map[string]struct{}
 
 	ts bool
 }
@@ -65,8 +65,8 @@ func NewMapMarkSetEnv(ts bool) (*MapMarkSetEnv, error) {
 
 func (e *MapMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 	return &MapMarkSet{
-		cids: make(map[cid.Cid]struct{}),
-		ts:   e.ts,
+		set: make(map[string]struct{}),
+		ts:  e.ts,
 	}, nil
 }
 
@@ -80,7 +80,7 @@ func (s *MapMarkSet) Mark(cid cid.Cid) error {
 		defer s.mx.Unlock()
 	}
 
-	s.cids[cid] = struct{}{}
+	s.set[string(cid.Hash())] = struct{}{}
 	return nil
 }
 
@@ -90,7 +90,7 @@ func (s *MapMarkSet) Has(cid cid.Cid) (bool, error) {
 		defer s.mx.Unlock()
 	}
 
-	_, ok := s.cids[cid]
+	_, ok := s.set[string(cid.Hash())]
 	return ok, nil
 }
 
