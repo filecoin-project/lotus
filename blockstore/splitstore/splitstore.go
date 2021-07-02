@@ -246,8 +246,9 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 			if err != nil {
 				log.Errorf("error protecting object in compaction transaction: %s", err)
 			}
-			return true, err
 		}
+
+		return true, err
 	}
 
 	return s.cold.Has(cid)
