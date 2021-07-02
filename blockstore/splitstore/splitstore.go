@@ -593,6 +593,7 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 
 	cids := make([]cid.Cid, 0, len(s.pendingWrites))
 	seen := make(map[cid.Cid]struct{})
+	walked := cid.NewSet()
 	for c := range s.pendingWrites {
 		_, ok := seen[c]
 		if ok {
@@ -607,7 +608,7 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 			continue
 		}
 
-		err := s.walkLinks(c, cid.NewSet(), func(c cid.Cid) error {
+		err := s.walkLinks(c, walked, func(c cid.Cid) error {
 			_, ok := seen[c]
 			if !ok {
 				cids = append(cids, c)
