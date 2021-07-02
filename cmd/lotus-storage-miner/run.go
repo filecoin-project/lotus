@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -42,11 +43,6 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
-		},
-		&cli.BoolFlag{
-			Name:  "enable-markets",
-			Usage: "",
-			Value: true,
 		},
 		&cli.BoolFlag{
 			Name:  "manage-fdlimit",
@@ -123,6 +119,23 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-miner init' to set it up", minerRepoPath)
 		}
 
+		lr, err := r.Lock(repo.StorageMiner)
+		if err != nil {
+			return err
+		}
+		c, err := lr.Config()
+		if err != nil {
+			return err
+		}
+		cfg, ok := c.(*config.StorageMiner)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		bootstrapLibP2P := cfg.Subsystems.EnableStorageMarket
+
+		lr.Close()
+
 		shutdownChan := make(chan struct{})
 
 		var minerapi api.StorageMiner
@@ -147,15 +160,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting API endpoint: %w", err)
 		}
 
-		//lr, _ := r.Lock(repo.StorageMiner)
-		//c, _ := lr.Config()
-		//cfg, ok := c.(*config.StorageMiner)
-		//if !ok {
-		//log.Fatalf("invalid config from repo, got: %T", c)
-		//}
-
-		//if cfg.Subsystems.EnableStorageMarket {
-		if cctx.Bool("enable-markets") {
+		if bootstrapLibP2P {
 			log.Infof("Bootstrapping libp2p network with full node")
 
 			// Bootstrap with full node
@@ -170,8 +175,6 @@ var runCmd = &cli.Command{
 		} else {
 			log.Infof("No markets subsystem enabled, so no libp2p network bootstrapping")
 		}
-
-		//_ = lr.Close()
 
 		log.Infof("Remote version %s", v)
 
