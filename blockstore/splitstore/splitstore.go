@@ -661,9 +661,9 @@ func (s *SplitStore) trackTxnRef(c cid.Cid, implicit bool) {
 		return
 	}
 
-	if c.Prefix().Codec != cid.DagCBOR {
+	if c.Prefix().Codec != cid.DagCBOR || !implicit {
 		err = s.txnProtect.Mark(c)
-	} else if implicit {
+	} else {
 		err = s.walkLinks(c, cid.NewSet(), func(c cid.Cid) error {
 			return s.txnProtect.Mark(c)
 		})
