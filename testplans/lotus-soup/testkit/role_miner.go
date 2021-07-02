@@ -239,7 +239,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 
 	stop1, err := node.New(context.Background(),
 		node.FullAPI(&n.FullApi),
-		node.Online(),
+		node.Base(nodeRepo),
 		node.Repo(nodeRepo),
 		withGenesis(genesisMsg.Genesis),
 		withApiEndpoint(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", t.PortNumber("node_rpc", "0"))),
@@ -261,7 +261,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 
 	minerOpts := []node.Option{
 		node.StorageMiner(&n.MinerApi),
-		node.Online(),
+		node.Base(minerRepo),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.FullApi),
 		node.Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
@@ -443,7 +443,7 @@ func RestoreMiner(t *TestEnvironment, m *LotusMiner) (*LotusMiner, error) {
 
 	stop1, err := node.New(context.Background(),
 		node.FullAPI(&n.FullApi),
-		node.Online(),
+		node.Base(nodeRepo),
 		node.Repo(nodeRepo),
 		//withGenesis(genesisMsg.Genesis),
 		withApiEndpoint(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", t.PortNumber("node_rpc", "0"))),
@@ -458,7 +458,7 @@ func RestoreMiner(t *TestEnvironment, m *LotusMiner) (*LotusMiner, error) {
 
 	minerOpts := []node.Option{
 		node.StorageMiner(&n.MinerApi),
-		node.Online(),
+		node.Base(minerRepo),
 		node.Repo(minerRepo),
 		node.Override(new(api.FullNode), n.FullApi),
 		withApiEndpoint(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", t.PortNumber("miner_rpc", "0"))),

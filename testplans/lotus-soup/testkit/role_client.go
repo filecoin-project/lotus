@@ -66,7 +66,7 @@ func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 	n := &LotusNode{}
 	stop, err := node.New(context.Background(),
 		node.FullAPI(&n.FullApi),
-		node.Online(),
+		node.Base(nodeRepo),
 		node.Repo(nodeRepo),
 		withApiEndpoint(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", t.PortNumber("node_rpc", "0"))),
 		withGenesis(genesisMsg.Genesis),
