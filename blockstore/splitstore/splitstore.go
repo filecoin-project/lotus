@@ -879,6 +879,7 @@ func (s *SplitStore) compact(curTs *types.TipSet) {
 		log.Infow("current mark set size estimate", "size", s.markSetSize)
 	}
 
+	s.flushImplicitWrites(false)
 	start := time.Now()
 	err = s.doCompact(curTs)
 	took := time.Since(start).Milliseconds()
