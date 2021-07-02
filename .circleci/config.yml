@@ -827,6 +827,11 @@ workflows:
           target: "./itests/sdr_upgrade_test.go"
       
       - test:
+          name: test-itest-sector_finalize_early
+          suite: itest-sector_finalize_early
+          target: "./itests/sector_finalize_early_test.go"
+      
+      - test:
           name: test-itest-sector_pledge
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
