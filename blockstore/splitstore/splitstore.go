@@ -610,7 +610,7 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 		})
 
 		if err != nil {
-			log.Errorf("error tracking dependent writes for cid %s: %s", c, err)
+			log.Warnf("error tracking dependent writes for cid %s: %s", c, err)
 		}
 	}
 	s.pendingWrites = make(map[cid.Cid]struct{})
@@ -651,7 +651,7 @@ func (s *SplitStore) trackTxnRef(c cid.Cid) {
 	}
 
 	if err != nil {
-		log.Errorf("error protecting object (cid: %s) from compaction transaction: %s", c, err)
+		log.Warnf("error protecting object (cid: %s) from compaction transaction: %s", c, err)
 		return
 	}
 }
