@@ -610,6 +610,8 @@ func (s *SplitStore) trackWrite(c cid.Cid) {
 	defer s.mx.Unlock()
 
 	s.pendingWrites[c] = struct{}{}
+
+	s.debug.LogWrite(s.curTs, c, s.writeEpoch)
 }
 
 // and also combine batch writes into them
@@ -620,6 +622,8 @@ func (s *SplitStore) trackWrites(cids []cid.Cid) {
 	for _, c := range cids {
 		s.pendingWrites[c] = struct{}{}
 	}
+
+	s.debug.LogWriteMany(s.curTs, cids, s.writeEpoch)
 }
 
 func (s *SplitStore) flushPendingWrites(locked bool) {
@@ -639,14 +643,10 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 	s.pendingWrites = make(map[cid.Cid]struct{})
 
 	epoch := s.writeEpoch
-	curTs := s.curTs
-
 	err := s.tracker.PutBatch(cids, epoch)
 	if err != nil {
 		log.Errorf("error putting implicit write batch to tracker: %s", err)
 	}
-
-	s.debug.LogWriteMany(curTs, cids, epoch)
 }
 
 func (s *SplitStore) background() {
