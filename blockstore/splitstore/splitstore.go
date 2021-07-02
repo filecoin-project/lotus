@@ -233,6 +233,11 @@ func (s *SplitStore) Has(c cid.Cid) (bool, error) {
 		// writes on Flush. When we have options in the API, the vm can explicitly signal that this is
 		// an implicit Write.
 		// we also walk dags for links so that the reference applies transitively to children.
+		// but first check if it is already a pending write to avoid unnecessary work
+		if s.isPendingWrite(c) {
+			return true, nil
+		}
+
 		if c.Prefix().Codec != cid.DagCBOR {
 			s.trackWrite(c)
 		} else {
@@ -245,7 +250,8 @@ func (s *SplitStore) Has(c cid.Cid) (bool, error) {
 			}
 		}
 
-		// also make sure the object is considered live during compaction
+		// also make sure the object is considered live during compaction in case we have already
+		// flushed pending writes and started compaction
 		if s.txnProtect != nil {
 			if c.Prefix().Codec != cid.DagCBOR {
 				err = s.txnProtect.Mark(c)
@@ -638,6 +644,14 @@ func (s *SplitStore) trackWriteMany(cids []cid.Cid) {
 	for _, c := range cids {
 		s.pendingWrites[c] = struct{}{}
 	}
+}
+
+func (s *SplitStore) isPendingWrite(c cid.Cid) bool {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	_, ok := s.pendingWrites[c]
+	return ok
 }
 
 func (s *SplitStore) flushPendingWrites(locked bool) {
