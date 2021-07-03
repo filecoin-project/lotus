@@ -1053,6 +1053,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	log.Info("updating mark set for hot dags")
 	startMark = time.Now()
 
+	count = 0
 	walked := cid.NewSet()
 	for _, c := range towalk {
 		err = s.walkLinks(c, walked, func(c cid.Cid) error {
@@ -1066,7 +1067,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 				return errStopWalk
 			}
 
-			liveCnt++
+			count++
 			return markSet.Mark(c)
 		})
 
@@ -1075,7 +1076,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		}
 	}
 
-	log.Infow("updating mark set done", "took", time.Since(startMark))
+	log.Infow("updating mark set done", "took", time.Since(startMark), "marked", count)
 
 	// filter the candidate set for objects newly marked as hot
 	if liveCnt > 0 {
@@ -1087,13 +1088,13 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 			if mark {
 				delete(candidates, c)
+				liveCnt++
 			}
 		}
 	}
 
 	// create the cold object list
-	coldCnt -= liveCnt
-	cold := make([]cid.Cid, 0, coldCnt)
+	cold := make([]cid.Cid, 0, len(candidates))
 	for c := range candidates {
 		cold = append(cold, c)
 	}
