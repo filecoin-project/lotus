@@ -963,6 +963,22 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	defer markSet.Close() //nolint:errcheck
 	defer s.debug.Flush()
 
+	// create the transaction protect filter
+	s.txnLk.Lock()
+	s.txnProtect, err = s.txnEnv.Create("protected", s.markSetSize)
+	if err != nil {
+		s.txnLk.Unlock()
+		return xerrors.Errorf("error creating transactional mark set: %w", err)
+	}
+	s.txnLk.Unlock()
+
+	defer func() {
+		s.txnLk.Lock()
+		_ = s.txnProtect.Close()
+		s.txnProtect = nil
+		s.txnLk.Unlock()
+	}()
+
 	// 1. mark reachable objects by walking the chain from the current epoch to the boundary epoch
 	log.Infow("marking reachable blocks", "currentEpoch", currentEpoch, "boundaryEpoch", boundaryEpoch)
 	startMark := time.Now()
@@ -983,22 +999,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 
 	log.Infow("marking done", "took", time.Since(startMark), "marked", count)
-
-	// create the transaction protect filter
-	s.txnLk.Lock()
-	s.txnProtect, err = s.txnEnv.Create("protected", s.markSetSize)
-	if err != nil {
-		s.txnLk.Unlock()
-		return xerrors.Errorf("error creating transactional mark set: %w", err)
-	}
-	s.txnLk.Unlock()
-
-	defer func() {
-		s.txnLk.Lock()
-		_ = s.txnProtect.Close()
-		s.txnProtect = nil
-		s.txnLk.Unlock()
-	}()
 
 	// flush pending writes to update the tracker
 	log.Info("flushing pending writes")
