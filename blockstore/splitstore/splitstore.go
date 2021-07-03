@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"runtime/debug"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -235,16 +237,21 @@ func (s *SplitStore) Has(c cid.Cid) (bool, error) {
 	}
 
 	if has {
-		// treat it as an implicit (recursive) Write, absence options -- the vm uses this check to avoid
-		// duplicate writes on Copy.
-		// When we have options in the API, the vm can explicitly signal that this is an implicit Write.
-		s.trackWrite(c, true)
+		// treat it as an implicit (recursive) Write, when it is within vm.Copy context.
+		// -- the vm uses this check to avoid duplicate writes on Copy.
+		// When we have options in the API (or something better), the vm can explicitly signal
+		// that this is an implicit Write.
+		vmCtx := s.isVMCopyContext()
+		if vmCtx {
+			s.trackWrite(c, true)
+		}
 
 		// also make sure the object is considered live during compaction in case we have already
 		// flushed pending writes and started compaction.
+		// when within vm copy context, dags will be recursively referenced.
 		// in case of a race with purge, this will return a track error, which we can use to
 		// signal to the vm that the object is not fully present.
-		trackErr := s.trackTxnRef(c, true)
+		trackErr := s.trackTxnRef(c, vmCtx)
 
 		// if we failed to track the object and all its dependencies, then return false so as
 		// to cause the vm to copy
@@ -646,6 +653,11 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 	}
 
 	s.debug.LogWriteMany(s.curTs, cids, epoch)
+}
+
+func (s *SplitStore) isVMCopyContext() bool {
+	sk := string(debug.Stack())
+	return strings.Contains(sk, "filecoin-project/lotus/chain/vm.Copy")
 }
 
 func (s *SplitStore) trackTxnRef(c cid.Cid, implicit bool) error {
