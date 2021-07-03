@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -129,7 +130,6 @@ func ConfigStorageMiner(c interface{}) Option {
 
 		If(cfg.Subsystems.EnableStorageMarket,
 			// Markets
-			Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfers)),
@@ -145,6 +145,9 @@ func ConfigStorageMiner(c interface{}) Option {
 				},
 			})),
 			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
+
+			// DAG Store
+			Override(new(shared_testutil.DagStore), modules.DAGStore),
 
 			// Markets (retrieval)
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),

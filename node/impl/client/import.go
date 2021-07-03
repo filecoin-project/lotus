@@ -3,11 +3,9 @@ package client
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"os"
 
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -25,42 +23,46 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// importNormalFileToCARv2 imports the client's normal file to a CARv2 file.
-// It first generates a Unixfs DAG using the given store to store the resulting blocks and gets the root cid of the Unixfs DAG.
-// It then writes out the Unixfs DAG to a CARv2 file by generating a Unixfs DAG again using a CARv2 read-write blockstore as the backing store
-// and then finalizing the CARv2 read-write blockstore to get the backing CARv2 file.
-func importNormalFileToCARv2(ctx context.Context, st *multistore.Store, inputFilePath string, outputCARv2Path string) (c cid.Cid, finalErr error) {
-	// create the UnixFS DAG and import the file to store to get the root.
-	root, err := importNormalFileToUnixfsDAG(ctx, inputFilePath, st.DAG)
+// importNormalFileToCARv2 transforms the client's "normal file" to a Unixfs IPLD DAG and writes out the DAG to a CARv2 file at the given output path.
+func (a *API) importNormalFileToCARv2(ctx context.Context, importID uint64, inputFilePath string, outputCARv2Path string) (c cid.Cid, finalErr error) {
+
+	// TODO: We've currently put in a hack to create the Unixfs DAG as a CARv2 without using Badger.
+	// We first transform the Unixfs DAG to a rootless CARv2 file as CARv2 doesen't allow streaming writes without specifying the root upfront and we
+	// don't have the root till the Unixfs DAG is created.
+	//
+	// In the second pass, we create a CARv2 file with the root present using the root node we get in the above step.
+	// This hack should be fixed when CARv2 allows specifying the root AFTER finishing the CARv2 streaming write.
+	tmpCARv2Path, err := a.imgr().NewTempFile(importID)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create temp CARv2 file: %w", err)
+	}
+	defer os.Remove(tmpCARv2Path) //nolint:errcheck
+
+	tempCARv2Store, err := blockstore.NewReadWrite(tmpCARv2Path, []cid.Cid{})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create rootless temp CARv2 rw store: %w", err)
+	}
+	defer tempCARv2Store.Finalize() //nolint:errcheck
+	bsvc := blockservice.New(tempCARv2Store, offline.Exchange(tempCARv2Store))
+
+	// ---- First Pass ---  Write out the UnixFS DAG to a rootless CARv2 file by instantiating a read-write CARv2 blockstore without the root.
+	root, err := importNormalFileToUnixfsDAG(ctx, inputFilePath, merkledag.NewDAGService(bsvc))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to import file to store: %w", err)
 	}
 
-	//---
-	// transform the file to a CARv2 file by writing out a Unixfs DAG via the CARv2 read-write blockstore.
+	//------ Second Pass --- Now that we have the root of the Unixfs DAG -> write out the Unixfs DAG to a CARv2 file with the root present by using a read-write CARv2 blockstore.
 	rw, err := blockstore.NewReadWrite(outputCARv2Path, []cid.Cid{root})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create a CARv2 read-write blockstore: %w", err)
 	}
+	defer rw.Finalize() //nolint:errcheck
 
-	// make sure to call finalize on the CARv2 read-write blockstore to ensure that the blockstore flushes out a valid CARv2 file
-	// and releases the file handle it acquires.
-	defer func() {
-		err := rw.Finalize()
-		if finalErr != nil {
-			finalErr = xerrors.Errorf("failed to import file to CARv2, err=%w", finalErr)
-		} else {
-			finalErr = err
-		}
-	}()
-
-	bsvc := blockservice.New(rw, offline.Exchange(rw))
+	bsvc = blockservice.New(rw, offline.Exchange(rw))
 	root2, err := importNormalFileToUnixfsDAG(ctx, inputFilePath, merkledag.NewDAGService(bsvc))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create Unixfs DAG with CARv2 blockstore: %w", err)
 	}
-
-	fmt.Printf("\n root1 is %s and root2 is %s", root, root2)
 
 	if root != root2 {
 		return cid.Undef, xerrors.New("roots do not match")
@@ -75,7 +77,7 @@ func importNormalFileToUnixfsDAG(ctx context.Context, inputFilePath string, dag 
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to open input file: %w", err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	stat, err := f.Stat()
 	if err != nil {
@@ -147,7 +149,7 @@ func transformCarToCARv2(inputCARPath string, outputCARv2Path string) (root cid.
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to open output CARv2 file: %w", err)
 		}
-		defer outF.Close()
+		defer outF.Close() //nolint:errcheck
 		_, err = io.Copy(outF, inputF)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to copy CARv2 file: %w", err)

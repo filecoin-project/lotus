@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/lotus/markets/pricing"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
@@ -44,7 +45,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
@@ -376,27 +376,6 @@ func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.Provid
 	return ps, nil
 }
 
-func StagingMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-	ds, err := r.Datastore(ctx, "/staging")
-	if err != nil {
-		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
-	}
-
-	mds, err := multistore.NewMultiDstore(ds)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return mds.Close()
-		},
-	})
-
-	return mds, nil
-}
-
 // StagingBlockstore creates a blockstore for staging blocks for a miner
 // in a storage deal, prior to sealing
 func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
@@ -589,15 +568,20 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	}
 }
 
+func DAGStore(r repo.LockedRepo) (shared_testutil.DagStore, error) {
+	md := shared_testutil.NewMockDagStore(r.Path())
+	return md, nil
+}
+
 func StorageProvider(minerAddress dtypes.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host, ds dtypes.MetadataDS,
-	mds dtypes.StagingMultiDstore,
 	r repo.LockedRepo,
 	pieceStore dtypes.ProviderPieceStore,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
+	dagStore shared_testutil.DagStore,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -607,7 +591,8 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dagStore, pieceStore,
+		dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -668,14 +653,13 @@ func RetrievalProvider(
 	netwk rmnet.RetrievalMarketNetwork,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
-	mds dtypes.StagingMultiDstore,
 	dt dtypes.ProviderDataTransfer,
-	pieceProvider sectorstorage.PieceProvider,
 	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
+	dagStore shared_testutil.DagStore,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
+	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, dagStore, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
 		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
 }
 

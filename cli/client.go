@@ -34,7 +34,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -174,14 +173,14 @@ var clientDropCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var ids []multistore.StoreID
+		var ids []uint64
 		for i, s := range cctx.Args().Slice() {
-			id, err := strconv.ParseInt(s, 10, 0)
+			id, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				return xerrors.Errorf("parsing %d-th import ID: %w", i, err)
 			}
 
-			ids = append(ids, multistore.StoreID(id))
+			ids = append(ids, id)
 		}
 
 		for _, id := range ids {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"sort"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
-	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
@@ -46,7 +46,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
@@ -82,12 +81,10 @@ type API struct {
 	Chain        *store.ChainStore
 
 	Imports dtypes.ClientImportMgr
-	Mds     dtypes.ClientMultiDstore
 
-	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
-	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
-	DataTransfer      dtypes.ClientDataTransfer
-	Host              host.Host
+	CombinedBstore dtypes.ClientBlockstore // TODO: try to remove
+	DataTransfer   dtypes.ClientDataTransfer
+	Host           host.Host
 
 	// TODO How do we inject the Repo Path here ?
 }
@@ -416,16 +413,29 @@ func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v sto
 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
-
-	offExch := merkledag.NewDAGService(blockservice.New(a.Imports.Blockstore, offline.Exchange(a.Imports.Blockstore)))
-	_, err := offExch.Get(ctx, root)
-	if err == ipld.ErrNotFound {
-		return false, nil
-	}
+	importIDs, err := a.imgr().List()
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("failed to list imports: %w", err)
 	}
-	return true, nil
+
+	for _, importID := range importIDs {
+		info, err := a.imgr().Info(importID)
+		if err != nil {
+			continue
+		}
+		if info.Labels[importmgr.LRootCid] == "" {
+			continue
+		}
+		c, err := cid.Parse(info.Labels[importmgr.LRootCid])
+		if err != nil {
+			continue
+		}
+		if c.Equals(root) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error) {
@@ -487,16 +497,10 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 }
 
 func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.ImportRes, finalErr error) {
-	id, st, err := a.imgr().NewStore()
+	id, err := a.imgr().NewStore()
 	if err != nil {
 		return nil, err
 	}
-
-	// we don't need the store any more after we return from here. clean it up completely.
-	// we only need to retain the metadata related to this import which is identified by the storeID/importID.
-	defer func() {
-		_ = ((*multistore.MultiStore)(a.Mds)).Delete(id)
-	}()
 
 	carV2File, err := a.imgr().NewTempFile(id)
 	if err != nil {
@@ -516,7 +520,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 			return nil, xerrors.Errorf("failed to import CAR file: %w", err)
 		}
 	} else {
-		root, err = importNormalFileToCARv2(ctx, st, ref.Path, carV2File)
+		root, err = a.importNormalFileToCARv2(ctx, id, ref.Path, carV2File)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to import normal file to CARv2: %w", err)
 		}
@@ -541,10 +545,10 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	}, nil
 }
 
-func (a *API) ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error {
+func (a *API) ClientRemoveImport(ctx context.Context, importID uint64) error {
 	info, err := a.imgr().Info(importID)
 	if err != nil {
-		return xerrors.Errorf("failed to fetch multistore info: %w", err)
+		return xerrors.Errorf("failed to fetch import info: %w", err)
 	}
 
 	// remove the CARv2 file if we've created one.
@@ -555,46 +559,33 @@ func (a *API) ClientRemoveImport(ctx context.Context, importID multistore.StoreI
 	return a.imgr().Remove(importID)
 }
 
-// FIXME
-func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (c cid.Cid, finalErr error) {
-	id, st, err := a.imgr().NewStore()
+func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, error) {
+	// write payload to temp file
+	tmpPath, err := a.imgr().NewTempFile(rand.Uint64())
 	if err != nil {
 		return cid.Undef, err
 	}
-	// we don't need the store any more after we return from here. clean it up completely.
-	// we only need to retain the metadata related to this import which is identified by the storeID/importID.
-	defer func() {
-		_ = ((*multistore.MultiStore)(a.Mds)).Delete(id)
-	}()
-
-	carV2File, err := a.imgr().NewTempFile(id)
+	defer os.Remove(tmpPath) //nolint:errcheck
+	tmpF, err := os.Open(tmpPath)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create temp CARv2 file: %w", err)
+		return cid.Undef, err
 	}
-	// make sure to remove the CARv2 file if anything goes wrong from here on.
-	defer func() {
-		if finalErr != nil {
-			_ = os.Remove(carV2File)
-		}
-	}()
-
-	// FIXME
-	root, err := importNormalFileToCARv2(ctx, st, "", carV2File)
-	if err != nil {
-		return root, xerrors.Errorf("failed to import to CARv2 file: %w", err)
+	defer tmpF.Close() //nolint:errcheck
+	if _, err := io.Copy(tmpF, r); err != nil {
+		return cid.Undef, err
 	}
-
-	if err := a.imgr().AddLabel(id, importmgr.LSource, "import-local"); err != nil {
-		return cid.Cid{}, err
-	}
-	if err := a.imgr().AddLabel(id, importmgr.LRootCid, root.String()); err != nil {
-		return cid.Cid{}, err
-	}
-	if err := a.imgr().AddLabel(id, importmgr.LCARv2FilePath, carV2File); err != nil {
+	if err := tmpF.Close(); err != nil {
 		return cid.Undef, err
 	}
 
-	return root, nil
+	res, err := a.ClientImport(ctx, api.FileRef{
+		Path:  tmpPath,
+		IsCAR: false,
+	})
+	if err != nil {
+		return cid.Undef, err
+	}
+	return res.Root, nil
 }
 
 func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
@@ -818,8 +809,8 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 
 		carV2FilePath = resp.CarFilePath
-		// remove the temp CARv2 fil when retrieval is complete
-		defer os.Remove(carV2FilePath)
+		// remove the temp CARv2 file when retrieval is complete
+		defer os.Remove(carV2FilePath) //nolint:errcheck
 	} else {
 		carV2FilePath = order.LocalCARV2FilePath
 	}
@@ -837,7 +828,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			finish(err)
 			return
 		}
-		defer carv2Reader.Close()
+		defer carv2Reader.Close() //nolint:errcheck
 		if _, err := io.Copy(f, carv2Reader.CarV1Reader()); err != nil {
 			finish(err)
 			return
@@ -852,7 +843,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		finish(err)
 		return
 	}
-	defer rw.Close()
+	defer rw.Close() //nolint:errcheck
 	bsvc := blockservice.New(rw, offline.Exchange(rw))
 	dag := merkledag.NewDAGService(bsvc)
 
@@ -945,19 +936,6 @@ func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.Re
 	}
 
 	return a.newRetrievalInfoWithTransfer(transferCh, v)
-}
-
-type multiStoreRetrievalStore struct {
-	storeID multistore.StoreID
-	store   *multistore.Store
-}
-
-func (mrs *multiStoreRetrievalStore) StoreID() *multistore.StoreID {
-	return &mrs.storeID
-}
-
-func (mrs *multiStoreRetrievalStore) DAGService() ipld.DAGService {
-	return mrs.store.DAG
 }
 
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
@@ -1065,28 +1043,30 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
-	id, st, err := a.imgr().NewStore()
+	id := rand.Uint64()
+	tmpCARv2File, err := a.imgr().NewTempFile(id)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to create temp file: %w", err)
 	}
+	defer os.Remove(tmpCARv2File) //nolint:errcheck
 
-	defer func() {
-		// Clean up the store as we don't need it anymore.
-		_ = a.imgr().Remove(id)
-	}()
-
-	c, err := importNormalFileToUnixfsDAG(ctx, ref.Path, st.DAG)
+	root, err := a.importNormalFileToCARv2(ctx, id, ref.Path, tmpCARv2File)
 	if err != nil {
-		return xerrors.Errorf("failed to import file to store: %w", err)
+		return xerrors.Errorf("failed to import normal file to CARv2")
 	}
 
 	// generate a deterministic CARv1 payload from the UnixFS DAG by doing an IPLD
-	// traversal over the Unixfs DAGs in the blockstore using the "all selector" i.e the entire DAG selector.
+	// traversal over the Unixfs DAG in the CARv2 file using the "all selector" i.e the entire DAG selector.
+	rdOnly, err := blockstore.OpenReadOnly(tmpCARv2File, true)
+	if err != nil {
+		return xerrors.Errorf("failed to open read only CARv2 blockstore: %w", err)
+	}
+	defer rdOnly.Close() //nolint:errcheck
+
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
-
-	sc := car.NewSelectiveCar(ctx, st.Bstore, []car.Dag{{Root: c, Selector: allSelector}})
+	sc := car.NewSelectiveCar(ctx, rdOnly, []car.Dag{{Root: root, Selector: allSelector}})
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return err

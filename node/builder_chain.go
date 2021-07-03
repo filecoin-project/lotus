@@ -168,9 +168,10 @@ func ConfigFullNode(c interface{}) Option {
 
 		If(cfg.Client.UseIpfs,
 			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
-			If(cfg.Client.IpfsUseForRetrieval,
+			// TODO Fix this when we use IPFS for retrieval here.
+			/*If(cfg.Client.IpfsUseForRetrieval,
 				Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager),
-			),
+			),*/
 		),
 		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfers)),
 

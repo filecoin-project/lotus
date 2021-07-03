@@ -6,21 +6,18 @@ import (
 	"io/ioutil"
 	"strconv"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 )
 
 type Mgr struct {
-	mds      *multistore.MultiStore
 	ds       datastore.Batching
 	repoPath string
-
-	Blockstore blockstore.BasicBlockstore
+	counter  *shared.TimeCounter
 }
 
 type Label string
@@ -32,13 +29,11 @@ const (
 	LCARv2FilePath = "CARv2Path" // path of the CARv2 file.
 )
 
-func New(mds *multistore.MultiStore, ds datastore.Batching, repoPath string) *Mgr {
+func New(ds datastore.Batching, repoPath string) *Mgr {
 	return &Mgr{
-		mds:        mds,
-		Blockstore: blockstore.Adapt(mds.MultiReadBlockstore()),
-		repoPath:   repoPath,
-
-		ds: datastore.NewLogDatastore(namespace.Wrap(ds, datastore.NewKey("/stores")), "storess"),
+		repoPath: repoPath,
+		ds:       datastore.NewLogDatastore(namespace.Wrap(ds, datastore.NewKey("/stores")), "storess"),
+		counter:  shared.NewTimeCounter(),
 	}
 }
 
@@ -46,25 +41,21 @@ type StoreMeta struct {
 	Labels map[string]string
 }
 
-func (m *Mgr) NewStore() (multistore.StoreID, *multistore.Store, error) {
-	id := m.mds.Next()
-	st, err := m.mds.Get(id)
-	if err != nil {
-		return 0, nil, err
-	}
+func (m *Mgr) NewStore() (uint64, error) {
+	id := m.counter.Next()
 
 	meta, err := json.Marshal(&StoreMeta{Labels: map[string]string{
 		"source": "unknown",
 	}})
 	if err != nil {
-		return 0, nil, xerrors.Errorf("marshaling empty store metadata: %w", err)
+		return 0, xerrors.Errorf("marshaling empty store metadata: %w", err)
 	}
 
 	err = m.ds.Put(datastore.NewKey(fmt.Sprintf("%d", id)), meta)
-	return id, st, err
+	return id, err
 }
 
-func (m *Mgr) AddLabel(id multistore.StoreID, key, value string) error { // source, file path, data CID..
+func (m *Mgr) AddLabel(id uint64, key, value string) error { // source, file path, data CID..
 	meta, err := m.ds.Get(datastore.NewKey(fmt.Sprintf("%d", id)))
 	if err != nil {
 		return xerrors.Errorf("getting metadata form datastore: %w", err)
@@ -85,8 +76,8 @@ func (m *Mgr) AddLabel(id multistore.StoreID, key, value string) error { // sour
 	return m.ds.Put(datastore.NewKey(fmt.Sprintf("%d", id)), meta)
 }
 
-func (m *Mgr) List() ([]multistore.StoreID, error) {
-	var keys []multistore.StoreID
+func (m *Mgr) List() ([]uint64, error) {
+	var keys []uint64
 
 	qres, err := m.ds.Query(query.Query{KeysOnly: true})
 	if err != nil {
@@ -104,13 +95,13 @@ func (m *Mgr) List() ([]multistore.StoreID, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse key %s to uint64, err=%w", r.Key, err)
 		}
-		keys = append(keys, multistore.StoreID(id))
+		keys = append(keys, id)
 	}
 
 	return keys, nil
 }
 
-func (m *Mgr) Info(id multistore.StoreID) (*StoreMeta, error) {
+func (m *Mgr) Info(id uint64) (*StoreMeta, error) {
 	meta, err := m.ds.Get(datastore.NewKey(fmt.Sprintf("%d", id)))
 	if err != nil {
 		return nil, xerrors.Errorf("getting metadata form datastore: %w", err)
@@ -124,11 +115,7 @@ func (m *Mgr) Info(id multistore.StoreID) (*StoreMeta, error) {
 	return &sm, nil
 }
 
-func (m *Mgr) Remove(id multistore.StoreID) error {
-	if err := m.mds.Delete(id); err != nil {
-		return xerrors.Errorf("removing import: %w", err)
-	}
-
+func (m *Mgr) Remove(id uint64) error {
 	if err := m.ds.Delete(datastore.NewKey(fmt.Sprintf("%d", id))); err != nil {
 		return xerrors.Errorf("removing import metadata: %w", err)
 	}
@@ -136,8 +123,8 @@ func (m *Mgr) Remove(id multistore.StoreID) error {
 	return nil
 }
 
-func (a *Mgr) NewTempFile(id multistore.StoreID) (string, error) {
-	file, err := ioutil.TempFile(a.repoPath, fmt.Sprintf("%d", id))
+func (m *Mgr) NewTempFile(id uint64) (string, error) {
+	file, err := ioutil.TempFile(m.repoPath, fmt.Sprintf("%d", id))
 	if err != nil {
 		return "", xerrors.Errorf("failed to create temp file: %w", err)
 	}

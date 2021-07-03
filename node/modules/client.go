@@ -23,7 +23,6 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -38,10 +37,8 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full.WalletAPI, fundMgr *market.FundManager) {
@@ -78,34 +75,14 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 	})
 }
 
-func ClientMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ClientMultiDstore, error) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-	ds, err := r.Datastore(ctx, "/client")
-	if err != nil {
-		return nil, xerrors.Errorf("getting datastore out of repo: %w", err)
-	}
-
-	mds, err := multistore.NewMultiDstore(ds)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return mds.Close()
-		},
-	})
-
-	return mds, nil
+func ClientImportMgr(ds dtypes.MetadataDS, r repo.LockedRepo) dtypes.ClientImportMgr {
+	return importmgr.New(namespace.Wrap(ds, datastore.NewKey("/client")), r.Path())
 }
 
-func ClientImportMgr(mds dtypes.ClientMultiDstore, ds dtypes.MetadataDS, r repo.LockedRepo) dtypes.ClientImportMgr {
-	return importmgr.New(mds, namespace.Wrap(ds, datastore.NewKey("/client")), r.Path())
-}
-
+// TODO Ge this to work when we work on IPFS integration. What we effectively need here is a cross-shard/cross-CAR files index for the Storage client's imports.
 func ClientBlockstore(imgr dtypes.ClientImportMgr) dtypes.ClientBlockstore {
 	// in most cases this is now unused in normal operations -- however, it's important to preserve for the IPFS use case
-	return blockstore.WrapIDStore(imgr.Blockstore)
+	return blockstore.WrapIDStore(blockstore.FromDatastore(datastore.NewMapDatastore()))
 }
 
 // RegisterClientValidator is an initialization hook that registers the client
@@ -231,14 +208,4 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.
 		},
 	})
 	return client, nil
-}
-
-// ClientRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore
-func ClientRetrievalStoreManager(imgr dtypes.ClientImportMgr) dtypes.ClientRetrievalStoreManager {
-	return retrievalstoremgr.NewMultiStoreRetrievalStoreManager(imgr)
-}
-
-// ClientBlockstoreRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore
-func ClientBlockstoreRetrievalStoreManager(bs dtypes.ClientBlockstore) dtypes.ClientRetrievalStoreManager {
-	return retrievalstoremgr.NewBlockstoreRetrievalStoreManager(bs)
 }
