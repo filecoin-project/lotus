@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
 
@@ -121,6 +122,32 @@ func (m *Mgr) Remove(id uint64) error {
 	}
 
 	return nil
+}
+
+func (m *Mgr) CARV2FilePathFor(dagRoot cid.Cid) (string, error) {
+	importIDs, err := m.List()
+	if err != nil {
+		return "", xerrors.Errorf("failed to fetch import IDs: %w", err)
+	}
+
+	for _, importID := range importIDs {
+		info, err := m.Info(importID)
+		if err != nil {
+			continue
+		}
+		if info.Labels[LRootCid] == "" {
+			continue
+		}
+		c, err := cid.Parse(info.Labels[LRootCid])
+		if err != nil {
+			continue
+		}
+		if c.Equals(dagRoot) {
+			return info.Labels[LCARv2FilePath], nil
+		}
+	}
+
+	return "", nil
 }
 
 func (m *Mgr) NewTempFile(id uint64) (string, error) {
