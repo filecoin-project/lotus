@@ -625,7 +625,7 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 	epoch := s.writeEpoch
 	err := s.tracker.PutBatch(cids, epoch)
 	if err != nil {
-		log.Errorf("error putting implicit write batch to tracker: %s", err)
+		log.Errorf("error putting write batch to tracker: %s", err)
 	}
 
 	s.debug.LogWriteMany(s.curTs, cids, epoch)
