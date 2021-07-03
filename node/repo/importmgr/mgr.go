@@ -3,7 +3,10 @@ package importmgr
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"strconv"
 
+	"github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-multistore"
@@ -13,8 +16,9 @@ import (
 )
 
 type Mgr struct {
-	mds *multistore.MultiStore
-	ds  datastore.Batching
+	mds      *multistore.MultiStore
+	ds       datastore.Batching
+	repoPath string
 
 	Blockstore blockstore.BasicBlockstore
 }
@@ -25,14 +29,14 @@ const (
 	LSource        = "source"    // Function which created the import
 	LRootCid       = "root"      // Root CID
 	LFileName      = "filename"  // Local file path
-	LMTime         = "mtime"     // File modification timestamp
 	LCARv2FilePath = "CARv2Path" // path of the CARv2 file.
 )
 
-func New(mds *multistore.MultiStore, ds datastore.Batching) *Mgr {
+func New(mds *multistore.MultiStore, ds datastore.Batching, repoPath string) *Mgr {
 	return &Mgr{
 		mds:        mds,
 		Blockstore: blockstore.Adapt(mds.MultiReadBlockstore()),
+		repoPath:   repoPath,
 
 		ds: datastore.NewLogDatastore(namespace.Wrap(ds, datastore.NewKey("/stores")), "storess"),
 	}
@@ -81,8 +85,29 @@ func (m *Mgr) AddLabel(id multistore.StoreID, key, value string) error { // sour
 	return m.ds.Put(datastore.NewKey(fmt.Sprintf("%d", id)), meta)
 }
 
-func (m *Mgr) List() []multistore.StoreID {
-	return m.mds.List()
+func (m *Mgr) List() ([]multistore.StoreID, error) {
+	var keys []multistore.StoreID
+
+	qres, err := m.ds.Query(query.Query{KeysOnly: true})
+	if err != nil {
+		return nil, xerrors.Errorf("query error: %w", err)
+	}
+	defer qres.Close() //nolint:errcheck
+
+	for r := range qres.Next() {
+		k := r.Key
+		if string(k[0]) == "/" {
+			k = k[1:]
+		}
+
+		id, err := strconv.ParseUint(k, 10, 64)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse key %s to uint64, err=%w", r.Key, err)
+		}
+		keys = append(keys, multistore.StoreID(id))
+	}
+
+	return keys, nil
 }
 
 func (m *Mgr) Info(id multistore.StoreID) (*StoreMeta, error) {
@@ -109,4 +134,18 @@ func (m *Mgr) Remove(id multistore.StoreID) error {
 	}
 
 	return nil
+}
+
+func (a *Mgr) NewTempFile(id multistore.StoreID) (string, error) {
+	file, err := ioutil.TempFile(a.repoPath, fmt.Sprintf("%d", id))
+	if err != nil {
+		return "", xerrors.Errorf("failed to create temp file: %w", err)
+	}
+
+	// close the file as we need to return the path here.
+	if err := file.Close(); err != nil {
+		return "", xerrors.Errorf("failed to close temp file: %w", err)
+	}
+
+	return file.Name(), nil
 }

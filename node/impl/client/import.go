@@ -47,10 +47,8 @@ func importNormalFileToCARv2(ctx context.Context, st *multistore.Store, inputFil
 	// and releases the file handle it acquires.
 	defer func() {
 		err := rw.Finalize()
-
 		if finalErr != nil {
-			finalErr = xerrors.Errorf("failed to import file to CARv2, err=%w, also failed to finalize rw CARv2 blockstore, err=%w", finalErr,
-				err)
+			finalErr = xerrors.Errorf("failed to import file to CARv2, err=%w", finalErr)
 		} else {
 			finalErr = err
 		}
