@@ -948,16 +948,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	var count int64
 	err = s.walk(curTs, boundaryEpoch, true, s.cfg.HotHeaders,
 		func(c cid.Cid) error {
-			mark, err := markSet.Has(c)
-			if err != nil {
-				return xerrors.Errorf("error checking mark set for %s: %w", c, err)
-			}
-
-			if mark {
-				// already marked, don't recurse its links
-				return errStopWalk
-			}
-
 			count++
 			return markSet.Mark(c)
 		})
