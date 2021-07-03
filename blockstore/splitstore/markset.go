@@ -65,7 +65,7 @@ func NewMapMarkSetEnv(ts bool) (*MapMarkSetEnv, error) {
 
 func (e *MapMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 	return &MapMarkSet{
-		set: make(map[string]struct{}),
+		set: make(map[string]struct{}, sizeHint),
 		ts:  e.ts,
 	}, nil
 }

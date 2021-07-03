@@ -79,6 +79,8 @@ var (
 
 	// used to signal end of walk
 	errStopWalk = errors.New("stop walk")
+	// used to signal a missing object when protecting recursive references
+	errMissingObject = errors.New("missing object")
 
 	// set this to true if you are debugging the splitstore to enable debug logging
 	enableDebugLog = false
@@ -146,8 +148,7 @@ type SplitStore struct {
 	cold    bstore.Blockstore
 	tracker TrackingStore
 
-	env MarkSetEnv
-
+	markSetEnv  MarkSetEnv
 	markSetSize int64
 
 	ctx    context.Context
@@ -159,9 +160,10 @@ type SplitStore struct {
 	txnLk      sync.RWMutex
 	txnEnv     MarkSetEnv
 	txnProtect MarkSet
+	txnMarkSet MarkSet
 
 	// pending write set
-	pendingWrites map[cid.Cid]bool
+	pendingWrites map[cid.Cid]struct{}
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -177,7 +179,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	}
 
 	// the markset env
-	env, err := OpenMarkSetEnv(path, cfg.MarkSetType)
+	markSetEnv, err := OpenMarkSetEnv(path, "mapts")
 	if err != nil {
 		_ = tracker.Close()
 		return nil, err
@@ -187,23 +189,23 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	txnEnv, err := OpenMarkSetEnv(path, "mapts")
 	if err != nil {
 		_ = tracker.Close()
-		_ = env.Close()
+		_ = markSetEnv.Close()
 		return nil, err
 	}
 
 	// and now we can make a SplitStore
 	ss := &SplitStore{
-		cfg:     cfg,
-		ds:      ds,
-		hot:     hot,
-		cold:    cold,
-		tracker: tracker,
-		env:     env,
-		txnEnv:  txnEnv,
+		cfg:        cfg,
+		ds:         ds,
+		hot:        hot,
+		cold:       cold,
+		tracker:    tracker,
+		markSetEnv: markSetEnv,
+		txnEnv:     txnEnv,
 
 		coldPurgeSize: defaultColdPurgeSize,
 
-		pendingWrites: make(map[cid.Cid]bool),
+		pendingWrites: make(map[cid.Cid]struct{}),
 	}
 
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
@@ -246,7 +248,7 @@ func (s *SplitStore) Has(c cid.Cid) (bool, error) {
 		// that this is an implicit Write.
 		vmCtx := s.isVMCopyContext()
 		if vmCtx {
-			s.trackWrite(c, true)
+			s.trackWrite(c)
 		}
 
 		// also make sure the object is considered live during compaction in case we have already
@@ -254,11 +256,14 @@ func (s *SplitStore) Has(c cid.Cid) (bool, error) {
 		// when within vm copy context, dags will be recursively referenced.
 		// in case of a race with purge, this will return a track error, which we can use to
 		// signal to the vm that the object is not fully present.
-		trackErr := s.trackTxnRef(c, vmCtx)
+		err = s.trackTxnRef(c, vmCtx)
+		if xerrors.Is(err, errMissingObject) {
+			// we failed to recursively protect the object because some inner object has been purged;
+			// signal to the VM to copy.
+			return false, nil
+		}
 
-		// if we failed to track the object and all its dependencies, then return false so as
-		// to cause the vm to copy
-		return trackErr == nil, nil
+		return true, err
 	}
 
 	return s.cold.Has(c)
@@ -333,7 +338,7 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 
 	err := s.hot.Put(blk)
 	if err == nil {
-		s.trackWrite(blk.Cid(), false)
+		s.trackWrite(blk.Cid())
 		err = s.trackTxnRef(blk.Cid(), false)
 	}
 
@@ -509,7 +514,7 @@ func (s *SplitStore) Close() error {
 
 	s.flushPendingWrites(false)
 	s.cancel()
-	return multierr.Combine(s.tracker.Close(), s.env.Close(), s.debug.Close())
+	return multierr.Combine(s.tracker.Close(), s.markSetEnv.Close(), s.debug.Close())
 }
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
@@ -584,11 +589,11 @@ func (s *SplitStore) updateWriteEpoch() {
 
 // Unfortunately we can't just directly tracker.Put one by one, as it is ridiculously slow with
 // bbolt because of syncing (order of 10ms), so we batch them.
-func (s *SplitStore) trackWrite(c cid.Cid, implicit bool) {
+func (s *SplitStore) trackWrite(c cid.Cid) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
-	s.pendingWrites[c] = implicit
+	s.pendingWrites[c] = struct{}{}
 }
 
 // and also combine batch writes into them
@@ -597,7 +602,7 @@ func (s *SplitStore) trackWriteMany(cids []cid.Cid) {
 	defer s.mx.Unlock()
 
 	for _, c := range cids {
-		s.pendingWrites[c] = false
+		s.pendingWrites[c] = struct{}{}
 	}
 }
 
@@ -612,52 +617,10 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 	}
 
 	cids := make([]cid.Cid, 0, len(s.pendingWrites))
-	seen := make(map[cid.Cid]struct{})
-	walked := cid.NewSet()
-	for c, implicit := range s.pendingWrites {
-		_, ok := seen[c]
-		if ok {
-			continue
-		}
-
+	for c := range s.pendingWrites {
 		cids = append(cids, c)
-		seen[c] = struct{}{}
-
-		if !implicit {
-			continue
-		}
-
-		// recursively walk dags to propagate dependent references
-		if c.Prefix().Codec != cid.DagCBOR {
-			continue
-		}
-
-		err := s.walkLinks(c, walked, func(c cid.Cid) error {
-			_, ok := seen[c]
-			if !ok {
-				cids = append(cids, c)
-				seen[c] = struct{}{}
-			}
-
-			// if it is a block reference, short-circuit or else we'll end up walking the entire chain
-			isBlock, err := s.isBlockHeader(c)
-			if err != nil {
-				return xerrors.Errorf("error determining if cid %s is a block header: %w", c, err)
-			}
-
-			if isBlock {
-				return errStopWalk
-			}
-
-			return nil
-		})
-
-		if err != nil {
-			log.Warnf("error tracking dependent writes for cid %s: %s", c, err)
-		}
 	}
-
-	s.pendingWrites = make(map[cid.Cid]bool)
+	s.pendingWrites = make(map[cid.Cid]struct{})
 
 	epoch := s.writeEpoch
 	err := s.tracker.PutBatch(cids, epoch)
@@ -687,55 +650,52 @@ func (s *SplitStore) isBlockHeader(c cid.Cid) (isBlock bool, err error) {
 	return isBlock, err
 }
 
-func (s *SplitStore) trackTxnRef(c cid.Cid, implicit bool) error {
+func (s *SplitStore) trackTxnRef(c cid.Cid, recursive bool) error {
 	if s.txnProtect == nil {
 		// not compacting
 		return nil
 	}
 
-	// NOTE: this occurs check assumes a markset without false positives, which is currently the case
-	//       with the map
-	has, err := s.txnProtect.Has(c)
-	if err != nil {
-		log.Errorf("error occur checking object (cid: %s) for compaction transaction: %s", c, err)
-		return err
+	if !recursive {
+		return s.txnProtect.Mark(c)
 	}
 
-	if has {
-		return nil
-	}
+	// it's a recursive reference in vm context, protect links if they are not in the markset already
+	return s.walkLinks(c, cid.NewSet(), func(c cid.Cid) error {
+		mark, err := s.txnMarkSet.Has(c)
+		if err != nil {
+			return xerrors.Errorf("error checking mark set for %s: %w", c, err)
+		}
 
-	if c.Prefix().Codec != cid.DagCBOR || !implicit {
-		err = s.txnProtect.Mark(c)
-	} else {
-		err = s.walkLinks(c, cid.NewSet(), func(c cid.Cid) error {
-			// check if it is a block; implicitly checks if the object exists --if it doesn't because
-			// it has been purged, it will be an error
-			isBlock, err := s.isBlockHeader(c)
-			if err != nil {
-				return xerrors.Errorf("error determining if cid %s is a block header: %w", c, err)
-			}
+		// it's marked, nothing to do
+		if mark {
+			return errStopWalk
+		}
 
-			// mark the object
-			err = s.txnProtect.Mark(c)
-			if err != nil {
-				return err
-			}
+		live, err := s.txnProtect.Has(c)
+		if err != nil {
+			return xerrors.Errorf("error checking portected set for %s: %w", c, err)
+		}
 
-			// if it is a block reference, short-circuit or else we'll end up walking the entire chain
-			if isBlock {
-				return errStopWalk
-			}
+		if live {
+			return errStopWalk
+		}
 
-			return nil
-		})
-	}
+		// this occurs check is necessary because cold objects are purged in arbitrary order
+		has, err := s.hot.Has(c)
+		if err != nil {
+			return xerrors.Errorf("error checking hotstore for %s: %w", c, err)
+		}
 
-	if err != nil {
-		log.Warnf("error protecting object (cid: %s) from compaction transaction: %s", c, err)
-	}
+		// it has been deleted, signal to the vm to copy
+		if !has {
+			log.Warnf("missing object for recursive reference to %s: %s", c, err)
+			return errMissingObject
+		}
 
-	return err
+		// mark it
+		return s.txnProtect.Mark(c)
+	})
 }
 
 func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) error {
@@ -998,28 +958,12 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "coldEpoch", coldEpoch, "boundaryEpoch", boundaryEpoch)
 
-	markSet, err := s.env.Create("live", s.markSetSize)
+	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating mark set: %w", err)
 	}
 	defer markSet.Close() //nolint:errcheck
 	defer s.debug.Flush()
-
-	// create the transaction protect filter
-	s.txnLk.Lock()
-	s.txnProtect, err = s.txnEnv.Create("protected", s.markSetSize)
-	if err != nil {
-		s.txnLk.Unlock()
-		return xerrors.Errorf("error creating transactional mark set: %w", err)
-	}
-	s.txnLk.Unlock()
-
-	defer func() {
-		s.txnLk.Lock()
-		_ = s.txnProtect.Close()
-		s.txnProtect = nil
-		s.txnLk.Unlock()
-	}()
 
 	// 1. mark reachable objects by walking the chain from the current epoch to the boundary epoch
 	log.Infow("marking reachable blocks", "currentEpoch", currentEpoch, "boundaryEpoch", boundaryEpoch)
@@ -1027,9 +971,19 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	var count int64
 	err = s.walk(curTs, boundaryEpoch, true, s.cfg.HotHeaders,
-		func(cid cid.Cid) error {
+		func(c cid.Cid) error {
+			mark, err := markSet.Has(c)
+			if err != nil {
+				return xerrors.Errorf("error checking mark set for %s: %w", c, err)
+			}
+
+			if mark {
+				// already marked, don't recurse its links
+				return errStopWalk
+			}
+
 			count++
-			return markSet.Mark(cid)
+			return markSet.Mark(c)
 		})
 
 	if err != nil {
@@ -1042,34 +996,45 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("marking done", "took", time.Since(startMark), "marked", count)
 
+	// create the transaction protect filter
+	s.txnLk.Lock()
+	s.txnProtect, err = s.txnEnv.Create("protected", s.markSetSize)
+	if err != nil {
+		s.txnLk.Unlock()
+		return xerrors.Errorf("error creating transactional mark set: %w", err)
+	}
+	s.txnMarkSet = markSet
+	s.txnLk.Unlock()
+
+	defer func() {
+		s.txnLk.Lock()
+		_ = s.txnProtect.Close()
+		s.txnProtect = nil
+		s.txnMarkSet = nil
+		s.txnLk.Unlock()
+	}()
+
 	// flush pending writes to update the tracker
-	log.Info("flushing pending writes")
-	startFlush := time.Now()
 	s.flushPendingWrites(false)
-	log.Infow("flushing done", "took", time.Since(startFlush))
 
 	// 2. move cold unreachable objects to the coldstore
-	log.Info("collecting cold objects")
+	log.Info("collecting candidate cold objects")
 	startCollect := time.Now()
 
-	cold := make([]cid.Cid, 0, s.coldPurgeSize)
+	candidates := make(map[cid.Cid]struct{}, s.coldPurgeSize)
+	towalk := make([]cid.Cid, 0, count)
 
 	// some stats for logging
 	var hotCnt, coldCnt, liveCnt int
 
 	// 2.1 iterate through the tracking store and collect unreachable cold objects
-	err = s.tracker.ForEach(func(cid cid.Cid, writeEpoch abi.ChainEpoch) error {
-		// is the object still hot?
-		if writeEpoch > coldEpoch {
-			// yes, stay in the hotstore
-			hotCnt++
-			return nil
-		}
-
-		// check whether it is reachable in the cold boundary
-		mark, err := markSet.Has(cid)
+	// for every hot object that is a dag and not in the markset, walk for links and
+	// and mark reachable objects
+	err = s.tracker.ForEach(func(c cid.Cid, writeEpoch abi.ChainEpoch) error {
+		// was it marked?
+		mark, err := markSet.Has(c)
 		if err != nil {
-			return xerrors.Errorf("error checkiing mark set for %s: %w", cid, err)
+			return xerrors.Errorf("error checkiing mark set for %s: %w", c, err)
 		}
 
 		if mark {
@@ -1077,37 +1042,92 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return nil
 		}
 
-		live, err := s.txnProtect.Has(cid)
-		if err != nil {
-			return xerrors.Errorf("error checking liveness for %s: %w", cid, err)
-		}
+		// is the object still hot?
+		if writeEpoch > coldEpoch {
+			// yes, stay in the hotstore
+			hotCnt++
 
-		if live {
-			liveCnt++
+			// if it is a DAG, add it to the walk list to recursively update the markset
+			if c.Prefix().Codec != cid.DagCBOR {
+				return nil
+			}
+
+			towalk = append(towalk, c)
 			return nil
 		}
 
-		// it's cold, mark it for move
-		cold = append(cold, cid)
+		// it's cold, mark it as candidate for move
+		candidates[c] = struct{}{}
 		coldCnt++
 
 		return nil
 	})
 
 	if err != nil {
-		return xerrors.Errorf("error collecting cold objects: %w", err)
+		return xerrors.Errorf("error collecting candidate cold objects: %w", err)
 	}
+
+	log.Infow("candidate collection done", "took", time.Since(startCollect))
 
 	if coldCnt > 0 {
 		s.coldPurgeSize = coldCnt + coldCnt>>2 // overestimate a bit
 	}
 
-	log.Infow("collection done", "took", time.Since(startCollect))
+	// walk hot dags that were not marked and recursively update the mark set
+	log.Info("updating mark set for hot dags")
+	startMark = time.Now()
+
+	walked := cid.NewSet()
+	for _, c := range towalk {
+		err = s.walkLinks(c, walked, func(c cid.Cid) error {
+			mark, err := markSet.Has(c)
+			if err != nil {
+				return xerrors.Errorf("error checking mark set for %s: %w", c, err)
+			}
+
+			if mark {
+				// already marked, don't recurse its links
+				return errStopWalk
+			}
+
+			liveCnt++
+			return markSet.Mark(c)
+		})
+
+		if err != nil {
+			return xerrors.Errorf("error walking %s: %w", c, err)
+		}
+	}
+
+	log.Infow("updating mark set done", "took", time.Since(startMark))
+
+	// filter the candidate set for objects newly marked as hot
+	if liveCnt > 0 {
+		for c := range candidates {
+			mark, err := markSet.Has(c)
+			if err != nil {
+				return xerrors.Errorf("error checking mark set for %s: %w", c, err)
+			}
+
+			if mark {
+				delete(candidates, c)
+			}
+		}
+	}
+
+	// create the cold object list
+	coldCnt -= liveCnt
+	cold := make([]cid.Cid, 0, coldCnt)
+	for c := range candidates {
+		cold = append(cold, c)
+	}
+
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "live", liveCnt)
 	stats.Record(context.Background(), metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(context.Background(), metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
 	// Enter critical section
+	log.Info("entering critical section")
 	atomic.StoreInt32(&s.critsection, 1)
 	defer atomic.StoreInt32(&s.critsection, 0)
 
