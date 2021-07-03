@@ -156,8 +156,7 @@ type SplitStore struct {
 	txnProtect MarkSet
 
 	// pending write set
-	pendingWrites         map[cid.Cid]struct{}
-	pendingWritesImplicit map[cid.Cid]struct{}
+	pendingWrites map[cid.Cid]bool
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -199,7 +198,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 
 		coldPurgeSize: defaultColdPurgeSize,
 
-		pendingWrites: make(map[cid.Cid]struct{}),
+		pendingWrites: make(map[cid.Cid]bool),
 	}
 
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
@@ -579,7 +578,7 @@ func (s *SplitStore) trackWrite(c cid.Cid, implicit bool) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
-	s.pendingWrites[c] = struct{}{}
+	s.pendingWrites[c] = implicit
 }
 
 // and also combine batch writes into them
@@ -588,7 +587,7 @@ func (s *SplitStore) trackWriteMany(cids []cid.Cid) {
 	defer s.mx.Unlock()
 
 	for _, c := range cids {
-		s.pendingWrites[c] = struct{}{}
+		s.pendingWrites[c] = false
 	}
 }
 
@@ -605,7 +604,7 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 	cids := make([]cid.Cid, 0, len(s.pendingWrites))
 	seen := make(map[cid.Cid]struct{})
 	walked := cid.NewSet()
-	for c := range s.pendingWrites {
+	for c, implicit := range s.pendingWrites {
 		_, ok := seen[c]
 		if ok {
 			continue
@@ -614,7 +613,6 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 		cids = append(cids, c)
 		seen[c] = struct{}{}
 
-		_, implicit := s.pendingWritesImplicit[c]
 		if !implicit {
 			continue
 		}
@@ -639,10 +637,7 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 		}
 	}
 
-	s.pendingWrites = make(map[cid.Cid]struct{})
-	if len(s.pendingWritesImplicit) > 0 {
-		s.pendingWritesImplicit = make(map[cid.Cid]struct{})
-	}
+	s.pendingWrites = make(map[cid.Cid]bool)
 
 	epoch := s.writeEpoch
 	err := s.tracker.PutBatch(cids, epoch)
