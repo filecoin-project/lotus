@@ -674,6 +674,10 @@ func (s *SplitStore) isVMCopyContext() bool {
 }
 
 func (s *SplitStore) isBlockHeader(c cid.Cid) (isBlock bool, err error) {
+	if c.Prefix().Codec != cid.DagCBOR {
+		return false, nil
+	}
+
 	err = s.view(c, func(data []byte) error {
 		var hdr types.BlockHeader
 		isBlock = hdr.UnmarshalCBOR(bytes.NewBuffer(data)) == nil
