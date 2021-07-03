@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/lotus/markets/pricing"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
@@ -589,15 +590,20 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	}
 }
 
+func DAGStore(r repo.LockedRepo) (shared_testutil.DagStore, error) {
+	md := shared_testutil.NewMockDagStore(r.Path())
+	return md, nil
+}
+
 func StorageProvider(minerAddress dtypes.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host, ds dtypes.MetadataDS,
-	mds dtypes.StagingMultiDstore,
 	r repo.LockedRepo,
 	pieceStore dtypes.ProviderPieceStore,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
+	dagStore shared_testutil.DagStore,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -607,7 +613,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -663,11 +669,11 @@ func RetrievalProvider(h host.Host,
 	full v1api.FullNode,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
-	mds dtypes.StagingMultiDstore,
 	dt dtypes.ProviderDataTransfer,
 	pieceProvider sectorstorage.PieceProvider,
 	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
+	dagStore shared_testutil.DagStore,
 ) (retrievalmarket.RetrievalProvider, error) {
 	adapter := retrievaladapter.NewRetrievalProviderNode(miner, pieceProvider, full)
 
@@ -679,7 +685,8 @@ func RetrievalProvider(h host.Host,
 	netwk := rmnet.NewFromLibp2pHost(h)
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
 
-	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
+	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, dagStore,
+		dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
 		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
 }
 

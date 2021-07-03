@@ -719,9 +719,10 @@ type Import struct {
 	Key multistore.StoreID
 	Err string
 
-	Root     *cid.Cid
-	Source   string
-	FilePath string
+	Root          *cid.Cid
+	Source        string
+	FilePath      string
+	CARv2FilePath string
 }
 
 type DealInfo struct {
@@ -904,7 +905,7 @@ type RetrievalOrder struct {
 	Piece *cid.Cid
 	Size  uint64
 
-	LocalStore *multistore.StoreID // if specified, get data from local store
+	LocalCARV2FilePath string // if specified, get data from a local CARv2 file.
 	// TODO: support offset
 	Total                   types.BigInt
 	UnsealPrice             types.BigInt

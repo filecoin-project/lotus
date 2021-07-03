@@ -1104,8 +1104,8 @@ var clientRetrieveCmd = &cli.Command{
 			for _, i := range imports {
 				if i.Root != nil && i.Root.Equals(file) {
 					order = &lapi.RetrievalOrder{
-						Root:       file,
-						LocalStore: &i.Key,
+						Root:               file,
+						LocalCARV2FilePath: i.CARv2FilePath,
 
 						Total:       big.Zero(),
 						UnsealPrice: big.Zero(),

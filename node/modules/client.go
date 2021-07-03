@@ -99,8 +99,8 @@ func ClientMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locke
 	return mds, nil
 }
 
-func ClientImportMgr(mds dtypes.ClientMultiDstore, ds dtypes.MetadataDS) dtypes.ClientImportMgr {
-	return importmgr.New(mds, namespace.Wrap(ds, datastore.NewKey("/client")))
+func ClientImportMgr(mds dtypes.ClientMultiDstore, ds dtypes.MetadataDS, r repo.LockedRepo) dtypes.ClientImportMgr {
+	return importmgr.New(mds, namespace.Wrap(ds, datastore.NewKey("/client")), r.Path())
 }
 
 func ClientBlockstore(imgr dtypes.ClientImportMgr) dtypes.ClientBlockstore {
@@ -173,7 +173,7 @@ func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey("/deals/client"))
 }
 
-func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, mds dtypes.ClientMultiDstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, j journal.Journal) (storagemarket.StorageClient, error) {
+func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, j journal.Journal) (storagemarket.StorageClient, error) {
 	// go-fil-markets protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
@@ -200,11 +200,22 @@ func StorageClient(lc fx.Lifecycle, h host.Host, ibs dtypes.ClientBlockstore, md
 	return c, nil
 }
 
+type CARStore struct {
+	dir string
+}
+
+func (c *CARStore) Path(key string) string {
+	return filepath.Join(c.dir, key)
+}
+
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver, ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
+	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+
 	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, chainAPI, stateAPI)
 	network := rmnet.NewFromLibp2pHost(h)
-	client, err := retrievalimpl.NewClient(network, mds, dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")))
+	client, err := retrievalimpl.NewClient(network,
+		&CARStore{r.Path()}, dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")))
 	if err != nil {
 		return nil, err
 	}

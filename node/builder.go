@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	metricsi "github.com/ipfs/go-metrics-interface"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -420,6 +421,9 @@ var MinerNode = Options(
 	Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
 
 	Override(HandleRetrievalKey, modules.HandleRetrieval),
+
+	// DAG Store
+	Override(new(shared_testutil.DagStore), modules.DAGStore),
 
 	// Markets (storage)
 	Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
