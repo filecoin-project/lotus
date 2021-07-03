@@ -636,20 +636,6 @@ func (s *SplitStore) isVMCopyContext() bool {
 	return strings.Contains(sk, "filecoin-project/lotus/chain/vm.Copy")
 }
 
-func (s *SplitStore) isBlockHeader(c cid.Cid) (isBlock bool, err error) {
-	if c.Prefix().Codec != cid.DagCBOR {
-		return false, nil
-	}
-
-	err = s.view(c, func(data []byte) error {
-		var hdr types.BlockHeader
-		isBlock = hdr.UnmarshalCBOR(bytes.NewBuffer(data)) == nil
-		return nil
-	})
-
-	return isBlock, err
-}
-
 func (s *SplitStore) trackTxnRef(c cid.Cid, recursive bool) error {
 	if s.txnProtect == nil {
 		// not compacting
