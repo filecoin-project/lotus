@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"runtime/debug"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -246,17 +244,14 @@ func (s *SplitStore) Has(c cid.Cid) (bool, error) {
 		// -- the vm uses this check to avoid duplicate writes on Copy.
 		// When we have options in the API (or something better), the vm can explicitly signal
 		// that this is an implicit Write.
-		vmCtx := s.isVMCopyContext()
-		if vmCtx {
-			s.trackWrite(c)
-		}
+		s.trackWrite(c)
 
 		// also make sure the object is considered live during compaction in case we have already
 		// flushed pending writes and started compaction.
 		// when within vm copy context, dags will be recursively referenced.
 		// in case of a race with purge, this will return a track error, which we can use to
 		// signal to the vm that the object is not fully present.
-		err = s.trackTxnRef(c, vmCtx)
+		err = s.trackTxnRef(c, true)
 		if xerrors.Is(err, errMissingObject) {
 			// we failed to recursively protect the object because some inner object has been purged;
 			// signal to the VM to copy.
@@ -629,11 +624,6 @@ func (s *SplitStore) flushPendingWrites(locked bool) {
 	}
 
 	s.debug.LogWriteMany(s.curTs, cids, epoch)
-}
-
-func (s *SplitStore) isVMCopyContext() bool {
-	sk := string(debug.Stack())
-	return strings.Contains(sk, "filecoin-project/lotus/chain/vm.Copy")
 }
 
 func (s *SplitStore) trackTxnRef(c cid.Cid, recursive bool) error {
