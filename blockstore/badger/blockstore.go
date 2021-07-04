@@ -460,6 +460,7 @@ func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 	iter := txn.NewIterator(opts)
 	defer iter.Close()
 
+	var buf []byte
 	for iter.Rewind(); iter.Valid(); iter.Next() {
 		if atomic.LoadInt64(&b.state) != stateOpen {
 			return ErrBlockstoreClosed
@@ -471,7 +472,9 @@ func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 		}
 
 		klen := base32.RawStdEncoding.DecodedLen(len(k))
-		buf := make([]byte, klen)
+		if klen > len(buf) {
+			buf = make([]byte, klen)
+		}
 
 		n, err := base32.RawStdEncoding.Decode(buf, k)
 		if err != nil {
