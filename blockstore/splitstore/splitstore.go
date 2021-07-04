@@ -1052,9 +1052,9 @@ func (s *SplitStore) walkChain(ts *types.TipSet, boundary abi.ChainEpoch, inclMs
 		}
 
 		// we only scan the block if it is at or above the boundary
-		if hdr.Height >= boundary {
+		if hdr.Height >= boundary || hdr.Height == 0 {
 			scanCnt++
-			if inclMsgs {
+			if inclMsgs && hdr.Height > 0 {
 				if err := s.walkObject(hdr.Messages, walked, f); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
