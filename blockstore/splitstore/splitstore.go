@@ -954,17 +954,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	stats.Record(context.Background(), metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(context.Background(), metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
-	// Enter critical section
-	log.Info("entering critical section")
-	atomic.StoreInt32(&s.critsection, 1)
-	defer atomic.StoreInt32(&s.critsection, 0)
-
-	// check to see if we are closing first; if that's the case just return
-	if atomic.LoadInt32(&s.closing) == 1 {
-		log.Info("splitstore is closing; aborting compaction")
-		return xerrors.Errorf("compaction aborted")
-	}
-
 	// 3. copy the cold objects to the coldstore -- if we have one
 	if !s.cfg.DiscardColdBlocks {
 		log.Info("moving cold blocks to the coldstore")
@@ -985,6 +974,17 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return xerrors.Errorf("error sorting objects: %w", err)
 	}
 	log.Infow("sorting done", "took", time.Since(startSort))
+
+	// Enter critical section
+	log.Info("entering critical section")
+	atomic.StoreInt32(&s.critsection, 1)
+	defer atomic.StoreInt32(&s.critsection, 0)
+
+	// check to see if we are closing first; if that's the case just return
+	if atomic.LoadInt32(&s.closing) == 1 {
+		log.Info("splitstore is closing; aborting compaction")
+		return xerrors.Errorf("compaction aborted")
+	}
 
 	// 5. purge cold objects from the hotstore, taking protected references into account
 	log.Info("purging cold objects from the hotstore")
