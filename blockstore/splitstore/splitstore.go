@@ -34,25 +34,20 @@ var (
 	// from the previously compacted epoch to trigger a new compaction.
 	//
 	//        |················· CompactionThreshold ··················|
-	//        |                                                        |
-	// =======‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖----------|------------------------»
-	//        |                    |          |   chain -->             ↑__ current epoch
-	//        | archived epochs ___↑          |
-	//                             |          ↑________ CompactionBoundary
-	//                             ↑__ CompactionSlack
+	//        |                                             |
+	// =======‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖------------------------»
+	//        |                    |  chain -->             ↑__ current epoch
+	//        | archived epochs ___↑
+	//                             ↑________ CompactionBoundary
 	//
 	// === :: cold (already archived)
 	// ≡≡≡ :: to be archived in this compaction
 	// --- :: hot
-	CompactionThreshold = 7 * build.Finality
+	CompactionThreshold = 6 * build.Finality
 
 	// CompactionBoundary is the number of epochs from the current epoch at which
 	// we will walk the chain for live objects.
 	CompactionBoundary = 4 * build.Finality
-
-	// CompactionSlack is the number of epochs from the compaction boundary to the beginning
-	// of the cold epoch.
-	CompactionSlack = 2 * build.Finality
 
 	// SyncGapTime is the time delay from a tipset's min timestamp before we decide
 	// there is a sync gap
@@ -775,9 +770,8 @@ func (s *SplitStore) compact(curTs *types.TipSet) {
 func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
-	coldEpoch := boundaryEpoch - CompactionSlack
 
-	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "coldEpoch", coldEpoch, "boundaryEpoch", boundaryEpoch)
+	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch)
 
 	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
 	if err != nil {
@@ -793,7 +787,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	s.txnLk.Unlock()
 
 	// 1. mark reachable objects by walking the chain from the current epoch to the boundary epoch
-	log.Infow("marking reachable blocks", "currentEpoch", currentEpoch, "boundaryEpoch", boundaryEpoch)
+	log.Info("marking reachable blocks")
 	startMark := time.Now()
 
 	var count int64
@@ -944,7 +938,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	// we are done; do some housekeeping
 	s.gcHotstore()
 
-	err = s.setBaseEpoch(coldEpoch)
+	err = s.setBaseEpoch(boundaryEpoch)
 	if err != nil {
 		return xerrors.Errorf("error saving base epoch: %w", err)
 	}
