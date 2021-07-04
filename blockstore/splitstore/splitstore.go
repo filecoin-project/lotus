@@ -177,7 +177,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	}
 
 	// the markset env
-	markSetEnv, err := OpenMarkSetEnv(path, "mapts")
+	markSetEnv, err := OpenMarkSetEnv(path, "bolt")
 	if err != nil {
 		_ = tracker.Close()
 		return nil, err
@@ -964,7 +964,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// create the transaction protect filter
 	s.txnLk.Lock()
-	s.txnProtect, err = s.txnEnv.Create("protected", s.markSetSize)
+	s.txnProtect, err = s.txnEnv.Create("protected", 0)
 	if err != nil {
 		s.txnLk.Unlock()
 		return xerrors.Errorf("error creating transactional mark set: %w", err)
@@ -988,10 +988,10 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	startCollect := time.Now()
 
 	candidates := make(map[cid.Cid]struct{}, s.coldPurgeSize)
-	towalk := make([]cid.Cid, 0, count)
+	var towalk []cid.Cid
 
 	// some stats for logging
-	var hotCnt, coldCnt, liveCnt int
+	var hotCnt, coldCnt, slackCnt, liveCnt int
 
 	// 2.1 iterate through the tracking store and collect unreachable cold objects
 	// for every hot object that is a dag and not in the markset, walk for links and
@@ -1009,7 +1009,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		}
 
 		// is the object still hot?
-		if writeEpoch > coldEpoch {
+		if writeEpoch >= boundaryEpoch {
 			// yes, stay in the hotstore
 			hotCnt++
 
@@ -1019,6 +1019,14 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			}
 
 			towalk = append(towalk, c)
+			return nil
+		}
+
+		// is the object in slack region?
+		if writeEpoch > coldEpoch {
+			// yes stay in the hotstore, but we wont walk you
+			slackCnt++
+
 			return nil
 		}
 
@@ -1089,7 +1097,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		cold = append(cold, c)
 	}
 
-	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "live", liveCnt)
+	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "live", liveCnt, "slack", slackCnt)
 	stats.Record(context.Background(), metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(context.Background(), metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
