@@ -1077,17 +1077,15 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	log.Infow("updating mark set done", "took", time.Since(startMark), "marked", count)
 
 	// filter the candidate set for objects newly marked as hot
-	if liveCnt > 0 {
-		for c := range candidates {
-			mark, err := markSet.Has(c)
-			if err != nil {
-				return xerrors.Errorf("error checking mark set for %s: %w", c, err)
-			}
+	for c := range candidates {
+		mark, err := markSet.Has(c)
+		if err != nil {
+			return xerrors.Errorf("error checking mark set for %s: %w", c, err)
+		}
 
-			if mark {
-				delete(candidates, c)
-				liveCnt++
-			}
+		if mark {
+			delete(candidates, c)
+			liveCnt++
 		}
 	}
 
