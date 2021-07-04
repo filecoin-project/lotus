@@ -824,7 +824,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		})
 
 	if err != nil {
-		return xerrors.Errorf("error marking cold blocks: %w", err)
+		return xerrors.Errorf("error marking hot objects: %w", err)
 	}
 
 	if count > s.markSetSize {
