@@ -118,7 +118,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	// count objects in the cold and hot stores
 	countBlocks := func(bs blockstore.Blockstore) int {
 		count := 0
-		bs.(blockstore.BlockstoreIterator).ForEachKey(func(_ cid.Cid) error {
+		_ = bs.(blockstore.BlockstoreIterator).ForEachKey(func(_ cid.Cid) error {
 			count++
 			return nil
 		})

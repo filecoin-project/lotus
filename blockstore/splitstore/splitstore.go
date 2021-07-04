@@ -817,7 +817,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("marking done", "took", time.Since(startMark), "marked", count)
 
-	// fetch refernces taken during marking and create the transaction protect filter
+	// fetch references taken during marking and create the transaction protect filter
 	s.txnLk.Lock()
 	txnRefs := s.txnRefs
 	s.txnRefs = nil
