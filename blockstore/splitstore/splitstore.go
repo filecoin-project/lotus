@@ -44,7 +44,7 @@ var (
 	// === :: cold (already archived)
 	// ≡≡≡ :: to be archived in this compaction
 	// --- :: hot
-	CompactionThreshold = 6 * build.Finality
+	CompactionThreshold = 5 * build.Finality
 
 	// CompactionBoundary is the number of epochs from the current epoch at which
 	// we will walk the chain for live objects.
