@@ -635,7 +635,7 @@ func (s *SplitStore) trackTxnRef(c cid.Cid, recursive bool) error {
 
 		// it has been deleted, signal to the vm to copy
 		if !has {
-			log.Warnf("missing object for recursive reference to %s: %s", c, err)
+			log.Warnf("missing object for recursive reference to %s", c)
 			return errMissingObject
 		}
 
