@@ -97,6 +97,7 @@ type Blockstore struct {
 
 var _ blockstore.Blockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
+var _ blockstore.BlockstoreIterator = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
@@ -440,6 +441,52 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	}()
 
 	return ch, nil
+}
+
+// Implementation of BlockstoreIterator interface
+func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	txn := b.DB.NewTransaction(false)
+	defer txn.Discard()
+
+	opts := badger.IteratorOptions{PrefetchSize: 100}
+	if b.prefixing {
+		opts.Prefix = b.prefix
+	}
+
+	iter := txn.NewIterator(opts)
+	defer iter.Close()
+
+	for iter.Rewind(); iter.Valid(); iter.Next() {
+		if atomic.LoadInt64(&b.state) != stateOpen {
+			return ErrBlockstoreClosed
+		}
+
+		k := iter.Item().Key()
+		if b.prefixing {
+			k = k[b.prefixLen:]
+		}
+
+		klen := base32.RawStdEncoding.DecodedLen(len(k))
+		buf := make([]byte, klen)
+
+		n, err := base32.RawStdEncoding.Decode(buf, k)
+		if err != nil {
+			return err
+		}
+
+		c := cid.NewCidV1(cid.Raw, buf[:n])
+
+		err = f(c)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // HashOnRead implements Blockstore.HashOnRead. It is not supported by this

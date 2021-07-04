@@ -30,6 +30,11 @@ type BatchDeleter interface {
 	DeleteMany(cids []cid.Cid) error
 }
 
+// BlockstoreIterator is a trait for efficient iteration
+type BlockstoreIterator interface {
+	ForEachKey(func(cid.Cid) error) error
+}
+
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 // The ID store filters out all puts for blocks with CIDs using the "identity"
 // hash function. It also extracts inlined blocks from CIDs using the identity
