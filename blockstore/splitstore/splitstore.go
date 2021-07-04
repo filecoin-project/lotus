@@ -918,7 +918,28 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 						return errStopWalk
 					}
 
-					return markSet.Mark(c)
+					// mark it
+					err = markSet.Mark(c)
+					if err != nil {
+						return err
+					}
+
+					// we also short-circuit in case of a block header, as it may cause us to walk the
+					// entire chain because of a network request (and fail if we were synced form a snapshot
+					// because of missing messages or receipts!)
+					// this is necessary because we don't have interface options to signal network request
+					// initiated API calls; when we have that, we can stop tracking those references and
+					// we can remove this check.
+					isBlock, err := s.isBlockHeader(c)
+					if err != nil {
+						return xerrors.Errorf("error checking object type for %s: %W", c, err)
+					}
+
+					if isBlock {
+						return errStopWalk
+					}
+
+					return nil
 				})
 
 				if err != nil {
@@ -1089,6 +1110,20 @@ func (s *SplitStore) walkChain(ts *types.TipSet, boundary abi.ChainEpoch, inclMs
 	log.Infow("chain walk done", "walked", walkCnt, "scanned", scanCnt)
 
 	return nil
+}
+
+func (s *SplitStore) isBlockHeader(c cid.Cid) (isBlock bool, err error) {
+	if c.Prefix().Codec != cid.DagCBOR {
+		return false, nil
+	}
+
+	err = s.view(c, func(data []byte) error {
+		var hdr types.BlockHeader
+		isBlock = hdr.UnmarshalCBOR(bytes.NewBuffer(data)) == nil
+		return nil
+	})
+
+	return isBlock, err
 }
 
 func (s *SplitStore) walkObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) error) error {
