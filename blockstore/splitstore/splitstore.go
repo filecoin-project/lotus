@@ -650,15 +650,25 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) error {
 		return nil
 	}
 
-	var err error
+	if s.txnRefs != nil {
+		// we haven't finished marking yet, so track the reference
+		s.txnRefsMx.Lock()
+		for _, c := range cids {
+			s.txnRefs[c] = struct{}{}
+		}
+		s.txnRefsMx.Unlock()
+		return nil
+	}
+
+	// we have finished marking, protect the refs
 	for _, c := range cids {
-		err2 := s.trackTxnRef(c, false)
-		if err2 != nil {
-			err = multierr.Combine(err, err2)
+		err := s.txnProtect.Mark(c)
+		if err != nil {
+			return err
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (s *SplitStore) warmup(curTs *types.TipSet) error {
