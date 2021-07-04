@@ -78,10 +78,9 @@ func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.Locked
 		}
 
 		cfg := &splitstore.Config{
-			TrackingStoreType:  cfg.Splitstore.TrackingStoreType,
-			MarkSetType:        cfg.Splitstore.MarkSetType,
-			HotHeaders:         cfg.Splitstore.HotHeaders || cfg.Splitstore.ColdStoreType == "noop",
-			SkipMoveColdBlocks: cfg.Splitstore.ColdStoreType == "noop",
+			TrackingStoreType: cfg.Splitstore.TrackingStoreType,
+			MarkSetType:       cfg.Splitstore.MarkSetType,
+			DiscardColdBlocks: cfg.Splitstore.ColdStoreType == "noop",
 		}
 		ss, err := splitstore.Open(path, ds, hot, cold, cfg)
 		if err != nil {
