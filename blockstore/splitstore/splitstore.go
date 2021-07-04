@@ -90,17 +90,12 @@ const (
 )
 
 type Config struct {
-	// TrackingStore is the type of tracking store to use.
-	//
-	// Supported values are: "bolt" (default if omitted), "mem" (for tests and readonly access).
-	TrackingStoreType string
-
 	// MarkSetType is the type of mark set to use.
 	//
-	// Supported values are: "bloom" (default if omitted), "bolt".
+	// Sane values are: "mapts", "bolt" (if you are memory constrained).
 	MarkSetType string
 
-	// SkipMoveColdBlocks indicates whether to skip moving cold blocks to the coldstore.
+	// DiscardColdBlocks indicates whether to skip moving cold blocks to the coldstore.
 	// If the splitstore is running with a noop coldstore then this option is set to true
 	// which skips moving (as it is a noop, but still takes time to read all the cold objects)
 	// and directly purges cold blocks.
@@ -167,13 +162,13 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	}
 
 	// the markset env
-	markSetEnv, err := OpenMarkSetEnv(path, "mapts")
+	markSetEnv, err := OpenMarkSetEnv(path, cfg.MarkSetType)
 	if err != nil {
 		return nil, err
 	}
 
 	// the txn markset env
-	txnEnv, err := OpenMarkSetEnv(path, "mapts")
+	txnEnv, err := OpenMarkSetEnv(path, cfg.MarkSetType)
 	if err != nil {
 		_ = markSetEnv.Close()
 		return nil, err

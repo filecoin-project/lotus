@@ -229,11 +229,9 @@ type Chainstore struct {
 }
 
 type Splitstore struct {
-	ColdStoreType     string
-	HotStoreType      string
-	TrackingStoreType string
-	MarkSetType       string
-	HotHeaders        bool
+	ColdStoreType string
+	HotStoreType  string
+	MarkSetType   string
 }
 
 // // Full Node
@@ -306,6 +304,7 @@ func DefaultFullNode() *FullNode {
 			Splitstore: Splitstore{
 				ColdStoreType: "universal",
 				HotStoreType:  "badger",
+				MarkSetType:   "mapts",
 			},
 		},
 	}
