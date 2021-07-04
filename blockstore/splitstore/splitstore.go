@@ -145,11 +145,12 @@ type SplitStore struct {
 
 	// protection for concurrent read/writes during compaction
 	txnLk      sync.RWMutex
+	txnActive  bool
 	txnEnv     MarkSetEnv
 	txnProtect MarkSet
 	txnMarkSet MarkSet
+	txnRefsMx  sync.Mutex
 	txnRefs    map[cid.Cid]struct{}
-	txnActive  bool
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -594,7 +595,9 @@ func (s *SplitStore) trackTxnRef(c cid.Cid, recursive bool) error {
 
 	if s.txnRefs != nil {
 		// we haven't finished marking yet, so track the reference
+		s.txnRefsMx.Lock()
 		s.txnRefs[c] = struct{}{}
+		s.txnRefsMx.Unlock()
 		return nil
 	}
 
