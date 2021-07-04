@@ -76,15 +76,19 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	}
 
 	// make some tipsets, but not enough to cause compaction
-	mkBlock := func(curTs *types.TipSet, i int) *types.TipSet {
+	mkBlock := func(curTs *types.TipSet, i int, stateRoot blocks.Block) *types.TipSet {
 		blk := mock.MkBlock(curTs, uint64(i), uint64(i))
 
 		blk.Messages = garbage.Cid()
 		blk.ParentMessageReceipts = garbage.Cid()
-		blk.ParentStateRoot = garbage.Cid()
+		blk.ParentStateRoot = stateRoot.Cid()
 		blk.Timestamp = uint64(time.Now().Unix())
 
 		sblk, err := blk.ToStorageBlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = ss.Put(stateRoot)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,7 +110,8 @@ func testSplitStore(t *testing.T, cfg *Config) {
 
 	curTs := genTs
 	for i := 1; i < 5; i++ {
-		curTs = mkBlock(curTs, i)
+		stateRoot := blocks.NewBlock([]byte{byte(i), 3, 3, 7})
+		curTs = mkBlock(curTs, i, stateRoot)
 		waitForCompaction()
 	}
 
@@ -127,25 +132,26 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Errorf("expected %d blocks, but got %d", 2, coldCnt)
 	}
 
-	if hotCnt != 6 {
-		t.Errorf("expected %d blocks, but got %d", 6, hotCnt)
+	if hotCnt != 10 {
+		t.Errorf("expected %d blocks, but got %d", 10, hotCnt)
 	}
 
 	// trigger a compaction
 	for i := 5; i < 10; i++ {
-		curTs = mkBlock(curTs, i)
+		stateRoot := blocks.NewBlock([]byte{byte(i), 3, 3, 7})
+		curTs = mkBlock(curTs, i, stateRoot)
 		waitForCompaction()
 	}
 
 	coldCnt = countBlocks(cold)
 	hotCnt = countBlocks(hot)
 
-	if coldCnt != 2 {
-		t.Errorf("expected %d cold blocks, but got %d", 2, coldCnt)
+	if coldCnt != 5 {
+		t.Errorf("expected %d cold blocks, but got %d", 5, coldCnt)
 	}
 
-	if hotCnt != 11 {
-		t.Errorf("expected %d hot blocks, but got %d", 11, hotCnt)
+	if hotCnt != 17 {
+		t.Errorf("expected %d hot blocks, but got %d", 17, hotCnt)
 	}
 
 	// Make sure we can revert without panicking.
