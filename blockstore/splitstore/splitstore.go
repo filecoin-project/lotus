@@ -82,8 +82,6 @@ var (
 	enableDebugLog = false
 	// set this to true if you want to track origin stack traces in the write log
 	enableDebugLogWriteTraces = false
-
-	maxMissingScanRetries = 3
 )
 
 const (
