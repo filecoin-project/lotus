@@ -1231,7 +1231,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing
 
 	// occurs check -- only for DAGs
 	if c.Prefix().Codec == cid.DagCBOR {
-		has, err := s.hot.Has(c)
+		has, err := s.has(c)
 		if err != nil {
 			return xerrors.Errorf("error occur checking %s: %w", c, err)
 		}
@@ -1289,6 +1289,16 @@ func (s *SplitStore) view(cid cid.Cid, cb func([]byte) error) error {
 	default:
 		return err
 	}
+}
+
+func (s *SplitStore) has(c cid.Cid) (bool, error) {
+	has, err := s.hot.Has(c)
+
+	if has || err != nil {
+		return has, err
+	}
+
+	return s.cold.Has(c)
 }
 
 func (s *SplitStore) isOldBlockHeader(c cid.Cid, epoch abi.ChainEpoch) (isOldBlock bool, err error) {
