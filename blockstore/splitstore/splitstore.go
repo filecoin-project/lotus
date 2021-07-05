@@ -1033,6 +1033,7 @@ func (s *SplitStore) endTxnProtect() {
 	}
 	s.txnActive = false
 	s.txnProtect = nil
+	s.txnRefs = nil
 	s.txnMissing = nil
 }
 
