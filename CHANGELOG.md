@@ -1,12 +1,12 @@
 # Lotus changelog
 
-# 1.10.1-rc1 / 2021-07-02
+# 1.10.1 / 2021-07-05
 
-This is an optional, but **highly recommended** release of Lotus that have many bug fixes and improvements based on the feedbacks we got from the community since HyperDrive.
+This is an optional but **highly recommended** release of Lotus that have many bug fixes and improvements based on the feedbacks we got from the community since HyperDrive.
 
 ## New Features
 - commit batch: AggregateAboveBaseFee config #6650
-  - `AggregateAboveBaseFee` is added to miner sealing configuration for setting the network base fee to start aggregating proofs. When the network base fee is lower than this value, the prove commits will be submitted individually via `ProveCommitSector`. According to the [Batch Incentive Alignment](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013. md#batch-incentive-alignment) introduced in FIP-0013, we recommend miners to set this value to 0.15 nanoFIL(which is also the default) to avoid unexpected aggregation fee in burn and enjoy the most benefits of aggregation!
+  - `AggregateAboveBaseFee` is added to miner sealing configuration for setting the network base fee to start aggregating proofs. When the network base fee is lower than this value, the prove commits will be submitted individually via `ProveCommitSector`. According to the [Batch Incentive Alignment](https://github. com/filecoin-project/FIPs/blob/master/FIPS/fip-0013. md#batch-incentive-alignment) introduced in FIP-0013, we recommend miners to set this value to 0.15 nanoFIL(which is the default value) to avoid unexpected aggregation fee in burn and enjoy the most benefits of aggregation!
     
 ## Bug Fixes
 - storage: Fix FinalizeSector with sectors in storage paths #6652
@@ -24,13 +24,13 @@ Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| Łukasz Magiera | 7 | +151/-56 | 21 |
-| llifezou | 4 | +59/-20 | 4 |
-| johnli-helloworld | 2 | +45/-14 | 4 |
-| wangchao | 1 | +1/-27 | 1 |
+| @magik6k| 7 | +151/-56 | 21 |
+| @llifezou | 4 | +59/-20 | 4 |
+| @johnli-helloworld | 2 | +45/-14 | 4 |
+| @wangchao | 1 | +1/-27 | 1 |
 | Jerry | 2 | +9/-4 | 2 |
-| zhoutian527 | 1 | +2/-2 | 1 |
-| Peter Rabbitson | 1 | +1/-1 | 1 |
+| @zhoutian527 | 1 | +2/-2 | 1 |
+| @ribasushi| 1 | +1/-1 | 1 |
 
 
 # 1.10.0 / 2021-06-23
