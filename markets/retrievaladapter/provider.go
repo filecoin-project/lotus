@@ -138,7 +138,8 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	for _, dealID := range storageDeals {
 		ds, err := rpn.full.StateMarketStorageDeal(ctx, dealID, tsk)
 		if err != nil {
-			return resp, xerrors.Errorf("failed to look up deal %d on chain: err=%w", dealID, err)
+			log.Warnf("failed to look up deal %d on chain: err=%w", dealID, err)
+			continue
 		}
 		if ds.Proposal.VerifiedDeal {
 			resp.VerifiedDeal = true

@@ -92,6 +92,32 @@ func TestGetPricingInput(t *testing.T) {
 			expectedVerified:  true,
 		},
 
+		"success even if one deal state fetch errors out but the other deal is verified and has the required piececid": {
+			fFnc: func(n *mocks.MockFullNode) {
+				out1 := &api.MarketDeal{
+					Proposal: market.DealProposal{
+						PieceCID: testnet.GenerateCids(1)[0],
+					},
+				}
+				out2 := &api.MarketDeal{
+					Proposal: market.DealProposal{
+						PieceCID:     pcid,
+						PieceSize:    paddedSize,
+						VerifiedDeal: true,
+					},
+				}
+
+				n.EXPECT().ChainHead(gomock.Any()).Return(tsk, nil).Times(1)
+				gomock.InOrder(
+					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[0], key).Return(out1, xerrors.New("some error")),
+					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[1], key).Return(out2, nil),
+				)
+
+			},
+			expectedPieceSize: unpaddedSize,
+			expectedVerified:  true,
+		},
+
 		"verified is false if both deals are unverified and we get the correct piece size": {
 			fFnc: func(n *mocks.MockFullNode) {
 				out1 := &api.MarketDeal{
