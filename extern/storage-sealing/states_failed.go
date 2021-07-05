@@ -142,7 +142,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 		}
 
 		if pci.Info.SealedCID != *sector.CommR {
-			log.Warnf("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorNumber, pci.Info.SealedCID, sector.CommR)
+			log.Warnf("sector %d is precommitted on chain, with different CommR: %s != %s", sector.SectorNumber, pci.Info.SealedCID, sector.CommR)
 			return nil // TODO: remove when the actor allows re-precommit
 		}
 
@@ -354,7 +354,7 @@ func (m *Sealing) handleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 		}
 
 		if proposal.PieceCID != p.Piece.PieceCID {
-			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %x != %x", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, proposal.PieceCID)
+			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, proposal.PieceCID)
 			toFix = append(toFix, i)
 			continue
 		}
