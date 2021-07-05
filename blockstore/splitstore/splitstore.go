@@ -826,7 +826,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	s.txnLk.Unlock()
 
 	// 1. mark reachable objects by walking the chain from the current epoch to the boundary epoch
-	log.Info("marking reachable blocks")
+	log.Info("marking reachable objects")
 	startMark := time.Now()
 
 	var count int64
@@ -841,7 +841,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		})
 
 	if err != nil {
-		return xerrors.Errorf("error marking hot objects: %w", err)
+		return xerrors.Errorf("error marking: %w", err)
 	}
 
 	if count > s.markSetSize {
@@ -1066,11 +1066,11 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// 3. copy the cold objects to the coldstore -- if we have one
 	if !s.cfg.DiscardColdBlocks {
-		log.Info("moving cold blocks to the coldstore")
+		log.Info("moving cold objects to the coldstore")
 		startMove := time.Now()
 		err = s.moveColdBlocks(cold)
 		if err != nil {
-			return xerrors.Errorf("error moving cold blocks: %w", err)
+			return xerrors.Errorf("error moving cold objects: %w", err)
 		}
 		log.Infow("moving done", "took", time.Since(startMove))
 	}
@@ -1103,7 +1103,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	if err != nil {
 		return xerrors.Errorf("error purging cold blocks: %w", err)
 	}
-	log.Infow("purging cold from hotstore done", "took", time.Since(startPurge))
+	log.Infow("purging cold objects from hotstore done", "took", time.Since(startPurge))
 
 	// we are done; do some housekeeping
 	s.gcHotstore()
