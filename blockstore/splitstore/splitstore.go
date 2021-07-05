@@ -884,6 +884,10 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		count = 0
 
 		for c := range txnRefs {
+			if isFilCommitment(c) {
+				continue
+			}
+
 			mark, err := markSet.Has(c)
 			if err != nil {
 				return xerrors.Errorf("error checking markset for %s: %w", c, err)
