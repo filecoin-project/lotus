@@ -210,7 +210,7 @@ var filplusCheckClientCmd = &cli.Command{
 			return err
 		}
 		if dcap == nil {
-			return xerrors.Errorf("client %s is not a verified client", err)
+			return xerrors.Errorf("client %s is not a verified client", caddr)
 		}
 
 		fmt.Println(*dcap)

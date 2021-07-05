@@ -21,7 +21,7 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
 
-	var blockTime = 1 * time.Second
+	var blockTime = 50 * time.Millisecond
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.WithAllSubsystems()) // no mock proofs.
 	ens.InterconnectAll().BeginMining(blockTime)
