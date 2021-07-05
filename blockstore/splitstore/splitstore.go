@@ -884,7 +884,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 					return markSet.Mark(c)
 				},
 				func(cm cid.Cid) error {
-					log.Warnf("missing object reference %s in %s", cm, c)
+					log.Warnf("missing object reference %s in %s", cm, c) //nolint
 					s.txnRefsMx.Lock()
 					s.txnMissing[cm] = struct{}{}
 					s.txnRefsMx.Unlock()
