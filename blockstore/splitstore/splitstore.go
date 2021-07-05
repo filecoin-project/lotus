@@ -1028,7 +1028,9 @@ func (s *SplitStore) endTxnProtect() {
 	s.txnLk.Lock()
 	defer s.txnLk.Unlock()
 
-	_ = s.txnProtect.Close()
+	if s.txnProtect != nil {
+		_ = s.txnProtect.Close()
+	}
 	s.txnActive = false
 	s.txnProtect = nil
 	s.txnMissing = nil
