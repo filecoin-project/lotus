@@ -634,6 +634,10 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, batch map[cid.Cid]struct{}) erro
 	// consituents. THIS NEEDS TO BE FIXED -- but until then we do this missing dance business
 	err := s.walkObjectIncomplete(root, cid.NewSet(),
 		func(c cid.Cid) error {
+			if isFilCommitment(c) {
+				return errStopWalk
+			}
+
 			if c != root {
 				_, ok := batch[c]
 				if ok {
@@ -717,10 +721,14 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	xcount := int64(0)
 	missing := int64(0)
 	err := s.walkChain(curTs, epoch, false,
-		func(cid cid.Cid) error {
+		func(c cid.Cid) error {
+			if isFilCommitment(c) {
+				return errStopWalk
+			}
+
 			count++
 
-			has, err := s.hot.Has(cid)
+			has, err := s.hot.Has(c)
 			if err != nil {
 				return err
 			}
@@ -729,7 +737,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 				return nil
 			}
 
-			blk, err := s.cold.Get(cid)
+			blk, err := s.cold.Get(c)
 			if err != nil {
 				if err == bstore.ErrNotFound {
 					missing++
@@ -824,6 +832,10 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	var count int64
 	err = s.walkChain(curTs, boundaryEpoch, true,
 		func(c cid.Cid) error {
+			if isFilCommitment(c) {
+				return errStopWalk
+			}
+
 			count++
 			return markSet.Mark(c)
 		})
@@ -883,6 +895,10 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 			err = s.walkObjectIncomplete(c, walked,
 				func(c cid.Cid) error {
+					if isFilCommitment(c) {
+						return errStopWalk
+					}
+
 					mark, err := markSet.Has(c)
 					if err != nil {
 						return xerrors.Errorf("error checking markset for %s: %w", c, err)
@@ -948,6 +964,10 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			walked := cid.NewSet()
 
 			for c := range towalk {
+				if isFilCommitment(c) {
+					continue
+				}
+
 				mark, err := markSet.Has(c)
 				if err != nil {
 					return xerrors.Errorf("error checking markset for %s: %w", c, err)
@@ -959,6 +979,10 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 				err = s.walkObjectIncomplete(c, walked,
 					func(c cid.Cid) error {
+						if isFilCommitment(c) {
+							return errStopWalk
+						}
+
 						mark, err := markSet.Has(c)
 						if err != nil {
 							return xerrors.Errorf("error checking markset for %s: %w", c, err)
@@ -1515,4 +1539,13 @@ func uint64ToBytes(i uint64) []byte {
 func bytesToUint64(buf []byte) uint64 {
 	i, _ := binary.Uvarint(buf)
 	return i
+}
+
+func isFilCommitment(c cid.Cid) bool {
+	switch c.Prefix().Codec {
+	case cid.FilCommitmentSealed, cid.FilCommitmentUnsealed:
+		return true
+	default:
+		return false
+	}
 }
