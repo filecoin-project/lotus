@@ -135,10 +135,13 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	}
 	tsk := head.Key()
 
+	var lastErr error
+
 	for _, dealID := range storageDeals {
 		ds, err := rpn.full.StateMarketStorageDeal(ctx, dealID, tsk)
 		if err != nil {
 			log.Warnf("failed to look up deal %d on chain: err=%w", dealID, err)
+			lastErr = err
 			continue
 		}
 		if ds.Proposal.VerifiedDeal {
@@ -159,7 +162,11 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	// Note: The piece size can never actually be zero. We only use it to here
 	// to assert that we didn't find a matching piece.
 	if resp.PieceSize == 0 {
-		return resp, xerrors.New("failed to find matching piece")
+		if lastErr == nil {
+			return resp, xerrors.New("failed to find matching piece")
+		} else {
+			return resp, xerrors.Errorf("failed to fetch storage deal state: %w", err)
+		}
 	}
 
 	return resp, nil

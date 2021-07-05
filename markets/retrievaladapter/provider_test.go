@@ -66,6 +66,31 @@ func TestGetPricingInput(t *testing.T) {
 			expectedErrorStr: "failed to find matching piece",
 		},
 
+		"error when fails to fetch deal state": {
+			fFnc: func(n *mocks.MockFullNode) {
+				out1 := &api.MarketDeal{
+					Proposal: market.DealProposal{
+						PieceCID:  pcid,
+						PieceSize: paddedSize,
+					},
+				}
+				out2 := &api.MarketDeal{
+					Proposal: market.DealProposal{
+						PieceCID:     testnet.GenerateCids(1)[0],
+						VerifiedDeal: true,
+					},
+				}
+
+				n.EXPECT().ChainHead(gomock.Any()).Return(tsk, nil).Times(1)
+				gomock.InOrder(
+					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[0], key).Return(out1, xerrors.New("error 1")),
+					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[1], key).Return(out2, xerrors.New("error 2")),
+				)
+
+			},
+			expectedErrorStr: "failed to fetch storage deal state",
+		},
+
 		"verified is true even if one deal is verified and we get the correct piecesize": {
 			fFnc: func(n *mocks.MockFullNode) {
 				out1 := &api.MarketDeal{
