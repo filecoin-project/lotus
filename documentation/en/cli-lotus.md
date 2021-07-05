@@ -2140,7 +2140,7 @@ USAGE:
    lotus chain export [command options] [outputPath]
 
 OPTIONS:
-   --tipset value             
+   --tipset value             specify tipset to start the export from (default: "@head")
    --recent-stateroots value  specify the number of recent state roots to include in the export (default: 0)
    --skip-old-msgs            (default: false)
    --help, -h                 show help (default: false)
