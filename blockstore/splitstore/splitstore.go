@@ -976,6 +976,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 						return markSet.Mark(c)
 					},
 					func(c cid.Cid) error {
+						log.Warnf("missing object for marking: %s", c)
 						missing[c] = struct{}{}
 						return errStopWalk
 					})
