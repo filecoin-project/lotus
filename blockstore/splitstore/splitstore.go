@@ -1143,6 +1143,57 @@ func (s *SplitStore) walkObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) erro
 	return nil
 }
 
+// like walkObject, but treats Raw root cids as potential DAGs; this is necessary for walking cids
+// that come out of the blockstore itself.
+func (s *SplitStore) walkObjectRaw(c cid.Cid, walked *cid.Set, f func(cid.Cid) error) error {
+	if !walked.Visit(c) {
+		return nil
+	}
+
+	if err := f(c); err != nil {
+		if err == errStopWalk {
+			return nil
+		}
+
+		return err
+	}
+
+	switch c.Prefix().Codec {
+	case cid.DagCBOR, cid.Raw:
+	default:
+		return nil
+	}
+
+	var links []cid.Cid
+	err := s.view(c, func(data []byte) error {
+		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
+			links = append(links, c)
+		})
+	})
+
+	if err != nil {
+		// don't fail if the scan fails
+		log.Warnf("error scanning linked block (cid: %s): %s", c, err)
+		return nil
+	}
+
+	for _, c := range links {
+		// these are internal references and should no longer be raw, so we recurse with walkObject
+		err := s.walkObject(c, walked, f)
+		if err != nil {
+			if xerrors.Is(err, bstore.ErrNotFound) {
+				// potential false positive
+				log.Warnf("error walking link (cid: %s): %s", c, err)
+				continue
+			}
+
+			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
+		}
+	}
+
+	return nil
+}
+
 // like walkObject, but the object may be potentially incomplete (references missing from the hotstore)
 func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing func(cid.Cid) error) error {
 	if !walked.Visit(c) {
@@ -1274,12 +1325,14 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 	weight := make(map[cid.Cid]int)
 	for _, c := range cids {
-		if c.Prefix().Codec != cid.DagCBOR {
+		switch c.Prefix().Codec {
+		case cid.DagCBOR, cid.Raw:
+		default:
 			continue
 		}
 
 		w := 0
-		err := s.walkObject(c, cid.NewSet(),
+		err := s.walkObjectRaw(c, cid.NewSet(),
 			func(c cid.Cid) error {
 				wc, ok := weight[c]
 				if ok {
