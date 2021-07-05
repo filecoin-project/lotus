@@ -150,6 +150,7 @@ type SplitStore struct {
 	txnMarkSet       MarkSet
 	txnRefsMx        sync.Mutex
 	txnRefs          map[cid.Cid]struct{}
+	txnMissing       map[cid.Cid]struct{}
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -677,6 +678,11 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, batch map[cid.Cid]struct{}) erro
 		},
 		func(c cid.Cid) error {
 			log.Warnf("missing object %s in %s", c, root)
+			if s.txnMissing != nil {
+				s.txnRefsMx.Lock()
+				s.txnMissing[c] = struct{}{}
+				s.txnRefsMx.Unlock()
+			}
 			return errStopWalk
 		})
 
@@ -845,6 +851,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	s.txnLk.Lock()
 	txnRefs := s.txnRefs
 	s.txnRefs = nil
+	s.txnMissing = make(map[cid.Cid]struct{})
 	s.txnProtect, err = s.txnEnv.Create("protected", 0)
 	if err != nil {
 		s.txnLk.Unlock()
@@ -859,10 +866,12 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		s.txnActive = false
 		s.txnProtect = nil
 		s.txnMarkSet = nil
+		s.txnMissing = nil
 		s.txnLk.Unlock()
 	}()
 
 	// 1.1 Update markset for references created during marking
+	missing := make(map[cid.Cid]struct{})
 	if len(txnRefs) > 0 {
 		log.Infow("updating mark set for live references", "refs", len(txnRefs))
 		startMark = time.Now()
@@ -920,6 +929,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 				},
 				func(c cid.Cid) error {
 					log.Warnf("missing object for marking: %s", c)
+					missing[c] = struct{}{}
 					return errStopWalk
 				})
 
@@ -928,7 +938,12 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			}
 		}
 
-		log.Infow("update mark set done", "took", time.Since(startMark), "marked", count)
+		log.Infow("update mark set done", "took", time.Since(startMark), "marked", count, "missing", len(missing))
+	}
+
+	// 1.2 if there are missing references wait a bit for them to see if they are written later
+	if len(missing) > 0 {
+		s.waitForMissingRefs(missing, markSet, nil)
 	}
 
 	// 2. iterate through the hotstore to collect cold objects
@@ -962,7 +977,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return xerrors.Errorf("error collecting candidate cold objects: %w", err)
 	}
 
-	log.Infow("candidate collection done", "took", time.Since(startCollect))
+	log.Infow("cold collection done", "took", time.Since(startCollect))
 
 	if coldCnt > 0 {
 		s.coldPurgeSize = coldCnt + coldCnt>>2 // overestimate a bit
@@ -971,6 +986,17 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt)
 	stats.Record(context.Background(), metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(context.Background(), metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
+
+	// now that we have collected cold objects, check for missing references from transactional i/o
+	// and disable further collection of such references (they will not be acted upon)
+	s.txnLk.Lock()
+	missing = s.txnMissing
+	s.txnMissing = nil
+	s.txnLk.Unlock()
+
+	if len(missing) > 0 {
+		s.waitForMissingRefs(missing, s.txnProtect, markSet)
+	}
 
 	// 3. copy the cold objects to the coldstore -- if we have one
 	if !s.cfg.DiscardColdBlocks {
@@ -1365,6 +1391,86 @@ func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 			purgeCnt += len(deadCids)
 			return nil
 		})
+}
+
+// I really don't like having this code, but we seem to have some DAG references with missing
+// constituents. During testing in mainnet *some* of these references *sometimes* appeared after a
+// little bit.
+// We need to figure out where they are coming from and eliminate that vector, but until then we
+// have this gem[TM].
+func (s *SplitStore) waitForMissingRefs(missing map[cid.Cid]struct{}, markSet, ctlSet MarkSet) {
+	log.Info("waiting for missing references")
+	start := time.Now()
+	count := 0
+	defer func() {
+		log.Infow("waiting for missing references done", "took", time.Since(start), "marked", count)
+	}()
+
+	for i := 1; i <= 3 && len(missing) > 0; i++ {
+		wait := time.Duration(i) * time.Minute
+		log.Infof("retrying for %d missing references in %s (attempt: %d)", len(missing), wait, i)
+		time.Sleep(wait)
+
+		towalk := missing
+		walked := cid.NewSet()
+		missing = make(map[cid.Cid]struct{})
+
+		for c := range towalk {
+			err := s.walkObjectIncomplete(c, walked,
+				func(c cid.Cid) error {
+					if isFilCommitment(c) {
+						return errStopWalk
+					}
+
+					mark, err := markSet.Has(c)
+					if err != nil {
+						return xerrors.Errorf("error checking markset for %s: %w", c, err)
+					}
+
+					if mark {
+						return errStopWalk
+					}
+
+					if ctlSet != nil {
+						mark, err = ctlSet.Has(c)
+						if err != nil {
+							return xerrors.Errorf("error checking markset for %s: %w", c, err)
+						}
+
+						if mark {
+							return errStopWalk
+						}
+					}
+
+					isOldBlock, err := s.isOldBlockHeader(c, s.txnLookbackEpoch)
+					if err != nil {
+						return xerrors.Errorf("error checking object type for %s: %w", c, err)
+					}
+
+					if isOldBlock {
+						return errStopWalk
+					}
+
+					count++
+					return markSet.Mark(c)
+				},
+				func(c cid.Cid) error {
+					missing[c] = struct{}{}
+					return errStopWalk
+				})
+
+			if err != nil {
+				log.Warnf("error marking: %s", err)
+			}
+		}
+	}
+
+	if len(missing) > 0 {
+		log.Warnf("still missing %d references", len(missing))
+		for c := range missing {
+			log.Warnf("unresolved missing reference: %s", c)
+		}
+	}
 }
 
 func (s *SplitStore) gcHotstore() {
