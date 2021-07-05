@@ -873,7 +873,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	// consituents. THIS NEEDS TO BE FIXED -- but until then we do this missing dance business
 	missing := make(map[cid.Cid]struct{})
 	if len(txnRefs) > 0 {
-		log.Info("updating mark set for live references", "refs", len(txnRefs))
+		log.Infow("updating mark set for live references", "refs", len(txnRefs))
 		startMark = time.Now()
 		walked := cid.NewSet()
 		count = 0
