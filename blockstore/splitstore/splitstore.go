@@ -677,7 +677,7 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, batch map[cid.Cid]struct{}) erro
 			return s.txnProtect.Mark(c)
 		},
 		func(c cid.Cid) error {
-			log.Warnf("missing object %s in %s", c, root)
+			log.Warnf("missing object reference %s in %s", c, root)
 			if s.txnMissing != nil {
 				s.txnRefsMx.Lock()
 				s.txnMissing[c] = struct{}{}
@@ -871,7 +871,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}()
 
 	// 1.1 Update markset for references created during marking
-	missing := make(map[cid.Cid]struct{})
 	if len(txnRefs) > 0 {
 		log.Infow("updating mark set for live references", "refs", len(txnRefs))
 		startMark = time.Now()
@@ -927,9 +926,11 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 					count++
 					return markSet.Mark(c)
 				},
-				func(c cid.Cid) error {
-					log.Warnf("missing object for marking: %s", c)
-					missing[c] = struct{}{}
+				func(cm cid.Cid) error {
+					log.Warnf("missing object reference %s in %s", cm, c)
+					s.txnRefsMx.Lock()
+					s.txnMissing[cm] = struct{}{}
+					s.txnRefsMx.Unlock()
 					return errStopWalk
 				})
 
@@ -938,12 +939,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			}
 		}
 
-		log.Infow("update mark set done", "took", time.Since(startMark), "marked", count, "missing", len(missing))
-	}
-
-	// 1.2 if there are missing references wait a bit for them to see if they are written later
-	if len(missing) > 0 {
-		s.waitForMissingRefs(missing, markSet, nil)
+		log.Infow("update mark set done", "took", time.Since(startMark), "marked", count)
 	}
 
 	// 2. iterate through the hotstore to collect cold objects
@@ -989,14 +985,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// now that we have collected cold objects, check for missing references from transactional i/o
 	// and disable further collection of such references (they will not be acted upon)
-	s.txnLk.Lock()
-	missing = s.txnMissing
-	s.txnMissing = nil
-	s.txnLk.Unlock()
-
-	if len(missing) > 0 {
-		s.waitForMissingRefs(missing, s.txnProtect, markSet)
-	}
+	s.waitForMissingRefs(markSet)
 
 	// 3. copy the cold objects to the coldstore -- if we have one
 	if !s.cfg.DiscardColdBlocks {
@@ -1399,7 +1388,16 @@ func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 // We need to figure out where they are coming from and eliminate that vector, but until then we
 // have this gem[TM].
 // My best guess is that they are parent message receipts or yet to be computed state roots.
-func (s *SplitStore) waitForMissingRefs(missing map[cid.Cid]struct{}, markSet, ctlSet MarkSet) {
+func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
+	s.txnLk.Lock()
+	missing := s.txnMissing
+	s.txnMissing = nil
+	s.txnLk.Unlock()
+
+	if len(missing) == 0 {
+		return
+	}
+
 	log.Info("waiting for missing references")
 	start := time.Now()
 	count := 0
@@ -1432,15 +1430,13 @@ func (s *SplitStore) waitForMissingRefs(missing map[cid.Cid]struct{}, markSet, c
 						return errStopWalk
 					}
 
-					if ctlSet != nil {
-						mark, err = ctlSet.Has(c)
-						if err != nil {
-							return xerrors.Errorf("error checking markset for %s: %w", c, err)
-						}
+					mark, err = s.txnProtect.Has(c)
+					if err != nil {
+						return xerrors.Errorf("error checking markset for %s: %w", c, err)
+					}
 
-						if mark {
-							return errStopWalk
-						}
+					if mark {
+						return errStopWalk
 					}
 
 					isOldBlock, err := s.isOldBlockHeader(c, s.txnLookbackEpoch)
@@ -1453,7 +1449,7 @@ func (s *SplitStore) waitForMissingRefs(missing map[cid.Cid]struct{}, markSet, c
 					}
 
 					count++
-					return markSet.Mark(c)
+					return s.txnProtect.Mark(c)
 				},
 				func(c cid.Cid) error {
 					missing[c] = struct{}{}
