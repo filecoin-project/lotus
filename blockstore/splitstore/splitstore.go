@@ -956,6 +956,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			try++
 
 			// wait a bit
+			time.Sleep(time.Minute)
 			log.Infow("marking missing objects", "attempt", try, "missing", len(missing), "marked", count)
 
 			towalk := missing
@@ -1450,6 +1451,7 @@ func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 				s.txnMissing = make(map[cid.Cid]struct{})
 				s.txnLk.Unlock()
 
+				time.Sleep(time.Minute)
 				err := protectMissing(missing)
 				if err != nil {
 					return xerrors.Errorf("purge error: error protecting missing objects: %w", err)
