@@ -145,9 +145,7 @@ type SplitStore struct {
 	txnLk            sync.RWMutex
 	txnActive        bool
 	txnLookbackEpoch abi.ChainEpoch
-	txnEnv           MarkSetEnv
 	txnProtect       MarkSet
-	txnMarkSet       MarkSet
 	txnRefsMx        sync.Mutex
 	txnRefs          map[cid.Cid]struct{}
 	txnMissing       map[cid.Cid]struct{}
@@ -170,13 +168,6 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		return nil, err
 	}
 
-	// the txn markset env
-	txnEnv, err := OpenMarkSetEnv(path, cfg.MarkSetType)
-	if err != nil {
-		_ = markSetEnv.Close()
-		return nil, err
-	}
-
 	// and now we can make a SplitStore
 	ss := &SplitStore{
 		cfg:        cfg,
@@ -184,7 +175,6 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		hot:        hot,
 		cold:       cold,
 		markSetEnv: markSetEnv,
-		txnEnv:     txnEnv,
 
 		coldPurgeSize: defaultColdPurgeSize,
 	}
@@ -644,22 +634,12 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, batch map[cid.Cid]struct{}) erro
 				}
 			}
 
-			mark, err := s.txnMarkSet.Has(c)
+			mark, err := s.txnProtect.Has(c)
 			if err != nil {
 				return xerrors.Errorf("error checking mark set for %s: %w", c, err)
 			}
 
 			// it's marked, nothing to do
-			if mark {
-				return errStopWalk
-			}
-
-			mark, err = s.txnProtect.Has(c)
-			if err != nil {
-				return xerrors.Errorf("error checking mark set for %s: %w", c, err)
-			}
-
-			// it's protected, nothing to do
 			if mark {
 				return errStopWalk
 			}
@@ -852,12 +832,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	txnRefs := s.txnRefs
 	s.txnRefs = nil
 	s.txnMissing = make(map[cid.Cid]struct{})
-	s.txnProtect, err = s.txnEnv.Create("protected", 0)
-	if err != nil {
-		s.txnLk.Unlock()
-		return xerrors.Errorf("error creating transactional mark set: %w", err)
-	}
-	s.txnMarkSet = markSet
+	s.txnProtect = markSet
 	s.txnLk.Unlock()
 
 	defer func() {
@@ -865,7 +840,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		_ = s.txnProtect.Close()
 		s.txnActive = false
 		s.txnProtect = nil
-		s.txnMarkSet = nil
 		s.txnMissing = nil
 		s.txnLk.Unlock()
 	}()
@@ -985,7 +959,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// now that we have collected cold objects, check for missing references from transactional i/o
 	// and disable further collection of such references (they will not be acted upon)
-	s.waitForMissingRefs(markSet)
+	s.waitForMissingRefs()
 
 	// 3. copy the cold objects to the coldstore -- if we have one
 	if !s.cfg.DiscardColdBlocks {
@@ -1388,7 +1362,7 @@ func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 // We need to figure out where they are coming from and eliminate that vector, but until then we
 // have this gem[TM].
 // My best guess is that they are parent message receipts or yet to be computed state roots.
-func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
+func (s *SplitStore) waitForMissingRefs() {
 	s.txnLk.Lock()
 	missing := s.txnMissing
 	s.txnMissing = nil
@@ -1423,16 +1397,7 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 						return errStopWalk
 					}
 
-					mark, err := markSet.Has(c)
-					if err != nil {
-						return xerrors.Errorf("error checking markset for %s: %w", c, err)
-					}
-
-					if mark {
-						return errStopWalk
-					}
-
-					mark, err = s.txnProtect.Has(c)
+					mark, err := s.txnProtect.Has(c)
 					if err != nil {
 						return xerrors.Errorf("error checking markset for %s: %w", c, err)
 					}
