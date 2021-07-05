@@ -2,7 +2,7 @@
 
 # 1.10.1 / 2021-07-05
 
-This is an optional but **highly recommended** release of Lotus that has many bug fixes and improvements based on the feedback we got from the community since HyperDrive.
+This is an optional but **highly recommended** release of Lotus for lotus miners that has many bug fixes and improvements based on the feedback we got from the community since HyperDrive.
 
 ## New Features
 - commit batch: AggregateAboveBaseFee config #6650
