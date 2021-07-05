@@ -1205,19 +1205,21 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing
 		return nil
 	}
 
-	// occurs check
-	has, err := s.hot.Has(c)
-	if err != nil {
-		return xerrors.Errorf("error occur checking %s: %w", c, err)
-	}
-
-	if !has {
-		err = missing(c)
-		if err == errStopWalk {
-			return nil
+	// occurs check -- only for DAGs
+	if c.Prefix().Codec == cid.DagCBOR {
+		has, err := s.hot.Has(c)
+		if err != nil {
+			return xerrors.Errorf("error occur checking %s: %w", c, err)
 		}
 
-		return err
+		if !has {
+			err = missing(c)
+			if err == errStopWalk {
+				return nil
+			}
+
+			return err
+		}
 	}
 
 	if err := f(c); err != nil {
@@ -1233,7 +1235,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing
 	}
 
 	var links []cid.Cid
-	err = s.view(c, func(data []byte) error {
+	err := s.view(c, func(data []byte) error {
 		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 			links = append(links, c)
 		})
