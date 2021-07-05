@@ -773,10 +773,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 
 	log.Infow("warmup stats", "visited", count, "warm", xcount, "missing", missing)
 
-	if count > s.markSetSize {
-		s.markSetSize = count + count>>2 // overestimate a bit
-	}
-
+	s.markSetSize = count + count>>2 // overestimate a bit
 	err = s.ds.Put(markSetSizeKey, int64ToBytes(s.markSetSize))
 	if err != nil {
 		log.Warnf("error saving mark set size: %s", err)
@@ -844,9 +841,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return xerrors.Errorf("error marking: %w", err)
 	}
 
-	if count > s.markSetSize {
-		s.markSetSize = count + count>>2 // overestimate a bit
-	}
+	s.markSetSize = count + count>>2 // overestimate a bit
 
 	log.Infow("marking done", "took", time.Since(startMark), "marked", count)
 
