@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
@@ -135,13 +136,13 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	}
 	tsk := head.Key()
 
-	var lastErr error
+	var mErr error
 
 	for _, dealID := range storageDeals {
 		ds, err := rpn.full.StateMarketStorageDeal(ctx, dealID, tsk)
 		if err != nil {
 			log.Warnf("failed to look up deal %d on chain: err=%w", dealID, err)
-			lastErr = err
+			mErr = multierror.Append(mErr, err)
 			continue
 		}
 		if ds.Proposal.VerifiedDeal {
@@ -162,11 +163,11 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	// Note: The piece size can never actually be zero. We only use it to here
 	// to assert that we didn't find a matching piece.
 	if resp.PieceSize == 0 {
-		if lastErr == nil {
+		if mErr == nil {
 			return resp, xerrors.New("failed to find matching piece")
-		} else {
-			return resp, xerrors.Errorf("failed to fetch storage deal state: %w", err)
 		}
+
+		return resp, xerrors.Errorf("failed to fetch storage deal state: %w", mErr)
 	}
 
 	return resp, nil
