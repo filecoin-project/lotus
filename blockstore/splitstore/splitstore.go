@@ -1398,6 +1398,7 @@ func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 // little bit.
 // We need to figure out where they are coming from and eliminate that vector, but until then we
 // have this gem[TM].
+// My best guess is that they are parent message receipts or yet to be computed state roots.
 func (s *SplitStore) waitForMissingRefs(missing map[cid.Cid]struct{}, markSet, ctlSet MarkSet) {
 	log.Info("waiting for missing references")
 	start := time.Now()
