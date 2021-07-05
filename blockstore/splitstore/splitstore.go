@@ -1323,7 +1323,7 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 }
 
 func (s *SplitStore) sortObjects(cids []cid.Cid) error {
-	weight := make(map[cid.Cid]int)
+	weight := make(map[string]int)
 	for _, c := range cids {
 		switch c.Prefix().Codec {
 		case cid.DagCBOR, cid.Raw:
@@ -1334,7 +1334,7 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 		w := 0
 		err := s.walkObjectRaw(c, cid.NewSet(),
 			func(c cid.Cid) error {
-				wc, ok := weight[c]
+				wc, ok := weight[string(c.Hash())]
 				if ok {
 					w += wc
 					return errStopWalk
@@ -1348,12 +1348,12 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 			return xerrors.Errorf("error determining cold object weight: %w", err)
 		}
 
-		weight[c] = w
+		weight[string(c.Hash())] = w
 	}
 
 	sort.Slice(cids, func(i, j int) bool {
-		wi := weight[cids[i]]
-		wj := weight[cids[j]]
+		wi := weight[string(cids[i].Hash())]
+		wj := weight[string(cids[j].Hash())]
 		if wi == wj {
 			return bytes.Compare(cids[i].Hash(), cids[j].Hash()) > 0
 		}
