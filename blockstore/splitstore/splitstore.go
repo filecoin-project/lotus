@@ -630,6 +630,8 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) error {
 func (s *SplitStore) doTxnProtect(root cid.Cid, batch map[cid.Cid]struct{}) error {
 	// Note: cold objects are deleted heaviest first, so the consituents of an object
 	// cannot be deleted before the object itself.
+	// Note on this missing business: it appears that some DAGs can be written before their
+	// consituents. THIS NEEDS TO BE FIXED -- but until then we do this missing dance business
 	err := s.walkObjectIncomplete(root, cid.NewSet(),
 		func(c cid.Cid) error {
 			if c != root {
@@ -860,6 +862,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}()
 
 	// 1.1 Update markset for references created during marking
+	// Note on this missing business: it appears that some DAGs can be written before their
+	// consituents. THIS NEEDS TO BE FIXED -- but until then we do this missing dance business
 	missing := make(map[cid.Cid]struct{})
 	if len(txnRefs) > 0 {
 		log.Info("updating mark set for live references", "refs", len(txnRefs))
@@ -909,6 +913,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 					return markSet.Mark(c)
 				},
 				func(c cid.Cid) error {
+					log.Warnf("missing object for marking: %s", c)
 					missing[c] = struct{}{}
 					return errStopWalk
 				})
@@ -1382,6 +1387,8 @@ func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 		log.Infow("purged cold objects", "purged", purgeCnt, "live", liveCnt)
 	}()
 
+	// Note on this missing business: it appears that some DAGs can be written before their
+	// consituents. THIS NEEDS TO BE FIXED -- but until then we do this missing dance business
 	protectMissing := func(missing map[cid.Cid]struct{}) error {
 		s.txnLk.RLock()
 		defer s.txnLk.RUnlock()
