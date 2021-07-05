@@ -1405,10 +1405,12 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 		log.Infow("waiting for missing references done", "took", time.Since(start), "marked", count)
 	}()
 
-	for i := 1; i <= 3 && len(missing) > 0; i++ {
+	for i := 0; i < 3 && len(missing) > 0; i++ {
 		wait := time.Duration(i) * time.Minute
-		log.Infof("retrying for %d missing references in %s (attempt: %d)", len(missing), wait, i)
-		time.Sleep(wait)
+		log.Infof("retrying for %d missing references in %s (attempt: %d)", len(missing), wait, i+1)
+		if wait > 0 {
+			time.Sleep(wait)
+		}
 
 		towalk := missing
 		walked := cid.NewSet()
