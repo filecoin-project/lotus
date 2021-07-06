@@ -15,19 +15,16 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
-
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 )
 
 type debugLog struct {
-	readPath, writePath, movePath, stackPath string
-	readMx, writeMx, moveMx, stackMx         sync.Mutex
-	readLog, writeLog, moveLog, stackLog     *os.File
-	readCnt, writeCnt, moveCnt, stackCnt     int
-	stackMap                                 map[string]string
+	readPath, writePath, deletePath, stackPath string
+	readMx, writeMx, deleteMx, stackMx         sync.Mutex
+	readLog, writeLog, deleteLog, stackLog     *os.File
+	readCnt, writeCnt, deleteCnt, stackCnt     int
+	stackMap                                   map[string]string
 }
 
 func openDebugLog(path string) (*debugLog, error) {
@@ -50,12 +47,12 @@ func openDebugLog(path string) (*debugLog, error) {
 		return nil, xerrors.Errorf("error opening write log: %w", err)
 	}
 
-	movePath := filepath.Join(basePath, "move.log")
-	moveFile, err := os.OpenFile(movePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	deletePath := filepath.Join(basePath, "delete.log")
+	deleteFile, err := os.OpenFile(deletePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		_ = readFile.Close()
 		_ = writeFile.Close()
-		return nil, xerrors.Errorf("error opening move log: %w", err)
+		return nil, xerrors.Errorf("error opening delete log: %w", err)
 	}
 
 	stackPath := filepath.Join(basePath, "stack.log")
@@ -63,47 +60,42 @@ func openDebugLog(path string) (*debugLog, error) {
 	if err != nil {
 		_ = readFile.Close()
 		_ = writeFile.Close()
-		_ = moveFile.Close()
+		_ = deleteFile.Close()
 		return nil, xerrors.Errorf("error opening stack log: %w", err)
 	}
 
 	return &debugLog{
-		readPath:  readPath,
-		writePath: writePath,
-		movePath:  movePath,
-		stackPath: stackPath,
-		readLog:   readFile,
-		writeLog:  writeFile,
-		moveLog:   moveFile,
-		stackLog:  stackFile,
-		stackMap:  make(map[string]string),
+		readPath:   readPath,
+		writePath:  writePath,
+		deletePath: deletePath,
+		stackPath:  stackPath,
+		readLog:    readFile,
+		writeLog:   writeFile,
+		deleteLog:  deleteFile,
+		stackLog:   stackFile,
+		stackMap:   make(map[string]string),
 	}, nil
 }
 
-func (d *debugLog) LogReadMiss(curTs *types.TipSet, cid cid.Cid) {
+func (d *debugLog) LogReadMiss(cid cid.Cid) {
 	if d == nil {
 		return
 	}
 
 	stack := d.getStack()
 
-	var epoch abi.ChainEpoch
-	if curTs != nil {
-		epoch = curTs.Height()
-	}
-
 	d.readMx.Lock()
 	defer d.readMx.Unlock()
 
 	d.readCnt++
 
-	_, err := fmt.Fprintf(d.readLog, "%s %d %s %s\n", d.timestamp(), epoch, cid, stack)
+	_, err := fmt.Fprintf(d.readLog, "%s %s %s\n", d.timestamp(), cid, stack)
 	if err != nil {
 		log.Warnf("error writing read log: %s", err)
 	}
 }
 
-func (d *debugLog) LogWrite(curTs *types.TipSet, blk blocks.Block, writeEpoch abi.ChainEpoch) {
+func (d *debugLog) LogWrite(blk blocks.Block) {
 	if d == nil {
 		return
 	}
@@ -111,11 +103,6 @@ func (d *debugLog) LogWrite(curTs *types.TipSet, blk blocks.Block, writeEpoch ab
 	var stack string
 	if enableDebugLogWriteTraces {
 		stack = " " + d.getStack()
-	}
-
-	var curEpoch abi.ChainEpoch
-	if curTs != nil {
-		curEpoch = curTs.Height()
 	}
 
 	d.writeMx.Lock()
@@ -123,13 +110,13 @@ func (d *debugLog) LogWrite(curTs *types.TipSet, blk blocks.Block, writeEpoch ab
 
 	d.writeCnt++
 
-	_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", d.timestamp(), curEpoch, blk.Cid(), writeEpoch, stack)
+	_, err := fmt.Fprintf(d.writeLog, "%s %s%s\n", d.timestamp(), blk.Cid(), stack)
 	if err != nil {
 		log.Warnf("error writing write log: %s", err)
 	}
 }
 
-func (d *debugLog) LogWriteMany(curTs *types.TipSet, blks []blocks.Block, writeEpoch abi.ChainEpoch) {
+func (d *debugLog) LogWriteMany(blks []blocks.Block) {
 	if d == nil {
 		return
 	}
@@ -137,11 +124,6 @@ func (d *debugLog) LogWriteMany(curTs *types.TipSet, blks []blocks.Block, writeE
 	var stack string
 	if enableDebugLogWriteTraces {
 		stack = " " + d.getStack()
-	}
-
-	var curEpoch abi.ChainEpoch
-	if curTs != nil {
-		curEpoch = curTs.Height()
 	}
 
 	d.writeMx.Lock()
@@ -151,7 +133,7 @@ func (d *debugLog) LogWriteMany(curTs *types.TipSet, blks []blocks.Block, writeE
 
 	now := d.timestamp()
 	for _, blk := range blks {
-		_, err := fmt.Fprintf(d.writeLog, "%s %d %s %d%s\n", now, curEpoch, blk.Cid(), writeEpoch, stack)
+		_, err := fmt.Fprintf(d.writeLog, "%s %s%s\n", now, blk.Cid(), stack)
 		if err != nil {
 			log.Warnf("error writing write log: %s", err)
 			break
@@ -159,19 +141,23 @@ func (d *debugLog) LogWriteMany(curTs *types.TipSet, blks []blocks.Block, writeE
 	}
 }
 
-func (d *debugLog) LogMove(curTs *types.TipSet, cid cid.Cid) {
+func (d *debugLog) LogDelete(cids []cid.Cid) {
 	if d == nil {
 		return
 	}
 
-	d.moveMx.Lock()
-	defer d.moveMx.Unlock()
+	d.deleteMx.Lock()
+	defer d.deleteMx.Unlock()
 
-	d.moveCnt++
+	d.deleteCnt += len(cids)
 
-	_, err := fmt.Fprintf(d.moveLog, "%d %s\n", curTs.Height(), cid)
-	if err != nil {
-		log.Warnf("error writing move log: %s", err)
+	now := d.timestamp()
+	for _, c := range cids {
+		_, err := fmt.Fprintf(d.deleteLog, "%s %s\n", now, c)
+		if err != nil {
+			log.Warnf("error writing delete log: %s", err)
+			break
+		}
 	}
 }
 
@@ -183,7 +169,7 @@ func (d *debugLog) Flush() {
 	// rotate non-empty logs
 	d.rotateReadLog()
 	d.rotateWriteLog()
-	d.rotateMoveLog()
+	d.rotateDeleteLog()
 	d.rotateStackLog()
 }
 
@@ -233,27 +219,27 @@ func (d *debugLog) rotateWriteLog() {
 	d.writeCnt = 0
 }
 
-func (d *debugLog) rotateMoveLog() {
-	d.moveMx.Lock()
-	defer d.moveMx.Unlock()
+func (d *debugLog) rotateDeleteLog() {
+	d.deleteMx.Lock()
+	defer d.deleteMx.Unlock()
 
-	if d.moveCnt == 0 {
+	if d.deleteCnt == 0 {
 		return
 	}
 
-	err := d.rotate(d.moveLog, d.movePath)
+	err := d.rotate(d.deleteLog, d.deletePath)
 	if err != nil {
-		log.Warnf("error rotating move log: %s", err)
+		log.Warnf("error rotating delete log: %s", err)
 		return
 	}
 
-	d.moveLog, err = os.OpenFile(d.movePath, os.O_WRONLY|os.O_CREATE, 0644)
+	d.deleteLog, err = os.OpenFile(d.deletePath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		log.Warnf("error opening move log file: %s", err)
+		log.Warnf("error opening delete log file: %s", err)
 		return
 	}
 
-	d.moveCnt = 0
+	d.deleteCnt = 0
 }
 
 func (d *debugLog) rotateStackLog() {
@@ -315,9 +301,9 @@ func (d *debugLog) Close() error {
 	err2 := d.writeLog.Close()
 	d.writeMx.Unlock()
 
-	d.moveMx.Lock()
-	err3 := d.moveLog.Close()
-	d.moveMx.Unlock()
+	d.deleteMx.Lock()
+	err3 := d.deleteLog.Close()
+	d.deleteMx.Unlock()
 
 	d.stackMx.Lock()
 	err4 := d.stackLog.Close()

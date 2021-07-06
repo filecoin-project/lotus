@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"go.opencensus.io/stats"
 )
@@ -120,7 +119,6 @@ type SplitStore struct {
 
 	baseEpoch   abi.ChainEpoch
 	warmupEpoch abi.ChainEpoch
-	writeEpoch  abi.ChainEpoch // for debug logging only
 
 	coldPurgeSize int
 
@@ -234,10 +232,9 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 		if s.debug != nil {
 			s.mx.Lock()
 			warm := s.warmupEpoch > 0
-			curTs := s.curTs
 			s.mx.Unlock()
 			if warm {
-				s.debug.LogReadMiss(curTs, cid)
+				s.debug.LogReadMiss(cid)
 			}
 		}
 
@@ -268,10 +265,9 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 		if s.debug != nil {
 			s.mx.Lock()
 			warm := s.warmupEpoch > 0
-			curTs := s.curTs
 			s.mx.Unlock()
 			if warm {
-				s.debug.LogReadMiss(curTs, cid)
+				s.debug.LogReadMiss(cid)
 			}
 		}
 
@@ -292,13 +288,8 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 
 	err := s.hot.Put(blk)
 	if err == nil {
-		if s.debug != nil {
-			s.mx.Lock()
-			curTs := s.curTs
-			writeEpoch := s.writeEpoch
-			s.mx.Unlock()
-			s.debug.LogWrite(curTs, blk, writeEpoch)
-		}
+		s.debug.LogWrite(blk)
+
 		err = s.trackTxnRef(blk.Cid())
 	}
 
@@ -316,13 +307,7 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 
 	err := s.hot.PutMany(blks)
 	if err == nil {
-		if s.debug != nil {
-			s.mx.Lock()
-			curTs := s.curTs
-			writeEpoch := s.writeEpoch
-			s.mx.Unlock()
-			s.debug.LogWriteMany(curTs, blks, writeEpoch)
-		}
+		s.debug.LogWriteMany(blks)
 
 		err = s.trackTxnRefMany(batch)
 	}
@@ -383,10 +368,9 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 		if s.debug != nil {
 			s.mx.Lock()
 			warm := s.warmupEpoch > 0
-			curTs := s.curTs
 			s.mx.Unlock()
 			if warm {
-				s.debug.LogReadMiss(curTs, cid)
+				s.debug.LogReadMiss(cid)
 			}
 		}
 
@@ -458,10 +442,6 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 
 	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch)
 
-	if s.debug != nil {
-		go s.background()
-	}
-
 	// watch the chain
 	chain.SubscribeHeadChanges(s.HeadChange)
 
@@ -523,46 +503,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	return nil
-}
-
-// this is only used when debug logging is enabled
-func (s *SplitStore) background() {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-s.ctx.Done():
-			return
-
-		case <-ticker.C:
-			s.updateWriteEpoch()
-		}
-	}
-}
-
-// this is only used when debug logging is enabled
-func (s *SplitStore) updateWriteEpoch() {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-
-	curTs := s.curTs
-	timestamp := time.Unix(int64(curTs.MinTimestamp()), 0)
-
-	dt := time.Since(timestamp)
-	if dt < 0 {
-		writeEpoch := curTs.Height() + 1
-		if writeEpoch > s.writeEpoch {
-			s.writeEpoch = writeEpoch
-		}
-
-		return
-	}
-
-	writeEpoch := curTs.Height() + abi.ChainEpoch(dt.Seconds())/builtin.EpochDurationSeconds + 1
-	if writeEpoch > s.writeEpoch {
-		s.writeEpoch = writeEpoch
-	}
 }
 
 // transactionally protect a reference to an object
@@ -1426,13 +1366,14 @@ func (s *SplitStore) purge(curTs *types.TipSet, cids []cid.Cid) error {
 				}
 
 				deadCids = append(deadCids, c)
-				s.debug.LogMove(curTs, c)
 			}
 
 			err := s.hot.DeleteMany(deadCids)
 			if err != nil {
 				return xerrors.Errorf("error purging cold objects: %w", err)
 			}
+
+			s.debug.LogDelete(deadCids)
 
 			purgeCnt += len(deadCids)
 			return nil
