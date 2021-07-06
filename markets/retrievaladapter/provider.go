@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -52,7 +53,7 @@ func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, min
 
 func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	log.Debugf("get sector %d, offset %d, length %d", sectorID, offset, length)
-	si, err := rpn.secb.SectorsStatus(ctx, sectorID, false)
+	si, err := rpn.sectorsStatus(ctx, sectorID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -165,4 +166,38 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	}
 
 	return resp, nil
+}
+
+func (rpn *retrievalProviderNode) sectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
+	sInfo, err := rpn.secb.SectorsStatus(ctx, sid, false)
+	if err != nil {
+		return api.SectorInfo{}, err
+	}
+
+	if !showOnChainInfo {
+		return sInfo, nil
+	}
+
+	onChainInfo, err := rpn.full.StateSectorGetInfo(ctx, rpn.maddr, sid, types.EmptyTSK)
+	if err != nil {
+		return sInfo, err
+	}
+	if onChainInfo == nil {
+		return sInfo, nil
+	}
+	sInfo.SealProof = onChainInfo.SealProof
+	sInfo.Activation = onChainInfo.Activation
+	sInfo.Expiration = onChainInfo.Expiration
+	sInfo.DealWeight = onChainInfo.DealWeight
+	sInfo.VerifiedDealWeight = onChainInfo.VerifiedDealWeight
+	sInfo.InitialPledge = onChainInfo.InitialPledge
+
+	ex, err := rpn.full.StateSectorExpiration(ctx, rpn.maddr, sid, types.EmptyTSK)
+	if err != nil {
+		return sInfo, nil
+	}
+	sInfo.OnTime = ex.OnTime
+	sInfo.Early = ex.Early
+
+	return sInfo, nil
 }
