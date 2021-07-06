@@ -474,14 +474,16 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	s.curTs = curTs
 	s.mx.Unlock()
 
-	timestamp := time.Unix(int64(curTs.MinTimestamp()), 0)
-	if time.Since(timestamp) > SyncGapTime {
-		// don't attempt compaction before we have caught up syncing
+	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
+		// we are currently compacting -- protect the new tipset(s)
+		s.protectTipSets(apply)
 		return nil
 	}
 
-	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
-		// we are currently compacting (or warming up); do nothing and wait for the next head change
+	timestamp := time.Unix(int64(curTs.MinTimestamp()), 0)
+	if time.Since(timestamp) > SyncGapTime {
+		// don't attempt compaction before we have caught up syncing
+		atomic.StoreInt32(&s.compacting, 0)
 		return nil
 	}
 
@@ -505,6 +507,30 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	return nil
+}
+
+// transactionally protect incoming tipsets
+func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
+	s.txnLk.RLock()
+	if !s.txnActive {
+		s.txnLk.RUnlock()
+		return
+	}
+
+	// do this in a goroutine to avoid blocking the notifier
+	go func() {
+		defer s.txnLk.RUnlock()
+
+		var cids []cid.Cid
+		for _, ts := range apply {
+			cids = append(cids, ts.Cids()...)
+		}
+
+		err := s.trackTxnRefMany(cids)
+		if err != nil {
+			log.Errorf("error protecting newly applied tipsets: %s", err)
+		}
+	}()
 }
 
 // transactionally protect a reference to an object
