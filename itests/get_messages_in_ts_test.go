@@ -39,14 +39,14 @@ func TestChainGetMessagesInTs(t *testing.T) {
 
 	waitAllCh := make(chan struct{})
 	go func() {
-		headChangeCh , err := client.ChainNotify(ctx)
+		headChangeCh, err := client.ChainNotify(ctx)
 		require.NoError(t, err)
-		<- headChangeCh  //skip hccurrent
+		<-headChangeCh //skip hccurrent
 
 		count := 0
 		for {
 			select {
-			case headChanges := <- headChangeCh:
+			case headChanges := <-headChangeCh:
 				for _, change := range headChanges {
 					if change.Type == store.HCApply {
 						msgs, err := client.ChainGetMessagesInTipset(ctx, change.Val.Key())
@@ -78,9 +78,9 @@ func TestChainGetMessagesInTs(t *testing.T) {
 	}
 
 	select {
-		case <- waitAllCh:
-		case <- time.After(time.Minute):
-			t.Errorf("timeout to wait for pack messages")
+	case <-waitAllCh:
+	case <-time.After(time.Minute):
+		t.Errorf("timeout to wait for pack messages")
 	}
 
 	for _, sm := range sms {

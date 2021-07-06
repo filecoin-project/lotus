@@ -807,6 +807,11 @@ workflows:
           target: "./itests/gateway_test.go"
       
       - test:
+          name: test-itest-get_messages_in_ts
+          suite: itest-get_messages_in_ts
+          target: "./itests/get_messages_in_ts_test.go"
+      
+      - test:
           name: test-itest-multisig
           suite: itest-multisig
           target: "./itests/multisig_test.go"
