@@ -2,15 +2,17 @@ package itests
 
 import (
 	"context"
+	"testing"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
-	"time"
 )
 
 func TestChainGetMessagesInTs(t *testing.T) {
