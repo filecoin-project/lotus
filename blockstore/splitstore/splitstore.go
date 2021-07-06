@@ -1349,6 +1349,7 @@ func (s *SplitStore) getObjectWeight(c cid.Cid, weights map[string]int, key func
 		return 1
 	}
 
+	w = 1
 	for _, c := range links {
 		// these are internal refs, so dags will be dags
 		if c.Prefix().Codec != cid.DagCBOR {
