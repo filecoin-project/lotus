@@ -2,7 +2,6 @@ package itests
 
 import (
 	"context"
-	"fmt"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -55,7 +54,6 @@ func TestChainGetMessagesInTs(t *testing.T) {
 						if count == iterations {
 							waitAllCh <- struct{}{}
 						}
-						fmt.Println(msgs)
 					}
 				}
 			}
