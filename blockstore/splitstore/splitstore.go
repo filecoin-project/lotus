@@ -1143,57 +1143,6 @@ func (s *SplitStore) walkObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) erro
 	return nil
 }
 
-// like walkObject, but treats Raw root cids as potential DAGs; this is necessary for walking cids
-// that come out of the blockstore itself.
-func (s *SplitStore) walkObjectRaw(c cid.Cid, walked *cid.Set, f func(cid.Cid) error) error {
-	if !walked.Visit(c) {
-		return nil
-	}
-
-	if err := f(c); err != nil {
-		if err == errStopWalk {
-			return nil
-		}
-
-		return err
-	}
-
-	switch c.Prefix().Codec {
-	case cid.DagCBOR, cid.Raw:
-	default:
-		return nil
-	}
-
-	var links []cid.Cid
-	err := s.view(c, func(data []byte) error {
-		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
-			links = append(links, c)
-		})
-	})
-
-	if err != nil {
-		// don't fail if the scan fails
-		log.Warnf("error scanning linked block (cid: %s): %s", c, err)
-		return nil
-	}
-
-	for _, c := range links {
-		// these are internal references and should no longer be raw, so we recurse with walkObject
-		err := s.walkObject(c, walked, f)
-		if err != nil {
-			if xerrors.Is(err, bstore.ErrNotFound) {
-				// potential false positive
-				log.Warnf("error walking link (cid: %s): %s", c, err)
-				continue
-			}
-
-			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
-		}
-	}
-
-	return nil
-}
-
 // like walkObject, but the object may be potentially incomplete (references missing from the hotstore)
 func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing func(cid.Cid) error) error {
 	if !walked.Visit(c) {
@@ -1344,7 +1293,7 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 		}
 
 		w := 0
-		err := s.walkObjectRaw(c, cid.NewSet(),
+		err := s.scanObject(c, cid.NewSet(),
 			func(c cid.Cid) error {
 				wc, ok := weight[key(c)]
 				if ok {
@@ -1354,6 +1303,9 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 
 				w++
 				return nil
+			},
+			func(_ cid.Cid, leaves int) {
+				w += leaves
 			})
 
 		if err != nil {
@@ -1373,6 +1325,56 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 
 		return wi > wj
 	})
+
+	return nil
+}
+
+// specialized version of walkObject for computing object weights
+// 1. root keys are raw
+// 2. some references may not exist
+// 3. we don't care about visiting non-DAGs so short-circuit those
+func (s *SplitStore) scanObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) error, l func(cid.Cid, int)) error {
+	if !walked.Visit(c) {
+		return nil
+	}
+
+	if err := f(c); err != nil {
+		if err == errStopWalk {
+			return nil
+		}
+
+		return err
+	}
+
+	var links []cid.Cid
+	err := s.view(c, func(data []byte) error {
+		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
+			links = append(links, c)
+		})
+	})
+
+	if err != nil {
+		// don't fail if the scan fails or if the object is absent
+		return nil
+	}
+
+	leaves := 0
+	for _, c := range links {
+		// these are internal refs, so dags will be dags
+		if c.Prefix().Codec != cid.DagCBOR {
+			leaves++
+			continue
+		}
+
+		err := s.scanObject(c, walked, f, l)
+		if err != nil {
+			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
+		}
+	}
+
+	if leaves > 0 {
+		l(c, leaves)
+	}
 
 	return nil
 }
