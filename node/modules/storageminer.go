@@ -209,8 +209,6 @@ type StorageMinerParams struct {
 }
 
 func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
-	fmt.Printf("setting up storage miner with %#v \n", fc)
-
 	return func(params StorageMinerParams) (*storage.Miner, error) {
 		var (
 			ds     = params.MetadataDS
