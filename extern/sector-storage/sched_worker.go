@@ -341,9 +341,7 @@ func (sw *schedWorker) processAssignedWindows() {
 	worker := sw.worker
 
 	// process windows in order
-	widx := 0
-	for len(worker.activeWindows) > widx {
-		firstWindow := worker.activeWindows[widx]
+	for widx, window := range worker.activeWindows {
 
 		// process tasks within a window, preferring tasks at lower indexes
 		tidx := 0
