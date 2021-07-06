@@ -86,6 +86,7 @@ func (b *PreCommitBatcher) run() {
 		panic(err)
 	}
 
+	timer := time.NewTimer(b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack))
 	for {
 		if forceRes != nil {
 			forceRes <- lastRes
@@ -100,7 +101,7 @@ func (b *PreCommitBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack):
+		case <-timer.C:
 			// do nothing
 		case fr := <-b.force: // user triggered
 			forceRes = fr
@@ -111,17 +112,26 @@ func (b *PreCommitBatcher) run() {
 		if err != nil {
 			log.Warnw("PreCommitBatcher processBatch error", "error", err)
 		}
+
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+
+		timer.Reset(b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack))
 	}
 }
 
-func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.Time {
+func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
 	now := time.Now()
 
 	b.lk.Lock()
 	defer b.lk.Unlock()
 
 	if len(b.todo) == 0 {
-		return nil
+		return maxWait
 	}
 
 	var cutoff time.Time
@@ -139,12 +149,12 @@ func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.T
 	}
 
 	if cutoff.IsZero() {
-		return time.After(maxWait)
+		return maxWait
 	}
 
 	cutoff = cutoff.Add(-slack)
 	if cutoff.Before(now) {
-		return time.After(time.Nanosecond) // can't return 0
+		return time.Nanosecond // can't return 0
 	}
 
 	wait := cutoff.Sub(now)
@@ -152,7 +162,7 @@ func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.T
 		wait = maxWait
 	}
 
-	return time.After(wait)
+	return wait
 }
 
 func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBatchRes, error) {
