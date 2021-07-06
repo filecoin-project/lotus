@@ -53,7 +53,6 @@ func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types storifa
 }
 
 func NewRemote(local Store, index SectorIndex, auth http.Header, fetchLimit int, pfHandler partialFileHandler) *Remote {
-	fmt.Printf("Creating NewRemote: %#v \n", auth)
 	return &Remote{
 		local: local,
 		index: index,
