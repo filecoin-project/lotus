@@ -207,10 +207,6 @@ func (c *mockChain) revert(count int) {
 	}
 }
 
-func (c *mockChain) GetGenesis() (*types.BlockHeader, error) {
-	return c.genesis, nil
-}
-
 func (c *mockChain) GetTipsetByHeight(_ context.Context, epoch abi.ChainEpoch, _ *types.TipSet, _ bool) (*types.TipSet, error) {
 	c.Lock()
 	defer c.Unlock()

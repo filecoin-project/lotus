@@ -106,7 +106,6 @@ type Config struct {
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
 // be a ChainStore at runtime.
 type ChainAccessor interface {
-	GetGenesis() (*types.BlockHeader, error)
 	GetTipsetByHeight(context.Context, abi.ChainEpoch, *types.TipSet, bool) (*types.TipSet, error)
 	GetHeaviestTipSet() *types.TipSet
 	SubscribeHeadChanges(change func(revert []*types.TipSet, apply []*types.TipSet) error)
