@@ -216,7 +216,7 @@ func newPieceProviderTestHarness(t *testing.T, mgrConfig SealerConfig, sectorPro
 	wsts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/worker/calls")))
 	smsts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/stmgr/calls")))
 
-	mgr, err := New(ctx, localStore, remoteStore, storage, index, mgrConfig, nil, wsts, smsts)
+	mgr, err := New(ctx, localStore, remoteStore, storage, index, mgrConfig, wsts, smsts)
 	require.NoError(t, err)
 
 	// start a http server on the manager to serve sector file requests.
