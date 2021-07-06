@@ -363,9 +363,6 @@ func (n *Ensemble) Start() *Ensemble {
 
 					Method: power.Methods.CreateMiner,
 					Params: params,
-
-					GasLimit:   0,
-					GasPremium: big.NewInt(5252),
 				}
 				signed, err := m.FullNode.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
 				require.NoError(n.t, err)
