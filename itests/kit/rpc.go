@@ -16,10 +16,12 @@ import (
 )
 
 func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) (*httptest.Server, multiaddr.Multiaddr) {
-	testServ := httptest.NewServer(handler)
-	if listener != nil {
-		testServ.Listener = listener
+	testServ := &httptest.Server{
+		Listener: listener,
+		Config:   &http.Server{Handler: handler},
 	}
+	testServ.Start()
+
 	t.Cleanup(testServ.Close)
 	t.Cleanup(testServ.CloseClientConnections)
 
@@ -33,7 +35,10 @@ func fullRpc(t *testing.T, f *TestFullNode) *TestFullNode {
 	handler, err := node.FullNodeHandler(f.FullNode, false)
 	require.NoError(t, err)
 
-	srv, maddr := CreateRPCServer(t, handler, nil)
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	srv, maddr := CreateRPCServer(t, handler, l)
 
 	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 	require.NoError(t, err)
