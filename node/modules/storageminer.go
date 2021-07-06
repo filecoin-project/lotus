@@ -720,7 +720,6 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.Storage
 }
 
 func StorageAuthWithURL(url string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
-	log.Infow("Setting auth token based on URL", "url", url)
 	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
 		s := strings.Split(url, ":")
 		if len(s) != 2 {
