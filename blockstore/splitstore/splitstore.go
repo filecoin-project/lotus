@@ -121,7 +121,7 @@ type SplitStore struct {
 
 	baseEpoch   abi.ChainEpoch
 	warmupEpoch abi.ChainEpoch
-	writeEpoch  abi.ChainEpoch
+	writeEpoch  abi.ChainEpoch // for debug logging
 
 	coldPurgeSize int
 
@@ -529,6 +529,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	return nil
 }
 
+// this is only used when debug logging is enabled
 func (s *SplitStore) background() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -544,6 +545,7 @@ func (s *SplitStore) background() {
 	}
 }
 
+// this is only used when debug logging is enabled
 func (s *SplitStore) updateWriteEpoch() {
 	s.mx.Lock()
 	defer s.mx.Unlock()
