@@ -808,7 +808,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return
 	}
 
-	rw, err := blockstore.OpenReadOnly(carV2FilePath, false)
+	rw, err := blockstore.OpenReadOnly(carV2FilePath)
 	if err != nil {
 		finish(err)
 		return
@@ -984,7 +984,7 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 		return api.DataSize{}, xerrors.New("no CARv2 file for root")
 	}
 
-	rdOnly, err := blockstore.OpenReadOnly(carv2FilePath, false)
+	rdOnly, err := blockstore.OpenReadOnly(carv2FilePath)
 	if err != nil {
 		return api.DataSize{}, xerrors.Errorf("failed to open read only blockstore: %w", err)
 	}
@@ -1015,7 +1015,7 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 		return api.DataCIDSize{}, xerrors.New("no CARv2 file for root")
 	}
 
-	rdOnly, err := blockstore.OpenReadOnly(carv2FilePath, false)
+	rdOnly, err := blockstore.OpenReadOnly(carv2FilePath)
 	if err != nil {
 		return api.DataCIDSize{}, xerrors.Errorf("failed to open read only blockstore: %w", err)
 	}
@@ -1053,7 +1053,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 
 	// generate a deterministic CARv1 payload from the UnixFS DAG by doing an IPLD
 	// traversal over the Unixfs DAG in the CARv2 file using the "all selector" i.e the entire DAG selector.
-	rdOnly, err := blockstore.OpenReadOnly(tmpCARv2File, true)
+	rdOnly, err := blockstore.OpenReadOnly(tmpCARv2File)
 	if err != nil {
 		return xerrors.Errorf("failed to open read only CARv2 blockstore: %w", err)
 	}

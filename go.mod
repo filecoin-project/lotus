@@ -66,7 +66,7 @@ require (
 	github.com/ipfs/go-bitswap v0.3.2
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.4
-	github.com/ipfs/go-cid v0.0.7
+	github.com/ipfs/go-cid v0.0.8-0.20210702173502-41f2377d9672
 	github.com/ipfs/go-cidutil v0.0.2
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-badger2 v0.1.1-0.20200708190120-187fc06f714e
@@ -95,7 +95,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.6
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
 	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
-	github.com/ipld/go-car/v2 v2.0.0-20210630160528-7bfe32ea582a
+	github.com/ipld/go-car/v2 v2.0.0-20210705172946-d1ec44b36fa1
 	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.7.0
