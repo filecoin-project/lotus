@@ -1673,7 +1673,7 @@ NAME:
    lotus state get-actor - Print actor information
 
 USAGE:
-   lotus state get-actor [command options] [actorrAddress]
+   lotus state get-actor [command options] [actorAddress]
 
 OPTIONS:
    --help, -h  show help (default: false)
