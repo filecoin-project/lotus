@@ -1323,6 +1323,18 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 }
 
 func (s *SplitStore) sortObjects(cids []cid.Cid) error {
+	// we cache the keys to avoid making a gazillion of strings
+	keys := make(map[cid.Cid]string)
+	key := func(c cid.Cid) string {
+		s, ok := keys[c]
+		if !ok {
+			s = string(c.Hash())
+			keys[c] = s
+		}
+		return s
+	}
+
+	// compute sorting weights as the cumulative number of DAG links
 	weight := make(map[string]int)
 	for _, c := range cids {
 		switch c.Prefix().Codec {
@@ -1334,7 +1346,7 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 		w := 0
 		err := s.walkObjectRaw(c, cid.NewSet(),
 			func(c cid.Cid) error {
-				wc, ok := weight[string(c.Hash())]
+				wc, ok := weight[key(c)]
 				if ok {
 					w += wc
 					return errStopWalk
@@ -1348,12 +1360,13 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 			return xerrors.Errorf("error determining cold object weight: %w", err)
 		}
 
-		weight[string(c.Hash())] = w
+		weight[key(c)] = w
 	}
 
+	// sort!
 	sort.Slice(cids, func(i, j int) bool {
-		wi := weight[string(cids[i].Hash())]
-		wj := weight[string(cids[j].Hash())]
+		wi := weight[key(cids[i])]
+		wj := weight[key(cids[j])]
 		if wi == wj {
 			return bytes.Compare(cids[i].Hash(), cids[j].Hash()) > 0
 		}
