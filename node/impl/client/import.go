@@ -141,6 +141,11 @@ func transformCarToCARv2(inputCARPath string, outputCARv2Path string) (root cid.
 		return cid.Undef, xerrors.New("cannot import CAR with more than one root")
 	}
 
+	// we read the file to read the header -> seek to the start again to be able to read again.
+	if _, err := inputF.Seek(0, io.SeekStart); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to seek to start of input CAR: %w", err)
+	}
+
 	switch hd.Version {
 	case 2:
 
