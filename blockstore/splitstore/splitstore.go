@@ -1237,6 +1237,20 @@ func (s *SplitStore) isOldBlockHeader(c cid.Cid, epoch abi.ChainEpoch) (isOldBlo
 	return isOldBlock, err
 }
 
+func (s *SplitStore) isBlockHeader(c cid.Cid) (isBlock bool, err error) {
+	if c.Prefix().Codec != cid.DagCBOR {
+		return false, nil
+	}
+
+	err = s.view(c, func(data []byte) error {
+		var hdr types.BlockHeader
+		isBlock = hdr.UnmarshalCBOR(bytes.NewBuffer(data)) == nil
+		return nil
+	})
+
+	return isBlock, err
+}
+
 func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 	batch := make([]blocks.Block, 0, batchSize)
 
@@ -1302,6 +1316,13 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 				}
 
 				w++
+
+				// short-circuit block headers or else we'll walk the entire chain
+				isBlock, err := s.isBlockHeader(c)
+				if isBlock || err == bstore.ErrNotFound {
+					return errStopWalk
+				}
+
 				return nil
 			},
 			func(_ cid.Cid, leaves int) {
