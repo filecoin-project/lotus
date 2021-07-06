@@ -1298,48 +1298,16 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 	}
 
 	// compute sorting weights as the cumulative number of DAG links
-	weight := make(map[string]int)
+	weights := make(map[string]int)
 	for _, c := range cids {
-		switch c.Prefix().Codec {
-		case cid.DagCBOR, cid.Raw:
-		default:
-			continue
-		}
-
-		w := 0
-		err := s.scanObject(c, cid.NewSet(),
-			func(c cid.Cid) error {
-				wc, ok := weight[key(c)]
-				if ok {
-					w += wc
-					return errStopWalk
-				}
-
-				w++
-
-				// short-circuit block headers or else we'll walk the entire chain
-				isBlock, err := s.isBlockHeader(c)
-				if isBlock || err == bstore.ErrNotFound {
-					return errStopWalk
-				}
-
-				return nil
-			},
-			func(_ cid.Cid, leaves int) {
-				w += leaves
-			})
-
-		if err != nil {
-			return xerrors.Errorf("error determining cold object weight: %w", err)
-		}
-
-		weight[key(c)] = w
+		w := s.getObjectWeight(c, weights, key)
+		weights[key(c)] = w
 	}
 
 	// sort!
 	sort.Slice(cids, func(i, j int) bool {
-		wi := weight[key(cids[i])]
-		wj := weight[key(cids[j])]
+		wi := weights[key(cids[i])]
+		wj := weights[key(cids[j])]
 		if wi == wj {
 			return bytes.Compare(cids[i].Hash(), cids[j].Hash()) > 0
 		}
@@ -1350,54 +1318,51 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 	return nil
 }
 
-// specialized version of walkObject for computing object weights
-// 1. root keys are raw
-// 2. some references may not exist
-// 3. we don't care about visiting non-DAGs so short-circuit those
-func (s *SplitStore) scanObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) error, l func(cid.Cid, int)) error {
-	if !walked.Visit(c) {
-		return nil
+func (s *SplitStore) getObjectWeight(c cid.Cid, weights map[string]int, key func(cid.Cid) string) int {
+	w, ok := weights[key(c)]
+	if ok {
+		return w
 	}
 
-	if err := f(c); err != nil {
-		if err == errStopWalk {
-			return nil
-		}
+	// we treat block headers specially to avoid walking the entire chain
+	var hdr types.BlockHeader
+	err := s.view(c, func(data []byte) error {
+		return hdr.UnmarshalCBOR(bytes.NewBuffer(data))
+	})
+	if err == nil {
+		w1 := s.getObjectWeight(hdr.ParentStateRoot, weights, key)
+		weights[key(hdr.ParentStateRoot)] = w1
 
-		return err
+		w2 := s.getObjectWeight(hdr.Messages, weights, key)
+		weights[key(hdr.Messages)] = w2
+
+		return 1 + w1 + w2
 	}
 
 	var links []cid.Cid
-	err := s.view(c, func(data []byte) error {
+	err = s.view(c, func(data []byte) error {
 		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 			links = append(links, c)
 		})
 	})
-
 	if err != nil {
-		// don't fail if the scan fails or if the object is absent
-		return nil
+		return 1
 	}
 
-	leaves := 0
 	for _, c := range links {
 		// these are internal refs, so dags will be dags
 		if c.Prefix().Codec != cid.DagCBOR {
-			leaves++
+			w++
 			continue
 		}
 
-		err := s.scanObject(c, walked, f, l)
-		if err != nil {
-			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
-		}
+		wc := s.getObjectWeight(c, weights, key)
+		weights[key(c)] = wc
+
+		w += wc
 	}
 
-	if leaves > 0 {
-		l(c, leaves)
-	}
-
-	return nil
+	return w
 }
 
 func (s *SplitStore) purgeBatch(cids []cid.Cid, deleteBatch func([]cid.Cid) error) error {
