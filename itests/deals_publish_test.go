@@ -114,9 +114,8 @@ func TestPublishDealsBatching(t *testing.T) {
 			err = pubDealsParams.UnmarshalCBOR(bytes.NewReader(msg.Params))
 			require.NoError(t, err)
 			require.Len(t, pubDealsParams.Deals, int(maxDealsPerMsg))
+			require.Equal(t, publisherKey.Address.String(), msg.From.String())
 		}
-
-		require.Equal(t, publisherKey.Address.String(), msg.From.String())
 	}
 	require.Equal(t, 1, count)
 
