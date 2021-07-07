@@ -280,14 +280,16 @@ const (
 	PreCommitAddr AddrUse = iota
 	CommitAddr
 	PoStAddr
+	DealPublishAddr
 
 	TerminateSectorsAddr
 )
 
 type AddressConfig struct {
-	PreCommitControl []address.Address
-	CommitControl    []address.Address
-	TerminateControl []address.Address
+	PreCommitControl   []address.Address
+	CommitControl      []address.Address
+	TerminateControl   []address.Address
+	DealPublishControl []address.Address
 
 	DisableOwnerFallback  bool
 	DisableWorkerFallback bool

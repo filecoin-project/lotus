@@ -435,6 +435,7 @@ var actorControlList = &cli.Command{
 		commit := map[address.Address]struct{}{}
 		precommit := map[address.Address]struct{}{}
 		terminate := map[address.Address]struct{}{}
+		dealPublish := map[address.Address]struct{}{}
 		post := map[address.Address]struct{}{}
 
 		for _, ca := range mi.ControlAddresses {
@@ -469,6 +470,16 @@ var actorControlList = &cli.Command{
 
 			delete(post, ca)
 			terminate[ca] = struct{}{}
+		}
+
+		for _, ca := range ac.DealPublishControl {
+			ca, err := api.StateLookupID(ctx, ca, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			delete(post, ca)
+			dealPublish[ca] = struct{}{}
 		}
 
 		printKey := func(name string, a address.Address) {
@@ -514,6 +525,9 @@ var actorControlList = &cli.Command{
 			}
 			if _, ok := terminate[a]; ok {
 				uses = append(uses, color.YellowString("terminate"))
+			}
+			if _, ok := dealPublish[a]; ok {
+				uses = append(uses, color.MagentaString("deals"))
 			}
 
 			tw.Write(map[string]interface{}{
