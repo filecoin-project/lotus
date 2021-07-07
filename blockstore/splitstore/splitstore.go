@@ -118,8 +118,8 @@ type SplitStore struct {
 	cfg *Config
 
 	mx          sync.Mutex
-	baseEpoch   abi.ChainEpoch
-	warmupEpoch abi.ChainEpoch
+	warmupEpoch abi.ChainEpoch // protected by mx
+	baseEpoch   abi.ChainEpoch // protected by compaction lock
 
 	coldPurgeSize int
 
@@ -737,7 +737,9 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	if err != nil {
 		return xerrors.Errorf("error saving warm up epoch: %w", err)
 	}
+	s.mx.Lock()
 	s.warmupEpoch = epoch
+	s.mx.Unlock()
 
 	return nil
 }
