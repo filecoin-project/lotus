@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -216,12 +217,40 @@ func Base(r repo.Repo) Option {
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the Base() option must be set before Config option")),
 		),
-
-		ApplyIfEnableLibP2P(r, LibP2P),
-
+		ApplyIf(func(s *Settings) bool { result, _ := enableLibp2pNode(s, r); return result },
+			LibP2P,
+		),
 		ApplyIf(isFullOrLiteNode, ChainNode),
 		ApplyIf(IsType(repo.StorageMiner), MinerNode),
 	)
+}
+
+func enableLibp2pNode(s *Settings, r repo.Repo) (bool, error) {
+	lr, err := r.Lock(s.nodeType)
+	if err != nil {
+		return false, err
+	}
+	c, err := lr.Config()
+	if err != nil {
+		return false, err
+	}
+	defer lr.Close() //nolint:errcheck
+
+	switch s.nodeType {
+	case repo.FullNode:
+		return true, nil
+	case repo.StorageMiner:
+		cfg, ok := c.(*config.StorageMiner)
+		if !ok {
+			return false, fmt.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		enableLibP2P := cfg.Subsystems.EnableStorageMarket
+		return enableLibP2P, nil
+	default:
+		// TODO: log error
+		return false, errors.New("unknown repo type")
+	}
 }
 
 // Config sets up constructors based on the provided Config
