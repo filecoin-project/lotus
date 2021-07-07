@@ -197,22 +197,26 @@ func (s *SplitStore) DeleteMany(_ []cid.Cid) error {
 	return errors.New("DeleteMany not implemented on SplitStore; don't do this Luke!") //nolint
 }
 
-func (s *SplitStore) Has(c cid.Cid) (bool, error) {
+func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	has, err := s.hot.Has(c)
+	has, err := s.hot.Has(cid)
 
 	if err != nil {
 		return has, err
 	}
 
 	if has {
-		err = s.trackTxnRef(c)
-		return true, err
+		err = s.trackTxnRef(cid)
+		if err != nil {
+			log.Warnf("error tracking reference to %s: %s", cid, err)
+		}
+
+		return true, nil
 	}
 
-	return s.cold.Has(c)
+	return s.cold.Has(cid)
 }
 
 func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
@@ -224,7 +228,11 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	switch err {
 	case nil:
 		err = s.trackTxnRef(cid)
-		return blk, err
+		if err != nil {
+			log.Warnf("error tracking reference to %s: %s", cid, err)
+		}
+
+		return blk, nil
 
 	case bstore.ErrNotFound:
 		if s.debug != nil {
@@ -257,7 +265,11 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	switch err {
 	case nil:
 		err = s.trackTxnRef(cid)
-		return size, err
+		if err != nil {
+			log.Warnf("error tracking reference to %s: %s", cid, err)
+		}
+
+		return size, nil
 
 	case bstore.ErrNotFound:
 		if s.debug != nil {
@@ -285,13 +297,18 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 	defer s.txnLk.RUnlock()
 
 	err := s.hot.Put(blk)
-	if err == nil {
-		s.debug.LogWrite(blk)
-
-		err = s.trackTxnRef(blk.Cid())
+	if err != nil {
+		return err
 	}
 
-	return err
+	s.debug.LogWrite(blk)
+
+	err = s.trackTxnRef(blk.Cid())
+	if err != nil {
+		log.Warnf("error tracking reference to %s: %s", blk.Cid(), err)
+	}
+
+	return nil
 }
 
 func (s *SplitStore) PutMany(blks []blocks.Block) error {
@@ -304,13 +321,18 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 	defer s.txnLk.RUnlock()
 
 	err := s.hot.PutMany(blks)
-	if err == nil {
-		s.debug.LogWriteMany(blks)
-
-		err = s.trackTxnRefMany(batch)
+	if err != nil {
+		return err
 	}
 
-	return err
+	s.debug.LogWriteMany(blks)
+
+	err = s.trackTxnRefMany(batch)
+	if err != nil {
+		log.Warnf("error tracking reference to batch: %s", err)
+	}
+
+	return nil
 }
 
 func (s *SplitStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
@@ -360,7 +382,11 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	switch err {
 	case nil:
 		err = s.trackTxnRef(cid)
-		return err
+		if err != nil {
+			log.Warnf("error tracking reference to %s: %s", cid, err)
+		}
+
+		return nil
 
 	case bstore.ErrNotFound:
 		if s.debug != nil {
