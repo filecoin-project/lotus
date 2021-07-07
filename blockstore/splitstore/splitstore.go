@@ -489,7 +489,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
-		s.prepareTxnProtect(curTs)
+		s.beginTxnProtect(curTs)
 		go func() {
 			defer atomic.StoreInt32(&s.compacting, 0)
 			defer s.endTxnProtect()
@@ -808,7 +808,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	log.Infow("marking done", "took", time.Since(startMark), "marked", count)
 
 	// begin transactional protection with concurrent marking and fetch references created while marking
-	txnRefs := s.beginTxnProtect(markSet)
+	txnRefs := s.beginTxnConcurrentMarking(markSet)
 
 	// 1.1 Update markset for references created during marking
 	if len(txnRefs) > 0 {
@@ -987,7 +987,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	return nil
 }
 
-func (s *SplitStore) prepareTxnProtect(curTs *types.TipSet) {
+func (s *SplitStore) beginTxnProtect(curTs *types.TipSet) {
 	lookbackEpoch := curTs.Height() - CompactionLookback
 	log.Info("preparing compaction transaction")
 
@@ -999,7 +999,7 @@ func (s *SplitStore) prepareTxnProtect(curTs *types.TipSet) {
 	s.txnLookbackEpoch = lookbackEpoch
 }
 
-func (s *SplitStore) beginTxnProtect(markSet MarkSet) map[cid.Cid]struct{} {
+func (s *SplitStore) beginTxnConcurrentMarking(markSet MarkSet) map[cid.Cid]struct{} {
 	s.txnLk.Lock()
 	defer s.txnLk.Unlock()
 
