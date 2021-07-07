@@ -279,8 +279,8 @@ type AddrUse int
 const (
 	PreCommitAddr AddrUse = iota
 	CommitAddr
-	PoStAddr
 	DealPublishAddr
+	PoStAddr
 
 	TerminateSectorsAddr
 )

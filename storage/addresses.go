@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -24,6 +25,12 @@ type AddressSelector struct {
 }
 
 func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	if as == nil {
+		// should only happen in some tests
+		log.Warnw("smart address selection disabled, using worker address")
+		return mi.Worker, big.Zero(), nil
+	}
+
 	var addrs []address.Address
 	switch use {
 	case api.PreCommitAddr:

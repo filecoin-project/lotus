@@ -2,6 +2,7 @@ package kit
 
 import (
 	"context"
+	"github.com/ipfs/go-cid"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -27,8 +28,12 @@ func SendFunds(ctx context.Context, t *testing.T, sender *TestFullNode, recipien
 	sm, err := sender.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
 
-	res, err := sender.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
+	WaitMsg(ctx, t, sender, sm.Cid())
+}
+
+func WaitMsg(ctx context.Context, t *testing.T, node *TestFullNode, msg cid.Cid) {
+	res, err := node.StateWaitMsg(ctx, msg, 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 
-	require.EqualValues(t, 0, res.Receipt.ExitCode, "did not successfully send funds")
+	require.EqualValues(t, 0, res.Receipt.ExitCode, "message did not successfully execute")
 }
