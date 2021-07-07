@@ -43,7 +43,7 @@ func (a *API) importNormalFileToCARv2(ctx context.Context, importID importmgr.Im
 	fm.AllowFiles = true
 	fstore := filestore.NewFilestore(bstore.NewMemorySync(), fm)
 	bsvc := blockservice.New(fstore, offline.Exchange(fstore))
-	defer bsvc.Close()
+	defer bsvc.Close() //nolint:errcheck
 
 	// ---- First Pass ---  Write out the UnixFS DAG to a rootless CARv2 file by instantiating a read-write CARv2 blockstore without the root.
 	root, err := importNormalFileToUnixfsDAG(ctx, inputFilePath, merkledag.NewDAGService(bsvc))
