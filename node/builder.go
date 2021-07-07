@@ -326,6 +326,8 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
 
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
+			Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager(false)),
+
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
 			Override(new(peer.ID), peer.IDFromPublicKey),

@@ -212,6 +212,8 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.
 }
 
 // ClientBlockstoreRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore
-func ClientBlockstoreRetrievalStoreManager(bs dtypes.ClientBlockstore) dtypes.ClientRetrievalStoreManager {
-	return retrievalstoremgr.NewBlockstoreRetrievalStoreManager(bs)
+func ClientBlockstoreRetrievalStoreManager(isIpfsRetrieval bool) func(bs dtypes.ClientBlockstore) (dtypes.ClientRetrievalStoreManager, error) {
+	return func(bs dtypes.ClientBlockstore) (dtypes.ClientRetrievalStoreManager, error) {
+		return retrievalstoremgr.NewBlockstoreRetrievalStoreManager(bs, isIpfsRetrieval), nil
+	}
 }

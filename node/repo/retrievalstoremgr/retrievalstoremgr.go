@@ -2,15 +2,12 @@ package retrievalstoremgr
 
 import (
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/ipfs/go-blockservice"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	ipldformat "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
 )
 
 // RetrievalStore references a store for a retrieval deal.
 type RetrievalStore interface {
-	DAGService() ipldformat.DAGService
+	IsIPFSRetrieval() bool
+	Blockstore() blockstore.BasicBlockstore
 }
 
 // RetrievalStoreManager manages stores for retrieval deals, abstracting
@@ -20,24 +17,27 @@ type RetrievalStoreManager interface {
 	ReleaseStore(RetrievalStore) error
 }
 
-// BlockstoreRetrievalStoreManager manages a single blockstore as if it were multiple stores
+// BlockstoreRetrievalStoreManager is a blockstore used for retrieval.
 type BlockstoreRetrievalStoreManager struct {
-	bs blockstore.BasicBlockstore
+	bs              blockstore.BasicBlockstore
+	isIpfsRetrieval bool
 }
 
 var _ RetrievalStoreManager = &BlockstoreRetrievalStoreManager{}
 
 // NewBlockstoreRetrievalStoreManager returns a new blockstore based RetrievalStoreManager
-func NewBlockstoreRetrievalStoreManager(bs blockstore.BasicBlockstore) RetrievalStoreManager {
+func NewBlockstoreRetrievalStoreManager(bs blockstore.BasicBlockstore, isIpfsRetrieval bool) RetrievalStoreManager {
 	return &BlockstoreRetrievalStoreManager{
-		bs: bs,
+		bs:              bs,
+		isIpfsRetrieval: isIpfsRetrieval,
 	}
 }
 
 // NewStore creates a new store (just uses underlying blockstore)
 func (brsm *BlockstoreRetrievalStoreManager) NewStore() (RetrievalStore, error) {
 	return &blockstoreRetrievalStore{
-		dagService: merkledag.NewDAGService(blockservice.New(brsm.bs, offline.Exchange(brsm.bs))),
+		bs:              brsm.bs,
+		isIpfsRetrieval: brsm.isIpfsRetrieval,
 	}, nil
 }
 
@@ -47,9 +47,14 @@ func (brsm *BlockstoreRetrievalStoreManager) ReleaseStore(RetrievalStore) error 
 }
 
 type blockstoreRetrievalStore struct {
-	dagService ipldformat.DAGService
+	bs              blockstore.BasicBlockstore
+	isIpfsRetrieval bool
 }
 
-func (brs *blockstoreRetrievalStore) DAGService() ipldformat.DAGService {
-	return brs.dagService
+func (brs *blockstoreRetrievalStore) Blockstore() blockstore.BasicBlockstore {
+	return brs.bs
+}
+
+func (brs *blockstoreRetrievalStore) IsIPFSRetrieval() bool {
+	return brs.isIpfsRetrieval
 }

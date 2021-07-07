@@ -84,6 +84,8 @@ type API struct {
 
 	DataTransfer dtypes.ClientDataTransfer
 	Host         host.Host
+
+	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -619,10 +621,6 @@ func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmar
 }
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
-	if ref == nil || ref.Path == "" {
-		return xerrors.New("must pass output file path for the retrieval deal")
-	}
-
 	events := make(chan marketevents.RetrievalEvent)
 	go a.clientRetrieve(ctx, order, ref, events)
 
@@ -643,10 +641,6 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 }
 
 func (a *API) ClientRetrieveWithEvents(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	if ref == nil || ref.Path == "" {
-		return nil, xerrors.New("must pass output file path for the retrieval deal")
-	}
-
 	events := make(chan marketevents.RetrievalEvent)
 	go a.clientRetrieve(ctx, order, ref, events)
 	return events, nil
@@ -783,6 +777,37 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		carV2FilePath = order.LocalCARV2FilePath
 	}
 
+	// TODO We only support this currently for the IPFS Retrieval use case
+	// where users want to write out filecoin retrievals directly to IPFS.
+	// If users haven' configured the Ipfs retrieval flag, the blockstore we get here will be a "no-op" blockstore.
+	// write out the CARv2 file to the retrieval block-store (which is really an IPFS node behind the scenes).
+	rs, err := a.RetrievalStoreMgr.NewStore()
+	defer a.RetrievalStoreMgr.ReleaseStore(rs) //nolint:errcheck
+	if err != nil {
+		finish(xerrors.Errorf("Error setting up new store: %w", err))
+		return
+	}
+	if rs.IsIPFSRetrieval() {
+		// write out the CARv1 blocks of the CARv2 file to the IPFS blockstore.
+		carv2Reader, err := carv2.NewReaderMmap(carV2FilePath)
+		if err != nil {
+			finish(err)
+			return
+		}
+		defer carv2Reader.Close() //nolint:errcheck
+
+		if _, err := car.LoadCar(rs.Blockstore(), carv2Reader.CarV1Reader()); err != nil {
+			finish(err)
+			return
+		}
+	}
+
+	// If ref is nil, it only fetches the data into the configured blockstore.
+	if ref == nil {
+		finish(nil)
+		return
+	}
+
 	if ref.IsCAR {
 		// user wants a CAR file, transform the CARv2 to a CARv1 and write it out.
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
@@ -806,13 +831,13 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return
 	}
 
-	rw, err := blockstore.OpenReadOnly(carV2FilePath)
+	readOnly, err := blockstore.OpenReadOnly(carV2FilePath)
 	if err != nil {
 		finish(err)
 		return
 	}
-	defer rw.Close() //nolint:errcheck
-	bsvc := blockservice.New(rw, offline.Exchange(rw))
+	defer readOnly.Close() //nolint:errcheck
+	bsvc := blockservice.New(readOnly, offline.Exchange(readOnly))
 	dag := merkledag.NewDAGService(bsvc)
 
 	nd, err := dag.Get(ctx, order.Root)

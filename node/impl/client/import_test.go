@@ -73,7 +73,7 @@ func TestImportNormalFileToCARv2(t *testing.T) {
 	a := &API{
 		Imports: &importmgr.Mgr{},
 	}
-	importID := rand.Uint64()
+	importID := importmgr.ImportID(rand.Uint64())
 
 	inputFilePath, inputContents := genNormalInputFile(t)
 	defer os.Remove(inputFilePath) //nolint:errcheck
@@ -146,6 +146,31 @@ func TestTransformCarv1ToCARv2(t *testing.T) {
 	require.NotNil(t, bzin)
 
 	require.Equal(t, bzin, bzout)
+}
+
+func TestLoadCARv2ToBlockstore(t *testing.T) {
+	inputFilePath, _ := genNormalInputFile(t)
+	defer os.Remove(inputFilePath) //nolint:errcheck
+
+	carv1FilePath := genCARv1(t, inputFilePath)
+	defer os.Remove(carv1FilePath) //nolint:errcheck
+
+	outputCARv2 := genTmpFile(t)
+	defer os.Remove(outputCARv2) //nolint:errcheck
+
+	root, err := transformCarToCARv2(carv1FilePath, outputCARv2)
+	require.NoError(t, err)
+	require.NotEqual(t, cid.Undef, root)
+
+	bs := bstore.NewMemorySync()
+
+	carv2, err := carv2.NewReaderMmap(outputCARv2)
+	require.NoError(t, err)
+	defer carv2.Close() //nolint:errcheck
+	header, err := car.LoadCar(bs, carv2.CarV1Reader())
+	require.NoError(t, err)
+	require.EqualValues(t, root, header.Roots[0])
+	require.EqualValues(t, 1, header.Version)
 }
 
 func genCARv1(t *testing.T, normalFilePath string) string {

@@ -9,11 +9,14 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 )
+
+var log = logging.Logger("importmgr")
 
 type ImportID uint64
 
@@ -135,6 +138,7 @@ func (m *Mgr) CARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 	for _, importID := range importIDs {
 		info, err := m.Info(importID)
 		if err != nil {
+			log.Errorf("failed to fetch info, importID=%d: %s", importID, err)
 			continue
 		}
 		if info.Labels[LRootCid] == "" {
@@ -142,6 +146,7 @@ func (m *Mgr) CARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 		}
 		c, err := cid.Parse(info.Labels[LRootCid])
 		if err != nil {
+			log.Errorf("failed to parse Root cid %s: %w", info.Labels[LRootCid], err)
 			continue
 		}
 		if c.Equals(dagRoot) {
