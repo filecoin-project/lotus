@@ -11,7 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/shared_testutil"
+	mktdagstore "github.com/filecoin-project/go-fil-markets/dagstore"
+
+	"github.com/filecoin-project/go-fil-markets/shared_testutil/dagstore"
+
 	"github.com/filecoin-project/lotus/markets/pricing"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
@@ -568,8 +571,8 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	}
 }
 
-func DAGStore(r repo.LockedRepo) (shared_testutil.DagStore, error) {
-	md := shared_testutil.NewMockDagStore(r.Path())
+func DAGStore(r repo.LockedRepo) (dagstore.DagStore, error) {
+	md := dagstore.NewMockDagStore()
 	return md, nil
 }
 
@@ -581,7 +584,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
-	dagStore shared_testutil.DagStore,
+	dagStore dagstore.DagStore,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -656,11 +659,21 @@ func RetrievalProvider(
 	dt dtypes.ProviderDataTransfer,
 	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
-	dagStore shared_testutil.DagStore,
+	dagStore dagstore.DagStore,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, dagStore, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
-		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
+	return retrievalimpl.NewProvider(
+		address.Address(maddr),
+		adapter,
+		netwk,
+		pieceStore,
+		dagStore,
+		dt,
+		namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
+		retrievalimpl.RetrievalPricingFunc(pricingFnc),
+		mktdagstore.NewMount(pieceStore, adapter),
+		opt,
+	)
 }
 
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")

@@ -4,7 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/shared_testutil"
+	"github.com/filecoin-project/go-fil-markets/shared_testutil/dagstore"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -147,7 +148,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 			// DAG Store
-			Override(new(shared_testutil.DagStore), modules.DAGStore),
+			Override(new(dagstore.DagStore), modules.DAGStore),
 
 			// Markets (retrieval)
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
