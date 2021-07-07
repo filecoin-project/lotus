@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
@@ -163,7 +164,7 @@ var sectorsListCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:    "color",
 			Aliases: []string{"c"},
-			Value:   true,
+			Value:   cliutil.DefaultColorUse,
 		},
 		&cli.BoolFlag{
 			Name:  "fast",

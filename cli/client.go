@@ -45,6 +45,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
@@ -1233,7 +1234,7 @@ var clientListRetrievalsCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "color",
 			Usage: "use color in display output",
-			Value: true,
+			Value: cliutil.DefaultColorUse,
 		},
 		&cli.BoolFlag{
 			Name:  "show-failed",
@@ -1806,7 +1807,7 @@ var clientListDeals = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "color",
 			Usage: "use color in display output",
-			Value: true,
+			Value: cliutil.DefaultColorUse,
 		},
 		&cli.BoolFlag{
 			Name:  "show-failed",
@@ -2336,7 +2337,7 @@ var clientListTransfers = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "color",
 			Usage: "use color in display output",
-			Value: true,
+			Value: cliutil.DefaultColorUse,
 		},
 		&cli.BoolFlag{
 			Name:  "completed",

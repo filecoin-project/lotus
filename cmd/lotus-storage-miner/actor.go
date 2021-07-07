@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
@@ -389,7 +390,7 @@ var actorControlList = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "color",
-			Value: true,
+			Value: cliutil.DefaultColorUse,
 		},
 	},
 	Action: func(cctx *cli.Context) error {

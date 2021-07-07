@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var sealingCmd = &cli.Command{
@@ -36,7 +37,10 @@ var sealingWorkersCmd = &cli.Command{
 	Name:  "workers",
 	Usage: "list workers",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name:  "color",
+			Value: cliutil.DefaultColorUse,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
@@ -127,7 +131,10 @@ var sealingJobsCmd = &cli.Command{
 	Name:  "jobs",
 	Usage: "list running jobs",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name:  "color",
+			Value: cliutil.DefaultColorUse,
+		},
 		&cli.BoolFlag{
 			Name:  "show-ret-done",
 			Usage: "show returned but not consumed calls",

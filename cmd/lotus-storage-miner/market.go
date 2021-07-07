@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -754,7 +755,7 @@ var transfersListCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "color",
 			Usage: "use color in display output",
-			Value: true,
+			Value: cliutil.DefaultColorUse,
 		},
 		&cli.BoolFlag{
 			Name:  "completed",
