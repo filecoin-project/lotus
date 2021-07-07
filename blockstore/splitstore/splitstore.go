@@ -117,13 +117,11 @@ type SplitStore struct {
 
 	cfg *Config
 
+	mx          sync.Mutex
 	baseEpoch   abi.ChainEpoch
 	warmupEpoch abi.ChainEpoch
 
 	coldPurgeSize int
-
-	mx    sync.Mutex
-	curTs *types.TipSet
 
 	chain ChainAccessor
 	ds    dstore.Datastore
@@ -388,7 +386,7 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 // State tracking
 func (s *SplitStore) Start(chain ChainAccessor) error {
 	s.chain = chain
-	s.curTs = chain.GetHeaviestTipSet()
+	curTs := chain.GetHeaviestTipSet()
 
 	// load base epoch from metadata ds
 	// if none, then use current epoch because it's a fresh start
@@ -398,12 +396,12 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		s.baseEpoch = bytesToEpoch(bs)
 
 	case dstore.ErrNotFound:
-		if s.curTs == nil {
+		if curTs == nil {
 			// this can happen in some tests
 			break
 		}
 
-		err = s.setBaseEpoch(s.curTs.Height())
+		err = s.setBaseEpoch(curTs.Height())
 		if err != nil {
 			return xerrors.Errorf("error saving base epoch: %w", err)
 		}
@@ -420,7 +418,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 
 	case dstore.ErrNotFound:
 		// the hotstore hasn't warmed up, start a concurrent warm up
-		err = s.warmup(s.curTs)
+		err = s.warmup(curTs)
 		if err != nil {
 			return xerrors.Errorf("error warming up: %w", err)
 		}
@@ -468,11 +466,8 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 		return nil
 	}
 
-	s.mx.Lock()
 	curTs := apply[len(apply)-1]
 	epoch := curTs.Height()
-	s.curTs = curTs
-	s.mx.Unlock()
 
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
 		// we are currently compacting -- protect the new tipset(s)
