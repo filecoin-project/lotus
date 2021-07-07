@@ -57,5 +57,11 @@ func (s *MapMarkSet) Has(cid cid.Cid) (bool, error) {
 }
 
 func (s *MapMarkSet) Close() error {
+	if s.ts {
+		s.mx.Lock()
+		defer s.mx.Unlock()
+
+	}
+	s.set = nil
 	return nil
 }

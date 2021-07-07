@@ -3,6 +3,7 @@ package splitstore
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"sync"
 
 	"golang.org/x/xerrors"
 
@@ -23,6 +24,7 @@ var _ MarkSetEnv = (*BloomMarkSetEnv)(nil)
 
 type BloomMarkSet struct {
 	salt []byte
+	mx   sync.Mutex
 	bf   *bbloom.Bloom
 	ts   bool
 }
@@ -68,21 +70,29 @@ func (s *BloomMarkSet) saltedKey(cid cid.Cid) []byte {
 
 func (s *BloomMarkSet) Mark(cid cid.Cid) error {
 	if s.ts {
-		s.bf.AddTS(s.saltedKey(cid))
-	} else {
-		s.bf.Add(s.saltedKey(cid))
+		s.mx.Lock()
+		defer s.mx.Unlock()
 	}
 
+	s.bf.Add(s.saltedKey(cid))
 	return nil
 }
 
 func (s *BloomMarkSet) Has(cid cid.Cid) (bool, error) {
 	if s.ts {
-		return s.bf.HasTS(s.saltedKey(cid)), nil
+		s.mx.Lock()
+		defer s.mx.Unlock()
 	}
-	return s.bf.HasTS(s.saltedKey(cid)), nil
+
+	return s.bf.Has(s.saltedKey(cid)), nil
 }
 
 func (s *BloomMarkSet) Close() error {
+	if s.ts {
+		s.mx.Lock()
+		defer s.mx.Unlock()
+
+	}
+	s.bf = nil
 	return nil
 }
