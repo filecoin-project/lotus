@@ -1402,6 +1402,11 @@ func (s *SplitStore) purge(cids []cid.Cid) error {
 		func(cids []cid.Cid) error {
 			deadCids := deadCids[:0]
 
+			if atomic.LoadInt32(&s.closing) == 1 {
+				log.Info("splitstore is closing; aborting purge")
+				return xerrors.Errorf("compaction aborted")
+			}
+
 			s.txnLk.Lock()
 			defer s.txnLk.Unlock()
 
