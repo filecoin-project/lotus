@@ -13,7 +13,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v1.10.1-0.20210702102407-9e85492b854c
+	github.com/filecoin-project/lotus v1.10.1-0.20210707115637-6b014f57e522
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.4
