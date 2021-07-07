@@ -84,8 +84,6 @@ type API struct {
 
 	DataTransfer dtypes.ClientDataTransfer
 	Host         host.Host
-
-	// TODO How do we inject the Repo Path here ?
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {

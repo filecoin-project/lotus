@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -208,4 +209,9 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.
 		},
 	})
 	return client, nil
+}
+
+// ClientBlockstoreRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore
+func ClientBlockstoreRetrievalStoreManager(bs dtypes.ClientBlockstore) dtypes.ClientRetrievalStoreManager {
+	return retrievalstoremgr.NewBlockstoreRetrievalStoreManager(bs)
 }
