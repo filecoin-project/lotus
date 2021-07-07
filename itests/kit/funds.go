@@ -2,11 +2,12 @@ package kit
 
 import (
 	"context"
-	"github.com/ipfs/go-cid"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"

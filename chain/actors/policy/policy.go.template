@@ -132,6 +132,17 @@ func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) ab
 	}
 }
 
+func SetProviderCollateralSupplyTarget(num, denom big.Int) {
+{{range .versions}}
+	{{if (ge . 2)}}
+	market{{.}}.ProviderCollateralSupplyTarget = builtin{{.}}.BigFrac{
+		Numerator:   num,
+		Denominator: denom,
+	}
+	{{end}}
+{{end}}
+}
+
 func DealProviderCollateralBounds(
 	size abi.PaddedPieceSize, verified bool,
 	rawBytePower, qaPower, baselinePower abi.StoragePower,
