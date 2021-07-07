@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -87,7 +88,7 @@ func init() {
 	addExample(pid)
 	addExample(&pid)
 
-	storeIDExample := uint64(50)
+	storeIDExample := importmgr.ImportID(50)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)

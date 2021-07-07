@@ -25,6 +25,7 @@ import (
 	"github.com/fatih/color"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -184,7 +185,7 @@ var clientDropCmd = &cli.Command{
 		}
 
 		for _, id := range ids {
-			if err := api.ClientRemoveImport(ctx, id); err != nil {
+			if err := api.ClientRemoveImport(ctx, importmgr.ImportID(id)); err != nil {
 				return xerrors.Errorf("removing import %d: %w", id, err)
 			}
 		}

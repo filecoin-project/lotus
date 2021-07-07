@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
@@ -24,7 +25,7 @@ import (
 )
 
 // importNormalFileToCARv2 transforms the client's "normal file" to a Unixfs IPLD DAG and writes out the DAG to a CARv2 file at the given output path.
-func (a *API) importNormalFileToCARv2(ctx context.Context, importID uint64, inputFilePath string, outputCARv2Path string) (c cid.Cid, finalErr error) {
+func (a *API) importNormalFileToCARv2(ctx context.Context, importID importmgr.ImportID, inputFilePath string, outputCARv2Path string) (c cid.Cid, finalErr error) {
 
 	// TODO: We've currently put in a hack to create the Unixfs DAG as a CARv2 without using Badger.
 	// We first transform the Unixfs DAG to a rootless CARv2 file as CARv2 doesen't allow streaming writes without specifying the root upfront and we

@@ -15,6 +15,8 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 )
 
+type ImportID uint64
+
 type Mgr struct {
 	ds       datastore.Batching
 	repoPath string
@@ -42,7 +44,7 @@ type StoreMeta struct {
 	Labels map[string]string
 }
 
-func (m *Mgr) NewStore() (uint64, error) {
+func (m *Mgr) NewStore() (ImportID, error) {
 	id := m.counter.Next()
 
 	meta, err := json.Marshal(&StoreMeta{Labels: map[string]string{
@@ -53,10 +55,10 @@ func (m *Mgr) NewStore() (uint64, error) {
 	}
 
 	err = m.ds.Put(datastore.NewKey(fmt.Sprintf("%d", id)), meta)
-	return id, err
+	return ImportID(id), err
 }
 
-func (m *Mgr) AddLabel(id uint64, key, value string) error { // source, file path, data CID..
+func (m *Mgr) AddLabel(id ImportID, key, value string) error { // source, file path, data CID..
 	meta, err := m.ds.Get(datastore.NewKey(fmt.Sprintf("%d", id)))
 	if err != nil {
 		return xerrors.Errorf("getting metadata form datastore: %w", err)
@@ -77,8 +79,8 @@ func (m *Mgr) AddLabel(id uint64, key, value string) error { // source, file pat
 	return m.ds.Put(datastore.NewKey(fmt.Sprintf("%d", id)), meta)
 }
 
-func (m *Mgr) List() ([]uint64, error) {
-	var keys []uint64
+func (m *Mgr) List() ([]ImportID, error) {
+	var keys []ImportID
 
 	qres, err := m.ds.Query(query.Query{KeysOnly: true})
 	if err != nil {
@@ -96,13 +98,13 @@ func (m *Mgr) List() ([]uint64, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse key %s to uint64, err=%w", r.Key, err)
 		}
-		keys = append(keys, id)
+		keys = append(keys, ImportID(id))
 	}
 
 	return keys, nil
 }
 
-func (m *Mgr) Info(id uint64) (*StoreMeta, error) {
+func (m *Mgr) Info(id ImportID) (*StoreMeta, error) {
 	meta, err := m.ds.Get(datastore.NewKey(fmt.Sprintf("%d", id)))
 	if err != nil {
 		return nil, xerrors.Errorf("getting metadata form datastore: %w", err)
@@ -116,7 +118,7 @@ func (m *Mgr) Info(id uint64) (*StoreMeta, error) {
 	return &sm, nil
 }
 
-func (m *Mgr) Remove(id uint64) error {
+func (m *Mgr) Remove(id ImportID) error {
 	if err := m.ds.Delete(datastore.NewKey(fmt.Sprintf("%d", id))); err != nil {
 		return xerrors.Errorf("removing import metadata: %w", err)
 	}
@@ -150,8 +152,8 @@ func (m *Mgr) CARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 	return "", nil
 }
 
-func (m *Mgr) NewTempFile(id uint64) (string, error) {
-	file, err := ioutil.TempFile(m.repoPath, fmt.Sprintf("%d", id))
+func (m *Mgr) NewTempFile(importID ImportID) (string, error) {
+	file, err := ioutil.TempFile(m.repoPath, fmt.Sprintf("%d", importID))
 	if err != nil {
 		return "", xerrors.Errorf("failed to create temp file: %w", err)
 	}

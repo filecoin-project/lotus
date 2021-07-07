@@ -25,6 +25,7 @@ import (
 	types "github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
+	importmgr "github.com/filecoin-project/lotus/node/repo/importmgr"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	gomock "github.com/golang/mock/gomock"
@@ -715,7 +716,7 @@ func (mr *MockFullNodeMockRecorder) ClientQueryAsk(arg0, arg1, arg2 interface{})
 }
 
 // ClientRemoveImport mocks base method.
-func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 uint64) error {
+func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 importmgr.ImportID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClientRemoveImport", arg0, arg1)
 	ret0, _ := ret[0].(error)

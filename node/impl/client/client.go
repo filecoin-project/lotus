@@ -513,7 +513,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	}, nil
 }
 
-func (a *API) ClientRemoveImport(ctx context.Context, importID uint64) error {
+func (a *API) ClientRemoveImport(ctx context.Context, importID importmgr.ImportID) error {
 	info, err := a.imgr().Info(importID)
 	if err != nil {
 		return xerrors.Errorf("failed to fetch import info: %w", err)
@@ -529,7 +529,7 @@ func (a *API) ClientRemoveImport(ctx context.Context, importID uint64) error {
 
 func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, error) {
 	// write payload to temp file
-	tmpPath, err := a.imgr().NewTempFile(rand.Uint64())
+	tmpPath, err := a.imgr().NewTempFile(importmgr.ImportID(rand.Uint64()))
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -1037,7 +1037,7 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
-	id := rand.Uint64()
+	id := importmgr.ImportID(rand.Uint64())
 	tmpCARv2File, err := a.imgr().NewTempFile(id)
 	if err != nil {
 		return xerrors.Errorf("failed to create temp file: %w", err)
