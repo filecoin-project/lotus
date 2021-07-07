@@ -16,9 +16,6 @@ type MarkSet interface {
 	Close() error
 }
 
-// markBytes is deliberately a non-nil empty byte slice for serialization.
-var markBytes = []byte{}
-
 type MarkSetEnv interface {
 	Create(name string, sizeHint int64) (MarkSet, error)
 	Close() error
