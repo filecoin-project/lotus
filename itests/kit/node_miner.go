@@ -2,23 +2,30 @@ package kit
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/miner"
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/stretchr/testify/require"
 )
 
 type MinerSubsystem int
@@ -150,4 +157,42 @@ func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
 	if cb != nil {
 		fmt.Printf("COMMIT BATCH: %+v\n", cb)
 	}
+}
+
+const metaFile = "sectorstore.json"
+
+func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64, seal, store bool) {
+	p, err := ioutil.TempDir("", "lotus-testsectors-")
+	require.NoError(t, err)
+
+	if err := os.MkdirAll(p, 0755); err != nil {
+		if !os.IsExist(err) {
+			require.NoError(t, err)
+		}
+	}
+
+	_, err = os.Stat(filepath.Join(p, metaFile))
+	if !os.IsNotExist(err) {
+		require.NoError(t, err)
+	}
+
+	cfg := &stores.LocalStorageMeta{
+		ID:       stores.ID(uuid.New().String()),
+		Weight:   weight,
+		CanSeal:  seal,
+		CanStore: store,
+	}
+
+	if !(cfg.CanStore || cfg.CanSeal) {
+		t.Fatal("must specify at least one of CanStore or cfg.CanSeal")
+	}
+
+	b, err := json.MarshalIndent(cfg, "", "  ")
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(filepath.Join(p, metaFile), b, 0644)
+	require.NoError(t, err)
+
+	err = tm.StorageAddLocal(ctx, p)
+	require.NoError(t, err)
 }

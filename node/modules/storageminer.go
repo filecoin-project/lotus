@@ -212,8 +212,6 @@ type StorageMinerParams struct {
 }
 
 func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
-	fmt.Printf("setting up storage miner with %#v \n", fc)
-
 	return func(params StorageMinerParams) (*storage.Miner, error) {
 		var (
 			ds     = params.MetadataDS
@@ -689,13 +687,13 @@ func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.
 	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &stores.DefaultPartialFileHandler{})
 }
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
 	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sectorstorage.New(ctx, lstor, stor, ls, si, sc, sa, wsts, smsts)
+	sst, err := sectorstorage.New(ctx, lstor, stor, ls, si, sc, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +717,6 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.Storage
 }
 
 func StorageAuthWithURL(url string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
-	log.Infow("Setting auth token based on URL", "url", url)
 	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
 		s := strings.Split(url, ":")
 		if len(s) != 2 {
@@ -873,11 +870,12 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
 				PreCommitBatchSlack: config.Duration(cfg.PreCommitBatchSlack),
 
-				AggregateCommits: cfg.AggregateCommits,
-				MinCommitBatch:   cfg.MinCommitBatch,
-				MaxCommitBatch:   cfg.MaxCommitBatch,
-				CommitBatchWait:  config.Duration(cfg.CommitBatchWait),
-				CommitBatchSlack: config.Duration(cfg.CommitBatchSlack),
+				AggregateCommits:      cfg.AggregateCommits,
+				MinCommitBatch:        cfg.MinCommitBatch,
+				MaxCommitBatch:        cfg.MaxCommitBatch,
+				CommitBatchWait:       config.Duration(cfg.CommitBatchWait),
+				CommitBatchSlack:      config.Duration(cfg.CommitBatchSlack),
+				AggregateAboveBaseFee: types.FIL(cfg.AggregateAboveBaseFee),
 
 				TerminateBatchMax:  cfg.TerminateBatchMax,
 				TerminateBatchMin:  cfg.TerminateBatchMin,
@@ -888,32 +886,37 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 	}, nil
 }
 
+func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
+	return sealiface.Config{
+		MaxWaitDealsSectors:       cfg.Sealing.MaxWaitDealsSectors,
+		MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
+		MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
+		WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
+		AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
+		FinalizeEarly:             cfg.Sealing.FinalizeEarly,
+
+		BatchPreCommits:     cfg.Sealing.BatchPreCommits,
+		MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
+		PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
+		PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
+
+		AggregateCommits:      cfg.Sealing.AggregateCommits,
+		MinCommitBatch:        cfg.Sealing.MinCommitBatch,
+		MaxCommitBatch:        cfg.Sealing.MaxCommitBatch,
+		CommitBatchWait:       time.Duration(cfg.Sealing.CommitBatchWait),
+		CommitBatchSlack:      time.Duration(cfg.Sealing.CommitBatchSlack),
+		AggregateAboveBaseFee: types.BigInt(cfg.Sealing.AggregateAboveBaseFee),
+
+		TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
+		TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
+		TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
+	}
+}
+
 func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error) {
 	return func() (out sealiface.Config, err error) {
 		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = sealiface.Config{
-				MaxWaitDealsSectors:       cfg.Sealing.MaxWaitDealsSectors,
-				MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
-				MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
-				WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
-				AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
-				FinalizeEarly:             cfg.Sealing.FinalizeEarly,
-
-				BatchPreCommits:     cfg.Sealing.BatchPreCommits,
-				MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
-				PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
-				PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
-
-				AggregateCommits: cfg.Sealing.AggregateCommits,
-				MinCommitBatch:   cfg.Sealing.MinCommitBatch,
-				MaxCommitBatch:   cfg.Sealing.MaxCommitBatch,
-				CommitBatchWait:  time.Duration(cfg.Sealing.CommitBatchWait),
-				CommitBatchSlack: time.Duration(cfg.Sealing.CommitBatchSlack),
-
-				TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
-				TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
-				TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
-			}
+			out = ToSealingConfig(cfg)
 		})
 		return
 	}, nil

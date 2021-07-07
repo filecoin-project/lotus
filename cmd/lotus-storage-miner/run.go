@@ -175,8 +175,6 @@ var runCmd = &cli.Command{
 			if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
 				return xerrors.Errorf("connecting to full node (libp2p): %w", err)
 			}
-		} else {
-			log.Infof("No markets subsystem enabled, so no libp2p network bootstrapping")
 		}
 
 		log.Infof("Remote version %s", v)

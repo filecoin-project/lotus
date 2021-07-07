@@ -23,6 +23,11 @@ func (f FIL) Unitless() string {
 	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".")
 }
 
+var AttoFil = NewInt(1)
+var FemtoFil = BigMul(AttoFil, NewInt(1000))
+var PicoFil = BigMul(FemtoFil, NewInt(1000))
+var NanoFil = BigMul(PicoFil, NewInt(1000))
+
 var unitPrefixes = []string{"a", "f", "p", "n", "μ", "m"}
 
 func (f FIL) Short() string {

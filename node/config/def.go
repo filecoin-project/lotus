@@ -155,6 +155,10 @@ type SealingConfig struct {
 	// time buffer for forceful batch submission before sectors/deals in batch would start expiring
 	CommitBatchSlack Duration
 
+	// network BaseFee below which to stop doing commit aggregation, instead
+	// submitting proofs to the chain individually
+	AggregateAboveBaseFee types.FIL
+
 	TerminateBatchMax  uint64
 	TerminateBatchMin  uint64
 	TerminateBatchWait Duration
@@ -340,6 +344,8 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxCommitBatch:   miner5.MaxAggregatedSectors, // maximum 819 sectors, this is the maximum aggregation per FIP13
 			CommitBatchWait:  Duration(24 * time.Hour),    // this can be up to 30 days
 			CommitBatchSlack: Duration(1 * time.Hour),     // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
+
+			AggregateAboveBaseFee: types.FIL(types.BigMul(types.PicoFil, types.NewInt(150))), // 0.15 nFIL
 
 			TerminateBatchMin:  1,
 			TerminateBatchMax:  100,

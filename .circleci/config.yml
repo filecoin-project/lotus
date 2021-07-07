@@ -812,6 +812,11 @@ workflows:
           target: "./itests/multisig_test.go"
       
       - test:
+          name: test-itest-nonce
+          suite: itest-nonce
+          target: "./itests/nonce_test.go"
+      
+      - test:
           name: test-itest-paych_api
           suite: itest-paych_api
           target: "./itests/paych_api_test.go"
@@ -825,6 +830,11 @@ workflows:
           name: test-itest-sdr_upgrade
           suite: itest-sdr_upgrade
           target: "./itests/sdr_upgrade_test.go"
+      
+      - test:
+          name: test-itest-sector_finalize_early
+          suite: itest-sector_finalize_early
+          target: "./itests/sector_finalize_early_test.go"
       
       - test:
           name: test-itest-sector_pledge
