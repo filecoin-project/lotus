@@ -143,9 +143,9 @@ var runCmd = &cli.Command{
 
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
-			node.StorageMiner(&minerapi),
+			node.StorageMiner(&minerapi, cfg.Subsystems),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Base(r),
+			node.Base(),
 			node.Repo(r),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },

@@ -201,7 +201,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	)
 }
 
-func StorageMiner(out *api.StorageMiner) Option {
+func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConfig) Option {
 	return Options(
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the StorageMiner option must be set before Config option")),
@@ -209,6 +209,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 
 		func(s *Settings) error {
 			s.nodeType = repo.StorageMiner
+			s.enableLibp2pNode = subsystemsCfg.EnableStorageMarket
 			return nil
 		},
 

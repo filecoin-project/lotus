@@ -276,7 +276,7 @@ func (n *Ensemble) Start() *Ensemble {
 		r := repo.NewMemory(nil)
 		opts := []node.Option{
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
-			node.Base(r),
+			node.Base(),
 			node.Repo(r),
 			node.MockHost(n.mn),
 			node.Test(),
@@ -493,8 +493,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		var mineBlock = make(chan lotusminer.MineReq)
 		opts := []node.Option{
-			node.StorageMiner(&m.StorageMiner),
-			node.Base(r),
+			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
+			node.Base(),
 			node.Repo(r),
 			node.Test(),
 

@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"time"
 
@@ -135,6 +134,8 @@ type Settings struct {
 	Base   bool // Base option applied
 	Config bool // Config option applied
 	Lite   bool // Start node in "lite" mode
+
+	enableLibp2pNode bool
 }
 
 // Basic lotus-app services
@@ -211,46 +212,18 @@ func isFullOrLiteNode(s *Settings) bool { return s.nodeType == repo.FullNode }
 func isFullNode(s *Settings) bool       { return s.nodeType == repo.FullNode && !s.Lite }
 func isLiteNode(s *Settings) bool       { return s.nodeType == repo.FullNode && s.Lite }
 
-func Base(r repo.Repo) Option {
+func Base() Option {
 	return Options(
 		func(s *Settings) error { s.Base = true; return nil }, // mark Base as applied
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the Base() option must be set before Config option")),
 		),
-		ApplyIf(func(s *Settings) bool { result, _ := enableLibp2pNode(s, r); return result },
+		ApplyIf(func(s *Settings) bool { return s.enableLibp2pNode },
 			LibP2P,
 		),
 		ApplyIf(isFullOrLiteNode, ChainNode),
 		ApplyIf(IsType(repo.StorageMiner), MinerNode),
 	)
-}
-
-func enableLibp2pNode(s *Settings, r repo.Repo) (bool, error) {
-	lr, err := r.Lock(s.nodeType)
-	if err != nil {
-		return false, err
-	}
-	c, err := lr.Config()
-	if err != nil {
-		return false, err
-	}
-	defer lr.Close() //nolint:errcheck
-
-	switch s.nodeType {
-	case repo.FullNode:
-		return true, nil
-	case repo.StorageMiner:
-		cfg, ok := c.(*config.StorageMiner)
-		if !ok {
-			return false, fmt.Errorf("invalid config for repo, got: %T", c)
-		}
-
-		enableLibP2P := cfg.Subsystems.EnableStorageMarket
-		return enableLibP2P, nil
-	default:
-		// TODO: log error
-		return false, errors.New("unknown repo type")
-	}
 }
 
 // Config sets up constructors based on the provided Config

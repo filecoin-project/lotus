@@ -279,7 +279,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 
 	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
-		node.Base(sourceRepo),
+		node.Base(),
 		node.Repo(sourceRepo),
 		node.MockHost(tu.mn),
 		node.Test(),
@@ -313,7 +313,7 @@ func (tu *syncTestUtil) addClientNode() int {
 	r := repo.NewMemory(nil)
 	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
-		node.Base(r),
+		node.Base(),
 		node.Repo(r),
 		node.MockHost(tu.mn),
 		node.Test(),
