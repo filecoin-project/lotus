@@ -156,7 +156,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			return nil, err
 		}
 
-		cfg := c.(config.StorageMiner)
+		cfg := c.(*config.StorageMiner)
 		subsystems = cfg.Subsystems
 
 		ks, err := lr.KeyStore()
