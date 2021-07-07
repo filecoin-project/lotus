@@ -92,7 +92,8 @@ const (
 type Config struct {
 	// MarkSetType is the type of mark set to use.
 	//
-	// Sane values are: "mapts", "bolt" (if you are memory constrained).
+	// Only current sane value is "mapts", but we may add an option for a disk-backed
+	// markset for memory-constrained situations.
 	MarkSetType string
 
 	// DiscardColdBlocks indicates whether to skip moving cold blocks to the coldstore.

@@ -1,8 +1,6 @@
 package splitstore
 
 import (
-	"path/filepath"
-
 	"golang.org/x/xerrors"
 
 	cid "github.com/ipfs/go-cid"
@@ -30,14 +28,12 @@ func OpenMarkSetEnv(path string, mtype string) (MarkSetEnv, error) {
 	switch mtype {
 	case "bloom":
 		return NewBloomMarkSetEnv(false)
-	case "bloomts":
+	case "bloomts": // thread-safe
 		return NewBloomMarkSetEnv(true)
 	case "map":
 		return NewMapMarkSetEnv(false)
-	case "mapts":
+	case "mapts": // thread-safe
 		return NewMapMarkSetEnv(true)
-	case "bolt":
-		return NewBoltMarkSetEnv(filepath.Join(path, "markset.bolt"))
 	default:
 		return nil, xerrors.Errorf("unknown mark set type %s", mtype)
 	}
