@@ -58,7 +58,7 @@ func TestPublishDealsBatching(t *testing.T) {
 	_, err = client.WalletImport(ctx, &publisherKey.KeyInfo)
 	require.NoError(t, err)
 
-	kit.SetControlAddresses(t, client, miner, publisherKey.Address)
+	miner.SetControlAddresses(publisherKey.Address)
 
 	dh := kit.NewDealHarness(t, client, miner)
 

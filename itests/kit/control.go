@@ -2,7 +2,6 @@ package kit
 
 import (
 	"context"
-	"testing"
 
 	"github.com/stretchr/testify/require"
 
@@ -15,11 +14,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func SetControlAddresses(t *testing.T, client *TestFullNode, w *TestMiner, addrs ...addr.Address) {
+func (tm *TestMiner) SetControlAddresses(addrs ...addr.Address) {
 	ctx := context.TODO()
 
-	mi, err := client.StateMinerInfo(ctx, w.ActorAddr, types.EmptyTSK)
-	require.NoError(t, err)
+	mi, err := tm.FullNode.StateMinerInfo(ctx, tm.ActorAddr, types.EmptyTSK)
+	require.NoError(tm.t, err)
 
 	cwp := &miner2.ChangeWorkerAddressParams{
 		NewWorker:       mi.Worker,
@@ -27,17 +26,17 @@ func SetControlAddresses(t *testing.T, client *TestFullNode, w *TestMiner, addrs
 	}
 
 	sp, err := actors.SerializeParams(cwp)
-	require.NoError(t, err)
+	require.NoError(tm.t, err)
 
-	smsg, err := client.MpoolPushMessage(ctx, &types.Message{
+	smsg, err := tm.FullNode.MpoolPushMessage(ctx, &types.Message{
 		From:   mi.Owner,
-		To:     w.ActorAddr,
+		To:     tm.ActorAddr,
 		Method: miner.Methods.ChangeWorkerAddress,
 
 		Value:  big.Zero(),
 		Params: sp,
 	}, nil)
-	require.NoError(t, err)
+	require.NoError(tm.t, err)
 
-	WaitMsg(ctx, t, client, smsg.Cid())
+	tm.FullNode.WaitMsg(ctx, smsg.Cid())
 }

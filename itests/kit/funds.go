@@ -29,12 +29,12 @@ func SendFunds(ctx context.Context, t *testing.T, sender *TestFullNode, recipien
 	sm, err := sender.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
 
-	WaitMsg(ctx, t, sender, sm.Cid())
+	sender.WaitMsg(ctx, sm.Cid())
 }
 
-func WaitMsg(ctx context.Context, t *testing.T, node *TestFullNode, msg cid.Cid) {
-	res, err := node.StateWaitMsg(ctx, msg, 3, api.LookbackNoLimit, true)
-	require.NoError(t, err)
+func (f *TestFullNode) WaitMsg(ctx context.Context, msg cid.Cid) {
+	res, err := f.StateWaitMsg(ctx, msg, 3, api.LookbackNoLimit, true)
+	require.NoError(f.t, err)
 
-	require.EqualValues(t, 0, res.Receipt.ExitCode, "message did not successfully execute")
+	require.EqualValues(f.t, 0, res.Receipt.ExitCode, "message did not successfully execute")
 }
