@@ -375,7 +375,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 		fx.Options(ctors...),
 		fx.Options(settings.invokes...),
 
-		//fx.NopLogger,
+		fx.NopLogger,
 	)
 
 	// TODO: we probably should have a 'firewall' for Closing signal
