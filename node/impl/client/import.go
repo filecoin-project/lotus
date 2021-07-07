@@ -6,11 +6,15 @@ import (
 	"io"
 	"os"
 
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
+	"github.com/ipfs/go-datastore"
+	ds_sync "github.com/ipfs/go-datastore/sync"
+	"github.com/ipfs/go-filestore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files2 "github.com/ipfs/go-ipfs-files"
@@ -28,23 +32,18 @@ import (
 func (a *API) importNormalFileToCARv2(ctx context.Context, importID importmgr.ImportID, inputFilePath string, outputCARv2Path string) (c cid.Cid, finalErr error) {
 
 	// TODO: We've currently put in a hack to create the Unixfs DAG as a CARv2 without using Badger.
-	// We first transform the Unixfs DAG to a rootless CARv2 file as CARv2 doesen't allow streaming writes without specifying the root upfront and we
-	// don't have the root till the Unixfs DAG is created.
+	// We first create the Unixfs DAG using a filestore to get the root of the Unixfs DAG.
+	// We can't create the UnixfsDAG right away using a CARv2 read-write blockstore as the blockstore
+	// needs the root of the DAG during instantiation to write out a valid CARv2 file.
 	//
 	// In the second pass, we create a CARv2 file with the root present using the root node we get in the above step.
 	// This hack should be fixed when CARv2 allows specifying the root AFTER finishing the CARv2 streaming write.
-	tmpCARv2Path, err := a.imgr().NewTempFile(importID)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create temp CARv2 file: %w", err)
-	}
-	defer os.Remove(tmpCARv2Path) //nolint:errcheck
-
-	tempCARv2Store, err := blockstore.NewReadWrite(tmpCARv2Path, []cid.Cid{})
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create rootless temp CARv2 rw store: %w", err)
-	}
-	defer tempCARv2Store.Finalize() //nolint:errcheck
-	bsvc := blockservice.New(tempCARv2Store, offline.Exchange(tempCARv2Store))
+	// TODO How do we clean this up ?
+	fm := filestore.NewFileManager(ds_sync.MutexWrap(datastore.NewMapDatastore()), "/")
+	fm.AllowFiles = true
+	fstore := filestore.NewFilestore(bstore.NewMemorySync(), fm)
+	bsvc := blockservice.New(fstore, offline.Exchange(fstore))
+	defer bsvc.Close()
 
 	// ---- First Pass ---  Write out the UnixFS DAG to a rootless CARv2 file by instantiating a read-write CARv2 blockstore without the root.
 	root, err := importNormalFileToUnixfsDAG(ctx, inputFilePath, merkledag.NewDAGService(bsvc))
