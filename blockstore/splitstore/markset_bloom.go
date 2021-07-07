@@ -88,11 +88,5 @@ func (s *BloomMarkSet) Has(cid cid.Cid) (bool, error) {
 }
 
 func (s *BloomMarkSet) Close() error {
-	if s.ts {
-		s.mx.Lock()
-		defer s.mx.Unlock()
-
-	}
-	s.bf = nil
 	return nil
 }
