@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -194,4 +195,17 @@ type RetrievalInfo struct {
 
 	TransferChannelID *datatransfer.ChannelID
 	DataTransfer      *DataTransferChannel
+
+	// optional event if part of ClientGetRetrievalUpdates
+	Event *retrievalmarket.ClientEvent
+}
+
+type RestrievalRes struct {
+	DealID  retrievalmarket.DealID
+	StoreID *multistore.StoreID
+}
+
+type ExportRef struct {
+	Root    cid.Cid
+	StoreID *multistore.StoreID
 }

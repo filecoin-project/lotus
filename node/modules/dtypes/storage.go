@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 // MetadataDS stores metadata. By default it's namespaced under /metadata in
@@ -74,7 +73,7 @@ type ClientBlockstore blockstore.BasicBlockstore
 type ClientDealStore *statestore.StateStore
 type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
 type ClientDatastore datastore.Batching
-type ClientRetrievalStoreManager retrievalstoremgr.RetrievalStoreManager
+type ClientRetrievalStoreAllocator func() (*multistore.StoreID, error)
 
 type Graphsync graphsync.GraphExchange
 

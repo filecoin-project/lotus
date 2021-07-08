@@ -41,7 +41,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full.WalletAPI, fundMgr *market.FundManager) {
@@ -222,12 +221,20 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, mds dtypes.ClientMultiDstore,
 	return client, nil
 }
 
-// ClientRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore
-func ClientRetrievalStoreManager(imgr dtypes.ClientImportMgr) dtypes.ClientRetrievalStoreManager {
-	return retrievalstoremgr.NewMultiStoreRetrievalStoreManager(imgr)
+// ClientRetrievalStoreAllocator is the default version of the RetrievalStoreManager that runs on multistore
+func ClientRetrievalStoreAllocator(imgr dtypes.ClientImportMgr) dtypes.ClientRetrievalStoreAllocator {
+	return func() (*multistore.StoreID, error) {
+		storeID, _, err := ((*importmgr.Mgr)(imgr)).NewStore()
+		if err != nil {
+			return nil, err
+		}
+		return &storeID, err
+	}
 }
 
-// ClientBlockstoreRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore
-func ClientBlockstoreRetrievalStoreManager(bs dtypes.ClientBlockstore) dtypes.ClientRetrievalStoreManager {
-	return retrievalstoremgr.NewBlockstoreRetrievalStoreManager(bs)
+// ClientIPFSRetrievalStoreAllocator does nothing, instead reading form the blockstore
+func ClientIPFSRetrievalStoreAllocator() dtypes.ClientRetrievalStoreAllocator {
+	return func() (*multistore.StoreID, error) {
+		return nil, nil
+	}
 }

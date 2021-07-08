@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -319,6 +318,8 @@ type FullNode interface {
 
 	// ClientImport imports file under the specified path into filestore.
 	ClientImport(ctx context.Context, ref FileRef) (*ImportRes, error) //perm:admin
+	// ClientExport exports a file stored in the local filestore to a system file
+	ClientExport(ctx context.Context, exportRef ExportRef, fileRef FileRef) error //perm:admin
 	// ClientRemoveImport removes file import
 	ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error //perm:admin
 	// ClientStartDeal proposes a deal with a miner.
@@ -340,10 +341,7 @@ type FullNode interface {
 	// ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
 	ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (QueryOffer, error) //perm:read
 	// ClientRetrieve initiates the retrieval of a file, as specified in the order.
-	ClientRetrieve(ctx context.Context, order RetrievalOrder, ref *FileRef) error //perm:admin
-	// ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
-	// of status updates.
-	ClientRetrieveWithEvents(ctx context.Context, order RetrievalOrder, ref *FileRef) (<-chan marketevents.RetrievalEvent, error) //perm:admin
+	ClientRetrieve(ctx context.Context, params RetrievalOrder) (*RestrievalRes, error) //perm:admin
 	// ClientListRetrievals returns information about retrievals made by the local client
 	ClientListRetrievals(ctx context.Context) ([]RetrievalInfo, error) //perm:write
 	// ClientGetRetrievalUpdates returns status of updated retrieval deals
@@ -900,12 +898,9 @@ type MarketDeal struct {
 
 type RetrievalOrder struct {
 	// TODO: make this less unixfs specific
-	Root  cid.Cid
-	Piece *cid.Cid
-	Size  uint64
-
-	LocalStore *multistore.StoreID // if specified, get data from local store
-	// TODO: support offset
+	Root                    cid.Cid
+	Piece                   *cid.Cid
+	Size                    uint64
 	Total                   types.BigInt
 	UnsealPrice             types.BigInt
 	PaymentInterval         uint64

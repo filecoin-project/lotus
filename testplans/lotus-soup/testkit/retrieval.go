@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
@@ -46,15 +47,54 @@ func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, 
 		return err
 	}
 
-	ref := &api.FileRef{
-		Path:  filepath.Join(rpath, "ret"),
-		IsCAR: carExport,
-	}
 	t1 = time.Now()
-	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
+	updatesCtx, cancel := context.WithCancel(ctx)
+	updates, err := client.ClientGetRetrievalUpdates(updatesCtx)
 	if err != nil {
 		return err
 	}
+
+	retrievalRes, err := client.ClientRetrieve(ctx, offers[0].Order(caddr))
+	if err != nil {
+		return err
+	}
+consumeEvents:
+	for {
+		var evt api.RetrievalInfo
+		select {
+		case <-updatesCtx.Done():
+			return fmt.Errorf("Retrieval Timed Out")
+		case evt = <-updates:
+			if evt.ID != retrievalRes.DealID {
+				continue
+			}
+		}
+		switch evt.Status {
+		case retrievalmarket.DealStatusCompleted:
+			break consumeEvents
+		case retrievalmarket.DealStatusRejected:
+			return fmt.Errorf("Retrieval Proposal Rejected: %s", evt.Message)
+		case
+			retrievalmarket.DealStatusDealNotFound,
+			retrievalmarket.DealStatusErrored:
+			return fmt.Errorf("Retrieval Error: %s", evt.Message)
+		}
+	}
+	cancel()
+
+	err = client.ClientExport(ctx,
+		api.ExportRef{
+			Root:    fcid,
+			StoreID: retrievalRes.StoreID,
+		},
+		api.FileRef{
+			Path:  filepath.Join(rpath, "ret"),
+			IsCAR: carExport,
+		})
+	if err != nil {
+		return err
+	}
+
 	t.D().ResettingHistogram("retrieve-data").Update(int64(time.Since(t1)))
 
 	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))

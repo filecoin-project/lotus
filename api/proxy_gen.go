@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/google/uuid"
@@ -169,6 +168,8 @@ type FullNodeStruct struct {
 
 		ClientDealSize func(p0 context.Context, p1 cid.Cid) (DataSize, error) `perm:"read"`
 
+		ClientExport func(p0 context.Context, p1 ExportRef, p2 FileRef) error `perm:"admin"`
+
 		ClientFindData func(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) `perm:"read"`
 
 		ClientGenCar func(p0 context.Context, p1 FileRef, p2 string) error `perm:"write"`
@@ -201,11 +202,9 @@ type FullNodeStruct struct {
 
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
-		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error `perm:"admin"`
+		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) `perm:"admin"`
 
 		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) error `perm:"write"`
-
-		ClientRetrieveWithEvents func(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
 
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
@@ -1265,6 +1264,14 @@ func (s *FullNodeStub) ClientDealSize(p0 context.Context, p1 cid.Cid) (DataSize,
 	return *new(DataSize), xerrors.New("method not supported")
 }
 
+func (s *FullNodeStruct) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) error {
+	return s.Internal.ClientExport(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) error {
+	return xerrors.New("method not supported")
+}
+
 func (s *FullNodeStruct) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) {
 	return s.Internal.ClientFindData(p0, p1, p2)
 }
@@ -1393,12 +1400,12 @@ func (s *FullNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatran
 	return xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error {
-	return s.Internal.ClientRetrieve(p0, p1, p2)
+func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) {
+	return s.Internal.ClientRetrieve(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error {
-	return xerrors.New("method not supported")
+func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) {
+	return nil, xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
@@ -1407,14 +1414,6 @@ func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Co
 
 func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
 	return xerrors.New("method not supported")
-}
-
-func (s *FullNodeStruct) ClientRetrieveWithEvents(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	return s.Internal.ClientRetrieveWithEvents(p0, p1, p2)
-}
-
-func (s *FullNodeStub) ClientRetrieveWithEvents(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	return nil, xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ClientStartDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
