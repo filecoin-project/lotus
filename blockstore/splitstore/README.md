@@ -14,6 +14,18 @@ can be a noop store, whereby out of scope objects are discarded or a
 regular badger blockstore (the default), which can be periodically
 garbage collected according to configurable user retention policies.
 
+To enable the splitstore, edit `.lotus/config.toml` and add the following:
+```
+[Chainstore]
+  EnableSplitstore = true
+```
+
+If you want to use the noop coldstore, also add the following:
+```
+  [Chainstore.Splitstore]
+    ColdStoreType = "noop"
+```
+
 ## Operation
 
 When the splitstore is first enabled, the existing blockstore becomes
