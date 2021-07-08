@@ -43,7 +43,6 @@ Testing an RC:
 - [ ] **Stage 1 - Internal Testing**
   - Binaries
     - [ ] Ensure the RC release has downloadable binaries
-    - [ ] Validate the binary is able to run on at least one platform  
   - Upgrade our testnet infra
     - [ ] 1 bootstrap node
     - [ ] 1 miner
