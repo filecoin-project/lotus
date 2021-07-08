@@ -214,11 +214,6 @@ func (w *WrapperV1Full) ClientRetrieveWithEvents(ctx context.Context, order Retr
 	return events, nil
 }
 
-type retrievalSubscribeEvent struct {
-	event retrievalmarket.ClientEvent
-	state retrievalmarket.ClientDealState
-}
-
 func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents <-chan api.RetrievalInfo, events chan marketevents.RetrievalEvent) error {
 	for {
 		var subscribeEvent api.RetrievalInfo
