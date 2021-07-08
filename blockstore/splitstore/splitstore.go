@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"os"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -148,6 +149,16 @@ type SplitStore struct {
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
+
+func init() {
+	if os.Getenv("LOTUS_SPLITSTORE_DEBUG_LOG") == "1" {
+		enableDebugLog = true
+	}
+
+	if os.Getenv("LOTUS_SPLITSTORE_DEBUG_LOG_WRITE_TRACES") == "1" {
+		enableDebugLogWriteTraces = true
+	}
+}
 
 // Open opens an existing splistore, or creates a new splitstore. The splitstore
 // is backed by the provided hot and cold stores. The returned SplitStore MUST be
