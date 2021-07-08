@@ -89,7 +89,7 @@ func init() {
 	addExample(&pid)
 
 	multistoreIDExample := multistore.StoreID(50)
-
+	clientEvent := retrievalmarket.ClientEventDealAccepted
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
@@ -121,7 +121,8 @@ func init() {
 	addExample(datatransfer.Ongoing)
 	addExample(multistoreIDExample)
 	addExample(&multistoreIDExample)
-	addExample(retrievalmarket.ClientEventDealAccepted)
+	addExample(clientEvent)
+	addExample(&clientEvent)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)

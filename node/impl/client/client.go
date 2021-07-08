@@ -52,8 +52,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -63,7 +61,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
@@ -87,10 +84,10 @@ type API struct {
 	Imports dtypes.ClientImportMgr
 	Mds     dtypes.ClientMultiDstore
 
-	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
-	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
-	DataTransfer      dtypes.ClientDataTransfer
-	Host              host.Host
+	CombinedBstore          dtypes.ClientBlockstore
+	RetrievalStoreAllocator dtypes.ClientRetrievalStoreAllocator
+	DataTransfer            dtypes.ClientDataTransfer
+	Host                    host.Host
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -617,224 +614,95 @@ func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmar
 	}
 }
 
-func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
-	events := make(chan marketevents.RetrievalEvent)
-	go a.clientRetrieve(ctx, order, ref, events)
+func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder) (*api.RestrievalRes, error) {
 
-	for {
-		select {
-		case evt, ok := <-events:
-			if !ok { // done successfully
-				return nil
-			}
-
-			if evt.Err != "" {
-				return xerrors.Errorf("retrieval failed: %s", evt.Err)
-			}
-		case <-ctx.Done():
-			return xerrors.Errorf("retrieval timed out")
-		}
-	}
-}
-
-func (a *API) ClientRetrieveWithEvents(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	events := make(chan marketevents.RetrievalEvent)
-	go a.clientRetrieve(ctx, order, ref, events)
-	return events, nil
-}
-
-type retrievalSubscribeEvent struct {
-	event rm.ClientEvent
-	state rm.ClientDealState
-}
-
-func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
-	for {
-		var subscribeEvent retrievalSubscribeEvent
-		select {
-		case <-ctx.Done():
-			return xerrors.New("Retrieval Timed Out")
-		case subscribeEvent = <-subscribeEvents:
-			if subscribeEvent.state.ID != dealID {
-				// we can't check the deal ID ahead of time because:
-				// 1. We need to subscribe before retrieving.
-				// 2. We won't know the deal ID until after retrieving.
-				continue
-			}
+	if order.MinerPeer == nil || order.MinerPeer.ID == "" {
+		mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
+		if err != nil {
+			return nil, err
 		}
 
-		select {
-		case <-ctx.Done():
-			return xerrors.New("Retrieval Timed Out")
-		case events <- marketevents.RetrievalEvent{
-			Event:         subscribeEvent.event,
-			Status:        subscribeEvent.state.Status,
-			BytesReceived: subscribeEvent.state.TotalReceived,
-			FundsSpent:    subscribeEvent.state.FundsSpent,
-		}:
-		}
-
-		state := subscribeEvent.state
-		switch state.Status {
-		case rm.DealStatusCompleted:
-			return nil
-		case rm.DealStatusRejected:
-			return xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
-		case
-			rm.DealStatusDealNotFound,
-			rm.DealStatusErrored:
-			return xerrors.Errorf("Retrieval Error: %s", state.Message)
-		}
-	}
-}
-
-func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef, events chan marketevents.RetrievalEvent) {
-	defer close(events)
-
-	finish := func(e error) {
-		if e != nil {
-			events <- marketevents.RetrievalEvent{Err: e.Error(), FundsSpent: big.Zero()}
+		order.MinerPeer = &retrievalmarket.RetrievalPeer{
+			ID:      *mi.PeerId,
+			Address: order.Miner,
 		}
 	}
 
-	var store retrievalstoremgr.RetrievalStore
+	if order.Total.Int == nil {
+		return nil, xerrors.Errorf("cannot make retrieval deal for null total")
+	}
 
-	if order.LocalStore == nil {
-		if order.MinerPeer == nil || order.MinerPeer.ID == "" {
-			mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
-			if err != nil {
-				finish(err)
-				return
-			}
+	if order.Size == 0 {
+		return nil, xerrors.Errorf("cannot make retrieval deal for zero bytes")
+	}
 
-			order.MinerPeer = &retrievalmarket.RetrievalPeer{
-				ID:      *mi.PeerId,
-				Address: order.Miner,
-			}
-		}
+	ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
-		if order.Total.Int == nil {
-			finish(xerrors.Errorf("cannot make retrieval deal for null total"))
-			return
-		}
+	params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
+	if err != nil {
+		return nil, xerrors.Errorf("Error in retrieval params: %s", err)
+	}
 
-		if order.Size == 0 {
-			finish(xerrors.Errorf("cannot make retrieval deal for zero bytes"))
-			return
-		}
+	storeID, err := a.RetrievalStoreAllocator()
+	if err != nil {
+		return nil, xerrors.Errorf("Error setting up new store: %w", err)
+	}
 
-		/*id, st, err := a.imgr().NewStore()
+	dealID, err := a.Retrieval.Retrieve(
+		ctx,
+		order.Root,
+		params,
+		order.Total,
+		*order.MinerPeer,
+		order.Client,
+		order.Miner,
+		storeID)
+
+	if err != nil {
+		return nil, xerrors.Errorf("Retrieve failed: %w", err)
+	}
+
+	return &api.RestrievalRes{
+		StoreID: storeID,
+		DealID:  dealID,
+	}, nil
+
+}
+
+func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api.FileRef) error {
+	var rdag ipld.DAGService
+	if exportRef.StoreID != nil {
+		store, err := ((*multistore.MultiStore)(a.Mds)).Get(*exportRef.StoreID)
+
 		if err != nil {
 			return err
 		}
-		if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
-			return err
-		}*/
 
-		ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
-
-		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
-		if err != nil {
-			finish(xerrors.Errorf("Error in retrieval params: %s", err))
-			return
-		}
-
-		store, err = a.RetrievalStoreMgr.NewStore()
-		if err != nil {
-			finish(xerrors.Errorf("Error setting up new store: %w", err))
-			return
-		}
-
-		defer func() {
-			_ = a.RetrievalStoreMgr.ReleaseStore(store)
-		}()
-
-		// Subscribe to events before retrieving to avoid losing events.
-		subscribeEvents := make(chan retrievalSubscribeEvent, 1)
-		subscribeCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-			// We'll check the deal IDs inside readSubscribeEvents.
-			if state.PayloadCID.Equals(order.Root) {
-				select {
-				case <-subscribeCtx.Done():
-				case subscribeEvents <- retrievalSubscribeEvent{event, state}:
-				}
-			}
-		})
-
-		dealID, err := a.Retrieval.Retrieve(
-			ctx,
-			order.Root,
-			params,
-			order.Total,
-			*order.MinerPeer,
-			order.Client,
-			order.Miner,
-			store.StoreID())
-
-		if err != nil {
-			unsubscribe()
-			finish(xerrors.Errorf("Retrieve failed: %w", err))
-			return
-		}
-
-		err = readSubscribeEvents(ctx, dealID, subscribeEvents, events)
-
-		unsubscribe()
-		if err != nil {
-			finish(xerrors.Errorf("Retrieve: %w", err))
-			return
-		}
+		rdag = store.DAG
 	} else {
-		// local retrieval
-		st, err := ((*multistore.MultiStore)(a.Mds)).Get(*order.LocalStore)
-		if err != nil {
-			finish(xerrors.Errorf("Retrieve: %w", err))
-			return
-		}
-
-		store = &multiStoreRetrievalStore{
-			storeID: *order.LocalStore,
-			store:   st,
-		}
+		rdag = merkledag.NewDAGService(blockservice.New(a.CombinedBstore, offline.Exchange(a.CombinedBstore)))
 	}
-
-	// If ref is nil, it only fetches the data into the configured blockstore.
-	if ref == nil {
-		finish(nil)
-		return
-	}
-
-	rdag := store.DAGService()
-
 	if ref.IsCAR {
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			finish(err)
-			return
+			return err
 		}
-		err = car.WriteCar(ctx, rdag, []cid.Cid{order.Root}, f)
+		err = car.WriteCar(ctx, rdag, []cid.Cid{exportRef.Root}, f)
 		if err != nil {
-			finish(err)
-			return
+			return err
 		}
-		finish(f.Close())
-		return
+		return f.Close()
 	}
 
-	nd, err := rdag.Get(ctx, order.Root)
+	nd, err := rdag.Get(ctx, exportRef.Root)
 	if err != nil {
-		finish(xerrors.Errorf("ClientRetrieve: %w", err))
-		return
+		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
 	file, err := unixfile.NewUnixfsFile(ctx, rdag, nd)
 	if err != nil {
-		finish(xerrors.Errorf("ClientRetrieve: %w", err))
-		return
+		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
-	finish(files.WriteTo(file, ref.Path))
-	return
+	return files.WriteTo(file, ref.Path)
 }
 
 func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {
@@ -855,7 +723,7 @@ func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, er
 				transferCh = &ch
 			}
 		}
-		out = append(out, a.newRetrievalInfoWithTransfer(transferCh, v))
+		out = append(out, a.newRetrievalInfoWithTransfer(transferCh, v, nil))
 	}
 	sort.Slice(out, func(a, b int) bool {
 		return out[a].ID < out[b].ID
@@ -866,8 +734,8 @@ func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, er
 func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.RetrievalInfo, error) {
 	updates := make(chan api.RetrievalInfo)
 
-	unsub := a.Retrieval.SubscribeToEvents(func(_ rm.ClientEvent, deal rm.ClientDealState) {
-		updates <- a.newRetrievalInfo(ctx, deal)
+	unsub := a.Retrieval.SubscribeToEvents(func(evt rm.ClientEvent, deal rm.ClientDealState) {
+		updates <- a.newRetrievalInfo(ctx, deal, &evt)
 	})
 
 	go func() {
@@ -878,7 +746,7 @@ func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.Retriev
 	return updates, nil
 }
 
-func (a *API) newRetrievalInfoWithTransfer(ch *api.DataTransferChannel, deal rm.ClientDealState) api.RetrievalInfo {
+func (a *API) newRetrievalInfoWithTransfer(ch *api.DataTransferChannel, deal rm.ClientDealState, evt *rm.ClientEvent) api.RetrievalInfo {
 	return api.RetrievalInfo{
 		PayloadCID:        deal.PayloadCID,
 		ID:                deal.ID,
@@ -893,10 +761,11 @@ func (a *API) newRetrievalInfoWithTransfer(ch *api.DataTransferChannel, deal rm.
 		TotalPaid:         deal.FundsSpent,
 		TransferChannelID: deal.ChannelID,
 		DataTransfer:      ch,
+		Event:             evt,
 	}
 }
 
-func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.RetrievalInfo {
+func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState, evt *rm.ClientEvent) api.RetrievalInfo {
 	// Find the data transfer associated with this deal
 	var transferCh *api.DataTransferChannel
 	if v.ChannelID != nil {
@@ -911,7 +780,7 @@ func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.Re
 		}
 	}
 
-	return a.newRetrievalInfoWithTransfer(transferCh, v)
+	return a.newRetrievalInfoWithTransfer(transferCh, v, evt)
 }
 
 type multiStoreRetrievalStore struct {

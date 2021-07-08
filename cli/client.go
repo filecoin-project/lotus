@@ -1062,7 +1062,7 @@ var clientRetrieveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 
-		fapi, closer, err := GetFullNodeAPI(cctx)
+		fapi, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -1085,6 +1085,8 @@ var clientRetrieveCmd = &cli.Command{
 			return err
 		}
 
+		var storeID *multistore.StoreID
+
 		var pieceCid *cid.Cid
 		if cctx.String("pieceCid") != "" {
 			parsed, err := cid.Parse(cctx.String("pieceCid"))
@@ -1094,7 +1096,6 @@ var clientRetrieveCmd = &cli.Command{
 			pieceCid = &parsed
 		}
 
-		var order *lapi.RetrievalOrder
 		if cctx.Bool("allow-local") {
 			imports, err := fapi.ClientListImports(ctx)
 			if err != nil {
@@ -1103,19 +1104,13 @@ var clientRetrieveCmd = &cli.Command{
 
 			for _, i := range imports {
 				if i.Root != nil && i.Root.Equals(file) {
-					order = &lapi.RetrievalOrder{
-						Root:       file,
-						LocalStore: &i.Key,
-
-						Total:       big.Zero(),
-						UnsealPrice: big.Zero(),
-					}
-					break
+					storeID = &i.Key
 				}
 			}
 		}
 
-		if order == nil {
+		// no local found, so make a retrieval
+		if storeID == nil {
 			var offer api.QueryOffer
 			minerStrAddr := cctx.String("miner")
 			if minerStrAddr == "" { // Local discovery
@@ -1173,51 +1168,61 @@ var clientRetrieveCmd = &cli.Command{
 			}
 
 			o := offer.Order(payer)
-			order = &o
-		}
-		ref := &lapi.FileRef{
-			Path:  cctx.Args().Get(1),
-			IsCAR: cctx.Bool("car"),
-		}
 
-		updates, err := fapi.ClientRetrieveWithEvents(ctx, *order, ref)
-		if err != nil {
-			return xerrors.Errorf("error setting up retrieval: %w", err)
-		}
+			subscribeEvents, err := fapi.ClientGetRetrievalUpdates(ctx)
+			if err != nil {
+				return xerrors.Errorf("error setting up retrieval updates: %w", err)
+			}
 
-		var prevStatus retrievalmarket.DealStatus
-
-		for {
-			select {
-			case evt, ok := <-updates:
-				if ok {
-					afmt.Printf("> Recv: %s, Paid %s, %s (%s)\n",
-						types.SizeStr(types.NewInt(evt.BytesReceived)),
-						types.FIL(evt.FundsSpent),
-						retrievalmarket.ClientEvents[evt.Event],
-						retrievalmarket.DealStatuses[evt.Status],
-					)
-					prevStatus = evt.Status
-				}
-
-				if evt.Err != "" {
-					return xerrors.Errorf("retrieval failed: %s", evt.Err)
-				}
-
-				if !ok {
-					if prevStatus == retrievalmarket.DealStatusCompleted {
-						afmt.Println("Success")
-					} else {
-						afmt.Printf("saw final deal state %s instead of expected success state DealStatusCompleted\n",
-							retrievalmarket.DealStatuses[prevStatus])
+			retrievalRes, err := fapi.ClientRetrieve(ctx, o)
+			storeID = retrievalRes.StoreID
+			if err != nil {
+				return xerrors.Errorf("error setting up retrieval: %w", err)
+			}
+		readEvents:
+			for {
+				var evt api.RetrievalInfo
+				select {
+				case <-ctx.Done():
+					return xerrors.New("Retrieval Timed Out")
+				case evt = <-subscribeEvents:
+					if evt.ID != retrievalRes.DealID {
+						// we can't check the deal ID ahead of time because:
+						// 1. We need to subscribe before retrieving.
+						// 2. We won't know the deal ID until after retrieving.
+						continue
 					}
-					return nil
 				}
-
-			case <-ctx.Done():
-				return xerrors.Errorf("retrieval timed out")
+				afmt.Printf("> Recv: %s, Paid %s, %s (%s)\n",
+					types.SizeStr(types.NewInt(evt.BytesReceived)),
+					types.FIL(evt.TotalPaid),
+					retrievalmarket.ClientEvents[*evt.Event],
+					retrievalmarket.DealStatuses[evt.Status],
+				)
+				switch evt.Status {
+				case retrievalmarket.DealStatusCompleted:
+					break readEvents
+				case retrievalmarket.DealStatusRejected:
+					return xerrors.Errorf("Retrieval Proposal Rejected: %s", evt.Message)
+				case
+					retrievalmarket.DealStatusDealNotFound,
+					retrievalmarket.DealStatusErrored:
+					return xerrors.Errorf("Retrieval Error: %s", evt.Message)
+				}
 			}
 		}
+		err = fapi.ClientExport(ctx, lapi.ExportRef{
+			Root:    file,
+			StoreID: storeID,
+		}, lapi.FileRef{
+			Path:  cctx.Args().Get(1),
+			IsCAR: cctx.Bool("car"),
+		})
+		if err != nil {
+			return err
+		}
+		afmt.Println("Success")
+		return nil
 	},
 }
 

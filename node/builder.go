@@ -546,7 +546,7 @@ func ConfigFullNode(c interface{}) Option {
 		If(cfg.Client.UseIpfs,
 			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
 			If(cfg.Client.IpfsUseForRetrieval,
-				Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager),
+				Override(new(dtypes.ClientRetrievalStoreAllocator), modules.ClientIPFSRetrievalStoreAllocator),
 			),
 		),
 		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfers)),
@@ -671,7 +671,7 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.ClientMultiDstore), modules.ClientMultiDatastore),
 
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-			Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientRetrievalStoreManager),
+			Override(new(dtypes.ClientRetrievalStoreAllocator), modules.ClientRetrievalStoreAllocator),
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
 			Override(new(peer.ID), peer.IDFromPublicKey),
