@@ -691,7 +691,7 @@ func (s *SplitStore) warmup(curTs *types.TipSet) error {
 	return nil
 }
 
-// the actual warmup procedure; it waslk the chain loading all state roots at the boundary
+// the actual warmup procedure; it walks the chain loading all state roots at the boundary
 // and headers all the way up to genesis.
 // objects are written in batches so as to minimize overhead.
 func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
