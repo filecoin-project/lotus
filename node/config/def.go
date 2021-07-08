@@ -182,9 +182,10 @@ type MinerFeeConfig struct {
 }
 
 type MinerAddressConfig struct {
-	PreCommitControl []string
-	CommitControl    []string
-	TerminateControl []string
+	PreCommitControl   []string
+	CommitControl      []string
+	TerminateControl   []string
+	DealPublishControl []string
 
 	// DisableOwnerFallback disables usage of the owner address for messages
 	// sent automatically
@@ -404,8 +405,10 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Addresses: MinerAddressConfig{
-			PreCommitControl: []string{},
-			CommitControl:    []string{},
+			PreCommitControl:   []string{},
+			CommitControl:      []string{},
+			TerminateControl:   []string{},
+			DealPublishControl: []string{},
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
