@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -166,7 +167,11 @@ var storageListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list local storage paths",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name:        "color",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
+		},
 	},
 	Subcommands: []*cli.Command{
 		storageListSectorsCmd,
@@ -478,8 +483,9 @@ var storageListSectorsCmd = &cli.Command{
 	Usage: "get list of all sector files",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "color",
-			Value: true,
+			Name:        "color",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

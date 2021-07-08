@@ -535,7 +535,7 @@ CATEGORY:
 
 OPTIONS:
    --verbose, -v  print verbose deal details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --show-failed  show failed/failing deals (default: true)
    --completed    show completed retrievals (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
@@ -609,7 +609,7 @@ CATEGORY:
 
 OPTIONS:
    --verbose, -v  print verbose deal details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --show-failed  show failed/failing deals (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
    --help, -h     show help (default: false)
@@ -747,7 +747,7 @@ CATEGORY:
 
 OPTIONS:
    --verbose, -v  print verbose transfer details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed data transfers (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
    --show-failed  show failed/cancelled transfers (default: false)

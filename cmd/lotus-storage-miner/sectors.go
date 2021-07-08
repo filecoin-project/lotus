@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
@@ -161,9 +162,10 @@ var sectorsListCmd = &cli.Command{
 			Usage: "show removed sectors",
 		},
 		&cli.BoolFlag{
-			Name:    "color",
-			Aliases: []string{"c"},
-			Value:   true,
+			Name:        "color",
+			Aliases:     []string{"c"},
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "fast",
