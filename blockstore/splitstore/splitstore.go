@@ -934,7 +934,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		// was it marked?
 		mark, err := markSet.Has(c)
 		if err != nil {
-			return xerrors.Errorf("error checkiing mark set for %s: %w", c, err)
+			return xerrors.Errorf("error checking mark set for %s: %w", c, err)
 		}
 
 		if mark {
