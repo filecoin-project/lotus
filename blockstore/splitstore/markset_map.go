@@ -42,6 +42,10 @@ func (s *MapMarkSet) Mark(cid cid.Cid) error {
 		defer s.mx.Unlock()
 	}
 
+	if s.set == nil {
+		return errMarkSetClosed
+	}
+
 	s.set[string(cid.Hash())] = struct{}{}
 	return nil
 }
@@ -52,10 +56,19 @@ func (s *MapMarkSet) Has(cid cid.Cid) (bool, error) {
 		defer s.mx.Unlock()
 	}
 
+	if s.set == nil {
+		return false, errMarkSetClosed
+	}
+
 	_, ok := s.set[string(cid.Hash())]
 	return ok, nil
 }
 
 func (s *MapMarkSet) Close() error {
+	if s.ts {
+		s.mx.Lock()
+		defer s.mx.Unlock()
+	}
+	s.set = nil
 	return nil
 }

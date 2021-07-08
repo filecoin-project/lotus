@@ -1,10 +1,14 @@
 package splitstore
 
 import (
+	"errors"
+
 	"golang.org/x/xerrors"
 
 	cid "github.com/ipfs/go-cid"
 )
+
+var errMarkSetClosed = errors.New("markset closed")
 
 // MarkSet is a utility to keep track of seen CID, and later query for them.
 //

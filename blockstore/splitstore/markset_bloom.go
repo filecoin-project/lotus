@@ -74,6 +74,10 @@ func (s *BloomMarkSet) Mark(cid cid.Cid) error {
 		defer s.mx.Unlock()
 	}
 
+	if s.bf == nil {
+		return errMarkSetClosed
+	}
+
 	s.bf.Add(s.saltedKey(cid))
 	return nil
 }
@@ -84,9 +88,18 @@ func (s *BloomMarkSet) Has(cid cid.Cid) (bool, error) {
 		defer s.mx.Unlock()
 	}
 
+	if s.bf == nil {
+		return false, errMarkSetClosed
+	}
+
 	return s.bf.Has(s.saltedKey(cid)), nil
 }
 
 func (s *BloomMarkSet) Close() error {
+	if s.ts {
+		s.mx.Lock()
+		defer s.mx.Unlock()
+	}
+	s.bf = nil
 	return nil
 }
