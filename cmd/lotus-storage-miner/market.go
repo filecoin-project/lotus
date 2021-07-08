@@ -753,9 +753,10 @@ var transfersListCmd = &cli.Command{
 			Usage:   "print verbose transfer details",
 		},
 		&cli.BoolFlag{
-			Name:  "color",
-			Usage: "use color in display output",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Usage:       "use color in display output",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "completed",

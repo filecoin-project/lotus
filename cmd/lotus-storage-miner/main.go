@@ -82,8 +82,9 @@ func main() {
 				Aliases: []string{"a"},
 			},
 			&cli.BoolFlag{
-				Name:  "color",
-				Value: cliutil.DefaultColorUse,
+				Name:        "color",
+				Value:       cliutil.DefaultColorUse,
+				DefaultText: "depends on output being a TTY",
 			},
 			&cli.StringFlag{
 				Name:    "repo",

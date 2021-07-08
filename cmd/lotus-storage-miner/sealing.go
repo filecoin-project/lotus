@@ -38,8 +38,9 @@ var sealingWorkersCmd = &cli.Command{
 	Usage: "list workers",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "color",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -132,8 +133,9 @@ var sealingJobsCmd = &cli.Command{
 	Usage: "list running jobs",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "color",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "show-ret-done",

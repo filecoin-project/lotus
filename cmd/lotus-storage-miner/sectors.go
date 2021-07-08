@@ -162,9 +162,10 @@ var sectorsListCmd = &cli.Command{
 			Usage: "show removed sectors",
 		},
 		&cli.BoolFlag{
-			Name:    "color",
-			Aliases: []string{"c"},
-			Value:   cliutil.DefaultColorUse,
+			Name:        "color",
+			Aliases:     []string{"c"},
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "fast",

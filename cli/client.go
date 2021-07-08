@@ -1232,9 +1232,10 @@ var clientListRetrievalsCmd = &cli.Command{
 			Usage:   "print verbose deal details",
 		},
 		&cli.BoolFlag{
-			Name:  "color",
-			Usage: "use color in display output",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Usage:       "use color in display output",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "show-failed",
@@ -1805,9 +1806,10 @@ var clientListDeals = &cli.Command{
 			Usage:   "print verbose deal details",
 		},
 		&cli.BoolFlag{
-			Name:  "color",
-			Usage: "use color in display output",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Usage:       "use color in display output",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "show-failed",
@@ -2335,9 +2337,10 @@ var clientListTransfers = &cli.Command{
 			Usage:   "print verbose transfer details",
 		},
 		&cli.BoolFlag{
-			Name:  "color",
-			Usage: "use color in display output",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Usage:       "use color in display output",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "completed",

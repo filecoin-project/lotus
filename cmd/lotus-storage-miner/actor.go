@@ -389,8 +389,9 @@ var actorControlList = &cli.Command{
 			Name: "verbose",
 		},
 		&cli.BoolFlag{
-			Name:  "color",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

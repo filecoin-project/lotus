@@ -168,8 +168,9 @@ var storageListCmd = &cli.Command{
 	Usage: "list local storage paths",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "color",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 	},
 	Subcommands: []*cli.Command{
@@ -482,8 +483,9 @@ var storageListSectorsCmd = &cli.Command{
 	Usage: "get list of all sector files",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "color",
-			Value: cliutil.DefaultColorUse,
+			Name:        "color",
+			Value:       cliutil.DefaultColorUse,
+			DefaultText: "depends on output being a TTY",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
