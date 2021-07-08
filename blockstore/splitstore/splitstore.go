@@ -819,11 +819,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	var count int64
 	err = s.walkChain(curTs, boundaryEpoch, true,
 		func(c cid.Cid) error {
-			// marking takes a while, so check this with every opportunity
-			if err := s.checkClosing(); err != nil {
-				return err
-			}
-
 			if isFilCommitment(c) {
 				return errStopWalk
 			}
@@ -1130,6 +1125,11 @@ func (s *SplitStore) walkChain(ts *types.TipSet, boundary abi.ChainEpoch, inclMs
 	}
 
 	for len(toWalk) > 0 {
+		// walking can take a while, so check this with every opportunity
+		if err := s.checkClosing(); err != nil {
+			return err
+		}
+
 		walking := toWalk
 		toWalk = nil
 		for _, c := range walking {
