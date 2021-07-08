@@ -376,19 +376,19 @@ func (s *SplitStore) HashOnRead(enabled bool) {
 }
 
 func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
+	// optimistically protect the reference so that we can call the underlying View
+	// without holding hte lock.
+	// This allows the user callback to call into the blockstore without deadlocking.
 	s.txnLk.RLock()
-	defer s.txnLk.RUnlock()
+	err := s.trackTxnRef(cid)
+	s.txnLk.RUnlock()
 
-	err := s.hot.View(cid, cb)
+	if err != nil {
+		log.Warnf("error tracking reference to %s: %s", cid, err)
+	}
+
+	err = s.hot.View(cid, cb)
 	switch err {
-	case nil:
-		err = s.trackTxnRef(cid)
-		if err != nil {
-			log.Warnf("error tracking reference to %s: %s", cid, err)
-		}
-
-		return nil
-
 	case bstore.ErrNotFound:
 		if s.debug != nil {
 			s.mx.Lock()
