@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"math"
 	corebig "math/big"
+	"os"
 	"sort"
+	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/fatih/color"
@@ -222,29 +225,70 @@ func infoCmdAct(cctx *cli.Context) error {
 		return err
 	}
 
-	var nactiveDeals, nVerifDeals, ndeals uint64
-	var activeDealBytes, activeVerifDealBytes, dealBytes abi.PaddedPieceSize
-	for _, deal := range deals {
-		if deal.State == storagemarket.StorageDealError {
-			continue
-		}
-
-		ndeals++
-		dealBytes += deal.Proposal.PieceSize
-
-		if deal.State == storagemarket.StorageDealActive {
-			nactiveDeals++
-			activeDealBytes += deal.Proposal.PieceSize
-
-			if deal.Proposal.VerifiedDeal {
-				nVerifDeals++
-				activeVerifDealBytes += deal.Proposal.PieceSize
-			}
+	type dealStat struct {
+		count, verifCount int
+		bytes, verifBytes abi.PaddedPieceSize
+	}
+	dsAdd := func(ds *dealStat, deal storagemarket.MinerDeal) {
+		ds.count++
+		ds.bytes += deal.Proposal.PieceSize
+		if deal.Proposal.VerifiedDeal {
+			ds.verifCount++
+			ds.verifBytes += deal.Proposal.PieceSize
 		}
 	}
 
-	fmt.Printf("Deals: %d, %s\n", ndeals, types.SizeStr(types.NewInt(uint64(dealBytes))))
-	fmt.Printf("\tActive: %d, %s (Verified: %d, %s)\n", nactiveDeals, types.SizeStr(types.NewInt(uint64(activeDealBytes))), nVerifDeals, types.SizeStr(types.NewInt(uint64(activeVerifDealBytes))))
+	showDealStates := map[storagemarket.StorageDealStatus]struct{}{
+		storagemarket.StorageDealActive: {},
+		storagemarket.StorageDealTransferring: {},
+		storagemarket.StorageDealStaged: {},
+		storagemarket.StorageDealAwaitingPreCommit: {},
+		storagemarket.StorageDealSealing: {},
+		storagemarket.StorageDealPublish: {},
+		storagemarket.StorageDealCheckForAcceptance: {},
+		storagemarket.StorageDealPublishing: {},
+	}
+
+	var total dealStat
+	perState := map[storagemarket.StorageDealStatus]*dealStat{}
+	for _, deal := range deals {
+		if _, ok := showDealStates[deal.State]; !ok {
+			continue
+		}
+		if perState[deal.State] == nil {
+			perState[deal.State] = new(dealStat)
+		}
+
+		dsAdd(&total, deal)
+		dsAdd(perState[deal.State], deal)
+	}
+
+	type wstr struct {
+		str    string
+		status storagemarket.StorageDealStatus
+	}
+	sorted := make([]wstr, 0, len(perState))
+	for status, stat := range perState {
+		st := strings.TrimPrefix(storagemarket.DealStates[status], "StorageDeal")
+		sorted = append(sorted, wstr{
+			str:    fmt.Sprintf("      %s:\t%d\t\t%s\t(Verified: %d\t%s)\n", st, stat.count, types.SizeStr(types.NewInt(uint64(stat.bytes))), stat.verifCount, types.SizeStr(types.NewInt(uint64(stat.verifBytes)))),
+			status: status,
+		},
+		)
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].status == storagemarket.StorageDealActive || sorted[j].status == storagemarket.StorageDealActive {
+			return sorted[i].status == storagemarket.StorageDealActive
+		}
+		return sorted[i].status > sorted[j].status
+	})
+
+	fmt.Printf("Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(uint64(total.bytes))))
+	tw := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
+	for _, e := range sorted {
+		_, _ = tw.Write([]byte(e.str))
+	}
+	_ = tw.Flush()
 	fmt.Println()
 
 	spendable := big.Zero()
