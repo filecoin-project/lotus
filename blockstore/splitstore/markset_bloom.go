@@ -24,7 +24,7 @@ var _ MarkSetEnv = (*BloomMarkSetEnv)(nil)
 
 type BloomMarkSet struct {
 	salt []byte
-	mx   sync.Mutex
+	mx   sync.RWMutex
 	bf   *bbloom.Bloom
 	ts   bool
 }
@@ -84,8 +84,8 @@ func (s *BloomMarkSet) Mark(cid cid.Cid) error {
 
 func (s *BloomMarkSet) Has(cid cid.Cid) (bool, error) {
 	if s.ts {
-		s.mx.Lock()
-		defer s.mx.Unlock()
+		s.mx.RLock()
+		defer s.mx.RUnlock()
 	}
 
 	if s.bf == nil {

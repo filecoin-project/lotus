@@ -13,7 +13,7 @@ type MapMarkSetEnv struct {
 var _ MarkSetEnv = (*MapMarkSetEnv)(nil)
 
 type MapMarkSet struct {
-	mx  sync.Mutex
+	mx  sync.RWMutex
 	set map[string]struct{}
 
 	ts bool
@@ -52,8 +52,8 @@ func (s *MapMarkSet) Mark(cid cid.Cid) error {
 
 func (s *MapMarkSet) Has(cid cid.Cid) (bool, error) {
 	if s.ts {
-		s.mx.Lock()
-		defer s.mx.Unlock()
+		s.mx.RLock()
+		defer s.mx.RUnlock()
 	}
 
 	if s.set == nil {
