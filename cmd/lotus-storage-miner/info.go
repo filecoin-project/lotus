@@ -283,7 +283,7 @@ func infoCmdAct(cctx *cli.Context) error {
 		return sorted[i].status > sorted[j].status
 	})
 
-	fmt.Printf("Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(uint64(total.bytes))))
+	fmt.Printf("Storage Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(uint64(total.bytes))))
 	tw := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
 	for _, e := range sorted {
 		_, _ = tw.Write([]byte(e.str))
