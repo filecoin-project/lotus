@@ -196,6 +196,9 @@ func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) ab
 	}
 }
 
+// SetProviderCollateralSupplyTarget sets the percentage of normalized circulating
+// supply that must be covered by provider collateral in a deal. This should
+// only be used for testing.
 func SetProviderCollateralSupplyTarget(num, denom big.Int) {
 
 	market2.ProviderCollateralSupplyTarget = builtin2.BigFrac{
