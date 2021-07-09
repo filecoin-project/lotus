@@ -52,10 +52,6 @@ var (
 	// we will walk the chain for live objects.
 	CompactionBoundary = 4 * build.Finality
 
-	// CompactionLookback is the number of epochs from the current epoch at which
-	// we will consider marking an old block reference.
-	CompactionLookback = 2 * build.Finality
-
 	// SyncGapTime is the time delay from a tipset's min timestamp before we decide
 	// there is a sync gap
 	SyncGapTime = time.Minute
@@ -141,14 +137,13 @@ type SplitStore struct {
 	debug *debugLog
 
 	// transactional protection for concurrent read/writes during compaction
-	txnLk            sync.RWMutex
-	txnActive        bool
-	txnLookbackEpoch abi.ChainEpoch
-	txnViews         *sync.WaitGroup
-	txnProtect       MarkSet
-	txnRefsMx        sync.Mutex
-	txnRefs          map[cid.Cid]struct{}
-	txnMissing       map[cid.Cid]struct{}
+	txnLk      sync.RWMutex
+	txnActive  bool
+	txnViews   *sync.WaitGroup
+	txnProtect MarkSet
+	txnRefsMx  sync.Mutex
+	txnRefs    map[cid.Cid]struct{}
+	txnMissing map[cid.Cid]struct{}
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -569,7 +564,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
-		wg := s.beginTxnProtect(curTs)
+		wg := s.beginTxnProtect()
 		go func() {
 			defer atomic.StoreInt32(&s.compacting, 0)
 			defer s.endTxnProtect()
@@ -933,9 +928,8 @@ func (s *SplitStore) compact(curTs *types.TipSet, wg *sync.WaitGroup) {
 func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
-	lookbackEpoch := currentEpoch - CompactionLookback
 
-	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "lookbackEpoch", lookbackEpoch)
+	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch)
 
 	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
 	if err != nil {
@@ -1115,15 +1109,13 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	return nil
 }
 
-func (s *SplitStore) beginTxnProtect(curTs *types.TipSet) *sync.WaitGroup {
-	lookbackEpoch := curTs.Height() - CompactionLookback
+func (s *SplitStore) beginTxnProtect() *sync.WaitGroup {
 	log.Info("preparing compaction transaction")
 
 	s.txnLk.Lock()
 	defer s.txnLk.Unlock()
 
 	s.txnActive = true
-	s.txnLookbackEpoch = lookbackEpoch
 	s.txnRefs = make(map[cid.Cid]struct{})
 	s.txnMissing = make(map[cid.Cid]struct{})
 
