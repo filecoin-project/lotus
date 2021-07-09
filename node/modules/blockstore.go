@@ -37,8 +37,8 @@ func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 	return bs, err
 }
 
-func NoopColdBlockstore(lc fx.Lifecycle, bs dtypes.UniversalBlockstore) (dtypes.ColdBlockstore, error) {
-	return blockstore.NewNoopStore(bs), nil
+func DiscardColdBlockstore(lc fx.Lifecycle, bs dtypes.UniversalBlockstore) (dtypes.ColdBlockstore, error) {
+	return blockstore.NewDiscardStore(bs), nil
 }
 
 func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
@@ -79,7 +79,7 @@ func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.Locked
 
 		cfg := &splitstore.Config{
 			MarkSetType:       cfg.Splitstore.MarkSetType,
-			DiscardColdBlocks: cfg.Splitstore.ColdStoreType == "noop",
+			DiscardColdBlocks: cfg.Splitstore.ColdStoreType == "discard",
 		}
 		ss, err := splitstore.Open(path, ds, hot, cold, cfg)
 		if err != nil {
