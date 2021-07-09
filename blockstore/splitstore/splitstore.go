@@ -708,16 +708,6 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, batch map[cid.Cid]struct{}) erro
 				return errStopWalk
 			}
 
-			// old block reference -- see comment in doCompact about the necessity of this
-			isOldBlock, err := s.isOldBlockHeader(c, s.txnLookbackEpoch)
-			if err != nil {
-				return xerrors.Errorf("error checking object type for %s: %w", c, err)
-			}
-
-			if isOldBlock {
-				return errStopWalk
-			}
-
 			return s.txnProtect.Mark(c)
 		},
 		func(c cid.Cid) error {
@@ -951,23 +941,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 					}
 
 					if mark {
-						return errStopWalk
-					}
-
-					// we also short-circuit on old blocks, as these can come from a network request
-					// and cause us to fail because we have purged its consistituents (or missing from
-					// the beginning in case of snapshot sync, e.g. parent message receipts or old messages)
-					// if these blocks are on our chain, they would have been marked but they might be
-					// from a fork.
-					//
-					// Ideally, we would have API options to preclude us from trcking references to such
-					// objects, but we don't so we have to do this check
-					isOldBlock, err := s.isOldBlockHeader(c, lookbackEpoch)
-					if err != nil {
-						return xerrors.Errorf("error checking object type for %s: %w", c, err)
-					}
-
-					if isOldBlock {
 						return errStopWalk
 					}
 
@@ -1343,22 +1316,6 @@ func (s *SplitStore) checkClosing() error {
 	return nil
 }
 
-func (s *SplitStore) isOldBlockHeader(c cid.Cid, epoch abi.ChainEpoch) (isOldBlock bool, err error) {
-	if c.Prefix().Codec != cid.DagCBOR {
-		return false, nil
-	}
-
-	err = s.view(c, func(data []byte) error {
-		var hdr types.BlockHeader
-		if hdr.UnmarshalCBOR(bytes.NewBuffer(data)) == nil {
-			isOldBlock = hdr.Height < epoch
-		}
-		return nil
-	})
-
-	return isOldBlock, err
-}
-
 func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 	batch := make([]blocks.Block, 0, batchSize)
 
@@ -1607,15 +1564,6 @@ func (s *SplitStore) waitForMissingRefs() {
 					}
 
 					if mark {
-						return errStopWalk
-					}
-
-					isOldBlock, err := s.isOldBlockHeader(c, s.txnLookbackEpoch)
-					if err != nil {
-						return xerrors.Errorf("error checking object type for %s: %w", c, err)
-					}
-
-					if isOldBlock {
 						return errStopWalk
 					}
 
