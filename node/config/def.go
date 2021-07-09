@@ -304,7 +304,7 @@ func DefaultFullNode() *FullNode {
 			Splitstore: Splitstore{
 				ColdStoreType: "universal",
 				HotStoreType:  "badger",
-				MarkSetType:   "mapts",
+				MarkSetType:   "map",
 			},
 		},
 	}

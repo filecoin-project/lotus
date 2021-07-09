@@ -16,9 +16,7 @@ const (
 	BloomFilterProbability = 0.01
 )
 
-type BloomMarkSetEnv struct {
-	ts bool
-}
+type BloomMarkSetEnv struct{}
 
 var _ MarkSetEnv = (*BloomMarkSetEnv)(nil)
 
@@ -31,8 +29,8 @@ type BloomMarkSet struct {
 
 var _ MarkSet = (*BloomMarkSet)(nil)
 
-func NewBloomMarkSetEnv(ts bool) (*BloomMarkSetEnv, error) {
-	return &BloomMarkSetEnv{ts: ts}, nil
+func NewBloomMarkSetEnv() (*BloomMarkSetEnv, error) {
+	return &BloomMarkSetEnv{}, nil
 }
 
 func (e *BloomMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
@@ -52,7 +50,7 @@ func (e *BloomMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 		return nil, xerrors.Errorf("error creating bloom filter: %w", err)
 	}
 
-	return &BloomMarkSet{salt: salt, bf: bf, ts: e.ts}, nil
+	return &BloomMarkSet{salt: salt, bf: bf}, nil
 }
 
 func (e *BloomMarkSetEnv) Close() error {
@@ -102,4 +100,8 @@ func (s *BloomMarkSet) Close() error {
 	}
 	s.bf = nil
 	return nil
+}
+
+func (s *BloomMarkSet) SetConcurrent() {
+	s.ts = true
 }

@@ -6,9 +6,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 )
 
-type MapMarkSetEnv struct {
-	ts bool
-}
+type MapMarkSetEnv struct{}
 
 var _ MarkSetEnv = (*MapMarkSetEnv)(nil)
 
@@ -21,14 +19,13 @@ type MapMarkSet struct {
 
 var _ MarkSet = (*MapMarkSet)(nil)
 
-func NewMapMarkSetEnv(ts bool) (*MapMarkSetEnv, error) {
-	return &MapMarkSetEnv{ts: ts}, nil
+func NewMapMarkSetEnv() (*MapMarkSetEnv, error) {
+	return &MapMarkSetEnv{}, nil
 }
 
 func (e *MapMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 	return &MapMarkSet{
 		set: make(map[string]struct{}, sizeHint),
-		ts:  e.ts,
 	}, nil
 }
 
@@ -71,4 +68,8 @@ func (s *MapMarkSet) Close() error {
 	}
 	s.set = nil
 	return nil
+}
+
+func (s *MapMarkSet) SetConcurrent() {
+	s.ts = true
 }

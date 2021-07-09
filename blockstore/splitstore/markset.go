@@ -18,6 +18,7 @@ type MarkSet interface {
 	Mark(cid.Cid) error
 	Has(cid.Cid) (bool, error)
 	Close() error
+	SetConcurrent()
 }
 
 type MarkSetEnv interface {
@@ -28,13 +29,9 @@ type MarkSetEnv interface {
 func OpenMarkSetEnv(path string, mtype string) (MarkSetEnv, error) {
 	switch mtype {
 	case "bloom":
-		return NewBloomMarkSetEnv(false)
-	case "bloomts": // thread-safe
-		return NewBloomMarkSetEnv(true)
+		return NewBloomMarkSetEnv()
 	case "map":
-		return NewMapMarkSetEnv(false)
-	case "mapts": // thread-safe
-		return NewMapMarkSetEnv(true)
+		return NewMapMarkSetEnv()
 	default:
 		return nil, xerrors.Errorf("unknown mark set type %s", mtype)
 	}

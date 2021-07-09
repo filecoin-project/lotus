@@ -93,7 +93,7 @@ const (
 type Config struct {
 	// MarkSetType is the type of mark set to use.
 	//
-	// Only current sane value is "mapts", but we may add an option for a disk-backed
+	// Only current sane value is "map", but we may add an option for a disk-backed
 	// markset for memory-constrained situations.
 	MarkSetType string
 
@@ -1060,6 +1060,8 @@ func (s *SplitStore) beginTxnProtect(curTs *types.TipSet) {
 func (s *SplitStore) beginTxnConcurrentMarking(markSet MarkSet) map[cid.Cid]struct{} {
 	s.txnLk.Lock()
 	defer s.txnLk.Unlock()
+
+	markSet.SetConcurrent()
 
 	txnRefs := s.txnRefs
 	s.txnRefs = nil
