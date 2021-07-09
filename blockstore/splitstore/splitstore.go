@@ -143,6 +143,7 @@ type SplitStore struct {
 	txnLk            sync.RWMutex
 	txnActive        bool
 	txnLookbackEpoch abi.ChainEpoch
+	txnViews         *sync.WaitGroup
 	txnProtect       MarkSet
 	txnRefsMx        sync.Mutex
 	txnRefs          map[cid.Cid]struct{}
@@ -183,6 +184,8 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		hot:        hot,
 		cold:       cold,
 		markSetEnv: markSetEnv,
+
+		txnViews: new(sync.WaitGroup),
 
 		coldPurgeSize: defaultColdPurgeSize,
 	}
@@ -448,18 +451,28 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 		return cb(data)
 	}
 
-	// optimistically protect the reference so that we can call the underlying View
-	// without holding hte lock.
-	// This allows the user callback to call into the blockstore without deadlocking.
-	s.txnLk.RLock()
-	err := s.trackTxnRef(cid)
-	s.txnLk.RUnlock()
+	err := s.hot.View(cid,
+		func(data []byte) error {
+			// views are protected two-fold:
+			// - if there is an active transaction, then the reference is protected.
+			// - if there is no active transaction, active views are tracked in a
+			//   wait group and compaction is inhibited from starting until they
+			//   have all completed.  this is necessary to ensure that a (very) long-running
+			//   view can't have its data pointer deleted, which would be catastrophic.
+			//   Note that we can't just RLock for the duration of the view, as this could
+			//    lead to deadlock with recursive views.
+			wg, err := s.protectView(cid)
+			if err != nil {
+				log.Warnf("error protecting view to %s: %s", cid, err)
+			}
 
-	if err != nil {
-		log.Warnf("error tracking reference to %s: %s", cid, err)
-	}
+			if wg != nil {
+				defer wg.Done()
+			}
 
-	err = s.hot.View(cid, cb)
+			return cb(data)
+		})
+
 	switch err {
 	case bstore.ErrNotFound:
 		if s.debug != nil {
@@ -583,7 +596,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
-		s.beginTxnProtect(curTs)
+		wg := s.beginTxnProtect(curTs)
 		go func() {
 			defer atomic.StoreInt32(&s.compacting, 0)
 			defer s.endTxnProtect()
@@ -591,7 +604,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 			log.Info("compacting splitstore")
 			start := time.Now()
 
-			s.compact(curTs)
+			s.compact(curTs, wg)
 
 			log.Infow("compaction done", "took", time.Since(start))
 		}()
@@ -625,6 +638,20 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 			log.Errorf("error protecting newly applied tipsets: %s", err)
 		}
 	}()
+}
+
+// transactionally protect a view
+func (s *SplitStore) protectView(c cid.Cid) (*sync.WaitGroup, error) {
+	s.txnLk.RLock()
+	defer s.txnLk.RUnlock()
+
+	if !s.txnActive {
+		s.txnViews.Add(1)
+		return s.txnViews, nil
+	}
+
+	err := s.trackTxnRef(c)
+	return nil, err
 }
 
 // transactionally protect a reference to an object
@@ -844,8 +871,13 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 //   - We sort cold objects heaviest first, so as to never delete the consituents of a DAG before the DAG itself (which would leave dangling references)
 //   - We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
 // - We then end the transaction and compact/gc the hotstore.
-func (s *SplitStore) compact(curTs *types.TipSet) {
+func (s *SplitStore) compact(curTs *types.TipSet, wg *sync.WaitGroup) {
+	log.Info("waiting for active views to complete")
 	start := time.Now()
+	wg.Wait()
+	log.Infow("waiting for active views done", "took", time.Since(start))
+
+	start = time.Now()
 	err := s.doCompact(curTs)
 	took := time.Since(start).Milliseconds()
 	stats.Record(context.Background(), metrics.SplitstoreCompactionTimeSeconds.M(float64(took)/1e3))
@@ -1079,16 +1111,21 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	return nil
 }
 
-func (s *SplitStore) beginTxnProtect(curTs *types.TipSet) {
+func (s *SplitStore) beginTxnProtect(curTs *types.TipSet) *sync.WaitGroup {
 	lookbackEpoch := curTs.Height() - CompactionLookback
 	log.Info("preparing compaction transaction")
 
 	s.txnLk.Lock()
 	defer s.txnLk.Unlock()
 
-	s.txnRefs = make(map[cid.Cid]struct{})
 	s.txnActive = true
 	s.txnLookbackEpoch = lookbackEpoch
+	s.txnRefs = make(map[cid.Cid]struct{})
+
+	wg := s.txnViews
+	s.txnViews = nil
+
+	return wg
 }
 
 func (s *SplitStore) beginTxnConcurrentMarking(markSet MarkSet) map[cid.Cid]struct{} {
@@ -1109,13 +1146,16 @@ func (s *SplitStore) endTxnProtect() {
 	s.txnLk.Lock()
 	defer s.txnLk.Unlock()
 
-	if s.txnProtect != nil {
-		_ = s.txnProtect.Close()
+	if !s.txnActive {
+		return
 	}
+
+	_ = s.txnProtect.Close()
 	s.txnActive = false
 	s.txnProtect = nil
 	s.txnRefs = nil
 	s.txnMissing = nil
+	s.txnViews = new(sync.WaitGroup)
 }
 
 func (s *SplitStore) walkChain(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bool,
