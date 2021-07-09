@@ -1316,11 +1316,20 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing
 }
 
 // internal version used by walk
-func (s *SplitStore) view(cid cid.Cid, cb func([]byte) error) error {
-	err := s.hot.View(cid, cb)
+func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
+	if isIdentiyCid(c) {
+		data, err := decodeIdentityCid(c)
+		if err != nil {
+			return err
+		}
+
+		return cb(data)
+	}
+
+	err := s.hot.View(c, cb)
 	switch err {
 	case bstore.ErrNotFound:
-		return s.cold.View(cid, cb)
+		return s.cold.View(c, cb)
 
 	default:
 		return err
@@ -1328,6 +1337,10 @@ func (s *SplitStore) view(cid cid.Cid, cb func([]byte) error) error {
 }
 
 func (s *SplitStore) has(c cid.Cid) (bool, error) {
+	if isIdentiyCid(c) {
+		return true, nil
+	}
+
 	has, err := s.hot.Has(c)
 
 	if has || err != nil {
