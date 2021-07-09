@@ -432,24 +432,20 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 		return cb(data)
 	}
 
-	err := s.hot.View(cid,
-		func(data []byte) error {
-			// views are protected two-fold:
-			// - if there is an active transaction, then the reference is protected.
-			// - if there is no active transaction, active views are tracked in a
-			//   wait group and compaction is inhibited from starting until they
-			//   have all completed.  this is necessary to ensure that a (very) long-running
-			//   view can't have its data pointer deleted, which would be catastrophic.
-			//   Note that we can't just RLock for the duration of the view, as this could
-			//    lead to deadlock with recursive views.
-			wg := s.protectView(cid)
-			if wg != nil {
-				defer wg.Done()
-			}
+	// views are (optimistically) protected two-fold:
+	// - if there is an active transaction, then the reference is protected.
+	// - if there is no active transaction, active views are tracked in a
+	//   wait group and compaction is inhibited from starting until they
+	//   have all completed.  this is necessary to ensure that a (very) long-running
+	//   view can't have its data pointer deleted, which would be catastrophic.
+	//   Note that we can't just RLock for the duration of the view, as this could
+	//    lead to deadlock with recursive views.
+	wg := s.protectView(cid)
+	if wg != nil {
+		defer wg.Done()
+	}
 
-			return cb(data)
-		})
-
+	err := s.hot.View(cid, cb)
 	switch err {
 	case bstore.ErrNotFound:
 		if s.debug != nil {
