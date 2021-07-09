@@ -24,7 +24,6 @@ import (
 func init() {
 	CompactionThreshold = 5
 	CompactionBoundary = 2
-	CompactionLookback = 2
 	logging.SetLogLevel("splitstore", "DEBUG")
 }
 
