@@ -160,7 +160,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 }
 
 func TestSplitStoreCompaction(t *testing.T) {
-	testSplitStore(t, &Config{MarkSetType: "mapts"})
+	testSplitStore(t, &Config{MarkSetType: "map"})
 }
 
 type mockChain struct {
