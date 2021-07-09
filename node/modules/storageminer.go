@@ -11,11 +11,6 @@ import (
 	"strings"
 	"time"
 
-	mktdagstore "github.com/filecoin-project/go-fil-markets/dagstore"
-
-	"github.com/filecoin-project/go-fil-markets/shared_testutil/dagstore"
-
-	"github.com/filecoin-project/lotus/markets/pricing"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
@@ -33,10 +28,13 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 
+	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	mktdagstore "github.com/filecoin-project/go-fil-markets/dagstore"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
 	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -53,13 +51,13 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 
-	"github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -71,6 +69,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
+	"github.com/filecoin-project/lotus/markets/pricing"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -569,9 +568,29 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	}
 }
 
-func DAGStore(r repo.LockedRepo) (dagstore.DagStore, error) {
-	md := dagstore.NewMockDagStore()
-	return md, nil
+func DAGStoreRegistry() *mount.Registry {
+	return mount.NewRegistry()
+}
+
+func DAGStore(r repo.LockedRepo, ds dtypes.MetadataDS, dsRegistry *mount.Registry) (*dagstore.DAGStore, error) {
+	dagStoreDir := filepath.Join(r.Path(), "dagstore")
+	dagStoreDS := namespace.Wrap(ds, datastore.NewKey("/dagstore/provider"))
+	return dagstore.NewDAGStore(dagstore.Config{
+		TransientsDir: filepath.Join(dagStoreDir, "transients"),
+		IndexDir:      filepath.Join(dagStoreDir, "index"),
+		Datastore:     dagStoreDS,
+		MountRegistry: dsRegistry,
+	})
+}
+
+func DAGStoreWrapper(
+	pieceStore dtypes.ProviderPieceStore,
+	rpn retrievalmarket.RetrievalProviderNode,
+	dsRegistry *mount.Registry,
+	dagStore *dagstore.DAGStore,
+) (mktdagstore.DagStoreWrapper, error) {
+	mountApi := mktdagstore.NewLotusMountAPI(pieceStore, rpn)
+	return mktdagstore.NewDagStoreWrapper(dsRegistry, dagStore, mountApi)
 }
 
 func StorageProvider(minerAddress dtypes.MinerAddress,
@@ -582,7 +601,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
-	dagStore dagstore.DagStore,
+	dagStore mktdagstore.DagStoreWrapper,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -657,7 +676,7 @@ func RetrievalProvider(
 	dt dtypes.ProviderDataTransfer,
 	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
-	dagStore dagstore.DagStore,
+	dagStore mktdagstore.DagStoreWrapper,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
 	return retrievalimpl.NewProvider(
@@ -669,7 +688,6 @@ func RetrievalProvider(
 		dt,
 		namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
 		retrievalimpl.RetrievalPricingFunc(pricingFnc),
-		mktdagstore.NewMount(pieceStore, adapter),
 		opt,
 	)
 }

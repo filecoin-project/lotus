@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -17,6 +16,7 @@ import (
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
+	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full.WalletAPI, fundMgr *market.FundManager) {
@@ -178,22 +179,19 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataT
 	return c, nil
 }
 
-type CARStore struct {
-	dir string
-}
-
-func (c *CARStore) Path(key string) string {
-	return filepath.Join(c.dir, key)
-}
-
 // RetrievalClient creates a new retrieval client attached to the client blockstore
 func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
 	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
+	carStore, err := getRetrievalCarStore(r.Path())
+	if err != nil {
+		return nil, err
+	}
+
 	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, chainAPI, stateAPI)
 	network := rmnet.NewFromLibp2pHost(h)
 	client, err := retrievalimpl.NewClient(network,
-		&CARStore{r.Path()}, dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")))
+		carStore, dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")))
 	if err != nil {
 		return nil, err
 	}
@@ -209,6 +207,15 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.
 		},
 	})
 	return client, nil
+}
+
+func getRetrievalCarStore(path string) (filestore.CarFileStore, error) {
+	carStorePath := filepath.Join(path, "retrieval-cars")
+	err := os.Mkdir(carStorePath, os.ModePerm)
+	if err != nil {
+		return nil, xerrors.Errorf("could not create directory %s: %w", carStorePath, err)
+	}
+	return filestore.NewLocalCarStore(path)
 }
 
 // ClientBlockstoreRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore
