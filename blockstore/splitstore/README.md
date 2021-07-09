@@ -9,10 +9,11 @@ implementation, which we call SplitStore v1.
 The new design (see [#6474](https://github.com/filecoin-project/lotus/pull/6474)
 evolves the splitstore to be a freestanding compacting blockstore that
 allows us to keep a small (60-100GB) working set in a hot blockstore
-and reliably archive out of scope objects in a coldstore.  The coldstore
-can be a noop store, whereby out of scope objects are discarded or a
-regular badger blockstore (the default), which can be periodically
-garbage collected according to configurable user retention policies.
+and reliably archive out of scope objects in a coldstore.  The
+coldstore can also be a discard store, whereby out of scope objects
+are discarded or a regular badger blockstore (the default), which can
+be periodically garbage collected according to configurable user
+retention policies.
 
 To enable the splitstore, edit `.lotus/config.toml` and add the following:
 ```
@@ -20,11 +21,16 @@ To enable the splitstore, edit `.lotus/config.toml` and add the following:
   EnableSplitstore = true
 ```
 
-If you want to use the noop coldstore, also add the following:
+If you intend to use the discard coldstore, your also need to add the following:
 ```
   [Chainstore.Splitstore]
-    ColdStoreType = "noop"
+    ColdStoreType = "discard"
 ```
+In general you _should not_ have to use the discard store, unless you
+are running a network booster or have very constrained hardware with
+not enough disk space to maintain a coldstore, even with garbage
+collection.
+
 
 ## Operation
 
@@ -42,7 +48,7 @@ hotstore, with fallback to the coldstore.
 Once 5 finalities have ellapsed, and every finality henceforth, the
 blockstore _compacts_.  Compaction is the process of moving all
 unreachable objects within the last 4 finalities from the hotstore to
-the coldstore. If the system is configured with a noop coldstore,
+the coldstore. If the system is configured with a discard coldstore,
 these objects are discarded. Note that chain headers, all the way to
 genesis, are considered reachable. Stateroots and messages are
 considered reachable only within the last 4 finalities, unless there
