@@ -77,7 +77,7 @@ require (
 	github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.6.1
+	github.com/ipfs/go-graphsync v0.6.5-0.20210621182231-957951706c7a
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0

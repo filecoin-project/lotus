@@ -47,7 +47,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	}
 
 	// TODO: add 2, 4, 8, more when this graphsync issue is fixed: https://github.com/ipfs/go-graphsync/issues/175#
-	cycles := []int{1}
+	cycles := []int{1, 2, 4, 8}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
