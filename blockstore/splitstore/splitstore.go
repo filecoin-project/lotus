@@ -1154,7 +1154,9 @@ func (s *SplitStore) endTxnProtect() {
 	}
 
 	// release markset memory
-	s.txnProtect.Close()
+	if s.txnProtect != nil {
+		_ = s.txnProtect.Close()
+	}
 
 	s.txnActive = false
 	s.txnProtect = nil
