@@ -341,6 +341,20 @@ func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) erro
 	iter := txn.NewIterator(opts)
 	defer iter.Close()
 
+	pooled := make([][]byte, 0, 2*moveBatchSize)
+	getPooled := func(size int) []byte {
+		buf := pool.Get(size)
+		pooled = append(pooled, buf)
+		return buf
+	}
+	putPooled := func() {
+		for _, buf := range pooled {
+			pool.Put(buf)
+		}
+		pooled = pooled[:0]
+	}
+	defer putPooled()
+
 	var buf []byte
 	for iter.Rewind(); iter.Valid(); iter.Next() {
 		if !b.isOpen() {
@@ -349,8 +363,9 @@ func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) erro
 
 		item := iter.Item()
 
+		kk := item.Key()
 		if filter != nil {
-			k := item.Key()
+			k := kk
 			if b.prefixing {
 				k = k[b.prefixLen:]
 			}
@@ -371,8 +386,15 @@ func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) erro
 			}
 		}
 
-		k := item.KeyCopy(nil)
-		v, err := item.ValueCopy(nil)
+		k := getPooled(len(kk))
+		copy(k, kk)
+
+		var v []byte
+		err := item.Value(func(vv []byte) error {
+			v = getPooled(len(vv))
+			copy(v, vv)
+			return nil
+		})
 		if err != nil {
 			return err
 		}
@@ -387,6 +409,7 @@ func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) erro
 				return err
 			}
 			count = 0
+			putPooled()
 		}
 	}
 
