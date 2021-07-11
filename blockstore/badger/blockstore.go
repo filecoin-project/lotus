@@ -182,7 +182,7 @@ func (b *Blockstore) isOpen() bool {
 	return b.state == stateOpen
 }
 
-// lockDB/unlockDB implement a recursive lock contigent on move state
+// lockDB/unlockDB implement a recursive lock contingent on move state
 func (b *Blockstore) lockDB() {
 	b.moveMx.Lock()
 	defer b.moveMx.Unlock()
