@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -199,7 +200,7 @@ var electionBacktest = &cli.Command{
 	},
 }
 
-func backTestWinner(ctx context.Context, miner address.Address, round abi.ChainEpoch, ts *types.TipSet, api api.FullNode) (*types.ElectionProof, error) {
+func backTestWinner(ctx context.Context, miner address.Address, round abi.ChainEpoch, ts *types.TipSet, api v0api.FullNode) (*types.ElectionProof, error) {
 	mbi, err := api.MinerGetBaseInfo(ctx, miner, round, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get mining base info: %w", err)
