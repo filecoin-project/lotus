@@ -950,3 +950,9 @@ func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
 	}
 	return dst[:reqsize]
 }
+
+// this method is added for lotus-shed needs
+// WARNING: THIS IS COMPLETELY UNSAFE; DONT USE THIS IN PRODUCTION CODE
+func (b *Blockstore) DB() *badger.DB {
+	return b.db
+}
