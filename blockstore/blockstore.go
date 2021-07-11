@@ -35,6 +35,27 @@ type BlockstoreIterator interface {
 	ForEachKey(func(cid.Cid) error) error
 }
 
+// BlockstoreMover is a trait for movable blockstores
+type BlockstoreMover interface {
+	// Moves the blockstore to path, and creates a symlink from the current path
+	// to the new path; the old blockstore is deleted.
+	// If path is empty, then a new path adjacent to the current path is created
+	// automatically.
+	// If the filter function is not nil, then the move filters and moves only
+	// objects whose cid satisfyn the filter.
+	//
+	// The blockstore must accept new writes during the move and ensure that these
+	// are persisted to the new blockstore; if a failure occurs aboring the move,
+	// then they must be peristed to the old blockstore.
+	// In short, the blockstore must not lose data from new writes during the move.
+	MoveTo(path string, filter func(cid.Cid) bool) error
+}
+
+// BlockstoreGC is a trait for blockstores that support online garbage collection
+type BlockstoreGC interface {
+	CollectGarbage() error
+}
+
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 // The ID store filters out all puts for blocks with CIDs using the "identity"
 // hash function. It also extracts inlined blocks from CIDs using the identity
