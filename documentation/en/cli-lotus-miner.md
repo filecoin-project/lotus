@@ -1405,6 +1405,7 @@ OPTIONS:
    --new-expiration value     new expiration epoch (default: 0)
    --v1-sectors               renews all v1 sectors up to the maximum possible lifetime (default: false)
    --tolerance value          when extending v1 sectors, don't try to extend sectors by fewer than this number of epochs (default: 20160)
+   --expiration-ignore value  when extending v1 sectors, skip sectors whose current expiration is less than <ignore> epochs from now (default: 120)
    --expiration-cutoff value  when extending v1 sectors, skip sectors whose current expiration is more than <cutoff> epochs from now (infinity if unspecified) (default: 0)
                               
    --help, -h                 show help (default: false)
