@@ -39,19 +39,17 @@ type BasicPreCommitPolicy struct {
 	api              Chain
 	getSealingConfig GetSealingConfigFunc
 
-	provingBoundary abi.ChainEpoch
-	provingBuffer   abi.ChainEpoch
+	provingBuffer abi.ChainEpoch
 }
 
 // NewBasicPreCommitPolicy produces a BasicPreCommitPolicy.
 //
 // The provided duration is used as the default sector expiry when the sector
 // contains no deals. The proving boundary is used to adjust/align the sector's expiration.
-func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingBoundary abi.ChainEpoch, provingBuffer abi.ChainEpoch) BasicPreCommitPolicy {
+func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingBuffer abi.ChainEpoch) BasicPreCommitPolicy {
 	return BasicPreCommitPolicy{
 		api:              api,
 		getSealingConfig: cfgGetter,
-		provingBoundary:  provingBoundary,
 		provingBuffer:    provingBuffer,
 	}
 }
@@ -93,7 +91,12 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 		end = &tmp
 	}
 
-	*end += miner.WPoStProvingPeriod - (*end % miner.WPoStProvingPeriod) + p.provingBoundary - 1
+	// Ensure there is at least one day for the PC message to land without falling below min sector lifetime
+	// TODO: The "one day" should probably be a config, though it doesn't matter too much
+	minExp := epoch + policy.GetMinSectorExpiration() + miner.WPoStProvingPeriod
+	if *end < minExp {
+		end = &minExp
+	}
 
 	return *end, nil
 }
@@ -119,5 +122,5 @@ func (p *BasicPreCommitPolicy) getCCSectorLifetime() (abi.ChainEpoch, error) {
 		return maxExpiration, nil
 	}
 
-	return (ccLifetimeEpochs - p.provingBuffer), nil
+	return ccLifetimeEpochs - p.provingBuffer, nil
 }
