@@ -409,6 +409,8 @@ func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) erro
 			if err := batch.Flush(); err != nil {
 				return err
 			}
+			// Flush discards the transaction, so we need a new batch
+			batch = to.NewWriteBatch()
 			count = 0
 			putPooled()
 		}
