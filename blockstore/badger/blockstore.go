@@ -94,6 +94,7 @@ type Blockstore struct {
 var _ blockstore.Blockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
 var _ blockstore.BlockstoreIterator = (*Blockstore)(nil)
+var _ blockstore.BlockstoreGC = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
@@ -167,32 +168,27 @@ func (b *Blockstore) CollectGarbage() error {
 	}
 	defer b.viewers.Done()
 
-	var err error
-	for err == nil {
-		err = b.DB.RunValueLogGC(0.125)
-	}
-
-	if err == badger.ErrNoRewrite {
-		// not really an error in this case
-		return nil
-	}
-
-	return err
-}
-
-// Compact runs a synchronous compaction
-func (b *Blockstore) Compact() error {
-	if err := b.access(); err != nil {
-		return err
-	}
-	defer b.viewers.Done()
-
+	// compact first to gather the necessary statistics for GC
 	nworkers := runtime.NumCPU() / 2
 	if nworkers < 2 {
 		nworkers = 2
 	}
 
-	return b.DB.Flatten(nworkers)
+	err := b.DB.Flatten(nworkers)
+	if err != nil {
+		return err
+	}
+
+	for err == nil {
+		err = b.db.RunValueLogGC(0.125)
+	}
+
+	if err == badger.ErrNoRewrite {
+		// not really an error in this case, it signals the end of GC
+		return nil
+	}
+
+	return err
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
