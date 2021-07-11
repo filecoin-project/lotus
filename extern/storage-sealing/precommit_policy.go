@@ -3,6 +3,8 @@ package sealing
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -60,7 +62,7 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 		return 0, err
 	}
 
-	var end *abi.ChainEpoch
+	var hardMinimum *abi.ChainEpoch
 
 	for _, p := range ps {
 		if p.DealInfo == nil {
@@ -72,18 +74,41 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 			continue
 		}
 
-		if end == nil || *end < p.DealInfo.DealSchedule.EndEpoch {
+		if hardMinimum == nil || *hardMinimum < p.DealInfo.DealSchedule.EndEpoch {
 			tmp := p.DealInfo.DealSchedule.EndEpoch
-			end = &tmp
+			hardMinimum = &tmp
 		}
 	}
 
-	if end == nil {
-		tmp := epoch + p.duration
-		end = &tmp
+	exp := epoch + p.duration
+	if hardMinimum != nil {
+		exp = *hardMinimum
 	}
 
-	*end += miner.WPoStProvingPeriod - (*end % miner.WPoStProvingPeriod) + p.provingBoundary - 1
+	// TODO: Is this still needed?
+	// align on proving period boundary
+	exp += miner.WPoStProvingPeriod - (exp % miner.WPoStProvingPeriod) + p.provingBoundary - 1
 
-	return *end, nil
+	// add / subtract out miner.WPoStProvingPeriod to allow 24h for the PC message to land, should probably be a config
+	maxEnd := epoch + policy.GetMaxSectorExpirationExtension() - miner.WPoStProvingPeriod
+	minEnd := epoch + policy.GetMinSectorExpiration() + miner.WPoStProvingPeriod
+
+	if exp > maxEnd {
+		// we need to subtract out ceil(end - maxEnd) days
+		daysToSubtract := (exp-maxEnd)/miner.WPoStProvingPeriod + 1
+		exp -= daysToSubtract * miner.WPoStProvingPeriod
+	}
+
+	if exp < minEnd {
+		// we need to add ceil(end - maxEnd) days
+		daysToAdd := (minEnd-exp)/miner.WPoStProvingPeriod + 1
+		exp += daysToAdd * miner.WPoStProvingPeriod
+	}
+
+	if hardMinimum != nil && exp < *hardMinimum {
+		// i guess the best thing to do here is to just set it to the deal-enforced limit?
+		exp = *hardMinimum
+	}
+
+	return exp, nil
 }

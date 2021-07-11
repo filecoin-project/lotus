@@ -305,6 +305,10 @@ func GetMaxSectorExpirationExtension() abi.ChainEpoch {
 	return miner5.MaxSectorExpirationExtension
 }
 
+func GetMinSectorExpiration() abi.ChainEpoch {
+	return miner5.MinSectorExpiration
+}
+
 func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {
 	sectorsPerPart, err := builtin5.PoStProofWindowPoStPartitionSectors(p)
 	if err != nil {
