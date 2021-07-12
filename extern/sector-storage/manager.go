@@ -723,4 +723,3 @@ func (m *Manager) Close(ctx context.Context) error {
 
 var _ Unsealer = &Manager{}
 var _ SectorManager = &Manager{}
-var _ Unsealer = &Manager{}
