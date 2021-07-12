@@ -277,6 +277,8 @@ func (b *Blockstore) MoveTo(path string, filter func(cid.Cid) bool) error {
 		}
 	}()
 
+	log.Infof("moving blockstore from %s to %s", b.opts.Dir, path)
+
 	opts := b.opts
 	opts.Dir = path
 	opts.ValueDir = path
@@ -290,6 +292,7 @@ func (b *Blockstore) MoveTo(path string, filter func(cid.Cid) bool) error {
 	b.db2 = db2
 	b.unlockMove(moveStateMoving)
 
+	log.Info("copying blockstore")
 	err = b.doCopy(b.db, b.db2, filter)
 	if err != nil {
 		return fmt.Errorf("error moving badger blockstore to %s: %w", path, err)
@@ -327,6 +330,7 @@ func (b *Blockstore) MoveTo(path string, filter func(cid.Cid) bool) error {
 		b.deleteDB(oldpath)
 	}
 
+	log.Info("moving blockstore done")
 	return nil
 }
 
@@ -429,7 +433,7 @@ func (b *Blockstore) deleteDB(path string) {
 	for {
 		fi, err := os.Lstat(lpath)
 		if err != nil {
-			log.Warnf("error stating %s: %s", path, err)
+			log.Warnf("error stating %s: %s", lpath, err)
 			return
 		}
 
@@ -437,18 +441,24 @@ func (b *Blockstore) deleteDB(path string) {
 			break
 		}
 
-		lpath, err := os.Readlink(lpath)
+		log.Infof("resolving symbolic link %s", lpath)
+		newpath, err := os.Readlink(lpath)
 		if err != nil {
 			log.Warnf("error resolving symbolic link %s: %s", lpath, err)
+			return
 		}
+		log.Infof("resolved symbolic link %s -> %s", lpath, newpath)
+		lpath = newpath
 	}
 
+	log.Infof("removing data directory %s", lpath)
 	if err := os.RemoveAll(lpath); err != nil {
 		log.Warnf("error deleting db at %s: %s", lpath, err)
 		return
 	}
 
 	if path != lpath {
+		log.Infof("removing link %s", path)
 		if err := os.Remove(path); err != nil {
 			log.Warnf("error removing symbolic link %s", err)
 		}
