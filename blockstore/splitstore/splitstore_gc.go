@@ -1,46 +1,57 @@
 package splitstore
 
 import (
+	"fmt"
 	"time"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
+	cid "github.com/ipfs/go-cid"
 )
 
 func (s *SplitStore) gcHotstore() {
-	// we only perform moving gc every 10 compactions as it can take a while
-	if s.compactionIndex%10 != 0 {
-		goto online_gc
+	// we only perform moving gc every 20 compactions (about once a week) as it can take a while
+	if s.compactionIndex%20 == 0 {
+		if err := s.gcBlockstoreMoving(s.hot, "", nil); err != nil {
+			log.Warnf("error moving hotstore: %s", err)
+			// fallthrough to online gc
+		} else {
+			return
+		}
 	}
 
-	// check if the hotstore is movable; if so, move it.
-	if mover, ok := s.hot.(bstore.BlockstoreMover); ok {
-		log.Info("moving hotstore")
+	if err := s.gcBlockstoreOnline(s.hot); err != nil {
+		log.Warnf("error garbage collecting hostore: %s", err)
+	}
+}
+
+func (s *SplitStore) gcBlockstoreMoving(b bstore.Blockstore, path string, filter func(cid.Cid) bool) error {
+	if mover, ok := b.(bstore.BlockstoreMover); ok {
+		log.Info("moving blockstore")
 		startMove := time.Now()
-		err := mover.MoveTo("", nil)
-		if err != nil {
-			log.Warnf("error moving hotstore: %s", err)
-			// try online gc
-			goto online_gc
+
+		if err := mover.MoveTo(path, filter); err != nil {
+			return err
 		}
 
 		log.Infow("moving hotstore done", "took", time.Since(startMove))
-		return
+		return nil
 	}
 
-online_gc:
-	// check if the hotstore supports online GC; if so, GC it.
-	if gc, ok := s.hot.(bstore.BlockstoreGC); ok {
-		log.Info("garbage collecting hotstore")
+	return fmt.Errorf("blockstore doesn't support moving: %T", b)
+}
+
+func (s *SplitStore) gcBlockstoreOnline(b bstore.Blockstore) error {
+	if gc, ok := b.(bstore.BlockstoreGC); ok {
+		log.Info("garbage collecting blockstore")
 		startGC := time.Now()
-		err := gc.CollectGarbage()
-		if err != nil {
-			log.Warnf("error garbage collecting hotstore: %s", err)
-			return
+
+		if err := gc.CollectGarbage(); err != nil {
+			return err
 		}
 
-		log.Infof("garbage collecting hotstore done", "took", time.Since(startGC))
-		return
+		log.Infow("garbage collecting hotstore done", "took", time.Since(startGC))
+		return nil
 	}
 
-	return
+	return fmt.Errorf("blockstore doesn't support online gc: %T", b)
 }
