@@ -424,9 +424,34 @@ func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) erro
 }
 
 func (b *Blockstore) deleteDB(path string) {
-	err := os.RemoveAll(path)
-	if err != nil {
-		log.Warnf("error deleting db at %s: %s", path, err)
+	// follow symbolic links, otherwise the data wil be left behind
+	lpath := path
+	for {
+		fi, err := os.Lstat(lpath)
+		if err != nil {
+			log.Warnf("error stating %s: %s", path, err)
+			return
+		}
+
+		if fi.Mode()&os.ModeSymlink == 0 {
+			break
+		}
+
+		lpath, err := os.Readlink(lpath)
+		if err != nil {
+			log.Warnf("error resolving symbolic link %s: %s", lpath, err)
+		}
+	}
+
+	if err := os.RemoveAll(lpath); err != nil {
+		log.Warnf("error deleting db at %s: %s", lpath, err)
+		return
+	}
+
+	if path != lpath {
+		if err := os.Remove(path); err != nil {
+			log.Warnf("error removing symbolic link %s", err)
+		}
 	}
 }
 
