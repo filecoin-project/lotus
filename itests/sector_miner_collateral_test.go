@@ -51,6 +51,9 @@ func TestMinerBalanceCollateral(t *testing.T) {
 						MaxCommitBatch:    nSectors,
 
 						CollateralFromMinerBalance: enabled,
+						AvailableBalanceBuffer:     big.Zero(),
+						DisableCollateralFallback:  false,
+						AggregateAboveBaseFee:      big.Zero(),
 					}, nil
 				}, nil
 			})),

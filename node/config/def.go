@@ -127,6 +127,10 @@ type SealingConfig struct {
 
 	// Whether to use available miner balance for sector collateral instead of sending it with each message
 	CollateralFromMinerBalance bool
+	// Minimum available balance to keep in the miner actor before sending it with messages
+	AvailableBalanceBuffer types.FIL
+	// Don't send collateral with messages even if there is no available balance in the miner actor
+	DisableCollateralFallback bool
 
 	// enable / disable precommit batching (takes effect after nv13)
 	BatchPreCommits bool
@@ -320,13 +324,16 @@ func DefaultStorageMiner() *StorageMiner {
 		Common: defCommon(),
 
 		Sealing: SealingConfig{
-			MaxWaitDealsSectors:        2, // 64G with 32G sectors
-			MaxSealingSectors:          0,
-			MaxSealingSectorsForDeals:  0,
-			WaitDealsDelay:             Duration(time.Hour * 6),
-			AlwaysKeepUnsealedCopy:     true,
-			FinalizeEarly:              false,
+			MaxWaitDealsSectors:       2, // 64G with 32G sectors
+			MaxSealingSectors:         0,
+			MaxSealingSectorsForDeals: 0,
+			WaitDealsDelay:            Duration(time.Hour * 6),
+			AlwaysKeepUnsealedCopy:    true,
+			FinalizeEarly:             false,
+
 			CollateralFromMinerBalance: false,
+			AvailableBalanceBuffer:     types.FIL(big.Zero()),
+			DisableCollateralFallback:  false,
 
 			BatchPreCommits:     true,
 			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors

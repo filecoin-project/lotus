@@ -362,9 +362,9 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return err
 	}
 
-	deposit := pcd
-	if cfg.CollateralFromMinerBalance {
-		deposit = big.Zero() // pay using available miner balance
+	deposit, err := collateralSendAmount(ctx.Context(), m.api, m.maddr, cfg, pcd)
+	if err != nil {
+		return err
 	}
 
 	enc := new(bytes.Buffer)
@@ -633,8 +633,9 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 		collateral = big.Zero()
 	}
 
-	if cfg.CollateralFromMinerBalance {
-		collateral = big.Zero() // pay using available miner balance
+	collateral, err = collateralSendAmount(ctx.Context(), m.api, m.maddr, cfg, collateral)
+	if err != nil {
+		return err
 	}
 
 	goodFunds := big.Add(collateral, big.Int(m.feeCfg.MaxCommitGasFee))

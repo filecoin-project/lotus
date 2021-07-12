@@ -7,10 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -18,13 +14,16 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/node/config"
@@ -46,6 +45,7 @@ type CommitBatcherApi interface {
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 }
 
 type AggregateInput struct {
@@ -341,9 +341,9 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	aggFee := big.Div(big.Mul(policy.AggregateNetworkFee(nv, len(infos), bf), aggFeeNum), aggFeeDen)
 
 	needFunds := big.Add(collateral, aggFee)
-
-	if cfg.CollateralFromMinerBalance {
-		needFunds = big.Zero()
+	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)
+	if err != nil {
+		return []sealiface.CommitBatchRes{res}, err
 	}
 
 	goodFunds := big.Add(maxFee, needFunds)
@@ -371,6 +371,20 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
+	avail := types.TotalFilecoinInt
+
+	if cfg.CollateralFromMinerBalance && !cfg.DisableCollateralFallback {
+		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("getting available miner balance: %w", err)
+		}
+
+		avail = big.Sub(avail, cfg.AvailableBalanceBuffer)
+		if avail.LessThan(big.Zero()) {
+			avail = big.Zero()
+		}
+	}
+
 	tok, _, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
@@ -384,7 +398,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 			FailedSectors: map[abi.SectorNumber]string{},
 		}
 
-		mcid, err := b.processSingle(cfg, mi, sn, info, tok)
+		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, tok)
 		if err != nil {
 			log.Errorf("process single error: %+v", err) // todo: return to user
 			r.FailedSectors[sn] = err.Error()
@@ -398,7 +412,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 	return res, nil
 }
 
-func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
+func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
@@ -415,7 +429,16 @@ func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, 
 	}
 
 	if cfg.CollateralFromMinerBalance {
-		collateral = big.Zero()
+		c := big.Sub(collateral, *avail)
+		*avail = big.Sub(*avail, collateral)
+		collateral = c
+
+		if collateral.LessThan(big.Zero()) {
+			collateral = big.Zero()
+		}
+		if (*avail).LessThan(big.Zero()) {
+			*avail = big.Zero()
+		}
 	}
 
 	goodFunds := big.Add(collateral, big.Int(b.feeCfg.MaxCommitGasFee))
