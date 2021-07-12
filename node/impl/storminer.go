@@ -454,6 +454,11 @@ func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retr
 	deals := sm.RetrievalProvider.ListDeals()
 
 	for _, deal := range deals {
+		if deal.ChannelID != nil {
+			if deal.ChannelID.Initiator == "" || deal.ChannelID.Responder == "" {
+				deal.ChannelID = nil // don't try to push unparsable peer IDs over jsonrpc
+			}
+		}
 		out = append(out, deal)
 	}
 
