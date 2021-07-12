@@ -17,6 +17,116 @@ import (
 	"golang.org/x/xerrors"
 )
 
+const (
+	MarketsService = "markets"
+)
+
+var serviceCmd = &cli.Command{
+	Name:  "service",
+	Usage: "Initialize a lotus miner sub-service",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "config",
+			Usage:    "config file (config.toml)",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "storage-config",
+			Usage:    "storage paths config (storage.json)",
+			Required: true,
+		},
+		&cli.BoolFlag{
+			Name:  "nosync",
+			Usage: "don't check full-node sync status",
+		},
+		&cli.StringSliceFlag{
+			Name:  "name",
+			Usage: "services to be enabled",
+		},
+		&cli.StringFlag{
+			Name:  "api-sealer",
+			Usage: "sealer API info (lotus-miner auth api-info --perm=admin)",
+		},
+		&cli.StringFlag{
+			Name:  "api-sector-index",
+			Usage: "sector Index API info (lotus-miner auth api-info --perm=admin)",
+		},
+	},
+	ArgsUsage: "[backupFile]",
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+		log.Info("Initializing lotus miner service")
+
+		es := EnabledServices(cctx.StringSlice("name"))
+
+		if len(es) == 0 {
+			return xerrors.Errorf("at least one module must be enabled")
+		}
+
+		// we should remove this as soon as we have more service types and not just `markets`
+		if !es.Contains(MarketsService) {
+			return xerrors.Errorf("markets module must be enabled")
+		}
+
+		if !cctx.IsSet("api-sealer") {
+			return xerrors.Errorf("--api-sealer is required without the sealer module enabled")
+		}
+		if !cctx.IsSet("api-sector-index") {
+			return xerrors.Errorf("--api-sector-index is required without the sector storage module enabled")
+		}
+
+		if err := restore(ctx, cctx, func(cfg *config.StorageMiner) error {
+			cfg.Subsystems.EnableMarkets = es.Contains(MarketsService)
+			cfg.Subsystems.EnableMining = false
+			cfg.Subsystems.EnableSealing = false
+			cfg.Subsystems.EnableSectorStorage = false
+
+			if !cfg.Subsystems.EnableSealing {
+				ai, err := checkApiInfo(ctx, cctx.String("api-sealer"))
+				if err != nil {
+					return xerrors.Errorf("checking sealer API: %w", err)
+				}
+				cfg.Subsystems.SealerApiInfo = ai
+			}
+
+			if !cfg.Subsystems.EnableSectorStorage {
+				ai, err := checkApiInfo(ctx, cctx.String("api-sector-index"))
+				if err != nil {
+					return xerrors.Errorf("checking sector index API: %w", err)
+				}
+				cfg.Subsystems.SectorIndexApiInfo = ai
+			}
+
+			return nil
+		}, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi miner.MinerInfo) error {
+			if es.Contains(MarketsService) {
+				log.Info("Configuring miner actor")
+
+				if err := configureStorageMiner(ctx, api, maddr, peerid, big.Zero()); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+type EnabledServices []string
+
+func (es EnabledServices) Contains(name string) bool {
+	for _, s := range es {
+		if s == name {
+			return true
+		}
+	}
+	return false
+}
+
 func checkApiInfo(ctx context.Context, ai string) (string, error) {
 	ai = strings.TrimPrefix(strings.TrimSpace(ai), "MINER_API_INFO=")
 	info := cliutil.ParseApiInfo(ai)
@@ -43,94 +153,4 @@ func checkApiInfo(ctx context.Context, ai string) (string, error) {
 	}
 
 	return ai, nil
-}
-
-var serviceCmd = &cli.Command{
-	Name:  "service",
-	Usage: "Initialize a lotus miner sub-service",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "config",
-			Usage:    "config file (config.toml)",
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "storage-config",
-			Usage:    "storage paths config (storage.json)",
-			Required: true,
-		},
-		&cli.BoolFlag{
-			Name:  "nosync",
-			Usage: "don't check full-node sync status",
-		},
-
-		&cli.BoolFlag{
-			Name:  "enable-market",
-			Usage: "enable market module",
-		},
-
-		&cli.StringFlag{
-			Name:  "api-sealer",
-			Usage: "sealer API info (lotus-miner auth api-info --perm=admin)",
-		},
-		&cli.StringFlag{
-			Name:  "api-sector-index",
-			Usage: "sector Index API info (lotus-miner auth api-info --perm=admin)",
-		},
-	},
-	ArgsUsage: "[backupFile]",
-	Action: func(cctx *cli.Context) error {
-		ctx := lcli.ReqContext(cctx)
-		log.Info("Initializing lotus miner service")
-
-		if !cctx.Bool("enable-market") {
-			return xerrors.Errorf("at least one module must be enabled")
-		}
-
-		if !cctx.IsSet("api-sealer") {
-			return xerrors.Errorf("--api-sealer is required without the sealer module enabled")
-		}
-		if !cctx.IsSet("api-sector-index") {
-			return xerrors.Errorf("--api-sector-index is required without the sector storage module enabled")
-		}
-
-		if err := restore(ctx, cctx, func(cfg *config.StorageMiner) error {
-			cfg.Subsystems.EnableMarkets = cctx.Bool("enable-market")
-			cfg.Subsystems.EnableMining = false
-			cfg.Subsystems.EnableSealing = false
-			cfg.Subsystems.EnableSectorStorage = false
-
-			if !cfg.Subsystems.EnableSealing {
-				ai, err := checkApiInfo(ctx, cctx.String("api-sealer"))
-				if err != nil {
-					return xerrors.Errorf("checking sealer API: %w", err)
-				}
-				cfg.Subsystems.SealerApiInfo = ai
-			}
-
-			if !cfg.Subsystems.EnableSectorStorage {
-				ai, err := checkApiInfo(ctx, cctx.String("api-sector-index"))
-				if err != nil {
-					return xerrors.Errorf("checking sector index API: %w", err)
-				}
-				cfg.Subsystems.SectorIndexApiInfo = ai
-			}
-
-			return nil
-		}, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi miner.MinerInfo) error {
-			if cctx.Bool("enable-market") {
-				log.Info("Configuring miner actor")
-
-				if err := configureStorageMiner(ctx, api, maddr, peerid, big.Zero()); err != nil {
-					return err
-				}
-			}
-
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		return nil
-	},
 }
