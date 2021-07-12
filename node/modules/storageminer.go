@@ -188,6 +188,15 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.Addre
 			as.TerminateControl = append(as.TerminateControl, addr)
 		}
 
+		for _, s := range addrConf.DealPublishControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing deal publishing control address: %w", err)
+			}
+
+			as.DealPublishControl = append(as.DealPublishControl, addr)
+		}
+
 		return as, nil
 	}
 }

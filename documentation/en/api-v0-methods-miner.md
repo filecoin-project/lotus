@@ -229,6 +229,7 @@ Response:
   "PreCommitControl": null,
   "CommitControl": null,
   "TerminateControl": null,
+  "DealPublishControl": null,
   "DisableOwnerFallback": true,
   "DisableWorkerFallback": true
 }

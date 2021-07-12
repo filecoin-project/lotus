@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -24,6 +25,12 @@ type AddressSelector struct {
 }
 
 func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	if as == nil {
+		// should only happen in some tests
+		log.Warnw("smart address selection disabled, using worker address")
+		return mi.Worker, big.Zero(), nil
+	}
+
 	var addrs []address.Address
 	switch use {
 	case api.PreCommitAddr:
@@ -32,6 +39,8 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 		addrs = append(addrs, as.CommitControl...)
 	case api.TerminateSectorsAddr:
 		addrs = append(addrs, as.TerminateControl...)
+	case api.DealPublishAddr:
+		addrs = append(addrs, as.DealPublishControl...)
 	default:
 		defaultCtl := map[address.Address]struct{}{}
 		for _, a := range mi.ControlAddresses {
@@ -43,6 +52,7 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 		configCtl := append([]address.Address{}, as.PreCommitControl...)
 		configCtl = append(configCtl, as.CommitControl...)
 		configCtl = append(configCtl, as.TerminateControl...)
+		configCtl = append(configCtl, as.DealPublishControl...)
 
 		for _, addr := range configCtl {
 			if addr.Protocol() != address.ID {
