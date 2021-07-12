@@ -95,7 +95,7 @@ var serviceCmd = &cli.Command{
 		}
 
 		if err := restore(ctx, cctx, func(cfg *config.StorageMiner) error {
-			cfg.Subsystems.EnableStorageMarket = cctx.Bool("enable-market")
+			cfg.Subsystems.EnableMarkets = cctx.Bool("enable-market")
 			cfg.Subsystems.EnableMining = false
 			cfg.Subsystems.EnableSealing = false
 			cfg.Subsystems.EnableSectorStorage = false

@@ -424,7 +424,7 @@ func (n *Ensemble) Start() *Ensemble {
 			n.t.Fatalf("invalid config from repo, got: %T", c)
 		}
 		cfg.Common.API.RemoteListenAddress = m.RemoteListener.Addr().String()
-		cfg.Subsystems.EnableStorageMarket = m.options.subsystems.Has(SStorageMarket)
+		cfg.Subsystems.EnableMarkets = m.options.subsystems.Has(SMarkets)
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)

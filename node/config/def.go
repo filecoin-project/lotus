@@ -62,7 +62,7 @@ type MinerSubsystemConfig struct {
 	EnableMining        bool
 	EnableSealing       bool
 	EnableSectorStorage bool
-	EnableStorageMarket bool
+	EnableMarkets       bool
 
 	SealerApiInfo      string // if EnableSealing == false
 	SectorIndexApiInfo string // if EnableSectorStorage == false
@@ -400,7 +400,7 @@ func DefaultStorageMiner() *StorageMiner {
 			EnableMining:        true,
 			EnableSealing:       true,
 			EnableSectorStorage: true,
-			EnableStorageMarket: true,
+			EnableMarkets:       true,
 		},
 
 		Fees: MinerFeeConfig{

@@ -132,7 +132,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("invalid config for repo, got: %T", c)
 		}
 
-		bootstrapLibP2P := cfg.Subsystems.EnableStorageMarket
+		bootstrapLibP2P := cfg.Subsystems.EnableMarkets
 
 		err = lr.Close()
 		if err != nil {

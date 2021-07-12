@@ -49,7 +49,7 @@ type NodeOpt func(opts *nodeOpts) error
 
 func WithAllSubsystems() NodeOpt {
 	return func(opts *nodeOpts) error {
-		opts.subsystems = opts.subsystems.Add(SStorageMarket)
+		opts.subsystems = opts.subsystems.Add(SMarkets)
 		opts.subsystems = opts.subsystems.Add(SMining)
 		opts.subsystems = opts.subsystems.Add(SSealing)
 		opts.subsystems = opts.subsystems.Add(SSectorStorage)
