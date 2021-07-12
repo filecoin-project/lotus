@@ -72,6 +72,9 @@ var (
 	// this is first computed at warmup and updated in every compaction
 	markSetSizeKey = dstore.NewKey("/splitstore/markSetSize")
 
+	// compactionIndexKey stores the compaction index (serial number)
+	compactionIndexKey = dstore.NewKey("/splitstore/compactionIndex")
+
 	log = logging.Logger("splitstore")
 
 	// used to signal end of walk
@@ -139,6 +142,8 @@ type SplitStore struct {
 
 	markSetEnv  MarkSetEnv
 	markSetSize int64
+
+	compactionIndex int64
 
 	ctx    context.Context
 	cancel func()
@@ -528,6 +533,17 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	case dstore.ErrNotFound:
 	default:
 		return xerrors.Errorf("error loading mark set size: %w", err)
+	}
+
+	// load compactionIndex from metadata ds to provide a hint as to when to perform moving gc
+	bs, err = s.ds.Get(compactionIndexKey)
+	switch err {
+	case nil:
+		s.compactionIndex = bytesToInt64(bs)
+
+	case dstore.ErrNotFound:
+	default:
+		return xerrors.Errorf("error loading compaction index: %w", err)
 	}
 
 	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch)
@@ -977,7 +993,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
 
-	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch)
+	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "compactionIndex", s.compactionIndex)
 
 	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
 	if err != nil {
@@ -994,7 +1010,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	s.beginTxnMarking(markSet)
 
 	// 1. mark reachable objects by walking the chain from the current epoch; we keep state roots
-	//   and messages until the boundary epoch.
+	//   and messages until the boundary epoch.nn
 	log.Info("marking reachable objects")
 	startMark := time.Now()
 
@@ -1145,6 +1161,12 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	err = s.ds.Put(markSetSizeKey, int64ToBytes(s.markSetSize))
 	if err != nil {
 		return xerrors.Errorf("error saving mark set size: %w", err)
+	}
+
+	s.compactionIndex++
+	err = s.ds.Put(compactionIndexKey, int64ToBytes(s.compactionIndex))
+	if err != nil {
+		return xerrors.Errorf("error saving compaction index: %w", err)
 	}
 
 	return nil
