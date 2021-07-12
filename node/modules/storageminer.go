@@ -726,11 +726,11 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.Storage
 	return sectorstorage.StorageAuth(headers), nil
 }
 
-func StorageAuthWithURL(url string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
 	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
-		s := strings.Split(url, ":")
+		s := strings.Split(apiInfo, ":")
 		if len(s) != 2 {
-			return nil, errors.New("unexpected format of URL")
+			return nil, errors.New("unexpected format of `apiInfo`")
 		}
 		headers := http.Header{}
 		headers.Add("Authorization", "Bearer "+s[0])
