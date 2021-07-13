@@ -2,6 +2,7 @@ package splitstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 
+	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
@@ -21,22 +23,34 @@ import (
 
 func init() {
 	CompactionThreshold = 5
-	CompactionCold = 1
 	CompactionBoundary = 2
 	logging.SetLogLevel("splitstore", "DEBUG")
 }
 
 func testSplitStore(t *testing.T, cfg *Config) {
 	chain := &mockChain{t: t}
-	// genesis
-	genBlock := mock.MkBlock(nil, 0, 0)
-	genTs := mock.TipSet(genBlock)
-	chain.push(genTs)
 
 	// the myriads of stores
 	ds := dssync.MutexWrap(datastore.NewMapDatastore())
-	hot := blockstore.NewMemorySync()
-	cold := blockstore.NewMemorySync()
+	hot := newMockStore()
+	cold := newMockStore()
+
+	// this is necessary to avoid the garbage mock puts in the blocks
+	garbage := blocks.NewBlock([]byte{1, 2, 3})
+	err := cold.Put(garbage)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// genesis
+	genBlock := mock.MkBlock(nil, 0, 0)
+	genBlock.Messages = garbage.Cid()
+	genBlock.ParentMessageReceipts = garbage.Cid()
+	genBlock.ParentStateRoot = garbage.Cid()
+	genBlock.Timestamp = uint64(time.Now().Unix())
+
+	genTs := mock.TipSet(genBlock)
+	chain.push(genTs)
 
 	// put the genesis block to cold store
 	blk, err := genBlock.ToStorageBlock()
@@ -62,9 +76,19 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	}
 
 	// make some tipsets, but not enough to cause compaction
-	mkBlock := func(curTs *types.TipSet, i int) *types.TipSet {
+	mkBlock := func(curTs *types.TipSet, i int, stateRoot blocks.Block) *types.TipSet {
 		blk := mock.MkBlock(curTs, uint64(i), uint64(i))
+
+		blk.Messages = garbage.Cid()
+		blk.ParentMessageReceipts = garbage.Cid()
+		blk.ParentStateRoot = stateRoot.Cid()
+		blk.Timestamp = uint64(time.Now().Unix())
+
 		sblk, err := blk.ToStorageBlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = ss.Put(stateRoot)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -78,18 +102,6 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		return ts
 	}
 
-	mkGarbageBlock := func(curTs *types.TipSet, i int) {
-		blk := mock.MkBlock(curTs, uint64(i), uint64(i))
-		sblk, err := blk.ToStorageBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = ss.Put(sblk)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	waitForCompaction := func() {
 		for atomic.LoadInt32(&ss.compacting) == 1 {
 			time.Sleep(100 * time.Millisecond)
@@ -98,105 +110,63 @@ func testSplitStore(t *testing.T, cfg *Config) {
 
 	curTs := genTs
 	for i := 1; i < 5; i++ {
-		curTs = mkBlock(curTs, i)
+		stateRoot := blocks.NewBlock([]byte{byte(i), 3, 3, 7})
+		curTs = mkBlock(curTs, i, stateRoot)
 		waitForCompaction()
 	}
 
-	mkGarbageBlock(genTs, 1)
-
 	// count objects in the cold and hot stores
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	countBlocks := func(bs blockstore.Blockstore) int {
 		count := 0
-		ch, err := bs.AllKeysChan(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for range ch {
+		_ = bs.(blockstore.BlockstoreIterator).ForEachKey(func(_ cid.Cid) error {
 			count++
-		}
+			return nil
+		})
 		return count
 	}
 
 	coldCnt := countBlocks(cold)
 	hotCnt := countBlocks(hot)
 
-	if coldCnt != 1 {
-		t.Errorf("expected %d blocks, but got %d", 1, coldCnt)
+	if coldCnt != 2 {
+		t.Errorf("expected %d blocks, but got %d", 2, coldCnt)
 	}
 
-	if hotCnt != 5 {
-		t.Errorf("expected %d blocks, but got %d", 5, hotCnt)
+	if hotCnt != 10 {
+		t.Errorf("expected %d blocks, but got %d", 10, hotCnt)
 	}
 
 	// trigger a compaction
 	for i := 5; i < 10; i++ {
-		curTs = mkBlock(curTs, i)
+		stateRoot := blocks.NewBlock([]byte{byte(i), 3, 3, 7})
+		curTs = mkBlock(curTs, i, stateRoot)
 		waitForCompaction()
 	}
 
 	coldCnt = countBlocks(cold)
 	hotCnt = countBlocks(hot)
 
-	if !cfg.EnableFullCompaction {
-		if coldCnt != 5 {
-			t.Errorf("expected %d cold blocks, but got %d", 5, coldCnt)
-		}
-
-		if hotCnt != 5 {
-			t.Errorf("expected %d hot blocks, but got %d", 5, hotCnt)
-		}
+	if coldCnt != 5 {
+		t.Errorf("expected %d cold blocks, but got %d", 5, coldCnt)
 	}
 
-	if cfg.EnableFullCompaction && !cfg.EnableGC {
-		if coldCnt != 3 {
-			t.Errorf("expected %d cold blocks, but got %d", 3, coldCnt)
-		}
-
-		if hotCnt != 7 {
-			t.Errorf("expected %d hot blocks, but got %d", 7, hotCnt)
-		}
-	}
-
-	if cfg.EnableFullCompaction && cfg.EnableGC {
-		if coldCnt != 2 {
-			t.Errorf("expected %d cold blocks, but got %d", 2, coldCnt)
-		}
-
-		if hotCnt != 7 {
-			t.Errorf("expected %d hot blocks, but got %d", 7, hotCnt)
-		}
+	if hotCnt != 17 {
+		t.Errorf("expected %d hot blocks, but got %d", 17, hotCnt)
 	}
 
 	// Make sure we can revert without panicking.
 	chain.revert(2)
 }
 
-func TestSplitStoreSimpleCompaction(t *testing.T) {
-	testSplitStore(t, &Config{TrackingStoreType: "mem"})
-}
-
-func TestSplitStoreFullCompactionWithoutGC(t *testing.T) {
-	testSplitStore(t, &Config{
-		TrackingStoreType:    "mem",
-		EnableFullCompaction: true,
-	})
-}
-
-func TestSplitStoreFullCompactionWithGC(t *testing.T) {
-	testSplitStore(t, &Config{
-		TrackingStoreType:    "mem",
-		EnableFullCompaction: true,
-		EnableGC:             true,
-	})
+func TestSplitStoreCompaction(t *testing.T) {
+	testSplitStore(t, &Config{MarkSetType: "map"})
 }
 
 type mockChain struct {
 	t testing.TB
 
 	sync.Mutex
+	genesis  *types.BlockHeader
 	tipsets  []*types.TipSet
 	listener func(revert []*types.TipSet, apply []*types.TipSet) error
 }
@@ -204,6 +174,9 @@ type mockChain struct {
 func (c *mockChain) push(ts *types.TipSet) {
 	c.Lock()
 	c.tipsets = append(c.tipsets, ts)
+	if c.genesis == nil {
+		c.genesis = ts.Blocks()[0]
+	}
 	c.Unlock()
 
 	if c.listener != nil {
@@ -242,7 +215,7 @@ func (c *mockChain) GetTipsetByHeight(_ context.Context, epoch abi.ChainEpoch, _
 		return nil, fmt.Errorf("bad epoch %d", epoch)
 	}
 
-	return c.tipsets[iEpoch-1], nil
+	return c.tipsets[iEpoch], nil
 }
 
 func (c *mockChain) GetHeaviestTipSet() *types.TipSet {
@@ -256,24 +229,105 @@ func (c *mockChain) SubscribeHeadChanges(change func(revert []*types.TipSet, app
 	c.listener = change
 }
 
-func (c *mockChain) WalkSnapshot(_ context.Context, ts *types.TipSet, epochs abi.ChainEpoch, _ bool, _ bool, f func(cid.Cid) error) error {
-	c.Lock()
-	defer c.Unlock()
+type mockStore struct {
+	mx  sync.Mutex
+	set map[cid.Cid]blocks.Block
+}
 
-	start := int(ts.Height()) - 1
-	end := start - int(epochs)
-	if end < 0 {
-		end = -1
+func newMockStore() *mockStore {
+	return &mockStore{set: make(map[cid.Cid]blocks.Block)}
+}
+
+func (b *mockStore) Has(cid cid.Cid) (bool, error) {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+	_, ok := b.set[cid]
+	return ok, nil
+}
+
+func (b *mockStore) HashOnRead(hor bool) {}
+
+func (b *mockStore) Get(cid cid.Cid) (blocks.Block, error) {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+
+	blk, ok := b.set[cid]
+	if !ok {
+		return nil, blockstore.ErrNotFound
 	}
-	for i := start; i > end; i-- {
-		ts := c.tipsets[i]
-		for _, cid := range ts.Cids() {
-			err := f(cid)
-			if err != nil {
-				return err
-			}
+	return blk, nil
+}
+
+func (b *mockStore) GetSize(cid cid.Cid) (int, error) {
+	blk, err := b.Get(cid)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(blk.RawData()), nil
+}
+
+func (b *mockStore) View(cid cid.Cid, f func([]byte) error) error {
+	blk, err := b.Get(cid)
+	if err != nil {
+		return err
+	}
+	return f(blk.RawData())
+}
+
+func (b *mockStore) Put(blk blocks.Block) error {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+
+	b.set[blk.Cid()] = blk
+	return nil
+}
+
+func (b *mockStore) PutMany(blks []blocks.Block) error {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+
+	for _, blk := range blks {
+		b.set[blk.Cid()] = blk
+	}
+	return nil
+}
+
+func (b *mockStore) DeleteBlock(cid cid.Cid) error {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+
+	delete(b.set, cid)
+	return nil
+}
+
+func (b *mockStore) DeleteMany(cids []cid.Cid) error {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+
+	for _, c := range cids {
+		delete(b.set, c)
+	}
+	return nil
+}
+
+func (b *mockStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (b *mockStore) ForEachKey(f func(cid.Cid) error) error {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+
+	for c := range b.set {
+		err := f(c)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
+func (b *mockStore) Close() error {
 	return nil
 }

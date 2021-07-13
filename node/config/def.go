@@ -230,12 +230,9 @@ type Chainstore struct {
 }
 
 type Splitstore struct {
-	HotStoreType         string
-	TrackingStoreType    string
-	MarkSetType          string
-	EnableFullCompaction bool
-	EnableGC             bool // EXPERIMENTAL
-	Archival             bool
+	ColdStoreType string
+	HotStoreType  string
+	MarkSetType   string
 }
 
 // // Full Node
@@ -306,7 +303,9 @@ func DefaultFullNode() *FullNode {
 		Chainstore: Chainstore{
 			EnableSplitstore: false,
 			Splitstore: Splitstore{
-				HotStoreType: "badger",
+				ColdStoreType: "universal",
+				HotStoreType:  "badger",
+				MarkSetType:   "map",
 			},
 		},
 	}
