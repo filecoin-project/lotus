@@ -1439,8 +1439,7 @@ func (s *SplitStore) has(c cid.Cid) (bool, error) {
 
 func (s *SplitStore) checkClosing() error {
 	if atomic.LoadInt32(&s.closing) == 1 {
-		log.Info("splitstore is closing; aborting compaction")
-		return xerrors.Errorf("compaction aborted")
+		return xerrors.Errorf("splitstore is closing")
 	}
 
 	return nil
