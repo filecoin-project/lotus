@@ -96,7 +96,7 @@ type Blockstore struct {
 	viewers sync.WaitGroup
 
 	moveMx    sync.RWMutex
-	moveCond  *sync.Cond
+	moveCond  sync.Cond
 	moveState int
 	rlock     int
 
@@ -135,7 +135,7 @@ func Open(opts Options) (*Blockstore, error) {
 		bs.prefixLen = len(bs.prefix)
 	}
 
-	bs.moveCond = sync.NewCond(&bs.moveMx)
+	bs.moveCond.L = &bs.moveMx
 
 	return bs, nil
 }
