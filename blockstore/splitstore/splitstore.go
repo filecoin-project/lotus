@@ -146,15 +146,16 @@ type SplitStore struct {
 	debug *debugLog
 
 	// transactional protection for concurrent read/writes during compaction
-	txnLk        sync.RWMutex
-	txnViewsMx   sync.Mutex
-	txnViewsCond sync.Cond
-	txnViews     int
-	txnActive    bool
-	txnProtect   MarkSet
-	txnRefsMx    sync.Mutex
-	txnRefs      map[cid.Cid]struct{}
-	txnMissing   map[cid.Cid]struct{}
+	txnLk           sync.RWMutex
+	txnViewsMx      sync.Mutex
+	txnViewsCond    sync.Cond
+	txnViews        int
+	txnViewsWaiting bool
+	txnActive       bool
+	txnProtect      MarkSet
+	txnRefsMx       sync.Mutex
+	txnRefs         map[cid.Cid]struct{}
+	txnMissing      map[cid.Cid]struct{}
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -651,7 +652,7 @@ func (s *SplitStore) viewDone() {
 	defer s.txnViewsMx.Unlock()
 
 	s.txnViews--
-	if s.txnViews == 0 {
+	if s.txnViews == 0 && s.txnViewsWaiting {
 		s.txnViewsCond.Signal()
 	}
 }
@@ -660,9 +661,11 @@ func (s *SplitStore) viewWait() {
 	s.txnViewsMx.Lock()
 	defer s.txnViewsMx.Unlock()
 
+	s.txnViewsWaiting = true
 	for s.txnViews > 0 {
 		s.txnViewsCond.Wait()
 	}
+	s.txnViewsWaiting = false
 }
 
 // transactionally protect a reference to an object
