@@ -128,6 +128,8 @@ type SplitStore struct {
 	warmupEpoch abi.ChainEpoch // protected by mx
 	baseEpoch   abi.ChainEpoch // protected by compaction lock
 
+	headChangeMx sync.Mutex
+
 	coldPurgeSize int
 
 	chain ChainAccessor
@@ -552,6 +554,9 @@ func (s *SplitStore) Close() error {
 }
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
+	s.headChangeMx.Lock()
+	defer s.headChangeMx.Unlock()
+
 	// Revert only.
 	if len(apply) == 0 {
 		return nil
@@ -566,6 +571,8 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	//       this is guaranteed by the chainstore, and it is pervasive in all lotus
 	//       -- if that ever changes then all hell will break loose in general and
 	//       we will have a rance to protectTipSets here.
+	//      Reagrdless, we put a mutex in HeadChange just to be safe
+
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
 		// we are currently compacting -- protect the new tipset(s)
 		s.protectTipSets(apply)
