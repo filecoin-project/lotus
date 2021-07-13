@@ -146,13 +146,15 @@ type SplitStore struct {
 	debug *debugLog
 
 	// transactional protection for concurrent read/writes during compaction
-	txnLk      sync.RWMutex
-	txnActive  bool
-	txnViews   sync.WaitGroup
-	txnProtect MarkSet
-	txnRefsMx  sync.Mutex
-	txnRefs    map[cid.Cid]struct{}
-	txnMissing map[cid.Cid]struct{}
+	txnLk        sync.RWMutex
+	txnViewsMx   sync.Mutex
+	txnViewsCond sync.Cond
+	txnViews     int
+	txnActive    bool
+	txnProtect   MarkSet
+	txnRefsMx    sync.Mutex
+	txnRefs      map[cid.Cid]struct{}
+	txnMissing   map[cid.Cid]struct{}
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -199,6 +201,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		coldPurgeSize: defaultColdPurgeSize,
 	}
 
+	ss.txnViewsCond.L = &ss.txnViewsMx
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
 
 	if enableDebugLog {
@@ -444,10 +447,8 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	//   view can't have its data pointer deleted, which would be catastrophic.
 	//   Note that we can't just RLock for the duration of the view, as this could
 	//    lead to deadlock with recursive views.
-	wg := s.protectView(cid)
-	if wg != nil {
-		defer wg.Done()
-	}
+	s.protectView(cid)
+	defer s.viewDone()
 
 	err := s.hot.View(cid, cb)
 	switch err {
@@ -594,7 +595,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
-		wg := s.beginTxnProtect()
+		s.beginTxnProtect()
 		go func() {
 			defer atomic.StoreInt32(&s.compacting, 0)
 			defer s.endTxnProtect()
@@ -602,7 +603,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 			log.Info("compacting splitstore")
 			start := time.Now()
 
-			s.compact(curTs, wg)
+			s.compact(curTs)
 
 			log.Infow("compaction done", "took", time.Since(start))
 		}()
@@ -632,16 +633,36 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 }
 
 // transactionally protect a view
-func (s *SplitStore) protectView(c cid.Cid) *sync.WaitGroup {
+func (s *SplitStore) protectView(c cid.Cid) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	s.txnViews.Add(1)
 	if s.txnActive {
 		s.trackTxnRef(c)
 	}
 
-	return &s.txnViews
+	s.txnViewsMx.Lock()
+	s.txnViews++
+	s.txnViewsMx.Unlock()
+}
+
+func (s *SplitStore) viewDone() {
+	s.txnViewsMx.Lock()
+	defer s.txnViewsMx.Unlock()
+
+	s.txnViews--
+	if s.txnViews == 0 {
+		s.txnViewsCond.Signal()
+	}
+}
+
+func (s *SplitStore) viewWait() {
+	s.txnViewsMx.Lock()
+	defer s.txnViewsMx.Unlock()
+
+	for s.txnViews > 0 {
+		s.txnViewsCond.Wait()
+	}
 }
 
 // transactionally protect a reference to an object
@@ -933,10 +954,10 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 //   - We sort cold objects heaviest first, so as to never delete the consituents of a DAG before the DAG itself (which would leave dangling references)
 //   - We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
 // - We then end the transaction and compact/gc the hotstore.
-func (s *SplitStore) compact(curTs *types.TipSet, wg *sync.WaitGroup) {
+func (s *SplitStore) compact(curTs *types.TipSet) {
 	log.Info("waiting for active views to complete")
 	start := time.Now()
-	wg.Wait()
+	s.viewWait()
 	log.Infow("waiting for active views done", "took", time.Since(start))
 
 	start = time.Now()
@@ -1126,7 +1147,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	return nil
 }
 
-func (s *SplitStore) beginTxnProtect() *sync.WaitGroup {
+func (s *SplitStore) beginTxnProtect() {
 	log.Info("preparing compaction transaction")
 
 	s.txnLk.Lock()
@@ -1135,8 +1156,6 @@ func (s *SplitStore) beginTxnProtect() *sync.WaitGroup {
 	s.txnActive = true
 	s.txnRefs = make(map[cid.Cid]struct{})
 	s.txnMissing = make(map[cid.Cid]struct{})
-
-	return &s.txnViews
 }
 
 func (s *SplitStore) beginTxnMarking(markSet MarkSet) {
