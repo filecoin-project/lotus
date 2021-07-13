@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
@@ -68,19 +67,18 @@ func collateralSendAmount(ctx context.Context, api interface {
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 }, maddr address.Address, cfg sealiface.Config, collateral abi.TokenAmount) (abi.TokenAmount, error) {
 	if cfg.CollateralFromMinerBalance {
-		avail := types.TotalFilecoinInt
+		if cfg.DisableCollateralFallback {
+			return big.Zero(), nil
+		}
 
-		if !cfg.DisableCollateralFallback {
-			var err error
-			avail, err = api.StateMinerAvailableBalance(ctx, maddr, nil)
-			if err != nil {
-				return big.Zero(), xerrors.Errorf("getting available miner balance: %w", err)
-			}
+		avail, err := api.StateMinerAvailableBalance(ctx, maddr, nil)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("getting available miner balance: %w", err)
+		}
 
-			avail = big.Sub(avail, cfg.AvailableBalanceBuffer)
-			if avail.LessThan(big.Zero()) {
-				avail = big.Zero()
-			}
+		avail = big.Sub(avail, cfg.AvailableBalanceBuffer)
+		if avail.LessThan(big.Zero()) {
+			avail = big.Zero()
 		}
 
 		collateral = big.Sub(collateral, avail)
