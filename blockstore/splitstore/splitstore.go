@@ -678,7 +678,7 @@ func (s *SplitStore) viewDone() {
 
 	s.txnViews--
 	if s.txnViews == 0 && s.txnViewsWaiting {
-		s.txnViewsCond.Signal()
+		s.txnViewsCond.Broadcast()
 	}
 }
 
