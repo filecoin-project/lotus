@@ -659,19 +659,15 @@ func (s *SplitStore) trackTxnRef(c cid.Cid) {
 		mark, err := s.txnProtect.Has(c)
 		if err != nil {
 			log.Warnf("error checking markset: %s", err)
-			goto track
-		}
-
-		if mark {
+			// track it anyways
+		} else if mark {
 			return
 		}
 	}
 
-track:
 	s.txnRefsMx.Lock()
 	s.txnRefs[c] = struct{}{}
 	s.txnRefsMx.Unlock()
-	return
 }
 
 // transactionally protect a batch of references
