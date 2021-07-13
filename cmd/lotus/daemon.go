@@ -314,7 +314,7 @@ var DaemonCmd = &cli.Command{
 		stop, err := node.New(ctx,
 			node.FullAPI(&api, node.Lite(isLite)),
 
-			node.Online(),
+			node.Base(),
 			node.Repo(r),
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),

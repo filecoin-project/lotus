@@ -739,22 +739,3 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 
 	return ctx.Send(SectorFinalized{})
 }
-
-func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInfo) error {
-	// TODO: track sector health / expiration
-	log.Infof("Proving sector %d", sector.SectorNumber)
-
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting sealing config: %w", err)
-	}
-
-	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
-		log.Error(err)
-	}
-
-	// TODO: Watch termination
-	// TODO: Auto-extend if set
-
-	return nil
-}

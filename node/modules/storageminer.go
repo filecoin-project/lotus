@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/lotus/markets/pricing"
@@ -44,7 +45,7 @@ import (
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
@@ -67,7 +68,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -207,7 +207,6 @@ type StorageMinerParams struct {
 	Lifecycle          fx.Lifecycle
 	MetricsCtx         helpers.MetricsCtx
 	API                v1api.FullNode
-	Host               host.Host
 	MetadataDS         dtypes.MetadataDS
 	Sealer             sectorstorage.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
@@ -226,7 +225,6 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			lc     = params.Lifecycle
 			api    = params.API
 			sealer = params.Sealer
-			h      = params.Host
 			sc     = params.SectorIDCounter
 			verif  = params.Verifier
 			prover = params.Prover
@@ -247,7 +245,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, prover, gsd, fc, j, as)
+		sm, err := storage.NewMiner(api, maddr, ds, sealer, sc, verif, prover, gsd, fc, j, as)
 		if err != nil {
 			return nil, err
 		}
@@ -652,6 +650,10 @@ func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dt
 	}
 }
 
+func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
+	return rmnet.NewFromLibp2pHost(h)
+}
+
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
 func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
 	_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
@@ -667,35 +669,26 @@ func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnl
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host,
-	miner *storage.Miner,
-	full v1api.FullNode,
+func RetrievalProvider(
+	maddr dtypes.MinerAddress,
+	adapter retrievalmarket.RetrievalProviderNode,
+	netwk rmnet.RetrievalMarketNetwork,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
 	mds dtypes.StagingMultiDstore,
 	dt dtypes.ProviderDataTransfer,
-	pieceProvider sectorstorage.PieceProvider,
 	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
-	adapter := retrievaladapter.NewRetrievalProviderNode(miner, pieceProvider, full)
-
-	maddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
-	}
-
-	netwk := rmnet.NewFromLibp2pHost(h)
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-
-	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
+	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
 		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
 }
 
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
 var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
-func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, urls sectorstorage.URLs) (*stores.Local, error) {
+func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, urls stores.URLs) (*stores.Local, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	return stores.NewLocal(ctx, ls, si, urls)
 }
@@ -731,6 +724,18 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.Storage
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 	return sectorstorage.StorageAuth(headers), nil
+}
+
+func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+		s := strings.Split(apiInfo, ":")
+		if len(s) != 2 {
+			return nil, errors.New("unexpected format of `apiInfo`")
+		}
+		headers := http.Header{}
+		headers.Add("Authorization", "Bearer "+s[0])
+		return sectorstorage.StorageAuth(headers), nil
+	}
 }
 
 func NewConsiderOnlineStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderOnlineStorageDealsConfigFunc, error) {

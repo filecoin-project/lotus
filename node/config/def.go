@@ -50,11 +50,22 @@ type Backup struct {
 type StorageMiner struct {
 	Common
 
+	Subsystems MinerSubsystemConfig
 	Dealmaking DealmakingConfig
 	Sealing    SealingConfig
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
 	Addresses  MinerAddressConfig
+}
+
+type MinerSubsystemConfig struct {
+	EnableMining        bool
+	EnableSealing       bool
+	EnableSectorStorage bool
+	EnableMarkets       bool
+
+	SealerApiInfo      string // if EnableSealing == false
+	SectorIndexApiInfo string // if EnableSectorStorage == false
 }
 
 type DealmakingConfig struct {
@@ -382,6 +393,13 @@ func DefaultStorageMiner() *StorageMiner {
 					Path: "",
 				},
 			},
+		},
+
+		Subsystems: MinerSubsystemConfig{
+			EnableMining:        true,
+			EnableSealing:       true,
+			EnableSectorStorage: true,
+			EnableMarkets:       true,
 		},
 
 		Fees: MinerFeeConfig{

@@ -86,6 +86,7 @@ type ClientDataTransfer datatransfer.Manager
 
 type ProviderDealStore *statestore.StateStore
 type ProviderPieceStore piecestore.PieceStore
+
 type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 
 // ProviderDataTransfer is a data transfer manager for the provider

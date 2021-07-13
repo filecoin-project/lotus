@@ -7,12 +7,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 
@@ -53,10 +53,9 @@ func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mux := mux.NewRouter()
 
 	mux.HandleFunc("/remote/stat/{id}", handler.remoteStatFs).Methods("GET")
+	mux.HandleFunc("/remote/{type}/{id}/{spt}/allocated/{offset}/{size}", handler.remoteGetAllocated).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteGetSector).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteDeleteSector).Methods("DELETE")
-
-	mux.HandleFunc("/remote/{type}/{id}/{spt}/allocated/{offset}/{size}", handler.remoteGetAllocated).Methods("GET")
 
 	mux.ServeHTTP(w, r)
 }
