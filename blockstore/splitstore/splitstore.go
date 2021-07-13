@@ -629,13 +629,12 @@ func (s *SplitStore) protectView(c cid.Cid) *sync.WaitGroup {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	if !s.txnActive {
-		s.txnViews.Add(1)
-		return &s.txnViews
+	s.txnViews.Add(1)
+	if s.txnActive {
+		s.trackTxnRef(c)
 	}
 
-	s.trackTxnRef(c)
-	return nil
+	return &s.txnViews
 }
 
 // transactionally protect a reference to an object
