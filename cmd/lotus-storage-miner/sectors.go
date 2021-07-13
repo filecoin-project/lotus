@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 
 	lcli "github.com/filecoin-project/lotus/cli"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
@@ -163,9 +162,9 @@ var sectorsListCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:        "color",
-			Aliases:     []string{"c"},
-			Value:       cliutil.DefaultColorUse,
+			Usage:       "use color in display output",
 			DefaultText: "depends on output being a TTY",
+			Aliases:     []string{"c"},
 		},
 		&cli.BoolFlag{
 			Name:  "fast",
@@ -185,7 +184,9 @@ var sectorsListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {

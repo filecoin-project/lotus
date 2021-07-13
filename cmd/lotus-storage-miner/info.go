@@ -49,8 +49,6 @@ var infoCmd = &cli.Command{
 }
 
 func infoCmdAct(cctx *cli.Context) error {
-	color.NoColor = !cctx.Bool("color")
-
 	nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 	if err != nil {
 		return err
