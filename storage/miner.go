@@ -86,6 +86,7 @@ type fullNodeFilteredAPI interface {
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tok types.TipSetKey) (types.BigInt, error)
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error)
 	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]api.Partition, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)

@@ -875,6 +875,10 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
 				FinalizeEarly:             cfg.FinalizeEarly,
 
+				CollateralFromMinerBalance: cfg.CollateralFromMinerBalance,
+				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
+				DisableCollateralFallback:  cfg.DisableCollateralFallback,
+
 				BatchPreCommits:     cfg.BatchPreCommits,
 				MaxPreCommitBatch:   cfg.MaxPreCommitBatch,
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
@@ -904,6 +908,10 @@ func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
 		WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
 		AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
 		FinalizeEarly:             cfg.Sealing.FinalizeEarly,
+
+		CollateralFromMinerBalance: cfg.Sealing.CollateralFromMinerBalance,
+		AvailableBalanceBuffer:     types.BigInt(cfg.Sealing.AvailableBalanceBuffer),
+		DisableCollateralFallback:  cfg.Sealing.DisableCollateralFallback,
 
 		BatchPreCommits:     cfg.Sealing.BatchPreCommits,
 		MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,

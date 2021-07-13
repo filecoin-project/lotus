@@ -88,6 +88,21 @@ func (mr *MockCommitBatcherApiMockRecorder) SendMsg(arg0, arg1, arg2, arg3, arg4
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMsg", reflect.TypeOf((*MockCommitBatcherApi)(nil).SendMsg), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
 
+// StateMinerAvailableBalance mocks base method.
+func (m *MockCommitBatcherApi) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerAvailableBalance", arg0, arg1, arg2)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerAvailableBalance indicates an expected call of StateMinerAvailableBalance.
+func (mr *MockCommitBatcherApiMockRecorder) StateMinerAvailableBalance(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerAvailableBalance", reflect.TypeOf((*MockCommitBatcherApi)(nil).StateMinerAvailableBalance), arg0, arg1, arg2)
+}
+
 // StateMinerInfo mocks base method.
 func (m *MockCommitBatcherApi) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (miner.MinerInfo, error) {
 	m.ctrl.T.Helper()

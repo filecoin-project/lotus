@@ -76,6 +76,15 @@ func (s SealingAPIAdapter) StateMinerInfo(ctx context.Context, maddr address.Add
 	return s.delegate.StateMinerInfo(ctx, maddr, tsk)
 }
 
+func (s SealingAPIAdapter) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (big.Int, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	return s.delegate.StateMinerAvailableBalance(ctx, maddr, tsk)
+}
+
 func (s SealingAPIAdapter) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (address.Address, error) {
 	// TODO: update storage-fsm to just StateMinerInfo
 	mi, err := s.StateMinerInfo(ctx, maddr, tok)
