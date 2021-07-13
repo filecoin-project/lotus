@@ -693,6 +693,8 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 					quiet = true
 					log.Warnf("error checking markset: %s", err)
 				}
+				// This is inconsistent with trackTxnRef (where we track it
+				// anyways).
 				continue
 			}
 
@@ -703,8 +705,6 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 
 		s.txnRefs[c] = struct{}{}
 	}
-
-	return
 }
 
 // protect all pending transactional references
@@ -936,6 +936,12 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 func (s *SplitStore) compact(curTs *types.TipSet, wg *sync.WaitGroup) {
 	log.Info("waiting for active views to complete")
 	start := time.Now()
+	// I'm not holding the txnLk here. Is it not possible for:
+	//
+	// 1. The waitgroup to temporarily hit 0.
+	// 2. protectView to be called, raising it back to 1.
+	//
+	// _Reusing_ a waitgroup is legal. Hitting 0 then going back to 1 while "waiting" is not.
 	wg.Wait()
 	log.Infow("waiting for active views done", "took", time.Since(start))
 
@@ -1457,6 +1463,7 @@ func (s *SplitStore) sortObjects(cids []cid.Cid) error {
 		wi := weights[key(cids[i])]
 		wj := weights[key(cids[j])]
 		if wi == wj {
+			// nit: consider just comparing the keys?
 			return bytes.Compare(cids[i].Hash(), cids[j].Hash()) > 0
 		}
 
