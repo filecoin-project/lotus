@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/urfave/cli/v2"
@@ -30,18 +31,13 @@ var serviceCmd = &cli.Command{
 			Usage:    "config file (config.toml)",
 			Required: true,
 		},
-		&cli.StringFlag{
-			Name:     "storage-config",
-			Usage:    "storage paths config (storage.json)",
-			Required: true,
-		},
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
 		},
 		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "services to be enabled",
+			Name:  "type",
+			Usage: "type of service to be enabled",
 		},
 		&cli.StringFlag{
 			Name:  "api-sealer",
@@ -57,7 +53,7 @@ var serviceCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 		log.Info("Initializing lotus miner service")
 
-		es := EnabledServices(cctx.StringSlice("name"))
+		es := EnabledServices(cctx.StringSlice("type"))
 
 		if len(es) == 0 {
 			return xerrors.Errorf("at least one module must be enabled")
@@ -75,7 +71,7 @@ var serviceCmd = &cli.Command{
 			return xerrors.Errorf("--api-sector-index is required without the sector storage module enabled")
 		}
 
-		if err := restore(ctx, cctx, func(cfg *config.StorageMiner) error {
+		if err := restore(ctx, cctx, &stores.StorageConfig{}, func(cfg *config.StorageMiner) error {
 			cfg.Subsystems.EnableMarkets = es.Contains(MarketsService)
 			cfg.Subsystems.EnableMining = false
 			cfg.Subsystems.EnableSealing = false

@@ -104,9 +104,8 @@ USAGE:
 
 OPTIONS:
    --config value            config file (config.toml)
-   --storage-config value    storage paths config (storage.json)
    --nosync                  don't check full-node sync status (default: false)
-   --name value              services to be enabled
+   --type value              type of service to be enabled
    --api-sealer value        sealer API info (lotus-miner auth api-info --perm=admin)
    --api-sector-index value  sector Index API info (lotus-miner auth api-info --perm=admin)
    --help, -h                show help (default: false)
