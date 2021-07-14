@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -61,6 +62,7 @@ var ChainCmd = &cli.Command{
 		ChainDecodeCmd,
 		ChainEncodeCmd,
 		ChainDisputeSetCmd,
+		ChainPruneCmd,
 	},
 }
 
@@ -1416,5 +1418,46 @@ var chainEncodeParamsCmd = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+var ChainPruneCmd = &cli.Command{
+	Name:  "prune",
+	Usage: "prune the stored chain state and perform garbage collection",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "online-gc",
+			Value: false,
+			Usage: "use online gc for garbage collecting the coldstore",
+		},
+		&cli.StringFlag{
+			Name:  "move",
+			Value: "",
+			Usage: "use moving gc for garbage collecting the coldstore; must specify path for coldstore move",
+		},
+		&cli.IntFlag{
+			Name:  "retention",
+			Value: -1,
+			Usage: "specify state retention policy",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		opts := make(map[string]interface{})
+		if cctx.Bool("online-gc") {
+			opts[splitstore.PruneOnlineGC] = true
+		}
+		if path := cctx.String("move"); path != "" {
+			opts[splitstore.PruneMovingGC] = path
+		}
+		opts[splitstore.PruneRetainState] = int64(cctx.Int("retention"))
+
+		return api.ChainPrune(ctx, opts)
 	},
 }
