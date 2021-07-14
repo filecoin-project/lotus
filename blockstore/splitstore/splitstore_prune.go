@@ -255,9 +255,20 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 		return err
 	}
 
-	// 2.1 protect transactional refs once more
+	// 3. sort dead objects so that the dags with most references are deleted first
+	//    this ensures that we can't refer to a dag with its consituents already deleted, ie
+	//    we lave no dangling references.
+	log.Info("sorting dead objects")
+	startSort := time.Now()
+	err = s.sortObjects(dead)
+	if err != nil {
+		return xerrors.Errorf("error sorting objects: %w", err)
+	}
+	log.Infow("sorting done", "took", time.Since(startSort))
+
+	// 3.1 protect transactional refs once more
 	//     strictly speaking, this is not necessary as purge will do it before deleting each
-	//     batch.  however, there is likely a number of references accumulated during collection
+	//     batch.  however, there is likely a largish number of references accumulated during the sort
 	//     and this protects before entering purge context
 	err = s.protectTxnRefs(markSet)
 	if err != nil {
@@ -268,7 +279,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 		return err
 	}
 
-	// 3. purge dead objects from the coldstore, taking protected references into account
+	// 4. purge dead objects from the coldstore, taking protected references into account
 	log.Info("purging dead objects from the coldstore")
 	startPurge := time.Now()
 	err = s.purge(s.cold, dead, markSet)
