@@ -77,9 +77,11 @@ var storageStatsCmd = &cli.Command{
 		}
 
 		netTotals := networkTotals{
-			seenClient:   make(map[address.Address]bool),
-			seenProvider: make(map[address.Address]bool),
-			seenPieceCid: make(map[cid.Cid]bool),
+			QaNetworkPower:  power.TotalPower.QualityAdjPower,
+			RawNetworkPower: power.TotalPower.RawBytePower,
+			seenClient:      make(map[address.Address]bool),
+			seenProvider:    make(map[address.Address]bool),
+			seenPieceCid:    make(map[cid.Cid]bool),
 		}
 
 		deals, err := api.StateMarketDeals(ctx, head.Key())
@@ -113,11 +115,9 @@ var storageStatsCmd = &cli.Command{
 		netTotals.UniqueClients = len(netTotals.seenClient)
 		netTotals.UniqueProviders = len(netTotals.seenProvider)
 
-		netTotals.QaNetworkPower = power.TotalPower.QualityAdjPower
-		netTotals.RawNetworkPower = power.TotalPower.RawBytePower
 		netTotals.CapacityCarryingData, _ = new(corebig.Rat).SetFrac(
 			corebig.NewInt(netTotals.TotalBytes),
-			power.TotalPower.RawBytePower.Int,
+			netTotals.RawNetworkPower.Int,
 		).Float64()
 
 		return json.NewEncoder(os.Stdout).Encode(
