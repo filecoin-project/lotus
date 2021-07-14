@@ -77,13 +77,13 @@ func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 	}
 	if onlineGC {
 		if _, ok := s.cold.(bstore.BlockstoreGC); !ok {
-			return xerrors.Errorf("coldstore does not support online GC")
+			return xerrors.Errorf("coldstore does not support online GC (%T)", s.cold)
 		}
 		doGC = func() error { return s.gcBlockstoreOnline(s.cold) }
 	}
 	if movingGC {
 		if _, ok := s.cold.(bstore.BlockstoreMover); !ok {
-			return xerrors.Errorf("coldstore does not support moving GC")
+			return xerrors.Errorf("coldstore does not support moving GC (%T)", s.cold)
 		}
 		doGC = func() error { return s.gcBlockstoreMoving(s.cold, movePath, nil) }
 	}
