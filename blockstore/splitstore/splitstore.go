@@ -150,6 +150,12 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		return nil, xerrors.Errorf("hot blockstore does not support the necessary traits: %T", hot)
 	}
 
+	colds := cold
+	if unwrap, ok := cold.(interface{ Unwrap() bstore.Blockstore }); ok {
+		log.Info("unwrapping coldstore")
+		colds = unwrap.Unwrap()
+	}
+
 	// the markset env
 	markSetEnv, err := OpenMarkSetEnv(path, cfg.MarkSetType)
 	if err != nil {
@@ -161,7 +167,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		cfg:        cfg,
 		path:       path,
 		ds:         ds,
-		cold:       cold,
+		cold:       colds,
 		hot:        hots,
 		markSetEnv: markSetEnv,
 
