@@ -116,7 +116,7 @@ func (s *SplitStore) pruneChain(retainStateP func(int64) bool, doGC func() error
 
 	// take the compaction lock; fail if there is a compaction in progress
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
-		return xerrors.Errorf("compaction or warmup in progress")
+		return xerrors.Errorf("compaction, prune or warmup in progress")
 	}
 
 	// check if we are actually closing first
