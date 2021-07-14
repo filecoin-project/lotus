@@ -72,6 +72,9 @@ var (
 	// this is first computed at warmup and updated in every compaction
 	markSetSizeKey = dstore.NewKey("/splitstore/markSetSize")
 
+	// compactionIndexKey stores the compaction index (serial number)
+	compactionIndexKey = dstore.NewKey("/splitstore/compactionIndex")
+
 	log = logging.Logger("splitstore")
 
 	// used to signal end of walk
@@ -139,6 +142,8 @@ type SplitStore struct {
 
 	markSetEnv  MarkSetEnv
 	markSetSize int64
+
+	compactionIndex int64
 
 	ctx    context.Context
 	cancel func()
@@ -480,6 +485,9 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	s.chain = chain
 	curTs := chain.GetHeaviestTipSet()
 
+	// should we warmup
+	warmup := false
+
 	// load base epoch from metadata ds
 	// if none, then use current epoch because it's a fresh start
 	bs, err := s.ds.Get(baseEpochKey)
@@ -509,11 +517,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		s.warmupEpoch = bytesToEpoch(bs)
 
 	case dstore.ErrNotFound:
-		// the hotstore hasn't warmed up, start a concurrent warm up
-		err = s.warmup(curTs)
-		if err != nil {
-			return xerrors.Errorf("error warming up: %w", err)
-		}
+		warmup = true
 
 	default:
 		return xerrors.Errorf("error loading warmup epoch: %w", err)
@@ -530,7 +534,28 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		return xerrors.Errorf("error loading mark set size: %w", err)
 	}
 
+	// load compactionIndex from metadata ds to provide a hint as to when to perform moving gc
+	bs, err = s.ds.Get(compactionIndexKey)
+	switch err {
+	case nil:
+		s.compactionIndex = bytesToInt64(bs)
+
+	case dstore.ErrNotFound:
+		// this is potentially an upgrade from splitstore v0; schedule a warmup as v0 has
+		// some issues with hot references leaking into the coldstore.
+		warmup = true
+	default:
+		return xerrors.Errorf("error loading compaction index: %w", err)
+	}
+
 	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch)
+
+	if warmup {
+		err = s.warmup(curTs)
+		if err != nil {
+			return xerrors.Errorf("error starting warmup: %w", err)
+		}
+	}
 
 	// watch the chain
 	chain.SubscribeHeadChanges(s.HeadChange)
@@ -653,7 +678,7 @@ func (s *SplitStore) viewDone() {
 
 	s.txnViews--
 	if s.txnViews == 0 && s.txnViewsWaiting {
-		s.txnViewsCond.Signal()
+		s.txnViewsCond.Broadcast()
 	}
 }
 
@@ -717,7 +742,7 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 					quiet = true
 					log.Warnf("error checking markset: %s", err)
 				}
-				continue
+				// track it anyways
 			}
 
 			if mark {
@@ -943,6 +968,12 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	s.warmupEpoch = epoch
 	s.mx.Unlock()
 
+	// also save the compactionIndex, as this is used as an indicator of warmup for upgraded nodes
+	err = s.ds.Put(compactionIndexKey, int64ToBytes(s.compactionIndex))
+	if err != nil {
+		return xerrors.Errorf("error saving compaction index: %w", err)
+	}
+
 	return nil
 }
 
@@ -977,7 +1008,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
 
-	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch)
+	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "compactionIndex", s.compactionIndex)
 
 	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
 	if err != nil {
@@ -994,7 +1025,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	s.beginTxnMarking(markSet)
 
 	// 1. mark reachable objects by walking the chain from the current epoch; we keep state roots
-	//   and messages until the boundary epoch.
+	//   and messages until the boundary epoch.nn
 	log.Info("marking reachable objects")
 	startMark := time.Now()
 
@@ -1145,6 +1176,12 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	err = s.ds.Put(markSetSizeKey, int64ToBytes(s.markSetSize))
 	if err != nil {
 		return xerrors.Errorf("error saving mark set size: %w", err)
+	}
+
+	s.compactionIndex++
+	err = s.ds.Put(compactionIndexKey, int64ToBytes(s.compactionIndex))
+	if err != nil {
+		return xerrors.Errorf("error saving compaction index: %w", err)
 	}
 
 	return nil
@@ -1402,8 +1439,7 @@ func (s *SplitStore) has(c cid.Cid) (bool, error) {
 
 func (s *SplitStore) checkClosing() error {
 	if atomic.LoadInt32(&s.closing) == 1 {
-		log.Info("splitstore is closing; aborting compaction")
-		return xerrors.Errorf("compaction aborted")
+		return xerrors.Errorf("splitstore is closing")
 	}
 
 	return nil
@@ -1694,30 +1730,6 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 		for c := range missing {
 			log.Warnf("unresolved missing reference: %s", c)
 		}
-	}
-}
-
-func (s *SplitStore) gcHotstore() {
-	if compact, ok := s.hot.(interface{ Compact() error }); ok {
-		log.Infof("compacting hotstore")
-		startCompact := time.Now()
-		err := compact.Compact()
-		if err != nil {
-			log.Warnf("error compacting hotstore: %s", err)
-			return
-		}
-		log.Infow("hotstore compaction done", "took", time.Since(startCompact))
-	}
-
-	if gc, ok := s.hot.(interface{ CollectGarbage() error }); ok {
-		log.Infof("garbage collecting hotstore")
-		startGC := time.Now()
-		err := gc.CollectGarbage()
-		if err != nil {
-			log.Warnf("error garbage collecting hotstore: %s", err)
-			return
-		}
-		log.Infow("hotstore garbage collection done", "took", time.Since(startGC))
 	}
 }
 
