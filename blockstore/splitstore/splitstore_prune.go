@@ -8,6 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	cid "github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -302,8 +303,9 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	return nil
 }
 
-// like walkChain but peforms a deep walk, using walkObjectIncomplete, whereby all messages
+// like walkChain but peforms a deep walk, using walkObjectLax, whereby all messages
 // are retained and state roots are retained if they satisfy the given predicate
+// missing references are ignored, as we expect to have plenty for snapshot syncs.
 func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bool,
 	f func(cid.Cid) error) error {
 	visited := cid.NewSet()
@@ -312,8 +314,6 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 	walkCnt := 0
 
 	baseEpoch := ts.Height()
-	stopWalk := func(_ cid.Cid) error { return errStopWalk }
-
 	walkBlock := func(c cid.Cid) error {
 		if !visited.Visit(c) {
 			return nil
@@ -338,19 +338,19 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 		retainState := retainStateP(depth)
 
 		if hdr.Height > 0 {
-			if err := s.walkObjectIncomplete(hdr.Messages, walked, f, stopWalk); err != nil {
+			if err := s.walkObjectLax(hdr.Messages, walked, f); err != nil {
 				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 			}
 
 			if retainState {
-				if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, walked, f, stopWalk); err != nil {
+				if err := s.walkObjectLax(hdr.ParentMessageReceipts, walked, f); err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
 			}
 		}
 
 		if retainState || hdr.Height == 0 {
-			if err := s.walkObjectIncomplete(hdr.ParentStateRoot, walked, f, stopWalk); err != nil {
+			if err := s.walkObjectLax(hdr.ParentStateRoot, walked, f); err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
 		}
@@ -378,6 +378,55 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 	}
 
 	log.Infow("chain walk done", "walked", walkCnt)
+
+	return nil
+}
+
+// like walkObject but treats missing references laxly; faster version of walkObjectIncomplete
+// without an occurs check.
+func (s *SplitStore) walkObjectLax(c cid.Cid, walked *cid.Set, f func(cid.Cid) error) error {
+	if !walked.Visit(c) {
+		return nil
+	}
+
+	if err := f(c); err != nil {
+		if err == errStopWalk {
+			return nil
+		}
+
+		return err
+	}
+
+	if c.Prefix().Codec != cid.DagCBOR {
+		return nil
+	}
+
+	// check this before recursing
+	if err := s.checkClosing(); err != nil {
+		return err
+	}
+
+	var links []cid.Cid
+	err := s.view(c, func(data []byte) error {
+		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
+			links = append(links, c)
+		})
+	})
+
+	if err != nil {
+		if err == bstore.ErrNotFound { // not a problem for deep walks
+			return nil
+		}
+
+		return xerrors.Errorf("error scanning linked block (cid: %s): %w", c, err)
+	}
+
+	for _, c := range links {
+		err := s.walkObjectLax(c, walked, f)
+		if err != nil {
+			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
+		}
+	}
 
 	return nil
 }
