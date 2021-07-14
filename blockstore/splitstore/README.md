@@ -67,6 +67,32 @@ Compaction works transactionally with the following algorithm:
   - We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
 - We then end the transaction and compact/gc the hotstore.
 
-## Coldstore Garbage Collection
+## Chain Pruning and Garbage Collection
 
-TBD -- see [#6577](https://github.com/filecoin-project/lotus/issues/6577)
+The coldstore can be pruned and garbage collection using the `lotus chain prune` command.
+Note that the command initiates pruning, but runs asynchronously as it can take a long time to
+complete.
+
+By default, pruning keeps all chain reachable object; the user however has the option to specify
+a retention policy for old state roots and message receipts with the `--retention` option.
+The value is an integer with the following semantics:
+- If it is -1 then all state objects reachable from the chain will be retained in the coldstore.
+  This is the (safe) default.
+- If it is 0 then no state objects that are unreachable within the compaction boundary will
+  be retained in the coldstore.
+  This effectively throws away all old state roots and it is maximally effective at reclaiming space.
+- If it is a positive integer, then it's the number of finalities past the compaction boundary
+  for which chain-reachable state objects are retained.
+  This allows you to keep some older state roots in case you need to reset your head outside
+  the compaction boundary or perform historical queries.
+
+During pruning, unreachable objects are deleted from the coldstore. In order to reclaim space,
+you also need to specify a gargage collection policy, with two possible options:
+- The `--online-gc` flag performs online garbage collection; this is fast but does not reclaim all
+  space possible. This is the default.
+- The `--moving-gc` flag performs moving garbage collection, where the coldstore is moved,
+  copying only live objects. If your coldstore lives outside the `.lotus` directory, e.g. with
+  a symlink to a different file system comprising of cheaper disks, then you can specify the
+  directory to move to with the `--move-to` option.
+  This reclaims all possible space, but it is slow and also requires disk space to house the new
+  coldstore together with the old coldstore during the move.
