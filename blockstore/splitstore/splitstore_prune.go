@@ -55,13 +55,19 @@ func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 			}
 			movePath = path
 		case PruneRetainState:
-			retain, ok := v.(int64)
+			retaini64, ok := v.(int64)
 			if !ok {
-				return xerrors.Errorf("bad state retention spceification; expected integer but got %T", v)
+				// deal with json-rpc types...
+				retainf64, ok := v.(float64)
+				if !ok {
+					return xerrors.Errorf("bad state retention specification; expected int64 or float64 but got %T", v)
+				}
+				retainState = int64(retainf64)
+			} else {
+				retainState = retaini64
 			}
-			retainState = retain
 		default:
-			return xerrors.Errorf("unrecognized option %+T", k)
+			return xerrors.Errorf("unrecognized option %s", k)
 		}
 	}
 
