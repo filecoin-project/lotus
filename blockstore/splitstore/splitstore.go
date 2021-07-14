@@ -43,6 +43,8 @@ var (
 
 	log = logging.Logger("splitstore")
 
+	errClosing = errors.New("splitstore is closing")
+
 	// set this to true if you are debugging the splitstore to enable debug logging
 	enableDebugLog = false
 	// set this to true if you want to track origin stack traces in the write log
@@ -541,7 +543,7 @@ func (s *SplitStore) Close() error {
 
 func (s *SplitStore) checkClosing() error {
 	if atomic.LoadInt32(&s.closing) == 1 {
-		return xerrors.Errorf("splitstore is closing")
+		return errClosing
 	}
 
 	return nil

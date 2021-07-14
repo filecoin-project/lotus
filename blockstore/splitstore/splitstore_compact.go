@@ -526,9 +526,9 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	// 5. purge cold objects from the hotstore, taking protected references into account
 	log.Info("purging cold objects from the hotstore")
 	startPurge := time.Now()
-	err = s.purge(cold, markSet)
+	err = s.purge(s.hot, cold, markSet)
 	if err != nil {
-		return xerrors.Errorf("error purging cold blocks: %w", err)
+		return xerrors.Errorf("error purging cold objects: %w", err)
 	}
 	log.Infow("purging cold objects from hotstore done", "took", time.Since(startPurge))
 
@@ -957,7 +957,7 @@ func (s *SplitStore) purgeBatch(cids []cid.Cid, deleteBatch func([]cid.Cid) erro
 	return nil
 }
 
-func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSet) error {
+func (s *SplitStore) purge(bs bstore.Blockstore, cids []cid.Cid, markSet MarkSet) error {
 	deadCids := make([]cid.Cid, 0, batchSize)
 	var purgeCnt, liveCnt int
 	defer func() {
@@ -1004,9 +1004,9 @@ func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSet) error {
 				deadCids = append(deadCids, c)
 			}
 
-			err := s.hot.DeleteMany(deadCids)
+			err := bs.DeleteMany(deadCids)
 			if err != nil {
-				return xerrors.Errorf("error purging cold objects: %w", err)
+				return xerrors.Errorf("error purging objects: %w", err)
 			}
 
 			s.debug.LogDelete(deadCids)
