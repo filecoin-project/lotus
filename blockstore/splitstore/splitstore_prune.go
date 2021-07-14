@@ -14,19 +14,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// prune options
-type pruneOnlineKey struct{}
-type pruneMovingKey struct{}
-type pruneRetainKey struct{}
-
 var (
 	// PruneOnline is a prune option that instructs PruneChain to use online gc for reclaiming space;
 	// there is no value associated with this option.
-	PruneOnlineGC = pruneOnlineKey{}
+	PruneOnlineGC = "splitstore.PruneOnlineGC"
 
 	// PruneMoving is a prune option that instructs PruneChain to use moving gc for reclaiming space;
 	// the value associated with this option is the path of the new coldstore.
-	PruneMovingGC = pruneMovingKey{}
+	PruneMovingGC = "splitstore.PruneMovingGC"
 
 	// PruneRetainState is a prune option that instructs PruneChain as to how many finalities worth
 	// of state to retain in the coldstore.
@@ -38,28 +33,28 @@ var (
 	//   be retained in the coldstore.
 	// - if it is a positive integer, then it's the number of finalities past the compaction boundary
 	//   for which chain-reachable state objects are retained.
-	PruneRetainState = pruneRetainKey{}
+	PruneRetainState = "splitstore.PruneRetainState"
 )
 
 // PruneChain instructs the SplitStore to prune chain state in the coldstore, according to the
 // options specified.
-func (s *SplitStore) PruneChain(opts map[interface{}]interface{}) error {
+func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 	// options
 	var onlineGC, movingGC bool
 	var movePath string
 	var retainState int64 = -1
 
 	for k, v := range opts {
-		switch k.(type) {
-		case pruneOnlineKey:
+		switch k {
+		case PruneOnlineGC:
 			onlineGC = true
-		case pruneMovingKey:
+		case PruneMovingGC:
 			path, ok := v.(string)
 			if !ok {
 				return xerrors.Errorf("bad prune path specification; expected string but got %T", v)
 			}
 			movePath = path
-		case pruneRetainKey:
+		case PruneRetainState:
 			retain, ok := v.(int64)
 			if !ok {
 				return xerrors.Errorf("bad state retention spceification; expected integer but got %T", v)
