@@ -91,12 +91,14 @@ func (s *SplitStore) PruneChain(opts map[interface{}]interface{}) error {
 	switch {
 	case retainState > 0:
 		retainStateP = func(depth int64) bool {
-			return depth < int64(CompactionBoundary)+retainState*int64(build.Finality)
+			return depth <= int64(CompactionBoundary)+retainState*int64(build.Finality)
 		}
 	case retainState < 0:
 		retainStateP = func(_ int64) bool { return true }
 	default:
-		retainStateP = func(_ int64) bool { return false }
+		retainStateP = func(depth int64) bool {
+			return depth <= int64(CompactionBoundary)
+		}
 	}
 
 	if _, ok := s.cold.(bstore.BlockstoreIterator); !ok {
