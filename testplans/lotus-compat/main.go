@@ -41,7 +41,9 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	runenv.RecordMessage("running main...")
 
 	dir := "/lotus-new"
-	go devnet(context.TODO(), runenv, dir)
+	genesisCtx, genesisCancel := context.WithCancel(context.Background())
+	defer genesisCancel()
+	go startMinerStackFromGenesis(genesisCtx, runenv, dir)
 
 	time.Sleep(60 * time.Second)
 
@@ -61,8 +63,18 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	runenv.RecordMessage("retrieve file...")
 	retrieveFile(ctx, dir, datacid)
 
-	//TODO: restart miner and its full node with other version; or
-	//TODO: restart client with other version
+	// kill miner and its full node
+	genesisCancel()
+	time.Sleep(20 * time.Second)
+
+	// restart miner and its full node
+	ctxAfterRst := context.Background()
+	go startMinerStack(ctxAfterRst, runenv, dir)
+
+	time.Sleep(10 * time.Second)
+
+	runenv.RecordMessage("retrieve file again...")
+	retrieveFile(ctx, dir, datacid)
 
 	//TODO: do another storage deal and retrieval
 	//TODO: do the same retrieval as above
@@ -88,7 +100,6 @@ func makeDeal(ctx context.Context, dir string, datacid string) string {
 	lotusBinary := path.Join(dir, "lotus")
 	makeDeal := fmt.Sprintf("%s client deal %s t01000 0.000000000309210552 1299217", lotusBinary, datacid)
 
-	fmt.Println(makeDeal)
 	cmd := exec.CommandContext(ctx, "sh", "-c", makeDeal)
 	result, err := cmd.CombinedOutput()
 	if err != nil {

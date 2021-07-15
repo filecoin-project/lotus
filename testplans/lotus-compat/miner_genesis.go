@@ -15,7 +15,7 @@ import (
 	"github.com/testground/sdk-go/runtime"
 )
 
-func devnet(ctx context.Context, runenv *runtime.RunEnv, dir string) {
+func startMinerStackFromGenesis(ctx context.Context, runenv *runtime.RunEnv, dir string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
@@ -25,12 +25,12 @@ func devnet(ctx context.Context, runenv *runtime.RunEnv, dir string) {
 
 	wg.Add(5)
 	go func() {
-		runLotusDaemon(ctx, runenv, home, dir)
+		runLotusDaemonFromScratch(ctx, runenv, home, dir)
 		wg.Done()
 	}()
 
 	go func() {
-		runLotusMiner(ctx, runenv, home, dir)
+		runLotusMinerFromScratch(ctx, runenv, home, dir)
 		wg.Done()
 	}()
 
@@ -57,7 +57,7 @@ func devnet(ctx context.Context, runenv *runtime.RunEnv, dir string) {
 	wg.Wait()
 }
 
-func runCmdsWithLog(ctx context.Context, name string, commands [][]string) {
+func runCmdsWithLog(ctx context.Context, runenv *runtime.RunEnv, name string, commands [][]string) {
 	logFile, err := os.Create(name + ".log")
 	if err != nil {
 		log.Fatal(err)
@@ -65,7 +65,7 @@ func runCmdsWithLog(ctx context.Context, name string, commands [][]string) {
 	defer logFile.Close()
 
 	for _, cmdArgs := range commands {
-		log.Printf("command for %s: %s", name, strings.Join(cmdArgs, " "))
+		runenv.RecordMessage("command for %s: %s", name, strings.Join(cmdArgs, " "))
 		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 		cmd.Stdout = logFile
 		cmd.Stderr = logFile
@@ -77,7 +77,7 @@ func runCmdsWithLog(ctx context.Context, name string, commands [][]string) {
 	}
 }
 
-func runLotusDaemon(ctx context.Context, runenv *runtime.RunEnv, home string, dir string) {
+func runLotusDaemonFromScratch(ctx context.Context, runenv *runtime.RunEnv, home string, dir string) {
 	cmds := [][]string{
 		{path.Join(dir, "lotus-seed"), "genesis", "new", "localnet.json"},
 		{path.Join(dir, "lotus-seed"), "pre-seal", "--sector-size=2048", "--num-sectors=10"},
@@ -87,10 +87,10 @@ func runLotusDaemon(ctx context.Context, runenv *runtime.RunEnv, home string, di
 			"--genesis-template=localnet.json", "--bootstrap=false"},
 	}
 
-	runCmdsWithLog(ctx, path.Join(runenv.TestOutputsPath, "lotus-daemon"), cmds)
+	runCmdsWithLog(ctx, runenv, path.Join(runenv.TestOutputsPath, "lotus-daemon-genesis"), cmds)
 }
 
-func runLotusMiner(ctx context.Context, runenv *runtime.RunEnv, home, dir string) {
+func runLotusMinerFromScratch(ctx context.Context, runenv *runtime.RunEnv, home, dir string) {
 	cmds := [][]string{
 		{path.Join(dir, "lotus"), "wait-api"}, // wait for lotus node to run
 
@@ -114,7 +114,7 @@ func runLotusMiner(ctx context.Context, runenv *runtime.RunEnv, home, dir string
 		{path.Join(dir, "lotus-miner"), "run", "--nosync"},
 	}
 
-	runCmdsWithLog(ctx, path.Join(runenv.TestOutputsPath, "lotus-miner"), cmds)
+	runCmdsWithLog(ctx, runenv, path.Join(runenv.TestOutputsPath, "lotus-miner-genesis"), cmds)
 }
 
 func setSealDelayPeriodically(ctx context.Context, dir string) {
