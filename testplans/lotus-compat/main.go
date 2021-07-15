@@ -41,7 +41,7 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	runenv.RecordMessage("running main...")
 
 	dir := "/lotus-new"
-	go devnet(context.TODO(), dir)
+	go devnet(context.TODO(), runenv, dir)
 
 	time.Sleep(60 * time.Second)
 

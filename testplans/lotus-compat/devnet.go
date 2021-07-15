@@ -11,9 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/testground/sdk-go/runtime"
 )
 
-func devnet(ctx context.Context, dir string) {
+func devnet(ctx context.Context, runenv *runtime.RunEnv, dir string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
@@ -23,12 +25,12 @@ func devnet(ctx context.Context, dir string) {
 
 	wg.Add(5)
 	go func() {
-		runLotusDaemon(ctx, home, dir)
+		runLotusDaemon(ctx, runenv, home, dir)
 		wg.Done()
 	}()
 
 	go func() {
-		runLotusMiner(ctx, home, dir)
+		runLotusMiner(ctx, runenv, home, dir)
 		wg.Done()
 	}()
 
@@ -75,7 +77,7 @@ func runCmdsWithLog(ctx context.Context, name string, commands [][]string) {
 	}
 }
 
-func runLotusDaemon(ctx context.Context, home string, dir string) {
+func runLotusDaemon(ctx context.Context, runenv *runtime.RunEnv, home string, dir string) {
 	cmds := [][]string{
 		{path.Join(dir, "lotus-seed"), "genesis", "new", "localnet.json"},
 		{path.Join(dir, "lotus-seed"), "pre-seal", "--sector-size=2048", "--num-sectors=10"},
@@ -85,10 +87,10 @@ func runLotusDaemon(ctx context.Context, home string, dir string) {
 			"--genesis-template=localnet.json", "--bootstrap=false"},
 	}
 
-	runCmdsWithLog(ctx, path.Join(dir, "lotus-daemon"), cmds)
+	runCmdsWithLog(ctx, path.Join(runenv.TestOutputsPath, "lotus-daemon"), cmds)
 }
 
-func runLotusMiner(ctx context.Context, home, dir string) {
+func runLotusMiner(ctx context.Context, runenv *runtime.RunEnv, home, dir string) {
 	cmds := [][]string{
 		{path.Join(dir, "lotus"), "wait-api"}, // wait for lotus node to run
 
@@ -112,7 +114,7 @@ func runLotusMiner(ctx context.Context, home, dir string) {
 		{path.Join(dir, "lotus-miner"), "run", "--nosync"},
 	}
 
-	runCmdsWithLog(ctx, path.Join(dir, "lotus-miner"), cmds)
+	runCmdsWithLog(ctx, path.Join(runenv.TestOutputsPath, "lotus-miner"), cmds)
 }
 
 func setSealDelayPeriodically(ctx context.Context, dir string) {
