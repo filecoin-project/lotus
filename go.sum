@@ -287,8 +287,8 @@ github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f/go
 github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a h1:hyJ+pUm/4U4RdEZBlg6k8Ma4rDiuvqyGpoICXAxwsTg=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a/go.mod h1:Eaox7Hvus1JgPrL5+M3+h7aSPHc0cVqpSxA+TxIEpZQ=
 github.com/filecoin-project/go-fil-markets v1.0.5-0.20201113164554-c5eba40d5335/go.mod h1:AJySOJC00JRWEZzRG2KsfUnqEf5ITXxeX09BE9N4f9c=
-github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210715083804-52c35483392f h1:7DtJkZZwGZ6Cd8cNjemaFRyZ6MdnchR74kq0db8f1JE=
-github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210715083804-52c35483392f/go.mod h1:+PSCPfW6bC+iAavOuVfoz3vQ7uhQJTlg+KKO+UuVxjw=
+github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210715124641-2412ccd89114 h1:uEJghQAwCTCPpR/aQLGvnqahWPDOLYL4jnYsdeItsKc=
+github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210715124641-2412ccd89114/go.mod h1:iegdHk34YkHHpgGVB/dKij1emfhoTb2lat80WMWw3Ag=
 github.com/filecoin-project/go-hamt-ipld v0.1.5 h1:uoXrKbCQZ49OHpsTCkrThPNelC4W3LPEk0OrS/ytIBM=
 github.com/filecoin-project/go-hamt-ipld v0.1.5/go.mod h1:6Is+ONR5Cd5R6XZoCse1CWaXZc0Hdb/JeX+EQCQzX24=
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 h1:b3UDemBYN2HNfk3KOXNuxgTTxlWi3xVvbQP0IT38fvM=
@@ -753,9 +753,8 @@ github.com/ipld/go-car v0.1.1-0.20200923150018-8cdef32e2da4/go.mod h1:xrMEcuSq+D
 github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d h1:iphSzTuPqyDgH7WUVZsdqUnQNzYgIblsVr1zhVNA33U=
 github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d/go.mod h1:2Gys8L8MJ6zkh1gktTSXreY63t4UbyvNp5JaudTyxHQ=
 github.com/ipld/go-car/v2 v2.0.0-20210708104948-d79de78d9567/go.mod h1:Ueq4zx/SNx7yHwmfr9xKlKpXxRCMM6wyqC8B0rv9oig=
-github.com/ipld/go-car/v2 v2.0.0-20210715074855-81a9ae6dff48/go.mod h1:0nAH3QhJOua+Dz6SkD6zOYtoZMNCJSDHY4IrbYe3AQs=
-github.com/ipld/go-car/v2 v2.0.0-20210715082649-1789ec2d67c1 h1:v1OvLre7ummKNEBX3GylFLsGwlvSsDLuEzg1WefmCY8=
-github.com/ipld/go-car/v2 v2.0.0-20210715082649-1789ec2d67c1/go.mod h1:0nAH3QhJOua+Dz6SkD6zOYtoZMNCJSDHY4IrbYe3AQs=
+github.com/ipld/go-car/v2 v2.0.0-20210715123707-a315bb047f6b h1:jr7cFCEeu+rDhkivLTI5BX1JrPNLvzYtsOpIHAcfdR8=
+github.com/ipld/go-car/v2 v2.0.0-20210715123707-a315bb047f6b/go.mod h1:0nAH3QhJOua+Dz6SkD6zOYtoZMNCJSDHY4IrbYe3AQs=
 github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785/go.mod h1:bDDSvVz7vaK12FNvMeRYnpRFkSUPNQOiCYQezMD/P3w=
 github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e/go.mod h1:uVIwe/u0H4VdKv3kaN1ck7uCb6yD9cFLS9/ELyXbsw8=
 github.com/ipld/go-ipld-prime v0.5.1-0.20200828233916-988837377a7f/go.mod h1:0xEgdD6MKbZ1vF0GC+YcR/C4SQCAlRuOjIJ2i0HxqzM=

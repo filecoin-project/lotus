@@ -9,7 +9,7 @@ require (
 	github.com/drand/drand v1.2.1
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-data-transfer v1.7.0
-	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210715083804-52c35483392f
+	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210715124641-2412ccd89114
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
