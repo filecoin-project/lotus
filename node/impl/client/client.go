@@ -1079,16 +1079,16 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 
 	// generate a deterministic CARv1 payload from the UnixFS DAG by doing an IPLD
 	// traversal over the Unixfs DAG in the CARv2 file using the "all selector" i.e the entire DAG selector.
-	rdOnly, err := blockstore.OpenReadOnly(tmpCARv2File)
+	fs, err := filestorecaradapter.NewReadOnlyFileStore(tmpCARv2File)
 	if err != nil {
 		return xerrors.Errorf("failed to open read only CARv2 blockstore: %w", err)
 	}
-	defer rdOnly.Close() //nolint:errcheck
+	defer fs.Close() //nolint:errcheck
 
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
-	sc := car.NewSelectiveCar(ctx, rdOnly, []car.Dag{{Root: root, Selector: allSelector}})
+	sc := car.NewSelectiveCar(ctx, fs, []car.Dag{{Root: root, Selector: allSelector}})
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return err
