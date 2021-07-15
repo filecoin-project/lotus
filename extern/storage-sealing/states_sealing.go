@@ -358,8 +358,11 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	params, pcd, tok, err := m.preCommitParams(ctx, sector)
-	if params == nil || err != nil {
-		return err
+	if err != nil {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
+	}
+	if params == nil {
+		return nil // event was sent in preCommitParams
 	}
 
 	deposit, err := collateralSendAmount(ctx.Context(), m.api, m.maddr, cfg, pcd)
@@ -403,8 +406,11 @@ func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector Se
 	}
 
 	params, deposit, _, err := m.preCommitParams(ctx, sector)
-	if params == nil || err != nil {
-		return err
+	if err != nil {
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
+	}
+	if params == nil {
+		return nil // event was sent in preCommitParams
 	}
 
 	res, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)
