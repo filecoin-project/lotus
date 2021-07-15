@@ -31,7 +31,70 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func restore(ctx context.Context, cctx *cli.Context, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi miner.MinerInfo) error) error {
+var restoreCmd = &cli.Command{
+	Name:  "restore",
+	Usage: "Initialize a lotus miner repo from a backup",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "nosync",
+			Usage: "don't check full-node sync status",
+		},
+		&cli.StringFlag{
+			Name:  "config",
+			Usage: "config file (config.toml)",
+		},
+		&cli.StringFlag{
+			Name:  "storage-config",
+			Usage: "storage paths config (storage.json)",
+		},
+	},
+	ArgsUsage: "[backupFile]",
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+		log.Info("Initializing lotus miner using a backup")
+
+		var storageCfg *stores.StorageConfig
+		if cctx.IsSet("storage-config") {
+			cf, err := homedir.Expand(cctx.String("storage-config"))
+			if err != nil {
+				return xerrors.Errorf("expanding storage config path: %w", err)
+			}
+
+			cfb, err := ioutil.ReadFile(cf)
+			if err != nil {
+				return xerrors.Errorf("reading storage config: %w", err)
+			}
+
+			storageCfg = &stores.StorageConfig{}
+			err = json.Unmarshal(cfb, storageCfg)
+			if err != nil {
+				return xerrors.Errorf("cannot unmarshal json for storage config: %w", err)
+			}
+		}
+
+		if err := restore(ctx, cctx, storageCfg, nil, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi miner.MinerInfo) error {
+			log.Info("Checking proof parameters")
+
+			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(mi.SectorSize)); err != nil {
+				return xerrors.Errorf("fetching proof parameters: %w", err)
+			}
+
+			log.Info("Configuring miner actor")
+
+			if err := configureStorageMiner(ctx, api, maddr, peerid, big.Zero()); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+func restore(ctx context.Context, cctx *cli.Context, strConfig *stores.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi miner.MinerInfo) error) error {
 	if cctx.Args().Len() != 1 {
 		return xerrors.Errorf("expected 1 argument")
 	}
@@ -148,26 +211,12 @@ func restore(ctx context.Context, cctx *cli.Context, manageConfig func(*config.S
 		log.Warn("--config NOT SET, WILL USE DEFAULT VALUES")
 	}
 
-	if cctx.IsSet("storage-config") {
+	if strConfig != nil {
 		log.Info("Restoring storage path config")
 
-		cf, err := homedir.Expand(cctx.String("storage-config"))
-		if err != nil {
-			return xerrors.Errorf("expanding storage config path: %w", err)
-		}
-
-		cfb, err := ioutil.ReadFile(cf)
-		if err != nil {
-			return xerrors.Errorf("reading storage config: %w", err)
-		}
-
-		var cerr error
 		err = lr.SetStorage(func(scfg *stores.StorageConfig) {
-			cerr = json.Unmarshal(cfb, scfg)
+			*scfg = *strConfig
 		})
-		if cerr != nil {
-			return xerrors.Errorf("unmarshalling storage config: %w", cerr)
-		}
 		if err != nil {
 			return xerrors.Errorf("setting storage config: %w", err)
 		}
@@ -245,48 +294,4 @@ func restore(ctx context.Context, cctx *cli.Context, manageConfig func(*config.S
 	}
 
 	return after(api, maddr, peerid, mi)
-}
-
-var restoreCmd = &cli.Command{
-	Name:  "restore",
-	Usage: "Initialize a lotus miner repo from a backup",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "nosync",
-			Usage: "don't check full-node sync status",
-		},
-		&cli.StringFlag{
-			Name:  "config",
-			Usage: "config file (config.toml)",
-		},
-		&cli.StringFlag{
-			Name:  "storage-config",
-			Usage: "storage paths config (storage.json)",
-		},
-	},
-	ArgsUsage: "[backupFile]",
-	Action: func(cctx *cli.Context) error {
-		ctx := lcli.ReqContext(cctx)
-		log.Info("Initializing lotus miner using a backup")
-
-		if err := restore(ctx, cctx, nil, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi miner.MinerInfo) error {
-			log.Info("Checking proof parameters")
-
-			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(mi.SectorSize)); err != nil {
-				return xerrors.Errorf("fetching proof parameters: %w", err)
-			}
-
-			log.Info("Configuring miner actor")
-
-			if err := configureStorageMiner(ctx, api, maddr, peerid, big.Zero()); err != nil {
-				return err
-			}
-
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		return nil
-	},
 }

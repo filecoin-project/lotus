@@ -276,7 +276,7 @@ func (n *Ensemble) Start() *Ensemble {
 		r := repo.NewMemory(nil)
 		opts := []node.Option{
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
-			node.Base(r),
+			node.Base(),
 			node.Repo(r),
 			node.MockHost(n.mn),
 			node.Test(),
@@ -424,7 +424,7 @@ func (n *Ensemble) Start() *Ensemble {
 			n.t.Fatalf("invalid config from repo, got: %T", c)
 		}
 		cfg.Common.API.RemoteListenAddress = m.RemoteListener.Addr().String()
-		cfg.Subsystems.EnableStorageMarket = m.options.subsystems.Has(SStorageMarket)
+		cfg.Subsystems.EnableMarkets = m.options.subsystems.Has(SMarkets)
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
@@ -493,8 +493,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		var mineBlock = make(chan lotusminer.MineReq)
 		opts := []node.Option{
-			node.StorageMiner(&m.StorageMiner),
-			node.Base(r),
+			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
+			node.Base(),
 			node.Repo(r),
 			node.Test(),
 

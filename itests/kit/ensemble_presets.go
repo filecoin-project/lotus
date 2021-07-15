@@ -31,14 +31,14 @@ func EnsembleWithMinerAndMarketNodes(t *testing.T, opts ...interface{}) (*TestFu
 		main, market TestMiner
 	)
 
-	mainNodeOpts := []NodeOpt{WithSubsystem(SSealing), WithSubsystem(SSectorStorage), WithSubsystem(SMining), DisableLibp2p()}
+	mainNodeOpts := []NodeOpt{WithSubsystems(SSealing, SSectorStorage, SMining), DisableLibp2p()}
 	mainNodeOpts = append(mainNodeOpts, nopts...)
 
 	blockTime := 100 * time.Millisecond
 	ens := NewEnsemble(t, eopts...).FullNode(&fullnode, nopts...).Miner(&main, &fullnode, mainNodeOpts...).Start()
 	ens.BeginMining(blockTime)
 
-	marketNodeOpts := []NodeOpt{OwnerAddr(fullnode.DefaultKey), MainMiner(&main), WithSubsystem(SStorageMarket)}
+	marketNodeOpts := []NodeOpt{OwnerAddr(fullnode.DefaultKey), MainMiner(&main), WithSubsystems(SMarkets)}
 	marketNodeOpts = append(marketNodeOpts, nopts...)
 
 	ens.Miner(&market, &fullnode, marketNodeOpts...).Start().Connect(market, fullnode)

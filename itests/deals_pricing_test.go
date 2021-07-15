@@ -14,7 +14,7 @@ import (
 func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	var (
 		ctx       = context.Background()
-		blocktime = time.Second
+		blocktime = 50 * time.Millisecond
 	)
 
 	kit.QuietMiningLogs()

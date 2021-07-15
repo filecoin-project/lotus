@@ -684,6 +684,8 @@ func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, sub
 			return nil
 		case rm.DealStatusRejected:
 			return xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
+		case rm.DealStatusCancelled:
+			return xerrors.Errorf("Retrieval was cancelled externally: %s", state.Message)
 		case
 			rm.DealStatusDealNotFound,
 			rm.DealStatusErrored:

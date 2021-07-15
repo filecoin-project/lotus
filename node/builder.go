@@ -134,6 +134,8 @@ type Settings struct {
 	Base   bool // Base option applied
 	Config bool // Config option applied
 	Lite   bool // Start node in "lite" mode
+
+	enableLibp2pNode bool
 }
 
 // Basic lotus-app services
@@ -210,15 +212,15 @@ func isFullOrLiteNode(s *Settings) bool { return s.nodeType == repo.FullNode }
 func isFullNode(s *Settings) bool       { return s.nodeType == repo.FullNode && !s.Lite }
 func isLiteNode(s *Settings) bool       { return s.nodeType == repo.FullNode && s.Lite }
 
-func Base(r repo.Repo) Option {
+func Base() Option {
 	return Options(
 		func(s *Settings) error { s.Base = true; return nil }, // mark Base as applied
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the Base() option must be set before Config option")),
 		),
-
-		ApplyIfEnableLibP2P(r, LibP2P),
-
+		ApplyIf(func(s *Settings) bool { return s.enableLibp2pNode },
+			LibP2P,
+		),
 		ApplyIf(isFullOrLiteNode, ChainNode),
 		ApplyIf(IsType(repo.StorageMiner), MinerNode),
 	)
@@ -299,6 +301,10 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
 			If(cfg.EnableSplitstore,
+				If(cfg.Splitstore.ColdStoreType == "universal",
+					Override(new(dtypes.ColdBlockstore), From(new(dtypes.UniversalBlockstore)))),
+				If(cfg.Splitstore.ColdStoreType == "discard",
+					Override(new(dtypes.ColdBlockstore), modules.DiscardColdBlockstore)),
 				If(cfg.Splitstore.HotStoreType == "badger",
 					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
 				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(cfg)),
@@ -373,7 +379,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 		fx.Options(ctors...),
 		fx.Options(settings.invokes...),
 
-		//fx.NopLogger,
+		fx.NopLogger,
 	)
 
 	// TODO: we probably should have a 'firewall' for Closing signal

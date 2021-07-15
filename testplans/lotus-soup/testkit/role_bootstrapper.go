@@ -123,7 +123,7 @@ func PrepareBootstrapper(t *TestEnvironment) (*Bootstrapper, error) {
 	r := repo.NewMemory(nil)
 	stop, err := node.New(context.Background(),
 		node.FullAPI(&n.FullApi),
-		node.Base(r),
+		node.Base(),
 		node.Repo(r),
 		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genesisBuffer, genesisTemplate)),
 		withApiEndpoint(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", t.PortNumber("node_rpc", "0"))),

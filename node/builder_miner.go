@@ -68,7 +68,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.New("retrieval pricing policy must be either default or external"))
 	}
 
-	enableLibp2pNode := cfg.Subsystems.EnableStorageMarket // we enable libp2p nodes if the storage market subsystem is enabled, otherwise we don't
+	enableLibp2pNode := cfg.Subsystems.EnableMarkets // we enable libp2p nodes if the storage market subsystem is enabled, otherwise we don't
 
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
@@ -128,7 +128,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(stores.SectorIndex), From(new(modules.MinerSealingService))),
 		),
 
-		If(cfg.Subsystems.EnableStorageMarket,
+		If(cfg.Subsystems.EnableMarkets,
 			// Markets
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
@@ -204,7 +204,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	)
 }
 
-func StorageMiner(out *api.StorageMiner) Option {
+func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConfig) Option {
 	return Options(
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the StorageMiner option must be set before Config option")),
@@ -212,6 +212,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 
 		func(s *Settings) error {
 			s.nodeType = repo.StorageMiner
+			s.enableLibp2pNode = subsystemsCfg.EnableMarkets
 			return nil
 		},
 

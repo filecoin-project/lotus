@@ -188,6 +188,15 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.Addre
 			as.TerminateControl = append(as.TerminateControl, addr)
 		}
 
+		for _, s := range addrConf.DealPublishControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing deal publishing control address: %w", err)
+			}
+
+			as.DealPublishControl = append(as.DealPublishControl, addr)
+		}
+
 		return as, nil
 	}
 }
@@ -691,7 +700,6 @@ func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStora
 }
 
 func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.StorageAuth, sc sectorstorage.SealerConfig) *stores.Remote {
-	fmt.Printf("setting RemoteStorage: %#v \n", sa) // TODO(anteva): remove me prior to merge to master
 	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &stores.DefaultPartialFileHandler{})
 }
 
@@ -724,11 +732,11 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.Storage
 	return sectorstorage.StorageAuth(headers), nil
 }
 
-func StorageAuthWithURL(url string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
 	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
-		s := strings.Split(url, ":")
+		s := strings.Split(apiInfo, ":")
 		if len(s) != 2 {
-			return nil, errors.New("unexpected format of URL")
+			return nil, errors.New("unexpected format of `apiInfo`")
 		}
 		headers := http.Header{}
 		headers.Add("Authorization", "Bearer "+s[0])
@@ -873,6 +881,10 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
 				FinalizeEarly:             cfg.FinalizeEarly,
 
+				CollateralFromMinerBalance: cfg.CollateralFromMinerBalance,
+				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
+				DisableCollateralFallback:  cfg.DisableCollateralFallback,
+
 				BatchPreCommits:     cfg.BatchPreCommits,
 				MaxPreCommitBatch:   cfg.MaxPreCommitBatch,
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
@@ -902,6 +914,10 @@ func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
 		WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
 		AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
 		FinalizeEarly:             cfg.Sealing.FinalizeEarly,
+
+		CollateralFromMinerBalance: cfg.Sealing.CollateralFromMinerBalance,
+		AvailableBalanceBuffer:     types.BigInt(cfg.Sealing.AvailableBalanceBuffer),
+		DisableCollateralFallback:  cfg.Sealing.DisableCollateralFallback,
 
 		BatchPreCommits:     cfg.Sealing.BatchPreCommits,
 		MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
