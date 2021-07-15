@@ -129,7 +129,7 @@ var prices = map[network.Version]Pricelist{
 		verifyPostDiscount:   true,
 		verifyConsensusFault: 495422,
 	},
-	network.Version6: &pricelistV0{
+	network.Version6AndAHalf: &pricelistV0{
 		computeGasMulti: 1,
 		storageGasMulti: 1300,
 
