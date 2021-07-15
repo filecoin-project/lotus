@@ -961,7 +961,7 @@ func (s *SplitStore) purge(bs bstore.Blockstore, cids []cid.Cid, markSet MarkSet
 	deadCids := make([]cid.Cid, 0, batchSize)
 	var purgeCnt, liveCnt int
 	defer func() {
-		log.Infow("purged cold objects", "purged", purgeCnt, "live", liveCnt)
+		log.Infow("purged deleted objects", "purged", purgeCnt, "live", liveCnt)
 	}()
 
 	return s.purgeBatch(cids,
