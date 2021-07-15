@@ -104,6 +104,9 @@ type FullNode interface {
 	// specified block.
 	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]Message, error) //perm:read
 
+	// ChainGetMessagesInTipset returns message stores in current tipset
+	ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSetKey) ([]Message, error) //perm:read
+
 	// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
 	// If there are no blocks at the specified epoch, a tipset at an earlier epoch
 	// will be returned.

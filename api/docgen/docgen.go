@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -88,6 +89,7 @@ func init() {
 	addExample(pid)
 	addExample(&pid)
 
+	multistoreIDExample := multistore.StoreID(50)
 	storeIDExample := importmgr.ImportID(50)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
@@ -121,6 +123,8 @@ func init() {
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)
 	addExample(&storeIDExample)
+	addExample(multistoreIDExample)
+	addExample(&multistoreIDExample)
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)

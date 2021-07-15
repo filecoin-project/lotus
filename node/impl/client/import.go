@@ -1,9 +1,7 @@
 package client
 
 import (
-	"bufio"
 	"context"
-	"io"
 	"os"
 
 	"github.com/filecoin-project/go-fil-markets/filestorecaradapter"
@@ -23,8 +21,6 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
-	"github.com/ipld/go-car"
-	carv2 "github.com/ipld/go-car/v2"
 	"golang.org/x/xerrors"
 )
 
@@ -123,53 +119,4 @@ func importNormalFileToUnixfsDAG(ctx context.Context, inputFilePath string, dag 
 	}
 
 	return nd.Cid(), nil
-}
-
-// transformCarToCARv2 transforms a client's CAR file to a CARv2 file.
-func transformCarToCARv2(inputCARPath string, outputCARv2Path string) (root cid.Cid, err error) {
-	inputF, err := os.Open(inputCARPath)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to open input CAR: %w", err)
-	}
-	defer inputF.Close() //nolint:errcheck
-
-	// read the CAR header to determine the DAG root and the CAR version.
-	hd, _, err := car.ReadHeader(bufio.NewReader(inputF))
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to read CAR header: %w", err)
-	}
-	if len(hd.Roots) != 1 {
-		return cid.Undef, xerrors.New("cannot import CAR with more than one root")
-	}
-
-	// we read the file to read the header -> seek to the start again to be able to read again.
-	if _, err := inputF.Seek(0, io.SeekStart); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to seek to start of input CAR: %w", err)
-	}
-
-	switch hd.Version {
-	case 2:
-
-		// This is a CARv2, we can import it as it is by simply copying it.
-		outF, err := os.Open(outputCARv2Path)
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("failed to open output CARv2 file: %w", err)
-		}
-		defer outF.Close() //nolint:errcheck
-		_, err = io.Copy(outF, inputF)
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("failed to copy CARv2 file: %w", err)
-		}
-	case 1:
-
-		// This is a CARv1, let's transform it to a CARv2.
-		if err := carv2.WrapV1File(inputCARPath, outputCARv2Path); err != nil {
-			return cid.Undef, xerrors.Errorf("failed to transform CARv1 to CARv2: %w", err)
-		}
-
-	default:
-		return cid.Undef, xerrors.Errorf("unrecognized CAR version %d", hd.Version)
-	}
-
-	return hd.Roots[0], nil
 }

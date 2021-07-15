@@ -473,25 +473,41 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		return nil, err
 	}
 
-	carV2File, err := a.imgr().NewTempFile(id)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to create temp CARv2 file: %w", err)
-	}
-	// make sure to remove the CARv2 file if anything goes wrong from here on.
-	defer func() {
-		if finalErr != nil {
-			_ = os.Remove(carV2File)
-		}
-	}()
-
 	var root cid.Cid
+	var carFile string
 	if ref.IsCAR {
-		root, err = transformCarToCARv2(ref.Path, carV2File)
+		// if user has given us a CAR file -> just ensure it's either a v1 or a v2, has one root and save it as it is as markets can do deal making for both.
+		f, err := os.Open(ref.Path)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to import CAR file: %w", err)
+			return nil, xerrors.Errorf("failed to open CAR file: %w", err)
 		}
+		defer f.Close() //nolint:errcheck
+		hd, _, err := car.ReadHeader(bufio.NewReader(f))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
+		}
+		if len(hd.Roots) != 1 {
+			return nil, xerrors.New("car file can have one and only one header")
+		}
+		if hd.Version != 1 && hd.Version != 2 {
+			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", hd.Version)
+		}
+
+		carFile = ref.Path
+		root = hd.Roots[0]
 	} else {
-		root, err = a.importNormalFileToFilestoreCARv2(ctx, id, ref.Path, carV2File)
+		carFile, err = a.imgr().NewTempFile(id)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create temp CARv2 file: %w", err)
+		}
+		// make sure to remove the CARv2 file if anything goes wrong from here on.
+		defer func() {
+			if finalErr != nil {
+				_ = os.Remove(carFile)
+			}
+		}()
+
+		root, err = a.importNormalFileToFilestoreCARv2(ctx, id, ref.Path, carFile)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to import normal file to CARv2: %w", err)
 		}
@@ -503,7 +519,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	if err := a.imgr().AddLabel(id, importmgr.LFileName, ref.Path); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, importmgr.LFileStoreCARv2FilePath, carV2File); err != nil {
+	if err := a.imgr().AddLabel(id, importmgr.LFileStoreCARv2FilePath, carFile); err != nil {
 		return nil, err
 	}
 	if err := a.imgr().AddLabel(id, importmgr.LRootCid, root.String()); err != nil {
@@ -854,6 +870,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return
 	}
 	finish(files.WriteTo(file, ref.Path))
+
 	return
 }
 

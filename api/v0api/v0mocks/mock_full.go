@@ -194,6 +194,21 @@ func (mr *MockFullNodeMockRecorder) ChainGetMessage(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetMessage", reflect.TypeOf((*MockFullNode)(nil).ChainGetMessage), arg0, arg1)
 }
 
+// ChainGetMessagesInTipset mocks base method.
+func (m *MockFullNode) ChainGetMessagesInTipset(arg0 context.Context, arg1 types.TipSetKey) ([]api.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainGetMessagesInTipset", arg0, arg1)
+	ret0, _ := ret[0].([]api.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainGetMessagesInTipset indicates an expected call of ChainGetMessagesInTipset.
+func (mr *MockFullNodeMockRecorder) ChainGetMessagesInTipset(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetMessagesInTipset", reflect.TypeOf((*MockFullNode)(nil).ChainGetMessagesInTipset), arg0, arg1)
+}
+
 // ChainGetNode mocks base method.
 func (m *MockFullNode) ChainGetNode(arg0 context.Context, arg1 string) (*api.IpldObject, error) {
 	m.ctrl.T.Helper()

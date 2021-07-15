@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bufio"
 	"context"
 	"io"
 	"io/ioutil"
@@ -11,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-fil-markets/filestorecaradapter"
-	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -19,12 +17,7 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
-	"github.com/ipld/go-car"
-	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
-	basicnode "github.com/ipld/go-ipld-prime/node/basic"
-	"github.com/ipld/go-ipld-prime/traversal/selector"
-	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/stretchr/testify/require"
 )
 
@@ -108,94 +101,6 @@ func TestImportNormalFileToCARv2(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, fo.Close())
 	require.Equal(t, inputContents, bz2)
-}
-
-func TestTransformCarv1ToCARv2(t *testing.T) {
-	inputFilePath, _ := genNormalInputFile(t)
-	defer os.Remove(inputFilePath) //nolint:errcheck
-
-	carv1FilePath := genCARv1(t, inputFilePath)
-	defer os.Remove(carv1FilePath) //nolint:errcheck
-
-	outputCARv2 := genTmpFile(t)
-	defer os.Remove(outputCARv2) //nolint:errcheck
-
-	root, err := transformCarToCARv2(carv1FilePath, outputCARv2)
-	require.NoError(t, err)
-	require.NotEqual(t, cid.Undef, root)
-
-	// assert what we got back is a valid CARv2 and that the CARv1 payload is exactly what we gave it
-	f2, err := os.Open(outputCARv2)
-	require.NoError(t, err)
-	hd, _, err := car.ReadHeader(bufio.NewReader(f2))
-	require.NoError(t, err)
-	require.EqualValues(t, 2, hd.Version)
-	require.NoError(t, f2.Close())
-
-	v2r, err := carv2.NewReaderMmap(outputCARv2)
-	require.NoError(t, err)
-	bzout, err := ioutil.ReadAll(v2r.CarV1Reader())
-	require.NoError(t, err)
-	require.NotNil(t, bzout)
-	require.NoError(t, v2r.Close())
-
-	fi, err := os.Open(carv1FilePath)
-	require.NoError(t, err)
-	bzin, err := ioutil.ReadAll(fi)
-	require.NoError(t, err)
-	require.NoError(t, fi.Close())
-	require.NotNil(t, bzin)
-
-	require.Equal(t, bzin, bzout)
-}
-
-func TestLoadCARv2ToBlockstore(t *testing.T) {
-	inputFilePath, _ := genNormalInputFile(t)
-	defer os.Remove(inputFilePath) //nolint:errcheck
-
-	carv1FilePath := genCARv1(t, inputFilePath)
-	defer os.Remove(carv1FilePath) //nolint:errcheck
-
-	outputCARv2 := genTmpFile(t)
-	defer os.Remove(outputCARv2) //nolint:errcheck
-
-	root, err := transformCarToCARv2(carv1FilePath, outputCARv2)
-	require.NoError(t, err)
-	require.NotEqual(t, cid.Undef, root)
-
-	bs := bstore.NewMemorySync()
-
-	carv2, err := carv2.NewReaderMmap(outputCARv2)
-	require.NoError(t, err)
-	defer carv2.Close() //nolint:errcheck
-	header, err := car.LoadCar(bs, carv2.CarV1Reader())
-	require.NoError(t, err)
-	require.EqualValues(t, root, header.Roots[0])
-	require.EqualValues(t, 1, header.Version)
-}
-
-func genCARv1(t *testing.T, normalFilePath string) string {
-	ctx := context.Background()
-	bs := bstore.NewMemorySync()
-	root, err := importNormalFileToUnixfsDAG(ctx, normalFilePath, merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs))))
-	require.NoError(t, err)
-
-	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
-		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
-	sc := car.NewSelectiveCar(ctx, bs, []car.Dag{{Root: root, Selector: allSelector}})
-	f, err := os.CreateTemp("", "")
-	require.NoError(t, err)
-	require.NoError(t, sc.Write(f))
-
-	_, err = f.Seek(0, io.SeekStart)
-	require.NoError(t, err)
-	hd, _, err := car.ReadHeader(bufio.NewReader(f))
-	require.NoError(t, err)
-	require.EqualValues(t, 1, hd.Version)
-
-	require.NoError(t, f.Close())
-	return f.Name()
 }
 
 func genTmpFile(t *testing.T) string {
