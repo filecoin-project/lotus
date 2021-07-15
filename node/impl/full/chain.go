@@ -83,6 +83,8 @@ type ChainAPI struct {
 	// expose externally. In the future, this will be segregated into two
 	// blockstores.
 	ExposedBlockstore dtypes.ExposedBlockstore
+
+	BaseBlockstore dtypes.BaseBlockstore
 }
 
 func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
@@ -616,4 +618,15 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipo
 	}()
 
 	return out, nil
+}
+
+func (a *ChainAPI) ChainPrune(ctx context.Context, opts map[string]interface{}) error {
+	pruner, ok := a.BaseBlockstore.(interface {
+		PruneChain(opts map[string]interface{}) error
+	})
+	if !ok {
+		return xerrors.Errorf("base blockstore does not support pruning (%T)", a.BaseBlockstore)
+	}
+
+	return pruner.PruneChain(opts)
 }

@@ -21,6 +21,10 @@ func NewIDStore(bs Blockstore) Blockstore {
 	return &idstore{bs: bs}
 }
 
+func (b *idstore) Unwrap() Blockstore {
+	return b.bs
+}
+
 func decodeCid(cid cid.Cid) (inline bool, data []byte, err error) {
 	if cid.Prefix().MhType != mh.IDENTITY {
 		return false, nil, nil

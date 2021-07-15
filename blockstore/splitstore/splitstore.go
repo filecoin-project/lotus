@@ -43,6 +43,8 @@ var (
 
 	log = logging.Logger("splitstore")
 
+	errClosing = errors.New("splitstore is closing")
+
 	// set this to true if you are debugging the splitstore to enable debug logging
 	enableDebugLog = false
 	// set this to true if you want to track origin stack traces in the write log
@@ -92,7 +94,8 @@ type SplitStore struct {
 	compacting int32 // compaction/prune/warmup in progress
 	closing    int32 // the splitstore is closing
 
-	cfg *Config
+	cfg  *Config
+	path string
 
 	mx          sync.Mutex
 	warmupEpoch abi.ChainEpoch // protected by mx
@@ -147,6 +150,12 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		return nil, xerrors.Errorf("hot blockstore does not support the necessary traits: %T", hot)
 	}
 
+	colds := cold
+	if unwrap, ok := cold.(interface{ Unwrap() bstore.Blockstore }); ok {
+		log.Info("unwrapping coldstore")
+		colds = unwrap.Unwrap()
+	}
+
 	// the markset env
 	markSetEnv, err := OpenMarkSetEnv(path, cfg.MarkSetType)
 	if err != nil {
@@ -156,8 +165,9 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	// and now we can make a SplitStore
 	ss := &SplitStore{
 		cfg:        cfg,
+		path:       path,
 		ds:         ds,
-		cold:       cold,
+		cold:       colds,
 		hot:        hots,
 		markSetEnv: markSetEnv,
 
@@ -539,7 +549,7 @@ func (s *SplitStore) Close() error {
 
 func (s *SplitStore) checkClosing() error {
 	if atomic.LoadInt32(&s.closing) == 1 {
-		return xerrors.Errorf("splitstore is closing")
+		return errClosing
 	}
 
 	return nil
