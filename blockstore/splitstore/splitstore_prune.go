@@ -369,6 +369,8 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 
 	baseEpoch := ts.Height()
 	minEpoch := baseEpoch // for progress report
+	log.Infof("walking at epoch %d", minEpoch)
+
 	walkBlock := func(c cid.Cid) error {
 		if !visited.Visit(c) {
 			return nil
@@ -391,7 +393,7 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 
 		if hdr.Height < minEpoch {
 			minEpoch = hdr.Height
-			if minEpoch%10_000 == 0 {
+			if minEpoch%1_000 == 0 {
 				log.Infof("walking at epoch %d (walked: %d)", minEpoch, walkCnt)
 			}
 		}
