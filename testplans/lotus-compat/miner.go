@@ -44,7 +44,7 @@ func startMinerStack(ctx context.Context, runenv *runtime.RunEnv, dir string) {
 
 func runLotusDaemon(ctx context.Context, runenv *runtime.RunEnv, home string, dir string) {
 	cmds := [][]string{
-		{path.Join(dir, "lotus"), "daemon"},
+		{path.Join(dir, "lotus"), "daemon", "--genesis=dev.gen", "--bootstrap=false"},
 	}
 
 	runCmdsWithLog(ctx, runenv, path.Join(runenv.TestOutputsPath, "lotus-daemon"), cmds)
