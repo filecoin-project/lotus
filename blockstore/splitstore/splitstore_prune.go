@@ -76,6 +76,9 @@ func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 	if onlineGC && movingGC {
 		return xerrors.Errorf("at most one of online, moving GC can be specified")
 	}
+	if !onlineGC && !movingGC {
+		onlineGC = true
+	}
 	if onlineGC {
 		if _, ok := s.cold.(bstore.BlockstoreGC); !ok {
 			return xerrors.Errorf("coldstore does not support online GC (%T)", s.cold)
