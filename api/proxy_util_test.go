@@ -20,6 +20,14 @@ type StrB struct {
 	}
 }
 
+type StrC struct {
+	Internal struct {
+		Internal struct {
+			C int
+		}
+	}
+}
+
 func TestGetInternalStructs(t *testing.T) {
 	var proxy StrA
 
@@ -34,3 +42,23 @@ func TestGetInternalStructs(t *testing.T) {
 	require.Equal(t, 3, proxy.Internal.A)
 	require.Equal(t, 4, proxy.StrB.Internal.B)
 }
+
+
+func TestNestedInternalStructs(t *testing.T) {
+	var proxy StrC
+
+	// check that only the top-level internal struct gets picked up
+
+	sts := GetInternalStructs(&proxy)
+	require.Len(t, sts, 1)
+
+	sa := sts[0].(*struct {
+		Internal struct {
+			C int
+		}
+	})
+	sa.Internal.C = 5
+
+	require.Equal(t, 5, proxy.Internal.Internal.C)
+}
+
