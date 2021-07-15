@@ -336,7 +336,8 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 	workch := make(chan cid.Cid, 16*workers)
 	errch := make(chan error, workers)
 
-	defer close(workch)
+	var once sync.Once
+	defer once.Do(func() { close(workch) })
 
 	push := func(c cid.Cid) error {
 		if !visited.Visit(c) {
@@ -393,7 +394,7 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 
 		if hdr.Height < minEpoch {
 			minEpoch = hdr.Height
-			if minEpoch%1_000 == 0 {
+			if minEpoch%10_000 == 0 {
 				log.Infof("walking at epoch %d (walked: %d)", minEpoch, walkCnt)
 			}
 		}
@@ -446,6 +447,7 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 		}
 	}
 
+	once.Do(func() { close(workch) })
 	wg.Wait()
 	select {
 	case err := <-errch:
