@@ -43,7 +43,6 @@ func TestGetInternalStructs(t *testing.T) {
 	require.Equal(t, 4, proxy.StrB.Internal.B)
 }
 
-
 func TestNestedInternalStructs(t *testing.T) {
 	var proxy StrC
 
@@ -61,4 +60,3 @@ func TestNestedInternalStructs(t *testing.T) {
 
 	require.Equal(t, 5, proxy.Internal.Internal.C)
 }
-
