@@ -1,0 +1,26 @@
+[metadata]
+  name = "lotus-compat"
+  author = "ave"
+
+[global]
+  plan = "lotus-compat"
+  case = "default"
+  total_instances = 1
+  builder = "docker:generic"
+  runner = "cluster:k8s"
+  [global.build_config]
+    go_proxy_mode="remote"
+    push_registry=true
+    go_proxy_url="http://localhost:8081"
+    registry_type="aws"
+  [global.run_config]
+    keep_service = true
+
+[[groups]]
+  id = "devnet"
+  [groups.resources]
+    memory = "4096Mi"
+    cpu = "2000m"
+  [groups.instances]
+    count = 1
+    percentage = 0.0
