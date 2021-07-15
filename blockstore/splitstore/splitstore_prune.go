@@ -2,6 +2,8 @@ package splitstore
 
 import (
 	"bytes"
+	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -197,6 +199,15 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 				return errStopWalk
 			}
 
+			mark, err := markSet.Has(c)
+			if err != nil {
+				return xerrors.Errorf("error checking markset: %w", err)
+			}
+
+			if mark {
+				return errStopWalk
+			}
+
 			count++
 			return markSet.Mark(c)
 		})
@@ -306,15 +317,55 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	return nil
 }
 
-// like walkChain but peforms a deep walk, using walkObjectLax, whereby all messages
-// are retained and state roots are retained if they satisfy the given predicate
+// like walkChain but peforms a deep walk, using parallel walking with walkObjectLax,
+// whereby all extant messages are retained and state roots are retained if they satisfy
+// the given predicate.
 // missing references are ignored, as we expect to have plenty for snapshot syncs.
 func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bool,
 	f func(cid.Cid) error) error {
 	visited := cid.NewSet()
-	walked := cid.NewSet()
 	toWalk := ts.Cids()
 	walkCnt := 0
+
+	workers := runtime.NumCPU() / 2
+	if workers < 2 {
+		workers = 2
+	}
+
+	var wg sync.WaitGroup
+	workch := make(chan cid.Cid, 16*workers)
+	errch := make(chan error, workers)
+
+	defer close(workch)
+
+	push := func(c cid.Cid) error {
+		if !visited.Visit(c) {
+			return nil
+		}
+
+		select {
+		case workch <- c:
+			return nil
+		case err := <-errch:
+			return err
+		}
+	}
+
+	worker := func() {
+		defer wg.Done()
+		for c := range workch {
+			err := s.walkObjectLax(c, f)
+			if err != nil {
+				errch <- xerrors.Errorf("error walking object (cid: %s): %w", c, err)
+				return
+			}
+		}
+	}
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go worker()
+	}
 
 	baseEpoch := ts.Height()
 	walkBlock := func(c cid.Cid) error {
@@ -341,20 +392,19 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 		retainState := retainStateP(depth)
 
 		if hdr.Height > 0 {
-			if err := s.walkObjectLax(hdr.Messages, walked, f); err != nil {
-				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
+			if err := push(hdr.Messages); err != nil {
+				return err
 			}
-
 			if retainState {
-				if err := s.walkObjectLax(hdr.ParentMessageReceipts, walked, f); err != nil {
-					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
+				if err := push(hdr.ParentMessageReceipts); err != nil {
+					return err
 				}
 			}
 		}
 
 		if retainState || hdr.Height == 0 {
-			if err := s.walkObjectLax(hdr.ParentStateRoot, walked, f); err != nil {
-				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
+			if err := push(hdr.ParentStateRoot); err != nil {
+				return err
 			}
 		}
 
@@ -371,6 +421,12 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 			return err
 		}
 
+		select {
+		case err := <-errch:
+			return err
+		default:
+		}
+
 		walking := toWalk
 		toWalk = nil
 		for _, c := range walking {
@@ -380,6 +436,13 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 		}
 	}
 
+	wg.Wait()
+	select {
+	case err := <-errch:
+		return err
+	default:
+	}
+
 	log.Infow("chain walk done", "walked", walkCnt)
 
 	return nil
@@ -387,11 +450,7 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 
 // like walkObject but treats missing references laxly; faster version of walkObjectIncomplete
 // without an occurs check.
-func (s *SplitStore) walkObjectLax(c cid.Cid, walked *cid.Set, f func(cid.Cid) error) error {
-	if !walked.Visit(c) {
-		return nil
-	}
-
+func (s *SplitStore) walkObjectLax(c cid.Cid, f func(cid.Cid) error) error {
 	if err := f(c); err != nil {
 		if err == errStopWalk {
 			return nil
@@ -425,7 +484,7 @@ func (s *SplitStore) walkObjectLax(c cid.Cid, walked *cid.Set, f func(cid.Cid) e
 	}
 
 	for _, c := range links {
-		err := s.walkObjectLax(c, walked, f)
+		err := s.walkObjectLax(c, f)
 		if err != nil {
 			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
 		}
