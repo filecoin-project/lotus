@@ -29,10 +29,10 @@ type Mgr struct {
 type Label string
 
 const (
-	LSource        = "source"    // Function which created the import
-	LRootCid       = "root"      // Root CID
-	LFileName      = "filename"  // Local file path
-	LCARv2FilePath = "CARv2Path" // path of the CARv2 file.
+	LSource                 = "source"    // Function which created the import
+	LRootCid                = "root"      // Root CID
+	LFileName               = "filename"  // Local file path
+	LFileStoreCARv2FilePath = "CARv2Path" // path of the full CARv2 file or a CARv2 file that can serve as the backing store for a Filestore.
 )
 
 func New(ds datastore.Batching, repoPath string) *Mgr {
@@ -129,7 +129,7 @@ func (m *Mgr) Remove(id ImportID) error {
 	return nil
 }
 
-func (m *Mgr) CARV2FilePathFor(dagRoot cid.Cid) (string, error) {
+func (m *Mgr) FilestoreCARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 	importIDs, err := m.List()
 	if err != nil {
 		return "", xerrors.Errorf("failed to fetch import IDs: %w", err)
@@ -150,7 +150,7 @@ func (m *Mgr) CARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 			continue
 		}
 		if c.Equals(dagRoot) {
-			return info.Labels[LCARv2FilePath], nil
+			return info.Labels[LFileStoreCARv2FilePath], nil
 		}
 	}
 

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/filestorecaradapter"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
@@ -124,14 +125,14 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			return nil, xerrors.New("stateless storage deals can only be initiated with storage price of 0")
 		}
 	} else if params.Data.TransferType == storagemarket.TTGraphsync {
-		c, err := a.imgr().CARV2FilePathFor(params.Data.Root)
+		fc, err := a.imgr().FilestoreCARV2FilePathFor(params.Data.Root)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find CARv2 file path: %w", err)
 		}
-		if c == "" {
+		if fc == "" {
 			return nil, xerrors.New("no CARv2 file path for deal")
 		}
-		CARV2FilePath = c
+		CARV2FilePath = fc
 	}
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
@@ -187,17 +188,17 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
 
 		result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
-			Addr:          params.Wallet,
-			Info:          &providerInfo,
-			Data:          params.Data,
-			StartEpoch:    dealStart,
-			EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
-			Price:         params.EpochPrice,
-			Collateral:    params.ProviderCollateral,
-			Rt:            st,
-			FastRetrieval: params.FastRetrieval,
-			VerifiedDeal:  params.VerifiedDeal,
-			CARV2FilePath: CARV2FilePath,
+			Addr:                   params.Wallet,
+			Info:                   &providerInfo,
+			Data:                   params.Data,
+			StartEpoch:             dealStart,
+			EndEpoch:               calcDealExpiration(params.MinBlocksDuration, md, dealStart),
+			Price:                  params.EpochPrice,
+			Collateral:             params.ProviderCollateral,
+			Rt:                     st,
+			FastRetrieval:          params.FastRetrieval,
+			VerifiedDeal:           params.VerifiedDeal,
+			FilestoreCARv2FilePath: CARV2FilePath,
 		})
 
 		if err != nil {
@@ -398,11 +399,11 @@ func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v sto
 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
-	carv2Path, err := a.imgr().CARV2FilePathFor(root)
+	fc, err := a.imgr().FilestoreCARV2FilePathFor(root)
 	if err != nil {
 		return false, err
 	}
-	if len(carv2Path) == 0 {
+	if len(fc) == 0 {
 		return false, nil
 	}
 	return true, nil
@@ -490,7 +491,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 			return nil, xerrors.Errorf("failed to import CAR file: %w", err)
 		}
 	} else {
-		root, err = a.importNormalFileToCARv2(ctx, id, ref.Path, carV2File)
+		root, err = a.importNormalFileToFilestoreCARv2(ctx, id, ref.Path, carV2File)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to import normal file to CARv2: %w", err)
 		}
@@ -502,7 +503,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	if err := a.imgr().AddLabel(id, importmgr.LFileName, ref.Path); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, importmgr.LCARv2FilePath, carV2File); err != nil {
+	if err := a.imgr().AddLabel(id, importmgr.LFileStoreCARv2FilePath, carV2File); err != nil {
 		return nil, err
 	}
 	if err := a.imgr().AddLabel(id, importmgr.LRootCid, root.String()); err != nil {
@@ -522,7 +523,7 @@ func (a *API) ClientRemoveImport(ctx context.Context, importID importmgr.ImportI
 	}
 
 	// remove the CARv2 file if we've created one.
-	if path := info.Labels[importmgr.LCARv2FilePath]; path != "" {
+	if path := info.Labels[importmgr.LFileStoreCARv2FilePath]; path != "" {
 		_ = os.Remove(path)
 	}
 
@@ -579,7 +580,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 			Key:           id,
 			Source:        info.Labels[importmgr.LSource],
 			FilePath:      info.Labels[importmgr.LFileName],
-			CARv2FilePath: info.Labels[importmgr.LCARv2FilePath],
+			CARv2FilePath: info.Labels[importmgr.LFileStoreCARv2FilePath],
 		}
 
 		if info.Labels[importmgr.LRootCid] != "" {
@@ -999,17 +1000,17 @@ func (w *lenWriter) Write(p []byte) (n int, err error) {
 }
 
 func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
-	carv2FilePath, err := a.imgr().CARV2FilePathFor(root)
+	fc, err := a.imgr().FilestoreCARV2FilePathFor(root)
 	if err != nil {
 		return api.DataSize{}, xerrors.Errorf("failed to find CARv2 file for root: %w", err)
 	}
-	if len(carv2FilePath) == 0 {
+	if len(fc) == 0 {
 		return api.DataSize{}, xerrors.New("no CARv2 file for root")
 	}
 
-	rdOnly, err := blockstore.OpenReadOnly(carv2FilePath)
+	rdOnly, err := filestorecaradapter.NewReadOnlyFileStore(fc)
 	if err != nil {
-		return api.DataSize{}, xerrors.Errorf("failed to open read only blockstore: %w", err)
+		return api.DataSize{}, xerrors.Errorf("failed to open read only filestore: %w", err)
 	}
 	defer rdOnly.Close() //nolint:errcheck
 
@@ -1030,15 +1031,15 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 }
 
 func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
-	carv2FilePath, err := a.imgr().CARV2FilePathFor(root)
+	fc, err := a.imgr().FilestoreCARV2FilePathFor(root)
 	if err != nil {
 		return api.DataCIDSize{}, xerrors.Errorf("failed to find CARv2 file for root: %w", err)
 	}
-	if len(carv2FilePath) == 0 {
+	if len(fc) == 0 {
 		return api.DataCIDSize{}, xerrors.New("no CARv2 file for root")
 	}
 
-	rdOnly, err := blockstore.OpenReadOnly(carv2FilePath)
+	rdOnly, err := filestorecaradapter.NewReadOnlyFileStore(fc)
 	if err != nil {
 		return api.DataCIDSize{}, xerrors.Errorf("failed to open read only blockstore: %w", err)
 	}
@@ -1069,7 +1070,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	}
 	defer os.Remove(tmpCARv2File) //nolint:errcheck
 
-	root, err := a.importNormalFileToCARv2(ctx, id, ref.Path, tmpCARv2File)
+	root, err := a.importNormalFileToFilestoreCARv2(ctx, id, ref.Path, tmpCARv2File)
 	if err != nil {
 		return xerrors.Errorf("failed to import normal file to CARv2")
 	}

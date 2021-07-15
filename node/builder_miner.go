@@ -7,8 +7,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/dagstore"
-	"github.com/filecoin-project/dagstore/mount"
 	mktdagstore "github.com/filecoin-project/go-fil-markets/dagstore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
@@ -149,8 +147,6 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 			// DAG Store
-			Override(new(*mount.Registry), modules.DAGStoreRegistry),
-			Override(new(*dagstore.DAGStore), modules.DAGStore),
 			Override(new(mktdagstore.DagStoreWrapper), modules.DAGStoreWrapper),
 
 			// Markets (retrieval)

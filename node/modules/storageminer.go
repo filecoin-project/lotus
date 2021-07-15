@@ -28,8 +28,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 
-	"github.com/filecoin-project/dagstore"
-	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
@@ -568,29 +566,21 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	}
 }
 
-func DAGStoreRegistry() *mount.Registry {
-	return mount.NewRegistry()
-}
-
-func DAGStore(r repo.LockedRepo, ds dtypes.MetadataDS, dsRegistry *mount.Registry) (*dagstore.DAGStore, error) {
+func DAGStoreWrapper(
+	ds dtypes.MetadataDS,
+	r repo.LockedRepo,
+	pieceStore dtypes.ProviderPieceStore,
+	rpn retrievalmarket.RetrievalProviderNode,
+) (mktdagstore.DagStoreWrapper, error) {
 	dagStoreDir := filepath.Join(r.Path(), "dagstore")
 	dagStoreDS := namespace.Wrap(ds, datastore.NewKey("/dagstore/provider"))
-	return dagstore.NewDAGStore(dagstore.Config{
+	cfg := mktdagstore.MarketDAGStoreConfig{
 		TransientsDir: filepath.Join(dagStoreDir, "transients"),
 		IndexDir:      filepath.Join(dagStoreDir, "index"),
 		Datastore:     dagStoreDS,
-		MountRegistry: dsRegistry,
-	})
-}
-
-func DAGStoreWrapper(
-	pieceStore dtypes.ProviderPieceStore,
-	rpn retrievalmarket.RetrievalProviderNode,
-	dsRegistry *mount.Registry,
-	dagStore *dagstore.DAGStore,
-) (mktdagstore.DagStoreWrapper, error) {
+	}
 	mountApi := mktdagstore.NewLotusMountAPI(pieceStore, rpn)
-	return mktdagstore.NewDagStoreWrapper(dsRegistry, dagStore, mountApi)
+	return mktdagstore.NewDagStoreWrapper(cfg, mountApi)
 }
 
 func StorageProvider(minerAddress dtypes.MinerAddress,

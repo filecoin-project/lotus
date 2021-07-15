@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-fil-markets/filestorecaradapter"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-blockservice"
@@ -81,12 +82,12 @@ func TestImportNormalFileToCARv2(t *testing.T) {
 	outputCARv2 := genTmpFile(t)
 	defer os.Remove(outputCARv2) //nolint:errcheck
 
-	root, err := a.importNormalFileToCARv2(ctx, importID, inputFilePath, outputCARv2)
+	root, err := a.importNormalFileToFilestoreCARv2(ctx, importID, inputFilePath, outputCARv2)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
 
 	// convert the CARv2 to a normal file again and ensure the contents match
-	readOnly, err := blockstore.OpenReadOnly(outputCARv2)
+	readOnly, err := filestorecaradapter.NewReadOnlyFileStore(outputCARv2)
 	require.NoError(t, err)
 	defer readOnly.Close() //nolint:errcheck
 	dag := merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly)))

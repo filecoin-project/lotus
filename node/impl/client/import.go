@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/filecoin-project/go-fil-markets/filestorecaradapter"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
@@ -24,12 +25,12 @@ import (
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipld/go-car"
 	carv2 "github.com/ipld/go-car/v2"
-	"github.com/ipld/go-car/v2/blockstore"
 	"golang.org/x/xerrors"
 )
 
-// importNormalFileToCARv2 transforms the client's "normal file" to a Unixfs IPLD DAG and writes out the DAG to a CARv2 file at the given output path.
-func (a *API) importNormalFileToCARv2(ctx context.Context, importID importmgr.ImportID, inputFilePath string, outputCARv2Path string) (c cid.Cid, finalErr error) {
+// importNormalFileToFilestoreCARv2 transforms the client's "normal file" to a Unixfs IPLD DAG and writes out the DAG to a CARv2 file
+// that can be used to back a filestore.
+func (a *API) importNormalFileToFilestoreCARv2(ctx context.Context, importID importmgr.ImportID, inputFilePath string, outputCARv2Path string) (c cid.Cid, finalErr error) {
 
 	// TODO: We've currently put in a hack to create the Unixfs DAG as a CARv2 without using Badger.
 	// We first create the Unixfs DAG using a filestore to get the root of the Unixfs DAG.
@@ -38,7 +39,6 @@ func (a *API) importNormalFileToCARv2(ctx context.Context, importID importmgr.Im
 	//
 	// In the second pass, we create a CARv2 file with the root present using the root node we get in the above step.
 	// This hack should be fixed when CARv2 allows specifying the root AFTER finishing the CARv2 streaming write.
-	// TODO How do we clean this up ?
 	fm := filestore.NewFileManager(ds_sync.MutexWrap(datastore.NewMapDatastore()), "/")
 	fm.AllowFiles = true
 	fstore := filestore.NewFilestore(bstore.NewMemorySync(), fm)
@@ -51,14 +51,15 @@ func (a *API) importNormalFileToCARv2(ctx context.Context, importID importmgr.Im
 		return cid.Undef, xerrors.Errorf("failed to import file to store: %w", err)
 	}
 
-	//------ Second Pass --- Now that we have the root of the Unixfs DAG -> write out the Unixfs DAG to a CARv2 file with the root present by using a read-write CARv2 blockstore.
-	rw, err := blockstore.NewReadWrite(outputCARv2Path, []cid.Cid{root})
+	//------ Second Pass --- Now that we have the root of the Unixfs DAG -> write out the Unixfs DAG to a CARv2 file with the root present by using a
+	// filestore backed by a read-write CARv2 blockstore.
+	fsb, err := filestorecaradapter.NewReadWriteFileStore(outputCARv2Path, []cid.Cid{root})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create a CARv2 read-write blockstore: %w", err)
 	}
-	defer rw.Finalize() //nolint:errcheck
+	defer fsb.Close() //nolint:errcheck
 
-	bsvc = blockservice.New(rw, offline.Exchange(rw))
+	bsvc = blockservice.New(fsb, offline.Exchange(fsb))
 	root2, err := importNormalFileToUnixfsDAG(ctx, inputFilePath, merkledag.NewDAGService(bsvc))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create Unixfs DAG with CARv2 blockstore: %w", err)
