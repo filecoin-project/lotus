@@ -58,20 +58,22 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	runenv.RecordMessage("got dealcid: %s", dealcid)
 
 	// wait for deal to be sealed
-	time.Sleep(360 * time.Second)
+	time.Sleep(300 * time.Second)
 
 	runenv.RecordMessage("retrieve file...")
 	retrieveFile(ctx, dir, datacid)
 
 	// kill miner and its full node
+	runenv.RecordMessage("kill miner...")
 	genesisCancel()
 	time.Sleep(20 * time.Second)
 
 	// restart miner and its full node
+	runenv.RecordMessage("restart miner stack...")
 	ctxAfterRst := context.Background()
 	go startMinerStack(ctxAfterRst, runenv, dir)
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	runenv.RecordMessage("retrieve file again...")
 	retrieveFile(ctx, dir, datacid)
@@ -106,7 +108,8 @@ func makeDeal(ctx context.Context, dir string, datacid string) string {
 		log.Fatal(err)
 	}
 
-	return string(result)
+	dealcid := strings.TrimSuffix(string(result), "\n")
+	return dealcid
 }
 
 func retrieveFile(ctx context.Context, dir string, datacid string) {
