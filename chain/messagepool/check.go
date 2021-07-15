@@ -107,8 +107,6 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	curTs := mp.curTs
 	mp.curTsLk.Unlock()
 
-	epoch := curTs.Height()
-
 	var baseFee big.Int
 	if len(curTs.Blocks()) > 0 {
 		baseFee = curTs.Blocks()[0].ParentBaseFee
@@ -276,7 +274,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		// gas checks
 
 		// 4. Min Gas
-		minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
+		minGas := vm.PricelistByVersion(build.NewestNetworkVersion).OnChainMessage(m.ChainLength())
 
 		check = api.MessageCheckStatus{
 			Cid: m.Cid(),

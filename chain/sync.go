@@ -1054,14 +1054,15 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
-	pl := vm.PricelistByEpoch(baseTs.Height())
+	nv := syncer.sm.GetNtwkVersion(ctx, b.Header.Height)
+	pl := vm.PricelistByVersion(nv)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total(), syncer.sm.GetNtwkVersion(ctx, b.Header.Height)); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total(), nv); err != nil {
 			return err
 		}
 
@@ -1075,7 +1076,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
-		if syncer.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version13 {
+		if nv >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
 				return err
