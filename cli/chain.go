@@ -1430,10 +1430,15 @@ var ChainPruneCmd = &cli.Command{
 			Value: false,
 			Usage: "use online gc for garbage collecting the coldstore",
 		},
+		&cli.BoolFlag{
+			Name:  "moving-gc",
+			Value: false,
+			Usage: "use moving gc for garbage collecting the coldstore",
+		},
 		&cli.StringFlag{
-			Name:  "move",
+			Name:  "move-to",
 			Value: "",
-			Usage: "use moving gc for garbage collecting the coldstore; must specify path for coldstore move",
+			Usage: "specify new path for coldstore during moving gc",
 		},
 		&cli.IntFlag{
 			Name:  "retention",
@@ -1453,8 +1458,8 @@ var ChainPruneCmd = &cli.Command{
 		if cctx.Bool("online-gc") {
 			opts[splitstore.PruneOnlineGC] = true
 		}
-		if path := cctx.String("move"); path != "" {
-			opts[splitstore.PruneMovingGC] = path
+		if cctx.Bool("moving-gc") {
+			opts[splitstore.PruneMovingGC] = cctx.String("move-to")
 		}
 		opts[splitstore.PruneRetainState] = int64(cctx.Int("retention"))
 
