@@ -359,6 +359,20 @@ func (mr *MockFullNodeMockRecorder) ChainNotify(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainNotify", reflect.TypeOf((*MockFullNode)(nil).ChainNotify), arg0)
 }
 
+// ChainPrune mocks base method.
+func (m *MockFullNode) ChainPrune(arg0 context.Context, arg1 map[string]interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainPrune", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChainPrune indicates an expected call of ChainPrune.
+func (mr *MockFullNodeMockRecorder) ChainPrune(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainPrune", reflect.TypeOf((*MockFullNode)(nil).ChainPrune), arg0, arg1)
+}
+
 // ChainReadObj mocks base method.
 func (m *MockFullNode) ChainReadObj(arg0 context.Context, arg1 cid.Cid) ([]byte, error) {
 	m.ctrl.T.Helper()

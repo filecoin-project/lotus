@@ -28,6 +28,7 @@
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
   * [ChainNotify](#ChainNotify)
+  * [ChainPrune](#ChainPrune)
   * [ChainReadObj](#ChainReadObj)
   * [ChainSetHead](#ChainSetHead)
   * [ChainStatObj](#ChainStatObj)
@@ -791,6 +792,24 @@ Perms: read
 Inputs: `null`
 
 Response: `null`
+
+### ChainPrune
+ChainPrune prunes the stored chain state and garbage collects; only supported if you are
+using the splitstore
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "abc": 123
+  }
+]
+```
+
+Response: `{}`
 
 ### ChainReadObj
 ChainReadObj reads ipld nodes referenced by the specified CID from chain
