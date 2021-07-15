@@ -311,7 +311,7 @@ func Repo(r repo.Repo) Option {
 				Override(new(dtypes.BasicChainBlockstore), modules.ChainSplitBlockstore),
 				Override(new(dtypes.BasicStateBlockstore), modules.StateSplitBlockstore),
 				Override(new(dtypes.BaseBlockstore), From(new(dtypes.SplitBlockstore))),
-				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.SplitBlockstore))),
+				Override(new(dtypes.ExposedBlockstore), modules.ExposedSplitBlockstore),
 			),
 			If(!cfg.EnableSplitstore,
 				Override(new(dtypes.BasicChainBlockstore), modules.ChainFlatBlockstore),
