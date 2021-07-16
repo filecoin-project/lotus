@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -138,6 +137,7 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 	runTest := func(t *testing.T) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(
 			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle))),
+			node.Override(new(dtypes.Graphsync), modules.Graphsync(graphsyncThrottle)),
 		))
 		ens.InterconnectAll().BeginMining(blockTime)
 		dh := kit.NewDealHarness(t, client, miner, miner)
@@ -159,7 +159,7 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 				select {
 				case u := <-du:
 					t.Logf("%d - %s", u.TransferID, datatransfer.Statuses[u.Status])
-					if u.Status == datatransfer.Ongoing {
+					if u.Status == datatransfer.Ongoing && u.Transferred > 0 {
 						ongoing[u.TransferID] = struct{}{}
 					} else {
 						delete(ongoing, u.TransferID)
