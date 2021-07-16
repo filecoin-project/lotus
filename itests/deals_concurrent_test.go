@@ -125,7 +125,7 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 			}
 		}()
 
-		const concurrency = 10
+		const concurrency = 20
 		t.Logf("running concurrent deals: %d", concurrency)
 
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
