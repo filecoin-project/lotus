@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/stretchr/testify/require"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -23,6 +24,12 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
 
 	kit.QuietMiningLogs()
 
@@ -47,7 +54,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	}
 
 	// TODO: add 2, 4, 8, more when this graphsync issue is fixed: https://github.com/ipfs/go-graphsync/issues/175#
-	cycles := []int{1, 2, 4, 8}
+	cycles := []int{2}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
@@ -58,12 +65,18 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	}
 }
 
-func TestSimultenousTransferLimit(t *testing.T) {
+func TestSimultanenousTransferLimit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
 
 	kit.QuietMiningLogs()
+
+	oldDelay := policy.GetPreCommitChallengeDelay()
+	policy.SetPreCommitChallengeDelay(5)
+	t.Cleanup(func() {
+		policy.SetPreCommitChallengeDelay(oldDelay)
+	})
 
 	blockTime := 10 * time.Millisecond
 
@@ -72,9 +85,10 @@ func TestSimultenousTransferLimit(t *testing.T) {
 	// so that the deal starts sealing in time
 	startEpoch := abi.ChainEpoch(2 << 12)
 
+	const graphsyncThrottle = 2
 	runTest := func(t *testing.T) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(
-			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(2))),
+			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle))),
 		))
 		ens.InterconnectAll().BeginMining(blockTime)
 		dh := kit.NewDealHarness(t, client, miner)
@@ -111,16 +125,21 @@ func TestSimultenousTransferLimit(t *testing.T) {
 			}
 		}()
 
+		const concurrency = 10
+		t.Logf("running concurrent deals: %d", concurrency)
+
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
-			N:             1, // TODO: set to 20 after https://github.com/ipfs/go-graphsync/issues/175 is fixed
+			N:             concurrency, // TODO: set to 20 after https://github.com/ipfs/go-graphsync/issues/175 is fixed
 			FastRetrieval: true,
 			StartEpoch:    startEpoch,
 		})
 
+		t.Logf("all deals finished")
+
 		cancel()
 		wg.Wait()
 
-		require.LessOrEqual(t, maxOngoing, 2)
+		require.LessOrEqual(t, maxOngoing, graphsyncThrottle)
 	}
 
 	runTest(t)
