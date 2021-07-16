@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/stretchr/testify/require"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -57,8 +56,7 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 		})
 	}
 
-	// TODO: add 2, 4, 8, more when this graphsync issue is fixed: https://github.com/ipfs/go-graphsync/issues/175#
-	cycles := []int{1}
+	cycles := []int{4, 8}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
@@ -102,8 +100,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		})
 	}
 
-	// TODO: add 2, 4, 8, more when this graphsync issue is fixed: https://github.com/ipfs/go-graphsync/issues/175#
-	cycles := []int{2}
+	cycles := []int{1, 2, 4, 8}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
@@ -178,7 +175,7 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 		t.Logf("running concurrent deals: %d", concurrency)
 
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
-			N:             concurrency, // TODO: set to 20 after https://github.com/ipfs/go-graphsync/issues/175 is fixed
+			N:             concurrency,
 			FastRetrieval: true,
 			StartEpoch:    startEpoch,
 		})
