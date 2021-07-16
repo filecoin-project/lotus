@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/stretchr/testify/require"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -107,7 +107,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	}
 }
 
-func TestSimultenousTransferLimit(t *testing.T) {
+func TestSimultanenousTransferLimit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
@@ -121,16 +121,16 @@ func TestSimultenousTransferLimit(t *testing.T) {
 	// so that the deal starts sealing in time
 	startEpoch := abi.ChainEpoch(2 << 12)
 
-	runTest := func(t *testing.T) {
+	runTest := func(t *testing.T, n int, limit uint64) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(
-			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(2))),
+			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(limit))),
 		))
 		ens.InterconnectAll().BeginMining(blockTime)
 		dh := kit.NewDealHarness(t, client, miner, miner)
 
 		ctx, cancel := context.WithCancel(context.Background())
 
-		du, err := miner.MarketDataTransferUpdates(ctx)
+		du, err := client.ClientGetDealUpdates(ctx)
 		require.NoError(t, err)
 
 		var maxOngoing int
@@ -139,16 +139,16 @@ func TestSimultenousTransferLimit(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			ongoing := map[datatransfer.TransferID]struct{}{}
+			ongoing := map[abi.DealID]struct{}{}
 
 			for {
 				select {
 				case u := <-du:
-					t.Logf("%d - %s", u.TransferID, datatransfer.Statuses[u.Status])
-					if u.Status == datatransfer.Ongoing {
-						ongoing[u.TransferID] = struct{}{}
+					t.Logf("%d - %s", u.DealID, storagemarket.DealStates[u.State])
+					if u.State == storagemarket.StorageDealTransferring {
+						ongoing[u.DealID] = struct{}{}
 					} else {
-						delete(ongoing, u.TransferID)
+						delete(ongoing, u.DealID)
 					}
 
 					if len(ongoing) > maxOngoing {
@@ -161,7 +161,7 @@ func TestSimultenousTransferLimit(t *testing.T) {
 		}()
 
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
-			N:             1, // TODO: set to 20 after https://github.com/ipfs/go-graphsync/issues/175 is fixed
+			N:             n,
 			FastRetrieval: true,
 			StartEpoch:    startEpoch,
 		})
@@ -169,8 +169,9 @@ func TestSimultenousTransferLimit(t *testing.T) {
 		cancel()
 		wg.Wait()
 
-		require.LessOrEqual(t, maxOngoing, 2)
+		require.LessOrEqual(t, maxOngoing, 1)
 	}
 
-	runTest(t)
+	// TODO: set n=20 after https://github.com/ipfs/go-graphsync/issues/175 is fixed
+	runTest(t, 4, 2)
 }
