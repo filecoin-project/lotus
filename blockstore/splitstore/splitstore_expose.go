@@ -29,16 +29,7 @@ func (es *exposedSplitStore) DeleteMany(_ []cid.Cid) error {
 }
 
 func (es *exposedSplitStore) Has(c cid.Cid) (bool, error) {
-	if isIdentiyCid(c) {
-		return true, nil
-	}
-
-	has, err := es.s.hot.Has(c)
-	if has || err != nil {
-		return has, err
-	}
-
-	return es.s.cold.Has(c)
+	return es.s.Has(c)
 }
 
 func (es *exposedSplitStore) Get(c cid.Cid) (blocks.Block, error) {
