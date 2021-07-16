@@ -169,9 +169,9 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 		cancel()
 		wg.Wait()
 
-		require.LessOrEqual(t, maxOngoing, 1)
+		require.LessOrEqual(t, uint64(maxOngoing), limit)
 	}
 
 	// TODO: set n=20 after https://github.com/ipfs/go-graphsync/issues/175 is fixed
-	runTest(t, 4, 2)
+	runTest(t, 8, 1)
 }
