@@ -66,6 +66,8 @@ type SectorIndex interface { // part of storage-miner api
 	// atomically acquire locks on all sector file types. close ctx to unlock
 	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error
 	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)
+
+	StorageList(ctx context.Context) (map[ID][]Decl, error)
 }
 
 type Decl struct {

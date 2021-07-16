@@ -60,7 +60,7 @@ func TestPublishDealsBatching(t *testing.T) {
 
 	miner.SetControlAddresses(publisherKey.Address)
 
-	dh := kit.NewDealHarness(t, client, miner)
+	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {

@@ -52,8 +52,30 @@ func NewFullNodeRPCV1(ctx context.Context, addr string, requestHeader http.Heade
 	return &res, closer, err
 }
 
+func getPushUrl(addr string) (string, error) {
+	pushUrl, err := url.Parse(addr)
+	if err != nil {
+		return "", err
+	}
+	switch pushUrl.Scheme {
+	case "ws":
+		pushUrl.Scheme = "http"
+	case "wss":
+		pushUrl.Scheme = "https"
+	}
+	///rpc/v0 -> /rpc/streams/v0/push
+
+	pushUrl.Path = path.Join(pushUrl.Path, "../streams/v0/push")
+	return pushUrl.String(), nil
+}
+
 // NewStorageMinerRPCV0 creates a new http jsonrpc client for miner
 func NewStorageMinerRPCV0(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (v0api.StorageMiner, jsonrpc.ClientCloser, error) {
+	pushUrl, err := getPushUrl(addr)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var res v0api.StorageMinerStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		[]interface{}{
@@ -61,26 +83,19 @@ func NewStorageMinerRPCV0(ctx context.Context, addr string, requestHeader http.H
 			&res.Internal,
 		},
 		requestHeader,
-		opts...,
+		append([]jsonrpc.Option{
+			rpcenc.ReaderParamEncoder(pushUrl),
+		}, opts...)...,
 	)
 
 	return &res, closer, err
 }
 
-func NewWorkerRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.Worker, jsonrpc.ClientCloser, error) {
-	u, err := url.Parse(addr)
+func NewWorkerRPCV0(ctx context.Context, addr string, requestHeader http.Header) (v0api.Worker, jsonrpc.ClientCloser, error) {
+	pushUrl, err := getPushUrl(addr)
 	if err != nil {
 		return nil, nil, err
 	}
-	switch u.Scheme {
-	case "ws":
-		u.Scheme = "http"
-	case "wss":
-		u.Scheme = "https"
-	}
-	///rpc/v0 -> /rpc/streams/v0/push
-
-	u.Path = path.Join(u.Path, "../streams/v0/push")
 
 	var res api.WorkerStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
@@ -88,7 +103,7 @@ func NewWorkerRPCV0(ctx context.Context, addr string, requestHeader http.Header)
 			&res.Internal,
 		},
 		requestHeader,
-		rpcenc.ReaderParamEncoder(u.String()),
+		rpcenc.ReaderParamEncoder(pushUrl),
 		jsonrpc.WithNoReconnect(),
 		jsonrpc.WithTimeout(30*time.Second),
 	)

@@ -1,6 +1,9 @@
 package kit
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // EnsembleMinimal creates and starts an Ensemble with a single full node and a single miner.
 // It does not interconnect nodes nor does it begin mining.
@@ -8,6 +11,8 @@ import "testing"
 // This function supports passing both ensemble and node functional options.
 // Functional options are applied to all nodes.
 func EnsembleMinimal(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *Ensemble) {
+	opts = append(opts, WithAllSubsystems())
+
 	eopts, nopts := siftOptions(t, opts)
 
 	var (
@@ -18,12 +23,37 @@ func EnsembleMinimal(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMin
 	return &full, &miner, ens
 }
 
+func EnsembleWithMinerAndMarketNodes(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *TestMiner, *Ensemble) {
+	eopts, nopts := siftOptions(t, opts)
+
+	var (
+		fullnode     TestFullNode
+		main, market TestMiner
+	)
+
+	mainNodeOpts := []NodeOpt{WithSubsystems(SSealing, SSectorStorage, SMining), DisableLibp2p()}
+	mainNodeOpts = append(mainNodeOpts, nopts...)
+
+	blockTime := 100 * time.Millisecond
+	ens := NewEnsemble(t, eopts...).FullNode(&fullnode, nopts...).Miner(&main, &fullnode, mainNodeOpts...).Start()
+	ens.BeginMining(blockTime)
+
+	marketNodeOpts := []NodeOpt{OwnerAddr(fullnode.DefaultKey), MainMiner(&main), WithSubsystems(SMarkets)}
+	marketNodeOpts = append(marketNodeOpts, nopts...)
+
+	ens.Miner(&market, &fullnode, marketNodeOpts...).Start().Connect(market, fullnode)
+
+	return &fullnode, &main, &market, ens
+}
+
 // EnsembleTwoOne creates and starts an Ensemble with two full nodes and one miner.
 // It does not interconnect nodes nor does it begin mining.
 //
 // This function supports passing both ensemble and node functional options.
 // Functional options are applied to all nodes.
 func EnsembleTwoOne(t *testing.T, opts ...interface{}) (*TestFullNode, *TestFullNode, *TestMiner, *Ensemble) {
+	opts = append(opts, WithAllSubsystems())
+
 	eopts, nopts := siftOptions(t, opts)
 
 	var (
@@ -40,6 +70,8 @@ func EnsembleTwoOne(t *testing.T, opts ...interface{}) (*TestFullNode, *TestFull
 // This function supports passing both ensemble and node functional options.
 // Functional options are applied to all nodes.
 func EnsembleOneTwo(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *TestMiner, *Ensemble) {
+	opts = append(opts, WithAllSubsystems())
+
 	eopts, nopts := siftOptions(t, opts)
 
 	var (

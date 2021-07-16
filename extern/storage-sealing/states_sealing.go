@@ -357,8 +357,13 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
-	params, deposit, tok, err := m.preCommitParams(ctx, sector)
+	params, pcd, tok, err := m.preCommitParams(ctx, sector)
 	if params == nil || err != nil {
+		return err
+	}
+
+	deposit, err := collateralSendAmount(ctx.Context(), m.api, m.maddr, cfg, pcd)
+	if err != nil {
 		return err
 	}
 
@@ -389,7 +394,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: deposit, PreCommitInfo: *params})
+	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: pcd, PreCommitInfo: *params})
 }
 
 func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector SectorInfo) error {
@@ -628,6 +633,11 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 		collateral = big.Zero()
 	}
 
+	collateral, err = collateralSendAmount(ctx.Context(), m.api, m.maddr, cfg, collateral)
+	if err != nil {
+		return err
+	}
+
 	goodFunds := big.Add(collateral, big.Int(m.feeCfg.MaxCommitGasFee))
 
 	from, _, err := m.addrSel(ctx.Context(), mi, api.CommitAddr, goodFunds, collateral)
@@ -738,23 +748,4 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 	}
 
 	return ctx.Send(SectorFinalized{})
-}
-
-func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInfo) error {
-	// TODO: track sector health / expiration
-	log.Infof("Proving sector %d", sector.SectorNumber)
-
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting sealing config: %w", err)
-	}
-
-	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
-		log.Error(err)
-	}
-
-	// TODO: Watch termination
-	// TODO: Auto-extend if set
-
-	return nil
 }

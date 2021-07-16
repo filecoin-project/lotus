@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
@@ -390,12 +389,14 @@ var actorControlList = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:        "color",
-			Value:       cliutil.DefaultColorUse,
+			Usage:       "use color in display output",
 			DefaultText: "depends on output being a TTY",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {

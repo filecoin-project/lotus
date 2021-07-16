@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
@@ -27,13 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func init() {
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
-	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
-}
-
-// TestPaymentChannels does a basic test to exercise the payment channel CLI
+// TestPaymentChannelsBasic does a basic test to exercise the payment channel CLI
 // commands
 func TestPaymentChannelsBasic(t *testing.T) {
 	_ = os.Setenv("BELLMAN_NO_GPU", "1")
@@ -420,7 +413,7 @@ func startPaychCreatorReceiverMiner(ctx context.Context, t *testing.T, paymentCr
 	kit.NewEnsemble(t, kit.MockProofs()).
 		FullNode(paymentCreator, opts).
 		FullNode(paymentReceiver, opts).
-		Miner(&miner, paymentCreator).
+		Miner(&miner, paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll().
 		BeginMining(blocktime)

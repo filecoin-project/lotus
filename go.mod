@@ -110,7 +110,7 @@ require (
 	github.com/libp2p/go-libp2p-mplex v0.4.1
 	github.com/libp2p/go-libp2p-noise v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.7
-	github.com/libp2p/go-libp2p-pubsub v0.4.2-0.20210212194758-6c1addf493eb
+	github.com/libp2p/go-libp2p-pubsub v0.5.0
 	github.com/libp2p/go-libp2p-quic-transport v0.10.0
 	github.com/libp2p/go-libp2p-record v0.1.3
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
@@ -144,7 +144,6 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
-	go.etcd.io/bbolt v1.3.4
 	go.opencensus.io v0.23.0
 	go.uber.org/dig v1.10.0 // indirect
 	go.uber.org/fx v1.9.0

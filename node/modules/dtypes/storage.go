@@ -24,8 +24,11 @@ import (
 type MetadataDS datastore.Batching
 
 type (
-	// UniversalBlockstore is the cold blockstore.
+	// UniversalBlockstore is the universal blockstore backend.
 	UniversalBlockstore blockstore.Blockstore
+
+	// ColdBlockstore is the Cold blockstore abstraction for the splitstore
+	ColdBlockstore blockstore.Blockstore
 
 	// HotBlockstore is the Hot blockstore abstraction for the splitstore
 	HotBlockstore blockstore.Blockstore
@@ -83,6 +86,7 @@ type ClientDataTransfer datatransfer.Manager
 
 type ProviderDealStore *statestore.StateStore
 type ProviderPieceStore piecestore.PieceStore
+
 type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 
 // ProviderDataTransfer is a data transfer manager for the provider

@@ -1,9 +1,16 @@
 package sealing
 
 import (
+	"context"
 	"math/bits"
 
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
 func fillersFromRem(in abi.UnpaddedPieceSize) ([]abi.UnpaddedPieceSize, error) {
@@ -54,4 +61,31 @@ func (m *Sealing) GetSectorInfo(sid abi.SectorNumber) (SectorInfo, error) {
 	var out SectorInfo
 	err := m.sectors.Get(uint64(sid)).Get(&out)
 	return out, err
+}
+
+func collateralSendAmount(ctx context.Context, api interface {
+	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
+}, maddr address.Address, cfg sealiface.Config, collateral abi.TokenAmount) (abi.TokenAmount, error) {
+	if cfg.CollateralFromMinerBalance {
+		if cfg.DisableCollateralFallback {
+			return big.Zero(), nil
+		}
+
+		avail, err := api.StateMinerAvailableBalance(ctx, maddr, nil)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("getting available miner balance: %w", err)
+		}
+
+		avail = big.Sub(avail, cfg.AvailableBalanceBuffer)
+		if avail.LessThan(big.Zero()) {
+			avail = big.Zero()
+		}
+
+		collateral = big.Sub(collateral, avail)
+		if collateral.LessThan(big.Zero()) {
+			collateral = big.Zero()
+		}
+	}
+
+	return collateral, nil
 }

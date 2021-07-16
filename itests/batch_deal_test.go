@@ -58,7 +58,7 @@ func TestBatchDealInput(t *testing.T) {
 			))
 			client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 			ens.InterconnectAll().BeginMining(blockTime)
-			dh := kit.NewDealHarness(t, client, miner)
+			dh := kit.NewDealHarness(t, client, miner, miner)
 
 			err := miner.MarketSetAsk(ctx, big.Zero(), big.Zero(), 200, 128, 32<<30)
 			require.NoError(t, err)

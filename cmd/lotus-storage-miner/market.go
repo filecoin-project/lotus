@@ -15,6 +15,7 @@ import (
 
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
+	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -30,7 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -755,7 +755,6 @@ var transfersListCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:        "color",
 			Usage:       "use color in display output",
-			Value:       cliutil.DefaultColorUse,
 			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
@@ -772,6 +771,10 @@ var transfersListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -786,7 +789,6 @@ var transfersListCmd = &cli.Command{
 
 		verbose := cctx.Bool("verbose")
 		completed := cctx.Bool("completed")
-		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
 		showFailed := cctx.Bool("show-failed")
 		if watch {
@@ -800,7 +802,7 @@ var transfersListCmd = &cli.Command{
 
 				tm.MoveCursor(1, 1)
 
-				lcli.OutputDataTransferChannels(tm.Screen, channels, verbose, completed, color, showFailed)
+				lcli.OutputDataTransferChannels(tm.Screen, channels, verbose, completed, showFailed)
 
 				tm.Flush()
 
@@ -825,7 +827,7 @@ var transfersListCmd = &cli.Command{
 				}
 			}
 		}
-		lcli.OutputDataTransferChannels(os.Stdout, channels, verbose, completed, color, showFailed)
+		lcli.OutputDataTransferChannels(os.Stdout, channels, verbose, completed, showFailed)
 		return nil
 	},
 }

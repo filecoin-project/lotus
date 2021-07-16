@@ -50,11 +50,22 @@ type Backup struct {
 type StorageMiner struct {
 	Common
 
+	Subsystems MinerSubsystemConfig
 	Dealmaking DealmakingConfig
 	Sealing    SealingConfig
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
 	Addresses  MinerAddressConfig
+}
+
+type MinerSubsystemConfig struct {
+	EnableMining        bool
+	EnableSealing       bool
+	EnableSectorStorage bool
+	EnableMarkets       bool
+
+	SealerApiInfo      string // if EnableSealing == false
+	SectorIndexApiInfo string // if EnableSectorStorage == false
 }
 
 type DealmakingConfig struct {
@@ -124,6 +135,13 @@ type SealingConfig struct {
 
 	// Run sector finalization before submitting sector proof to the chain
 	FinalizeEarly bool
+
+	// Whether to use available miner balance for sector collateral instead of sending it with each message
+	CollateralFromMinerBalance bool
+	// Minimum available balance to keep in the miner actor before sending it with messages
+	AvailableBalanceBuffer types.FIL
+	// Don't send collateral with messages even if there is no available balance in the miner actor
+	DisableCollateralFallback bool
 
 	// enable / disable precommit batching (takes effect after nv13)
 	BatchPreCommits bool
@@ -230,12 +248,9 @@ type Chainstore struct {
 }
 
 type Splitstore struct {
-	HotStoreType         string
-	TrackingStoreType    string
-	MarkSetType          string
-	EnableFullCompaction bool
-	EnableGC             bool // EXPERIMENTAL
-	Archival             bool
+	ColdStoreType string
+	HotStoreType  string
+	MarkSetType   string
 }
 
 // // Full Node
@@ -306,7 +321,9 @@ func DefaultFullNode() *FullNode {
 		Chainstore: Chainstore{
 			EnableSplitstore: false,
 			Splitstore: Splitstore{
-				HotStoreType: "badger",
+				ColdStoreType: "universal",
+				HotStoreType:  "badger",
+				MarkSetType:   "map",
 			},
 		},
 	}
@@ -323,6 +340,10 @@ func DefaultStorageMiner() *StorageMiner {
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
 			FinalizeEarly:             false,
+
+			CollateralFromMinerBalance: false,
+			AvailableBalanceBuffer:     types.FIL(big.Zero()),
+			DisableCollateralFallback:  false,
 
 			BatchPreCommits:     true,
 			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
@@ -383,6 +404,13 @@ func DefaultStorageMiner() *StorageMiner {
 					Path: "",
 				},
 			},
+		},
+
+		Subsystems: MinerSubsystemConfig{
+			EnableMining:        true,
+			EnableSealing:       true,
+			EnableSectorStorage: true,
+			EnableMarkets:       true,
 		},
 
 		Fees: MinerFeeConfig{
