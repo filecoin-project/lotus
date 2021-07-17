@@ -105,6 +105,7 @@ func (tma *testMpoolAPI) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) 
 func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
+
 func (tma *testMpoolAPI) IsLite() bool {
 	return false
 }

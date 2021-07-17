@@ -128,6 +128,9 @@ type SplitStore struct {
 	txnRefsMx       sync.Mutex
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
+
+	// registered protectors
+	protectors []func(func(cid.Cid) error) error
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -518,6 +521,13 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	chain.SubscribeHeadChanges(s.HeadChange)
 
 	return nil
+}
+
+func (s *SplitStore) AddProtector(protector func(func(cid.Cid) error) error) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	s.protectors = append(s.protectors, protector)
 }
 
 func (s *SplitStore) Close() error {
