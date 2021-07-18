@@ -180,6 +180,20 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 		return nil, xerrors.Errorf("voucher ChannelAddr doesn't match channel address, got %s, expected %s", sv.ChannelAddr, ch)
 	}
 
+	// check voucher is unlocked
+	if sv.Extra != nil {
+		return nil, xerrors.Errorf("voucher is Message Locked")
+	}
+	if sv.TimeLockMax != 0 {
+		return nil, xerrors.Errorf("voucher is Max Time Locked")
+	}
+	if sv.TimeLockMin != 0 {
+		return nil, xerrors.Errorf("voucher is Min Time Locked")
+	}
+	if len(sv.SecretPreimage) != 0 {
+		return nil, xerrors.Errorf("voucher is Hash Locked")
+	}
+
 	// Load payment channel actor state
 	act, pchState, err := ca.sa.loadPaychActorState(ctx, ch)
 	if err != nil {
