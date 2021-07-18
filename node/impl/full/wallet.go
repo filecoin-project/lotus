@@ -71,7 +71,11 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 }
 
 func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
-	return sigs.Verify(sig, k, msg) == nil, nil
+	keyAddr, err := a.StateManagerAPI.ResolveToKeyAddress(ctx, k, nil)
+	if err != nil {
+		return false, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
+	}
+	return sigs.Verify(sig, keyAddr, msg) == nil, nil
 }
 
 func (a *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
