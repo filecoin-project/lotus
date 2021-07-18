@@ -292,6 +292,7 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 	for i := 0; i < opts.N; i++ {
 		i := i
 		errgrp.Go(func() (err error) {
+			defer dh.t.Logf("finished concurrent deal %d/%d", i, opts.N)
 			defer func() {
 				// This is necessary because golang can't deal with test
 				// failures being reported from children goroutines ¯\_(ツ)_/¯
@@ -299,11 +300,17 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 					err = fmt.Errorf("deal failed: %s", r)
 				}
 			}()
+
+			dh.t.Logf("making storage deal %d/%d", i, opts.N)
+
 			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), MakeFullDealParams{
 				Rseed:      5 + i,
 				FastRet:    opts.FastRetrieval,
 				StartEpoch: opts.StartEpoch,
 			})
+
+			dh.t.Logf("retrieving deal %d/%d", i, opts.N)
+
 			outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, opts.CarExport)
 			AssertFilesEqual(dh.t, inPath, outPath)
 			return nil
