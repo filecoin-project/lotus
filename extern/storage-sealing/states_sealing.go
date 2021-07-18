@@ -404,7 +404,7 @@ func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector Se
 
 	params, deposit, _, err := m.preCommitParams(ctx, sector)
 	if params == nil || err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
+		return err
 	}
 
 	res, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)
