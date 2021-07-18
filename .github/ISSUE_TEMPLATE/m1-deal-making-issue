@@ -1,0 +1,42 @@
+---
+name: M1 - Deal Making Issues
+about: Create a report for help with deal making failures.
+title: "[M1 - Deal Making Issue]"
+labels: M1-release, area/markets
+assignees: ''
+
+---
+
+> Note: For security-related bugs/issues, please follow the [security policy](https://github.com/filecoin-project/lotus/security/policy).
+
+Please provide all the information requested here to help us troubleshoot storage and retrieval deal issues.
+
+**Is this a storage deal or a retrieval deal issue? **
+
+
+**What's the client address and storage provider address for this deal?**
+
+
+**Describe the problem**
+A brief description of the problem you encountered while trying to make a deal. 
+
+
+**Version**
+The output of `lotus --version`.
+
+
+**Deal status**
+Please share the output of `lotus-miner storage-deals|retrieval-deals|data-transfers list [-v]` commands for the deal(s) in question.
+
+**Lotus daemon and miner logs**
+
+1. Please link to or upload the whole of the miner logs on your side of the transaction
+
+2. Share the output from `lotus-miner retrieval-deals list`
+
+3. Share the output from `lotus-miner data-transfers list`
+
+**Code modifications**
+
+If you have modified parts of lotus, please describe which areas were modified,
+and the scope of those modifications
